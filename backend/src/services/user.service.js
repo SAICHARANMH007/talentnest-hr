@@ -1,0 +1,240 @@
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const Organization = require('../models/Organization');
+const AppError = require('../utils/AppError');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const { sendEmailWithRetry, templates } = require('../utils/email');
+const logger = require('../middleware/logger');
+const normalize = require('../utils/normalize');
+const jobService = require('./job.service');
+
+/**
+ * UserService — Professional Logic for Identity Management
+ */
+class UserService {
+  /**
+   * Helper: Normalize user for client
+   */
+  normalize(user) {
+    return normalize(user);
+  }
+
+  /**
+   * Soft Delete User
+   */
+  async softDelete(id) {
+    const user = await User.findByIdAndUpdate(id, {
+      $set: { deletedAt: new Date(), isActive: false }
+    }, { new: true });
+    if (!user) throw new AppError('User not found', 404);
+    return user;
+  }
+
+  /**
+   * Invite a new User (Admin/Recruiter/Candidate)
+   */
+  async inviteUser({ name, email, role, tenantId, department, addedBy, useTemporaryPassword = false, ...metadata }) {
+    const cleanEmail = email.toLowerCase().trim();
+    
+    let user = await User.findOne({ email: cleanEmail }).setOptions({ includeDeleted: true });
+    if (user && !user.deletedAt) throw new AppError('Email already in use.', 409);
+
+    const TEMP_PWD = 'TalentNest@2024';
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashed   = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const payload = {
+      name: name.trim(), email: cleanEmail, role, tenantId, department, addedBy,
+      isActive: false, 
+      resetPasswordToken: hashed, 
+      resetPasswordExpires: expires,
+      inviteStatus: 'pending',
+      mustChangePassword: true,
+      invitedBy: addedBy,
+      invitedAt: new Date(),
+      temporaryPassword: useTemporaryPassword ? TEMP_PWD : null,
+      ...metadata
+    };
+
+    if (useTemporaryPassword) {
+      payload.password = bcrypt.hashSync(TEMP_PWD, 12);
+    }
+
+    if (user && user.deletedAt) {
+      user.deletedAt = null;
+      Object.assign(user, payload);
+      await user.save();
+    } else {
+      user = await User.create(payload);
+    }
+
+    // Send Email via Unified Template
+    const org = await Organization.findById(tenantId).lean();
+    const link = `${process.env.FRONTEND_URL}/set-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}`;
+    
+    let tpl;
+    if (useTemporaryPassword) {
+      tpl = templates.tempPassword(user.name, user.email, TEMP_PWD);
+    } else {
+      const inviter = await User.findById(addedBy).select('name').lean();
+      tpl = templates.invite(user.name, role, org?.name || 'TalentNest', link, inviter?.name);
+    }
+    
+    await sendEmailWithRetry(user.email, tpl.subject, tpl.html).catch(e => logger.error('Invite email failed', e));
+
+    return user;
+  }
+
+  /**
+   * Resend Invitation (Regenerate token)
+   */
+  async resendInvite(userId, requesterId) {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
+    if (user.inviteStatus === 'accepted') throw new AppError('Invitation already accepted.', 400);
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashed   = crypto.createHash('sha256').update(rawToken).digest('hex');
+    user.resetPasswordToken = hashed;
+    user.resetPasswordExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    user.inviteStatus = 'pending';
+    await user.save();
+
+    const org = await Organization.findById(user.tenantId).lean();
+    const inviter = await User.findById(requesterId).select('name').lean();
+    const link = `${process.env.FRONTEND_URL}/set-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}`;
+    
+    const tpl = templates.invite(user.name, user.role, org?.name || 'TalentNest', link, inviter?.name);
+    await sendEmailWithRetry(user.email, tpl.subject, tpl.html);
+
+    return user;
+  }
+
+  /**
+   * Revoke Invitation (Hard delete if pending)
+   */
+  async revokeInvite(userId) {
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
+    if (user.inviteStatus === 'accepted') throw new AppError('Cannot revoke accepted invite.', 400);
+
+    await User.findByIdAndDelete(userId);
+    return true;
+  }
+
+  /**
+   * Bulk Import Candidates (ATOMIC TRANSACTION)
+   */
+  async bulkImport(candidates, tenantId, addedBy, targetJobId = null) {
+    if (!Array.isArray(candidates)) throw new AppError('Candidates must be an array.', 400);
+    
+    const session = await mongoose.startSession();
+    const inserted = [];
+
+    try {
+      await session.withTransaction(async () => {
+        for (const c of candidates) {
+          if (!c.email) continue;
+          const email = c.email.toLowerCase().trim();
+          
+          let user = await User.findOne({ email }).session(session).setOptions({ includeDeleted: true });
+          
+          if (user) {
+            if (user.deletedAt) {
+              user.deletedAt = null;
+              user.isActive = true;
+              await user.save({ session });
+              inserted.push(user);
+            }
+            continue;
+          }
+
+          const [newUser] = await User.create([{
+            name: c.name || email.split('@')[0],
+            email,
+            password: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
+            role: 'candidate',
+            tenantId, addedBy,
+            phone: c.phone || '',
+            location: c.location || '',
+            skills: Array.isArray(c.skills) ? c.skills : (c.skills ? c.skills.split(',').map(s=>s.trim()) : []),
+            source: c.source || 'Bulk Import'
+          }], { session });
+
+          inserted.push(newUser);
+        }
+
+        // Auto-assign to job pipeline within the same transaction
+        if (targetJobId && inserted.length > 0) {
+          const candidateIds = inserted.map(u => u._id);
+          // Pass the same session to jobService for true atomicity
+          await jobService.assignCandidatesToJob(targetJobId, candidateIds, addedBy, { session });
+        }
+      });
+    } catch (err) {
+      throw new AppError(`Bulk import failed: ${err.message}`, 500);
+    } finally {
+      session.endSession();
+    }
+
+    return inserted.length;
+  }
+
+  /**
+   * Merge Two Users (Consolidate Profiles)
+   */
+  async mergeUsers(primaryId, duplicateId, requesterId) {
+    if (String(primaryId) === String(duplicateId)) throw new AppError('Cannot merge a user with themselves.', 400);
+
+    const primary = await User.findById(primaryId);
+    const duplicate = await User.findById(duplicateId);
+
+    if (!primary || !duplicate) throw new AppError('One or both users not found.', 404);
+    if (String(primary.tenantId) !== String(duplicate.tenantId)) throw new AppError('Users must belong to the same organisation to merge.', 400);
+
+    // Track the merge in audit logs
+    logger.audit('User merger started', requesterId, primary.tenantId, { primaryId, duplicateId });
+
+    // Migrate associated data (Candidates, Applications, Jobs, etc.)
+    const modelsToUpdate = [
+      { name: 'Application', field: 'candidateId' }, 
+      { name: 'Job', field: 'createdBy' },
+      { name: 'Notification', field: 'userId' },
+      { name: 'AuditLog', field: 'userId' },
+      { name: 'Application', field: 'stageHistory.movedBy' },
+      { name: 'PreBoarding', field: 'userId' }
+    ];
+
+    for (const m of modelsToUpdate) {
+      try {
+        const Model = mongoose.model(m.name);
+        const query = { [m.field]: duplicateId };
+        await Model.updateMany(query, { $set: { [m.field]: primaryId } });
+      } catch (err) {
+        logger.warn(`Failed to migrate ${m.name} field ${m.field}`, err.message);
+      }
+    }
+
+    // Move any missing profile data from duplicate to primary
+    const fieldsToSync = ['phone', 'location', 'title', 'summary', 'skills', 'photoUrl', 'linkedinUrl', 'resumeUrl'];
+    let modified = false;
+    fieldsToSync.forEach(f => {
+      if (!primary[f] && duplicate[f]) {
+        primary[f] = duplicate[f];
+        modified = true;
+      }
+    });
+
+    if (modified) await primary.save();
+
+    // Finally delete the duplicate
+    await User.findByIdAndDelete(duplicateId);
+
+    logger.audit('User merger completed', requesterId, primary.tenantId, { primaryId, duplicateId });
+    return primary;
+  }
+}
+
+module.exports = new UserService();

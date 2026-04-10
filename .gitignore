@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+backend/.env
+backend/node_modules/
+backend/data/
+*.log
+.mvn/
+.vscode/
+backend-spring/target/
+
+.vercel

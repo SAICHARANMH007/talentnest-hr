@@ -1,0 +1,471 @@
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE / TABLET / iOS — COMPREHENSIVE RESPONSIVE SYSTEM v2
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Safe-area support (iPhone notch / Dynamic Island / home bar) ── */
+.tn-app-root {
+  padding-top:    env(safe-area-inset-top,    0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left:   env(safe-area-inset-left,   0px);
+  padding-right:  env(safe-area-inset-right,  0px);
+}
+
+/* ── Dynamic viewport height (iOS Safari address bar-aware) ── */
+.tn-full-height { min-height: 100dvh; }
+.tn-vh-100      { height: 100dvh; }
+
+/* ── Prevent overscroll bounce on iOS for modals/drawers ── */
+.tn-no-bounce {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Momentum scrolling for iOS ── */
+.tn-scroll-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* ── Prevent text size adjustment on iOS rotation ── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ── Remove tap highlight on iOS ── */
+a, button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Input appearance reset (iOS inner shadow) ── */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+
+/* ── Date/time inputs on iOS ── */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-height: 44px;
+  padding: 8px 12px;
+  background: #fff;
+  color: #181818;
+}
+
+/* ── Select arrow ── */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23706E6B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px !important;
+}
+
+/* ════════════════════════════════
+   MAIN LAYOUT — Mobile padding
+   ════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .tn-app-content,
+  .tn-main-content {
+    padding: 12px !important;
+  }
+}
+
+/* ════════════════════════════════
+   TWO-COLUMN INLINE GRIDS — Collapse on mobile
+   ════════════════════════════════ */
+
+@media (max-width: 640px) {
+  [style*="gridTemplateColumns: '1fr 1fr'"],
+  [style*="gridTemplateColumns: '1.2fr 1fr'"],
+  [style*="gridTemplateColumns: '1fr 1.2fr'"],
+  [style*="gridTemplateColumns: '2fr 1fr'"],
+  [style*="gridTemplateColumns: '1.5fr 1fr'"],
+  [style*="gridTemplateColumns: '1fr 1fr 1fr'"],
+  [style*="gridTemplateColumns: '1.5fr 1fr 1fr'"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ════════════════════════════════
+   TABLES — Horizontal scroll
+   ════════════════════════════════ */
+
+.tn-table-scroll,
+.tn-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  .tn-no-scroll-table table {
+    display: table;
+    overflow-x: visible;
+  }
+}
+
+/* ════════════════════════════════
+   MODALS — Bottom sheet on mobile
+   ════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .tn-modal,
+  [role="dialog"] > div {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    transform: none !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: env(safe-area-inset-bottom, 16px) !important;
+  }
+}
+
+/* ════════════════════════════════
+   FORMS
+   ════════════════════════════════ */
+
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tn-form-actions {
+    flex-direction: column !important;
+  }
+  .tn-form-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 48px !important;
+  }
+}
+
+/* ════════════════════════════════
+   KANBAN — Touch + snap
+   ════════════════════════════════ */
+
+.tn-kanban-board {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
+  scroll-snap-type: x mandatory;
+}
+.tn-kanban-board > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .tn-kanban-board > * {
+    min-width: 240px !important;
+    width: 240px !important;
+  }
+}
+
+/* ════════════════════════════════
+   NOTIFICATIONS — Mobile full-width
+   ════════════════════════════════ */
+
+@media (max-width: 480px) {
+  [data-notif-panel] {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    top: auto !important;
+    bottom: 0 !important;
+    max-height: 80dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+}
+
+/* ════════════════════════════════
+   BUTTONS — Tap targets
+   ════════════════════════════════ */
+
+@media (max-width: 768px) {
+  button,
+  [role="button"],
+  a.tn-btn,
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+}
+
+.tn-icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: none;
+  transition: background 0.15s;
+}
+.tn-icon-btn:hover { background: rgba(0,0,0,0.06); }
+
+/* ════════════════════════════════
+   PAGE HEADERS — Stack on mobile
+   ════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .tn-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .tn-page-header-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tn-page-header-actions > * {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+/* ════════════════════════════════
+   SIDEBAR — Collapsed icon mode on tablet
+   ════════════════════════════════ */
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .tn-sidebar { width: 56px !important; overflow: visible !important; }
+  .tn-sidebar .tn-nav-label,
+  .tn-sidebar [class*="nav-label"] { display: none !important; }
+  .tn-sidebar nav a {
+    justify-content: center !important;
+    padding: 12px 0 !important;
+  }
+  .tn-sidebar nav a span:first-child { font-size: 20px !important; }
+  .tn-sidebar .tn-logo-text { display: none !important; }
+  .tn-sidebar [style*="opacity: 0.9"] { display: none !important; }
+  /* Show tooltip on hover */
+  .tn-sidebar nav a { position: relative; }
+  .tn-sidebar nav a:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #032D60;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+}
+
+/* ════════════════════════════════
+   FAB — Safe area aware
+   ════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .tn-fab-container {
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(16px + env(safe-area-inset-right, 0px)) !important;
+  }
+}
+
+/* ════════════════════════════════
+   DRAWER — Full screen on mobile
+   ════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .tn-drawer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ════════════════════════════════
+   CHARTS — Fluid width
+   ════════════════════════════════ */
+
+.tn-chart-wrap {
+  width: 100%;
+  overflow: hidden;
+}
+.tn-chart-wrap svg {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* ════════════════════════════════
+   TYPOGRAPHY — Fluid
+   ════════════════════════════════ */
+
+@media (max-width: 640px) {
+  h1 { font-size: clamp(20px, 5vw, 28px); }
+  h2 { font-size: clamp(18px, 4.5vw, 24px); }
+  h3 { font-size: clamp(15px, 4vw, 20px); }
+}
+
+/* ════════════════════════════════
+   UTILITY CLASSES
+   ════════════════════════════════ */
+
+.mobile-only { display: none !important; }
+@media (max-width: 767px) { .mobile-only { display: block !important; } }
+
+.tablet-up { display: none !important; }
+@media (min-width: 768px) { .tablet-up { display: block !important; } }
+
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.word-break { word-break: break-all; }
+
+@media (max-width: 640px) {
+  .mobile-full { width: 100% !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAC LAPTOP — 1024px–1440px viewport fixes
+   Targets MacBook Air (1280×800), MacBook Pro 13" (1280×800 / 1440×900)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Reduce main content padding to reclaim space on smaller laptops */
+@media (max-width: 1280px) {
+  .tn-main-content {
+    padding: 16px !important;
+  }
+}
+
+/* Sidebar icon-only mode at 900–1100px (MacBook Air in split-screen or smaller window) */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .tn-sidebar {
+    width: 60px !important;
+    overflow: visible !important;
+  }
+  .tn-sidebar .tn-nav-label {
+    display: none !important;
+  }
+  .tn-sidebar nav a {
+    justify-content: center !important;
+    padding: 12px 8px !important;
+    position: relative;
+  }
+  /* Tooltip on hover */
+  .tn-sidebar nav a::after {
+    content: attr(data-label);
+    position: absolute;
+    left: 68px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #032D60;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: opacity 0.15s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .tn-sidebar nav a:hover::after {
+    opacity: 1;
+  }
+  /* Hide user name text in footer, keep avatar */
+  .tn-sidebar .tn-nav-label,
+  .tn-sidebar [class*="role"],
+  .tn-sidebar span:not([style*="font-size: 16"]):not([style*="fontSize: 16"]) {
+    display: none !important;
+  }
+}
+
+/* Modals — constrain width properly on mid-size screens */
+@media (max-width: 1024px) {
+  .tn-modal {
+    max-width: calc(100vw - 32px) !important;
+  }
+  .tn-overlay {
+    padding: 16px !important;
+  }
+}
+
+/* Resume builder — stack panels vertically below 1100px */
+@media (max-width: 1100px) {
+  .resume-builder-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tables — always horizontally scrollable on laptops */
+@media (max-width: 1440px) {
+  .tn-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* KPI card grids — enforce comfortable minimum on Mac screens */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  [style*="minmax(140px"] {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  }
+}
+
+/* Page header — prevent title overflow on narrow laptops */
+@media (max-width: 1280px) {
+  .tn-page-header h2 {
+    font-size: 18px !important;
+  }
+  .tn-page-header-actions {
+    flex-shrink: 0;
+  }
+}

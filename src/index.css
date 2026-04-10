@@ -1,0 +1,989 @@
+/* ── TalentNest HR Dark Theme Variables & Utilities ────────────────────── */
+:root {
+  --tn-black:   #050D1A;
+  --tn-navy:    #0A1628;
+  --tn-surface: #0F1F35;
+  --tn-blue:    #0176D3;
+  --tn-teal:    #00C2CB;
+  --tn-gold:    #F5A623;
+  --tn-green:   #10B981;
+  --tn-white:   #FFFFFF;
+  --tn-off:     #F8FAFF;
+  --tn-gray:    #64748B;
+  --tn-trans:   all 0.22s cubic-bezier(0.4,0,0.2,1);
+  --tn-radius:  14px;
+  --tn-glow:    0 0 40px rgba(1,118,211,0.2);
+  --tn-shadow:  0 4px 24px rgba(0,0,0,0.12);
+  --tn-shadow-lg: 0 16px 56px rgba(0,0,0,0.2);
+}
+
+.tn-glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--tn-radius);
+}
+
+.tn-gradient-text {
+  background: linear-gradient(135deg, #0176D3, #00C2CB);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tn-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #00C2CB;
+  margin-bottom: 16px;
+}
+
+.tn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: var(--tn-trans);
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.tn-btn-primary {
+  background: linear-gradient(135deg, #0176D3, #0154A4);
+  color: white;
+  box-shadow: 0 4px 20px rgba(1,118,211,0.4);
+}
+
+.tn-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(1,118,211,0.5);
+  color: white;
+  text-decoration: none;
+}
+
+.tn-btn-ghost {
+  background: rgba(255,255,255,0.06);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.tn-btn-ghost:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+  color: white;
+  text-decoration: none;
+}
+
+.tn-btn-outline {
+  background: transparent;
+  color: white;
+  border: 1.5px solid rgba(255,255,255,0.35);
+}
+
+.tn-btn-outline:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: white;
+  text-decoration: none;
+  color: white;
+}
+
+.tn-section { padding: 100px 0; }
+.tn-section-sm { padding: 64px 0; }
+
+.tn-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Container alias (some pages use .container, others .tn-container) ── */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 640px) { .container { padding: 0 16px; } }
+
+/* ── FormRow responsive grid ── */
+.tn-form-row   { display: grid; gap: 14px; }
+.tn-form-row-1 { grid-template-columns: 1fr; }
+.tn-form-row-2 { grid-template-columns: repeat(2, 1fr); }
+.tn-form-row-3 { grid-template-columns: repeat(3, 1fr); }
+.tn-form-row-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 640px) {
+  .tn-form-row-2,
+  .tn-form-row-3,
+  .tn-form-row-4 { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .tn-form-row-3,
+  .tn-form-row-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Shared grid utilities (tn-* and plain grid-*) ── */
+.tn-grid-2, .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; }
+.tn-grid-3, .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.tn-grid-4, .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+.tn-grid-5, .grid-5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; }
+
+@media (max-width: 1024px) {
+  .tn-grid-4, .grid-4 { grid-template-columns: repeat(2,1fr); }
+  .tn-grid-3, .grid-3 { grid-template-columns: repeat(2,1fr); }
+  .tn-grid-5, .grid-5 { grid-template-columns: repeat(3,1fr); }
+}
+
+@media (max-width: 768px) {
+  .tn-grid-5, .grid-5 { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 640px) {
+  .tn-section { padding: 60px 0; }
+  .tn-container { padding: 0 16px; }
+  .tn-grid-2, .tn-grid-3, .tn-grid-4, .tn-grid-5,
+  .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
+  .tn-desktop { display: none !important; }
+}
+
+/* ── Analytics page responsive chart grids ── */
+.analytics-chart-row { display: grid; grid-template-columns: minmax(0,2fr) minmax(260px,1fr); gap: 24px; margin-bottom: 32px; }
+.analytics-chart-row-rev { display: grid; grid-template-columns: minmax(260px,1fr) minmax(0,2fr); gap: 24px; margin-bottom: 32px; }
+.analytics-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+@media (max-width: 1100px) {
+  .analytics-chart-row, .analytics-chart-row-rev { grid-template-columns: 1fr; }
+  .analytics-2col { grid-template-columns: 1fr; }
+}
+
+/* ── Marketing page mobile layout fixes ── */
+/* Prevent horizontal scroll on all marketing pages */
+.mkt-page { overflow-x: hidden; }
+
+/* Two-col content+sidebar layout (Contact, ServiceDetail, etc.) */
+.mkt-split          { display: grid; grid-template-columns: minmax(0,40fr) minmax(0,60fr); gap: 48px; align-items: start; }
+.mkt-split-reverse  { display: grid; grid-template-columns: minmax(0,60fr) minmax(0,40fr); gap: 48px; align-items: start; }
+/* Hero grid (landing page) */
+.mkt-hero-grid      { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+/* Form row (2 inputs side by side) */
+.mkt-form-row       { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+@media (max-width: 900px) {
+  .mkt-split, .mkt-split-reverse { grid-template-columns: 1fr; }
+  .mkt-hero-grid { grid-template-columns: 1fr; text-align: center; }
+}
+
+@media (max-width: 640px) {
+  .mkt-form-row { grid-template-columns: 1fr; }
+  /* Marketing page body padding accounts for fixed nav */
+  .mkt-page { padding-top: 66px; }
+  /* Footer grid: ensure single column on tiny screens */
+  .mkt-page footer .container > div { gap: 40px 20px !important; }
+}
+
+@media (min-width: 641px) {
+  .tn-mobile { display: none !important; }
+}
+
+/* ── Form-specific responsive grids (12px gap, used inside cards/drawers) ── */
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+@media (max-width: 640px) {
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+  .span-2, .span-3 { grid-column: span 1; }
+}
+
+/* ── Dashboard split layout (2fr / 1fr → stacked on mobile) ── */
+.dash-split { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .dash-split { grid-template-columns: 1fr; } }
+
+/* ── Drawer responsive width ── */
+.tn-drawer { width: min(620px, 100vw); }
+
+/* ── pulse animation (used in CandidateApplications) ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes tn-float {
+  0%,100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+}
+
+@keyframes tn-pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* ── Salesforce Lightning Design System – TalentNest HR ── */
+/* Salesforce Lightning Design System – TalentNest HR */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sf-blue:        #0176D3;
+  --sf-blue-dark:   #014486;
+  --sf-blue-hover:  #0154A4;
+  --sf-blue-light:  #1B96FF;
+  --sf-navy:        #032D60;
+  --sf-bg:          #F3F2F2;
+  --sf-card:        #FFFFFF;
+  --sf-border:      #DDDBDA;
+  --sf-text:        #181818;
+  --sf-text-2:      #3E3E3C;
+  --sf-text-3:      #706E6B;
+  --sf-success:     #2E844A;
+  --sf-warning:     #A07E00;
+  --sf-error:       #BA0517;
+  --sf-teal:        #06A59A;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Plus Jakarta Sans', 'Salesforce Sans', Arial, sans-serif;
+  background: var(--sf-bg);
+  color: var(--sf-text);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--sf-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 5px; border: 2px solid #F1F5F9; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Salesforce focus ring */
+*:focus-visible {
+  outline: 2px solid var(--sf-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Smooth page transitions ──────────────────────────────────────────────── */
+@keyframes tn-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tn-page {
+  animation: tn-fadein 0.22s ease both;
+}
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+@keyframes tn-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.tn-skeleton {
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 600px 100%;
+  animation: tn-shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+/* ── Drawer slide-in from right ──────────────────────────────────────────── */
+@keyframes tn-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.tn-drawer {
+  animation: tn-slide-in-right 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: transform;
+}
+
+/* ── Modal fade+scale in ─────────────────────────────────────────────────── */
+@keyframes tn-modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.tn-modal {
+  animation: tn-modal-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+/* ── Overlay fade ────────────────────────────────────────────────────────── */
+@keyframes tn-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.tn-overlay {
+  animation: tn-overlay-in 0.2s ease both;
+}
+
+.tn-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.tn-field-control {
+  width: 100%;
+  min-width: 0;
+}
+
+.tn-field-control::placeholder {
+  color: #94a3b8;
+}
+
+.tn-field-control:disabled {
+  opacity: 1;
+}
+
+.tn-modal {
+  width: min(100%, 840px);
+}
+
+.tn-modal-body > :first-child {
+  margin-top: 0;
+}
+
+.tn-modal-body > :last-child {
+  margin-bottom: 0;
+}
+
+.tn-modal-footer > * {
+  flex-shrink: 0;
+}
+
+/* ── Button smooth transitions ───────────────────────────────────────────── */
+button, .tn-btn {
+  transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s, background 0.15s;
+}
+button:hover:not(:disabled) { opacity: 0.9; }
+button:active:not(:disabled) { transform: scale(0.97); }
+
+/* ── Card hover lift ─────────────────────────────────────────────────────── */
+.tn-card-hover {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.tn-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(1,118,211,0.12);
+}
+
+/* ── Input focus glow ────────────────────────────────────────────────────── */
+input, select, textarea {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--sf-blue) !important;
+  box-shadow: 0 0 0 3px rgba(1,118,211,0.12);
+}
+
+select,
+option,
+optgroup {
+  color: #181818;
+  background-color: #FFFFFF;
+}
+
+/* ── iOS zoom prevention: inputs must be at least 16px on mobile ── */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* ── Box sizing reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ── Media stability (prevent layout shift) ── */
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Skeleton shimmer ── */
+.tn-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Page fade-in ── */
+@keyframes tn-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tn-page {
+  animation: tn-fadein 0.2s ease both;
+}
+
+/* ── Global Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, video, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tn-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 640px) {
+  .tn-container { padding: 0 24px; }
+}
+
+@media (min-width: 1024px) {
+  .tn-container { padding: 0 40px; }
+}
+
+@media (max-width: 768px) {
+  form, .tn-form {
+    width: 100% !important;
+    padding: 16px !important;
+  }
+  input, select, textarea {
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+  .tn-modal {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .tn-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tn-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .tn-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Design System Variables ── */
+:root {
+  --tn-navy:      #0A1628;
+  --tn-blue:      #0176D3;
+  --tn-accent:    #00C2CB;
+  --tn-gold:      #F5A623;
+  --tn-off:       #F7F8FC;
+  --tn-gray:      #64748B;
+  --tn-dark:      #1E293B;
+  --tn-shadow:    0 4px 24px rgba(0,0,0,0.08);
+  --tn-shadow-lg: 0 12px 48px rgba(0,0,0,0.15);
+  --tn-radius:    12px;
+  --tn-trans:     all 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Typography ── */
+.tn-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #00C2CB;
+  margin-bottom: 14px;
+}
+.tn-h2 {
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #ffffff;
+}
+.tn-gradient-text {
+  background: linear-gradient(135deg, #0176D3, #00C2CB);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.tn-section { padding: 96px 0; }
+
+/* ── Buttons ── */
+.tn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--tn-trans);
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tn-btn-primary {
+  background: linear-gradient(135deg, #0176D3, #014486);
+  color: white;
+  box-shadow: 0 4px 16px rgba(1,118,211,0.35);
+}
+.tn-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(1,118,211,0.45);
+  text-decoration: none;
+  color: white;
+}
+.tn-btn-outline {
+  background: transparent;
+  color: white;
+  border: 1.5px solid rgba(255,255,255,0.35);
+}
+.tn-btn-outline:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: white;
+  text-decoration: none;
+  color: white;
+}
+
+/* ── Cards ── */
+.tn-card {
+  background: white;
+  border-radius: var(--tn-radius);
+  box-shadow: var(--tn-shadow);
+  transition: var(--tn-trans);
+  overflow: hidden;
+}
+.tn-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--tn-shadow-lg);
+}
+
+/* ── Animations ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .tn-section { padding: 56px 0; }
+  .tn-desktop { display: none !important; }
+}
+@media (min-width: 769px) {
+  .tn-mobile { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .svc-row { grid-template-columns: 1fr !important; direction: ltr !important; }
+}
+
+/* ── Touch targets — minimum 44px for accessibility ── */
+button, a, input, select, textarea {
+  min-height: 44px;
+}
+
+/* ── Horizontal scroll tables on mobile ── */
+@media (max-width: 768px) {
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-scroll table {
+    min-width: 600px;
+  }
+  .table-scroll td:first-child,
+  .table-scroll th:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 1;
+  }
+}
+
+/* ── Full-screen modals on mobile ── */
+@media (max-width: 768px) {
+  .modal-overlay > div,
+  [role="dialog"] {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+/* ── Mobile pipeline: collapsible stage sections ── */
+@media (max-width: 500px) {
+  .pipeline-mobile-section {
+    border: 1px solid #DDDBDA;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    background: #FFFFFF;
+  }
+  .pipeline-mobile-section summary {
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #F3F2F2;
+    user-select: none;
+  }
+  .pipeline-mobile-section summary::-webkit-details-marker { display: none; }
+  .pipeline-mobile-section summary::after { content: '▶'; font-size: 11px; color: #706E6B; transition: transform 0.2s; }
+  .pipeline-mobile-section[open] summary::after { transform: rotate(90deg); }
+  .pipeline-mobile-section-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+}
+
+/* ── Phase 3/4 Mobile & Dashboard Fixes ── */
+
+/* KPI / stat grids: 2-col on tablet, 1-col on small mobile */
+@media (max-width: 640px) {
+  .kpi-grid,
+  [class*="kpi-grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 380px) {
+  .kpi-grid,
+  [class*="kpi-grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* App content area: reduce padding on mobile */
+@media (max-width: 767px) {
+  .tn-app-content {
+    padding: 16px !important;
+  }
+}
+
+/* Pipeline kanban board: horizontal scroll on all screens <900px */
+@media (max-width: 900px) {
+  .tn-kanban-board {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 16px;
+  }
+  .tn-kanban-board::-webkit-scrollbar {
+    height: 4px;
+  }
+}
+
+/* Pipeline mobile: show accordion below 768px, hide board */
+@media (max-width: 767px) {
+  .tn-kanban-desktop { display: none !important; }
+  .tn-kanban-mobile  { display: block !important; }
+}
+@media (min-width: 768px) {
+  .tn-kanban-mobile { display: none !important; }
+  .tn-kanban-desktop { display: flex !important; }
+}
+
+/* Modals: full-screen on mobile, sheet style */
+@media (max-width: 640px) {
+  .tn-modal,
+  [role="dialog"] > div {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: auto !important;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    top: auto !important;
+    transform: none !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Form grids: force single column on mobile */
+@media (max-width: 640px) {
+  .form-grid-2,
+  .form-grid-3,
+  .form-grid-4,
+  .tn-form-row,
+  .tn-form-row-2,
+  .tn-form-row-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Buttons: full-width on mobile in forms */
+@media (max-width: 640px) {
+  .tn-form-actions {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .tn-form-actions button,
+  .tn-form-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* Tables: horizontal scroll wrapper with shadow indicator */
+.tn-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+.tn-table-scroll table {
+  min-width: 600px;
+  width: 100%;
+}
+
+/* Page headers with actions: stack on mobile */
+@media (max-width: 640px) {
+  .tn-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .tn-page-header-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tn-page-header-actions button {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }
+
+  .tn-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .tn-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: min(92dvh, 92vh) !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .tn-modal-header,
+  .tn-modal-body,
+  .tn-modal-footer {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .tn-modal-header {
+    padding-top: 16px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .tn-modal-body {
+    padding-top: 16px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .tn-modal-footer {
+    padding-top: 12px !important;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .tn-form-row,
+  .tn-form-row-2,
+  .tn-form-row-3,
+  .tn-form-row-4,
+  .mkt-form-row,
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Charts: prevent overflow */
+.tn-chart-container {
+  overflow: hidden;
+  max-width: 100%;
+}
+.tn-chart-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* App main padding: tighter on tablet */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .tn-app-main {
+    padding: 20px !important;
+  }
+}
+
+/* Inline grid fallback for forms that use inline gridTemplateColumns */
+@media (max-width: 640px) {
+  [style*="gridTemplateColumns"][style*="200px"],
+  [style*="gridTemplateColumns"][style*="180px"],
+  [style*="gridTemplateColumns"][style*="160px"],
+  [style*="gridTemplateColumns"][style*="140px"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Ensure all interactive elements meet 44px touch target */
+@media (max-width: 768px) {
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS auto-zoom */
+  }
+}
+
+/* Empty states: ensure they have visible call-to-action */
+.tn-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 12px;
+}
+.tn-empty-state-icon { font-size: 40px; }
+.tn-empty-state-title { font-size: 16px; font-weight: 700; color: #181818; }
+.tn-empty-state-desc  { font-size: 13px; color: #706E6B; max-width: 320px; }
+
+/* Focus rings for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #0176D3;
+  outline-offset: 2px;
+}
+
+/* Skip to content for screen readers */
+.tn-skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  background: #0176D3;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 8px 8px;
+  font-weight: 700;
+  font-size: 14px;
+  z-index: 10000;
+  text-decoration: none;
+}
+.tn-skip-link:focus { top: 0; }
+
+/* ── Global Print System ── */
+@media print {
+  body, html { background: #fff !important; color: #000 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; font-size: 12pt !important; }
+  .tn-no-print, .tn-sidebar, .tn-sidebar-mobile, .tn-hamburger, .tn-footer, 
+  .QuickActionMenu, [role="navigation"], .tn-page-header button, .tn-toast { display: none !important; }
+  .tn-main-content { padding: 0 !important; margin: 0 !important; background: #fff !important; width: 100% !important; }
+  .tn-card { border: 1px solid #eee !important; box-shadow: none !important; padding: 12px !important; break-inside: avoid; margin-bottom: 12px; border-radius: 8px; }
+  #root { margin: 0 !important; padding: 0 !important; }
+  a { text-decoration: none !important; color: #000 !important; }
+  p, h1, h2, h3 { orphans: 3; widows: 3; }
+  h1, h2, h3 { page-break-after: avoid; }
+}
+
+/* ── Premium Floating Action Bar ── */
+.tn-floating-bar {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 100px;
+  padding: 10px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
+  z-index: 1000;
+  animation: tn-slide-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes tn-slide-up {
+  from { transform: translate(-50%, 60px); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
+
+/* ── Enhanced Shimmer ── */
+.tn-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: tn-shimmer-kf 1.6s infinite;
+}
+@keyframes tn-shimmer-kf {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Global Responsive Utilities ── */
+@media (max-width: 768px) {
+  .tn-mobile-center { text-align: center !important; }
+  .tn-mobile-center-flex { justify-content: center !important; }
+  .tn-responsive-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+  .tn-hide-mobile { display: none !important; }
+}
+
+@keyframes tn-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tn-float { 
+  0%, 100% { transform: translateY(0); } 
+  50% { transform: translateY(-10px); } 
+}

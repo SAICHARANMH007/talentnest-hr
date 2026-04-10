@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["unset NPM_CONFIG_PRODUCTION && npm install --omit=dev --no-fund --no-audit"]
+
+[envs]
+  NODE_ENV = "production"

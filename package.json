@@ -1,0 +1,29 @@
+{
+  "name": "talent-nest",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "postinstall": "if [ -z \"$VERCEL\" ]; then cd backend && npm install --omit=dev; fi",
+    "start": "cd backend && node server.js"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^5.5.207",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "terser": "^5.46.1",
+    "vite": "^4.4.5"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

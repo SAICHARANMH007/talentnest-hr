@@ -1,0 +1,327 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MARKETING THEMES — dark / light / mixed
+   CSS vars injected by MarketingThemeContext.jsx on :root
+   data-mkt-theme on <body> drives overrides
+   ALL overrides scoped under .mkt-page — never affects app/dashboards
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Safe fallbacks (overridden immediately by JS on mount) ── */
+:root {
+  --mkt-primary:          #0176D3;
+  --mkt-primary-dark:     #014486;
+  --mkt-accent:           #06B6D4;
+  --mkt-accent-dark:      #0891B2;
+  --mkt-dark:             #032D60;
+  --mkt-darker:           #050D1A;
+  --mkt-grad-start:       #032D60;
+  --mkt-grad-end:         #0176D3;
+  --mkt-primary-rgb:      1,118,211;
+  --mkt-accent-rgb:       6,182,212;
+  --mkt-dark-rgb:         3,45,96;
+  --mkt-section-bg:       #FFFFFF;
+  --mkt-surface-bg:       #F8FAFC;
+  --mkt-card-bg:          #FFFFFF;
+  --mkt-card-border:      #E2E8F0;
+  --mkt-text:             #0F172A;
+  --mkt-text-secondary:   #475569;
+  --mkt-text-muted:       #64748B;
+  --mkt-text-heading:     #0F172A;
+  --mkt-text-on-dark:     #ffffff;
+  --mkt-text-on-dark-muted: rgba(255,255,255,0.7);
+  --mkt-nav-bg:           rgba(5,13,26,0.95);
+  --mkt-nav-text:         #CBD5E1;
+  --mkt-nav-active:       #06B6D4;
+  --mkt-nav-cta-bg:       linear-gradient(135deg, #0176D3, #014486);
+  --mkt-nav-cta-hover:    linear-gradient(135deg, #014486, #0176D3);
+  --shadow-sm:            0 1px 3px rgba(15,23,42,0.10);
+  --shadow-md:            0 4px 16px rgba(15,23,42,0.12);
+  --shadow-lg:            0 12px 40px rgba(15,23,42,0.14);
+  --shadow-xl:            0 24px 64px rgba(15,23,42,0.16);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SECTION SCOPE VARIANTS — used on individual sections regardless of theme
+   These let dark-bg sections always show white text even in light theme
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Dark background sections (hero, CTAs, footers, testimonials with dark bg) */
+.mkt-section-dark {
+  --local-text:         #F1F5F9;
+  --local-text-muted:   rgba(255,255,255,0.65);
+  --local-heading:      #FFFFFF;
+  --local-card-bg:      rgba(255,255,255,0.06);
+  --local-card-border:  rgba(255,255,255,0.10);
+  background: var(--mkt-dark);
+  color: #F1F5F9;
+}
+.mkt-section-dark h1,.mkt-section-dark h2,.mkt-section-dark h3,
+.mkt-section-dark h4,.mkt-section-dark h5,.mkt-section-dark h6 {
+  color: #FFFFFF !important;
+}
+.mkt-section-dark p, .mkt-section-dark span, .mkt-section-dark li,
+.mkt-section-dark label, .mkt-section-dark small {
+  color: rgba(241,245,249,0.85) !important;
+}
+.mkt-section-dark .mkt-text-muted { color: rgba(255,255,255,0.55) !important; }
+
+/* Light background sections (feature grids, FAQs, team) */
+.mkt-section-light {
+  background: var(--mkt-section-bg);
+  color: var(--mkt-text);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   BASE .mkt-page TYPOGRAPHY
+   IMPORTANT: We only set heading colors here. Body text inherits from
+   section scope or explicit styles. Avoid overriding spans/divs globally
+   — it breaks icon-only elements and inline colored badges.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.mkt-page {
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+.mkt-page h1, .mkt-page h2, .mkt-page h3,
+.mkt-page h4, .mkt-page h5, .mkt-page h6 {
+  color: var(--mkt-text-heading);
+  transition: color 0.3s ease;
+}
+
+/* Only apply text color to paragraphs and list items — not spans/divs
+   which could be icon wrappers, badges, or have explicit inline styles */
+.mkt-page p, .mkt-page li {
+  transition: color 0.3s ease;
+}
+
+/* ── Card defaults ── */
+.mkt-card {
+  background: var(--mkt-card-bg);
+  border-color: var(--mkt-card-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.mkt-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--mkt-accent) !important;
+}
+
+/* ── Utility classes ── */
+.mkt-hero-grad   { background: linear-gradient(135deg, var(--mkt-grad-start), var(--mkt-grad-end)) !important; }
+.mkt-btn-primary { background: linear-gradient(135deg, var(--mkt-primary), var(--mkt-primary-dark)) !important; color: #fff !important; }
+.mkt-accent-text { color: var(--mkt-accent) !important; }
+.mkt-accent-bg   { background: var(--mkt-accent) !important; }
+.mkt-section-dot { background: var(--mkt-accent) !important; box-shadow: 0 0 8px var(--mkt-accent) !important; }
+.mkt-text-muted  { color: var(--mkt-text-muted) !important; }
+.mkt-text-on-dark { color: var(--mkt-text-on-dark) !important; }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   DARK THEME — comprehensive overrides
+   ════════════════════════════════════════════════════════════════════════ */
+
+[data-mkt-theme="dark"] .mkt-page {
+  background: #0A0F1E;
+  color: #CBD5E1;
+}
+
+/* Update legacy alias vars for dark theme */
+[data-mkt-theme="dark"] {
+  --dark:    #F1F5F9;
+  --gray-50: #0F172A;
+  --gray-100: #141C2E;
+  --gray-200: rgba(255,255,255,0.08);
+  --gray-400: #94A3B8;
+  --gray-500: #94A3B8;
+  --gray-600: #CBD5E1;
+  --gray-700: #F1F5F9;
+  --gradient-primary: linear-gradient(135deg, #1D4ED8, #06B6D4);
+  --gradient-accent:  linear-gradient(135deg, #1D4ED8, #06B6D4);
+}
+
+/* Headings always bright in dark theme */
+[data-mkt-theme="dark"] .mkt-page h1,
+[data-mkt-theme="dark"] .mkt-page h2,
+[data-mkt-theme="dark"] .mkt-page h3,
+[data-mkt-theme="dark"] .mkt-page h4,
+[data-mkt-theme="dark"] .mkt-page h5,
+[data-mkt-theme="dark"] .mkt-page h6 {
+  color: #F1F5F9 !important;
+}
+
+/* Body text readable in dark */
+[data-mkt-theme="dark"] .mkt-page p,
+[data-mkt-theme="dark"] .mkt-page li {
+  color: #CBD5E1 !important;
+}
+
+/* mkt-section-light sections inside dark theme → flip to dark card style */
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light {
+  background: #0F172A !important;
+  color: #CBD5E1 !important;
+}
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h1,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h2,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h3,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h4,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h5,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light h6 {
+  color: #F1F5F9 !important;
+}
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light p,
+[data-mkt-theme="dark"] .mkt-page .mkt-section-light li {
+  color: #CBD5E1 !important;
+}
+
+/* White/light section bg overrides */
+[data-mkt-theme="dark"] .mkt-page [style*="background: #fff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: white"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: #ffffff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: #FFFFFF"],
+[data-mkt-theme="dark"] .mkt-page [style*="background:#fff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background:#ffffff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background:#FFFFFF"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: #F8FAFC"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: #f8fafc"],
+[data-mkt-theme="dark"] .mkt-page [style*="background: #F4F6F8"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: #fff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: white"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: #ffffff"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: #FFFFFF"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: #F8FAFC"],
+[data-mkt-theme="dark"] .mkt-page [style*="background-color: #f8fafc"] {
+  background: #141C2E !important;
+}
+
+/* Dark text in inline styles → flip to light */
+[data-mkt-theme="dark"] .mkt-page [style*="color: #0F172A"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #0f172a"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #1E293B"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #1e293b"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #334155"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #0A1628"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #0a1628"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #032D60"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #032d60"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #1B1B1B"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #181818"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #111827"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #374151"] {
+  color: #F1F5F9 !important;
+}
+[data-mkt-theme="dark"] .mkt-page [style*="color: #64748B"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #64748b"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #475569"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #706E6B"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #4B5563"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #6B7280"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #94A3B8"],
+[data-mkt-theme="dark"] .mkt-page [style*="color: #94a3b8"] {
+  color: #94A3B8 !important;
+}
+
+/* Card flip */
+[data-mkt-theme="dark"] .mkt-page .mkt-card,
+[data-mkt-theme="dark"] .mkt-page [class*="card"] {
+  background: #141C2E !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+[data-mkt-theme="dark"] .mkt-card:hover {
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45) !important;
+}
+
+/* Light section bg class override for dark theme */
+[data-mkt-theme="dark"] .mkt-page .section-bg-light {
+  background: #0F172A !important;
+}
+
+/* Borders */
+[data-mkt-theme="dark"] .mkt-page hr,
+[data-mkt-theme="dark"] .mkt-page [style*="border: 1px solid #e2e8f0"],
+[data-mkt-theme="dark"] .mkt-page [style*="border: 1px solid #E2E8F0"],
+[data-mkt-theme="dark"] .mkt-page [style*="border-color: #e2e8f0"],
+[data-mkt-theme="dark"] .mkt-page [style*="border-color: #E2E8F0"],
+[data-mkt-theme="dark"] .mkt-page [style*="border-bottom: 1px solid #e2e8f0"],
+[data-mkt-theme="dark"] .mkt-page [style*="border-top: 1px solid #e2e8f0"] {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Inputs */
+[data-mkt-theme="dark"] .mkt-page input:not([type="checkbox"]):not([type="radio"]),
+[data-mkt-theme="dark"] .mkt-page select,
+[data-mkt-theme="dark"] .mkt-page textarea {
+  background: #1A2540 !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #F1F5F9 !important;
+}
+[data-mkt-theme="dark"] .mkt-page input::placeholder,
+[data-mkt-theme="dark"] .mkt-page textarea::placeholder {
+  color: rgba(203,213,225,0.4) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   LIGHT THEME — overrides for dark hero/nav areas (they must stay dark)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Update legacy alias vars for light theme */
+[data-mkt-theme="light"] {
+  --dark:    #0F172A;
+  --gray-50: #F9FAFB;
+  --gray-100: #FFFFFF;
+  --gray-200: #E2E8F0;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gradient-primary: linear-gradient(135deg, #0176D3, #014486);
+  --gradient-accent:  linear-gradient(135deg, #0176D3, #06B6D4);
+  /* Nav overrides for light theme */
+  --mkt-nav-bg:   rgba(255,255,255,0.97);
+  --mkt-nav-text: #1E293B;
+}
+
+/* Nav links readable on light nav background */
+[data-mkt-theme="light"] .mkt-page .tn-nav-link {
+  color: #334155 !important;
+}
+[data-mkt-theme="light"] .mkt-page .tn-nav-link:hover,
+[data-mkt-theme="light"] .mkt-page .tn-nav-link.active {
+  color: var(--mkt-primary) !important;
+}
+
+/* mkt-section-dark sections stay dark on white-bg theme (hero, CTA strips) */
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h1,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h2,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h3,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h4,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h5,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark h6 {
+  color: #FFFFFF !important;
+}
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark p,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark li,
+[data-mkt-theme="light"] .mkt-page .mkt-section-dark span {
+  color: rgba(241,245,249,0.85) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   MIXED THEME — hero/nav is dark, content sections are light.
+   No overrides needed — default variables already handle it.
+   mkt-section-dark stays dark, mkt-section-light stays light.
+   ════════════════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   GRADIENT OVERLAYS — readable text on photo backgrounds
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Hero sections with background images always get dark overlay text */
+.mkt-hero-text, .mkt-hero-section * {
+  /* Force white text for any hero on dark overlay */
+}
+.mkt-page [class*="hero"] h1,
+.mkt-page [class*="hero"] h2,
+.mkt-page [class*="hero"] p {
+  /* Handled via inline styles in components — do not override here */
+}

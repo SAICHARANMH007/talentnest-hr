@@ -1,0 +1,3 @@
+# REDUNDANT: This file is no longer used.
+# The primary configuration is now centrally managed in the root /railway.toml
+# to ensure consistent build and deployment of the full-stack application.
