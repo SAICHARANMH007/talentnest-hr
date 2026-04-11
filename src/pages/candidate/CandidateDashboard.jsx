@@ -39,7 +39,7 @@ export default function CandidateDashboard({ user }) {
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
 
   const stageCounts = STAGES.reduce((a,s) => { a[s.id]=apps.filter(ap=>ap.stage===s.id).length; return a; }, {});
-  const nextInterview = apps.find(a => a.stage==="interview_scheduled" && a.interviews?.[0]?.scheduledAt);
+  const nextInterview = apps.find(a => a.stage==="interview_scheduled" && a.interviewRounds?.[0]?.scheduledAt);
 
   // Weighted profile strength
   const PROFILE_WEIGHTS = [
@@ -124,7 +124,7 @@ export default function CandidateDashboard({ user }) {
                 <p style={{ color:"#181818", fontWeight:700, fontSize:16, margin:"0 0 2px" }}>{nextInterview.jobId?.title}</p>
                 <p style={{ color:"#0176D3", fontSize:12, margin:"0 0 10px" }}>{nextInterview.jobId?.companyName}</p>
                 {(() => {
-                  const iv = nextInterview.interviews?.[0] || {};
+                  const iv = nextInterview.interviewRounds?.[0] || {};
                   const ivDate = iv.scheduledAt ? new Date(iv.scheduledAt).toLocaleDateString() : '';
                   return (
                     <>
@@ -140,7 +140,7 @@ export default function CandidateDashboard({ user }) {
               </div>
               <div style={{ textAlign:"center" }}>
                 <p style={{ color:"#F59E0B", fontSize:10, margin:"0 0 6px", fontWeight:600 }}>COUNTDOWN</p>
-                <InterviewCountdown date={nextInterview.interviews?.[0]?.scheduledAt} time={null} />
+                <InterviewCountdown date={nextInterview.interviewRounds?.[0]?.scheduledAt} time={null} />
               </div>
             </div>
           </div>

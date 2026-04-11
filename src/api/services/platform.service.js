@@ -142,13 +142,6 @@ export const platformService = {
   // Duplicate detection
   async checkDuplicate(data)            { return req('POST', '/users/check-duplicate', data); },
 
-  // Resume parsing — returns { success, data: { fields, confidence } }
-  async parseResume(file) {
-    const formData = new FormData();
-    formData.append('resume', file);
-    return req('POST', '/candidates/parse-resume', formData);
-  },
-
   // Talent pool
   async getTalentPool()                 { return req('GET', '/applications/talent-pool'); },
   async parkApplication(appId)          { return req('PATCH', `/applications/${appId}/park`); },

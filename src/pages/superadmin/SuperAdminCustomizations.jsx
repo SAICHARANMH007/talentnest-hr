@@ -330,10 +330,25 @@ function CustomFieldsTab({ data, updateSingleton, setToast }) {
 }
 
 // ── 0. Automations (New Tab) ──────────────────────────────────────────────────
+const EMPTY_RULE = { name: '', isActive: true, trigger: { event: 'stage_changed', conditions: [] }, actions: [] };
+const TRIGGER_EVENTS = [
+  { value: 'stage_changed', label: 'Stage Changed' }, { value: 'candidate_applied', label: 'New Application' },
+  { value: 'interview_scheduled', label: 'Interview Scheduled' }, { value: 'assessment_completed', label: 'Assessment Done' },
+  { value: 'offer_not_signed', label: 'Offer Stale' }, { value: 'candidate_stuck', label: 'Candidate Inactive' },
+];
+const ACTION_TYPES = [
+  { value: 'send_email', label: '📧 Send Email' }, { value: 'send_whatsapp', label: '💬 WhatsApp' },
+  { value: 'move_stage', label: '➡️ Move Stage' }, { value: 'notify_recruiter', label: '🔔 Notify Recruiter' },
+  { value: 'notify_admin', label: '🔔 Notify Admin' },
+];
+
 function AutomationsTab() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [newRule, setNewRule] = useState(JSON.parse(JSON.stringify(EMPTY_RULE)));
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -341,7 +356,7 @@ function AutomationsTab() {
       const resp = await api.getWorkflowRules();
       setRules(Array.isArray(resp?.data) ? resp.data : []);
     } catch (e) {
-      setToast('Failed to load rules');
+      setToast('❌ Failed to load rules');
     } finally {
       setLoading(false);
     }
@@ -354,8 +369,35 @@ function AutomationsTab() {
       await api.updateWorkflowRule(rule.id || rule._id, { isActive: !rule.isActive });
       setRules(prev => prev.map(r => (r.id === rule.id || r._id === rule._id) ? { ...r, isActive: !r.isActive } : r));
     } catch (e) {
-      setToast('Toggle failed');
+      setToast('❌ Toggle failed: ' + e.message);
     }
+  };
+
+  const deleteRule = async (rule) => {
+    if (!window.confirm('Delete this automation rule?')) return;
+    try {
+      await api.deleteWorkflowRule(rule.id || rule._id);
+      setRules(prev => prev.filter(r => (r.id || r._id) !== (rule.id || rule._id)));
+      setToast('🗑️ Rule deleted');
+    } catch (e) {
+      setToast('❌ ' + e.message);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!newRule.name.trim()) { setToast('❌ Rule name is required'); return; }
+    if (!newRule.actions.length) { setToast('❌ Add at least one action'); return; }
+    setSaving(true);
+    try {
+      const saved = await api.createWorkflowRule(newRule);
+      setRules(prev => [saved?.data || saved, ...prev]);
+      setShowCreate(false);
+      setNewRule(JSON.parse(JSON.stringify(EMPTY_RULE)));
+      setToast('✅ Automation rule created!');
+    } catch (e) {
+      setToast('❌ ' + e.message);
+    }
+    setSaving(false);
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>;
@@ -363,8 +405,44 @@ function AutomationsTab() {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <SectionHeader icon="⚡" title="Workflow Automations" desc="Configure triggered actions like automated emails, stage moves, and notifications." 
-        action={<button style={S.btn} onClick={() => alert('New Workflow Creation coming soon in Phase 4')}>+ Create Flow</button>} />
+      <SectionHeader icon="⚡" title="Workflow Automations" desc="Configure triggered actions like automated emails, stage moves, and notifications."
+        action={<button style={S.btn} onClick={() => setShowCreate(true)}>+ Create Flow</button>} />
+
+      {/* Inline Create Form */}
+      {showCreate && (
+        <div style={{ ...S.card, border: '2px solid rgba(1,118,211,0.3)', marginBottom: 24 }}>
+          <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800 }}>New Automation Rule</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={S.label}>Rule Name *</label>
+              <input style={S.inp} value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Welcome email on application" />
+            </div>
+            <div>
+              <label style={S.label}>Trigger Event</label>
+              <select style={S.inp} value={newRule.trigger.event} onChange={e => setNewRule(p => ({ ...p, trigger: { ...p.trigger, event: e.target.value } }))}>
+                {TRIGGER_EVENTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={S.label}>Actions</label>
+            {newRule.actions.map((act, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                <select style={{ ...S.inp, width: 'auto' }} value={act.type} onChange={e => setNewRule(p => { const a = [...p.actions]; a[i] = { ...a[i], type: e.target.value }; return { ...p, actions: a }; })}>
+                  {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <button onClick={() => setNewRule(p => ({ ...p, actions: p.actions.filter((_, j) => j !== i) }))} style={S.btnR}>✕</button>
+              </div>
+            ))}
+            <button style={S.btnG} onClick={() => setNewRule(p => ({ ...p, actions: [...p.actions, { type: 'send_email', config: {} }] }))}>+ Add Action</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={S.btn} onClick={handleCreate} disabled={saving}>{saving ? 'Saving…' : 'Create Rule'}</button>
+            <button style={S.btnG} onClick={() => { setShowCreate(false); setNewRule(JSON.parse(JSON.stringify(EMPTY_RULE))); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       
       {rules.length === 0 ? <EmptyState icon="⚡" msg="No automated flows configured yet." /> :
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
@@ -375,7 +453,10 @@ function AutomationsTab() {
                   <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>{rule.name}</h4>
                   <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>{rule.triggerCount || 0} executions · Last run {rule.lastTriggeredAt ? new Date(rule.lastTriggeredAt).toLocaleDateString() : 'Never'}</div>
                 </div>
-                <Toggle checked={rule.isActive} onChange={() => toggleRule(rule)} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Toggle checked={rule.isActive} onChange={() => toggleRule(rule)} />
+                  <button onClick={() => deleteRule(rule)} style={S.btnR}>✕</button>
+                </div>
               </div>
               
               <div style={{ background: '#F8FAFC', borderRadius: 10, padding: 12, marginBottom: 12 }}>

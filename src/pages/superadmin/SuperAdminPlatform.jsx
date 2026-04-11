@@ -3,6 +3,7 @@ import { api } from '../../api/api.js';
 import LogoManager from '../../components/LogoManager.jsx';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import Toast from '../../components/ui/Toast.jsx';
 
 const glass = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24 };
 const PLAN_COLORS = { free: '#64748b', trial: '#F59E0B', starter: '#0176D3', growth: '#014486', enterprise: '#7c3aed' };
@@ -16,6 +17,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
   const [backing, setBacking] = useState(false);
   const [backupDone, setBackupDone] = useState(false);
   const [lastBackup, setLastBackup] = useState(() => localStorage.getItem('tn_last_backup'));
+  const [toast, setToast] = useState('');
 
   const doBackup = async () => {
     setBacking(true);
@@ -27,7 +29,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
       setBackupDone(true);
       setTimeout(() => setBackupDone(false), 4000);
     } catch(e) {
-      alert('Backup failed: ' + e.message);
+      setToast('❌ Backup failed: ' + e.message);
     }
     setBacking(false);
   };
@@ -82,6 +84,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
 
   return (
     <div>
+      <Toast msg={toast} onClose={() => setToast('')} />
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ color: '#181818', fontSize: 24, fontWeight: 800, margin: 0 }}>Platform Overview</h1>
         <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>Super admin view — all organisations and data</p>

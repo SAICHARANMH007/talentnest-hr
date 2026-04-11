@@ -104,7 +104,22 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
 router.patch('/me', authenticate, asyncHandler(async (req, res) => {
   const forbidden = ['password','role','orgId','email'];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
+  // Sanitize phone if provided
+  if (typeof update.phone === 'string') update.phone = update.phone.replace(/\s+/g, '');
   const updated = await User.findByIdAndUpdate(req.user._id || req.user.id, { $set: update }, { new: true }).select('-password');
+  if (!updated) throw new AppError('User not found.', 404);
+  res.json({ success: true, data: userService.normalize(updated) });
+}));
+
+// PATCH /api/users/me/settings — Notification / UI preference settings
+router.patch('/me/settings', authenticate, asyncHandler(async (req, res) => {
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') throw new AppError('settings object required.', 400);
+  const updated = await User.findByIdAndUpdate(
+    req.user._id || req.user.id,
+    { $set: { settings } },
+    { new: true }
+  ).select('-password');
   if (!updated) throw new AppError('User not found.', 404);
   res.json({ success: true, data: userService.normalize(updated) });
 }));

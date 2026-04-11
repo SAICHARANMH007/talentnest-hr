@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
+import Toast from '../../components/ui/Toast.jsx';
 import { API_BASE_URL } from '../../api/config.js';
 import { getToken, setToken, clearToken } from '../../api/client.js';
 import { logAudit, getAuditLog } from '../../utils/audit.js';
@@ -268,7 +269,7 @@ function SecurityTab() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      alert(`Failed to save: ${e.message}`);
+      setToast(`❌ Failed to save: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -301,7 +302,7 @@ function SecurityTab() {
     } else {
       msg = `✅ Value: ${settings[key]}`;
     }
-    alert(msg);
+    setToast(msg);
   };
 
   const S = (key, val) => setSettings(p => ({ ...p, [key]: val }));
@@ -444,7 +445,7 @@ export default function SuperAdminSecurity() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      alert(`Failed to save flags: ${e.message}`);
+      setToast(`❌ Failed to save flags: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -459,6 +460,7 @@ export default function SuperAdminSecurity() {
 
   return (
     <div>
+      <Toast msg={toast} onClose={() => setToast('')} />
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ color: '#181818', fontSize: 24, fontWeight: 800, margin: 0 }}>Security & Control</h1>
         <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>Feature flags, audit logs, impersonation and platform security</p>

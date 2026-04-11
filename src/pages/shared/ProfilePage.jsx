@@ -80,7 +80,8 @@ export default function ProfilePage({ user, onUserUpdate }) {
     setSaving(true); setError(''); setSaved(false);
     try {
       const updated = await api.updateProfile(form);
-      if (onUserUpdate) onUserUpdate(updated);
+      const user = updated?.data || updated;
+      if (onUserUpdate) onUserUpdate(user);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch(e) {

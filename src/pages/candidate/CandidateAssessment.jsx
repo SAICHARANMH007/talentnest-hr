@@ -30,6 +30,7 @@ export default function CandidateAssessment({ user, onBack }) {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
   const [phase, setPhase]       = useState('loading'); // loading | pre-start | active | submitted | expired | error
+  const [errorMsg, setErrorMsg] = useState('');
   const [assessment, setAssmt]  = useState(null);
   const [submission, setSub]    = useState(null);
   const [answers, setAnswers]   = useState({});
@@ -166,7 +167,7 @@ export default function CandidateAssessment({ user, onBack }) {
     } catch (e) {
       if (e.message.includes('already completed')) setPhase('submitted');
       else if (e.message.includes('expired'))      setPhase('expired');
-      else alert(e.message);
+      else { setErrorMsg(e.message); setPhase('error'); }
     }
   };
 
@@ -194,7 +195,7 @@ export default function CandidateAssessment({ user, onBack }) {
       setPhase('submitted');
     } catch (e) {
       if (e.message.includes('expired')) setPhase('expired');
-      else { setSubmitting(false); alert(e.message); }
+      else { setSubmitting(false); setErrorMsg(e.message); setPhase('error'); }
     }
   }, [submitting, answers, assessment]);
 
@@ -220,8 +221,8 @@ export default function CandidateAssessment({ user, onBack }) {
   if (phase === 'error')   return shell(
     <div style={{ textAlign: 'center' }}>
       <p style={{ fontSize: 32 }}>⚠️</p>
-      <p style={{ color: '#FE5C4C', fontSize: 15 }}>Could not load assessment.</p>
-      <button onClick={onBack} style={{ marginTop: 16, background: '#FAFAF9', border: '1px solid #EAF5FE', borderRadius: 10, color: '#181818', padding: '10px 24px', cursor: 'pointer' }}>← Back</button>
+      <p style={{ color: '#FE5C4C', fontSize: 15 }}>{errorMsg || 'Could not load assessment.'}</p>
+      <button onClick={onBack || (() => navigate(-1))} style={{ marginTop: 16, background: '#FAFAF9', border: '1px solid #EAF5FE', borderRadius: 10, color: '#181818', padding: '10px 24px', cursor: 'pointer' }}>← Back</button>
     </div>
   );
 

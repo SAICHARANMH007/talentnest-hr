@@ -345,8 +345,8 @@ export default function CandidateApplications({ user }) {
                 const jobId      = getJobId(a);
                 const appId      = a.id || a._id;
 
-                // Interview details from interviews[] array (NOT flat fields)
-                const iv = a.interviews?.[0] || {};
+                // Interview details from interviewRounds[] array (NOT flat fields)
+                const iv = a.interviewRounds?.[0] || {};
                 const ivDate = iv.scheduledAt ? new Date(iv.scheduledAt) : null;
 
                 // Assessment for this job

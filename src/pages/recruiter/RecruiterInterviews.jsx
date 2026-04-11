@@ -72,8 +72,9 @@ export default function RecruiterInterviews({ user }) {
   const displayed = tab === 'upcoming' ? upcoming : past;
 
   // Apps in Interview stages with no rounds yet
+  // normalizeApp() maps DB title-case → frontend slug in a.stage; never use a.currentStage in UI
   const interviewApps = apps.filter(a =>
-    ['Interview Round 1','Interview Round 2','Shortlisted'].includes(a.currentStage) &&
+    ['interview_scheduled', 'interview_completed', 'shortlisted'].includes(a.stage) &&
     (!a.interviewRounds || a.interviewRounds.length === 0)
   );
 

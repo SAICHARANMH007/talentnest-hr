@@ -73,10 +73,10 @@ export default function RecruiterDashboard({ user }) {
   const today = new Date(); today.setHours(0,0,0,0);
   const in7   = new Date(today.getTime()+7*86400000);
   const upcomingInterviews = myApps
-    .filter(a => a.stage==="interview_scheduled" && a.interviews?.[0]?.scheduledAt)
-    .map(a => ({ ...a, dateObj:new Date(a.interviews[0].scheduledAt) }))
+    .filter(a => ['interview_scheduled','interview_completed'].includes(a.stage) && a.interviewRounds?.[0]?.scheduledAt)
+    .map(a => ({ ...a, dateObj: new Date(a.interviewRounds[0].scheduledAt) }))
     .filter(a => a.dateObj >= today && a.dateObj <= in7)
-    .sort((a,b) => a.dateObj-b.dateObj);
+    .sort((a,b) => a.dateObj - b.dateObj);
 
   const funnelData = STAGES.filter(s=>s.id!=="rejected").map(s => ({ ...s, count:myApps.filter(a=>a.stage===s.id).length })).filter(s=>s.count>0||["applied","shortlisted","interview_scheduled","selected"].includes(s.id));
 
@@ -221,7 +221,7 @@ export default function RecruiterDashboard({ user }) {
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {upcomingInterviews.map(a => {
-                const iv = a.interviews[0]; // guaranteed by upcomingInterviews filter
+                const iv = a.interviewRounds[0]; // guaranteed by upcomingInterviews filter
                 const ivDate = new Date(iv.scheduledAt);
                 return (
                 <div key={a.id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"rgba(245,158,11,0.08)", borderRadius:12, border:"1px solid rgba(245,158,11,0.2)", cursor:"pointer" }}>

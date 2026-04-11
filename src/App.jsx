@@ -397,7 +397,7 @@ export default function App() {
         } replace />} />
 
         {/* Shared / General Routes */}
-        <Route path="profile" element={<ProfilePage user={user} onUserUpdate={(u) => sessionStorage.setItem('tn_user', JSON.stringify(u))} />} />
+        <Route path="profile" element={<ProfilePage user={user} onUserUpdate={(u) => { sessionStorage.setItem('tn_user', JSON.stringify(u)); setUser(u); }} />} />
         <Route path="forms" element={<FormsHub user={user} />} />
         <Route path="settings/password" element={<ChangePasswordPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/email" element={<EmailSettingsPage user={user} onBack={() => window.history.back()} />} />
