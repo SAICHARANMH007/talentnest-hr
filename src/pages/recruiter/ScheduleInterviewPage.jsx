@@ -144,7 +144,7 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
 
           <div style={{ ...card, background: '#fff' }}>
              <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>📝 ADDITIONAL NOTES</p>
-             <Field label="Notes for Candidate" value={notes} onChange={setNotes} rows={3} placeholder="e.g. Please bring your portfolio and be ready for a technical whiteboard session." />
+             <Field label="Notes for Candidate" value={notes} onChange={setNotes} rows={3} maxLength={1000} placeholder="e.g. Please bring your portfolio and be ready for a technical whiteboard session." hint={notes.length > 900 ? `${notes.length}/1000 characters` : undefined} />
           </div>
 
           <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 20, display: 'flex', gap: 12 }}>

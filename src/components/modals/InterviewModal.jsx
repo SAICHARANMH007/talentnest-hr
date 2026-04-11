@@ -59,7 +59,7 @@ export default function InterviewModal({ app, recruiter, onClose, onDone }) {
         <Field label="Interview Time *" value={time} onChange={setTime} type="time" />
         <Dropdown label="Mode" value={mode} onChange={setMode} options={[{value:"video",label:"Video Call"},{value:"phone",label:"Phone Call"},{value:"in_person",label:"In-Person"}]} />
         <Field label="Meeting Link / Address" value={link} onChange={setLink} placeholder="https://meet.google.com/..." />
-        <div style={{gridColumn:"span 2"}}><Field label="Notes for Candidate" value={notes} onChange={setNotes} rows={2} placeholder="e.g. Technical round – 45 mins"/></div>
+        <div style={{gridColumn:"span 2"}}><Field label="Notes for Candidate" value={notes} onChange={setNotes} rows={2} maxLength={1000} placeholder="e.g. Technical round – 45 mins"/></div>
         <div style={{gridColumn:"span 2"}}><p style={{color:"#0176D3",fontSize:11,fontWeight:600,margin:"0 0 6px"}}>EMAIL PREVIEW</p><pre style={{background:"#F3F2F2",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,color:"#706E6B",padding:"10px 14px",fontSize:11,whiteSpace:"pre-wrap",height:140,overflowY:"auto",lineHeight:1.6}}>{emailBody}</pre></div>
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,flexWrap:"wrap"}}>

@@ -55,6 +55,7 @@ export default function Field({
   suffix,         // element shown right of input (icon/text)
   name,
   min, max, step,
+  maxLength,
   id,
 }) {
   const [focused, setFocused] = React.useState(false);
@@ -82,6 +83,7 @@ export default function Field({
       readOnly,
       autoFocus,
       placeholder,
+      maxLength,
       style: computedInputStyle,
     };
 

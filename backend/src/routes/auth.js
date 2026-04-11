@@ -17,8 +17,9 @@ const logger = require('../middleware/logger');
 
 // ── Rate limiters ────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 15,
-  message: { error: 'Too many login attempts. Please try again in 15 minutes.' }
+  windowMs: 15 * 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
+  message: { success: false, error: 'Too many login attempts. Please try again in 15 minutes.' },
 });
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, max: 20,

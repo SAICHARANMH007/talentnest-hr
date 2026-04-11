@@ -162,8 +162,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const start = days ? new Date(Date.now() - days * 86400000).toISOString().split('T')[0] : null;
 
     Promise.all([
-      api.getApplications({ limit: 100 }).then(unwrap).catch(() => []), // Only for recent activity
-      api.getJobs({ limit: 1000 }).then(unwrap).catch(() => []),
+      api.getApplications({ limit: 100 }).then(unwrap).catch(() => []), // Only for recent-activity feed; KPI metrics use serverStats
+      api.getJobs({ limit: 5000 }).then(unwrap).catch(() => []),        // Fetch all jobs (no realistic org has >5000)
       api.getUsers('candidate').then(unwrap).catch(() => []),
       api.getRecruiterLeaderboard().catch(() => []),
       api.getDashboardStats().catch(() => null),

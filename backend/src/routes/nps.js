@@ -30,6 +30,9 @@ router.get('/respond/:token', asyncHandler(async (req, res) => {
   const nps = await CandidateNPS.findOne({ surveyToken: req.params.token });
   if (!nps) return res.redirect(`${FRONTEND_URL}/nps-thankyou?status=invalid`);
 
+  // One-time use — reject if already submitted
+  if (nps.respondedAt) return res.redirect(`${FRONTEND_URL}/nps-thankyou?status=already_submitted`);
+
   const updates = { respondedAt: new Date() };
 
   if (score !== undefined) {

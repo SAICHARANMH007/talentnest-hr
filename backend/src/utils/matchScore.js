@@ -94,9 +94,19 @@ function normaliseSkills(skills) {
 
 function parseRequiredYears(text) {
   if (!text) return 0;
-  // e.g. "3+ years", "2-5 years", "minimum 4 years"
-  const m = text.match(/(\d+)\s*[-–+]?\s*(?:\d+\s*)?years?/i);
-  return m ? parseInt(m[1], 10) : 0;
+  // Ordered from most specific to least — all require "experience" context
+  // so we don't accidentally match "founded 15 years ago" etc.
+  const patterns = [
+    /(\d+)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp)/i,
+    /(?:experience|exp)\s*[:\-]?\s*(\d+)\s*\+?\s*(?:years?|yrs?)/i,
+    /(?:minimum|min\.?|at\s+least|over|more\s+than)\s+(\d+)\s*(?:years?|yrs?)/i,
+    /(\d+)\s*[-–]\s*\d+\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp)/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return parseInt(m[1], 10);
+  }
+  return 0;
 }
 
 module.exports = { calculateMatchScore };

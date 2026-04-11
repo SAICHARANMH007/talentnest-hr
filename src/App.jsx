@@ -275,7 +275,28 @@ export default function App() {
     // Global navigation listener (legacy: window.dispatchEvent(new CustomEvent('tn_nav', {detail:'pipeline'})))
     const navHandler = (e) => { if (e.detail) navigate(`/app/${e.detail}`, { replace: false }); };
     window.addEventListener('tn_nav', navHandler);
-    return () => window.removeEventListener('tn_nav', navHandler);
+
+    // Cross-tab role sync: if admin updates a user's role in another tab,
+    // the 'storage' event fires here with the updated tn_user value.
+    const storageHandler = (e) => {
+      if (e.key === 'tn_user') {
+        try {
+          const updated = e.newValue ? JSON.parse(e.newValue) : null;
+          if (updated) setUser(updated);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', storageHandler);
+
+    // Expose imperative updater so any component can push a fresh user object
+    // after a self-profile update (e.g. role change accepted in same tab).
+    window.tn_refreshUser = (u) => { sessionStorage.setItem('tn_user', JSON.stringify(u)); setUser(u); };
+
+    return () => {
+      window.removeEventListener('tn_nav', navHandler);
+      window.removeEventListener('storage', storageHandler);
+      delete window.tn_refreshUser;
+    };
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => scheduleAppPreload(user?.role), [user?.role]);

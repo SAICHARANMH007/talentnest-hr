@@ -171,6 +171,14 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin'), asyncHand
     throw new AppError('Forbidden: Different Organization.', 403);
   }
 
+  // Sanitize phone (remove spaces/dashes that break SMS validation)
+  if (typeof update.phone === 'string') update.phone = update.phone.replace(/\s+/g, '');
+
+  // Enforce linkedin.com/in/ prefix if a LinkedIn URL is provided
+  if (update.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(update.linkedinUrl)) {
+    throw new AppError('LinkedIn URL must start with https://linkedin.com/in/', 400);
+  }
+
   const updated = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true }).select('-password');
   logger.audit('User updated', req.user._id, req.user.orgId, { targetUserId: req.params.id, updates: Object.keys(update) });
   res.json({ success: true, data: userService.normalize(updated) });
@@ -181,10 +189,10 @@ router.post('/bulk-import', authenticate, allowRoles('admin','super_admin','recr
   const { candidates, jobId = null } = req.body;
   if (!candidates) throw new AppError('No candidates provided.', 400);
 
-  const count = await userService.bulkImport(candidates, req.user.orgId, req.user._id, jobId);
-  
-  logger.audit('Bulk import completed', req.user._id, req.user.orgId, { count, jobId });
-  res.json({ success: true, count, message: `Successfully imported ${count} candidates.` });
+  const stats = await userService.bulkImport(candidates, req.user.tenantId, req.user._id || req.user.id, jobId);
+
+  logger.audit('Bulk import completed', req.user._id, req.user.tenantId, { ...stats, jobId });
+  res.json({ success: true, ...stats, message: `Import complete — ${stats.created} created, ${stats.updated} restored, ${stats.skipped} skipped.` });
 }));
 
 // PATCH /api/users/:id/change-password — Self or Super Admin change

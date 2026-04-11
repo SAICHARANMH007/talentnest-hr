@@ -129,57 +129,60 @@ class UserService {
    */
   async bulkImport(candidates, tenantId, addedBy, targetJobId = null) {
     if (!Array.isArray(candidates)) throw new AppError('Candidates must be an array.', 400);
-    
-    const session = await mongoose.startSession();
+
+    const stats = { created: 0, updated: 0, skipped: 0, errors: [] };
     const inserted = [];
 
-    try {
-      await session.withTransaction(async () => {
-        for (const c of candidates) {
-          if (!c.email) continue;
-          const email = c.email.toLowerCase().trim();
-          
-          let user = await User.findOne({ email }).session(session).setOptions({ includeDeleted: true });
-          
-          if (user) {
-            if (user.deletedAt) {
-              user.deletedAt = null;
-              user.isActive = true;
-              await user.save({ session });
-              inserted.push(user);
-            }
-            continue;
+    for (const c of candidates) {
+      if (!c.email) { stats.skipped++; continue; }
+      const email = c.email.toLowerCase().trim();
+
+      try {
+        let user = await User.findOne({ email, tenantId }).setOptions({ includeDeleted: true });
+
+        if (user) {
+          if (user.deletedAt) {
+            // Restore soft-deleted candidate
+            user.deletedAt = null;
+            user.isActive = true;
+            await user.save();
+            inserted.push(user);
+            stats.updated++;
+          } else {
+            // Duplicate — skip without creating
+            stats.skipped++;
           }
-
-          const [newUser] = await User.create([{
-            name: c.name || email.split('@')[0],
-            email,
-            password: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
-            role: 'candidate',
-            tenantId, addedBy,
-            phone: c.phone || '',
-            location: c.location || '',
-            skills: Array.isArray(c.skills) ? c.skills : (c.skills ? c.skills.split(',').map(s=>s.trim()) : []),
-            source: c.source || 'Bulk Import'
-          }], { session });
-
-          inserted.push(newUser);
+          continue;
         }
 
-        // Auto-assign to job pipeline within the same transaction
-        if (targetJobId && inserted.length > 0) {
-          const candidateIds = inserted.map(u => u._id);
-          // Pass the same session to jobService for true atomicity
-          await jobService.assignCandidatesToJob(targetJobId, candidateIds, addedBy, { session });
-        }
-      });
-    } catch (err) {
-      throw new AppError(`Bulk import failed: ${err.message}`, 500);
-    } finally {
-      session.endSession();
+        const newUser = await User.create({
+          name: c.name || email.split('@')[0],
+          email,
+          passwordHash: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
+          role: 'candidate',
+          tenantId, addedBy,
+          isActive: true,
+          phone: c.phone ? String(c.phone).replace(/\s+/g, '') : '',
+          location: c.location || '',
+          skills: Array.isArray(c.skills) ? c.skills : (c.skills ? c.skills.split(',').map(s=>s.trim()) : []),
+          source: c.source || 'Bulk Import',
+        });
+
+        inserted.push(newUser);
+        stats.created++;
+      } catch (err) {
+        stats.errors.push(`${email}: ${err.message}`);
+        stats.skipped++;
+      }
     }
 
-    return inserted.length;
+    // Auto-assign to job pipeline if targetJobId provided
+    if (targetJobId && inserted.length > 0) {
+      const candidateIds = inserted.map(u => u._id);
+      await jobService.assignCandidatesToJob(targetJobId, candidateIds, addedBy).catch(() => {});
+    }
+
+    return stats;
   }
 
   /**

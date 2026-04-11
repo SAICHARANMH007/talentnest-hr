@@ -4,12 +4,8 @@ const User = require('../models/User');
 
 const JWT_SECRET = (() => {
   const s = process.env.JWT_SECRET;
-  if (!s) {
-    if (process.env.NODE_ENV === 'production')
-      throw new Error('FATAL: JWT_SECRET not set. Cannot start in production.');
-    console.warn('⚠️  DEV: Using fallback JWT_SECRET. Set JWT_SECRET env var for production!');
-    return 'talent_nest_dev_secret_key_2024_do_not_use_in_prod';
-  }
+  if (!s) throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
+  if (s.length < 32) throw new Error('FATAL: JWT_SECRET must be at least 32 characters long.');
   return s;
 })();
 

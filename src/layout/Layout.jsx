@@ -61,6 +61,11 @@ function NotificationBell() {
 
   const unread = notifs.filter(n => !n.read).length;
 
+  // Keep browser tab title in sync with unread count
+  React.useEffect(() => {
+    document.title = unread > 0 ? `(${unread}) TalentNest HR` : 'TalentNest HR';
+  }, [unread]);
+
   const openPanel = () => {
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();

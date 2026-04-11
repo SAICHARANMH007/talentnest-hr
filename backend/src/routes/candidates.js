@@ -196,6 +196,14 @@ router.patch('/:id', ...guard,
         ? updates['parsedProfile.skills'].map(s => String(s).toLowerCase().trim()) : [];
     }
 
+    // Sanitize phone (remove spaces that break SMS/validation)
+    if (typeof updates.phone === 'string') updates.phone = updates.phone.replace(/\s+/g, '');
+
+    // Enforce linkedin.com/in/ prefix
+    if (updates.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(updates.linkedinUrl)) {
+      throw new AppError('LinkedIn URL must start with https://linkedin.com/in/', 400);
+    }
+
     const candidate = await Candidate.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
       { $set: updates },

@@ -372,14 +372,23 @@ router.patch('/:id/stage', ...guard,
     const stage = normalizeStage(req.body.stage);
     if (!stage) throw new AppError(`Invalid stage. Valid: ${VALID_STAGES.join(', ')}`, 400);
 
-    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
-    if (!app) throw new AppError('Application not found.', 404);
+    const mongoose = require('mongoose');
+    const session = await mongoose.startSession();
+    let app;
+    try {
+      await session.withTransaction(async () => {
+        app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).session(session);
+        if (!app) throw new AppError('Application not found.', 404);
 
-    app.currentStage = stage;
-    app.stageHistory.push({ stage, movedBy: req.user.id, movedAt: new Date(), notes: notes || '' });
-    if (stage === 'Hired')    app.status = 'hired';
-    if (stage === 'Rejected') app.status = 'rejected';
-    await app.save();
+        app.currentStage = stage;
+        app.stageHistory.push({ stage, movedBy: req.user.id, movedAt: new Date(), notes: notes || '' });
+        if (stage === 'Hired')    app.status = 'hired';
+        if (stage === 'Rejected') app.status = 'rejected';
+        await app.save({ session });
+      });
+    } finally {
+      session.endSession();
+    }
 
     // Send stage-change email to candidate
     const candidate = await Candidate.findById(app.candidateId).select('name email').lean();
@@ -600,6 +609,7 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
   const { date, time, format, interviewerName, interviewerEmail, videoLink, notes } = req.body;
   if (!date || !time) throw new AppError('date and time are required.', 400);
   if (videoLink && !/^https?:\/\//i.test(videoLink)) throw new AppError('videoLink must start with https://', 400);
+  if (notes && notes.length > 1000) throw new AppError('Notes must be 1000 characters or fewer.', 400);
 
   const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
   if (!app) throw new AppError('Application not found.', 404);

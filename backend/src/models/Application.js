@@ -26,7 +26,7 @@ const applicationSchema = new mongoose.Schema({
     stage  : { type: String },
     movedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     movedAt: { type: Date, default: () => new Date() },
-    notes  : { type: String },
+    notes  : { type: String, maxlength: 1000 },
   }],
 
   // AI matching

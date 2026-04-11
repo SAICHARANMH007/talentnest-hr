@@ -291,12 +291,16 @@ export default function CandidateProfile({ user }) {
   const save = async () => {
     if (!form.name?.trim()) { setToast('❌ Full name is required'); setTab('personal'); return; }
     if (!form.email?.trim()) { setToast('❌ Email address is required'); setTab('personal'); return; }
+    if (form.linkedin && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(form.linkedin)) {
+      setToast('❌ LinkedIn URL must start with https://linkedin.com/in/'); setTab('personal'); return;
+    }
     setSaving(true);
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
       const languages = typeof form.languages === 'string' ? form.languages.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.languages) ? form.languages : []);
       const d = await api.updateProfile({
         ...form,
+        phone: (form.phone || '').replace(/\s+/g, ''),  // strip spaces (Bug #83)
         skills,
         languages,
         experience: parseInt(form.experience) || 0,

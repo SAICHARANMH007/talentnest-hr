@@ -54,10 +54,25 @@ async function extractText(buffer, mimetype, originalname = '') {
  * POST /api/parse-resume
  * Uploads a file, extracts text, parses fields with confidence scoring.
  */
+// Wrap a promise with a timeout — rejects with AppError(408) if too slow
+function withTimeout(promise, ms, label = 'Operation') {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new AppError(`${label} timed out after ${ms / 1000}s. Try a smaller file.`, 408)), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+
 router.post('/', upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('No resume file uploaded.', 400);
 
-  const text = await extractText(req.file.buffer, req.file.mimetype, req.file.originalname || '');
+  // Large PDFs can hang pdf-parse for 30+ seconds causing upstream 504s.
+  // Cap extraction at 25 s so we return a meaningful 408 instead.
+  const text = await withTimeout(
+    extractText(req.file.buffer, req.file.mimetype, req.file.originalname || ''),
+    25000,
+    'Resume parsing'
+  );
+
   if (!text.trim()) {
     throw new AppError('Could not extract text from this file. Please ensure the file is not empty or corrupted.', 422);
   }
