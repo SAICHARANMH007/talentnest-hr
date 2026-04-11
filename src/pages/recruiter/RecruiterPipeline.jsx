@@ -4,6 +4,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import StageTracker from '../../components/pipeline/StageTracker.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { useNavigate } from 'react-router-dom';
 import { STAGES, SM, NEXT } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
@@ -299,14 +300,22 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
 
       <div style={{ marginBottom: 12 }}><StageTracker stage={app.stage} /></div>
 
-      {app.interviewDate && app.stage === 'interview_scheduled' && (
-        <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(245,158,11,0.1)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.2)' }}>
-          <p style={{ color: '#F59E0B', fontSize: 12, fontWeight: 600, margin: '0 0 3px' }}>📅 Scheduled Interview</p>
-          <p style={{ color: '#181818', fontSize: 12, margin: 0 }}>{app.interviewDate} at {app.interviewTime} · {app.interviewMode === 'video' ? 'Video Call' : app.interviewMode === 'phone' ? 'Phone' : 'In-Person'}</p>
-          {app.interviewLink && <p style={{ fontSize: 11, margin: '3px 0 0' }}><a href={app.interviewLink} target="_blank" rel="noreferrer" style={{ color: '#0176D3' }}>{app.interviewLink}</a></p>}
-          {app.interviewNotes && <p style={{ color: '#706E6B', fontSize: 11, margin: '3px 0 0' }}>{app.interviewNotes}</p>}
-        </div>
-      )}
+      {Array.isArray(app.interviewRounds) && app.interviewRounds.length > 0 && (app.stage === 'interview_scheduled' || app.stage === 'interview_completed') && (() => {
+        const round = app.interviewRounds[app.interviewRounds.length - 1];
+        if (!round?.scheduledAt) return null;
+        const dt = new Date(round.scheduledAt);
+        const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
+        const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const fmtMode = round.format === 'video' ? 'Video Call' : round.format === 'phone' ? 'Phone' : 'In-Person';
+        const link = round.videoLink ? (/^https?:\/\//i.test(round.videoLink) ? round.videoLink : 'https://' + round.videoLink) : null;
+        return (
+          <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(245,158,11,0.1)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.2)' }}>
+            <p style={{ color: '#F59E0B', fontSize: 12, fontWeight: 600, margin: '0 0 3px' }}>📅 Round {app.interviewRounds.length} — {fmtMode}</p>
+            <p style={{ color: '#181818', fontSize: 12, margin: 0 }}>{dateStr} at {timeStr}{round.interviewerName ? ` · ${round.interviewerName}` : ''}</p>
+            {link && <p style={{ fontSize: 11, margin: '3px 0 0' }}><a href={link} target="_blank" rel="noreferrer" style={{ color: '#0176D3' }}>Join Interview →</a></p>}
+          </div>
+        );
+      })()}
 
       {app.stage === 'rejected' && app.rejectionReason && (
         <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(186,5,23,0.08)', borderRadius: 10 }}>
@@ -447,6 +456,10 @@ export default function RecruiterPipeline({ user }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
   const [reviewModal, setReviewModal] = useState(null); // { assessmentId, submissionId }
+  const [stageFilter, setSF] = useState('all');
+  const [intApp, setIntApp] = useState(null);
+  const [rejApp, setRejApp] = useState(null);
+  const [offerApp, setOfferApp] = useState(null);
 
   useEffect(() => {
     api.getJobs(user.id).then(j => {
@@ -509,6 +522,16 @@ export default function RecruiterPipeline({ user }) {
       await Promise.all(selectedIds.map(id => api.updateStage(id, newStage)));
       setToast(`✅ ${selectedIds.length} candidates moved to ${label}`);
       setSelectedIds([]);
+      refresh();
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+  };
+
+  const handlePark = async (app) => {
+    try {
+      await api.parkApplication(app.id);
+      setToast('🅿️ Candidate moved to Talent Pool');
       refresh();
     } catch (e) {
       setToast(`❌ ${e.message}`);

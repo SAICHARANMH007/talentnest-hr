@@ -259,6 +259,7 @@ function SecurityTab() {
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
 
   const handleSave = async () => {
     setSaving(true);
@@ -315,6 +316,7 @@ function SecurityTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <Toast msg={toast} onClose={() => setToast('')} />
       <div style={glass}>
         <h3 style={{ color: '#181818', fontSize: 15, fontWeight: 700, margin: '0 0 20px' }}>Session & Authentication</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -402,6 +404,7 @@ export default function SuperAdminSecurity() {
   const [saved, setSaved]   = useState(false);
   const [orgs, setOrgs]     = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     Promise.all([

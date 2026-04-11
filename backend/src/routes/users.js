@@ -159,7 +159,7 @@ router.delete('/:id', authenticate, allowRoles('admin','super_admin'), asyncHand
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found.', 404);
   
-  if (req.user.role === 'admin' && user.orgId?.toString() !== req.user.orgId?.toString()) {
+  if (req.user.role === 'admin' && user.tenantId?.toString() !== req.user.tenantId?.toString()) {
     throw new AppError('Unauthorized: Different Org.', 403);
   }
 
@@ -182,7 +182,7 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin'), asyncHand
   }
 
   // Authorization: Admin can only update users in their organization
-  if (req.user.role === 'admin' && userToUpdate.orgId?.toString() !== req.user.orgId?.toString()) {
+  if (req.user.role === 'admin' && userToUpdate.tenantId?.toString() !== req.user.tenantId?.toString()) {
     throw new AppError('Forbidden: Different Organization.', 403);
   }
 
@@ -221,7 +221,7 @@ router.patch('/:id/change-password', authenticate, asyncHandler(async (req, res)
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found', 404);
 
-  user.password = bcrypt.hashSync(newPassword, 10);
+  user.passwordHash = bcrypt.hashSync(newPassword, 10);
   await user.save();
   res.json({ success: true, message: 'Password updated.' });
 }));

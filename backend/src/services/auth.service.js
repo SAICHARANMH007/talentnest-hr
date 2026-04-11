@@ -42,7 +42,7 @@ class AuthService {
 
     const org = await Organization.findOne({
       domain: { $regex: `(^|www\\.)${domain.replace(/\./g, '\\.')}`, $options: 'i' },
-      isActive: true
+      status: 'active',
     }).select('name logo status').lean();
 
     if (!org) return { exists: false, domain };

@@ -30,19 +30,10 @@ router.get('/', auth, async (req, res) => {
       return res.json(enriched);
     }
     if (req.user.role === 'admin') {
-      // Prefer orgId from JWT (fast); fall back to DB lookup
-      const orgId = req.user.orgId || (() => {
-        return null; // will be resolved below if null
-      })();
-      if (orgId) {
-        const org = await Organization.findById(orgId);
-        return res.json(org ? [normalize(org)] : []);
-      }
-      // orgId not in JWT — look it up from the user document
-      const user = await User.findById(req.user.id);
-      const u = user ? (user.toJSON ? user.toJSON() : user) : {};
-      if (!u.orgId) return res.json([]);
-      const org = await Organization.findById(u.orgId);
+      // tenantId from JWT is the canonical org reference
+      const orgId = req.user.tenantId || req.user.orgId;
+      if (!orgId) return res.json([]);
+      const org = await Organization.findById(orgId);
       return res.json(org ? [normalize(org)] : []);
     }
     return res.status(403).json({ error: 'Access denied' });

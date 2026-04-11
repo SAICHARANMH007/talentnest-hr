@@ -174,7 +174,7 @@ export default function RecruiterInterviews({ user }) {
                     <td style={S.td}>{FORMAT_LABELS[round.format] || round.format || '—'}</td>
                     <td style={S.td}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {round.videoLink && <a href={round.videoLink} target="_blank" rel="noreferrer" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>}
+                        {round.videoLink && <a href={/^https?:\/\//i.test(round.videoLink) ? round.videoLink : `https://${round.videoLink}`} target="_blank" rel="noreferrer noopener" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>}
                         {isPast(round.scheduledAt) && !hasFeedback && (
                           <button onClick={() => { setScorecardApp({ app, idx }); setScorecard(SCORECARD_EMPTY); }} style={{ ...btnP, fontSize: 12 }}>Scorecard</button>
                         )}

@@ -20,14 +20,14 @@ export const applicationService = {
   async applyPublic(jobId, form) {
     return req('POST', '/applications/public', { jobId, ...form }, false);
   },
-  async updateStage(appId, stage, note = '', extra = {}) {
-    return req('PATCH', `/applications/${appId}/stage`, { stage, note, ...extra });
+  async updateStage(appId, stage, notes = '', extra = {}) {
+    return req('PATCH', `/applications/${appId}/stage`, { stage, notes, ...extra });
   },
   async scheduleInterview(appId, details) {
     return req('PATCH', `/applications/${appId}/interview`, details);
   },
-  async addApplicationNotes(appId, content) {
-    return req('PATCH', `/applications/${appId}/notes`, { content });
+  async addApplicationNotes(appId, notes) {
+    return req('PATCH', `/applications/${appId}/notes`, { notes });
   },
   async updateAppNotes(appId, notes) { return req('PATCH', `/applications/${appId}/notes`, { notes }); },
   async updateAppTags(appId, tags) { return req('PATCH', `/applications/${appId}/tags`, { tags }); },

@@ -69,6 +69,14 @@ function normalizeApp(app) {
         || (h.stage ? h.stage.toLowerCase().replace(/\s+/g, '_') : undefined),
     }));
   }
+  // Alias populated refs so frontend can use app.candidate and app.job
+  // without guessing whether the field is candidateId or candidate.
+  if (a.candidateId && typeof a.candidateId === 'object' && !a.candidate) {
+    a.candidate = a.candidateId;
+  }
+  if (a.jobId && typeof a.jobId === 'object' && !a.job) {
+    a.job = a.jobId;
+  }
   return a;
 }
 
@@ -336,8 +344,8 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
   const [apps, total] = await Promise.all([
     Application.find(filter)
-      .populate('jobId', 'title location')
-      .populate('candidateId', 'name email phone')
+      .populate('jobId', 'title company location department')
+      .populate('candidateId', 'name email phone title skills experience summary location source videoResumeUrl')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Application.countDocuments(filter),
   ]);
@@ -377,13 +385,18 @@ router.patch('/:id/stage', ...guard,
     let app;
     try {
       await session.withTransaction(async () => {
-        app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).session(session);
+        const stageFilter = { _id: req.params.id, deletedAt: null };
+        if (req.user.role !== 'super_admin') stageFilter.tenantId = req.user.tenantId;
+        app = await Application.findOne(stageFilter).session(session);
         if (!app) throw new AppError('Application not found.', 404);
 
         app.currentStage = stage;
         app.stageHistory.push({ stage, movedBy: req.user.id, movedAt: new Date(), notes: notes || '' });
         if (stage === 'Hired')    app.status = 'hired';
-        if (stage === 'Rejected') app.status = 'rejected';
+        if (stage === 'Rejected') {
+          app.status = 'rejected';
+          if (req.body.rejectionReason) app.rejectionReason = req.body.rejectionReason;
+        }
         await app.save({ session });
       });
     } finally {
@@ -540,7 +553,7 @@ router.patch('/:id/feedback', ...guard, asyncHandler(async (req, res) => {
   const { rating, strengths, weaknesses, recommendation, comment } = req.body;
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
-    { $set: { rating, feedback: JSON.stringify({ rating, strengths, weaknesses, recommendation, comment: comment || '' }) } },
+    { $set: { feedback: { rating, strengths, weaknesses, recommendation, comment: comment || '' } } },
     { new: true }
   );
   if (!app) throw new AppError('Application not found.', 404);

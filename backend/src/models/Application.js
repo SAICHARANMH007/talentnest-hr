@@ -88,6 +88,36 @@ const applicationSchema = new mongoose.Schema({
 
   rejectionReason: { type: String },
 
+  // Recruiter notes (private, auto-saved from pipeline card)
+  recruiterNotes: { type: String, default: '' },
+
+  // Pipeline tags
+  tags: [{ type: String }],
+
+  // Interview feedback (from FeedbackModal in pipeline)
+  feedback: {
+    rating        : { type: Number },
+    strengths     : { type: String },
+    weaknesses    : { type: String },
+    recommendation: { type: Boolean },
+    comment       : { type: String },
+  },
+
+  // Application source (career_page | platform | invite)
+  source: { type: String, default: 'platform' },
+
+  // Cover letter text
+  coverLetter: { type: String, default: '' },
+
+  // Who created this application (recruiter/admin userId)
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // Whether an invite email was sent during interview scheduling
+  emailSent: { type: Boolean, default: false },
+
+  // Invite message body (saved when recruiter sends an invite)
+  inviteMessage: { type: String, default: '' },
+
   // Screening question answers (submitted at apply time)
   screeningAnswers: [{
     question: { type: String },
@@ -100,9 +130,13 @@ const applicationSchema = new mongoose.Schema({
   // Soft-delete
   deletedAt: { type: Date, default: null },
 
-  // Invite flow
+  // Invite flow — enum extended to cover all invite lifecycle states
   inviteToken  : { type: String, default: null },
-  inviteStatus : { type: String, enum: ['pending', 'accepted', 'declined'], default: null },
+  inviteStatus : {
+    type   : String,
+    enum   : ['pending', 'sent', 'opened', 'interested', 'accepted', 'declined'],
+    default: null,
+  },
 }, { timestamps: true });
 
 applicationSchema.index({ tenantId: 1 });
