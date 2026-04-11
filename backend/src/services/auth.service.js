@@ -5,6 +5,7 @@ const RefreshToken = require('../models/RefreshToken');
 const UserSession = require('../models/UserSession');
 const Otp = require('../models/Otp');
 const Organization = require('../models/Organization');
+const Tenant       = require('../models/Tenant');
 const AppError = require('../utils/AppError');
 const normalize = require('../utils/normalize');
 
@@ -40,13 +41,26 @@ class AuthService {
     const domain = this.emailDomain(email);
     if (!domain) throw new AppError('Invalid email address.', 400);
 
+    const domainRegex = { $regex: `(^|www\\.)${domain.replace(/\./g, '\\.')}$`, $options: 'i' };
+
+    // Check Tenant first (primary collection used by registration + all real tenants)
+    const tenant = await Tenant.findOne({
+      domain: domainRegex,
+      subscriptionStatus: { $ne: 'suspended' },
+    }).select('name logoUrl subscriptionStatus').lean();
+
+    if (tenant) {
+      return { exists: true, domain, organization: { name: tenant.name, logo: tenant.logoUrl, status: tenant.subscriptionStatus } };
+    }
+
+    // Fall back to Organization (super admin-created orgs)
     const org = await Organization.findOne({
-      domain: { $regex: `(^|www\\.)${domain.replace(/\./g, '\\.')}`, $options: 'i' },
+      domain: domainRegex,
       status: 'active',
-    }).select('name logo status').lean();
+    }).select('name logoUrl status').lean();
 
     if (!org) return { exists: false, domain };
-    return { exists: true, domain, organization: org };
+    return { exists: true, domain, organization: { name: org.name, logo: org.logoUrl, status: org.status } };
   }
 
   /**
