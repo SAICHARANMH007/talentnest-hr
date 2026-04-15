@@ -642,7 +642,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
           return (
             <div style={{ ...glassPanel }}>
               <h3 style={sectionTitle}>Offer Acceptance</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
                 <KpiCard icon="📤" label="Offers Sent"     value={d.offersSent ?? 0}     color="#0176D3" />
                 <KpiCard icon="✅" label="Offers Accepted" value={d.offersAccepted ?? 0} color="#10b981" />
                 <KpiCard icon="📊" label="Acceptance Rate"  value={`${d.acceptanceRate ?? 0}%`} color="#7c3aed" />

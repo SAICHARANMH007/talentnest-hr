@@ -53,7 +53,7 @@ export default function InterviewModal({ app, recruiter, onClose, onDone }) {
     <Modal title="📅 Schedule Interview" onClose={onClose} wide>
       <Toast msg={toast} onClose={()=>setToast("")} />
       {emailResult&&<div style={{marginBottom:16,padding:12,background:emailResult.success?"rgba(34,197,94,0.1)":"rgba(186,5,23,0.1)",borderRadius:10}}><p style={{color:emailResult.success?"#86efac":"#fca5a5",fontSize:12,margin:0}}>{emailResult.success?<>📧 Email sent! {emailResult.previewUrl&&<a href={emailResult.previewUrl} target="_blank" rel="noreferrer" style={{color:"#818cf8"}}>Preview</a>}</>:`⚠️ Email failed: ${emailResult.error}`}</p></div>}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{display:"grid",gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:16}}>
         <div style={{...card,gridColumn:"span 2",background:"rgba(1,118,211,0.05)"}}><p style={{color:"#0176D3",fontSize:11,margin:"0 0 4px",fontWeight:600}}>CANDIDATE</p><p style={{color:"#181818",fontSize:14,fontWeight:600,margin:0}}>{candidate?.name}</p><p style={{color:"#706E6B",fontSize:12,margin:"2px 0 0"}}>{candidate?.email} · {candidate?.phone||"No phone"}</p><p style={{color:"#0176D3",fontSize:12,margin:"2px 0 0"}}>{job?.title} @ {job?.company}</p></div>
         <Field label="Interview Date *" value={date} onChange={setDate} type="date" />
         <Field label="Interview Time *" value={time} onChange={setTime} type="time" />

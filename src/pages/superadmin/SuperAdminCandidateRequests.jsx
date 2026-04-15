@@ -161,7 +161,7 @@ export default function SuperAdminCandidateRequests() {
           </div>
         }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
               <div><label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 6 }}>TENANT</label><div style={{ fontWeight: 600 }}>{selected.tenantId?.name || '—'}</div></div>
               <div><label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 6 }}>SUBMITTED BY</label><div>{selected.requestedBy?.name || selected.requestedBy?.email || '—'}</div></div>
               <div><label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 6 }}>URGENCY</label><Badge label={selected.urgency} color={S.urgency[selected.urgency]} /></div>

@@ -38,7 +38,10 @@ function slugify(str) {
 // ── POST /api/auth/register ──────────────────────────────────────────────────
 // Creates a Tenant + admin User in one atomic transaction.
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
-  const { name, email, password, companyName, domain } = req.body;
+  const { name, email, password, domain } = req.body;
+  const role = req.body.role === 'candidate' ? 'candidate' : 'admin';
+  // For employer/admin signups companyName is required; candidates get a personal tenant
+  const companyName = req.body.companyName || (role === 'candidate' ? `${name?.trim()} (Personal)` : null);
   if (!name || !email || !password || !companyName)
     throw new AppError('name, email, password, and companyName are required.', 400);
   if (password.length < 8)
@@ -56,18 +59,19 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         name: companyName.trim(),
         slug: slug + '-' + crypto.randomBytes(3).toString('hex'),
         domain: domain || authService.emailDomain(email),
-        plan: 'trial',
+        plan: role === 'candidate' ? 'free' : 'trial',
         subscriptionStatus: 'active',
-        subscriptionExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14-day trial
+        subscriptionExpiry: role === 'candidate' ? undefined : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       }], { session });
 
-      // 2. Create admin user
+      // 2. Create user
       const user = await User.create([{
         tenantId: tenant[0]._id,
         name: name.trim(),
         email: email.toLowerCase().trim(),
         passwordHash: bcrypt.hashSync(password, 12),
-        role: 'admin',
+        phone: req.body.phone || undefined,
+        role,
         isActive: true,
       }], { session });
 

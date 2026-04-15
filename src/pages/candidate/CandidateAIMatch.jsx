@@ -139,7 +139,7 @@ export default function CandidateAIMatch({ user }) {
             {/* ── Expanded job details ── */}
             {isOpen && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #FAFAF9' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 14 }}>
                   {[
                     ['🏢 Company', j.companyName || j.company],
                     ['📍 Location', j.location || '—'],

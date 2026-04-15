@@ -236,7 +236,7 @@ function CustomFieldsTab({ data, updateSingleton, setToast }) {
       />
       {showForm && (
         <div style={{ background: 'rgba(1,118,211,0.03)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 }}>
             <div><label style={S.label}>Field Label *</label><input value={form.label} onChange={e => sf('label', e.target.value)} placeholder="e.g. Expected CTC" style={S.inp} /></div>
             <div><label style={S.label}>Entity *</label>
               <select value={form.entity} onChange={e => sf('entity', e.target.value)} style={S.inp}>{ENTITIES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}</select>
@@ -816,7 +816,7 @@ function EmailSignatureTab({ data, updateSingleton }) {
         action={<button onClick={save} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>{saving ? '…' : '💾 Save'}</button>}
       />
       <div style={S.card}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14, marginBottom: 14 }}>
           <div><label style={S.label}>Company Name</label><input value={sig.companyName} onChange={e => sf('companyName', e.target.value)} style={S.inp} /></div>
           <div><label style={S.label}>Tagline</label><input value={sig.tagline} onChange={e => sf('tagline', e.target.value)} placeholder="Your Hiring Partner" style={S.inp} /></div>
           <div><label style={S.label}>Website URL</label><input value={sig.website} onChange={e => sf('website', e.target.value)} placeholder="https://..." style={S.inp} /></div>
@@ -952,7 +952,7 @@ function OfferVariablesTab({ data, addItem, deleteItem }) {
     <div>
       <SectionHeader icon="📝" title="Offer Letter Variables" desc="Define merge variables available in offer letter templates using {{VAR_NAME}} syntax" />
       <div style={S.card}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr auto', gap: 10, alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 10, alignItems: 'end' }}>
           <div><label style={S.label}>Variable Key</label><input value={form.key} onChange={e => setForm(p => ({ ...p, key: e.target.value }))} placeholder="VARIABLE_NAME" style={S.inp} /></div>
           <div><label style={S.label}>Description</label><input value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} placeholder="What this inserts..." style={S.inp} /></div>
           <div><label style={S.label}>Example</label><input value={form.example} onChange={e => setForm(p => ({ ...p, example: e.target.value }))} placeholder="John Doe" style={S.inp} /></div>

@@ -160,14 +160,14 @@ export default function GenerateOfferPage({ user, onBack, onSuccess }) {
         subtitle={`Designing the legal and financial structure for the ${job?.title} role.`}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: previewOpen ? '1.2fr 1fr' : '1fr', gap: 24, marginTop: 24, alignItems: 'start' }}>
+      <div className={previewOpen ? 'tn-page-split-half' : ''} style={{ display: 'grid', gridTemplateColumns: previewOpen ? undefined : '1fr', gap: 24, marginTop: 24, alignItems: 'start' }}>
         
         {/* Editor Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
           <div style={{ ...card, background: '#fff' }}>
             <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>💼 POSITION & ENTITY</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
               <Field label="Designation *" value={form.designation} onChange={v => sf('designation', v)} />
               <Field label="Department" value={form.department} onChange={v => sf('department', v)} />
               <Field label="Company/Client *" value={form.clientCompany} onChange={v => sf('clientCompany', v)} />
@@ -179,7 +179,7 @@ export default function GenerateOfferPage({ user, onBack, onSuccess }) {
 
           <div style={{ ...card, background: '#fff', border: '1.5px solid rgba(1,118,211,0.2)' }}>
             <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>💰 CTC & COMPENSATION (INR)</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 16 }}>
                <Field label="Annual Total CTC *" type="number" value={form.annualCTC} onChange={v => sf('annualCTC', v)} placeholder="600000" />
                <Field label="Variable %" type="number" value={form.variablePct} onChange={v => sf('variablePct', v)} />
             </div>
@@ -193,7 +193,7 @@ export default function GenerateOfferPage({ user, onBack, onSuccess }) {
 
           <div style={{ ...card, background: '#fff' }}>
             <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>📅 DATES & DEADLINES</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
               <Field label="Joining Date" type="date" value={form.joiningDate} onChange={v => sf('joiningDate', v)} />
               <Field label="Acceptance Deadline *" type="date" value={form.acceptanceDeadline} onChange={v => sf('acceptanceDeadline', v)} />
             </div>
@@ -201,7 +201,7 @@ export default function GenerateOfferPage({ user, onBack, onSuccess }) {
 
           <div style={{ ...card, background: '#fff' }}>
             <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>⚖️ CLAUSES & SIGNATORIES</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
               <Dropdown label="Probation" value={form.probation} onChange={v => sf('probation', v)} options={['3 months', '6 months', 'No probation']} />
               <Field label="HR Signatory" value={form.hrName} onChange={v => sf('hrName', v)} />
             </div>

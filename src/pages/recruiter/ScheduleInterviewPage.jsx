@@ -119,14 +119,14 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
         subtitle={`Setting up the next round for the ${job?.title} position at ${job?.company}.`}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 32, marginTop: 24, alignItems: 'start' }}>
+      <div className="tn-page-split-half" style={{ marginTop: 24 }}>
         
         {/* Form Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
           <div style={{ ...card, background: '#fff' }}>
              <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, margin: '0 0 16px', letterSpacing: 1 }}>🕒 LOGISTICS</p>
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
                 <Field label="Interview Date *" value={date} onChange={setDate} type="date" />
                 <Field label="Interview Time *" value={time} onChange={setTime} type="time" />
              </div>
@@ -136,7 +136,7 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
              <div style={{ marginTop: 16 }}>
                 <Field label="Meeting Link / Physical Address" value={videoLink} onChange={setVideoLink} placeholder="e.g. https://zoom.us/j/... or Office Room 402" />
              </div>
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginTop: 16 }}>
                <Field label="Interviewer Name" value={interviewerName} onChange={setInterviewerName} placeholder="e.g. Sarah Chen" />
                <Field label="Interviewer Email" value={interviewerEmail} onChange={setInterviewerEmail} placeholder="sarah@company.com" type="email" />
              </div>

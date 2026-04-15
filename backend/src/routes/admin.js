@@ -147,10 +147,10 @@ router.delete('/revoke-invite/:userId', authenticate, allowRoles('super_admin', 
 // GET /api/admin/pending-invites — list pending invites for this org
 router.get('/pending-invites', authenticate, allowRoles('super_admin', 'admin'), asyncHandler(async (req, res) => {
   const filter = { inviteStatus: 'pending', isActive: false };
-  if (req.user.role === 'admin') filter.orgId = req.user.orgId;
+  if (req.user.role === 'admin') filter.tenantId = req.user.tenantId;
 
   const users = await User.find(filter)
-    .select('name email role inviteStatus invitedBy invitedAt resetPasswordExpires orgId')
+    .select('name email role inviteStatus invitedBy invitedAt resetPasswordExpires tenantId')
     .populate('invitedBy', 'name')
     .sort({ invitedAt: -1 })
     .lean();

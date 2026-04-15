@@ -40,7 +40,7 @@ function FieldForm({ initial, onSave, onCancel, saving }) {
 
   return (
     <div style={{ background: 'rgba(1,118,211,0.03)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
         <div>
           <label style={S.label}>Field Label *</label>
           <input value={form.label} onChange={e => sf('label', e.target.value)} placeholder="e.g. Expected CTC" style={S.inp} />

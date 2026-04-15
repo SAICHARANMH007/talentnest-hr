@@ -183,7 +183,7 @@ export default function ResumeCard({ candidate: c }) {
       </div>
 
       {/* ── BODY ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'230px 1fr' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 230px), 1fr))' }}>
 
         {/* ── SIDEBAR ── */}
         <div style={{ background:'#1a3a5c', padding:'22px 16px', borderRight:'1px solid rgba(1,118,211,0.15)' }}>

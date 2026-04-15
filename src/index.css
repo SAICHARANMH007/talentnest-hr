@@ -204,6 +204,21 @@
 .dash-split { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
 @media (max-width: 768px) { .dash-split { grid-template-columns: 1fr; } }
 
+/* ── Page-level two-panel splits (stacked on tablet/mobile) ── */
+.tn-page-split      { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+.tn-page-split-half { display: grid; grid-template-columns: 1.2fr 1fr;  gap: 24px; align-items: start; }
+.tn-page-split-sm   { display: grid; grid-template-columns: 1fr 200px;  gap: 20px; align-items: start; }
+.tn-resume-split    { display: grid; grid-template-columns: minmax(280px,360px) minmax(0,1fr); gap: 24px; align-items: start; }
+.tn-blog-split      { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+@media (max-width: 900px) {
+  .tn-page-split, .tn-page-split-half, .tn-page-split-sm,
+  .tn-resume-split, .tn-blog-split { grid-template-columns: 1fr; }
+}
+
+/* ── Responsive table scroll wrapper ── */
+.tn-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tn-table-wrap table { min-width: 480px; width: 100%; border-collapse: collapse; }
+
 /* ── Drawer responsive width ── */
 .tn-drawer { width: min(620px, 100vw); }
 

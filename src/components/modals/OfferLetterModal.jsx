@@ -291,7 +291,7 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
       <div style={{ marginTop:28, padding:'14px 16px', border:'2px dashed #F3F2F2', borderRadius:8 }}>
         <p style={{ fontWeight:700, textTransform:'uppercase', fontSize:11, letterSpacing:1, marginBottom:10, color:'#F3F2F2' }}>ACCEPTANCE — To be signed and returned</p>
         <p>I, <strong>{c?.name || '___________________________'}</strong>, hereby accept the offer of employment as <strong>{j?.title || f.designation}</strong> at <strong>{f.clientCompany || j?.company || 'TalentNest HR'}</strong> on the terms and conditions stated above.</p>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginTop:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:20, marginTop:16 }}>
           <div><div style={{ borderTop:'1px solid #374151', paddingTop:6, fontSize:11 }}>Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
           <div><div style={{ borderTop:'1px solid #374151', paddingTop:6, fontSize:11 }}>Date of Acceptance &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
           <div><div style={{ borderTop:'1px solid #374151', paddingTop:6, fontSize:11 }}>Confirmed Joining Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
@@ -445,7 +445,7 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
                 </div>
               </div>
 
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:14 }}>
                 <Field label="Designation / Job Title *" value={form.designation} onChange={v=>sf('designation',v)}/>
                 <Field label="Department" value={form.department} onChange={v=>sf('department',v)} placeholder="Engineering / IT / Operations"/>
                 <Field label="Client / Employer Company *" value={form.clientCompany} onChange={v=>sf('clientCompany',v)}/>
@@ -459,7 +459,7 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               {/* CTC section */}
               <div style={{ ...card, marginTop:20, border:'1px solid rgba(1,118,211,0.2)' }}>
                 <p style={{ color:'#0176D3', fontSize:11, fontWeight:700, margin:'0 0 14px', letterSpacing:1 }}>💰 CTC STRUCTURE</p>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap:12 }}>
                   <Field label="Annual CTC (₹) *" value={form.annualCTC} onChange={v=>sf('annualCTC',v)} placeholder="600000"/>
                   <div>
                     <label style={{ color:'#0176D3', fontSize:11, display:'block', marginBottom:6 }}>Variable Pay %</label>
@@ -517,7 +517,7 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               </div>
 
               {/* HR & Policies */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginTop:14 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:14, marginTop:14 }}>
                 <Dropdown label="Probation Period" value={form.probation} onChange={v=>sf('probation',v)} options={['1 month','3 months','6 months','No probation']}/>
                 <Field label="Probation Notice (days)" value={form.probationNotice} onChange={v=>sf('probationNotice',v)} placeholder="15"/>
                 <Dropdown label="Notice Period (post-confirmation)" value={form.noticePeriod} onChange={v=>sf('noticePeriod',v)} options={['15 days','30 days','45 days','60 days','90 days','120 days']}/>

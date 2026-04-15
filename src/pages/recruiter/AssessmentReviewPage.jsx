@@ -74,7 +74,7 @@ export default function AssessmentReviewPage({ user }) {
   if (loading) return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0' }}>
       <Skeleton height="32px" width="180px" style={{ marginBottom: 24 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 24 }}>
+      <div className="tn-page-split">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[1,2,3].map(i => <Skeleton key={i} height="180px" />)}
         </div>

@@ -203,7 +203,7 @@ export default function AdminOnboarding({ user }) {
       </div>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total', value: stats.total,       color: '#0176D3', bg: 'rgba(1,118,211,0.06)' },
           { label: 'Pending', value: stats.pending,   color: '#B45309', bg: 'rgba(245,158,11,0.06)' },

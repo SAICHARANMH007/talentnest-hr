@@ -190,7 +190,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                   {(isSuperAdmin || currentUserRole === 'admin') && (
                     <div style={{ background: '#f8fafc', gridColumn: 'span 2', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: '#475569' }}>⚙️ ADMINISTRATIVE SETTINGS</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
                         <div>
                           <label style={{ fontSize: 11, color: '#3E3E3C', marginBottom: 4, display: 'block' }}>Account Role</label>
                           <select value={form.role} onChange={e => sf('role', e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #DDDBDA', fontSize: 13 }}>

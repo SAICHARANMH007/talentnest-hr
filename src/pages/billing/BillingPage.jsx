@@ -219,7 +219,7 @@ export default function BillingPage() {
       {/* ── Section 4: Billing Details ────────────────────────────────────────── */}
       <div style={{ ...card, marginTop: 32 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>GST & Billing Details</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 16 }}>
           <div>
             <label style={{ fontSize: 12, color: '#706E6B', display: 'block', marginBottom: 4 }}>Customer GSTIN</label>
             <input

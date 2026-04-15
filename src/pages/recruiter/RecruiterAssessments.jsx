@@ -237,7 +237,7 @@ export default function RecruiterAssessments({ user }) {
             </div>
 
             {/* Title & time */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:12, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, fontWeight:700, color:'#475569', display:'block', marginBottom:5 }}>Title *</label>
                 <input value={createForm.title} onChange={e => setCreateForm(p => ({...p, title: e.target.value}))}
@@ -250,7 +250,7 @@ export default function RecruiterAssessments({ user }) {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:12, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, fontWeight:700, color:'#475569', display:'block', marginBottom:5 }}>Passing Score (%)</label>
                 <input type="number" value={createForm.passingScore} onChange={e => setCreateForm(p => ({...p, passingScore: parseInt(e.target.value) || 0}))}

@@ -173,7 +173,7 @@ function InviteTab({ setToast }) {
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8ecf0', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-          <div style={{ minWidth: 780 }}>
+          <div style={{ minWidth: 700 }}>
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1.2fr 1fr minmax(170px,auto)', gap: 10,
               padding: '10px 20px', background: '#f8fafc', borderBottom: '1px solid #e8ecf0',
@@ -361,7 +361,7 @@ function MailTab({ setToast }) {
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8ecf0', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-          <div style={{ minWidth: 680 }}>
+          <div style={{ minWidth: 600 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 2fr 100px 100px 80px 110px', gap: 0,
               padding: '10px 20px', background: '#f8fafc', borderBottom: '1px solid #e8ecf0',
               fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.5px' }}>
@@ -612,7 +612,7 @@ function InterestedTab({ setToast }) {
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8ecf0', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-          <div style={{ minWidth: 640 }}>
+          <div style={{ minWidth: 560 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 2fr 1.5fr 1fr auto', gap: 12, padding: '10px 20px',
               background: '#f8fafc', borderBottom: '1px solid #e8ecf0', fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.5px' }}>
               {['CANDIDATE', 'INTERESTED IN', 'SENT BY', 'RESPONDED', 'ACTION'].map(h => <span key={h}>{h}</span>)}

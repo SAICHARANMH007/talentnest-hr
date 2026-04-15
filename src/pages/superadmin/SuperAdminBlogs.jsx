@@ -134,7 +134,7 @@ export default function SuperAdminBlogs() {
           </div>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:24, alignItems:'start' }}>
+        <div className="tn-blog-split">
           {/* Left: main content */}
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             {/* Title */}

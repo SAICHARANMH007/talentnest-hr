@@ -123,7 +123,7 @@ class JobService {
     if (!job) throw new AppError('Job not found.', 404);
 
     // Notify all Admins in the Org
-    const admins = await User.find({ orgId: job.orgId, role: { $in: ['admin', 'super_admin'] } }).select('_id').lean();
+    const admins = await User.find({ tenantId: job.tenantId || job.orgId, role: { $in: ['admin', 'super_admin'] } }).select('_id').lean();
     for (const admin of admins) {
       await Notification.create({
         userId: admin._id, orgId: job.orgId, type: 'system',

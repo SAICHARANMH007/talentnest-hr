@@ -51,7 +51,7 @@ export default function CreateOrganisationPage({ user, onBack, onSuccess }) {
 
       <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 200px', gap: 20 }}>
+        <div className="tn-page-split-sm">
              <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} placeholder="e.g. Acme Technologies" />
              <Field label="Domain (Optional)" value={form.domain} onChange={v => sf('domain', v)} placeholder="e.g. acme.com" hint="Scopes data access" />
         </div>

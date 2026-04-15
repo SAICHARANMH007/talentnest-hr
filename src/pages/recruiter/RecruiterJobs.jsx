@@ -283,7 +283,7 @@ export default function RecruiterJobs({ user }) {
               </button>
               {showAssessment && (
                 <div style={{ marginTop: 12, padding: 16, background: '#FAFAFA', borderRadius: 10, border: '1px solid rgba(1,118,211,0.1)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10, marginBottom: 12 }}>
                     <div style={{ gridColumn: 'span 2' }}>
                       <label style={{ color: '#706E6B', fontSize: 11, display: 'block', marginBottom: 4 }}>Assessment Title</label>
                       <input value={assessmentSettings.title} onChange={e => setAssessmentSettings(p => ({ ...p, title: e.target.value }))} placeholder="Job — Screening"

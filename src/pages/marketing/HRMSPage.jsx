@@ -90,7 +90,7 @@ export default function HRMSPage() {
                 ))}
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, alignItems: 'stretch' }}>
               {[
                 { icon: '⚡', title: 'Instant Recognition', desc: 'Identifies employees in under 0.5 seconds.' },
                 { icon: '👥', title: 'Unlimited Employees', desc: 'Scales from 10 to 10,000+ employees.' },

@@ -36,11 +36,13 @@ const authMiddleware = async (req, res, next) => {
     if (!user.isActive) return res.status(403).json({ success: false, error: 'Account is deactivated' });
 
     // Attach clean payload — tenantId from JWT (fast) falls back to user document
+    const resolvedTenantId = (decoded.tenantId || user.tenantId || user.orgId || '').toString();
     req.user = {
       ...user,
       id      : user._id.toString(),
       userId  : user._id.toString(),
-      tenantId: (decoded.tenantId || user.tenantId || user.orgId || '').toString(),
+      tenantId: resolvedTenantId,
+      orgId   : resolvedTenantId, // backward-compat alias — many routes still use req.user.orgId
       role    : user.role,
     };
     next();

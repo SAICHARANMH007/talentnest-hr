@@ -396,8 +396,12 @@ export default function App() {
             user?.role === 'admin' ? 'analytics' : 'dashboard'
         } replace />} />
 
-        {/* Shared / General Routes */}
-        <Route path="profile" element={<ProfilePage user={user} onUserUpdate={(u) => { sessionStorage.setItem('tn_user', JSON.stringify(u)); setUser(u); }} />} />
+        {/* Shared / General Routes — profile is role-aware */}
+        <Route path="profile" element={
+          rk === 'candidate'
+            ? <CandidateProfile user={user} />
+            : <ProfilePage user={user} onUserUpdate={(u) => { sessionStorage.setItem('tn_user', JSON.stringify(u)); setUser(u); }} />
+        } />
         <Route path="forms" element={<FormsHub user={user} />} />
         <Route path="settings/password" element={<ChangePasswordPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/email" element={<EmailSettingsPage user={user} onBack={() => window.history.back()} />} />
@@ -416,7 +420,6 @@ export default function App() {
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
             <Route path="resume-builder" element={<ResumeBuilder user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />
-            <Route path="profile" element={<CandidateProfile user={user} />} />
           </>
         )}
 
@@ -460,7 +463,7 @@ export default function App() {
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
-            <Route path="candidate-requests" element={<AdminCandidateRequest user={user} />} />
+            <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
           </>
         )}
 
@@ -474,7 +477,6 @@ export default function App() {
             <Route path="permissions" element={<SuperAdminPermissions />} />
             <Route path="security" element={<SuperAdminSecurity />} />
             <Route path="import-candidates" element={<SuperAdminCandidateImport user={user} />} />
-            <Route path="candidate-requests" element={<SuperAdminCandidateRequests />} />
             <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
             <Route path="playbooks" element={<SuperAdminPlaybooks />} />
             <Route path="blogs" element={<SuperAdminBlogs />} />

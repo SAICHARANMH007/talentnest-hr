@@ -201,7 +201,7 @@ export default function RecruiterInterviews({ user }) {
             <div style={{ ...card, background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', fontSize: 13 }}>
               <span style={{ fontWeight: 600 }}>{schedApp.candidateId?.name || schedApp.candidate?.name || 'Candidate'}</span> · {schedApp.jobId?.title || '—'}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
               <Field label="Date *" value={schedForm.date} onChange={v => sf('date', v)} type="date" />
               <Field label="Time *" value={schedForm.time} onChange={v => sf('time', v)} type="time" />
             </div>
@@ -242,7 +242,7 @@ export default function RecruiterInterviews({ user }) {
               </div>
             </div>
             {/* Scores */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
               {[['technicalScore','Technical'],['communicationScore','Communication'],['problemSolvingScore','Problem Solving'],['cultureFitScore','Culture Fit']].map(([key, label]) => (
                 <div key={key}>
                   <label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 4 }}>{label.toUpperCase()} — {scorecard[key]}%</label>

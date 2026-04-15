@@ -123,7 +123,7 @@ function AuditLogTab() {
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
             <thead>
               <tr>
                 {['Timestamp','User','Role','Action','Resource','Detail'].map(h => (
@@ -319,7 +319,7 @@ function SecurityTab() {
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={glass}>
         <h3 style={{ color: '#181818', fontSize: 15, fontWeight: 700, margin: '0 0 20px' }}>Session & Authentication</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
           {[
             { key: 'sessionTimeout',   label: 'Session Timeout',              type: 'select', opts: [['1h','1 Hour'],['8h','8 Hours'],['24h','24 Hours'],['7d','7 Days'],['30d','30 Days']] },
             { key: 'maxLoginAttempts', label: 'Max Login Attempts',           type: 'number', min: 3, max: 10 },
@@ -502,7 +502,7 @@ export default function SuperAdminSecurity() {
               </button>
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left', color: '#64748b', fontSize: 11, fontWeight: 700, padding: '0 0 14px', letterSpacing: '0.5px', width: '30%' }}>FEATURE</th>

@@ -337,16 +337,16 @@ router.post('/bulk-whatsapp', authenticate, allowRoles('admin','super_admin','re
 // POST /api/users/check-duplicate — duplicate detection before add
 router.post('/check-duplicate', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
   const { name = '', email = '', phone = '' } = req.body;
-  const orgId = req.user.orgId || req.user.tenantId;
+  const tenantId = req.user.tenantId || req.user.orgId;
   const matches = [];
 
   if (email) {
-    const byEmail = await User.findOne({ orgId, email: email.toLowerCase().trim() }).select('name email phone _id').lean();
+    const byEmail = await User.findOne({ tenantId, email: email.toLowerCase().trim() }).select('name email phone _id').lean();
     if (byEmail) matches.push({ ...byEmail, id: byEmail._id?.toString(), matchType: 'email' });
   }
   if (phone) {
     const clean = phone.replace(/\D/g, '');
-    const byPhone = await User.findOne({ orgId, phone: { $regex: clean.slice(-8) } }).select('name email phone _id').lean();
+    const byPhone = await User.findOne({ tenantId, phone: { $regex: clean.slice(-8) } }).select('name email phone _id').lean();
     if (byPhone && !matches.find(m => String(m._id) === String(byPhone._id))) {
       matches.push({ ...byPhone, id: byPhone._id?.toString(), matchType: 'phone' });
     }
@@ -358,7 +358,7 @@ router.post('/check-duplicate', authenticate, allowRoles('admin','super_admin','
         dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
       return dp[a.length][b.length];
     }
-    const pool = await User.find({ orgId, role: 'candidate' }).select('name email phone _id').lean();
+    const pool = await User.find({ tenantId, role: 'candidate' }).select('name email phone _id').lean();
     const nl = name.toLowerCase().trim();
     for (const u of pool) {
       const d = lev(nl, (u.name || '').toLowerCase().trim());

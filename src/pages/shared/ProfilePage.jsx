@@ -113,7 +113,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
         {error && <div style={{background:'#FFF5F5',border:'1px solid #FECACA',borderRadius:8,padding:'10px 14px',marginBottom:16,color:'#BA0517',fontSize:13}}>{error}</div>}
         {saved && <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:'10px 14px',marginBottom:16,color:'#166534',fontSize:13}}>Profile saved successfully!</div>}
 
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:16,marginBottom:16}}>
           <div>
             <label style={labelStyle}>Full Name</label>
             <input value={form.name} onChange={e=>sf('name',e.target.value)} style={fieldStyle} placeholder="Your full name" autoComplete="off"
@@ -125,7 +125,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
           </div>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:16,marginBottom:16}}>
           <div>
             <label style={labelStyle}>Phone</label>
             <input value={form.phone} onChange={e=>sf('phone',e.target.value)} style={fieldStyle} placeholder="+91 98765 43210" autoComplete="off"
@@ -138,7 +138,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
           </div>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:16,marginBottom:16}}>
           <div>
             <label style={labelStyle}>Location</label>
             <input value={form.location} onChange={e=>sf('location',e.target.value)} style={fieldStyle} placeholder="Hyderabad, India" autoComplete="off"

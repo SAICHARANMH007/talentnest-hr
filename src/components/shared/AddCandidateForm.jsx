@@ -319,7 +319,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
 
           <ConfidenceWrapper confValue={conf.name}>
             <Field label="Full Name" value={form.name} onChange={v => sf('name', v)} placeholder="Jane Smith" />

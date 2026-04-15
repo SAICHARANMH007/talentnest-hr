@@ -5,11 +5,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     chunkSizeWarningLimit: 600,
-    minify: 'terser',
-    terserOptions: {
-      compress: { drop_console: true, passes: 2, dead_code: true, pure_funcs: ['console.log', 'console.warn', 'console.info'] },
-      format: { comments: false },
-    },
+    minify: 'esbuild',
+    target: 'es2020',
     rollupOptions: {
       output: {
         // Fine-grained manual chunks — each role group gets its own chunk so the

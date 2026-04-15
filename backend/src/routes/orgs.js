@@ -303,9 +303,9 @@ router.post('/:id/invite-admin', auth, allowRoles('super_admin'), async (req, re
 // DELETE /api/orgs/:id — super_admin only; warns if org has active data
 router.delete('/:id', auth, allowRoles('super_admin'), async (req, res) => {
   try {
-    const userCount = await User.countDocuments({ orgId: req.params.id });
+    const userCount = await User.countDocuments({ tenantId: req.params.id });
     const Job = require('../models/Job');
-    const jobCount = await Job.countDocuments({ orgId: req.params.id });
+    const jobCount = await Job.countDocuments({ tenantId: req.params.id });
     if (userCount > 0 || jobCount > 0) {
       return res.status(400).json({
         error: `Cannot delete: org has ${userCount} user(s) and ${jobCount} job(s). Reassign or archive them first.`,

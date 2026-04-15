@@ -108,7 +108,7 @@ export default function AboutPage() {
                 <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop&q=80" alt="TalentNest HR office" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(3,45,96,0.3), rgba(1,118,211,0.2))' }} />
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:16 }}>
                 {[{n:'3+',l:'Happy Clients'},{n:'20+',l:'Placements Made'},{n:'48 hrs',l:'Avg. Time-to-Hire'},{n:'100%',l:'Satisfaction Rate'}].map(s => (
                   <div key={s.l} style={{ background: 'var(--mkt-surface-bg)', borderRadius:16, padding:24, textAlign:'center', border: `1px solid var(--mkt-card-border)` }}>
                     <div style={{ fontSize:'2.2rem', fontWeight:900, color: 'var(--mkt-primary)', marginBottom:6 }}>{s.n}</div>

@@ -184,7 +184,7 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(1,118,211,0.04)', borderRadius: 8, padding: 12 }}>
           <Field label="Question" value={newQ.question} onChange={v => setNewQ(p => ({ ...p, question: v }))} placeholder="e.g. Do you have experience with React?" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
             <Dropdown label="Answer Type" value={newQ.type} onChange={v => setNewQ(p => ({ ...p, type: v }))} options={['text', 'yesno', 'multiple']} />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingTop: 20 }}>
               <input type="checkbox" checked={newQ.required} onChange={e => setNewQ(p => ({ ...p, required: e.target.checked }))} style={{ accentColor: '#0176D3' }} />

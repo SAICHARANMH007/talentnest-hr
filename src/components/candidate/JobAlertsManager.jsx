@@ -67,7 +67,7 @@ export default function JobAlertsManager({ onClose }) {
         <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: '1px', margin: '0 0 12px' }}>+ NEW ALERT</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Field label="Keywords (comma-separated)" value={form.keywords} onChange={v => sf('keywords', v)} placeholder="React, Node.js, Python…" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
             <Field label="Location" value={form.location} onChange={v => sf('location', v)} placeholder="Hyderabad, Remote…" />
             <Dropdown label="Job Type" value={form.jobType} onChange={v => sf('jobType', v)}
               options={['', 'Full-Time', 'Part-Time', 'Contract', 'Remote', 'Internship']} />

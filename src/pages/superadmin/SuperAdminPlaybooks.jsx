@@ -2738,7 +2738,7 @@ ${heroHtml(form.icon,'CUSTOM PLAYBOOK',form.title, form.desc || 'Custom playbook
         {showCreate && (
           <div style={{ background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
             <h3 style={{ color: '#0176D3', fontSize: 13, fontWeight: 700, margin: '0 0 16px', letterSpacing: '0.5px' }}>📝 NEW PLAYBOOK</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 12, marginBottom: 12 }}>
               <div>
                 <label style={{ color: '#3E3E3C', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 5 }}>Icon</label>
                 <input value={form.icon} onChange={e => sf('icon', e.target.value)} maxLength={2}

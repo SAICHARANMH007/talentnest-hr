@@ -105,7 +105,7 @@ export default function ContactLeads() {
 
       {/* Filters */}
       <div style={{ display:'flex', gap:10, marginBottom:16, alignItems:'center', flexWrap:'wrap' }}>
-        <Field value={search} onChange={v => setSearch(v)} placeholder="Search name, email, company…" style={{ minWidth:240 }} />
+        <Field value={search} onChange={v => setSearch(v)} placeholder="Search name, email, company…" style={{ minWidth: 0, width: '100%' }} />
         <div style={{ display:'flex', gap:4, background:'#F3F2F2', borderRadius:10, padding:4 }}>
           {['all','new','contacted','converted','closed'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
@@ -127,9 +127,9 @@ export default function ContactLeads() {
             <p style={{ color:'#706E6B', fontSize:14 }}>{search ? 'No results for your search.' : 'No enquiries yet. They will appear here when someone fills the Contact Us form.'}</p>
           </div>
         ) : (
-          <div>
+          <div style={{ overflowX: 'auto' }}>
             {/* Table header */}
-            <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1.5fr 1fr 1fr 0.8fr 1.2fr', gap:10, padding:'8px 12px', borderBottom:'1px solid #F3F2F2', marginBottom:4 }}>
+            <div style={{ minWidth: 600, display:'grid', gridTemplateColumns:'1.5fr 1.5fr 1fr 1fr 0.8fr 1.2fr', gap:10, padding:'8px 12px', borderBottom:'1px solid #F3F2F2', marginBottom:4 }}>
               {['Name','Email','Company','Service','Status','Received'].map(h => (
                 <span key={h} style={{ color:'#0176D3', fontSize:10, fontWeight:700, letterSpacing:'0.5px', textTransform:'uppercase' }}>{h}</span>
               ))}
@@ -139,7 +139,7 @@ export default function ContactLeads() {
               const id = l.id || l._id;
               const isOpen = expanded === id;
               return (
-                <div key={id}>
+                <div key={id} style={{ minWidth: 600 }}>
                   <div
                     onClick={() => setExpanded(isOpen ? null : id)}
                     style={{ display:'grid', gridTemplateColumns:'1.5fr 1.5fr 1fr 1fr 0.8fr 1.2fr', gap:10, padding:'12px', borderRadius:10, cursor:'pointer', background: isOpen ? 'rgba(1,118,211,0.04)' : 'transparent', transition:'background 0.15s' }}
@@ -155,7 +155,7 @@ export default function ContactLeads() {
                   {/* Expanded detail */}
                   {isOpen && (
                     <div style={{ margin:'0 0 8px 0', padding:'16px 20px', background:'rgba(1,118,211,0.03)', border:'1px solid rgba(1,118,211,0.12)', borderRadius:12 }}>
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:14 }}>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:16, marginBottom:14 }}>
                         <div>
                           <div style={{ color:'#706E6B', fontSize:10, fontWeight:700, letterSpacing:'0.5px', marginBottom:4 }}>CONTACT</div>
                           <div style={{ color:'#181818', fontSize:13, fontWeight:600 }}>{l.name}</div>

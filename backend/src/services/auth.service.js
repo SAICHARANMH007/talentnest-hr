@@ -132,9 +132,15 @@ class AuthService {
       client:      '/client/dashboard',
     };
 
+    const normalizedUser = normalize(user);
+    // Ensure orgId is always present as a frontend-compat alias for tenantId
+    if (!normalizedUser.orgId && normalizedUser.tenantId) {
+      normalizedUser.orgId = normalizedUser.tenantId;
+    }
+
     return {
       token: accessToken,
-      user: normalize(user),
+      user: normalizedUser,
       redirect: ROLE_REDIRECT[user.role] || '/dashboard',
     };
   }
