@@ -234,9 +234,17 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
 
   if (!candidateId) throw new AppError('candidateId is required.', 400);
 
+  // Candidates have a personal tenantId that won't match the employer's job tenant.
+  // For candidate self-apply: look up the job by ID only (jobs are public), then
+  // create the application under the job's tenantId so recruiters can see it.
+  const isCandidate = req.user.role === 'candidate';
   const [job, candidate] = await Promise.all([
-    Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
-    Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
+    isCandidate
+      ? Job.findOne({ _id: jobId, status: 'active', deletedAt: null }).lean()
+      : Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
+    isCandidate
+      ? Candidate.findOne({ _id: candidateId, deletedAt: null }).lean()
+      : Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
   ]);
   if (!job)       throw new AppError('Job not found.', 404);
   if (!candidate) throw new AppError('Candidate not found.', 404);
@@ -246,8 +254,11 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
 
   const { score, breakdown } = calculateMatchScore(job, candidate);
 
+  // Use job's tenantId for the application so it appears in the recruiter's pipeline.
+  const appTenantId = isCandidate ? job.tenantId : req.user.tenantId;
+
   const app = await Application.create({
-    tenantId: req.user.tenantId,
+    tenantId: appTenantId,
     jobId,
     candidateId,
     source: 'platform',
@@ -265,7 +276,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   const recruiters = job.assignedRecruiters || [];
   for (const rid of recruiters) {
     Notification.create({
-      userId: rid, tenantId: req.user.tenantId, type: 'application',
+      userId: rid, tenantId: appTenantId, type: 'application',
       title: 'New Application',
       message: `${candidate.name} applied for ${job.title}`,
       link: `/recruiter/pipeline?jobId=${jobId}`,

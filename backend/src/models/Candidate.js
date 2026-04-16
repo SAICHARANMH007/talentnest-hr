@@ -60,6 +60,8 @@ const candidateSchema = new mongoose.Schema({
 candidateSchema.index({ tenantId: 1 });
 candidateSchema.index({ tenantId: 1, source: 1 });
 candidateSchema.index({ email: 1 });
+// Performance: apply flow looks up by email+tenantId; /mine looks up by email+tenantId
+candidateSchema.index({ email: 1, tenantId: 1, deletedAt: 1 });
 
 candidateSchema.set('toJSON', { virtuals: true });
 candidateSchema.set('toObject', { virtuals: true });

@@ -144,6 +144,9 @@ applicationSchema.index({ jobId: 1 });
 applicationSchema.index({ candidateId: 1 });
 applicationSchema.index({ tenantId: 1, currentStage: 1 });
 applicationSchema.index({ tenantId: 1, status: 1 });
+// Performance: /mine endpoint and duplicate-check query
+applicationSchema.index({ candidateId: 1, deletedAt: 1 });
+applicationSchema.index({ jobId: 1, candidateId: 1, deletedAt: 1 });
 
 applicationSchema.set('toJSON', { virtuals: true });
 applicationSchema.set('toObject', { virtuals: true });

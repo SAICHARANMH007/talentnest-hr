@@ -34,7 +34,7 @@ export default function CandidateDashboard({ user }) {
     return () => { cancelled = true; };
   }, [user.id]);
 
-  const apply = async (jobId) => { try { await api.applyToJob(jobId, user.id); setToast("✅ Applied!"); const [j,a] = await Promise.all([api.getMatchedJobs(user.id),api.getApplications({candidateId:user.id})]); setJobs(Array.isArray(j)?j:(j?.data||[])); setApps(Array.isArray(a)?a:(a?.data||[])); } catch(e) { setToast(`❌ ${e.message}`); } };
+  const apply = async (jobId) => { try { await api.applyToJob(jobId, user.id); setToast("✅ Applied!"); const [j,a] = await Promise.all([api.getMatchedJobs(user.id),api.getMyApplications()]); setJobs(Array.isArray(j)?j:(j?.data||[])); setApps(Array.isArray(a)?a:[]); } catch(e) { setToast(`❌ ${e.message}`); } };
 
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
 
