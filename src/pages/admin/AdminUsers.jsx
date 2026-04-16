@@ -22,16 +22,25 @@ function RecruiterActivityPanel({ recruiterId }) {
   useEffect(() => {
     (async () => {
       try {
+        // Fetch jobs assigned to this recruiter
         const jobsRes = await api.getJobs(recruiterId);
         const jobs = Array.isArray(jobsRes) ? jobsRes : (jobsRes?.data || []);
-        const nested = await Promise.all(
-          jobs.map(j =>
-            api.getApplications({ jobId: j.id })
-              .then(res => { const apps = Array.isArray(res) ? res : (res?.data || []); return apps.map(a => ({ ...a, jobTitle: j.title })); })
-              .catch(() => [])
-          )
-        );
-        setState({ loading: false, jobs, apps: nested.flat(), error: false });
+
+        // Fetch all applications for this recruiter in one request (populated with candidateId)
+        const appsRes = await api.getApplications({ recruiterId, limit: 200 });
+        const allApps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+
+        // Attach job title from jobs list for display
+        const jobMap = {};
+        jobs.forEach(j => { jobMap[String(j.id || j._id)] = j.title; });
+        const apps = allApps.map(a => ({
+          ...a,
+          jobTitle: a.jobId?.title || a.job?.title || jobMap[String(a.jobId?._id || a.jobId)] || 'Unknown Job',
+          // Ensure candidate name is always accessible at top-level for display
+          candidateName: a.candidateId?.name || a.candidate?.name || a.candidateName || '',
+        }));
+
+        setState({ loading: false, jobs, apps, error: false });
       } catch {
         setState({ loading: false, jobs: [], apps: [], error: true });
       }
@@ -83,9 +92,9 @@ function RecruiterActivityPanel({ recruiterId }) {
               <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", borderRadius: 7, background: "rgba(255,255,255,0.03)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0176D3", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 700, flexShrink: 0 }}>
-                    {(a.candidateId?.name || a.candidate?.name || "?")[0].toUpperCase()}
+                    {(a.candidateName || a.candidateId?.name || a.candidate?.name || "?")[0].toUpperCase()}
                   </div>
-                  <span style={{ color: "#181818", fontSize: 12 }}>{a.candidateId?.name || a.candidate?.name || a.candidateName || 'Candidate'}</span>
+                  <span style={{ color: "#181818", fontSize: 12 }}>{a.candidateName || a.candidateId?.name || a.candidate?.name || 'Unknown'}</span>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ color: "#9E9D9B", fontSize: 10 }}>{a.jobTitle}</span>

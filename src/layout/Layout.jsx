@@ -348,50 +348,6 @@ export default function Layout({ user, onLogout }) {
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }
-
-        .tn-sidebar { display: flex; flex-direction: column; background: #032D60; }
-
-        /* Desktop: sidebar pinned, hamburger hidden */
-        @media (min-width: 768px) {
-          .tn-sidebar { width: 220px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-          .tn-hamburger { display: none !important; }
-          .tn-mobile-overlay { display: none !important; }
-          .tn-sidebar-mobile { display: none !important; }
-        }
-
-        /* Tablet: slightly narrower sidebar */
-        @media (min-width: 768px) and (max-width: 1024px) {
-          .tn-sidebar { width: 196px; }
-        }
-
-        /* Mobile: slide-in drawer */
-        @media (max-width: 767px) {
-          .tn-sidebar { display: none; }
-          .tn-sidebar-mobile {
-            position: fixed; top: 0; left: 0;
-            height: 100%; height: 100dvh;
-            width: min(280px, 85vw);
-            background: #032D60;
-            display: flex; flex-direction: column;
-            z-index: 2000;
-            box-shadow: 4px 0 32px rgba(0,0,0,0.4);
-            transform: translateX(-100%);
-            transition: transform 0.28s cubic-bezier(0.32,0.72,0,1);
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-          }
-          .tn-sidebar-mobile.open { transform: translateX(0); }
-          .tn-mobile-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.52);
-            z-index: 1999;
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-          }
-          /* Bigger tap targets in mobile nav */
-          .tn-sidebar-mobile nav a { min-height: 48px !important; padding: 12px 16px !important; font-size: 14px !important; }
-        }
       `}</style>
 
       {/* Trial Banner */}
@@ -402,8 +358,8 @@ export default function Layout({ user, onLogout }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Desktop Sidebar */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {/* Desktop Sidebar — fixed position via CSS */}
         <div className="tn-sidebar"><SidebarContent {...sidebarProps} /></div>
 
         {/* Mobile overlay */}
@@ -418,7 +374,7 @@ export default function Layout({ user, onLogout }) {
         </div>
 
         {/* Main Content */}
-        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: 24, background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: 24, background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh' }}>
           {/* Mobile Hamburger Header */}
           <div className="tn-hamburger" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, background: '#032D60', borderRadius: 12, padding: '10px 14px' }}>
             <button onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
