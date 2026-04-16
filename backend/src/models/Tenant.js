@@ -11,7 +11,7 @@ const tenantSchema = new mongoose.Schema({
 
   plan: {
     type   : String,
-    enum   : ['trial', 'starter', 'growth', 'agency', 'basic', 'pro'],
+    enum   : ['free', 'trial', 'starter', 'basic', 'growth', 'pro', 'agency', 'enterprise'],
     default: 'trial',
   },
 

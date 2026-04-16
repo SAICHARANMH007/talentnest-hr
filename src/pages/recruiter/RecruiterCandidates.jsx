@@ -103,20 +103,20 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
   return (
     <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
           <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
             {(c.name || '?')[0].toUpperCase()}
           </div>
-          <div>
-            <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{c.name}</div>
-            {c.title && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1 }}>{c.title}</div>}
-            <div style={{ display: 'flex', gap: 10, marginTop: 3, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+            {c.title && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
               {c.location && <span style={{ color: '#706E6B', fontSize: 11 }}>📍 {c.location}</span>}
               {exp > 0 && <span style={{ color: '#706E6B', fontSize: 11 }}>⏱ {exp}y exp</span>}
-              {c.email && <span style={{ color: '#706E6B', fontSize: 11 }}>✉ {c.email}</span>}
               {c.phone && <span style={{ color: '#706E6B', fontSize: 11 }}>📞 {c.phone}</span>}
             </div>
+            {c.email && <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✉ {c.email}</div>}
           </div>
         </div>
         <button onClick={() => onViewResume(c)} style={{ ...btnG, padding: '6px 14px', fontSize: 12, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0 }}>
@@ -161,17 +161,19 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
         </button>
       </div>
       {showNote && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div className="tn-note-row" style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <input
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="Add a note (e.g. Sent LinkedIn, called…)"
-            style={{ flex: 1, padding: '6px 10px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#181818', fontSize: 12, outline: 'none' }}
+            style={{ flex: 1, minWidth: 160, padding: '8px 10px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#181818', fontSize: 13, outline: 'none' }}
           />
-          <button onClick={markReached} disabled={marking} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '6px 14px', cursor: 'pointer', opacity: marking ? 0.6 : 1 }}>
-            {marking ? '…' : '✓ Mark'}
-          </button>
-          <button onClick={() => setShowNote(false)} style={{ background: '#FFFFFF', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 12, padding: '6px 10px', cursor: 'pointer' }}>✕</button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={markReached} disabled={marking} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '8px 14px', cursor: 'pointer', opacity: marking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              {marking ? '…' : '✓ Mark'}
+            </button>
+            <button onClick={() => setShowNote(false)} style={{ background: '#FFFFFF', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 13, padding: '8px 10px', cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
       )}
 
@@ -363,13 +365,13 @@ export default function RecruiterCandidates({ user }) {
 
       {/* Resume modal */}
       {detailUser && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-          <div style={{ width: '100%', maxWidth: 880, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ color: '#181818', fontWeight: 600 }}>📋 Resume — {detailUser.name}</div>
-              <button onClick={() => setDetailUser(null)} style={{ background: '#DDDBDA', border: '1px solid #C9C7C5', color: '#3E3E3C', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontWeight: 600 }}>✕ Close</button>
+        <div className="tn-resume-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+          <div className="tn-resume-modal" style={{ width: '100%', maxWidth: 880, maxHeight: 'calc(100dvh - 48px)', display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid #E5E7EB', flexShrink: 0, background: '#fff' }}>
+              <div style={{ color: '#181818', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📋 Resume — {detailUser.name}</div>
+              <button onClick={() => setDetailUser(null)} style={{ background: '#DDDBDA', border: '1px solid #C9C7C5', color: '#3E3E3C', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontWeight: 600, flexShrink: 0, marginLeft: 12 }}>✕ Close</button>
             </div>
-            <div style={{ border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <ResumeCard candidate={detailUser} />
             </div>
           </div>
@@ -442,7 +444,7 @@ export default function RecruiterCandidates({ user }) {
 
           {searched && results.length > 0 && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div className="tn-bulk-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>
                   ✅ {results.length} CANDIDATE{results.length !== 1 ? 'S' : ''} FOUND
                 </div>

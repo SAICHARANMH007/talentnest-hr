@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
+const Candidate = require('../models/Candidate');
 const Tenant = require('../models/Tenant');
 const RefreshToken = require('../models/RefreshToken');
 const { authMiddleware, authenticate } = require('../middleware/auth');
@@ -74,6 +75,21 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         role,
         isActive: true,
       }], { session });
+
+      // 3. Auto-create Candidate profile for self-registered job seekers so the
+      //    recruiter pipeline (Application.candidateId → Candidate) works immediately.
+      if (role === 'candidate') {
+        const existing = await Candidate.findOne({ email: email.toLowerCase().trim(), tenantId: tenant[0]._id }).session(session);
+        if (!existing) {
+          await Candidate.create([{
+            tenantId: tenant[0]._id,
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            phone: req.body.phone || '',
+            source: 'platform',
+          }], { session });
+        }
+      }
 
       result = { tenant: tenant[0], user: user[0] };
     });
@@ -404,6 +420,19 @@ router.post('/google', loginLimiter, asyncHandler(async (req, res) => {
       role,
       isActive: true,
     });
+
+    // Auto-create Candidate profile for Google-authenticated candidates
+    if (role === 'candidate') {
+      const existingCandidate = await Candidate.findOne({ email: cleanEmail, tenantId: tenant._id });
+      if (!existingCandidate) {
+        await Candidate.create({
+          tenantId: tenant._id,
+          name: payload.name,
+          email: cleanEmail,
+          source: 'platform',
+        });
+      }
+    }
   }
 
   await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });

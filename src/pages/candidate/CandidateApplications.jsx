@@ -55,8 +55,8 @@ function ApplicationStepper({ app }) {
   }
 
   return (
-    <nav aria-label="Application progress" style={{ marginTop: 14, marginBottom: 4, overflowX: 'auto' }}>
-      <ol role="list" style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
+    <nav aria-label="Application progress" className="tn-app-stepper" style={{ marginTop: 14, marginBottom: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <ol role="list" style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', gap: 0, listStyle: 'none', margin: 0, padding: '0 0 2px' }}>
         {STEPPER_STAGES.map((stage, i) => {
           const isVisited = visitedStages.has(stage.id) && i <= currentIndex;
           const isCurrent = stage.id === app.stage;
@@ -122,7 +122,7 @@ export default function CandidateApplications({ user }) {
 
   useEffect(() => {
     setLoad(true);
-    api.getApplications({ candidateId: user.id })
+    api.getMyApplications()
       .then(raw => {
         const appList = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
         setApps(appList);
@@ -210,7 +210,7 @@ export default function CandidateApplications({ user }) {
       )}
 
       {/* Main tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DDDBDA' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DDDBDA', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
         {[
           { id: 'applications', label: '📋 Applications', count: apps.length },
           { id: 'invites',      label: '📧 Invitations',  count: invites.length, badge: pendingInvites.length },
@@ -253,8 +253,8 @@ export default function CandidateApplications({ user }) {
             const job = inv.jobId || inv.job;
             return (
               <div key={inv.id || inv._id} style={{ ...card, border: `1px solid ${st.color}33` }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
                     {job && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
                     <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3 }}>Invited {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : ''}</div>
@@ -309,8 +309,8 @@ export default function CandidateApplications({ user }) {
 
           {/* Withdraw confirmation modal */}
           {confirmId && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-              <div style={{ background: '#fff', borderRadius: 20, maxWidth: 400, width: '100%', maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', textAlign: 'center', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
+            <div className="tn-drill-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
+              <div className="tn-confirm-modal" style={{ background: '#fff', borderRadius: 20, maxWidth: 400, width: '100%', maxHeight: 'calc(100dvh - 48px)', display: 'flex', flexDirection: 'column', textAlign: 'center', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
                 <div style={{ background: 'linear-gradient(135deg,#BA0517,#9B0514)', padding: '20px 24px' }}>
                   <div style={{ fontSize: 32, marginBottom: 6 }}>⚠️</div>
                   <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 800, margin: 0 }}>Withdraw Application?</h3>
@@ -355,8 +355,8 @@ export default function CandidateApplications({ user }) {
 
                 return (
                   <div key={appId} style={{ ...card, border: `1px solid ${s.color}22` }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
-                      <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{jobTitle}</div>
                         <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>
                           {jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}

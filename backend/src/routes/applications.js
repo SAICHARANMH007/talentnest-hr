@@ -207,8 +207,32 @@ router.post('/public', asyncHandler(async (req, res) => {
 
 // POST /api/applications — internal apply
 router.post('/', ...guard, asyncHandler(async (req, res) => {
-  const { jobId, candidateId, coverLetter, screeningAnswers } = req.body;
-  if (!jobId || !candidateId) throw new AppError('jobId and candidateId are required.', 400);
+  let { jobId, candidateId, coverLetter, screeningAnswers } = req.body;
+  if (!jobId) throw new AppError('jobId is required.', 400);
+
+  // Self-apply: candidate users have a User record but may not have a Candidate record.
+  // Auto-create one linked by email so applications are trackable in the recruiter pipeline.
+  if (req.user.role === 'candidate') {
+    let selfCandidate = await Candidate.findOne({
+      email: req.user.email,
+      tenantId: req.user.tenantId,
+      deletedAt: null,
+    });
+    if (!selfCandidate) {
+      selfCandidate = await Candidate.create({
+        tenantId: req.user.tenantId,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone || '',
+        source: 'platform',
+        skills: Array.isArray(req.user.skills) ? req.user.skills : [],
+        location: req.user.location || '',
+      });
+    }
+    candidateId = selfCandidate._id;
+  }
+
+  if (!candidateId) throw new AppError('candidateId is required.', 400);
 
   const [job, candidate] = await Promise.all([
     Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
@@ -315,13 +339,22 @@ router.post('/invite', ...guard,
 );
 
 // GET /api/applications/mine — candidate's own applications
+// Looks up the Candidate document by the user's email so self-registered candidates
+// (who are User records, not Candidate records) can see their applications.
 router.get('/mine', ...guard,
   allowRoles('candidate'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
-    const filter = { candidateId: req.user.id, deletedAt: null };
+    // Find the Candidate document linked to this user by email
+    const candidateDoc = await Candidate.findOne({
+      email: req.user.email,
+      tenantId: req.user.tenantId,
+      deletedAt: null,
+    }).lean();
+    if (!candidateDoc) return res.json(paginatedResponse([], 0, limit, page));
+    const filter = { candidateId: candidateDoc._id, deletedAt: null };
     const [apps, total] = await Promise.all([
-      Application.find(filter).populate('jobId', 'title location jobType').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Application.find(filter).populate('jobId', 'title location jobType company').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Application.countDocuments(filter),
     ]);
     res.json(paginatedResponse(apps.map(normalizeApp), total, limit, page));

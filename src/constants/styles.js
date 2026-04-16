@@ -4,7 +4,7 @@ export const card = {
   background: '#FFFFFF',
   border: '1px solid #E5E7EB',
   borderRadius: 12,
-  padding: 24,
+  padding: 'clamp(14px, 2.5vw, 24px)',
   boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
 };
 

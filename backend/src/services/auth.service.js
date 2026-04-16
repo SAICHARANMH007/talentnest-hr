@@ -35,11 +35,13 @@ class AuthService {
   }
 
   /**
-   * Verify if a domain is registered and active
+   * Verify if a domain is registered and active.
+   * Accepts either a bare domain (e.g. "talentnesthr.com") or an email address.
    */
   async verifyDomain(email) {
-    const domain = this.emailDomain(email);
-    if (!domain) throw new AppError('Invalid email address.', 400);
+    // Accept bare domain (no @) or extract domain from email
+    const domain = email?.includes('@') ? this.emailDomain(email) : email?.trim().toLowerCase().replace(/^www\./i, '');
+    if (!domain) throw new AppError('Invalid email or domain.', 400);
 
     const domainRegex = { $regex: `(^|www\\.)${domain.replace(/\./g, '\\.')}$`, $options: 'i' };
 

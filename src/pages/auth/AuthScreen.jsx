@@ -103,8 +103,8 @@ function OtpScreen({ email, onVerified, onBack }) {
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-const BG = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #060d1a 0%, #0d1e3d 55%, #0a2a52 100%)', padding: 20, fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif" };
-const CARD = { background: '#ffffff', boxShadow: '0 24px 64px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: '36px 40px', width: '100%', maxWidth: 460 };
+const BG = { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #060d1a 0%, #0d1e3d 55%, #0a2a52 100%)', padding: 20, fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", overflowY: 'auto' };
+const CARD = { background: '#ffffff', boxShadow: '0 24px 64px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: 460, boxSizing: 'border-box' };
 const INP = { width: '100%', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, color: '#0f172a', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.2s' };
 const BTN_P = { background: 'linear-gradient(135deg, #0176D3, #014486)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, padding: '13px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' };
 const BTN_G = { background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 12, color: '#374151', fontSize: 13, fontWeight: 500, padding: '11px 20px', cursor: 'pointer', transition: 'all 0.2s' };
@@ -143,11 +143,11 @@ function EntryScreen({ onSelect, navigate }) {
         <p style={{ color: 'rgba(147,197,253,0.9)', fontSize: 15, margin: 0 }}>AI-Powered Recruitment Platform</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.5s 0.1s ease both', opacity: 0, animationFillMode: 'forwards' }}>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.5s 0.1s ease both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 540 }}>
         {/* Job Seeker Card */}
         <button
           onClick={() => onSelect('candidate')}
-          style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 20, padding: '32px 36px', width: 240, cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
+          style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 20, padding: '32px 24px', width: 'min(240px, 100%)', flex: '1 1 200px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(1,118,211,0.14)'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.6)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(1,118,211,0.2)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(1,118,211,0.06)'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.3)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
         >
@@ -162,7 +162,7 @@ function EntryScreen({ onSelect, navigate }) {
         {/* Employer Card */}
         <button
           onClick={() => onSelect('employer')}
-          style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 20, padding: '32px 36px', width: 240, cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
+          style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 20, padding: '32px 24px', width: 'min(240px, 100%)', flex: '1 1 200px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.14)'; e.currentTarget.style.borderColor = 'rgba(37,99,235,0.6)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(37,99,235,0.2)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.06)'; e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
         >
@@ -305,7 +305,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   );
 
   return (
-    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 40, paddingBottom: 40 }}>
+    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
         {/* Header */}
@@ -545,14 +545,24 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     setDC(true);
     try {
       const r = await api.verifyDomain(clean);
-      // If platform domain isn't in DB yet (backend still starting), treat it as found
-      if (!r.found && clean === PLATFORM_DOMAIN) {
+      // Backend returns { success, data: { exists, domain, organization: { name, logo, status } } }
+      // Normalize to { found, org: { name, plan, status }, suspended }
+      const d = r?.data || r;
+      const exists = d?.exists ?? d?.found ?? false;
+      const org = d?.organization || d?.org || null;
+      const suspended = org?.status === 'suspended';
+      const normalized = {
+        found: exists,
+        org: org ? { name: org.name, plan: org.plan || org.status || 'active', status: org.status, logo: org.logo } : null,
+        suspended,
+      };
+      if (!normalized.found && clean === PLATFORM_DOMAIN) {
         setOrgInfo({ found: true, org: { name: 'TalentNest HR', plan: 'enterprise', status: 'active' }, suspended: false });
       } else {
-        setOrgInfo(r);
+        setOrgInfo(normalized);
       }
     } catch {
-      // Network error — if it's the platform domain, don't block login
+      // Network error or domain not found — if it's the platform domain, don't block login
       if ((url || '').replace(/^www\./i, '').toLowerCase().startsWith(PLATFORM_DOMAIN)) {
         setOrgInfo({ found: true, org: { name: 'TalentNest HR', plan: 'enterprise', status: 'active' }, suspended: false });
       } else {
@@ -626,7 +636,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   );
 
   return (
-    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 40, paddingBottom: 40 }}>
+    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
 

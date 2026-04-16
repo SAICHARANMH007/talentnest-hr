@@ -5,6 +5,11 @@ export const applicationService = {
     const r = await req('GET', `/applications/${appId}`);
     return r?.data || r;
   },
+  // For authenticated candidates — uses the /mine endpoint which auto-links via email
+  async getMyApplications() {
+    const r = await req('GET', '/applications/mine');
+    return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+  },
   async getApplications({ jobId, candidateId, stage, limit } = {}) {
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);

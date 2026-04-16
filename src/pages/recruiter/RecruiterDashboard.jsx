@@ -291,7 +291,7 @@ export default function RecruiterDashboard({ user }) {
                 const s = SM[a.stage]||{color:"#0176D3",label:a.stage,icon:"•"};
                 const cand = a.candidateId;
                 return (
-                  <div key={a.id} onClick={() => cand ? setDrawerUser(cand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:"rgba(1,118,211,0.04)", borderRadius:10, border:"1px solid rgba(1,118,211,0.15)", cursor:"pointer" }}
+                  <div key={a.id} onClick={() => cand ? setDrawerUser(cand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(1,118,211,0.04)", borderRadius:10, border:"1px solid rgba(1,118,211,0.15)", cursor:"pointer", flexWrap:"wrap" }}
                     onMouseEnter={e => e.currentTarget.style.background="rgba(1,118,211,0.08)"}
                     onMouseLeave={e => e.currentTarget.style.background="rgba(1,118,211,0.04)"}>
                     <div style={{ width:36,height:36,borderRadius:"50%",background:"#0176D3",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:14,flexShrink:0 }}>
@@ -335,7 +335,7 @@ export default function RecruiterDashboard({ user }) {
               const invEmail = invCand?.email || '';
               const invJob = inv.jobId?.title || '';
               return (
-              <div key={inv.id} onClick={() => invCand ? setDrawerUser(invCand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background:"rgba(46,132,74,0.04)", borderRadius:10, border:"1px solid rgba(46,132,74,0.2)", cursor:"pointer" }}
+              <div key={inv.id} onClick={() => invCand ? setDrawerUser(invCand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(46,132,74,0.04)", borderRadius:10, border:"1px solid rgba(46,132,74,0.2)", cursor:"pointer", flexWrap:"wrap" }}
                 onMouseEnter={e => e.currentTarget.style.background="rgba(46,132,74,0.1)"}
                 onMouseLeave={e => e.currentTarget.style.background="rgba(46,132,74,0.04)"}>
                 <div style={{ width:36, height:36, borderRadius:"50%", background:"#2E844A", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:700, fontSize:14, flexShrink:0 }}>
@@ -373,7 +373,7 @@ export default function RecruiterDashboard({ user }) {
             const s = SM[a.stage]||{color:"#0176D3",label:a.stage};
             const candName = a.candidateId?.name || a.candidateName || 'Candidate';
             return (
-              <div key={a.id || a._id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"#FAFAFA", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer" }}>
+              <div key={a.id || a._id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#FAFAFA", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer", flexWrap:"wrap" }}>
                 <ActivityDot stage={a.stage} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -394,19 +394,19 @@ export default function RecruiterDashboard({ user }) {
 
       {/* ── Drill-down Overlay ── */}
       {drillDown && (
-        <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'32px 20px', overflowY:'auto', background:'rgba(5,13,26,0.45)', backdropFilter:'blur(8px)' }} onClick={e => { if (e.target === e.currentTarget) setDrillDown(null); }}>
-          <div style={{ width:'100%', maxWidth:720, background:'#fff', borderRadius:24, position:'relative', display:'flex', flexDirection:'column', margin:'auto 0', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
-            <div style={{ padding:'20px 28px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <h3 style={{ margin:0, fontSize:20, fontWeight:800, color:'#0A1628' }}>{drillDown.title}</h3>
-              <button onClick={() => setDrillDown(null)} style={{ width:36, height:36, border:'none', background:'#F8FAFC', borderRadius:10, cursor:'pointer', fontSize:16 }}>✕</button>
+        <div className="tn-drill-overlay" style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', overflowY:'auto', background:'rgba(5,13,26,0.45)', backdropFilter:'blur(8px)' }} onClick={e => { if (e.target === e.currentTarget) setDrillDown(null); }}>
+          <div className="tn-drill-modal" style={{ width:'100%', maxWidth:720, background:'#fff', borderRadius:24, position:'relative', display:'flex', flexDirection:'column', maxHeight:'calc(100dvh - 48px)', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'16px clamp(16px,4vw,28px)', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+              <h3 style={{ margin:0, fontSize:'clamp(15px,4vw,20px)', fontWeight:800, color:'#0A1628', minWidth:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{drillDown.title}</h3>
+              <button onClick={() => setDrillDown(null)} style={{ width:36, height:36, border:'none', background:'#F8FAFC', borderRadius:10, cursor:'pointer', fontSize:16, flexShrink:0, marginLeft:12 }}>✕</button>
             </div>
-            <div style={{ flex:1, overflowY:'auto', padding:'12px 28px 28px' }}>
+            <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch', padding:'12px clamp(12px,4vw,28px) 28px' }}>
               {drillDown.items.length === 0 && <p style={{ color:'#94A3B8', textAlign:'center', padding:'40px 0' }}>No records found.</p>}
               {drillDown.items.map((item, idx) => {
                 const s = SM[item.stage] || { color:'#0176D3', label: item.stage };
                 const cand = item.candidateId;
                 return (
-                  <div key={item.id || item._id || idx} onClick={() => cand ? setDrawerUser(cand) : null} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #F8FAFC', cursor: cand ? 'pointer' : 'default' }}>
+                  <div key={item.id || item._id || idx} onClick={() => cand ? setDrawerUser(cand) : null} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid #F8FAFC', cursor: cand ? 'pointer' : 'default', flexWrap:'wrap' }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:13, flexShrink:0 }}>
                       {(item._displayName || cand?.name || 'C')[0].toUpperCase()}
                     </div>

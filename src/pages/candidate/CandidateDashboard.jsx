@@ -28,7 +28,7 @@ export default function CandidateDashboard({ user }) {
     let cancelled = false;
     Promise.all([
       api.getMatchedJobs(user.id),
-      api.getApplications({ candidateId:user.id }),
+      api.getMyApplications(),
       api.getUser(user.id),
     ]).then(([j,a,p]) => { if (!cancelled) { setJobs(Array.isArray(j)?j:(j?.data||[])); setApps(Array.isArray(a)?a:(a?.data||[])); setProfile(p?.data||p); } }).catch(() => { if (!cancelled) { setJobs([]); setApps([]); } }).finally(() => { if (!cancelled) setLoad(false); });
     return () => { cancelled = true; };
@@ -84,12 +84,12 @@ export default function CandidateDashboard({ user }) {
         onClick={() => navigate("/app/profile")}
         style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:12, padding:"12px 18px", marginBottom:20, cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
       >
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, flexWrap:"wrap", gap:4 }}>
           <span style={{ fontSize:12, fontWeight:700, color:profilePct>=80?"#2E844A":profilePct>=50?"#A07E00":"#BA0517" }}>
             {profilePct>=80?"🟢":profilePct>=50?"🟡":"🔴"} Profile Strength — {profilePct}%
           </span>
           <span style={{ fontSize:11, color:"#706E6B" }}>
-            {profilePct===100 ? "✨ Perfect profile! You'll appear in top searches." : firstMissing ? `Add ${firstMissing.label} to boost your match score →` : "Almost there!"}
+            {profilePct===100 ? "✨ Perfect! You'll appear in top searches." : firstMissing ? `Add ${firstMissing.label} to boost →` : "Almost there!"}
           </span>
         </div>
         <div style={{ background:"#F3F4F6", borderRadius:99, height:8, overflow:"hidden" }}>
@@ -97,7 +97,7 @@ export default function CandidateDashboard({ user }) {
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/applications")}>
           <KpiCard icon="📋" label="Applications Sent"  value={appliedCount}  color="#0176D3" trend={12} sparkValues={[1,2,2,3,3,appliedCount]} />
         </div>
@@ -112,14 +112,14 @@ export default function CandidateDashboard({ user }) {
         </div>
       </div>
 
-      <div className="dash-split" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginBottom:20 }}>
+      <div className="dash-split" style={{ marginBottom:20 }}>
         {nextInterview ? (
           <div
             onClick={() => navigate("/app/applications")}
             style={{ ...card, background:"linear-gradient(135deg,rgba(245,158,11,0.12),rgba(251,191,36,0.06))", border:"1px solid rgba(245,158,11,0.3)", cursor:"pointer" }}
           >
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-              <div>
+            <div className="tn-interview-hdr" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ color:"#F59E0B", fontSize:11, fontWeight:700, margin:"0 0 4px", letterSpacing:1 }}>⏰ NEXT INTERVIEW</p>
                 <p style={{ color:"#181818", fontWeight:700, fontSize:16, margin:"0 0 2px" }}>{nextInterview.jobId?.title}</p>
                 <p style={{ color:"#0176D3", fontSize:12, margin:"0 0 10px" }}>{nextInterview.jobId?.companyName}</p>
@@ -138,7 +138,7 @@ export default function CandidateDashboard({ user }) {
                   );
                 })()}
               </div>
-              <div style={{ textAlign:"center" }}>
+              <div className="tn-interview-countdown" style={{ textAlign:"center", flexShrink:0 }}>
                 <p style={{ color:"#F59E0B", fontSize:10, margin:"0 0 6px", fontWeight:600 }}>COUNTDOWN</p>
                 <InterviewCountdown date={nextInterview.interviewRounds?.[0]?.scheduledAt} time={null} />
               </div>
@@ -205,18 +205,16 @@ export default function CandidateDashboard({ user }) {
           });
           return (
             <div key={String(j._id || j.id)} onClick={() => navigate("/app/ai-match")} style={{ ...card, border:"1px solid #F3F2F2", cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>
-                <div style={{ flex:1 }}>
+              <div className="tn-job-card-row" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+                <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>
                     <span style={{ color:"#181818", fontWeight:600, fontSize:14 }}>{j.title}</span>
                     <Badge label={`${j.matchScore}% match`} color={j.matchScore>=80?"#2E844A":j.matchScore>=60?"#A07E00":"#BA0517"} />
-                    <Badge label={`⚡ ${j.urgency}`} color={j.urgency==="High"?"#BA0517":j.urgency==="Medium"?"#A07E00":"#2E844A"} />
                     {applied && <Badge label="✓ Applied" color="#2E844A" />}
                   </div>
                   <div style={{ color:"#0176D3", fontSize:12 }}>{j.companyName || j.company} · {j.location}</div>
-                  {j.description && <p style={{ color:"#706E6B", fontSize:12, marginTop:4, margin:"4px 0 0", lineHeight:1.5 }}>{j.description}</p>}
                   <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:8 }}>
-                    {(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
+                    {(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0,4).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
                   </div>
                   <div style={{ marginTop:10 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
@@ -226,7 +224,7 @@ export default function CandidateDashboard({ user }) {
                     <HorizBar value={j.matchScore} max={100} color={j.matchScore>=80?"#2E844A":j.matchScore>=60?"#A07E00":"#0176D3"} height={4} />
                   </div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); apply(j._id || j.id); }} disabled={applied} style={{ ...btnP, opacity:applied?0.5:1, cursor:applied?"default":"pointer" }}>
+                <button onClick={e => { e.stopPropagation(); apply(j._id || j.id); }} disabled={applied} style={{ ...btnP, opacity:applied?0.5:1, cursor:applied?"default":"pointer", flexShrink:0 }}>
                   {applied ? "Applied" : "Apply"}
                 </button>
               </div>
