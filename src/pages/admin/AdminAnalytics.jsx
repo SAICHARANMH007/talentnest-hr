@@ -5,7 +5,6 @@ import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
 import DonutChart from '../../components/charts/DonutChart.jsx';
-import KpiCard from '../../components/charts/KpiCard.jsx';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
@@ -34,6 +33,19 @@ const sectionTitle = {
 const STAGES      = MASTER_STAGES.map(s => s.id);
 const STAGE_LABELS = Object.fromEntries(MASTER_STAGES.map(s => [s.id, s.label]));
 const STAGE_COLORS = MASTER_STAGES.map(s => s.color);
+
+// Maps DB title-case currentStage values → frontend lowercase stage IDs
+// used in STAGES/SM constants so charts and pipeline labels stay consistent.
+const DB_TO_FRONTEND_STAGE = {
+  'Applied'          : 'applied',
+  'Screening'        : 'screening',
+  'Shortlisted'      : 'shortlisted',
+  'Interview Round 1': 'interview_scheduled',
+  'Interview Round 2': 'interview_completed',
+  'Offer'            : 'offer_extended',
+  'Hired'            : 'selected',
+  'Rejected'         : 'rejected',
+};
 
 const PERIODS = [
   { label: 'Last 7 days',  days: 7 },
@@ -146,9 +158,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
   // ── Sort state for recruiter perf table ──────────────────────────────────
   const [recSort, setRecSort] = useState({ col: 'hired', dir: 'desc' });
 
-  // ── NPS ───────────────────────────────────────────────────────────────────
-  const [npsData, setNpsData] = useState(null);
-
   // ── Export loading ────────────────────────────────────────────────────────
   const [exporting, setExporting] = useState({});
 
@@ -181,7 +190,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
       })
       .catch(err => setToast('❌ Failed to load analytics: ' + (err.message || 'Unknown error')))
       .finally(() => setLoading(false));
-    api.getNpsStats().then(r => setNpsData(r?.data || null)).catch(() => {});
   }, [period]);
 
   useEffect(() => { load(); }, [load]);
@@ -195,8 +203,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const funnelSection     = useSection(useCallback(() => api.getFunnel(dateParams), [dateParams]));
   const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown(dateParams), [dateParams]));
   const tthSection        = useSection(useCallback(() => api.getTimeToHire(dateParams), [dateParams]));
-  const velocitySection   = useSection(useCallback(() => api.getStageVelocity(dateParams), [dateParams]));
-  const offerSection      = useSection(useCallback(() => api.getOfferAcceptance(dateParams), [dateParams]));
   const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance(dateParams), [dateParams]));
   const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis(dateParams), [dateParams]));
 
@@ -294,17 +300,28 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allCandidates]);
 
   const stageBreakdown = useMemo(() => {
-    if (analyticsData?.byStage) {
+    if (analyticsData?.byStage && analyticsData.byStage.length > 0) {
+      // Backend returns title-case currentStage values ('Applied', 'Interview Round 1', etc.)
+      // Map them to frontend lowercase IDs before matching against STAGES.
+      const countMap = {};
+      analyticsData.byStage.forEach(x => {
+        const fId = DB_TO_FRONTEND_STAGE[x.stage] || x.stage?.toLowerCase().replace(/\s+/g, '_');
+        if (fId) countMap[fId] = (countMap[fId] || 0) + x.count;
+      });
       return STAGES.map((s, i) => ({
         label: STAGE_LABELS[s] || s,
-        value: analyticsData.byStage.find(x => x.stage === s)?.count || 0,
+        value: countMap[s] || 0,
         color: STAGE_COLORS[i],
         stageKey: s,
       }));
     }
+    // Fallback: compute from local allApps sample (normalizeApp already sets a.stage)
     return STAGES.map((s, i) => ({
       label: STAGE_LABELS[s],
-      value: allApps.filter(a => a.stage === s || a.currentStage === s).length,
+      value: allApps.filter(a => {
+        const fId = a.stage || DB_TO_FRONTEND_STAGE[a.currentStage];
+        return fId === s;
+      }).length,
       color: STAGE_COLORS[i],
       stageKey: s,
     }));
@@ -437,8 +454,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
         <TrendCard label="Total Candidates" value={stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
         <TrendCard label="Active Job Postings" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
-        <TrendCard label="New Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
-          sub={PERIODS[period].days ? `+${Math.round(stats.totalApps / PERIODS[period].days)} avg/day` : `${stats.totalApps} total`}
+        <TrendCard label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
+          sub={`${filteredApps.length} in ${PERIODS[period].label.toLowerCase()}`}
           onClick={openAppsDrill} />
         <TrendCard label="Total Placements" value={stats.placements} icon="🎉" color="#10b981" onClick={openPlacementsDrill} />
         <TrendCard label="Fill Reliability" value={`${stats.fillRate}%`} icon="📈" color="#032D60" />
@@ -633,63 +650,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* ── Offer Acceptance KPIs ── */}
-      <div style={{ marginBottom: 24 }}>
-        {offerSection.loading && <SectionSkeleton />}
-        {offerSection.error   && <SectionError message={offerSection.error} onRetry={offerSection.reload} />}
-        {!offerSection.loading && !offerSection.error && (() => {
-          const d = offerSection.data?.data || {};
-          return (
-            <div style={{ ...glassPanel }}>
-              <h3 style={sectionTitle}>Offer Acceptance</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
-                <KpiCard icon="📤" label="Offers Sent"     value={d.offersSent ?? 0}     color="#0176D3" />
-                <KpiCard icon="✅" label="Offers Accepted" value={d.offersAccepted ?? 0} color="#10b981" />
-                <KpiCard icon="📊" label="Acceptance Rate"  value={`${d.acceptanceRate ?? 0}%`} color="#7c3aed" />
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-
-      <div className="analytics-2col">
-
-        {/* ── Stage Velocity ── */}
-        <div style={glassPanel}>
-          <h3 style={sectionTitle}>Stage Velocity (Avg Hours per Stage)</h3>
-          {velocitySection.loading && <SectionSkeleton />}
-          {velocitySection.error   && <SectionError message={velocitySection.error} onRetry={velocitySection.reload} />}
-          {!velocitySection.loading && !velocitySection.error && (() => {
-            const rows = Array.isArray(velocitySection.data?.data) ? velocitySection.data.data : [];
-            if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>Not enough stage transition data yet</div>;
-            const max = Math.max(...rows.map(r => r.avgHours), 1);
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {rows.map(row => {
-                  const isHigh = row.avgHours > 72;
-                  const isMed  = !isHigh && row.avgHours > 48;
-                  const color  = isHigh ? '#ef4444' : isMed ? '#F59E0B' : '#10b981';
-                  return (
-                    <div key={row.stage}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0A1628' }}>{row.stage}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color }}>
-                          {row.avgHours < 24 ? `${row.avgHours}h` : `${(row.avgHours / 24).toFixed(1)}d`}
-                          <span style={{ color: '#94A3B8', fontWeight: 400 }}> ({row.sampleCount} moves)</span>
-                        </span>
-                      </div>
-                      <HorizBar value={row.avgHours} max={max} color={color} height={8} />
-                    </div>
-                  );
-                })}
-                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>🟡 &gt;48h · 🔴 &gt;72h indicates SLA risk</div>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* ── Dropout Analysis ── */}
-        <div style={glassPanel}>
+      {/* ── Dropout Analysis ── */}
+      <div style={{ ...glassPanel, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0A1628' }}>Dropout Analysis</h3>
             <button
@@ -719,7 +681,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
               </div>
             );
           })()}
-        </div>
       </div>
 
       {/* ── Time to Hire ── */}
