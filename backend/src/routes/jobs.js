@@ -66,6 +66,8 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
   if (req.user.role === 'recruiter') {
     filter.assignedRecruiters = req.user.id;
+  } else if (req.query.recruiterId && ['admin', 'super_admin'].includes(req.user.role)) {
+    filter.assignedRecruiters = req.query.recruiterId;
   }
   if (req.query.status) filter.status = req.query.status;
   if (req.query.search) filter.title  = { $regex: escRe(req.query.search), $options: 'i' };

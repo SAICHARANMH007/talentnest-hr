@@ -42,8 +42,8 @@ export default function SuperAdminPlatform({ onNavigate }) {
       api.getAuditLogs().catch(() => []),
       // High-accuracy counts
       api.getUserCount().catch(() => 0),
-      api.getJobs({ limit: 1 }).then(r => r?.total || r?.length || 0).catch(() => 0),
-      api.getApplications({ limit: 1 }).then(r => r?.total || r?.length || 0).catch(() => 0),
+      api.getJobs().then(r => r?.total || (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
+      api.getApplications({ limit: 1 }).then(r => r?.total || 0).catch(() => 0),
     ]).then(([o, u, logs, uCount, jCount, aCount]) => {
       const orgList = unwrap(o);
       setOrgs(orgList);
@@ -51,9 +51,9 @@ export default function SuperAdminPlatform({ onNavigate }) {
       setAuditLogs(unwrap(logs));
       setCounts({
         orgs: orgList.length,
-        users: typeof uCount === 'number' ? uCount : (uCount?.data || 0),
-        jobs: jCount,
-        apps: aCount
+        users: typeof uCount === 'number' ? uCount : (uCount?.count || uCount?.data || 0),
+        jobs: typeof jCount === 'number' ? jCount : (jCount?.total || 0),
+        apps: typeof aCount === 'number' ? aCount : (aCount?.total || 0),
       });
     }).finally(() => setLoading(false));
   }, []);
@@ -235,7 +235,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {recentOrgs.map(org => (
-              <div key={org.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: '1px solid #F3F2F2' }}>
+              <div key={org.id || org._id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: '1px solid #F3F2F2' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🏢</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: '#181818', fontWeight: 600, fontSize: 13 }}>{org.name}</div>

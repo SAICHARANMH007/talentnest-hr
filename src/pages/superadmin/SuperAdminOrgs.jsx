@@ -70,7 +70,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
       const roleOrder = { super_admin: 0, admin: 1, recruiter: 2, candidate: 3 };
       list.sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9));
       setOrgUsers(list);
-    } catch (e) { console.error('Failed to load users', e); }
+    } catch { /* silently handled — error UI shown via empty state */ }
     setLoadingUsers(false);
   };
 

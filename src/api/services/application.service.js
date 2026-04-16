@@ -10,12 +10,13 @@ export const applicationService = {
     const r = await req('GET', '/applications/mine');
     return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
   },
-  async getApplications({ jobId, candidateId, stage, limit } = {}) {
+  async getApplications({ jobId, candidateId, stage, limit, recruiterId } = {}) {
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);
     if (candidateId) params.set('candidateId', candidateId);
     if (stage)       params.set('stage', stage);
     if (limit)       params.set('limit', limit);
+    if (recruiterId) params.set('recruiterId', recruiterId);
     const qs = params.toString();
     return req('GET', `/applications${qs ? `?${qs}` : ''}`);
   },
