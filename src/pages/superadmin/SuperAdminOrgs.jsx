@@ -13,7 +13,7 @@ const btnD  = { background: 'rgba(186,5,23,0.1)', border: '1px solid rgba(186,5,
 const PLAN_COLORS = { free: '#64748b', trial: '#F59E0B', starter: '#0176D3', growth: '#014486', enterprise: '#7c3aed' };
 const STATUS_COLORS = { active: '#2E844A', trial: '#A07E00', suspended: '#BA0517', inactive: '#706E6B' };
 
-const EMPTY_FORM = { name: '', domain: '', industry: '', size: '1-10', plan: 'trial', logo: '' };
+const EMPTY_FORM = { name: '', domain: '', industry: '', size: '1-10', plan: 'trial', logo: '', isStaffingAgency: false };
 const INVITE_EMPTY = { name: '', email: '' };
 
 function Lbl({ children, required }) {
@@ -33,14 +33,15 @@ function OrgAvatar({ org, size = 48 }) {
 
 function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
   const [editing, setEditing] = useState(false);
-  const [form, setForm]       = useState({ 
-    name: org.name || '', 
-    domain: org.domain || '', 
-    industry: org.industry || '', 
-    size: org.size || '1-10', 
+  const [form, setForm]       = useState({
+    name: org.name || '',
+    domain: org.domain || '',
+    industry: org.industry || '',
+    size: org.size || '1-10',
     logo: org.logo || '',
     plan: org.plan || 'trial',
-    status: org.status || 'active'
+    status: org.status || 'active',
+    isStaffingAgency: org.isStaffingAgency || false,
   });
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState('');
@@ -338,7 +339,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                   <h4 style={{ color: '#032D60', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 20, margin: '0 0 20px' }}>Update Organisation Profile</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
                     <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} />
-                    <Field label="Website / Domain" value={form.domain} onChange={v => sf('domain', v)} />
+                    <Field label="Company Domain" value={form.domain} onChange={v => sf('domain', v)} hint="e.g. company.com (www/https stripped automatically)" />
                     <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} />
                     <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
                       options={['1-10','11-50','51-200','201-500','500+'].map(s => ({value:s,label:s}))} placeholder="Select size" />
@@ -346,6 +347,16 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                       options={['trial','free','starter','growth','enterprise'].map(p => ({value:p,label:p.toUpperCase()}))} placeholder="Select plan" />
                     <Field label="Account Status" value={form.status} onChange={v => sf('status', v)}
                       options={['active','trial','suspended','inactive'].map(s => ({value:s,label:s.toUpperCase()}))} placeholder="Select status" />
+                  </div>
+                  {/* Staffing Agency toggle */}
+                  <div style={{ marginTop: 16, display: 'flex', alignItems: 'flex-start', gap: 12, background: form.isStaffingAgency ? 'rgba(1,118,211,0.06)' : '#F8FAFC', borderRadius: 10, padding: '12px 14px', border: `1px solid ${form.isStaffingAgency ? 'rgba(1,118,211,0.25)' : '#E2E8F0'}`, cursor: 'pointer' }} onClick={() => sf('isStaffingAgency', !form.isStaffingAgency)}>
+                    <div style={{ width: 36, height: 20, borderRadius: 10, background: form.isStaffingAgency ? '#0176D3' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0, position: 'relative', marginTop: 2 }}>
+                      <div style={{ position: 'absolute', top: 2, left: form.isStaffingAgency ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#181818' }}>Staffing Agency Organisation</div>
+                      <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>When enabled, this org gets full candidate-pool, job-posting, and client-request management capabilities.</div>
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -384,9 +395,16 @@ export default function SuperAdminOrgs() {
 
   const createOrg = async () => {
     if (!form.name) { setToast('❌ Organisation name is required'); return; }
+    if (!form.domain) { setToast('❌ Domain is required (e.g. company.com)'); return; }
+    // Client-side domain format check
+    const cleanDomain = form.domain.trim().toLowerCase()
+      .replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
+    if (!/^[a-z0-9][a-z0-9\-\.]{0,253}[a-z0-9]\.[a-z]{2,}$/.test(cleanDomain)) {
+      setToast('❌ Invalid domain format — use: company.com'); return;
+    }
     setSaving(true);
     try {
-      await api.createOrg(form);
+      await api.createOrg({ ...form, domain: cleanDomain });
       setShowCreate(false);
       setForm(EMPTY_FORM);
       setToast('✅ Organisation created!');
@@ -458,6 +476,7 @@ export default function SuperAdminOrgs() {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ background: PLAN_COLORS[org.plan] || '#64748b', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{(org.plan || 'free').toUpperCase()}</span>
                       <span style={{ background: `${STATUS_COLORS[org.status] || '#706E6B'}20`, color: STATUS_COLORS[org.status] || '#706E6B', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, border: `1px solid ${STATUS_COLORS[org.status] || '#706E6B'}40` }}>{(org.status || 'active').toUpperCase()}</span>
+                      {org.isStaffingAgency && <span style={{ background: 'rgba(124,58,237,0.12)', color: '#7c3aed', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, border: '1px solid rgba(124,58,237,0.3)' }}>AGENCY</span>}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -524,7 +543,17 @@ export default function SuperAdminOrgs() {
             </div>
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
               <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} placeholder="TechCorp India Pvt. Ltd." />
-              <Field label="Domain" value={form.domain} onChange={v => sf('domain', v)} placeholder="techcorp.in" hint="Used to scope data access for admins" />
+              <Field label="Company Domain" required value={form.domain} onChange={v => sf('domain', v)} placeholder="techcorp.in" hint="Employers use this domain to verify and log in (www/https stripped automatically)" />
+              {/* Staffing Agency Toggle */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: form.isStaffingAgency ? 'rgba(1,118,211,0.06)' : '#F8FAFC', borderRadius: 10, padding: '12px 14px', border: `1px solid ${form.isStaffingAgency ? 'rgba(1,118,211,0.25)' : '#E2E8F0'}`, cursor: 'pointer' }} onClick={() => sf('isStaffingAgency', !form.isStaffingAgency)}>
+                <div style={{ width: 36, height: 20, borderRadius: 10, background: form.isStaffingAgency ? '#0176D3' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0, position: 'relative', marginTop: 2 }}>
+                  <div style={{ position: 'absolute', top: 2, left: form.isStaffingAgency ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#181818' }}>Staffing Agency Organisation</div>
+                  <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>Enable if this org is a staffing agency — they get full candidate-pool, job-posting, and client-request features like the Super Admin.</div>
+                </div>
+              </div>
               <div>
                 <Field label="Logo URL" value={form.logo} onChange={v => sf('logo', v)} placeholder="https://company.com/logo.png" hint="Direct link to company logo image" />
                 {form.logo && <img src={form.logo} alt="logo preview" style={{ marginTop: 8, height: 40, borderRadius: 6, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />}

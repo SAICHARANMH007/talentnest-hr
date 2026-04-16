@@ -41,6 +41,11 @@ const orgSchema = new mongoose.Schema({
     avgTimeToHire  : { type: Number, default: 0 },
   },
 
+  // Organisation Type
+  // When true, this org is a staffing agency with full candidate-pool and job-posting access,
+  // mirroring the Super Admin's capabilities for their own clients.
+  isStaffingAgency: { type: Boolean, default: false },
+
   // Admin / Ownership
   adminId  : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdBy: { type: String }, // Internal/Legacy tracking

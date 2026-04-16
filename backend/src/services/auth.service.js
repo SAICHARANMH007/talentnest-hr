@@ -39,11 +39,22 @@ class AuthService {
    * Accepts either a bare domain (e.g. "talentnesthr.com") or an email address.
    */
   async verifyDomain(email) {
-    // Accept bare domain (no @) or extract domain from email
-    const domain = email?.includes('@') ? this.emailDomain(email) : email?.trim().toLowerCase().replace(/^www\./i, '');
+    // Accept bare domain, URL, or email — normalise to clean bare domain (e.g. "google.com")
+    let domain;
+    if (email?.includes('@')) {
+      domain = this.emailDomain(email);
+    } else {
+      domain = (email || '').trim().toLowerCase()
+        .replace(/^https?:\/\//i, '')
+        .replace(/^www\./i, '')
+        .split('/')[0]
+        .split('?')[0]
+        .replace(/\.$/, '');
+    }
     if (!domain) throw new AppError('Invalid email or domain.', 400);
 
-    const domainRegex = { $regex: `(^|www\\.)${domain.replace(/\./g, '\\.')}$`, $options: 'i' };
+    // Exact match (case-insensitive) — also accepts www-prefixed stored values
+    const domainRegex = { $regex: `^(www\\.)?${domain.replace(/\./g, '\\.')}$`, $options: 'i' };
 
     // Check Tenant first (primary collection used by registration + all real tenants)
     const tenant = await Tenant.findOne({
@@ -56,13 +67,14 @@ class AuthService {
     }
 
     // Fall back to Organization (super admin-created orgs)
+    // Include 'trial' status — newly created orgs start as trial and must still be login-accessible
     const org = await Organization.findOne({
       domain: domainRegex,
-      status: 'active',
-    }).select('name logoUrl status').lean();
+      status: { $in: ['active', 'trial'] },
+    }).select('name logoUrl status plan').lean();
 
     if (!org) return { exists: false, domain };
-    return { exists: true, domain, organization: { name: org.name, logo: org.logoUrl, status: org.status } };
+    return { exists: true, domain, organization: { name: org.name, logo: org.logoUrl, status: org.status, plan: org.plan } };
   }
 
   /**

@@ -10,6 +10,20 @@ const logger                = require('../middleware/logger');
 const Org = Organization; // Alias for cleaner code
 const router      = express.Router();
 
+/**
+ * Normalize a raw domain/URL to a clean bare domain (e.g. "google.com").
+ * Strips protocol, www, paths, and trailing slashes. Returns '' if empty.
+ */
+function normalizeDomain(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw.trim().toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .split('/')[0]
+    .split('?')[0]
+    .replace(/\.$/, '');
+}
+
 // GET /api/orgs — super_admin gets all, admin gets own org
 router.get('/', auth, async (req, res) => {
   try {
@@ -43,22 +57,50 @@ router.get('/', auth, async (req, res) => {
 // POST /api/orgs — super_admin creates org
 router.post('/', auth, allowRoles('super_admin'), async (req, res) => {
   try {
-    const { name, domain, industry, size, plan = 'trial' } = req.body;
+    const { name, industry, size, plan = 'trial', isStaffingAgency = false } = req.body;
     if (!name) return res.status(400).json({ error: 'Organisation name is required.' });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    // Normalize domain: strip protocol/www/paths and lowercase
+    const domain = normalizeDomain(req.body.domain);
+
+    // Validate domain format if provided
+    if (domain && !/^[a-z0-9][a-z0-9\-\.]{0,253}[a-z0-9]\.[a-z]{2,}$/.test(domain)) {
+      return res.status(400).json({ error: 'Invalid domain format. Use format: company.com' });
+    }
+
+    // Uniqueness check — prevent two orgs sharing the same domain
+    if (domain) {
+      const domainRegex = { $regex: `^${domain.replace(/\./g, '\\.')}$`, $options: 'i' };
+      const existing = await Organization.findOne({ domain: domainRegex }).lean();
+      if (existing) return res.status(409).json({ error: `Domain "${domain}" is already registered to "${existing.name}".` });
+    }
+
+    // Build a unique slug
+    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const crypto = require('crypto');
+    const slug = `${baseSlug}-${crypto.randomBytes(3).toString('hex')}`;
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
     const org = await Organization.create({
-      name, slug, domain: domain || '', industry: industry || '',
-      size: size || '1-10', plan: plan || 'trial',
-      status: 'trial', trialEndsAt,
+      name, slug,
+      domain,
+      industry: industry || '',
+      size: size || '1-10',
+      plan: plan || 'trial',
+      status: 'active',       // Active from day one — trial period tracked by trialEndsAt
+      trialEndsAt,
+      isStaffingAgency: !!isStaffingAgency,
       settings: {
         pipelineStages: ['applied','screening','shortlisted','interview_scheduled','interview_completed','offer_extended','selected','rejected'],
         brandColor: '#06b6d4',
+        features: isStaffingAgency
+          ? ['jobs','candidates','pipeline','ai_match','bulk_import','reports','assessments','candidate_requests']
+          : ['jobs','candidates','pipeline','ai_match','candidate_requests'],
       },
       createdBy: req.user.id,
     });
-    
-    logger.audit('Organization created', req.user.id, org._id, { name: org.name, slug: org.slug, plan: org.plan });
+
+    logger.audit('Organization created', req.user.id, org._id, { name: org.name, slug: org.slug, plan: org.plan, isStaffingAgency: org.isStaffingAgency });
     res.json(normalize(org));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }
 });
@@ -195,11 +237,23 @@ router.patch('/:id', auth, async (req, res) => {
 
     // Admins cannot change plan or status — only super_admin can change billing/permissions
     const allowed = req.user.role === 'super_admin'
-      ? ['name','domain','logo','industry','size','status','settings','plan','trialEndsAt']
+      ? ['name','domain','logo','industry','size','status','settings','plan','trialEndsAt','isStaffingAgency']
       : ['name','domain','logo','industry','size','settings'];
 
     const updates = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+    // Normalize domain on update — same rules as creation
+    if (updates.domain !== undefined) {
+      updates.domain = normalizeDomain(updates.domain);
+      if (updates.domain && !/^[a-z0-9][a-z0-9\-\.]{0,253}[a-z0-9]\.[a-z]{2,}$/.test(updates.domain)) {
+        return res.status(400).json({ error: 'Invalid domain format. Use format: company.com' });
+      }
+      if (updates.domain) {
+        const domainRegex = { $regex: `^${updates.domain.replace(/\./g, '\\.')}$`, $options: 'i' };
+        const conflict = await Org.findOne({ domain: domainRegex, _id: { $ne: req.params.id } }).lean();
+        if (conflict) return res.status(409).json({ error: `Domain "${updates.domain}" is already registered to "${conflict.name}".` });
+      }
+    }
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'No valid fields.' });
 
     // Deep-merge settings so partial updates (e.g. featureFlags only) don't wipe other settings fields
