@@ -382,6 +382,11 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
     const myJobs = await Job.find({ tenantId: req.user.tenantId, assignedRecruiters: req.user.id }).select('_id').lean();
     filter.jobId = { $in: myJobs.map(j => j._id) };
   }
+  // Filter by a specific recruiter's assigned jobs (used by analytics drill-down)
+  if (req.query.recruiterId && ['admin', 'super_admin'].includes(req.user.role)) {
+    const recJobs = await Job.find({ assignedRecruiters: req.query.recruiterId }).select('_id').lean();
+    filter.jobId = { $in: recJobs.map(j => j._id) };
+  }
   if (req.query.jobId) filter.jobId = req.query.jobId;
   if (req.query.stage) filter.currentStage = req.query.stage;
   if (req.query.status) filter.status = req.query.status;

@@ -388,8 +388,10 @@ export default function SuperAdminOrgs() {
 
   const load = async () => {
     setLoading(true);
-    try { const r = await api.getOrgs(); setOrgs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])); } catch { setOrgs([]); }
+    let list = [];
+    try { const r = await api.getOrgs(); list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []); setOrgs(list); } catch { setOrgs([]); }
     setLoading(false);
+    return list;
   };
   useEffect(() => { load(); }, []);
 
@@ -417,7 +419,7 @@ export default function SuperAdminOrgs() {
     if (!inviteForm.name || !inviteForm.email) { setToast('❌ Name and email required'); return; }
     setSaving(true);
     try {
-      await api.createUser({ name: inviteForm.name, email: inviteForm.email, role: 'admin', orgId: showInvite });
+      await api.createUser({ name: inviteForm.name, email: inviteForm.email, role: 'admin', tenantId: showInvite, orgId: showInvite });
       setShowInvite(null);
       setInviteForm(INVITE_EMPTY);
       setToast('✅ Admin invitation sent — they will receive an email to set their password');
@@ -433,9 +435,15 @@ export default function SuperAdminOrgs() {
         <OrgDetailView
           org={selectedOrg}
           onClose={() => setSelectedOrg(null)}
-          onRefresh={(keepOpen) => { 
-            load(); 
-            if (!keepOpen) setSelectedOrg(null); 
+          onRefresh={async (keepOpen) => {
+            const freshList = await load();
+            if (!keepOpen) {
+              setSelectedOrg(null);
+            } else {
+              // Update selectedOrg with the refreshed data so the detail view shows latest values
+              const fresh = freshList.find(o => String(o.id || o._id) === String(selectedOrg?.id || selectedOrg?._id));
+              if (fresh) setSelectedOrg(fresh);
+            }
           }}
           onInvite={(orgId) => { setShowInvite(orgId); }}
         />

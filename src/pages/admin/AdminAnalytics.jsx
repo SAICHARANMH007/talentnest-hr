@@ -498,13 +498,21 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 800, color: '#F59E0B' }}>{r.conversion}</div><div style={{ fontSize: 9, color: '#94A3B8' }}>CONV</div></div>
                 </div>
                 <button
-                  onClick={() => {
-                    const rid = r.recruiterId;
-                    const recApps = allApps.filter(a => {
-                      const job = allJobs.find(j => String(j.id || j._id) === extractId(a.jobId));
-                      return job && job.assignedRecruiters?.some(x => String(x) === String(rid) || String(x?.id || x?._id) === String(rid));
-                    }).map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.stage || a.currentStage}` }));
-                    setDrillDown({ title: `${r.name}'s Pipeline`, type: 'app', items: recApps });
+                  onClick={async () => {
+                    const rid = String(r.recruiterId);
+                    setDrillDown({ title: `${r.name}'s Pipeline — Loading…`, type: 'app', items: [] });
+                    try {
+                      const raw = await api.getApplications({ recruiterId: rid, limit: 500 }).then(unwrap).catch(() => []);
+                      const items = raw.map(a => ({
+                        ...a,
+                        id: a.id || a._id,
+                        name: getCandidateData(a).name,
+                        sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.stage || a.currentStage}`,
+                      }));
+                      setDrillDown({ title: `${r.name}'s Pipeline (${items.length})`, type: 'app', items });
+                    } catch {
+                      setDrillDown({ title: `${r.name}'s Pipeline`, type: 'app', items: [] });
+                    }
                   }}
                   style={{ padding: '6px 12px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                   ANALYZE
@@ -871,43 +879,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
         );
       })()}
 
-      {/* ── NPS Dashboard ── */}
-      {npsData && (
-        <div style={{ ...glassPanel, marginTop: 24 }}>
-          <h3 style={{ ...sectionTitle, marginBottom: 20 }}>🌟 Candidate NPS — Experience Scores</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 16, marginBottom: 24 }}>
-            {[
-              { label: 'Avg Score This Month', value: npsData.avgScoreMonth ? `${npsData.avgScoreMonth}/10` : '—', color: '#0176D3' },
-              { label: 'Avg Score (Hired)',    value: npsData.avgScoreHired    ? `${npsData.avgScoreHired}/10`    : '—', color: '#10b981' },
-              { label: 'Avg Score (Rejected)', value: npsData.avgScoreRejected ? `${npsData.avgScoreRejected}/10` : '—', color: '#ef4444' },
-              { label: 'Total Responses',      value: npsData.totalResponses ?? 0, color: '#7c3aed' },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 14, padding: '16px 20px' }}>
-                <div style={{ color, fontSize: 24, fontWeight: 900 }}>{value}</div>
-                <div style={{ color: '#706E6B', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 4 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-          {npsData.recentFeedback?.length > 0 && (
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#3E3E3C', marginBottom: 10 }}>Recent Feedback</div>
-              <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {npsData.recentFeedback.map((fb, i) => (
-                  <div key={i} style={{ padding: '10px 14px', background: '#FAFAF9', borderRadius: 10, border: '1px solid #F1F5F9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, color: fb.applicationOutcome === 'hired' ? '#10b981' : '#ef4444', fontWeight: 700 }}>
-                        {fb.applicationOutcome === 'hired' ? '✅ Hired' : '❌ Rejected'} · Score: {fb.score}/10
-                      </span>
-                      <span style={{ fontSize: 10, color: '#9E9D9B' }}>{new Date(fb.respondedAt).toLocaleDateString('en-IN')}</span>
-                    </div>
-                    <div style={{ color: '#3E3E3C', fontSize: 12, lineHeight: 1.5 }}>{fb.feedbackText}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Confirm Modal ── */}
       {confirmAction && (
