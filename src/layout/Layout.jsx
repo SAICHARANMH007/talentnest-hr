@@ -374,7 +374,7 @@ export default function Layout({ user, onLogout }) {
         </div>
 
         {/* Main Content */}
-        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: 24, background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh' }}>
+        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: '24px', background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
           {/* Mobile Hamburger Header */}
           <div className="tn-hamburger" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, background: '#032D60', borderRadius: 12, padding: '10px 14px' }}>
             <button onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>

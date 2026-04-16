@@ -412,7 +412,7 @@ function AutomationsTab() {
       {showCreate && (
         <div style={{ ...S.card, border: '2px solid rgba(1,118,211,0.3)', marginBottom: 24 }}>
           <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800 }}>New Automation Rule</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={S.label}>Rule Name *</label>
               <input style={S.inp} value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Welcome email on application" />
@@ -445,7 +445,7 @@ function AutomationsTab() {
 
       
       {rules.length === 0 ? <EmptyState icon="⚡" msg="No automated flows configured yet." /> :
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
           {rules.map(rule => (
             <div key={rule.id} style={{ ...S.card, opacity: rule.isActive ? 1 : 0.6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -668,7 +668,7 @@ function ScoreCardTab({ data, addItem, deleteItem }) {
           </div>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', gap: 14 }}>
         {cards.map(c => (
           <div key={c._id} style={S.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -959,7 +959,7 @@ function OfferVariablesTab({ data, addItem, deleteItem }) {
           <button onClick={add} disabled={saving} style={{ ...S.btn, alignSelf: 'flex-end', opacity: saving ? 0.6 : 1 }}>+ Add</button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 10 }}>
         {vars.map(v => (
           <div key={v._id} style={{ ...S.card, padding: '14px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

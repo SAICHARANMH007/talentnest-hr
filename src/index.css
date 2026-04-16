@@ -997,6 +997,61 @@ textarea:focus-visible {
   .tn-hide-mobile { display: none !important; }
 }
 
+/* ── Analytics chart layout grids ── */
+.analytics-chart-row,
+.analytics-chart-row-rev,
+.analytics-2col {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.analytics-chart-row     { grid-template-columns: 1fr 1fr; }
+.analytics-chart-row-rev { grid-template-columns: 2fr 1fr; }
+.analytics-2col          { grid-template-columns: 1fr 1fr; }
+
+@media (max-width: 900px) {
+  .analytics-chart-row,
+  .analytics-chart-row-rev,
+  .analytics-2col { grid-template-columns: 1fr; }
+}
+
+/* ── Admin/SuperAdmin page-level mobile fixes ── */
+@media (max-width: 640px) {
+  /* Main content padding tighter on phone */
+  .tn-main-content { padding: 14px 12px !important; }
+
+  /* Analytics 2-col chart rows → stack */
+  .analytics-chart-row,
+  .analytics-chart-row-rev,
+  .analytics-2col { grid-template-columns: 1fr !important; }
+
+  /* Page header: title + action button stack vertically */
+  .tn-page-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+  .tn-page-header > div:last-child { width: 100%; }
+  .tn-page-header > div:last-child button { width: 100%; justify-content: center; }
+
+  /* User/Candidate card: ensure text doesn't overflow avatar */
+  .tn-user-info-text { max-width: calc(100vw - 160px); }
+
+  /* Org detail body padding */
+  .tn-org-detail-body { padding: 16px !important; }
+
+  /* Modals: full width on phone */
+  .tn-modal-inner { width: calc(100vw - 32px) !important; max-width: 100% !important; padding: 20px 16px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Table wrappers need scroll */
+  .tn-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Reduce card inner padding */
+  .tn-card-sm { padding: 12px !important; }
+
+  /* Action button rows: stack if needed */
+  .tn-action-row { flex-wrap: wrap !important; gap: 6px !important; }
+  .tn-action-row button { font-size: 11px !important; padding: 5px 8px !important; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    APP LAYOUT — Sidebar + Main Content
    Fixed sidebar is more reliable than sticky across all mobile browsers

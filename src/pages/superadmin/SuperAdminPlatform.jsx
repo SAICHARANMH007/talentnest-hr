@@ -123,7 +123,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 160px),1fr))', gap: 20, marginBottom: 28 }}>
         {kpis.map(k => (
           <TrendCard 
             key={k.label} 
@@ -134,7 +134,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 20, marginBottom: 24 }}>
         {/* Platform Pulse (Audit Logs) */}
         <div style={{ ...glass, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -255,7 +255,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
       </div>
 
       {/* Quick Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, marginTop: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 160px),1fr))', gap: 16, marginTop: 20 }}>
         {[
           { label: 'Active Orgs', value: orgs.filter(o => o.status === 'active').length, color: '#10b981', trend: 12 },
           { label: 'Trial Orgs', value: orgs.filter(o => o.plan === 'trial' || o.status === 'trial').length, color: '#F59E0B', trend: -5 },

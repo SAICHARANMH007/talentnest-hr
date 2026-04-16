@@ -79,15 +79,15 @@ export default function SuperAdminAuditLogs() {
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search user / entity…"
-          style={{ ...inp, width: 220 }}
+          style={{ ...inp, flex: '1 1 140px', minWidth: 0 }}
         />
-        <select value={actionFilter} onChange={e => setActionFilter(e.target.value)} style={{ ...inp, width: 200 }}>
+        <select value={actionFilter} onChange={e => setActionFilter(e.target.value)} style={{ ...inp, flex: '1 1 120px', minWidth: 0 }}>
           <option value="">All Actions</option>
           {uniqueActions.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
         </select>
-        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, width: 160 }} />
-        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   style={{ ...inp, width: 160 }} />
-        <button onClick={load} style={btnG}>🔍 Search</button>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, flex: '1 1 130px', minWidth: 0 }} />
+        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   style={{ ...inp, flex: '1 1 130px', minWidth: 0 }} />
+        <button onClick={load} style={{ ...btnG, whiteSpace: 'nowrap' }}>🔍 Search</button>
       </div>
 
       {error && (
@@ -96,8 +96,8 @@ export default function SuperAdminAuditLogs() {
         </div>
       )}
 
-      <div style={card}>
-        <table style={S.table}>
+      <div style={{ ...card, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ ...S.table, minWidth: 560 }}>
           <thead>
             <tr>
               {['Time','Action','Entity','User','Details'].map(h => (

@@ -167,8 +167,8 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
         <div style={{ background: '#fff', borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
 
           {/* Header */}
-          <div style={{ padding: '24px 32px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #032D60, #0176D3)', color: '#fff' }}>
-            <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, background: 'linear-gradient(135deg, #032D60, #0176D3)', color: '#fff' }}>
+            <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 14, flex: 1 }}>
               <OrgAvatar org={org} size={64} />
               <div>
                 <h3 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{org.name}</h3>
@@ -189,7 +189,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
           {!editing ? (
              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                 {/* Dashboard Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: 12 }}>
                    <div style={card}>
                       <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>Total Platform Users</div>
                       <div style={{ fontSize: 28, fontWeight: 900, color: '#0176D3' }}>{org.userCount || 0}</div>
@@ -205,7 +205,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                 </div>
 
                 {/* Info Sections */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', gap: 16 }}>
                    <div>
                       <h4 style={{ color: '#032D60', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>🏢</span> Core Information</div>
@@ -337,7 +337,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ background: '#fff', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: '20px 20px 24px' }}>
                   <h4 style={{ color: '#032D60', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 20, margin: '0 0 20px' }}>Update Organisation Profile</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
                     <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} />
                     <Field label="Company Domain" value={form.domain} onChange={v => sf('domain', v)} hint="e.g. company.com (www/https stripped automatically)" />
                     <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} />
@@ -454,22 +454,22 @@ export default function SuperAdminOrgs() {
           <h1 style={{ color: '#181818', fontSize: 24, fontWeight: 800, margin: 0 }}>Organisations</h1>
           <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>{orgs.length} total organisations — click to manage</p>
         </div>
-        <div style={{ display: 'flex', gap: 12, flex: 1, justifyContent: 'flex-end', minWidth: 280 }}>
+        <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 0 }}>
           <Field
             value={search}
             onChange={v => setSearch(v)}
             placeholder="Search by name or domain…"
             prefix="🔍"
-            style={{ flex: 1, maxWidth: 300 }}
+            style={{ flex: '1 1 160px', maxWidth: 300, minWidth: 0 }}
           />
-          <button onClick={() => setShowCreate(true)} style={btnP}>+ Create Organisation</button>
+          <button onClick={() => setShowCreate(true)} style={{ ...btnP, whiteSpace: 'nowrap' }}>+ Create Org</button>
         </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#706E6B' }}><Spinner /></div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
           {orgs.filter(o => !search || o.name?.toLowerCase().includes(search.toLowerCase()) || o.domain?.toLowerCase().includes(search.toLowerCase())).map(org => (
             <div key={org.id} onClick={() => setSelectedOrg(org)}
               style={{ ...card, cursor: 'pointer', transition: 'box-shadow 0.2s', ':hover': { boxShadow: '0 4px 20px rgba(1,118,211,0.15)' } }}

@@ -642,7 +642,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             {/* Row 1 — quick filters */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px' }}>
               {/* Search pill */}
-              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
+              <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0, width: '100%' }}>
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, pointerEvents: 'none', color: '#9ca3af' }}>🔍</span>
                 <input
                   placeholder="Search name, email, title, company…"
@@ -832,8 +832,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             const isSelected = selectedIds.has(u.id);
             return (
               <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : 'transparent'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
                     {/* Checkbox for candidates */}
                     {isCandidates && (
                       <input
@@ -872,22 +872,22 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' }}>
                     <Badge label={u.role} color="#0176D3" />
                     {filterRole === 'candidate' && (
-                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '6px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}>
+                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '5px 10px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}>
                         📋 Resume
                       </button>
                     )}
                     {filterRole === 'recruiter' && (
-                      <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '6px 12px', fontSize: 11, borderColor: isExpanded ? '#0176D3' : '', color: isExpanded ? '#0176D3' : '' }}>
+                      <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '5px 10px', fontSize: 11, borderColor: isExpanded ? '#0176D3' : '', color: isExpanded ? '#0176D3' : '' }}>
                         {isExpanded ? '▲ Hide' : '👁 Activity'}
                       </button>
                     )}
-                    <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '5px 12px' }}>✏️ Edit</button>
-                    {u.isActive === false && <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Resend Invite</button>}
-                    {isSuperAdmin && u.isActive !== false && <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>🔒 Reset Pwd</button>}
-                    {!recruiterView && <button onClick={() => del(u.id)} style={btnD}>Delete</button>}
+                    <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '5px 10px' }}>✏️ Edit</button>
+                    {u.isActive === false && <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Invite</button>}
+                    {isSuperAdmin && u.isActive !== false && <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>🔒 Pwd</button>}
+                    {!recruiterView && <button onClick={() => del(u.id)} style={{ ...btnD, padding: '5px 10px', fontSize: 11 }}>Delete</button>}
                   </div>
                 </div>
                 {isExpanded && <RecruiterActivityPanel recruiterId={u.id} />}
