@@ -1,8 +1,20 @@
 import { req } from '../client.js';
 
 export const jobService = {
-  async getJobs(recruiterId) {
-    return req('GET', `/jobs${recruiterId ? `?recruiterId=${recruiterId}` : ''}`);
+  async getJobs(recruiterIdOrOpts) {
+    // Accepts either a plain recruiterId string (legacy) or an options object { recruiterId?, limit?, status? }
+    if (!recruiterIdOrOpts || typeof recruiterIdOrOpts === 'string') {
+      const rid = recruiterIdOrOpts;
+      return req('GET', `/jobs${rid ? `?recruiterId=${rid}` : ''}`);
+    }
+    const { recruiterId, limit, status, search } = recruiterIdOrOpts;
+    const p = new URLSearchParams();
+    if (recruiterId) p.set('recruiterId', recruiterId);
+    if (limit)       p.set('limit', limit);
+    if (status)      p.set('status', status);
+    if (search)      p.set('search', search);
+    const qs = p.toString();
+    return req('GET', `/jobs${qs ? `?${qs}` : ''}`);
   },
   async getJob(id)                    { return req('GET', `/jobs/${id}`); },
   async createJob(data)               { return req('POST', '/jobs', data); },

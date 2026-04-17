@@ -74,8 +74,11 @@ function normalizeApp(app) {
   if (a.candidateId && typeof a.candidateId === 'object' && !a.candidate) {
     a.candidate = a.candidateId;
   }
-  if (a.jobId && typeof a.jobId === 'object' && !a.job) {
-    a.job = a.jobId;
+  if (a.jobId && typeof a.jobId === 'object') {
+    if (!a.job) a.job = a.jobId;
+    // Ensure both company aliases always present on populated jobId
+    if (a.jobId.company && !a.jobId.companyName) a.jobId.companyName = a.jobId.company;
+    if (a.jobId.companyName && !a.jobId.company) a.jobId.company = a.jobId.companyName;
   }
   return a;
 }
@@ -85,7 +88,7 @@ function normalizeApp(app) {
 // GET /api/applications/invite/:token — view invite details
 router.get('/invite/:token', asyncHandler(async (req, res) => {
   const app = await Application.findOne({ inviteToken: req.params.token, deletedAt: null })
-    .populate('jobId', 'title location jobType description skills tenantId')
+    .populate('jobId', 'title company companyName location jobType description skills tenantId')
     .lean();
   if (!app) throw new AppError('Invitation not found or expired.', 404);
   res.json({ success: true, data: normalizeApp(app) });
@@ -365,7 +368,7 @@ router.get('/mine', ...guard,
     if (!candidateDoc) return res.json(paginatedResponse([], 0, limit, page));
     const filter = { candidateId: candidateDoc._id, deletedAt: null };
     const [apps, total] = await Promise.all([
-      Application.find(filter).populate('jobId', 'title location jobType company').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Application.find(filter).populate('jobId', 'title company companyName location jobType').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Application.countDocuments(filter),
     ]);
     res.json(paginatedResponse(apps.map(normalizeApp), total, limit, page));
@@ -393,7 +396,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
   const [apps, total] = await Promise.all([
     Application.find(filter)
-      .populate('jobId', 'title company location department')
+      .populate('jobId', 'title company companyName location department')
       .populate('candidateId', 'name email phone title skills experience summary location source videoResumeUrl')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Application.countDocuments(filter),
@@ -405,7 +408,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 router.get('/talent-pool', ...guard, asyncHandler(async (req, res) => {
   const apps = await Application.find({ tenantId: req.user.tenantId, status: 'parked', deletedAt: null })
     .populate('candidateId', 'name email phone title skills location')
-    .populate('jobId', 'title company')
+    .populate('jobId', 'title company companyName')
     .lean();
   const data = apps.map(a => ({ ...a, id: a._id?.toString() }));
   res.json({ success: true, data });
@@ -834,7 +837,7 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
 
   const apps = await Application.find(filter)
     .populate('candidateId', 'name email phone location skills')
-    .populate('jobId', 'title')
+    .populate('jobId', 'title company companyName location')
     .sort({ createdAt: -1 })
     .limit(5000)
     .lean();

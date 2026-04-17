@@ -29,6 +29,9 @@ function normalizeJob(job) {
   j.id = j.id || j._id?.toString();
   if (!Array.isArray(j.skills)) j.skills = [];
   if (!Array.isArray(j.niceToHaveSkills)) j.niceToHaveSkills = [];
+  // Ensure both company aliases are always populated
+  if (j.company && !j.companyName) j.companyName = j.company;
+  if (j.companyName && !j.company) j.company = j.companyName;
   return j;
 }
 

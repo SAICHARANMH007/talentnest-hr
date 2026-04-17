@@ -23,6 +23,11 @@ const jobSchema = new mongoose.Schema({
   title      : { type: String, required: true, trim: true },
   description: { type: String },
 
+  // Company info (set by recruiter/admin at job creation time)
+  company    : { type: String, trim: true, default: '' },
+  companyName: { type: String, trim: true, default: '' }, // alias kept for older frontend references
+  department : { type: String, trim: true, default: '' },
+
   skills           : { type: [String], default: [] },
   niceToHaveSkills : { type: [String], default: [] },
 
@@ -40,6 +45,8 @@ const jobSchema = new mongoose.Schema({
 
   numberOfOpenings: { type: Number, default: 1 },
   targetHireDate  : { type: Date },
+  applicationCount: { type: Number, default: 0 },
+  urgency         : { type: String, default: '' },
 
   status: {
     type   : String,
@@ -71,6 +78,13 @@ jobSchema.index({ tenantId: 1, status: 1 });
 jobSchema.index({ assignedRecruiters: 1 });
 jobSchema.index({ skills: 1 });
 jobSchema.index({ createdAt: -1 });
+
+// Keep company and companyName in sync so both field names always work
+jobSchema.pre('save', function (next) {
+  if (this.isModified('company') && !this.companyName) this.companyName = this.company;
+  if (this.isModified('companyName') && !this.company) this.company = this.companyName;
+  next();
+});
 
 jobSchema.set('toJSON', { virtuals: true });
 jobSchema.set('toObject', { virtuals: true });

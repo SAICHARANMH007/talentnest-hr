@@ -172,7 +172,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
     Promise.all([
       api.getApplications({ limit: 100 }).then(unwrap).catch(() => []), // Only for recent-activity feed; KPI metrics use serverStats
-      api.getJobs({ limit: 5000 }).then(unwrap).catch(() => []),        // Fetch all jobs (no realistic org has >5000)
+      api.getJobs({ limit: 2000 }).then(unwrap).catch(() => []),         // Fetch up to backend max (2000) for analytics
       api.getUsers('candidate').then(unwrap).catch(() => []),
       api.getRecruiterLeaderboard().catch(() => []),
       api.getDashboardStats().catch(() => null),
