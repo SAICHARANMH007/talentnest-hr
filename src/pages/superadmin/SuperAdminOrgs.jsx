@@ -21,8 +21,8 @@ function Lbl({ children, required }) {
 }
 
 function OrgAvatar({ org, size = 48 }) {
-  if (org.logo) {
-    return <img src={org.logo} alt={org.name} style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'contain', background: '#F3F2F2', border: '1px solid #DDDBDA' }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />;
+  if (org.logoUrl) {
+    return <img src={org.logoUrl} alt={org.name} style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'contain', background: '#F3F2F2', border: '1px solid #DDDBDA' }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />;
   }
   return (
     <div style={{ width: size, height: size, borderRadius: size * 0.25, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, color: '#fff', fontWeight: 800, flexShrink: 0 }}>
