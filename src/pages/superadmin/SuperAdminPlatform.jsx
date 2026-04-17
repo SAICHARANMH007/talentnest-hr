@@ -42,8 +42,8 @@ export default function SuperAdminPlatform({ onNavigate }) {
       api.getAuditLogs().catch(() => []),
       // High-accuracy counts
       api.getUserCount().catch(() => 0),
-      api.getJobs().then(r => r?.total || (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
-      api.getApplications({ limit: 1 }).then(r => r?.total || 0).catch(() => 0),
+      api.getJobs().then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
+      api.getApplications({ limit: 1 }).then(r => r?.pagination?.total ?? 0).catch(() => 0),
     ]).then(([o, u, logs, uCount, jCount, aCount]) => {
       const orgList = unwrap(o);
       setOrgs(orgList);

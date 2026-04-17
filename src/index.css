@@ -1080,17 +1080,16 @@ textarea:focus-visible {
     z-index: 200;
     flex-shrink: 0;
   }
-
-  /* Tablet: slightly narrower */
-  @media (max-width: 1024px) {
-    .tn-sidebar { width: 196px; }
-    .tn-main-content { margin-left: 196px !important; }
-  }
-
-  .tn-main-content { margin-left: 220px; }
-  .tn-hamburger    { display: none !important; }
+  .tn-main-content   { margin-left: 220px; }
+  .tn-hamburger      { display: none !important; }
   .tn-mobile-overlay { display: none !important; }
   .tn-sidebar-mobile { display: none !important; }
+}
+
+/* ── Tablet override (768px–1024px): slightly narrower sidebar ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tn-sidebar        { width: 196px !important; }
+  .tn-main-content   { margin-left: 196px !important; }
 }
 
 /* ── Mobile (<768px): hamburger + slide-in drawer ── */
