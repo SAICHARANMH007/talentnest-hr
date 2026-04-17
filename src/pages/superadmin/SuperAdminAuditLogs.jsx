@@ -61,7 +61,7 @@ export default function SuperAdminAuditLogs() {
     if (dateTo)       params.set('to', dateTo);
     api.getAuditLogs(params.toString())
       .then(r => setLogs(Array.isArray(r) ? r : (r?.data || [])))
-      .catch(e => setError(e.message))
+      .catch(e => { setError(e.message); setLogs([]); })
       .finally(() => setLoading(false));
   }, [search, actionFilter, dateFrom, dateTo]);
 

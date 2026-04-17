@@ -54,7 +54,7 @@ export default function RecruiterInterviews({ user }) {
     setLoading(true); setError('');
     api.getApplications({})
       .then(r => setApps(Array.isArray(r) ? r : (r?.data || [])))
-      .catch(e => setError(e.message))
+      .catch(e => { setError(e.message); setApps([]); })
       .finally(() => setLoading(false));
   }, []);
 

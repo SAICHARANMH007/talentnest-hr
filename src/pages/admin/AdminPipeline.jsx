@@ -59,7 +59,7 @@ export default function AdminPipeline({ user }) {
     ]).then(([a, j]) => {
       setApps(Array.isArray(a) ? a : (a?.data || []));
       setJobs(Array.isArray(j) ? j : (j?.data || []));
-    }).catch(e => setError(e.message))
+    }).catch(e => { setError(e.message); setApps([]); setJobs([]); })
       .finally(() => setLoading(false));
   }, [jobFilter]);
 
