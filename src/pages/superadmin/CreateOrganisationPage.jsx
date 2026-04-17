@@ -67,7 +67,7 @@ export default function CreateOrganisationPage({ user, onBack, onSuccess }) {
         <FormRow cols={2}>
            <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="Information Technology" />
            <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
-                  options={['1-10','11-50','51-200','201-500','500+'].map(s => ({value:s,label:`${s} Employees`}))} placeholder="Select size" />
+                  options={[['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} Employees`}))} placeholder="Select size" />
         </FormRow>
 
         <Field label="Initial Plan" value={form.plan} onChange={v => sf('plan', v)}

@@ -49,6 +49,10 @@ const NotificationMessageSchema = new Schema({
   channel: { type: String, default: 'Email + In-app' },
 }, { _id: true });
 
+const SimpleNameSchema = new Schema({
+  name: { type: String, required: true, trim: true },
+}, { _id: true });
+
 const OrgCustomizationsSchema = new Schema({
   orgId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, unique: true, index: true },
 
@@ -61,6 +65,9 @@ const OrgCustomizationsSchema = new Schema({
   questionBank:        [QuestionSchema],
   offerVariables:      [OfferVariableSchema],
   notificationMessages:[NotificationMessageSchema],
+  departments:         [SimpleNameSchema],
+  locations:           [SimpleNameSchema],
+  sources:             [SimpleNameSchema],
 
   // Singleton objects
   emailSignature: {

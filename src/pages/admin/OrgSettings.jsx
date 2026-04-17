@@ -172,7 +172,7 @@ export default function OrgSettings({ user }) {
               options={['Information Technology','Banking & Finance','Healthcare','Manufacturing','Retail & E-commerce','Education','Consulting','Real Estate','Logistics & Supply Chain','Media & Entertainment','Telecommunications','Automobile','Pharma & Biotech','Government & Public Sector','Other'].map(i => ({ value: i, label: i }))}
               placeholder="Select industry" />
             <Field label="Company Size" value={form.size} onChange={v => setForm(p => ({ ...p, size: v }))}
-              options={['1-10','11-50','51-200','201-500','500+'].map(s => ({ value: s, label: s }))}
+              options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({ value: s, label: s }))}
               placeholder="Select size" />
           </FormRow>
         </div>

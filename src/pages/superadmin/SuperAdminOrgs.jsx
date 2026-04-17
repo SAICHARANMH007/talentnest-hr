@@ -33,16 +33,24 @@ function OrgAvatar({ org, size = 48 }) {
 
 function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
   const [editing, setEditing] = useState(false);
-  const [form, setForm]       = useState({
-    name: org.name || '',
-    domain: org.domain || '',
-    industry: org.industry || '',
-    size: org.size || '1-10',
-    logo: org.logo || '',
-    plan: org.plan || 'trial',
-    status: org.status || 'active',
-    isStaffingAgency: org.isStaffingAgency || false,
+  const buildForm = (o) => ({
+    name: o.name || '',
+    domain: o.domain || '',
+    industry: o.industry || '',
+    size: o.size || '1-10',
+    logoUrl: o.logoUrl || o.logo || '',
+    plan: o.plan || 'trial',
+    status: o.status || 'active',
+    isStaffingAgency: o.isStaffingAgency || false,
   });
+  const [form, setForm] = useState(() => buildForm(org));
+  const orgId = String(org.id || org._id || '');
+
+  // Sync form fields when the parent refreshes the org prop after a save
+  useEffect(() => {
+    if (!editing) setForm(buildForm(org));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState('');
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -57,8 +65,6 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
   const [merging, setMerging]             = useState(false);
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  const orgId = String(org.id || org._id || '');
 
   const loadOrgUsers = async () => {
     if (!orgId) return;
@@ -342,11 +348,11 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                     <Field label="Company Domain" value={form.domain} onChange={v => sf('domain', v)} hint="e.g. company.com (www/https stripped automatically)" />
                     <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} />
                     <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
-                      options={['1-10','11-50','51-200','201-500','500+'].map(s => ({value:s,label:s}))} placeholder="Select size" />
+                      options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:s}))} placeholder="Select size" />
                     <Field label="Service Plan" value={form.plan} onChange={v => sf('plan', v)}
                       options={['trial','free','starter','growth','enterprise'].map(p => ({value:p,label:p.toUpperCase()}))} placeholder="Select plan" />
                     <Field label="Account Status" value={form.status} onChange={v => sf('status', v)}
-                      options={['active','trial','suspended','inactive'].map(s => ({value:s,label:s.toUpperCase()}))} placeholder="Select status" />
+                      options={['active','trial','suspended','pending'].map(s => ({value:s,label:s.toUpperCase()}))} placeholder="Select status" />
                   </div>
                   {/* Staffing Agency toggle */}
                   <div style={{ marginTop: 16, display: 'flex', alignItems: 'flex-start', gap: 12, background: form.isStaffingAgency ? 'rgba(1,118,211,0.06)' : '#F8FAFC', borderRadius: 10, padding: '12px 14px', border: `1px solid ${form.isStaffingAgency ? 'rgba(1,118,211,0.25)' : '#E2E8F0'}`, cursor: 'pointer' }} onClick={() => sf('isStaffingAgency', !form.isStaffingAgency)}>
@@ -563,13 +569,13 @@ export default function SuperAdminOrgs() {
                 </div>
               </div>
               <div>
-                <Field label="Logo URL" value={form.logo} onChange={v => sf('logo', v)} placeholder="https://company.com/logo.png" hint="Direct link to company logo image" />
-                {form.logo && <img src={form.logo} alt="logo preview" style={{ marginTop: 8, height: 40, borderRadius: 6, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />}
+                <Field label="Logo URL" value={form.logoUrl} onChange={v => sf('logoUrl', v)} placeholder="https://company.com/logo.png" hint="Direct link to company logo image" />
+                {form.logoUrl && <img src={form.logoUrl} alt="logo preview" style={{ marginTop: 8, height: 40, borderRadius: 6, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />}
               </div>
               <FormRow cols={2}>
                 <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="Information Technology" />
                 <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
-                  options={['1-10','11-50','51-200','201-500','500+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
+                  options={[['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
               </FormRow>
               <Field label="Plan" value={form.plan} onChange={v => sf('plan', v)}
                 options={[{value:'trial',label:'Trial (14 days)'},{value:'starter',label:'Starter'},{value:'growth',label:'Growth'},{value:'enterprise',label:'Enterprise'}]} />

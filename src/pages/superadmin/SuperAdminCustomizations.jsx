@@ -7,27 +7,59 @@ import Toast from '../../components/ui/Toast.jsx';
 // ── System Definitions ────────────────────────────────────────────────────────
 const SYSTEM_FIELDS = {
   candidate: [
-    { id: 'name', label: 'Full Name', type: 'text', required: true, isSystem: true, key: 'name' },
-    { id: 'email', label: 'Email Address', type: 'email', required: true, isSystem: true, key: 'email' },
-    { id: 'phone', label: 'Phone Number', type: 'tel', required: false, isSystem: true, key: 'phone' },
-    { id: 'location', label: 'Location', type: 'text', required: false, isSystem: true, key: 'location' },
-    { id: 'title', label: 'Professional Title', type: 'text', required: false, isSystem: true, key: 'title' },
-    { id: 'skills', label: 'Skills', type: 'tags', required: false, isSystem: true, key: 'skills' },
-    { id: 'experience', label: 'Experience (Years)', type: 'number', required: false, isSystem: true, key: 'experience' },
-    { id: 'resume', label: 'Resume / CV', type: 'file', required: true, isSystem: true, key: 'resume' },
+    { id: 'name',           label: 'Full Name',              type: 'text',    required: true,  key: 'name' },
+    { id: 'email',          label: 'Email Address',          type: 'email',   required: true,  key: 'email' },
+    { id: 'phone',          label: 'Phone Number',           type: 'tel',     required: false, key: 'phone' },
+    { id: 'location',       label: 'Location / City',        type: 'text',    required: false, key: 'location' },
+    { id: 'title',          label: 'Professional Title',     type: 'text',    required: false, key: 'title' },
+    { id: 'skills',         label: 'Skills',                 type: 'tags',    required: false, key: 'skills' },
+    { id: 'experience',     label: 'Experience (Years)',     type: 'number',  required: false, key: 'experience' },
+    { id: 'summary',        label: 'Professional Summary',   type: 'textarea',required: false, key: 'summary' },
+    { id: 'linkedin',       label: 'LinkedIn Profile URL',   type: 'url',     required: false, key: 'linkedin' },
+    { id: 'education',      label: 'Education',              type: 'text',    required: false, key: 'education' },
+    { id: 'certifications', label: 'Certifications',         type: 'tags',    required: false, key: 'certifications' },
+    { id: 'currentCTC',     label: 'Current CTC',            type: 'number',  required: false, key: 'currentCTC' },
+    { id: 'expectedCTC',    label: 'Expected CTC',           type: 'number',  required: false, key: 'expectedCTC' },
+    { id: 'noticePeriod',   label: 'Notice Period (days)',   type: 'number',  required: false, key: 'noticePeriod' },
+    { id: 'availability',   label: 'Availability / Status',  type: 'select',  required: false, key: 'availability' },
+    { id: 'gender',         label: 'Gender (D&I)',           type: 'select',  required: false, key: 'gender' },
+    { id: 'dateOfBirth',    label: 'Date of Birth',          type: 'date',    required: false, key: 'dateOfBirth' },
+    { id: 'resume',         label: 'Resume / CV Upload',     type: 'file',    required: true,  key: 'resume' },
+    { id: 'portfolio',      label: 'Portfolio / GitHub URL', type: 'url',     required: false, key: 'portfolio' },
   ],
   job: [
-    { id: 'title', label: 'Job Title', type: 'text', required: true, isSystem: true, key: 'title' },
-    { id: 'department', label: 'Department', type: 'select', required: true, isSystem: true, key: 'department' },
-    { id: 'location', label: 'Job Location', type: 'text', required: true, isSystem: true, key: 'location' },
-    { id: 'salary', label: 'Salary Range', type: 'text', required: false, isSystem: true, key: 'salary' },
-    { id: 'description', label: 'Job Description', type: 'rich-text', required: true, isSystem: true, key: 'description' },
+    { id: 'title',           label: 'Job Title',              type: 'text',      required: true,  key: 'title' },
+    { id: 'company',         label: 'Company Name',           type: 'text',      required: false, key: 'company' },
+    { id: 'department',      label: 'Department',             type: 'select',    required: false, key: 'department' },
+    { id: 'location',        label: 'Job Location',           type: 'text',      required: true,  key: 'location' },
+    { id: 'jobType',         label: 'Employment Type',        type: 'select',    required: false, key: 'jobType' },
+    { id: 'salary',          label: 'Salary Range',           type: 'text',      required: false, key: 'salary' },
+    { id: 'skills',          label: 'Required Skills',        type: 'tags',      required: false, key: 'skills' },
+    { id: 'niceToHaveSkills',label: 'Nice-to-have Skills',    type: 'tags',      required: false, key: 'niceToHaveSkills' },
+    { id: 'description',     label: 'Job Description',        type: 'rich-text', required: true,  key: 'description' },
+    { id: 'numberOfOpenings',label: 'Number of Openings',     type: 'number',    required: false, key: 'numberOfOpenings' },
+    { id: 'urgency',         label: 'Urgency Level',          type: 'select',    required: false, key: 'urgency' },
+    { id: 'targetHireDate',  label: 'Target Hire Date',       type: 'date',      required: false, key: 'targetHireDate' },
   ],
   application: [
-    { id: 'source', label: 'Application Source', type: 'select', required: false, isSystem: true, key: 'source' },
-    { id: 'recruiter_name', label: 'Assigned Recruiter', type: 'text', required: false, isSystem: true, key: 'recruiter_name' },
-    { id: 'applied_at', label: 'Date Applied', type: 'date', required: true, isSystem: true, key: 'createdAt' },
-  ]
+    { id: 'stage',           label: 'Pipeline Stage',         type: 'select',  required: true,  key: 'stage' },
+    { id: 'source',          label: 'Application Source',     type: 'select',  required: false, key: 'source' },
+    { id: 'recruiter_name',  label: 'Assigned Recruiter',     type: 'text',    required: false, key: 'recruiter_name' },
+    { id: 'applied_at',      label: 'Date Applied',           type: 'date',    required: true,  key: 'createdAt' },
+    { id: 'notes',           label: 'Recruiter Notes',        type: 'textarea',required: false, key: 'notes' },
+    { id: 'tags',            label: 'Application Tags',       type: 'tags',    required: false, key: 'tags' },
+    { id: 'aiMatchScore',    label: 'AI Match Score',         type: 'number',  required: false, key: 'aiMatchScore' },
+    { id: 'rejectionReason', label: 'Rejection Reason',       type: 'select',  required: false, key: 'rejectionReason' },
+  ],
+  interview: [
+    { id: 'scheduledAt',     label: 'Interview Date & Time',  type: 'date',    required: true,  key: 'scheduledAt' },
+    { id: 'type',            label: 'Interview Type',         type: 'select',  required: true,  key: 'type' },
+    { id: 'interviewers',    label: 'Interviewers',           type: 'tags',    required: false, key: 'interviewers' },
+    { id: 'meetLink',        label: 'Meeting Link',           type: 'url',     required: false, key: 'meetLink' },
+    { id: 'notes',           label: 'Pre-Interview Notes',    type: 'textarea',required: false, key: 'notes' },
+    { id: 'feedback',        label: 'Post-Interview Feedback',type: 'textarea',required: false, key: 'feedback' },
+    { id: 'duration',        label: 'Duration (minutes)',     type: 'number',  required: false, key: 'duration' },
+  ],
 };
 
 const AUTOMATION_TRIGGERS = {
@@ -177,7 +209,7 @@ function CustomFieldsTab({ data, updateSingleton, setToast }) {
 
   const toggleVisibility = async (key, current) => {
     try {
-      await updateSingleton('fieldVisibility', { ...visibility, [key]: !current });
+      await updateSingleton({ fieldVisibility: { ...visibility, [key]: !current } });
     } catch (e) { setToast('❌ Update failed'); }
   };
 
@@ -1211,6 +1243,82 @@ function SourcesTab({ data, addItem, deleteItem, replaceSection }) {
   );
 }
 
+// ─── 16. Brand Colors ────────────────────────────────────────────────────────
+const BRAND_COLOR_FIELDS = [
+  { key: 'primary',   label: 'Primary Blue',      desc: 'Main action buttons, links, active nav items' },
+  { key: 'secondary', label: 'Sidebar / Dark',    desc: 'Sidebar background and dark surfaces' },
+  { key: 'accent',    label: 'Success / Accent',  desc: 'Positive status indicators, hire badges' },
+  { key: 'danger',    label: 'Danger / Error',     desc: 'Delete buttons, rejection badges' },
+  { key: 'warning',   label: 'Warning / Amber',   desc: 'Pending states, alert banners' },
+  { key: 'bgCard',    label: 'Card Background',   desc: 'Background of content cards' },
+  { key: 'bgPage',    label: 'Page Background',   desc: 'Main page/body background color' },
+];
+
+function BrandColorsTab({ data, updateSingleton }) {
+  const [colors, setColors] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (data?.brandColors) setColors({ ...data.brandColors });
+  }, [data]);
+
+  if (!colors) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
+
+  const sc = (k, v) => setColors(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    await updateSingleton({ brandColors: colors });
+    setSaving(false);
+  };
+
+  const reset = () => {
+    setColors({ primary: '#0176D3', secondary: '#032D60', accent: '#10b981', danger: '#ef4444', warning: '#f59e0b', bgCard: '#ffffff', bgPage: '#f4f6f8' });
+  };
+
+  return (
+    <div>
+      <SectionHeader icon="🎨" title="Brand Colors"
+        desc="Customize the platform color palette for your organization"
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={reset} style={S.btnG}>↺ Reset Defaults</button>
+            <button onClick={save} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : '💾 Save Colors'}</button>
+          </div>
+        }
+      />
+      <div style={S.card}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {BRAND_COLOR_FIELDS.map(f => (
+            <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <input type="color" value={colors[f.key] || '#000000'} onChange={e => sc(f.key, e.target.value)}
+                style={{ width: 48, height: 40, border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, cursor: 'pointer', padding: 2, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{f.label}</div>
+                <div style={{ fontSize: 11, color: '#9E9D9B' }}>{f.desc}</div>
+              </div>
+              <input value={colors[f.key] || ''} onChange={e => sc(f.key, e.target.value)}
+                placeholder="#000000"
+                style={{ ...S.inp, width: 110, fontFamily: 'monospace', fontSize: 13 }} />
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: colors[f.key], border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 20, padding: '16px 20px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>Color Preview</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {BRAND_COLOR_FIELDS.filter(f => !['bgCard','bgPage'].includes(f.key)).map(f => (
+              <span key={f.key} style={{ background: colors[f.key], color: '#fff', padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                {f.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tabs Config ──────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'custom-fields',  icon: '🧩', label: 'Custom Fields'     },
@@ -1229,6 +1337,7 @@ const TABS = [
   { id: 'visibility',     icon: '👁️', label: 'Field Visibility'  },
   { id: 'offer-vars',     icon: '📝', label: 'Offer Variables'   },
   { id: 'offer-template', icon: '📄', label: 'Offer Template'    },
+  { id: 'brand-colors',   icon: '🎨', label: 'Brand Colors'      },
 ];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -1257,6 +1366,7 @@ export default function SuperAdminCustomizations() {
       case 'visibility':    return <FieldVisibilityTab {...tabProps} />;
       case 'offer-vars':     return <OfferVariablesTab {...tabProps} />;
       case 'offer-template': return <OfferLetterTemplateTab {...tabProps} />;
+      case 'brand-colors':  return <BrandColorsTab {...tabProps} />;
       default:              return null;
     }
   };

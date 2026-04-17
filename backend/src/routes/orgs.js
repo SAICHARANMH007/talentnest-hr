@@ -237,8 +237,8 @@ router.patch('/:id', auth, async (req, res) => {
 
     // Admins cannot change plan or status — only super_admin can change billing/permissions
     const allowed = req.user.role === 'super_admin'
-      ? ['name','domain','logo','industry','size','status','settings','plan','trialEndsAt','isStaffingAgency']
-      : ['name','domain','logo','industry','size','settings'];
+      ? ['name','domain','logoUrl','industry','size','status','settings','plan','trialEndsAt','isStaffingAgency']
+      : ['name','domain','logoUrl','industry','size','settings'];
 
     const updates = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });

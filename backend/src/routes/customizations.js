@@ -22,6 +22,7 @@ const guard = [authenticate, allowRoles('admin', 'super_admin')];
 const COLLECTIONS = [
   'pipelineStatuses', 'tags', 'rejectionReasons', 'scoreCards',
   'documentTypes', 'questionBank', 'offerVariables', 'notificationMessages',
+  'departments', 'locations', 'sources',
 ];
 const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate'];
 
