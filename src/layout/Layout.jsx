@@ -320,7 +320,7 @@ export default function Layout({ user, onLogout }) {
     if (user.orgId) {
       api.getOrgs().then(orgs => {
         const org = orgs.find(o => String(o.id || o._id) === String(user.orgId));
-        if (org?.logo) setOrgLogo(org.logo);
+        if (org?.logoUrl) setOrgLogo(org.logoUrl);
       }).catch(() => {});
     }
   }, [user.orgId]);
