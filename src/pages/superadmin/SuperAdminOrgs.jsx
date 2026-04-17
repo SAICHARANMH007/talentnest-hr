@@ -575,7 +575,7 @@ export default function SuperAdminOrgs() {
               <FormRow cols={2}>
                 <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="Information Technology" />
                 <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
-                  options={[['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
+                  options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
               </FormRow>
               <Field label="Plan" value={form.plan} onChange={v => sf('plan', v)}
                 options={[{value:'trial',label:'Trial (14 days)'},{value:'starter',label:'Starter'},{value:'growth',label:'Growth'},{value:'enterprise',label:'Enterprise'}]} />
