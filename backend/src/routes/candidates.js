@@ -94,8 +94,8 @@ router.get('/', ...guard,
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
     const filter = { tenantId: req.user.tenantId, deletedAt: null };
-    if (req.query.search) {
-      const s = escRe(req.query.search);
+    if (req.query.search?.trim()) {
+      const s = escRe(req.query.search.trim());
       filter.$or = [
         { name:  { $regex: s, $options: 'i' } },
         { email: { $regex: s, $options: 'i' } },
