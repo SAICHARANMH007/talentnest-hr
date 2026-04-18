@@ -1033,33 +1033,6 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
               />
             )}
 
-            {/* Invite method toggle — only for admin/recruiter */}
-            {(form.role === 'admin' || form.role === 'recruiter' || filterRole === 'admin' || filterRole === 'recruiter') && (
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Delivery Method</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setUseTempPwd(false)} style={{
-                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${!useTempPwd ? '#0176D3' : '#e2e8f0'}`,
-                    background: !useTempPwd ? 'rgba(1,118,211,0.08)' : '#fff',
-                    color: !useTempPwd ? '#0176D3' : '#64748b',
-                  }}>
-                    🔗 Secure invite link
-                    <div style={{ fontWeight: 400, fontSize: 10, marginTop: 2 }}>They set their own password</div>
-                  </button>
-                  <button type="button" onClick={() => setUseTempPwd(true)} style={{
-                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${useTempPwd ? '#f59e0b' : '#e2e8f0'}`,
-                    background: useTempPwd ? 'rgba(245,158,11,0.08)' : '#fff',
-                    color: useTempPwd ? '#A07E00' : '#64748b',
-                  }}>
-                    🔑 Temp password
-                    <div style={{ fontWeight: 400, fontSize: 10, marginTop: 2 }}>Email them credentials</div>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Extra fields for candidates */}
             {(form.role === 'candidate' || filterRole === 'candidate') && (
               <div style={{ display: 'flex', gap: 10 }}>
