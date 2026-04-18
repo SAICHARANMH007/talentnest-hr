@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import { STAGES, SM } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api, downloadBlob } from '../../api/api.js';
+import { req } from '../../api/client.js';
 import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
@@ -278,6 +279,33 @@ function Chip({ label, onRemove }) {
   );
 }
 
+// ── Org selector for super admin ──────────────────────────────────────────
+function OrgSelector({ value, onChange, error, onOpen, orgs }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+        Organisation <span style={{ color: '#dc2626', fontSize: 11 }}>*</span>
+      </label>
+      <select
+        value={value || ''}
+        onFocus={onOpen}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
+          border: `1.5px solid ${error ? '#dc2626' : value ? '#0176D3' : '#D6D9DE'}`,
+          boxShadow: error ? '0 0 0 3px rgba(220,38,38,0.1)' : value ? '0 0 0 3px rgba(1,118,211,0.12)' : 'none',
+          background: '#fff', color: value ? '#181818' : '#9ca3af', outline: 'none',
+          transition: 'border-color 0.15s, box-shadow 0.15s', cursor: 'pointer',
+        }}
+      >
+        <option value="">Select organisation…</option>
+        {orgs.map(o => <option key={o.id || o._id} value={o.id || o._id}>{o.name}</option>)}
+      </select>
+      {error && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>⚠ {error}</span>}
+    </div>
+  );
+}
+
 // ── Pill-styled select dropdown ────────────────────────────────────────────
 function PillSelect({ value, onChange, placeholder, options, icon = '', fullWidth = false }) {
   const active = !!value;
@@ -345,6 +373,9 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [activeTab, setActiveTab]     = useState('users'); // 'users' | 'pending'
   const [pendingInvites, setPending]  = useState([]);
   const [pendingLoad, setPendingLoad] = useState(false);
+  const [formErrors, setFormErrors]   = useState({});
+  const [orgs, setOrgs]               = useState([]);
+  const [saving, setSaving]           = useState(false);
 
   // ── basic filters ──
   const [search, setSearch]       = useState('');
@@ -364,7 +395,10 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [expMax, setExpMax]               = useState('');
 
   const showDomainField = isSuperAdmin || filterRole === 'admin' || filterRole === 'recruiter';
-  const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const sf = (k, v) => {
+    setForm(p => ({ ...p, [k]: v }));
+    if (formErrors[k]) setFormErrors(p => ({ ...p, [k]: '' }));
+  };
 
   // ── derived option lists ──
   const allSkills  = [...new Set(users.flatMap(u => (Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',')).map(s => s.trim()).filter(Boolean)))].sort();
@@ -451,28 +485,77 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   };
   useEffect(() => { if (activeTab === 'pending') loadPending(); }, [activeTab]);
 
-  const save = async () => {
-    if (!form.name || !form.email) { setToast('❌ Name and email are required'); return; }
-    const effectiveRole = form.role || filterRole;
-    const isAdminRole = effectiveRole === 'admin';
-    if (isAdminRole && !form.domain?.trim()) { setToast('❌ Company Website / Domain is required for admin accounts'); return; }
+  // Load orgs list for super_admin org picker
+  const loadOrgs = async () => {
+    if (!isSuperAdmin || orgs.length) return;
     try {
-      const orgId = user?.orgId || JSON.parse(sessionStorage.getItem('tn_user') || '{}')?.orgId;
+      const data = await req('GET', '/orgs');
+      setOrgs(Array.isArray(data) ? data : (data?.data || []));
+    } catch { setOrgs([]); }
+  };
+
+  const validate = () => {
+    const errs = {};
+    const effectiveRole = form.role || filterRole;
+    if (!form.name?.trim()) errs.name = 'Full name is required';
+    else if (form.name.trim().length < 2) errs.name = 'Name must be at least 2 characters';
+    if (!form.email?.trim()) errs.email = 'Email address is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Enter a valid email address';
+    if (effectiveRole === 'admin' && !form.domain?.trim()) errs.domain = 'Company domain is required for admin accounts';
+    if (isSuperAdmin && !form.tenantId) errs.tenantId = 'Please select an organisation';
+    return errs;
+  };
+
+  const save = async () => {
+    const errs = validate();
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
+    setSaving(true);
+    try {
+      const effectiveRole = form.role || filterRole;
+      // Resolve orgId: super_admin picks from dropdown, others use their own tenantId
+      const sessionUser = JSON.parse(sessionStorage.getItem('tn_user') || 'null') || {};
+      const orgId = isSuperAdmin
+        ? form.tenantId
+        : (user?.orgId || user?.tenantId || sessionUser?.orgId || sessionUser?.tenantId);
+
       if (effectiveRole === 'admin') {
-        await api.inviteAdmin({ name: form.name, email: form.email, orgId, useTemporaryPassword: useTempPwd });
+        await api.inviteAdmin({ name: form.name.trim(), email: form.email.trim(), orgId, useTemporaryPassword: useTempPwd });
       } else if (effectiveRole === 'recruiter') {
-        await api.inviteRecruiter({ name: form.name, email: form.email, orgId, useTemporaryPassword: useTempPwd });
+        await api.inviteRecruiter({ name: form.name.trim(), email: form.email.trim(), orgId, useTemporaryPassword: useTempPwd });
       } else {
-        await api.createUser({ ...form });
+        // Candidate: pass tenantId explicitly so backend can scope it
+        await api.createUser({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: 'candidate',
+          phone: form.phone?.trim() || undefined,
+          jobTitle: form.jobTitle?.trim() || undefined,
+          tenantId: isSuperAdmin ? form.tenantId : (user?.tenantId || user?.orgId || sessionUser?.tenantId || sessionUser?.orgId),
+        });
       }
       setToast(useTempPwd
         ? '✅ Account created — temporary password sent by email'
         : '✅ Invitation email sent — they will set their own password via the secure link');
       setShow(false);
-      setForm({ name: '', email: '', role: filterRole, domain: '' });
+      setForm({ name: '', email: '', phone: '', jobTitle: '', role: filterRole || 'candidate', domain: '', tenantId: '' });
       setUseTempPwd(false);
       load();
-    } catch (e) { setToast(`❌ ${e.message}`); }
+    } catch (e) {
+      const msg = e.message || 'Something went wrong';
+      // Map known server errors to field-level errors
+      if (msg.toLowerCase().includes('email already exists') || msg.toLowerCase().includes('duplicate')) {
+        setFormErrors({ email: 'This email is already registered' });
+      } else if (msg.toLowerCase().includes('email')) {
+        setFormErrors({ email: msg });
+      } else if (msg.toLowerCase().includes('tenantid') || msg.toLowerCase().includes('organisation')) {
+        setFormErrors({ tenantId: 'Please select a valid organisation' });
+      } else {
+        setToast(`❌ ${msg}`);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
   const resendInvite = async (u) => {
     try {
@@ -569,7 +652,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 URL.revokeObjectURL(url);
               } catch { setToast('❌ Export failed'); }
             }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>⬇ Export</button>
-            <button onClick={() => setShow(true)} style={btnP}>+ Add {lbl}</button>
+            <button onClick={() => { setShow(true); loadOrgs(); }} style={btnP}>+ Add {lbl}</button>
           </div>
         )
       } />
@@ -831,73 +914,81 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             const isExpanded = filterRole === 'recruiter' && expandedRec === u.id;
             const isSelected = selectedIds.has(u.id);
             return (
-              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : 'rgba(230,235,240,0.8)'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '14px 16px' }}>
-                {/* Top row: avatar + info */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : '#E8ECF0'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '16px' }}>
+
+                {/* ── Row 1: avatar + name/email + checkbox ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                   {isCandidates && (
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(u.id)}
-                      onClick={e => e.stopPropagation()}
-                      style={{ accentColor: '#0176D3', width: 15, height: 15, cursor: 'pointer', flexShrink: 0, marginTop: 13 }}
-                    />
+                    <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(u.id)} onClick={e => e.stopPropagation()}
+                      style={{ accentColor: '#0176D3', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }} />
                   )}
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 17, flexShrink: 0 }}>
-                    {(u.name || '?')[0].toUpperCase()}
+                  {/* Avatar */}
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18, flexShrink: 0, letterSpacing: -1 }}>
+                    {(u.name || u.email || '?')[0].toUpperCase()}
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    {/* Name + role badge on same line */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{u.name}</span>
-                      <Badge label={u.role} color="#0176D3" />
-                      {u.isActive === false && <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)' }}>Pending</span>}
+                  {/* Name + email block */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.name || u.email?.split('@')[0] || 'No Name'}
                     </div>
-                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
-                    {u.title && <div style={{ color: '#706E6B', fontSize: 11, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}{u.location ? ` · 📍${u.location}` : ''}</div>}
-                    {/* Candidate HR meta */}
-                    {isCandidates && (u.client || u.ta || u.jobRole || u.experience || u.currentCTC) && (
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                        {u.client && <span style={{ color: '#706E6B', fontSize: 10 }}>🏢 {u.client}</span>}
-                        {u.ta && <span style={{ color: '#706E6B', fontSize: 10 }}>👤 TA: {u.ta}</span>}
-                        {u.jobRole && <span style={{ color: '#706E6B', fontSize: 10 }}>💼 {u.jobRole}</span>}
-                        {u.experience ? <span style={{ color: '#706E6B', fontSize: 10 }}>🎓 {u.experience} yrs</span> : null}
-                        {u.currentCTC && <span style={{ color: '#2E844A', fontSize: 10, fontWeight: 600 }}>💰 {u.currentCTC}</span>}
-                        {(() => { try { const c = Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); return c.length > 0 ? <span style={{ color: '#A07E00', fontSize: 10 }}>✓ Certified</span> : null; } catch { return null; } })()}
-                      </div>
-                    )}
-                    {/* Skills */}
-                    {u.skills && (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 5 }}>
-                        {(Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 4).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
-                      </div>
+                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.email}
+                    </div>
+                  </div>
+                  {/* Status badges — right side, don't compete with name */}
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
+                    <Badge label={u.role} color="#0176D3" />
+                    {u.isActive === false && (
+                      <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
                     )}
                   </div>
                 </div>
 
-                {/* Bottom row: action buttons — always full-width, neat row */}
+                {/* ── Row 2: title / location ── */}
+                {(u.title || u.location) && (
+                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
+                  </div>
+                )}
+
+                {/* ── Row 3: HR meta (candidates only) ── */}
+                {isCandidates && (u.client || u.ta || u.jobRole || u.experience || u.currentCTC) && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 7 }}>
+                    {u.experience ? <span style={{ background: '#F0F7FF', color: '#0176D3', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>🎓 {u.experience} yrs</span> : null}
+                    {u.currentCTC && <span style={{ background: '#F0FFF4', color: '#2E844A', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>💰 {u.currentCTC}</span>}
+                    {u.client && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>🏢 {u.client}</span>}
+                    {u.ta && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>👤 {u.ta}</span>}
+                    {u.jobRole && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>💼 {u.jobRole}</span>}
+                    {(() => { try { const c = Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); return c.length > 0 ? <span style={{ background: '#FFFBEA', color: '#A07E00', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>✓ Certified</span> : null; } catch { return null; } })()}
+                  </div>
+                )}
+
+                {/* ── Row 4: skills ── */}
+                {u.skills && (Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 7 }}>
+                    {(Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 5).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
+                  </div>
+                )}
+
+                {/* ── Action strip ── */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid #F3F2F2', alignItems: 'center' }}>
                   {filterRole === 'candidate' && (
-                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '5px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>
-                      📋 Resume
-                    </button>
+                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>📋 Resume</button>
                   )}
                   {filterRole === 'recruiter' && (
-                    <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '5px 12px', fontSize: 11, borderColor: isExpanded ? '#0176D3' : undefined, color: isExpanded ? '#0176D3' : undefined }}>
-                      {isExpanded ? '▲ Hide Activity' : '👁 Activity'}
+                    <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
+                      {isExpanded ? '▲ Hide' : '👁 Activity'}
                     </button>
                   )}
-                  <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '5px 12px' }}>✏️ Edit</button>
+                  <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '6px 13px' }}>✏️ Edit</button>
                   {u.isActive === false && (
-                    <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '5px 12px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>
-                      📧 Resend Invite
-                    </button>
+                    <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Resend</button>
                   )}
                   {isSuperAdmin && u.isActive !== false && (
-                    <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '5px 12px' }}>🔒 Reset Pwd</button>
+                    <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px' }}>🔒 Reset Pwd</button>
                   )}
                   {!recruiterView && (
-                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '5px 12px', fontSize: 11, marginLeft: 'auto' }}>🗑 Delete</button>
+                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '6px 13px', fontSize: 11, marginLeft: 'auto' }}>🗑 Delete</button>
                   )}
                 </div>
 
@@ -910,12 +1001,37 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
 
       {/* Add user modal */}
       {showModal && (
-        <Modal title={`Add ${lbl}`} onClose={() => { setShow(false); setUseTempPwd(false); }}
-          footer={<><button onClick={save} style={btnP}>Create</button><button onClick={() => setShow(false)} style={btnG}>Cancel</button></>}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field label="Full Name *" value={form.name} onChange={v => sf('name', v)} />
-            <Field label="Email *" value={form.email} onChange={v => sf('email', v)} type="email" />
-            {isSuperAdmin && <Dropdown label="Role" value={form.role} onChange={v => { sf('role', v); setUseTempPwd(false); }} options={[{ value: 'candidate', label: 'Candidate' }, { value: 'recruiter', label: 'Recruiter' }, { value: 'admin', label: 'Admin' }]} />}
+        <Modal title={`Add ${lbl}`} onClose={() => { setShow(false); setUseTempPwd(false); setFormErrors({}); }}
+          footer={
+            <>
+              <button onClick={save} style={{ ...btnP, opacity: saving ? 0.7 : 1 }} disabled={saving}>
+                {saving ? '⏳ Creating…' : 'Create'}
+              </button>
+              <button onClick={() => { setShow(false); setFormErrors({}); }} style={btnG}>Cancel</button>
+            </>
+          }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Field label="Full Name" required value={form.name} onChange={v => sf('name', v)} error={formErrors.name} placeholder="e.g. Jane Smith" autoFocus />
+            <Field label="Email Address" required value={form.email} onChange={v => sf('email', v)} type="email" error={formErrors.email} placeholder="jane@company.com" />
+            {isSuperAdmin && (
+              <Field
+                label="Role"
+                value={form.role}
+                onChange={v => { sf('role', v); sf('tenantId', ''); setUseTempPwd(false); setFormErrors({}); }}
+                options={[{ value: 'candidate', label: 'Candidate' }, { value: 'recruiter', label: 'Recruiter' }, { value: 'admin', label: 'Admin' }]}
+                placeholder="Select role"
+              />
+            )}
+            {/* Org selector — super admin must pick an org */}
+            {isSuperAdmin && (
+              <OrgSelector
+                value={form.tenantId}
+                onChange={v => sf('tenantId', v)}
+                error={formErrors.tenantId}
+                onOpen={loadOrgs}
+                orgs={orgs}
+              />
+            )}
 
             {/* Invite method toggle — only for admin/recruiter */}
             {(form.role === 'admin' || form.role === 'recruiter' || filterRole === 'admin' || filterRole === 'recruiter') && (
@@ -944,24 +1060,66 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
               </div>
             )}
 
-            {/* Info banner */}
-            {!useTempPwd ? (
-              <div style={{ padding: '8px 12px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, fontSize: 12, color: '#2E844A' }}>
-                📧 A branded invite email will be sent — they set their own password via a secure link (expires in 7 days).
-              </div>
-            ) : (
-              <div style={{ padding: '8px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, fontSize: 12, color: '#A07E00' }}>
-                🔑 Temporary password <strong>TalentNest@2024</strong> will be emailed — they must change it on first login.
+            {/* Extra fields for candidates */}
+            {(form.role === 'candidate' || filterRole === 'candidate') && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Field label="Phone" value={form.phone || ''} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" type="tel" style={{ flex: 1 }} />
+                <Field label="Job Title" value={form.jobTitle || ''} onChange={v => sf('jobTitle', v)} placeholder="e.g. Java Developer" style={{ flex: 1 }} />
               </div>
             )}
-            {showDomainField && (
+
+            {/* Invite method toggle — only for admin/recruiter */}
+            {(form.role === 'admin' || form.role === 'recruiter' || filterRole === 'admin' || filterRole === 'recruiter') && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Delivery Method</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => setUseTempPwd(false)} style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: `1.5px solid ${!useTempPwd ? '#0176D3' : '#e2e8f0'}`,
+                    background: !useTempPwd ? 'rgba(1,118,211,0.08)' : '#fff',
+                    color: !useTempPwd ? '#0176D3' : '#64748b',
+                    transition: 'all 0.15s',
+                  }}>
+                    🔗 Secure invite link
+                    <div style={{ fontWeight: 400, fontSize: 10, marginTop: 2 }}>They set their own password</div>
+                  </button>
+                  <button type="button" onClick={() => setUseTempPwd(true)} style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: `1.5px solid ${useTempPwd ? '#f59e0b' : '#e2e8f0'}`,
+                    background: useTempPwd ? 'rgba(245,158,11,0.08)' : '#fff',
+                    color: useTempPwd ? '#A07E00' : '#64748b',
+                    transition: 'all 0.15s',
+                  }}>
+                    🔑 Temp password
+                    <div style={{ fontWeight: 400, fontSize: 10, marginTop: 2 }}>Email them credentials</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Info banner */}
+            {(form.role === 'admin' || form.role === 'recruiter' || filterRole === 'admin' || filterRole === 'recruiter') && (
+              !useTempPwd ? (
+                <div style={{ padding: '8px 12px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, fontSize: 12, color: '#2E844A' }}>
+                  📧 A branded invite email will be sent — they set their own password via a secure link (expires in 7 days).
+                </div>
+              ) : (
+                <div style={{ padding: '8px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, fontSize: 12, color: '#A07E00' }}>
+                  🔑 Temporary password <strong>TalentNest@2024</strong> will be emailed — they must change it on first login.
+                </div>
+              )
+            )}
+
+            {/* Domain field — admin/recruiter only */}
+            {(form.role === 'admin' || form.role === 'recruiter' || filterRole === 'admin' || filterRole === 'recruiter') && (
               <Field
                 label="Company Website / Domain"
-                value={form.domain}
+                value={form.domain || ''}
                 onChange={v => sf('domain', v)}
-                placeholder="e.g. acme.com or https://acme.com"
+                placeholder="e.g. acme.com"
                 required={form.role === 'admin' || filterRole === 'admin'}
-                hint={(form.role === 'admin' || filterRole === 'admin') ? 'Required — scopes this admin to their org' : undefined}
+                error={formErrors.domain}
+                hint={(form.role === 'admin' || filterRole === 'admin') ? 'Scopes this admin to their organisation' : undefined}
               />
             )}
           </div>

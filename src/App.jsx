@@ -429,7 +429,7 @@ export default function App() {
             {rk === 'recruiter' && <Route path="dashboard" element={<RecruiterDashboard user={user} />} />}
             <Route path="jobs" element={rk === 'recruiter' ? <RecruiterJobs user={user} /> : <AdminJobs user={user} />} />
             <Route path="jobs/create" element={<CreateJobPage user={user} onBack={() => window.history.back()} onSuccess={() => window.history.back()} />} />
-            <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} />} />
+            <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="ai-match" element={<RecruiterAIMatch user={user} />} />
@@ -461,7 +461,7 @@ export default function App() {
             <Route path="automation" element={<AdminAutomation />} />
             <Route path="custom-fields" element={<AdminCustomFields />} />
             <Route path="contact-leads" element={<ContactLeads />} />
-            <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} />} />
+            <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
           </>
@@ -481,7 +481,7 @@ export default function App() {
             <Route path="playbooks" element={<SuperAdminPlaybooks />} />
             <Route path="blogs" element={<SuperAdminBlogs />} />
             <Route path="customizations" element={<SuperAdminCustomizations />} />
-            <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} />} />
+            <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />
           </>
         )}
 

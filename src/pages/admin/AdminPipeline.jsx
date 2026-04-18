@@ -38,6 +38,11 @@ function SkeletonCard() {
   return <div className="tn-skeleton" style={{ height: 76, borderRadius: 10 }} />;
 }
 
+const INTERVIEW_STAGES = new Set(['interview_scheduled','interview_round_1','interview_round_2','interview_completed','technical_round']);
+const OFFER_STAGES = new Set(['offer_extended','offer_letter','offer_accepted']);
+
+const SCHED_EMPTY = { date: '', time: '', format: 'video', interviewerName: '', interviewerEmail: '', videoLink: '', notes: '' };
+
 export default function AdminPipeline({ user }) {
   const [apps,    setApps]    = useState([]);
   const [jobs,    setJobs]    = useState([]);
@@ -48,6 +53,9 @@ export default function AdminPipeline({ user }) {
   const [stageFilter,setStageFilter]= useState('');
   const [drawerApp,  setDrawerApp]  = useState(null);
   const [movingId,   setMovingId]   = useState('');
+  const [stageDialog, setStageDialog] = useState(null); // { appId, newStage }
+  const [schedForm,   setSchedForm]   = useState(SCHED_EMPTY);
+  const [submitting,  setSubmitting]  = useState(false);
   const dragId = useRef(null);
 
   const load = useCallback(() => {
@@ -65,16 +73,46 @@ export default function AdminPipeline({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const sf = (k, v) => setSchedForm(p => ({ ...p, [k]: v }));
+
   const moveStage = async (appId, newStage) => {
+    // For interview/offer stages, show a contextual dialog first
+    if (INTERVIEW_STAGES.has(newStage) || OFFER_STAGES.has(newStage)) {
+      setSchedForm(SCHED_EMPTY);
+      setStageDialog({ appId, newStage });
+      return;
+    }
+    await commitMove(appId, newStage);
+  };
+
+  const commitMove = async (appId, newStage, extra = {}) => {
     setMovingId(appId);
     try {
-      await api.updateStage(appId, newStage, 'Moved by admin');
+      await api.updateStage(appId, newStage, extra.notes || 'Moved by admin');
+      // Schedule interview if date provided
+      if (INTERVIEW_STAGES.has(newStage) && extra.date && extra.time) {
+        try {
+          await api.scheduleInterview(appId, extra);
+        } catch { /* best-effort */ }
+      }
       setApps(prev => prev.map(a => (a.id || a._id?.toString()) === appId ? { ...a, stage: newStage } : a));
       setToast(`✅ Moved to ${SM[newStage]?.label || newStage}`);
+      setStageDialog(null);
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
     setMovingId('');
+  };
+
+  const handleDialogConfirm = async () => {
+    if (!stageDialog) return;
+    const { appId, newStage } = stageDialog;
+    if (INTERVIEW_STAGES.has(newStage) && (!schedForm.date || !schedForm.time)) {
+      setToast('❌ Interview date and time are required'); return;
+    }
+    setSubmitting(true);
+    await commitMove(appId, newStage, schedForm);
+    setSubmitting(false);
   };
 
   // Drag-and-drop handlers
@@ -174,7 +212,68 @@ export default function AdminPipeline({ user }) {
           user={drawerApp.candidateId || drawerApp.candidate}
           app={drawerApp}
           onClose={() => setDrawerApp(null)}
+          onUpdated={(updated) => {
+            setApps(prev => prev.map(a => (a.id || a._id?.toString()) === (updated?.id || updated?._id?.toString()) ? { ...a, ...updated } : a));
+            setDrawerApp(null);
+          }}
         />
+      )}
+
+      {/* Stage-change dialog — interview scheduling or offer confirmation */}
+      {stageDialog && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(6px)', zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520, boxShadow: '0 24px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
+                  {INTERVIEW_STAGES.has(stageDialog.newStage) ? 'Schedule Interview' : 'Extend Offer'}
+                </div>
+                <div style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>
+                  {SM[stageDialog.newStage]?.icon} Moving to {SM[stageDialog.newStage]?.label || stageDialog.newStage}
+                </div>
+              </div>
+              <button onClick={() => setStageDialog(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {INTERVIEW_STAGES.has(stageDialog.newStage) && (
+                <>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <Field label="Date" required type="date" value={schedForm.date} onChange={v => sf('date', v)} style={{ flex: 1 }} />
+                    <Field label="Time" required type="time" value={schedForm.time} onChange={v => sf('time', v)} style={{ flex: 1 }} />
+                  </div>
+                  <Field
+                    label="Format"
+                    value={schedForm.format}
+                    onChange={v => sf('format', v)}
+                    options={[{ value: 'video', label: '📹 Video Call' }, { value: 'phone', label: '📞 Phone' }, { value: 'in_person', label: '🏢 In Person' }]}
+                  />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <Field label="Interviewer Name" value={schedForm.interviewerName} onChange={v => sf('interviewerName', v)} placeholder="e.g. Priya Sharma" style={{ flex: 1 }} />
+                    <Field label="Interviewer Email" value={schedForm.interviewerEmail} onChange={v => sf('interviewerEmail', v)} type="email" placeholder="priya@co.com" style={{ flex: 1 }} />
+                  </div>
+                  {schedForm.format === 'video' && (
+                    <Field label="Video Link" value={schedForm.videoLink} onChange={v => sf('videoLink', v)} placeholder="https://meet.google.com/..." />
+                  )}
+                </>
+              )}
+              {OFFER_STAGES.has(stageDialog.newStage) && (
+                <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, fontSize: 13, color: '#2E844A' }}>
+                  🎉 This will move the candidate to <strong>{SM[stageDialog.newStage]?.label || stageDialog.newStage}</strong>. An offer letter can be generated from the Offers section.
+                </div>
+              )}
+              <Field label="Notes (optional)" value={schedForm.notes} onChange={v => sf('notes', v)} placeholder="Any notes for this stage move…" rows={2} />
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+                <button onClick={() => setStageDialog(null)} style={btnG}>Cancel</button>
+                <button onClick={handleDialogConfirm} style={{ ...btnP, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+                  {submitting ? '⏳ Moving…' : INTERVIEW_STAGES.has(stageDialog.newStage) ? '📅 Schedule & Move' : '✅ Confirm Move'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

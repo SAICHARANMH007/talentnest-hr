@@ -200,6 +200,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [agreed, setAgreed]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [toast, setToast]       = useState('');
+  const [loginError, setLoginError] = useState('');
   const [showPw, setShowPw]     = useState(false);
   const [pending2FA, setPending2FA] = useState(null); // { email }
 
@@ -214,7 +215,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   }, []);
 
   const handleLogin = async (e, p) => {
-    setLoading(true);
+    setLoading(true); setLoginError('');
     try {
       const d = await api.login(e, p);
       if (d.mustChangePassword) {
@@ -223,13 +224,16 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       }
       if (d.requires2FA) { setPending2FA({ email: d.email }); setLoading(false); return; }
       if (d.user.role !== 'candidate') {
-        setToast('❌ This is not a Job Seeker account. Please use Employer login instead.');
+        setLoginError('This is not a Job Seeker account. Please use Employer login.');
         setLoading(false);
         return;
       }
       onAuth(d.user, d.token);
       navigate('/app');
-    } catch (err) { setToast('❌ ' + err.message); }
+    } catch (err) {
+      const msg = err.message || 'Something went wrong';
+      setLoginError(msg.includes('Invalid email or password') ? 'Incorrect email or password. Please try again.' : msg);
+    }
     setLoading(false);
   };
 
@@ -376,6 +380,12 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 </span>
               </label>
             </>
+          )}
+
+          {mode === 'login' && loginError && (
+            <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#BA0517', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>⚠</span> {loginError}
+            </div>
           )}
 
           <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', marginTop: 4, opacity: loading ? 0.7 : 1 }}>
@@ -530,6 +540,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [toast, setToast]         = useState('');
   const [showPw, setShowPw]       = useState(false);
   const [pending2FA, setPending2FA] = useState(null); // { email }
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     if (prefill?.autoLogin) doLogin(prefill.email, prefill.password);
@@ -583,7 +594,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   };
 
   const doLogin = async (e, p) => {
-    setLoading(true);
+    setLoading(true); setLoginError('');
     try {
       const d = await api.login(e, p);
       if (d.mustChangePassword) {
@@ -592,17 +603,28 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       }
       if (d.requires2FA) { setPending2FA({ email: d.email }); setLoading(false); return; }
       if (d.user.role === 'candidate') {
-        setToast('❌ This is a Job Seeker account. Use Job Seeker login instead.');
+        setLoginError('This is a Job Seeker account. Please use Job Seeker login instead.');
         setLoading(false); return;
       }
       onAuth(d.user, d.token);
       navigate('/app');
-    } catch (err) { setToast('❌ ' + err.message); }
+    } catch (err) {
+      const msg = err.message || 'Something went wrong';
+      if (msg.includes('locked')) {
+        setLoginError(msg);
+      } else if (msg.includes('Invalid email or password') || msg.includes('401')) {
+        setLoginError('Incorrect email or password. Please try again.');
+      } else {
+        setLoginError(msg);
+      }
+    }
     setLoading(false);
   };
 
   const submit = async () => {
-    if (!email || !pw) return setToast('❌ Email and password required');
+    setLoginError('');
+    if (!email) { setLoginError('Work email is required'); return; }
+    if (!pw) { setLoginError('Password is required'); return; }
     await doLogin(email, pw);
   };
 
@@ -765,6 +787,12 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
               </div>
             </div>
+
+            {loginError && (
+              <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#BA0517', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>⚠</span> {loginError}
+              </div>
+            )}
 
             <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', marginTop: 4, opacity: loading ? 0.7 : 1 }}>
               {loading ? <><Spinner /> Signing in…</> : '→ Sign In to Portal'}

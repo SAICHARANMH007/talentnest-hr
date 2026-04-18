@@ -40,7 +40,8 @@ const candidateSchema = new mongoose.Schema({
 
   source: {
     type: String,
-    enum: ['manual', 'resume_upload', 'bulk_import', 'invite_link', 'career_page', 'referral'],
+    enum: ['manual', 'resume_upload', 'bulk_import', 'invite_link', 'career_page', 'referral', 'platform'],
+    default: 'platform',
   },
 
   interestStatus: {
