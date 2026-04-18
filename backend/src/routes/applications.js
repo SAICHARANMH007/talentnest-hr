@@ -390,9 +390,10 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
     const recJobs = await Job.find({ assignedRecruiters: req.query.recruiterId }).select('_id').lean();
     filter.jobId = { $in: recJobs.map(j => j._id) };
   }
-  if (req.query.jobId) filter.jobId = req.query.jobId;
-  if (req.query.stage) filter.currentStage = req.query.stage;
-  if (req.query.status) filter.status = req.query.status;
+  if (req.query.jobId)       filter.jobId       = req.query.jobId;
+  if (req.query.candidateId) filter.candidateId = req.query.candidateId;
+  if (req.query.stage)       filter.currentStage = req.query.stage;
+  if (req.query.status)      filter.status       = req.query.status;
 
   const [apps, total] = await Promise.all([
     Application.find(filter)
