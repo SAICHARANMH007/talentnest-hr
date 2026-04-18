@@ -1,0 +1,167 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   TalentNest HR — Platform Micro-Animations  (animations.css)
+   Soft, production-safe transitions. All classes are additive — no existing
+   styles are overridden. Uses `prefers-reduced-motion` to respect accessibility.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes tn-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes tn-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes tn-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes tn-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes tn-badge-pop {
+  0%   { transform: scale(0.7);  opacity: 0; }
+  70%  { transform: scale(1.12); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes tn-pulse-dot {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.4); opacity: 0.6; }
+}
+
+@keyframes tn-skeleton {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px  0; }
+}
+
+/* ── Page-level entrance animation ─────────────────────────────────────────── */
+/* Applied to the root content area so every page fades in cleanly */
+.tn-main-content > * {
+  animation: tn-fade-up 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* ── Card hover lift ────────────────────────────────────────────────────────── */
+/* Any element with role="article", or explicit .tn-card-hover class */
+.tn-card-hover,
+[data-card="true"] {
+  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+.tn-card-hover:hover,
+[data-card="true"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(1,118,211,0.13) !important;
+}
+
+/* ── Staggered list entrance — apply .tn-stagger to a container ─────────────── */
+.tn-stagger > * {
+  animation: tn-fade-up 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.tn-stagger > *:nth-child(1)  { animation-delay: 0.00s; }
+.tn-stagger > *:nth-child(2)  { animation-delay: 0.04s; }
+.tn-stagger > *:nth-child(3)  { animation-delay: 0.08s; }
+.tn-stagger > *:nth-child(4)  { animation-delay: 0.12s; }
+.tn-stagger > *:nth-child(5)  { animation-delay: 0.16s; }
+.tn-stagger > *:nth-child(6)  { animation-delay: 0.20s; }
+.tn-stagger > *:nth-child(7)  { animation-delay: 0.24s; }
+.tn-stagger > *:nth-child(8)  { animation-delay: 0.28s; }
+.tn-stagger > *:nth-child(n+9){ animation-delay: 0.32s; }
+
+/* ── Button interactions ────────────────────────────────────────────────────── */
+button:not(:disabled):active {
+  transform: scale(0.97) !important;
+  transition: transform 0.08s ease !important;
+}
+
+/* Smooth hover for primary/ghost buttons */
+button:not(:disabled) {
+  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* ── Sidebar nav item hover glow ────────────────────────────────────────────── */
+.tn-sidebar nav a,
+.tn-sidebar button {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, padding-left 0.15s ease !important;
+}
+.tn-sidebar nav a:hover:not(.active),
+.tn-sidebar button:hover {
+  padding-left: 22px !important;
+}
+
+/* ── Input focus glow ───────────────────────────────────────────────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(1,118,211,0.18) !important;
+  border-color: #0176D3 !important;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease !important;
+  outline: none !important;
+}
+
+/* ── Badge entrance ─────────────────────────────────────────────────────────── */
+.tn-badge-new {
+  animation: tn-badge-pop 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* ── Skeleton loading shimmer ───────────────────────────────────────────────── */
+.tn-skeleton {
+  background: linear-gradient(90deg, #f0f2f5 25%, #e8ebef 50%, #f0f2f5 75%);
+  background-size: 800px 100%;
+  animation: tn-skeleton 1.5s infinite ease-in-out;
+  border-radius: 8px;
+}
+
+/* ── Modal / drawer entrance (existing modals auto-inherit if using .tn-modal-in) */
+.tn-modal-animate {
+  animation: tn-scale-in 0.22s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.tn-overlay-animate {
+  animation: tn-fade-in 0.2s ease both;
+}
+
+/* ── Toast slide-in ─────────────────────────────────────────────────────────── */
+.tn-toast-wrap {
+  animation: tn-slide-down 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* ── Notification dot pulse ─────────────────────────────────────────────────── */
+.tn-notif-dot {
+  animation: tn-pulse-dot 1.8s ease-in-out infinite;
+}
+
+/* ── Table row hover highlight ──────────────────────────────────────────────── */
+tr {
+  transition: background 0.12s ease;
+}
+
+/* ── Tabs / pills transition ────────────────────────────────────────────────── */
+.tn-tab-bar button,
+.tn-pill-group button {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+/* ── Charts entrance ────────────────────────────────────────────────────────── */
+svg path,
+svg rect,
+svg circle {
+  transition: d 0.3s ease, opacity 0.3s ease, fill 0.3s ease;
+}
+
+/* ── Respect user preference for reduced motion ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
