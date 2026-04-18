@@ -35,7 +35,7 @@ router.get('/', authenticate, tenantGuard, asyncHandler(async (req, res) => {
 
 // ── POST /api/custom-fields — create ─────────────────────────────────────────
 router.post('/', ...hrGuard, asyncHandler(async (req, res) => {
-  const { label, entity, fieldType, placeholder, helpText, options, isRequired, order } = req.body;
+  const { label, entity, fieldType, placeholder, helpText, section, options, isRequired, order } = req.body;
   if (!label || !entity) throw new AppError('label and entity are required.', 400);
 
   const fieldKey = toKey(label);
@@ -54,6 +54,7 @@ router.post('/', ...hrGuard, asyncHandler(async (req, res) => {
     fieldType:   fieldType || 'text',
     placeholder: placeholder || '',
     helpText:    helpText || '',
+    section:     section  || '',
     options:     Array.isArray(options) ? options.filter(Boolean) : [],
     isRequired:  !!isRequired,
     order:       order !== undefined ? order : maxOrder,
@@ -65,7 +66,7 @@ router.post('/', ...hrGuard, asyncHandler(async (req, res) => {
 
 // ── PATCH /api/custom-fields/:id ──────────────────────────────────────────────
 router.patch('/:id', ...hrGuard, asyncHandler(async (req, res) => {
-  const allowed = ['label', 'placeholder', 'helpText', 'options', 'isRequired', 'isActive', 'order', 'fieldType'];
+  const allowed = ['label', 'placeholder', 'helpText', 'section', 'options', 'isRequired', 'isActive', 'order', 'fieldType'];
   const update = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
 

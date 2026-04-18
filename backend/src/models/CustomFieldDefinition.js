@@ -3,9 +3,10 @@ const mongoose = require('mongoose');
 
 /**
  * CustomFieldDefinition — per-tenant schema for user-defined fields.
- * These appear on candidate, job, or application forms.
+ * These appear on candidate, job, application, and interview forms.
  *
- * Field types: text, textarea, number, date, select (single), multiselect, checkbox, url
+ * Field types: text, textarea, number, date, select, multiselect, checkbox,
+ *              url, email, phone, rating, file, rich-text, tags
  */
 const customFieldSchema = new mongoose.Schema({
   tenantId: {
@@ -18,7 +19,7 @@ const customFieldSchema = new mongoose.Schema({
   // Which entity this field belongs to
   entity: {
     type: String,
-    enum: ['candidate', 'job', 'application'],
+    enum: ['candidate', 'job', 'application', 'interview'],
     required: true,
     index: true,
   },
@@ -27,12 +28,14 @@ const customFieldSchema = new mongoose.Schema({
   fieldKey:    { type: String, required: true, trim: true },     // snake_case key used in storage
   fieldType: {
     type: String,
-    enum: ['text', 'textarea', 'number', 'date', 'select', 'multiselect', 'checkbox', 'url'],
+    enum: ['text', 'textarea', 'number', 'date', 'select', 'multiselect', 'checkbox',
+           'url', 'email', 'phone', 'rating', 'file', 'rich-text', 'tags'],
     default: 'text',
   },
 
   placeholder: { type: String },
   helpText:    { type: String },
+  section:     { type: String, default: '' },  // Optional grouping label
 
   // For select / multiselect
   options: [{ type: String, trim: true }],

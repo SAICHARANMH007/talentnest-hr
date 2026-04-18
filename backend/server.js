@@ -98,8 +98,10 @@ app.use('/api/', rateLimit({
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { success: false, error: 'Too many login attempts.' } }));
 app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { success: false, error: 'Too many registration attempts.' } }));
 // Email / invite sending — prevent email spam and Resend bill abuse
-// 20 invite/email sends per hour per IP
-app.use('/api/admin', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+// 20 invite/email sends per hour per IP (invite routes only — not the whole admin router)
+app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/invite-recruiter', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/resend-invite',  rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
 app.use('/api/email', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Email rate limit reached. Please try again later.' } }));
 
 // ── Body parsing

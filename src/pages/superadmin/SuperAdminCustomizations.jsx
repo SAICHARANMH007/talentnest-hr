@@ -832,7 +832,7 @@ function EmailSignatureTab({ data, updateSingleton }) {
     if (data?.emailSignature) setSig(data.emailSignature);
   }, [data]);
 
-  if (!sig) return null;
+  if (!sig) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
   const sf = (k, v) => setSig(p => ({ ...p, [k]: v }));
 
   const save = async () => {
@@ -1062,9 +1062,9 @@ function OfferLetterTemplateTab({ data, updateSingleton }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div className="tn-customizations-layout" style={{ gap: 16 }}>
         {/* Section nav */}
-        <div style={{ width: 200, flexShrink: 0, background: '#fff', border: '1px solid rgba(1,118,211,0.12)', borderRadius: 12, padding: '6px 0' }}>
+        <div className="tn-customizations-nav" style={{ width: 200 }}>
           {OLT_FIELDS.map(f => (
             <button key={f.key} onClick={() => setActiveSection(f.key)} style={{
               width: '100%', padding: '9px 14px', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 12,
@@ -1380,9 +1380,9 @@ export default function SuperAdminCustomizations() {
         <p style={{ color: '#706E6B', fontSize: 14, margin: '4px 0 0' }}>Platform-wide settings, custom fields, branding, and workflow configuration</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div className="tn-customizations-layout">
         {/* Sidebar Nav */}
-        <div style={{ width: 220, flexShrink: 0, background: '#fff', border: '1px solid rgba(1,118,211,0.12)', borderRadius: 14, padding: '8px 0', position: 'sticky', top: 20 }}>
+        <div className="tn-customizations-nav">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -1391,6 +1391,7 @@ export default function SuperAdminCustomizations() {
               color: activeTab === tab.id ? '#0176D3' : '#374151',
               fontWeight: activeTab === tab.id ? 700 : 500,
               fontSize: 13, borderLeft: activeTab === tab.id ? '3px solid #0176D3' : '3px solid transparent',
+              whiteSpace: 'nowrap',
             }}>
               <span style={{ fontSize: 15 }}>{tab.icon}</span>
               {tab.label}

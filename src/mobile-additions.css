@@ -683,3 +683,52 @@ button, a, [role="button"] {
   }
 }
 
+
+/* ── Customizations page — responsive 2-panel layout ── */
+.tn-customizations-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.tn-customizations-nav {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid rgba(1,118,211,0.12);
+  border-radius: 14px;
+  padding: 8px 0;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+/* On small screens: nav becomes a horizontal scrolling tab bar above content */
+@media (max-width: 767px) {
+  .tn-customizations-layout {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .tn-customizations-nav {
+    width: 100%;
+    position: static;
+    max-height: none;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 8px;
+    border-radius: 12px;
+    gap: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tn-customizations-nav::-webkit-scrollbar { display: none; }
+  .tn-customizations-nav button {
+    white-space: nowrap;
+    border-left: none !important;
+    border-bottom: 3px solid transparent;
+    border-radius: 0 !important;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+  }
+}
