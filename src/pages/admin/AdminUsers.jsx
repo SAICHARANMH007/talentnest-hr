@@ -831,65 +831,76 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             const isExpanded = filterRole === 'recruiter' && expandedRec === u.id;
             const isSelected = selectedIds.has(u.id);
             return (
-              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : 'transparent'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                    {/* Checkbox for candidates */}
-                    {isCandidates && (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(u.id)}
-                        onClick={e => e.stopPropagation()}
-                        style={{ accentColor: '#0176D3', width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }}
-                      />
-                    )}
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
-                      {(u.name || '?')[0].toUpperCase()}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ color: '#181818', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
-                      </div>
-                      <div style={{ color: '#0176D3', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
-                      {u.title && <div style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}{u.location ? ` · ${u.location}` : ''}</div>}
-                      {/* Candidate extra fields */}
-                      {isCandidates && (u.client || u.ta || u.jobRole) && (
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 3 }}>
-                          {u.client && <span style={{ color: '#706E6B', fontSize: 10 }}>🏢 {u.client}</span>}
-                          {u.ta && <span style={{ color: '#706E6B', fontSize: 10 }}>👤 TA: {u.ta}</span>}
-                          {u.jobRole && <span style={{ color: '#706E6B', fontSize: 10 }}>💼 {u.jobRole}</span>}
-                          {u.experience ? <span style={{ color: '#706E6B', fontSize: 10 }}>🎓 {u.experience} yrs</span> : null}
-                          {u.currentCTC && <span style={{ color: '#2E844A', fontSize: 10 }}>💰 {u.currentCTC}</span>}
-                          {(() => { try { const c = Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); return c.length > 0 ? <span style={{ color: '#A07E00', fontSize: 10 }}>✓ Certified</span> : null; } catch { return null; } })()}
-                        </div>
-                      )}
-                      {u.skills && (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-                          {(Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 4).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
-                        </div>
-                      )}
-                    </div>
+              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : 'rgba(230,235,240,0.8)'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '14px 16px' }}>
+                {/* Top row: avatar + info */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  {isCandidates && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(u.id)}
+                      onClick={e => e.stopPropagation()}
+                      style={{ accentColor: '#0176D3', width: 15, height: 15, cursor: 'pointer', flexShrink: 0, marginTop: 13 }}
+                    />
+                  )}
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 17, flexShrink: 0 }}>
+                    {(u.name || '?')[0].toUpperCase()}
                   </div>
-
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' }}>
-                    <Badge label={u.role} color="#0176D3" />
-                    {filterRole === 'candidate' && (
-                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '5px 10px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}>
-                        📋 Resume
-                      </button>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    {/* Name + role badge on same line */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{u.name}</span>
+                      <Badge label={u.role} color="#0176D3" />
+                      {u.isActive === false && <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)' }}>Pending</span>}
+                    </div>
+                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                    {u.title && <div style={{ color: '#706E6B', fontSize: 11, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}{u.location ? ` · 📍${u.location}` : ''}</div>}
+                    {/* Candidate HR meta */}
+                    {isCandidates && (u.client || u.ta || u.jobRole || u.experience || u.currentCTC) && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                        {u.client && <span style={{ color: '#706E6B', fontSize: 10 }}>🏢 {u.client}</span>}
+                        {u.ta && <span style={{ color: '#706E6B', fontSize: 10 }}>👤 TA: {u.ta}</span>}
+                        {u.jobRole && <span style={{ color: '#706E6B', fontSize: 10 }}>💼 {u.jobRole}</span>}
+                        {u.experience ? <span style={{ color: '#706E6B', fontSize: 10 }}>🎓 {u.experience} yrs</span> : null}
+                        {u.currentCTC && <span style={{ color: '#2E844A', fontSize: 10, fontWeight: 600 }}>💰 {u.currentCTC}</span>}
+                        {(() => { try { const c = Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); return c.length > 0 ? <span style={{ color: '#A07E00', fontSize: 10 }}>✓ Certified</span> : null; } catch { return null; } })()}
+                      </div>
                     )}
-                    {filterRole === 'recruiter' && (
-                      <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '5px 10px', fontSize: 11, borderColor: isExpanded ? '#0176D3' : '', color: isExpanded ? '#0176D3' : '' }}>
-                        {isExpanded ? '▲ Hide' : '👁 Activity'}
-                      </button>
+                    {/* Skills */}
+                    {u.skills && (
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 5 }}>
+                        {(Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 4).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
+                      </div>
                     )}
-                    <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '5px 10px' }}>✏️ Edit</button>
-                    {u.isActive === false && <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Invite</button>}
-                    {isSuperAdmin && u.isActive !== false && <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>🔒 Pwd</button>}
-                    {!recruiterView && <button onClick={() => del(u.id)} style={{ ...btnD, padding: '5px 10px', fontSize: 11 }}>Delete</button>}
                   </div>
                 </div>
+
+                {/* Bottom row: action buttons — always full-width, neat row */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid #F3F2F2', alignItems: 'center' }}>
+                  {filterRole === 'candidate' && (
+                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '5px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>
+                      📋 Resume
+                    </button>
+                  )}
+                  {filterRole === 'recruiter' && (
+                    <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '5px 12px', fontSize: 11, borderColor: isExpanded ? '#0176D3' : undefined, color: isExpanded ? '#0176D3' : undefined }}>
+                      {isExpanded ? '▲ Hide Activity' : '👁 Activity'}
+                    </button>
+                  )}
+                  <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '5px 12px' }}>✏️ Edit</button>
+                  {u.isActive === false && (
+                    <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '5px 12px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>
+                      📧 Resend Invite
+                    </button>
+                  )}
+                  {isSuperAdmin && u.isActive !== false && (
+                    <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '5px 12px' }}>🔒 Reset Pwd</button>
+                  )}
+                  {!recruiterView && (
+                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '5px 12px', fontSize: 11, marginLeft: 'auto' }}>🗑 Delete</button>
+                  )}
+                </div>
+
                 {isExpanded && <RecruiterActivityPanel recruiterId={u.id} />}
               </div>
             );

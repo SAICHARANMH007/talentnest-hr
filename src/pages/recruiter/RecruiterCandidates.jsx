@@ -276,7 +276,7 @@ export default function RecruiterCandidates({ user }) {
     return filters.roles.some(r => (map[r]||[r.toLowerCase()]).some(kw => hay.includes(kw)));
   };
 
-  // load candidates + recruiter's jobs on mount
+  // load candidates + recruiter's jobs on mount — show all candidates immediately
   useEffect(() => {
     (async () => {
       try {
@@ -285,10 +285,14 @@ export default function RecruiterCandidates({ user }) {
           api.getJobs(user.id),
         ]);
         const rawCands = Array.isArray(cands) ? cands : (Array.isArray(cands?.data) ? cands.data : []);
-        setAllCandidates(rawCands.map(c => ({ ...c, id: c.id || c._id?.toString() || String(c._id || '') })));
+        const normalized = rawCands.map(c => ({ ...c, id: c.id || c._id?.toString() || String(c._id || '') }));
+        setAllCandidates(normalized);
         // Normalize _id → id so CandidateCard's toggleJob/checked work with lean() results
         const rawJobs = Array.isArray(myJobs) ? myJobs : (Array.isArray(myJobs?.data) ? myJobs.data : []);
         setJobs(rawJobs.map(j => ({ ...j, id: j.id || j._id?.toString() || String(j._id) })));
+        // Auto-show all candidates on load
+        setResults(normalized);
+        setSearched(true);
       } catch (e) {
         setToast('❌ ' + e.message);
       }
@@ -317,8 +321,8 @@ export default function RecruiterCandidates({ user }) {
 
   const reset = () => {
     setFilters({ designation: '', skills: '', location: '', expMin: '', expMax: '', roles: [] });
-    setResults([]);
-    setSearched(false);
+    setResults(allCandidates);
+    setSearched(true);
   };
 
   const addToPipeline = async (candidate, jobId) => {
@@ -379,8 +383,8 @@ export default function RecruiterCandidates({ user }) {
       )}
 
       <PageHeader
-        title="Import Candidates"
-        subtitle="Search the talent pool by designation, skills, experience or location"
+        title="Talent Pool"
+        subtitle={`${allCandidates.length} candidate${allCandidates.length !== 1 ? 's' : ''} in pool · filter by designation, skills, location or experience`}
       />
 
       {loading ? (
@@ -428,9 +432,7 @@ export default function RecruiterCandidates({ user }) {
           {/* ── Results ── */}
           {!searched && (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9E9D9B' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
-              <div style={{ fontSize: 14, color: '#706E6B' }}>Enter filters above and click Search to find candidates</div>
-              <div style={{ fontSize: 12, color: '#9E9D9B', marginTop: 6 }}>You can search by designation, skills, location, or experience range</div>
+              <Spinner />
             </div>
           )}
 
@@ -446,7 +448,7 @@ export default function RecruiterCandidates({ user }) {
             <>
               <div className="tn-bulk-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>
-                  ✅ {results.length} CANDIDATE{results.length !== 1 ? 'S' : ''} FOUND
+                  👥 {results.length} CANDIDATE{results.length !== 1 ? 'S' : ''} {hasFilters ? 'FOUND' : 'IN POOL'}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {selectedIds.length > 0 && (
