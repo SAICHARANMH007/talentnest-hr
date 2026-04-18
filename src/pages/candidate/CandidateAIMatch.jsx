@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -9,6 +10,7 @@ import { api } from '../../api/api.js';
 import { matchJobsToCandidate } from '../../api/matching.js';
 
 export default function CandidateAIMatch({ user }) {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
@@ -20,11 +22,10 @@ export default function CandidateAIMatch({ user }) {
 
   useEffect(() => {
     api.getPublicJobs().then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
-    // load already-applied jobs for this candidate
-    api.getApplications({ candidateId: user.id }).then(res => {
-      const apps = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+    // load already-applied jobs for this candidate via the /mine endpoint
+    api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
-    });
+    }).catch(() => {});
   }, [user.id]);
 
   const run = async () => {
@@ -174,7 +175,7 @@ export default function CandidateAIMatch({ user }) {
                     <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>📝 ASSESSMENT REQUIRED</div>
                     <p style={{ color: '#3E3E3C', fontSize: 13, margin: '0 0 10px' }}>{assessments[r.jobId].title || 'Skills Assessment'} · {assessments[r.jobId].questions?.length || '?'} questions</p>
                     <button
-                      onClick={() => { window.dispatchEvent(new CustomEvent('take-assessment', { detail: { assessmentId: assessments[r.jobId].id || assessments[r.jobId]._id, jobId: r.jobId } })); setToast('Opening assessment...'); }}
+                      onClick={() => { navigate(`/app/assessment/${assessments[r.jobId].id || assessments[r.jobId]._id}`); }}
                       style={{ ...btnP, padding: '7px 18px', fontSize: 12, background: '#0176D3' }}
                     >
                       📝 Take Assessment
