@@ -847,12 +847,12 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                     <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
                       {(u.name || '?')[0].toUpperCase()}
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ color: '#181818', fontWeight: 600 }}>{u.name}</div>
+                        <div style={{ color: '#181818', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
                       </div>
-                      <div style={{ color: '#0176D3', fontSize: 12 }}>{u.email}</div>
-                      {u.title && <div style={{ color: '#706E6B', fontSize: 11 }}>{u.title}{u.location ? ` · ${u.location}` : ''}</div>}
+                      <div style={{ color: '#0176D3', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                      {u.title && <div style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}{u.location ? ` · ${u.location}` : ''}</div>}
                       {/* Candidate extra fields */}
                       {isCandidates && (u.client || u.ta || u.jobRole) && (
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 3 }}>

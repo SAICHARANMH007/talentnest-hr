@@ -260,39 +260,21 @@ select {
 }
 
 /* ════════════════════════════════
-   SIDEBAR — Collapsed icon mode on tablet
+   SIDEBAR — Full-label sidebar at ALL desktop widths
+   Never collapse to icon-only: super_admin has 22 items
+   and icon mode makes navigation impossible without labels.
    ════════════════════════════════ */
 
-@media (min-width: 768px) and (max-width: 900px) {
-  .tn-sidebar { width: 56px !important; overflow: visible !important; }
-  .tn-sidebar .tn-nav-label,
-  .tn-sidebar [class*="nav-label"] { display: none !important; }
-  .tn-sidebar nav a {
-    justify-content: center !important;
-    padding: 12px 0 !important;
-  }
-  .tn-sidebar nav a span:first-child { font-size: 20px !important; }
-  .tn-sidebar .tn-logo-text { display: none !important; }
-  .tn-sidebar [style*="opacity: 0.9"] { display: none !important; }
-  /* Show tooltip on hover */
-  .tn-sidebar nav a { position: relative; }
-  .tn-sidebar nav a:hover::after {
-    content: attr(data-label);
-    position: absolute;
-    left: calc(100% + 8px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: #032D60;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-    white-space: nowrap;
-    z-index: 9999;
-    pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  }
+/* Tablet (768–1023px): slightly narrower sidebar, full labels always visible */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tn-sidebar      { width: 200px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+  .tn-main-content { margin-left: 200px !important; }
+}
+
+/* Desktop (≥1024px): full-width sidebar */
+@media (min-width: 1024px) {
+  .tn-sidebar      { width: 220px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+  .tn-main-content { margin-left: 220px !important; }
 }
 
 /* ════════════════════════════════
@@ -383,49 +365,10 @@ select {
   }
 }
 
-/* Sidebar icon-only mode at 900–1100px (MacBook Air in split-screen or smaller window) */
-@media (min-width: 768px) and (max-width: 1100px) {
-  .tn-sidebar {
-    width: 60px !important;
-    overflow: visible !important;
-  }
-  .tn-sidebar .tn-nav-label {
-    display: none !important;
-  }
-  .tn-sidebar nav a {
-    justify-content: center !important;
-    padding: 12px 8px !important;
-    position: relative;
-  }
-  /* Tooltip on hover */
-  .tn-sidebar nav a::after {
-    content: attr(data-label);
-    position: absolute;
-    left: 68px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #032D60;
-    color: #fff;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 9999;
-    transition: opacity 0.15s;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  }
-  .tn-sidebar nav a:hover::after {
-    opacity: 1;
-  }
-  /* Hide user name text in footer, keep avatar */
-  .tn-sidebar .tn-nav-label,
-  .tn-sidebar [class*="role"],
-  .tn-sidebar span:not([style*="font-size: 16"]):not([style*="fontSize: 16"]) {
-    display: none !important;
-  }
+/* Sidebar padding: tighter on small laptops — labels still fully visible */
+@media (min-width: 768px) and (max-width: 1280px) {
+  .tn-sidebar nav a { padding: 10px 12px !important; }
+  .tn-sidebar nav a span:first-child { font-size: 16px !important; }
 }
 
 /* Modals — constrain width properly on mid-size screens */

@@ -1087,11 +1087,8 @@ textarea:focus-visible {
   .tn-sidebar-mobile { display: none !important; }
 }
 
-/* ── Tablet override (768px–1024px): slightly narrower sidebar ── */
-@media (min-width: 768px) and (max-width: 1024px) {
-  .tn-sidebar        { width: 196px !important; }
-  .tn-main-content   { margin-left: 196px !important; }
-}
+/* Tablet/desktop sidebar widths are set in mobile-additions.css
+   to keep all breakpoint rules in one place and avoid conflicts. */
 
 /* ── Mobile (<768px): hamburger + slide-in drawer ── */
 @media (max-width: 767px) {
