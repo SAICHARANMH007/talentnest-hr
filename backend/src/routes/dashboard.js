@@ -84,28 +84,29 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHand
   const orgF  = isSuperAdmin ? {} : { tenantId: req.user.tenantId };
   const candF = isSuperAdmin ? { role: 'candidate' } : { role: 'candidate', tenantId: req.user.tenantId };
 
+  const del = { deletedAt: null };
   const [candidates, recruiters, openJobs, applications, hired] = await Promise.all([
-    User.countDocuments(candF),
-    User.countDocuments({ ...orgF, role: 'recruiter' }),
-    Job.countDocuments({ ...orgF, status: 'active' }),
-    Application.countDocuments(orgF),
-    Application.countDocuments({ ...orgF, currentStage: 'Hired' }),
+    User.countDocuments({ ...candF, isActive: true }),
+    User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
+    Job.countDocuments({ ...orgF, status: 'active', ...del }),
+    Application.countDocuments({ ...orgF, ...del }),
+    Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
   ]);
 
   const avgPerJob = openJobs > 0 ? parseFloat((applications / openJobs).toFixed(1)) : 0;
-  const active    = await Application.countDocuments({ ...orgF, currentStage: { $in: STAGES_ACTIVE } });
+  const active    = await Application.countDocuments({ ...orgF, ...del, currentStage: { $in: STAGES_ACTIVE } });
 
   const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [candNew, recNew, appsLast30, hiredLast30, candOld, appsOld, hiredOld, jobsOld, totalJobs] = await Promise.all([
-    User.countDocuments({ ...candF, createdAt: { $gte: ago30 } }),
-    User.countDocuments({ ...orgF, role: 'recruiter', createdAt: { $gte: ago30 } }),
-    Application.countDocuments({ ...orgF, createdAt: { $gte: ago30 } }),
-    Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
-    User.countDocuments({ ...candF, createdAt: { $lt: ago30 } }),
-    Application.countDocuments({ ...orgF, createdAt: { $lt: ago30 } }),
-    Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
-    Job.countDocuments({ ...orgF, status: 'active', createdAt: { $lt: ago30 } }),
-    Job.countDocuments({ ...orgF, status: { $in: ['active', 'closed'] } }),
+    User.countDocuments({ ...candF, isActive: true, createdAt: { $gte: ago30 } }),
+    User.countDocuments({ ...orgF, role: 'recruiter', isActive: true, createdAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, createdAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
+    User.countDocuments({ ...candF, isActive: true, createdAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, createdAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
+    Job.countDocuments({ ...orgF, ...del, status: 'active', createdAt: { $lt: ago30 } }),
+    Job.countDocuments({ ...orgF, ...del, status: { $in: ['active', 'closed'] } }),
   ]);
 
   // Fill rate = jobs with at least one hire / total non-draft jobs
