@@ -822,9 +822,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
         };
 
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end' }}>
             <div onClick={() => { setDrillDown(null); setDrillDownSearch(''); }} style={{ position: 'absolute', inset: 0, background: 'rgba(5, 13, 26, 0.4)', backdropFilter: 'blur(10px)' }} />
-            <div style={{ width: '100%', maxWidth: 840, background: '#fff', borderRadius: 28, position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 48px)', boxShadow: '0 32px 64px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <div style={{ width: '100%', maxWidth: 860, background: '#fff', borderRadius: '28px 0 0 28px', position: 'relative', display: 'flex', flexDirection: 'column', height: '100vh', boxShadow: '-32px 0 64px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
               <div style={{ padding: '24px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#0176D3', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Deep Dive Inspection</div>

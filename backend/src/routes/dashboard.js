@@ -172,7 +172,7 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
   const recruiters = await User.find({ ...orgF, role: { $in: ['recruiter', 'admin'] } }).lean();
 
   const board = await Promise.all(recruiters.map(async (r) => {
-    const rJobs  = await Job.find({ assignedRecruiters: r._id }).select('_id').lean();
+    const rJobs  = await Job.find({ assignedRecruiters: r._id, status: { $in: ['active', 'closed'] } }).select('_id').lean();
     const jobIds = rJobs.map(j => j._id);
     const [cands, hired] = await Promise.all([
       Application.countDocuments({ jobId: { $in: jobIds } }),
@@ -657,15 +657,26 @@ router.get('/time-to-hire', authenticate, allowRoles('admin', 'super_admin'), as
     byJob[jid].count++;
   }
 
+  // Merge entries with same job title (avoids duplicate rows for same-titled jobs)
+  const byTitle = {};
+  Object.values(byJob).forEach(j => {
+    const key = (j.jobTitle || '').toLowerCase().trim();
+    if (!byTitle[key]) byTitle[key] = { ...j };
+    else {
+      byTitle[key].totalDays += j.totalDays;
+      byTitle[key].count     += j.count;
+    }
+  });
+
   // Resolve recruiter names
-  const recruiterIds = [...new Set(Object.values(byJob).map(j => j.createdBy?.toString()).filter(Boolean))];
+  const recruiterIds = [...new Set(Object.values(byTitle).map(j => j.createdBy?.toString()).filter(Boolean))];
   const recruiters = recruiterIds.length > 0
     ? await User.find({ _id: { $in: recruiterIds } }).select('name').lean()
     : [];
   const rMap = {};
   recruiters.forEach(r => { rMap[r._id.toString()] = r.name; });
 
-  const data = Object.values(byJob).map(j => ({
+  const data = Object.values(byTitle).map(j => ({
     jobId        : j.jobId,
     jobTitle     : j.jobTitle,
     recruiterName: rMap[j.createdBy?.toString()] || 'Unknown',
