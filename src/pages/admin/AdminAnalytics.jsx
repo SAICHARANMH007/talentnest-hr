@@ -35,7 +35,6 @@ const STAGE_LABELS = Object.fromEntries(MASTER_STAGES.map(s => [s.id, s.label]))
 const STAGE_COLORS = MASTER_STAGES.map(s => s.color);
 
 // Maps DB title-case currentStage values → frontend lowercase stage IDs
-// used in STAGES/SM constants so charts and pipeline labels stay consistent.
 const DB_TO_FRONTEND_STAGE = {
   'Applied'          : 'applied',
   'Screening'        : 'screening',
@@ -46,6 +45,8 @@ const DB_TO_FRONTEND_STAGE = {
   'Hired'            : 'selected',
   'Rejected'         : 'rejected',
 };
+// Reverse map: frontend stage ID → DB title-case stage name (for API queries)
+const FRONTEND_TO_DB_STAGE = Object.fromEntries(Object.entries(DB_TO_FRONTEND_STAGE).map(([k, v]) => [v, k]));
 
 const PERIODS = [
   { label: 'Last 7 days',  days: 7 },
@@ -356,46 +357,53 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allApps]);
 
   // ── Drill-down helpers ────────────────────────────────────────────────────
-  const openCandidatesDrill = () => {
-    if (isSuperAdmin && allCandidates.length > 0) {
-      setDrillDown({ title: `Candidate Database (${allCandidates.length})`, type: 'user', items: allCandidates.map(c => ({ id: c.id || c._id, name: c.name || 'Candidate', email: c.email || '', sub: c.title || c.location || 'Registered Candidate' })) });
-      return;
+  // Shared: sets loading title, fetches, then populates drawer
+  const fetchDrill = useCallback(async (loadingTitle, type, fetcher) => {
+    setDrillDown({ title: `${loadingTitle} — Loading…`, type, items: [] });
+    try {
+      const items = await fetcher();
+      setDrillDown({ title: `${loadingTitle} (${items.length})`, type, items });
+    } catch {
+      setDrillDown({ title: loadingTitle, type, items: [] });
     }
-    const seen = new Set(), items = [];
-    allApps.forEach(a => {
-      const cid = extractId(a.candidateId);
-      if (cid && !seen.has(cid)) {
-        seen.add(cid);
-        const { name } = getCandidateData(a);
-        items.push({ id: cid, name, email: a.candidateId?.email || '', sub: `${allApps.filter(x => extractId(x.candidateId) === cid).length} application(s)` });
-      }
-    });
-    setDrillDown({ title: `Candidate Database (${items.length})`, type: 'user', items });
-  };
+  }, []);
 
-  const openActiveJobsDrill = () => {
-    const items = allJobs.filter(j => j.status === 'active' || j.status === 'Open').map(j => ({ ...j, id: j.id || j._id, name: j.title, sub: `${j.companyName || 'Internal'} · ${allApps.filter(a => extractId(a.jobId) === String(j.id || j._id)).length} applicants` }));
-    setDrillDown({ title: `Active Postings (${items.length})`, type: 'job', items });
-  };
+  const openCandidatesDrill = () => fetchDrill('Candidate Database', 'user', async () => {
+    const raw = await api.getUsers({ role: 'candidate', limit: 500 }).catch(() => []);
+    const list = Array.isArray(raw) ? raw : (raw?.data || []);
+    return list.map(c => ({ id: c.id || c._id, name: c.name || c.email || 'Candidate', email: c.email || '', sub: c.title || c.location || 'Registered Candidate' }));
+  });
 
-  const openAppsDrill = () => {
-    setDrillDown({ title: `New Applications (${filteredApps.length})`, type: 'app', items: filteredApps.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.stage || a.currentStage}` })) });
-  };
+  const openActiveJobsDrill = () => fetchDrill('Active Postings', 'job', async () => {
+    const raw = await api.getJobs({ status: 'active', limit: 500 }).then(unwrap).catch(() => []);
+    return raw.map(j => ({ ...j, id: j.id || j._id, name: j.title, sub: `${j.companyName || 'Internal'} · ${j.location || ''}` }));
+  });
 
-  const openPlacementsDrill = () => {
-    const items = filteredApps.filter(a => a.stage === 'selected' || a.stage === 'hired' || a.currentStage === 'Hired').map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired` }));
-    setDrillDown({ title: `Total Placements (${items.length})`, type: 'app', items });
-  };
+  const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
+    const raw = await api.getApplications({ limit: 500 }).then(unwrap).catch(() => []);
+    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.currentStage || a.stage}` }));
+  });
+
+  const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
+    const raw = await api.getApplications({ stage: 'Hired', limit: 500 }).then(unwrap).catch(() => []);
+    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired` }));
+  });
 
   const openStageDrill = (seg) => {
     if (!seg.stageKey || seg.value === 0) return;
-    const items = filteredApps.filter(a => a.stage === seg.stageKey || a.currentStage === seg.stageKey).map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[seg.stageKey]}` }));
-    setDrillDown({ title: `${STAGE_LABELS[seg.stageKey]} (${items.length})`, type: 'app', items });
+    const dbStage = FRONTEND_TO_DB_STAGE[seg.stageKey] || seg.stageKey;
+    fetchDrill(STAGE_LABELS[seg.stageKey] || seg.stageKey, 'app', async () => {
+      const raw = await api.getApplications({ stage: dbStage, limit: 500 }).then(unwrap).catch(() => []);
+      return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[seg.stageKey]}` }));
+    });
   };
 
   const openJobBarDrill = (bar) => {
-    const items = filteredApps.filter(a => extractId(a.jobId) === bar.id).map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${STAGE_LABELS[a.stage || a.currentStage] || a.stage || a.currentStage}` }));
-    setDrillDown({ title: `${bar.label} — Applicants (${items.length})`, type: 'app', items });
+    if (!bar.id) return;
+    fetchDrill(bar.label, 'app', async () => {
+      const raw = await api.getApplications({ jobId: bar.id, limit: 500 }).then(unwrap).catch(() => []);
+      return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${STAGE_LABELS[a.stage || a.currentStage] || a.currentStage || a.stage}` }));
+    });
   };
 
   // ── Export handler ────────────────────────────────────────────────────────
@@ -864,7 +872,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 <input placeholder={`Search in ${drillDown.title}...`} value={drillDownSearch} onChange={e => setDrillDownSearch(e.target.value)} style={{ width: '100%', padding: '12px 20px', borderRadius: 14, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none' }} />
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 32px 32px' }}>
-                {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No records found.</div>}
+                {drillDown.title.endsWith('Loading…') && (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#0176D3' }}>
+                    <div style={{ fontSize: 32, marginBottom: 12, animation: 'pulse 1.2s infinite' }}>⏳</div>
+                    <div style={{ fontWeight: 700 }}>Fetching data…</div>
+                  </div>
+                )}
+                {!drillDown.title.endsWith('Loading…') && filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No records found.</div>}
                 {filtered.map(item => {
                   const itemId = item.id || item._id;
                   return (
