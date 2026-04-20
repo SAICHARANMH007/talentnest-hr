@@ -18,28 +18,52 @@ const SkeletonCard = () => (
 
 export default function CandidateDashboard({ user }) {
   const navigate = useNavigate();
-  const [jobs, setJobs]   = useState([]);
-  const [apps, setApps]   = useState([]);
+  const [jobs, setJobs]     = useState([]);
+  const [apps, setApps]     = useState([]);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoad] = useState(true);
-  const [toast, setToast] = useState("");
+  const [loading, setLoad]  = useState(true);
+  const [toast, setToast]   = useState("");
 
-  useEffect(() => {
+  const loadData = () => {
     let cancelled = false;
     Promise.all([
       api.getMatchedJobs(user.id),
       api.getMyApplications(),
       api.getUser(user.id),
-    ]).then(([j,a,p]) => { if (!cancelled) { setJobs(Array.isArray(j)?j:(j?.data||[])); setApps(Array.isArray(a)?a:(a?.data||[])); setProfile(p?.data||p); } }).catch(() => { if (!cancelled) { setJobs([]); setApps([]); } }).finally(() => { if (!cancelled) setLoad(false); });
+    ]).then(([j,a,p]) => {
+      if (!cancelled) {
+        setJobs(Array.isArray(j)?j:(j?.data||[]));
+        setApps(Array.isArray(a)?a:(a?.data||[]));
+        setProfile(p?.data||p);
+      }
+    }).catch(() => { if (!cancelled) { setJobs([]); setApps([]); } })
+      .finally(() => { if (!cancelled) setLoad(false); });
     return () => { cancelled = true; };
-  }, [user.id]);
+  };
 
-  const apply = async (jobId) => { try { await api.applyToJob(jobId, user.id); setToast("✅ Applied!"); const [j,a] = await Promise.all([api.getMatchedJobs(user.id),api.getMyApplications()]); setJobs(Array.isArray(j)?j:(j?.data||[])); setApps(Array.isArray(a)?a:[]); } catch(e) { setToast(`❌ ${e.message}`); } };
+  useEffect(loadData, [user.id]);
+
+  const apply = async (jobId) => {
+    try {
+      await api.applyToJob(jobId, user.id);
+      setToast("✅ Applied!");
+      const [j,a] = await Promise.all([api.getMatchedJobs(user.id), api.getMyApplications()]);
+      setJobs(Array.isArray(j)?j:(j?.data||[]));
+      setApps(Array.isArray(a)?a:[]);
+    } catch(e) { setToast(`❌ ${e.message}`); }
+  };
 
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
 
   const stageCounts = STAGES.reduce((a,s) => { a[s.id]=apps.filter(ap=>ap.stage===s.id).length; return a; }, {});
   const nextInterview = apps.find(a => a.stage==="interview_scheduled" && a.interviewRounds?.[0]?.scheduledAt);
+  // Applications assigned by admin (source = admin_assign, not yet actioned)
+  const assignedByAdmin = apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied');
+  // Recent application updates (moved beyond Applied in last 7 days)
+  const recentUpdates = apps
+    .filter(a => a.stage && a.stage !== 'applied' && a.stage !== 'rejected')
+    .sort((a,b) => new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt))
+    .slice(0, 3);
 
   // Weighted profile strength
   const PROFILE_WEIGHTS = [
@@ -78,6 +102,51 @@ export default function CandidateDashboard({ user }) {
     <div style={{ animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} />
+
+      {/* ── Admin-Assigned Jobs Alert ── */}
+      {assignedByAdmin.length > 0 && (
+        <div
+          onClick={() => navigate("/app/applications")}
+          style={{ background:"linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,118,211,0.03))", border:"1.5px solid rgba(1,118,211,0.3)", borderRadius:12, padding:"14px 18px", marginBottom:20, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}
+        >
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:20 }}>📬</span>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, color:"#032D60" }}>
+                You've been added to {assignedByAdmin.length} job pipeline{assignedByAdmin.length>1?'s':''}!
+              </div>
+              <div style={{ fontSize:11, color:"#0176D3", marginTop:2 }}>
+                {assignedByAdmin.slice(0,2).map(a => a.jobId?.title || 'a role').join(', ')}{assignedByAdmin.length > 2 ? ` +${assignedByAdmin.length-2} more` : ''}
+              </div>
+            </div>
+          </div>
+          <button style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>View →</button>
+        </div>
+      )}
+
+      {/* ── Recent Activity Updates ── */}
+      {recentUpdates.length > 0 && (
+        <div style={{ ...card, marginBottom:20 }}>
+          <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:"0 0 12px", letterSpacing:1 }}>🔔 RECENT UPDATES</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {recentUpdates.map(a => {
+              const stage = a.stage || '';
+              const stageColors = { shortlisted:'#A07E00', interview_scheduled:'#7c3aed', interview_completed:'#0176D3', offer_extended:'#10b981', selected:'#2E844A' };
+              const stageLabels = { shortlisted:'Shortlisted', interview_scheduled:'Interview Scheduled', interview_completed:'Interview Done', offer_extended:'Offer Extended', selected:'Hired! 🎉' };
+              return (
+                <div key={a.id||a._id} onClick={() => navigate("/app/applications")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"rgba(1,118,211,0.03)", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer" }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:stageColors[stage]||'#0176D3', flexShrink:0 }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:600, fontSize:13, color:"#181818", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{a.jobId?.title || 'Role'}</div>
+                    <div style={{ fontSize:11, color:"#706E6B" }}>{a.jobId?.companyName || a.jobId?.company || ''}</div>
+                  </div>
+                  <Badge label={stageLabels[stage]||stage} color={stageColors[stage]||'#0176D3'} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Profile Strength Bar ── */}
       <div

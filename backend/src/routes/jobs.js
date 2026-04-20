@@ -2,6 +2,8 @@
 const express         = require('express');
 const router          = express.Router();
 const Job             = require('../models/Job');
+const User            = require('../models/User');
+const Candidate       = require('../models/Candidate');
 const Application     = require('../models/Application');
 const Notification    = require('../models/Notification');
 const { authMiddleware } = require('../middleware/auth');
@@ -12,6 +14,7 @@ const { getPagination, paginatedResponse } = require('../middleware/paginate');
 const asyncHandler    = require('../utils/asyncHandler');
 const AppError        = require('../utils/AppError');
 const logger          = require('../middleware/logger');
+const { calculateMatchScore } = require('../utils/matchScore');
 
 /** Escape regex special chars to prevent ReDoS on user-supplied search strings */
 function escRe(s) { return String(s).slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -160,11 +163,9 @@ router.patch('/:id', ...guard,
     const max = updates.salaryMax !== undefined ? Number(updates.salaryMax) : null;
     if (min !== null && max !== null && min > max) throw new AppError('salaryMin cannot exceed salaryMax.', 400);
 
-    const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
-      { $set: updates },
-      { new: true }
-    );
+    const patchFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') patchFilter.tenantId = req.user.tenantId;
+    const job = await Job.findOneAndUpdate(patchFilter, { $set: updates }, { new: true });
     if (!job) throw new AppError('Job not found.', 404);
 
     logger.audit('Job updated', req.user.id, req.user.tenantId, { jobId: job._id });
@@ -212,8 +213,10 @@ router.post('/:id/assign', ...guard,
     const { recruiterId } = req.body;
     if (!recruiterId) throw new AppError('recruiterId is required.', 400);
 
+    const assignFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') assignFilter.tenantId = req.user.tenantId;
     const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+      assignFilter,
       { $addToSet: { assignedRecruiters: recruiterId } },
       { new: true }
     );
@@ -227,6 +230,90 @@ router.post('/:id/assign', ...guard,
     }).catch(() => {});
 
     res.json({ success: true, data: normalizeJob(job) });
+  })
+);
+
+// POST /api/jobs/:id/assign-candidates — bulk-assign candidate Users into a job's pipeline
+router.post('/:id/assign-candidates', ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter'),
+  asyncHandler(async (req, res) => {
+    const { candidateIds } = req.body;
+    if (!Array.isArray(candidateIds) || candidateIds.length === 0)
+      throw new AppError('candidateIds array is required.', 400);
+
+    // Super admin can see all jobs; others scoped to own tenant
+    const jobFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') jobFilter.tenantId = req.user.tenantId;
+    const job = await Job.findOne(jobFilter).lean();
+    if (!job) throw new AppError('Job not found.', 404);
+
+    const results = { created: 0, skipped: 0, errors: 0 };
+
+    for (const uid of candidateIds) {
+      try {
+        const user = await User.findOne({ _id: uid, role: 'candidate' }).lean();
+        if (!user) { results.errors++; continue; }
+
+        // Find or create Candidate record keyed by email + job's tenantId
+        let candidate = await Candidate.findOne({ email: user.email, tenantId: job.tenantId, deletedAt: null });
+        if (!candidate) {
+          candidate = await Candidate.create({
+            tenantId: job.tenantId,
+            name: user.name,
+            email: user.email,
+            phone: user.phone || '',
+            source: 'admin_assign',
+            skills: Array.isArray(user.skills) ? user.skills : [],
+            location: user.location || '',
+          });
+        }
+
+        // Skip if already applied to this job
+        const exists = await Application.findOne({ jobId: job._id, candidateId: candidate._id, deletedAt: null });
+        if (exists) { results.skipped++; continue; }
+
+        const { score, breakdown } = calculateMatchScore(job, candidate);
+        await Application.create({
+          tenantId: job.tenantId,
+          jobId: job._id,
+          candidateId: candidate._id,
+          createdBy: req.user.id,
+          source: 'admin_assign',
+          aiMatchScore: score,
+          matchBreakdown: breakdown,
+          currentStage: 'Applied',
+          stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date(), notes: 'Assigned by admin' }],
+        });
+
+        await Job.findByIdAndUpdate(job._id, { $inc: { applicationCount: 1 } });
+
+        // Notify the candidate User
+        Notification.create({
+          userId: uid,
+          tenantId: job.tenantId,
+          type: 'application',
+          title: 'You have been considered for a role',
+          message: `You've been added to the pipeline for: ${job.title}`,
+          link: '/app/applications',
+        }).catch(() => {});
+
+        results.created++;
+      } catch (_e) {
+        results.errors++;
+      }
+    }
+
+    // Notify assigned recruiters
+    for (const rid of (job.assignedRecruiters || [])) {
+      Notification.create({
+        userId: rid, tenantId: job.tenantId, type: 'application',
+        title: 'New Candidates Assigned',
+        message: `${results.created} candidate(s) added to pipeline for: ${job.title}`,
+        link: '/app/pipeline',
+      }).catch(() => {});
+    }
+
+    res.json({ success: true, data: results });
   })
 );
 

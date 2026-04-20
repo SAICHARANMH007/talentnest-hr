@@ -490,7 +490,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>{(r.name || '?')[0]}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{r.name}</div>
-                  <div style={{ fontSize: 11, color: '#706E6B' }}>{r.jobs} Active Postings</div>
+                  <div style={{ fontSize: 11, color: '#706E6B' }}>{r.jobs} Jobs Assigned</div>
                 </div>
                 <div style={{ display: 'flex', gap: 24 }}>
                   <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 800, color: '#0176D3' }}>{r.candidates}</div><div style={{ fontSize: 9, color: '#94A3B8' }}>APPS</div></div>

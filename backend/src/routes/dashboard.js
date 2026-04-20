@@ -435,7 +435,12 @@ router.get('/upcoming-interviews', authenticate, allowRoles('recruiter'), asyncH
 
 /* GET /api/dashboard/candidate-stats */
 router.get('/candidate-stats', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const all   = await Application.find({ candidateId: req.user._id }).lean();
+  const Candidate = require('../models/Candidate');
+  const candidateDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+  const candidateIds = candidateDocs.map(c => c._id);
+  const all = candidateIds.length
+    ? await Application.find({ candidateId: { $in: candidateIds } }).lean()
+    : [];
   const sent  = all.length;
   const short = all.filter(a => ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'].includes(a.currentStage)).length;
   const active = all.filter(a => !['Hired', 'Rejected'].includes(a.currentStage)).length;
@@ -466,8 +471,11 @@ router.get('/profile-score', authenticate, allowRoles('candidate'), asyncHandler
 
 /* GET /api/dashboard/candidate-pipeline */
 router.get('/candidate-pipeline', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const Candidate = require('../models/Candidate');
+  const cDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+  const cIds = cDocs.map(c => c._id);
   const raw = await Application.aggregate([
-    { $match: { candidateId: req.user._id } },
+    { $match: { candidateId: { $in: cIds } } },
     { $group: { _id: '$currentStage', count: { $sum: 1 } } },
   ]);
   const counts = { Applied: 0, Screening: 0, Shortlisted: 0, 'Interview Round 1': 0, 'Interview Round 2': 0, Offer: 0, Hired: 0, Rejected: 0 };
@@ -507,8 +515,11 @@ router.get('/ai-matched-jobs', authenticate, allowRoles('candidate'), asyncHandl
 /* GET /api/dashboard/candidate-upcoming-interviews */
 router.get('/candidate-upcoming-interviews', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
   const now = new Date(), weekEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const Candidate = require('../models/Candidate');
+  const cDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+  const cIds = cDocs.map(c => c._id);
   const apps = await Application.find({
-    candidateId: req.user._id,
+    candidateId: { $in: cIds },
     'interviewRounds.scheduledAt': { $gte: now, $lte: weekEnd },
   }).populate('jobId', 'title').lean();
 

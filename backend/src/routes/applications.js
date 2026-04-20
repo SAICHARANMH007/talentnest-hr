@@ -353,20 +353,20 @@ router.post('/invite', ...guard,
 );
 
 // GET /api/applications/mine — candidate's own applications
-// Looks up the Candidate document by the user's email so self-registered candidates
-// (who are User records, not Candidate records) can see their applications.
+// Searches ALL Candidate docs by email (across tenants) so admin-assigned applications
+// from any org are visible to the candidate. Uses the union of candidateIds found.
 router.get('/mine', ...guard,
   allowRoles('candidate'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
-    // Find the Candidate document linked to this user by email
-    const candidateDoc = await Candidate.findOne({
+    // Find ALL Candidate documents that match this user's email (any tenant)
+    const candidateDocs = await Candidate.find({
       email: req.user.email,
-      tenantId: req.user.tenantId,
       deletedAt: null,
-    }).lean();
-    if (!candidateDoc) return res.json(paginatedResponse([], 0, limit, page));
-    const filter = { candidateId: candidateDoc._id, deletedAt: null };
+    }).select('_id').lean();
+    if (!candidateDocs.length) return res.json(paginatedResponse([], 0, limit, page));
+    const candidateIds = candidateDocs.map(c => c._id);
+    const filter = { candidateId: { $in: candidateIds }, deletedAt: null };
     const [apps, total] = await Promise.all([
       Application.find(filter).populate('jobId', 'title company companyName location jobType').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Application.countDocuments(filter),

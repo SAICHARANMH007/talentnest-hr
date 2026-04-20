@@ -64,7 +64,8 @@ export default function AdminJobs({ user }) {
     catch (e) { setToast(`❌ ${e.message}`); }
   };
   const toggle = async (id, status) => {
-    try { await api.patchJob(id, { status: status === 'Closed' ? 'Open' : 'Closed' }); load(); setToast(`✅ Job ${status === 'Closed' ? 'reopened' : 'closed'}`); }
+    const isClosed = status === 'closed' || status === 'Closed';
+    try { await api.patchJob(id, { status: isClosed ? 'active' : 'closed' }); load(); setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`); }
     catch (e) { setToast(`❌ ${e.message}`); }
   };
 
@@ -152,7 +153,7 @@ export default function AdminJobs({ user }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{j.title}</span>
-                    <Badge label={j.status || 'Open'} color={j.status === 'Closed' ? '#BA0517' : '#2E844A'} />
+                    <Badge label={j.status === 'active' ? 'Open' : j.status === 'closed' ? 'Closed' : j.status === 'draft' ? 'Draft' : (j.status || 'Draft')} color={j.status === 'closed' || j.status === 'Closed' ? '#BA0517' : j.status === 'draft' ? '#A07E00' : '#2E844A'} />
                     <Badge label={j.urgency || 'Medium'} color={j.urgency === 'High' ? '#BA0517' : j.urgency === 'Medium' ? '#A07E00' : '#2E844A'} />
                     {j.approvalStatus === 'pending' && <Badge label="Pending Approval" color="#A07E00" />}
                   </div>
@@ -174,7 +175,7 @@ export default function AdminJobs({ user }) {
                   <button onClick={e => { e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');
                     api.getApplications({ jobId: j.id }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
                   }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👤 Assign</button>
-                  <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>{j.status === 'Closed' ? 'Reopen' : 'Close'}</button>
+                  <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
                   <button onClick={() => del(j.id)} style={btnD}>Delete</button>
                 </div>
               </div>
