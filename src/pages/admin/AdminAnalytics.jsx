@@ -171,8 +171,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const start = days ? new Date(Date.now() - days * 86400000).toISOString().split('T')[0] : null;
 
     Promise.all([
-      api.getApplications({ limit: 100 }).then(unwrap).catch(() => []), // Only for recent-activity feed; KPI metrics use serverStats
-      api.getJobs({ limit: 2000 }).then(unwrap).catch(() => []),         // Fetch up to backend max (2000) for analytics
+      api.getApplications({ limit: 200 }).then(unwrap).catch(() => []), // Only for recent-activity feed; KPI metrics use serverStats
+      api.getJobs({ limit: 200 }).then(unwrap).catch(() => []),         // Job titles for activity feed lookup
       api.getUsers('candidate').then(unwrap).catch(() => []),
       api.getRecruiterLeaderboard().catch(() => []),
       api.getDashboardStats().catch(() => null),
@@ -296,7 +296,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (found) return { name: found.name || found.email || 'Candidate', user: { ...found, id: found.id || found._id } };
     }
 
-    return { name: 'Candidate', user: null };
+    // 4. Fallback: use email or generic label
+    const email = app.candidateEmail || app.email;
+    return { name: email ? email.split('@')[0] : 'Candidate', user: null };
   }, [allCandidates]);
 
   const stageBreakdown = useMemo(() => {
@@ -341,10 +343,19 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const trends = useMemo(() => trendData, [trendData]);
 
-  const recentActivity = useMemo(
-    () => [...allApps].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8),
-    [allApps],
-  );
+  const recentActivity = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const a of [...allApps].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))) {
+      const jobKey = extractId(a.jobId);
+      const candKey = extractId(a.candidateId || a.candidate);
+      const stageKey = a.stage || a.currentStage || '';
+      const key = `${candKey}|${jobKey}|${stageKey}`;
+      if (!seen.has(key)) { seen.add(key); out.push(a); }
+      if (out.length >= 15) break;
+    }
+    return out;
+  }, [allApps]);
 
   // ── Drill-down helpers ────────────────────────────────────────────────────
   const openCandidatesDrill = () => {
