@@ -165,7 +165,6 @@ function ImpersonateTab({ users }) {
   const roleColor = { candidate: '#0176D3', recruiter: '#014486', admin: '#F59E0B' };
 
   const handleImpersonate = async (u) => {
-    if (!window.confirm(`⚠️ Impersonate "${u.name}" (${u.email})?\nRole: ${u.role}\n\nYou will be logged in as this user. Click "Exit Impersonation" in the top bar to return to your super admin session.`)) return;
     const targetId = u._id?.toString() || u.id;
     if (!targetId) { setToast('❌ Cannot impersonate: user has no valid ID'); return; }
     setLoading(targetId);

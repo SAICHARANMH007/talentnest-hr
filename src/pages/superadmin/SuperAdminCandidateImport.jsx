@@ -219,14 +219,6 @@ export default function SuperAdminCandidateImport({ user }) {
   const [bulkRecruiter, setBulkRecruiter] = useState('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [bulkToast, setBulkToast] = useState('');
-  // TA bulk operations
-  const [filterTA, setFilterTA] = useState('');
-  const [bulkTaName, setBulkTaName] = useState('');
-  const [bulkTaing, setBulkTaing] = useState(false);
-  // Rename-all TA tool
-  const [renameFromTA, setRenameFromTA] = useState('');
-  const [renameToTA, setRenameToTA] = useState('');
-  const [renaming, setRenaming] = useState(false);
   const fileRef = useRef();
 
   const refreshCount = async () => {
@@ -544,11 +536,10 @@ export default function SuperAdminCandidateImport({ user }) {
       .some(v => v?.toLowerCase().includes(q));
     const matchClient   = !filterClient   || (c.client || '').toLowerCase().includes(filterClient.toLowerCase());
     const matchRole     = !filterRole     || (c.jobRole || c.title || '').toLowerCase().includes(filterRole.toLowerCase());
-    const matchTA       = !filterTA       || (c.ta || '').toLowerCase().includes(filterTA.toLowerCase());
     const matchAssigned = filterAssigned === 'all'
       || (filterAssigned === 'assigned'   && c.assignedRecruiterId)
       || (filterAssigned === 'unassigned' && !c.assignedRecruiterId);
-    return matchQ && matchClient && matchRole && matchTA && matchAssigned;
+    return matchQ && matchClient && matchRole && matchAssigned;
   });
 
   const updateCandidate = (updated) => {
@@ -556,34 +547,9 @@ export default function SuperAdminCandidateImport({ user }) {
     setCandidates(prev => prev.map(c => c.id === u.id ? { ...c, ...u } : c));
   };
 
-  const bulkSetTA = async () => {
-    if (!bulkTaName.trim() || selected.size === 0) return;
-    setBulkTaing(true);
-    try {
-      const r = await api.bulkUpdateTA({ candidateIds: [...selected], ta: bulkTaName.trim() });
-      setBulkToast(`✅ TA set to "${bulkTaName.trim()}" for ${r.updated} candidates`);
-      setSelected(new Set()); setBulkTaName('');
-      load();
-    } catch(e) { setBulkToast('❌ ' + e.message); }
-    setBulkTaing(false);
-  };
-
-  const renameTA = async () => {
-    if (!renameToTA.trim()) return;
-    setRenaming(true);
-    try {
-      const r = await api.bulkUpdateTA({ fromTa: renameFromTA.trim(), toTa: renameToTA.trim() });
-      setToast(`✅ Renamed TA "${renameFromTA || '(empty)'}" → "${renameToTA}" for ${r.updated} candidates`);
-      setRenameFromTA(''); setRenameToTA('');
-      load();
-    } catch(e) { setToast('❌ ' + e.message); }
-    setRenaming(false);
-  };
-
   // ── Unique filter options ────────────────────────────────────────────────────
   const uniqueClients = [...new Set(candidates.map(c => c.client).filter(Boolean))].sort();
   const uniqueRoles   = [...new Set(candidates.map(c => c.jobRole || c.title).filter(Boolean))].sort();
-  const uniqueTAs     = [...new Set(candidates.map(c => c.ta).filter(Boolean))].sort();
 
   return (
     <div>
@@ -797,37 +763,10 @@ export default function SuperAdminCandidateImport({ user }) {
             <datalist id="cl-list">{uniqueClients.map(c => <option key={c} value={c} />)}</datalist>
             <Field value={filterRole} onChange={v => setFilterRole(v)} placeholder="Filter by Role" style={{ maxWidth: 160 }} />
             <datalist id="rl-list">{uniqueRoles.map(r => <option key={r} value={r} />)}</datalist>
-            <Field value={filterTA} onChange={v => setFilterTA(v)} placeholder="Filter by TA" style={{ maxWidth: 150 }} />
-            <datalist id="ta-list">{uniqueTAs.map(t => <option key={t} value={t} />)}</datalist>
             <Field value={filterAssigned} onChange={v => setFilterAssigned(v)} style={{ maxWidth: 160 }}
               options={[{value:'all',label:'All assignments'},{value:'assigned',label:'Assigned'},{value:'unassigned',label:'Unassigned'}]} />
             <span style={{ color: '#706E6B', fontSize: 13, whiteSpace: 'nowrap' }}>{filtered.length.toLocaleString()} candidates</span>
             <button onClick={loadCandidates} style={{ ...btnG, padding: '8px 14px', fontSize: 12 }}>↻ Refresh</button>
-          </div>
-
-          {/* ── Rename-all TA tool ── */}
-          <div style={{ ...card, padding: '14px 20px', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.04)' }}>
-            <span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>✏️ Rename TA (bulk):</span>
-            <Field
-              value={renameFromTA} onChange={v => setRenameFromTA(v)}
-              placeholder="Current TA name (leave blank = empty TAs)"
-              style={{ maxWidth: 220 }} inputStyle={{ fontSize: 12 }}
-            />
-            <datalist id="ta-rename-list">{uniqueTAs.map(t => <option key={t} value={t} />)}</datalist>
-            <span style={{ color: '#706E6B', fontSize: 13 }}>→</span>
-            <Field
-              value={renameToTA} onChange={v => setRenameToTA(v)}
-              placeholder="New TA name"
-              style={{ maxWidth: 200 }} inputStyle={{ fontSize: 12 }}
-            />
-            <button
-              onClick={renameTA}
-              disabled={renaming || !renameToTA.trim()}
-              style={{ ...btnP, background: '#F59E0B', padding: '7px 16px', fontSize: 12, opacity: (renaming || !renameToTA.trim()) ? 0.6 : 1 }}
-            >
-              {renaming ? 'Renaming…' : 'Rename All'}
-            </button>
-            <span style={{ color: '#706E6B', fontSize: 11 }}>Updates every candidate matching that TA name</span>
           </div>
 
           {loading ? (
@@ -913,22 +852,6 @@ export default function SuperAdminCandidateImport({ user }) {
               <button onClick={bulkAssign} disabled={!bulkRecruiter || bulkAssigning}
                 style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', fontSize: 12, opacity: (!bulkRecruiter || bulkAssigning) ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {bulkAssigning ? 'Assigning…' : 'Assign →'}
-              </button>
-
-              {/* Divider */}
-              <span style={{ color: '#DDDBDA', fontSize: 20 }}>|</span>
-
-              {/* Set TA */}
-              <input
-                value={bulkTaName} onChange={e => setBulkTaName(e.target.value)}
-                placeholder="Set TA name…"
-                style={{ padding: '8px 12px', background: '#FAFAF9', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, color: '#181818', fontSize: 12, width: 160, outline: 'none' }}
-                list="bulk-ta-list"
-              />
-              <datalist id="bulk-ta-list">{uniqueTAs.map(t => <option key={t} value={t} />)}</datalist>
-              <button onClick={bulkSetTA} disabled={!bulkTaName.trim() || bulkTaing}
-                style={{ background: '#F59E0B', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', fontSize: 12, opacity: (!bulkTaName.trim() || bulkTaing) ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                {bulkTaing ? 'Setting…' : 'Set TA →'}
               </button>
 
               <button onClick={() => { setSelected(new Set()); setBulkToast(''); }} style={{ background: 'none', border: 'none', color: '#9E9D9B', cursor: 'pointer', fontSize: 18 }}>✕</button>
