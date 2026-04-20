@@ -27,8 +27,6 @@ const CandidateApplications = lazy(() => import('./pages/candidate/CandidateAppl
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
 const CandidateExploreJobs = lazy(() => import('./pages/candidate/CandidateExploreJobs.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
-const ResumeBuilder = lazy(() => import('./pages/candidate/ResumeBuilder.jsx'));
-
 const RecruiterDashboard = lazy(() => import('./pages/recruiter/RecruiterDashboard.jsx'));
 const RecruiterJobs = lazy(() => import('./pages/recruiter/RecruiterJobs.jsx'));
 const RecruiterAIMatch = lazy(() => import('./pages/recruiter/RecruiterAIMatch.jsx'));
@@ -418,7 +416,6 @@ export default function App() {
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
-            <Route path="resume-builder" element={<ResumeBuilder user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />
           </>
         )}
