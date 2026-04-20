@@ -170,26 +170,22 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const end = new Date().toISOString().split('T')[0];
     const start = days ? new Date(Date.now() - days * 86400000).toISOString().split('T')[0] : null;
 
+    // Phase 1: fast stats — unblocks KPI cards immediately
     Promise.all([
-      api.getApplications({ limit: 200 }).then(unwrap).catch(() => []), // Only for recent-activity feed; KPI metrics use serverStats
-      api.getJobs({ limit: 200 }).then(unwrap).catch(() => []),         // Job titles for activity feed lookup
-      api.getUsers('candidate').then(unwrap).catch(() => []),
-      api.getRecruiterLeaderboard().catch(() => []),
       api.getDashboardStats().catch(() => null),
-      api.getAnalytics(start, end).catch(() => null),
-      api.getTrends().catch(() => ({ data: [] })),
-    ])
-      .then(([a, j, c, l, s, an, t]) => {
-        setAllApps(a);
-        setAllJobs(j);
-        setAllCandidates(c);
-        setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
-        setServerStats(s?.data || null);
-        setAnalyticsData(an?.data || null);
-        setTrendData(t?.data || []);
-      })
-      .catch(err => setToast('❌ Failed to load analytics: ' + (err.message || 'Unknown error')))
-      .finally(() => setLoading(false));
+      api.getRecruiterLeaderboard().catch(() => []),
+    ]).then(([s, l]) => {
+      setServerStats(s?.data || null);
+      setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
+      setLoading(false); // show page now with KPI cards
+    }).catch(() => setLoading(false));
+
+    // Phase 2: heavier data loads progressively in background
+    api.getApplications({ limit: 200 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
+    api.getJobs({ limit: 200 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
+    api.getUsers({ role: 'candidate', limit: 200 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+    api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
+    api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
   }, [period]);
 
   useEffect(() => { load(); }, [load]);
@@ -684,18 +680,31 @@ export default function AdminAnalytics({ user, onNavigate }) {
           {dropoutSection.error   && <SectionError message={dropoutSection.error} onRetry={dropoutSection.reload} />}
           {!dropoutSection.loading && !dropoutSection.error && (() => {
             const rows = Array.isArray(dropoutSection.data?.data) ? dropoutSection.data.data : [];
-            if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No dropout data for this period</div>;
-            const chartData = rows.map(r => ({ label: r.stage, value: r.count, color: '#ef4444' }));
+            const total = dropoutSection.data?.total || 0;
+            if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No rejections in this period</div>;
             return (
               <div>
-                <VertBarChart data={chartData} height={180} defaultColor="#ef4444" showValues />
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {rows.slice(0, 4).map(r => (
-                    <div key={r.stage} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
-                      <span style={{ fontWeight: 600, color: '#0A1628' }}>{r.stage}</span>
-                      <span style={{ color: '#ef4444' }}>{r.count} ({r.percentage}%)</span>
-                    </div>
-                  ))}
+                <div style={{ marginBottom: 12, fontSize: 12, color: '#706E6B' }}>
+                  <strong>{total}</strong> candidate{total !== 1 ? 's' : ''} rejected — stage where they dropped out:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {rows.map(r => {
+                    const pct = r.percentage;
+                    return (
+                      <div key={r.stage}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>Dropped at: {r.stage}</span>
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 700 }}>{r.count} ({pct}%)</span>
+                        </div>
+                        <HorizBar value={r.count} max={Math.max(...rows.map(x => x.count), 1)} color="#ef4444" height={7} />
+                        {r.topReasons?.length > 0 && (
+                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>
+                            Top reason: {r.topReasons[0].reason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -730,7 +739,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={r.jobId || i} style={{ borderBottom: '1px solid #F1F5F9' }}
+                    <tr key={`${r.jobTitle}-${i}`} style={{ borderBottom: '1px solid #F1F5F9' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <td style={{ padding: '10px 16px', fontWeight: 600, color: '#0A1628' }}>{r.jobTitle}</td>
