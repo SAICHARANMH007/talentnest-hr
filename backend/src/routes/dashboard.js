@@ -92,37 +92,42 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHand
     Application.countDocuments({ ...orgF, currentStage: 'Hired' }),
   ]);
 
-  const fillRate  = openJobs > 0 ? Math.round((hired / openJobs) * 100) : 0;
   const avgPerJob = openJobs > 0 ? parseFloat((applications / openJobs).toFixed(1)) : 0;
   const active    = await Application.countDocuments({ ...orgF, currentStage: { $in: STAGES_ACTIVE } });
+
+  const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [candNew, recNew, appsLast30, hiredLast30, candOld, appsOld, hiredOld, jobsOld, totalJobs] = await Promise.all([
+    User.countDocuments({ ...candF, createdAt: { $gte: ago30 } }),
+    User.countDocuments({ ...orgF, role: 'recruiter', createdAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, createdAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
+    User.countDocuments({ ...candF, createdAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, createdAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
+    Job.countDocuments({ ...orgF, status: 'active', createdAt: { $lt: ago30 } }),
+    Job.countDocuments({ ...orgF, status: { $in: ['active', 'closed'] } }),
+  ]);
+
+  // Fill rate = jobs with at least one hire / total non-draft jobs
+  const fillRate = totalJobs > 0 ? Math.round((hired / totalJobs) * 100) : 0;
+
+  const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
 
   res.json({ success: true, data: {
     candidates, recruiters, openJobs, applications,
     placements: hired, fillRate, avgPerJob,
     activePipeline: active,
+    appsLast30,           // actual count of apps in last 30 days
+    placementsLast30: hiredLast30,
     subtitle: `${active} candidates actively in pipeline`,
-    changes: await (async () => {
-      const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const [candNew, recNew, appsNew, hiredNew, candOld, appsOld, hiredOld, jobsOld] = await Promise.all([
-        User.countDocuments({ ...candF, createdAt: { $gte: ago30 } }),
-        User.countDocuments({ ...orgF, role: 'recruiter', createdAt: { $gte: ago30 } }),
-        Application.countDocuments({ ...orgF, createdAt: { $gte: ago30 } }),
-        Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
-        User.countDocuments({ ...candF, createdAt: { $lt: ago30 } }),
-        Application.countDocuments({ ...orgF, createdAt: { $lt: ago30 } }),
-        Application.countDocuments({ ...orgF, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
-        Job.countDocuments({ ...orgF, status: 'active', createdAt: { $lt: ago30 } }),
-      ]);
-      const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
-      return {
-        candidates : pct(candNew, candOld),
-        recruiters : recNew,
-        openJobs   : openJobs - jobsOld,
-        applications: pct(appsNew, appsOld),
-        placements : hiredNew,
-        fillRate   : fillRate,
-      };
-    })(),
+    changes: {
+      candidates : pct(candNew, candOld),
+      recruiters : recNew,
+      openJobs   : openJobs - jobsOld,
+      applications: appsLast30,   // actual count, not percentage
+      placements : hiredLast30,
+      fillRate   : fillRate,
+    },
   }});
 }));
 

@@ -255,7 +255,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
         totalCandidates: serverStats.candidates || 0,
         activeJobs:      serverStats.openJobs || 0,
         totalApps:       serverStats.applications || 0,
+        appsLast30:      serverStats.appsLast30 || 0,
         placements:      serverStats.placements || 0,
+        placementsLast30: serverStats.placementsLast30 || 0,
         fillRate:        serverStats.fillRate || 0,
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
@@ -462,10 +464,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
         <TrendCard label="Total Candidates" value={stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
         <TrendCard label="Active Job Postings" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
         <TrendCard label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
-          sub={`${filteredApps.length} in ${PERIODS[period].label.toLowerCase()}`}
+          sub={stats.appsLast30 ? `${stats.appsLast30} in last 30 days` : undefined}
           onClick={openAppsDrill} />
-        <TrendCard label="Total Placements" value={stats.placements} icon="🎉" color="#10b981" onClick={openPlacementsDrill} />
-        <TrendCard label="Fill Reliability" value={`${stats.fillRate}%`} icon="📈" color="#032D60" />
+        <TrendCard label="Total Placements" value={stats.placements} icon="🎉" color="#10b981"
+          sub={stats.placementsLast30 ? `${stats.placementsLast30} hired last 30 days` : undefined}
+          onClick={openPlacementsDrill} />
+        <TrendCard label="Fill Rate" value={`${stats.fillRate}%`} icon="📈" color="#032D60"
+          sub="hires ÷ total job positions" />
       </div>
 
       {/* ── Charts Row ── */}
