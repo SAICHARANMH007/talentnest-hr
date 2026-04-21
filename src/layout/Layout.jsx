@@ -7,6 +7,9 @@ import QuickActionMenu from '../components/ui/QuickActionMenu.jsx';
 import Logo from '../components/Logo.jsx';
 import Skeleton from '../components/ui/Skeleton.jsx';
 import { useLogo } from '../context/LogoContext.jsx';
+import useHeartbeat from '../hooks/useHeartbeat.js';
+import OnlinePanel from '../components/shared/OnlinePanel.jsx';
+import MessageInbox from '../components/shared/MessageInbox.jsx';
 
 // ── Page Loader (Skeletal) ───────────────────────────────────────────────────
 function PageLoader() {
@@ -191,7 +194,7 @@ function NotificationBell() {
 }
 
 // ── Sidebar Content ────────────────────────────────────────────────────────────
-function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings }) {
+function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs }) {
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const sidebarText = '#F8FBFF';
@@ -219,6 +222,13 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
           <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>{(user.role || '').toUpperCase()}</div>
         </div>
         <NotificationBell />
+        {user?.role === 'candidate' && (
+          <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            💬
+            {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
+          </button>
+        )}
+        <button onClick={() => setShowOnline?.(true)} title="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🟢</button>
       </div>
 
       {/* Nav items */}
@@ -336,12 +346,27 @@ export default function Layout({ user, onLogout }) {
     }
   }, [rk]);
 
-  const sidebarProps = { nav, user, rk, onLogout, setMobileOpen, orgLogo: customLogoUrl || orgLogo, setShowChangePwd, setShowEmailSettings };
+  const [showOnline, setShowOnline]   = useState(false);
+  const [showInbox,  setShowInbox]    = useState(false);
+  const [unreadMsgs, setUnreadMsgs]   = useState(0);
+  useHeartbeat(user);
+
+  useEffect(() => {
+    if (user?.role !== 'candidate') return;
+    const load = () => api.getUnreadMessageCount().then(r => setUnreadMsgs(r?.data?.count || 0)).catch(() => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, [user?.role]);
+
+  const sidebarProps = { nav, user, rk, onLogout, setMobileOpen, orgLogo: customLogoUrl || orgLogo, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#F3F2F2', fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
       {showChangePwd && <ChangePasswordModal user={user} onClose={() => setShowChangePwd(false)} />}
       {showEmailSettings && <EmailSettingsModal user={user} onClose={() => setShowEmailSettings(false)} />}
+      <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} />
+      <MessageInbox open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); }} />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
@@ -380,6 +405,15 @@ export default function Layout({ user, onLogout }) {
             <button onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
             <div style={{ flex: 1 }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>
             <NotificationBell />
+            {user?.role === 'candidate' && (
+              <button onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                💬
+                {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', borderRadius: '50%', width: 14, height: 14, fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
+              </button>
+            )}
+            <button onClick={() => setShowOnline(true)} title="Who's Online" aria-label="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              🟢
+            </button>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600, marginLeft: 4 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
             </span>

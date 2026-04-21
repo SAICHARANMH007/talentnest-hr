@@ -49,6 +49,9 @@ const userSchema = new mongoose.Schema({
   linkedinUrl : { type: String },
 
   settings: { type: Object, default: {} },
+
+  // ── Presence ──────────────────────────────────────────────
+  lastSeen: { type: Date, default: null },
 }, { timestamps: true });
 
 userSchema.index({ tenantId: 1 });

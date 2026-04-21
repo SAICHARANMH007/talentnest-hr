@@ -120,6 +120,7 @@ const CSRF_EXEMPT_PATHS = new Set([
   '/auth/set-password', '/auth/verify-invite', '/auth/refresh', '/auth/verify-domain',
   '/applications/public', '/leads', '/health',
   '/whatsapp/webhook',
+  '/presence/heartbeat',
 ]);
 app.use('/api/', (req, res, next) => {
   if (CSRF_SAFE_METHODS.has(req.method)) return next();
@@ -185,6 +186,8 @@ app.use('/api/customizations', require('./src/routes/customizations'));
 app.use('/api/pipeline-templates', require('./src/routes/pipelineTemplates'));
 app.use('/api/job-alerts', require('./src/routes/jobAlerts'));
 app.use('/api/blogs', require('./src/routes/blogs'));
+app.use('/api/presence', require('./src/routes/presence'));
+app.use('/api/messages', require('./src/routes/messages'));
 
 if (IS_PROD) {
   if (HAS_DIST) {

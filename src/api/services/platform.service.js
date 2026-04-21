@@ -215,4 +215,11 @@ export const platformService = {
   async updateCustomizationItem(section, id, data, orgId) { return req('PATCH', `/customizations/${section}/${id}${orgId ? `?orgId=${orgId}` : ''}`, data); },
   async deleteCustomizationItem(section, id, orgId)       { return req('DELETE',`/customizations/${section}/${id}${orgId ? `?orgId=${orgId}` : ''}`); },
   async replaceCustomizationSection(section, items, orgId){ return req('PUT',   `/customizations/${section}${orgId ? `?orgId=${orgId}` : ''}`, { items }); },
+
+  // ── Presence & Messaging ─────────────────────────────────────────────────────
+  async presenceHeartbeat()                    { return req('POST',   '/presence/heartbeat', {}); },
+  async getOnlineUsers()                       { return req('GET',    '/presence/online'); },
+  async sendMessage(data)                      { return req('POST',   '/messages', data); },
+  async getMessageInbox()                      { return req('GET',    '/messages/inbox'); },
+  async getUnreadMessageCount()                { return req('GET',    '/messages/unread-count'); },
 };
