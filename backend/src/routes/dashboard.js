@@ -81,8 +81,11 @@ router.get('/public', asyncHandler(async (_req, res) => {
 /* GET /api/dashboard/stats */
 router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user.role === 'super_admin';
-  const orgF  = isSuperAdmin ? {} : { tenantId: req.user.tenantId };
-  const candF = isSuperAdmin ? { role: 'candidate' } : { role: 'candidate', tenantId: req.user.tenantId };
+  // platform=true → super_admin sees ALL orgs; default scopes to own org for accurate numbers
+  const platformWide = isSuperAdmin && req.query.platform === 'true';
+  const tenantScope  = { tenantId: req.user.tenantId };
+  const orgF  = platformWide ? {} : tenantScope;
+  const candF = platformWide ? { role: 'candidate' } : { role: 'candidate', ...tenantScope };
 
   const del = { deletedAt: null };
   const [candidates, recruiters, openJobs, applications, hired] = await Promise.all([
@@ -118,8 +121,9 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHand
     candidates, recruiters, openJobs, applications,
     placements: hired, fillRate, avgPerJob,
     activePipeline: active,
-    appsLast30,           // actual count of apps in last 30 days
+    appsLast30,
     placementsLast30: hiredLast30,
+    platformWide,
     subtitle: `${active} candidates actively in pipeline`,
     changes: {
       candidates : pct(candNew, candOld),

@@ -14,7 +14,7 @@ function qs(params = {}) {
 
 export const dashboardService = {
   // ── Existing dashboard endpoints ─────────────────────────────────────────
-  async getDashboardStats()             { return req('GET', '/dashboard/stats'); },
+  async getDashboardStats(platform)     { return req('GET', `/dashboard/stats${platform ? '?platform=true' : ''}`); },
   async getPipelineHealth()             { return req('GET', '/dashboard/pipeline-health'); },
   async getRecruiterLeaderboard()       { return req('GET', '/dashboard/recruiter-leaderboard'); },
   async getTopSkills()                  { return req('GET', '/dashboard/top-skills'); },

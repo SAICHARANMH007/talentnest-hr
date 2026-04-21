@@ -137,6 +137,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [trendData,     setTrendData]     = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
   const [period,        setPeriod]        = useState(1); // default 30 days
   const [drillDown,     setDrillDown]     = useState(null);
   const [drillDownSearch, setDrillDownSearch] = useState('');
@@ -173,12 +174,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
     // Phase 1: fast stats — unblocks KPI cards immediately
     Promise.all([
-      api.getDashboardStats().catch(() => null),
+      api.getDashboardStats(platformWide).catch(() => null),
       api.getRecruiterLeaderboard().catch(() => []),
     ]).then(([s, l]) => {
       setServerStats(s?.data || null);
       setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
-      setLoading(false); // show page now with KPI cards
+      setLoading(false);
     }).catch(() => setLoading(false));
 
     // Phase 2: heavier data loads progressively in background
@@ -187,7 +188,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     api.getUsers({ role: 'candidate', limit: 200 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
     api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
     api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
-  }, [period]);
+  }, [period, platformWide]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -457,6 +458,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
               onClick={() => onNavigate(isSuperAdmin ? 'candidate-requests' : 'candidate-request')}
               style={{ background: isSuperAdmin ? 'linear-gradient(135deg,#0176D3,#015AA1)' : 'linear-gradient(135deg,#BA0517,#e02d3c)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {isSuperAdmin ? '📋 Track Agency Requests' : '🚨 Request Candidates from TalentNest'}
+            </button>
+          )}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setPlatformWide(p => !p)}
+              style={{ padding: '7px 16px', borderRadius: 10, border: `2px solid ${platformWide ? '#F59E0B' : '#E2E8F0'}`, background: platformWide ? '#FEF3C7' : '#F8FAFC', color: platformWide ? '#92400E' : '#706E6B', fontSize: 12, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+              {platformWide ? '🌐 All Orgs' : '🏢 My Org'}
             </button>
           )}
           <div style={{ display: 'flex', background: 'rgba(1,118,211,0.06)', padding: 4, borderRadius: 14, flexWrap: 'wrap', gap: 2 }}>
