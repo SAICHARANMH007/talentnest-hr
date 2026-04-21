@@ -932,33 +932,33 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                     {(u.name || u.email || '?')[0].toUpperCase()}
                   </div>
 
-                  {/* Identity block — takes remaining width, min-w-0 enables text-overflow */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Identity block — flex:1 + minWidth:0 ensures text truncation works */}
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
 
-                    {/* Name + status badges on same line — badges wrap below on narrow screens */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                        {u.name || u.email?.split('@')[0] || 'No Name'}
-                      </span>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Badge label={u.role} color="#0176D3" />
-                        {u.isActive === false && (
-                          <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
-                        )}
-                        {u.availability && (
-                          <span style={{ background: 'rgba(46,132,74,0.08)', color: '#2E844A', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(46,132,74,0.2)', whiteSpace: 'nowrap' }}>
-                            {u.availability === 'Immediate' ? '🟢 Available Now' : `🕐 ${u.availability}`}
-                          </span>
-                        )}
-                      </div>
+                    {/* Name — own line, always truncates */}
+                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {u.name || u.email?.split('@')[0] || 'No Name'}
+                    </div>
+
+                    {/* Status badges — below name, wrap freely */}
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginTop: 3 }}>
+                      <Badge label={u.role} color="#0176D3" />
+                      {u.isActive === false && (
+                        <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
+                      )}
+                      {u.availability && (
+                        <span style={{ background: 'rgba(46,132,74,0.08)', color: '#2E844A', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(46,132,74,0.2)', whiteSpace: 'nowrap' }}>
+                          {u.availability === 'Immediate' ? '🟢 Now' : `🕐 ${u.availability}`}
+                        </span>
+                      )}
                     </div>
 
                     {/* Email */}
-                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {u.email}
                     </div>
 
-                    {/* Title + location — subtle meta line */}
+                    {/* Title + location */}
                     {(u.title || u.location) && (
                       <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
