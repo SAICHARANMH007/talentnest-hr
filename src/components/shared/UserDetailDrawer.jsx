@@ -119,34 +119,34 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       <Toast msg={toast} onClose={() => setToast('')} />
       <div onClick={onClose} style={{ flex: 1, background: 'rgba(5, 13, 26, 0.4)', backdropFilter: 'blur(4px)' }} />
 
-      <div className="tn-drawer" style={{ background: '#F8FAFF', borderLeft: '1px solid #E2E8F0', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 42px rgba(0,0,0,0.15)' }}>
-        
+      <div className="tn-drawer" style={{ background: '#F8FAFF', borderLeft: '1px solid #E2E8F0', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 42px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+
         {/* Header Section */}
-        <div style={{ padding: '24px 32px', borderBottom: '1px solid #E2E8F0', background: '#fff', flexShrink: 0, zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ width: 60, height: 60, borderRadius: 20, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 24, boxShadow: '0 8px 16px rgba(1,118,211,0.2)' }}>
+        <div style={{ padding: 'clamp(14px,3vw,24px) clamp(16px,4vw,28px)', borderBottom: '1px solid #E2E8F0', background: '#fff', flexShrink: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
               {(u.name || '?')[0].toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ color: '#0A1628', fontSize: 20, fontWeight: 900, margin: '0 0 6px' }}>{u.name || '—'}</h2>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Badge label={u.role?.replace('_', ' ').toUpperCase()} color="#0176D3" />
-                {app && <Badge label={SM[currentStage]?.icon + ' ' + (SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
-                {u.orgName && <span style={{ color: '#706E6B', fontSize: 13, fontWeight: 500 }}>🏢 {u.orgName}</span>}
+              <h2 style={{ color: '#0A1628', fontSize: 'clamp(15px,3vw,20px)', fontWeight: 900, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || '—'}</h2>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Badge label={u.role?.replace('_', ' ')} color="#0176D3" />
+                {app && <Badge label={(SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
+                {u.orgName && <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {u.orgName}</span>}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 36, height: 36, borderRadius: 12, cursor: 'pointer', fontSize: 20 }}>✕</button>
+            <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 24, borderBottom: '1px solid #F1F5F9' }}>
-            <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 PROFILE</button>
-            {u.role === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 PIPELINE</button>}
-            <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 RESUME</button>
+          <div style={{ display: 'flex', gap: 0, marginTop: 16, borderBottom: '1px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 Profile</button>
+            {u.role === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Pipeline</button>}
+            <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 Resume</button>
           </div>
         </div>
 
         {/* Content Area */}
-        <div style={{ padding: '24px 32px 40px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: 'clamp(14px,3vw,24px) clamp(16px,4vw,28px) 40px', overflowY: 'auto', flex: 1 }}>
           
           {tab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -154,19 +154,19 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
               {/* Dynamic Action Panel */}
               {app && (
                 <div style={{ ...card, background: 'linear-gradient(135deg, #fff, #F8FAFF)', border: '1.5px solid #0176D320', padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                          <p style={{ color: '#0176D3', fontSize: 10, fontWeight: 800, margin: '0 0 4px', letterSpacing: 1.2 }}>ACTIVE PIPELINE</p>
-                         <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>{app.job?.title || 'Job Application'}</h4>
-                         <p style={{ margin: 0, fontSize: 12, color: '#706E6B' }}>Current Stage: <strong>{SM[currentStage]?.label}</strong></p>
+                         <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.job?.title || 'Job Application'}</h4>
+                         <p style={{ margin: '2px 0 0', fontSize: 12, color: '#706E6B' }}>Stage: <strong>{SM[currentStage]?.label}</strong></p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ flexShrink: 0 }}>
                        <label style={{ color: '#706E6B', fontSize: 9, fontWeight: 800, display: 'block', marginBottom: 4 }}>UPDATE STAGE</label>
                        <select
                         value={currentStage}
                         onChange={e => handleStageChange(e.target.value)}
                         disabled={changingStage}
-                        style={{ padding: '8px 12px', borderRadius: 10, border: `2px solid ${STAGE_DROPDOWN_COLORS[currentStage] || '#DDDBDA'}`, background: '#fff', fontSize: 12, fontWeight: 800, color: STAGE_DROPDOWN_COLORS[currentStage], cursor: 'pointer', outline: 'none' }}
+                        style={{ padding: '7px 10px', borderRadius: 10, border: `2px solid ${STAGE_DROPDOWN_COLORS[currentStage] || '#DDDBDA'}`, background: '#fff', fontSize: 12, fontWeight: 800, color: STAGE_DROPDOWN_COLORS[currentStage], cursor: 'pointer', outline: 'none', maxWidth: '100%' }}
                        >
                          {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
                        </select>
@@ -188,7 +188,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                   <Field label="LinkedIn URL" value={form.linkedin}   onChange={v => sf('linkedin', v)} type="url" />
                   
                   {(isSuperAdmin || currentUserRole === 'admin') && (
-                    <div style={{ background: '#f8fafc', gridColumn: 'span 2', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="span-2" style={{ background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: '#475569' }}>⚙️ ADMINISTRATIVE SETTINGS</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
                         <div>
@@ -225,14 +225,14 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12 }}>
-                 <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, padding: '12px', fontSize: 13 }}>{saving ? '⏳ Saving...' : '✓ Update Profile Details'}</button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                 <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, minWidth: 140, padding: '11px 16px', fontSize: 13, whiteSpace: 'nowrap' }}>{saving ? '⏳ Saving...' : '✓ Save Changes'}</button>
                  {onDelete && (
                     <button onClick={() => {
                       if (window.confirm(`Permanently delete "${u.name}"? This cannot be undone.`)) {
                         onDelete(u.id || u._id); onClose();
                       }
-                    }} style={{ ...btnD, padding: '10px 20px' }} title="Delete user permanently">🗑 Delete</button>
+                    }} style={{ ...btnD, padding: '10px 16px', flexShrink: 0 }} title="Delete user permanently">🗑 Delete</button>
                  )}
               </div>
             </div>
