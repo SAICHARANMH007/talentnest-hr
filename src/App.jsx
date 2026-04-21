@@ -257,6 +257,25 @@ export default function App() {
       navigate('/login', { replace: true });
     });
 
+    // If an impersonation session is active, restore it directly without hitting
+    // the refresh endpoint (which would restore the super admin session and
+    // overwrite the impersonated user).
+    const impersonateToken = sessionStorage.getItem('tn_impersonate_token');
+    const saBackup = sessionStorage.getItem('tn_sa_backup');
+    if (impersonateToken && saBackup) {
+      try {
+        const storedUser = sessionStorage.getItem('tn_user');
+        if (storedUser) {
+          const u = JSON.parse(storedUser);
+          import('./api/client.js').then(({ setToken }) => { setToken(impersonateToken); });
+          setUser(u);
+          window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: u } }));
+          setAuthLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
     // Silent session restore via HTTP-only refresh cookie
     import('./api/api.js').then(({ initAuth }) => {
       initAuth().then(result => {

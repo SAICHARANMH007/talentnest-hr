@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../api/api.js';
 import Field from '../../components/ui/Field.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import MessageModal from '../../components/shared/MessageModal.jsx';
 
 const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 };
 const btnP  = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
@@ -221,6 +222,7 @@ export default function SuperAdminCandidateImport({ user }) {
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [bulkToast, setBulkToast] = useState('');
   const [drawerCandidate, setDrawerCandidate] = useState(null);
+  const [msgCandidate, setMsgCandidate] = useState(null);
   const fileRef = useRef();
 
   const refreshCount = async () => {
@@ -882,13 +884,21 @@ export default function SuperAdminCandidateImport({ user }) {
                         </div>
                       </div>
 
-                      {/* Edit button */}
-                      <button
-                        onClick={() => setDrawerCandidate(c)}
-                        title="View / Edit candidate"
-                        style={{ flexShrink: 0, background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
-                        ✏ Edit
-                      </button>
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignSelf: 'flex-start' }}>
+                        <button
+                          onClick={() => setDrawerCandidate(c)}
+                          title="View / Edit candidate"
+                          style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          ✏ Edit
+                        </button>
+                        <button
+                          onClick={() => setMsgCandidate(c)}
+                          title="Message candidate"
+                          style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, color: '#059669', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          💬 Message
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -927,6 +937,14 @@ export default function SuperAdminCandidateImport({ user }) {
             if (updated) updateCandidate(updated?.data || updated);
             setDrawerCandidate(null);
           }}
+        />
+      )}
+
+      {/* Message modal */}
+      {msgCandidate && (
+        <MessageModal
+          recipient={{ id: msgCandidate._id || msgCandidate.id, name: msgCandidate.name, role: msgCandidate.role || 'candidate' }}
+          onClose={() => setMsgCandidate(null)}
         />
       )}
     </div>

@@ -12,9 +12,58 @@ function timeAgo(d) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+function ReplyBox({ message, onSent }) {
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    setError('');
+    try {
+      await api.sendMessage({
+        toUserId: message.fromUserId || message.from,
+        message: text.trim(),
+        jobId: message.jobId,
+        jobTitle: message.jobTitle,
+      });
+      setSent(true);
+      onSent?.();
+    } catch (e) {
+      setError(e.message || 'Failed to send.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) return <div style={{ fontSize: 12, color: '#059669', fontWeight: 600, marginTop: 8 }}>✅ Reply sent!</div>;
+
+  return (
+    <div style={{ marginTop: 10, borderTop: '1px solid rgba(1,118,211,0.1)', paddingTop: 10 }}>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Write a reply…"
+        rows={2}
+        style={{ width: '100%', padding: '8px 12px', background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, color: '#181818', fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+      />
+      {error && <div style={{ color: '#BA0517', fontSize: 11, marginTop: 4 }}>{error}</div>}
+      <button
+        onClick={send}
+        disabled={sending || !text.trim()}
+        style={{ marginTop: 6, background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 700, padding: '6px 16px', cursor: 'pointer', opacity: (sending || !text.trim()) ? 0.6 : 1 }}>
+        {sending ? 'Sending…' : '↩ Reply'}
+      </button>
+    </div>
+  );
+}
+
 export default function MessageInbox({ open, onClose }) {
-  const [msgs, setMsgs]     = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [msgs, setMsgs]       = useState([]);
+  const [loading, setLoading]  = useState(true);
+  const [replyTo, setReplyTo]  = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +119,22 @@ export default function MessageInbox({ open, onClose }) {
                   <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 600, marginBottom: 6 }}>💼 Re: {m.jobTitle}</div>
                 )}
                 <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.message}</div>
+
+                {/* Reply button */}
+                {(m.fromUserId || m.from) && (
+                  replyTo === m._id ? (
+                    <ReplyBox
+                      message={m}
+                      onSent={() => setReplyTo(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setReplyTo(m._id)}
+                      style={{ marginTop: 8, background: 'none', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 8, color: '#0176D3', fontSize: 11, fontWeight: 600, padding: '4px 12px', cursor: 'pointer' }}>
+                      ↩ Reply
+                    </button>
+                  )
+                )}
               </div>
             ))
           )}

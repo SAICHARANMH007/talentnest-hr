@@ -175,7 +175,8 @@ function ImpersonateTab({ users }) {
       // super admin session cleanly without relying on a stale backup token.
       const backup = { user: sessionStorage.getItem('tn_user') };
       sessionStorage.setItem('tn_sa_backup', JSON.stringify(backup));
-      setToken(res.token); // set impersonated user's token in memory
+      sessionStorage.setItem('tn_impersonate_token', res.token); // persist so page reload keeps impersonation active
+      setToken(res.token);
       sessionStorage.setItem('tn_user', JSON.stringify(res.user));
       logAudit('Impersonation Started', 'Auth', `Super admin impersonating ${u.name} (${u.role})`, 'warning');
       window.location.href = '/app';
@@ -195,6 +196,7 @@ function ImpersonateTab({ users }) {
       // issue a fresh super admin token from the HTTP-only refresh cookie
       clearToken();
       sessionStorage.removeItem('tn_sa_backup');
+      sessionStorage.removeItem('tn_impersonate_token');
       logAudit('Impersonation Ended', 'Auth', 'Returned to super admin session', 'info');
       window.location.href = '/app';
     } catch { window.location.href = '/app'; }
