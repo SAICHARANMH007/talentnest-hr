@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../api/api.js';
 import Field from '../../components/ui/Field.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
-import MessageModal from '../../components/shared/MessageModal.jsx';
+import ChatPanel from '../../components/shared/ChatPanel.jsx';
 
 const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 };
 const btnP  = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
@@ -946,11 +946,13 @@ export default function SuperAdminCandidateImport({ user }) {
         />
       )}
 
-      {/* Message modal */}
+      {/* Chat panel */}
       {msgCandidate && (
-        <MessageModal
-          recipient={{ id: msgCandidate._id || msgCandidate.id, name: msgCandidate.name, role: msgCandidate.role || 'candidate' }}
+        <ChatPanel
+          open={true}
           onClose={() => setMsgCandidate(null)}
+          myUser={user}
+          initialRecipient={{ userId: msgCandidate._id || msgCandidate.id, name: msgCandidate.name, role: msgCandidate.role || 'candidate' }}
         />
       )}
     </div>

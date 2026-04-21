@@ -9,7 +9,7 @@ import Skeleton from '../components/ui/Skeleton.jsx';
 import { useLogo } from '../context/LogoContext.jsx';
 import useHeartbeat from '../hooks/useHeartbeat.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
-import MessageInbox from '../components/shared/MessageInbox.jsx';
+import ChatPanel from '../components/shared/ChatPanel.jsx';
 
 // ── Page Loader (Skeletal) ───────────────────────────────────────────────────
 function PageLoader() {
@@ -28,7 +28,7 @@ function PageLoader() {
 
 // ── Nav definitions ────────────────────────────────────────────────────────────
 const NAVS = {
-  candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"explore-jobs",icon:"🔍",label:"Explore Jobs"},{id:"ai-match",icon:"🤖",label:"AI Job Search"},{id:"applications",icon:"📋",label:"My Applications"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"profile",icon:"👤",label:"My Profile"}],
+  candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"ai-match",icon:"🤖",label:"Explore Jobs"},{id:"applications",icon:"📋",label:"My Applications"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"profile",icon:"👤",label:"My Profile"}],
   recruiter:  [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"jobs",icon:"💼",label:"My Jobs"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"🧑‍💼",label:"My Candidates"},{id:"assigned-candidates",icon:"🎯",label:"Assigned to Me"},{id:"ai-match",icon:"🤖",label:"AI Match"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"talent-pool",icon:"🅿️",label:"Talent Pool"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"offers",icon:"📄",label:"Offers"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"profile",icon:"👤",label:"My Profile"}],
   admin:      [{id:"analytics",icon:"📈",label:"Overview"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"assigned-candidates",icon:"🎯",label:"Assignments"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"automation",icon:"⚡",label:"Automation"},{id:"custom-fields",icon:"🧩",label:"Custom Fields"},{id:"org-settings",icon:"⚙️",label:"Org Settings"},{id:"billing",icon:"💳",label:"Billing"},{id:"profile",icon:"👤",label:"My Profile"}],
   superadmin: [{id:"analytics",icon:"📈",label:"Overview"},{id:"platform",icon:"🌐",label:"Platform"},{id:"organisations",icon:"🏢",label:"Organisations"},{id:"billing",icon:"💳",label:"Billing"},{id:"security",icon:"🛡️",label:"Security"},{id:"permissions",icon:"🔐",label:"Permissions"},{id:"import-candidates",icon:"📥",label:"Import & Assign"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"admins",icon:"🔑",label:"Admins"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"⚙️",label:"Customizations"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"playbooks",icon:"📚",label:"Playbooks"},{id:"blogs",icon:"✍️",label:"Blog Manager"},{id:"profile",icon:"👤",label:"My Profile"}],
@@ -352,10 +352,10 @@ export default function Layout({ user, onLogout }) {
   useHeartbeat(user);
 
   useEffect(() => {
-    if (user?.role !== 'candidate') return;
+    if (!user?.role) return;
     const load = () => api.getUnreadMessageCount().then(r => setUnreadMsgs(r?.data?.count || 0)).catch(() => {});
     load();
-    const t = setInterval(load, 30_000);
+    const t = setInterval(load, 20_000);
     return () => clearInterval(t);
   }, [user?.role]);
 
@@ -366,7 +366,7 @@ export default function Layout({ user, onLogout }) {
       {showChangePwd && <ChangePasswordModal user={user} onClose={() => setShowChangePwd(false)} />}
       {showEmailSettings && <EmailSettingsModal user={user} onClose={() => setShowEmailSettings(false)} />}
       <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} />
-      <MessageInbox open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); }} />
+      <ChatPanel open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); }} myUser={user} />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }

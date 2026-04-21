@@ -223,4 +223,6 @@ export const platformService = {
   async sendMessage(data)                      { return req('POST',   '/messages', data); },
   async getMessageInbox()                      { return req('GET',    '/messages/inbox'); },
   async getUnreadMessageCount()                { return req('GET',    '/messages/unread-count'); },
+  async getMessageContacts()                   { return req('GET',    '/messages/contacts'); },
+  async getMessageThread(userId)               { return req('GET',    `/messages/thread/${userId}`); },
 };

@@ -1,0 +1,391 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '../../api/api.js';
+
+const ROLE_COLOR = { candidate: '#0176D3', recruiter: '#7c3aed', admin: '#d97706', super_admin: '#059669' };
+const ROLE_LABEL = { candidate: 'Candidate', recruiter: 'Recruiter', admin: 'Admin', super_admin: 'Super Admin' };
+
+function fmt(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  const now  = new Date();
+  const diffD = Math.floor((now - date) / 86400000);
+  if (diffD === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diffD === 1) return 'Yesterday';
+  if (diffD < 7)  return date.toLocaleDateString([], { weekday: 'short' });
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function fmtFull(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function Avatar({ name, role, size = 36 }) {
+  const color = ROLE_COLOR[role] || '#64748b';
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: `${color}22`, border: `2px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: size * 0.38, flexShrink: 0 }}>
+      {(name || '?')[0].toUpperCase()}
+    </div>
+  );
+}
+
+function AttachmentBubble({ attachment, isMine }) {
+  const isPdf = attachment.type === 'application/pdf' || attachment.name?.endsWith('.pdf');
+  const isImg = attachment.type?.startsWith('image/');
+
+  const download = () => {
+    const a = document.createElement('a');
+    a.href = attachment.data;
+    a.download = attachment.name;
+    a.click();
+  };
+
+  if (isImg) {
+    return (
+      <div style={{ maxWidth: 240, cursor: 'pointer' }} onClick={download}>
+        <img src={attachment.data} alt={attachment.name} style={{ width: '100%', borderRadius: 10, display: 'block' }} />
+        <div style={{ fontSize: 10, color: isMine ? 'rgba(255,255,255,0.7)' : '#9E9D9B', marginTop: 3 }}>{attachment.name}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={download} style={{ display: 'flex', alignItems: 'center', gap: 10, background: isMine ? 'rgba(255,255,255,0.15)' : 'rgba(1,118,211,0.06)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', border: `1px solid ${isMine ? 'rgba(255,255,255,0.2)' : 'rgba(1,118,211,0.15)'}` }}>
+      <div style={{ fontSize: 26, lineHeight: 1 }}>{isPdf ? '📄' : '📎'}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: isMine ? '#fff' : '#181818', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{attachment.name}</div>
+        <div style={{ fontSize: 11, color: isMine ? 'rgba(255,255,255,0.65)' : '#9E9D9B' }}>
+          {attachment.size ? `${(attachment.size / 1024).toFixed(0)} KB` : ''} · Click to download
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ msg, myId }) {
+  const isMine = msg.fromUserId?.toString() === myId?.toString();
+  return (
+    <div style={{ display: 'flex', flexDirection: isMine ? 'row-reverse' : 'row', gap: 8, marginBottom: 12, alignItems: 'flex-end' }}>
+      {!isMine && <Avatar name={msg.fromName} role={msg.fromRole} size={28} />}
+      <div style={{ maxWidth: '72%', display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+        {!isMine && (
+          <div style={{ fontSize: 11, color: '#9E9D9B', marginBottom: 3, paddingLeft: 4 }}>{msg.fromName}</div>
+        )}
+        <div style={{ background: isMine ? 'linear-gradient(135deg,#0176D3,#014486)' : '#F3F4F6', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: msg.attachment && !msg.message ? '8px' : '10px 14px', color: isMine ? '#fff' : '#181818', fontSize: 14, lineHeight: 1.55, wordBreak: 'break-word', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+          {msg.attachment && <AttachmentBubble attachment={msg.attachment} isMine={isMine} />}
+          {msg.message && <div style={{ marginTop: msg.attachment ? 6 : 0 }}>{msg.message}</div>}
+        </div>
+        {msg.jobTitle && (
+          <div style={{ fontSize: 10, color: '#0176D3', marginTop: 3, paddingLeft: 2 }}>💼 {msg.jobTitle}</div>
+        )}
+        <div style={{ fontSize: 10, color: '#C9C7C5', marginTop: 3, paddingLeft: 2 }}>{fmtFull(msg.createdAt)}</div>
+      </div>
+    </div>
+  );
+}
+
+function ContactItem({ contact, active, onClick }) {
+  const color = ROLE_COLOR[contact.role] || '#64748b';
+  return (
+    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', background: active ? 'rgba(1,118,211,0.08)' : 'transparent', borderLeft: active ? '3px solid #0176D3' : '3px solid transparent', transition: 'background 0.15s' }}>
+      <Avatar name={contact.name} role={contact.role} size={38} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: '#181818', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{contact.name}</span>
+          <span style={{ fontSize: 10, color: '#9E9D9B', flexShrink: 0 }}>{fmt(contact.lastAt)}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+          <span style={{ fontSize: 11, color: '#706E6B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{contact.lastMsg || String.fromCharCode(8212)}</span>
+          {contact.unread > 0 && (
+            <span style={{ background: '#0176D3', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{contact.unread}</span>
+          )}
+        </div>
+        <span style={{ fontSize: 10, color, background: `${color}15`, borderRadius: 20, padding: '1px 7px', fontWeight: 600, display: 'inline-block', marginTop: 2 }}>{ROLE_LABEL[contact.role] || contact.role}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
+  const [contacts, setContacts]         = useState([]);
+  const [active, setActive]             = useState(null);
+  const [thread, setThread]             = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [loadingThread,   setLoadingThread]   = useState(false);
+  const [text, setText]                 = useState('');
+  const [sending, setSending]           = useState(false);
+  const [attachment, setAttachment]     = useState(null);
+  const [newRecipEmail, setNewRecipEmail] = useState('');
+  const [newRecipResult, setNewRecipResult] = useState(null);
+  const [showNewChat, setShowNewChat]   = useState(false);
+  const [searchContacts, setSearchContacts] = useState('');
+  const [mobileShowThread, setMobileShowThread] = useState(false);
+  const bottomRef = useRef(null);
+  const fileRef   = useRef(null);
+  const pollRef   = useRef(null);
+  const isMobile  = window.innerWidth < 640;
+  const myId = myUser?._id || myUser?.id;
+
+  const loadContacts = useCallback(async () => {
+    try {
+      const r = await api.getMessageContacts();
+      setContacts(Array.isArray(r?.data) ? r.data : []);
+    } catch { setContacts([]); }
+    setLoadingContacts(false);
+  }, []);
+
+  const loadThread = useCallback(async (userId) => {
+    if (!userId) return;
+    setLoadingThread(true);
+    try {
+      const r = await api.getMessageThread(userId);
+      setThread(Array.isArray(r?.data) ? r.data : []);
+    } catch { setThread([]); }
+    setLoadingThread(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    loadContacts();
+  }, [open, loadContacts]);
+
+  useEffect(() => {
+    if (!open || !initialRecipient) return;
+    const contact = {
+      userId: initialRecipient.userId || initialRecipient._id || initialRecipient.id,
+      name  : initialRecipient.name,
+      role  : initialRecipient.role,
+    };
+    setActive(contact);
+    setMobileShowThread(true);
+    loadThread(contact.userId);
+  }, [open, initialRecipient, loadThread]);
+
+  useEffect(() => {
+    if (!active) return;
+    loadThread(active.userId);
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => loadThread(active.userId), 4000);
+    return () => clearInterval(pollRef.current);
+  }, [active, loadThread]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [thread]);
+
+  const selectContact = (c) => {
+    setActive(c);
+    setMobileShowThread(true);
+    loadThread(c.userId);
+  };
+
+  const pickFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8_000_000) { alert('File too large — max 8 MB'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAttachment({ name: file.name, type: file.type, size: file.size, data: ev.target.result });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const send = async () => {
+    if ((!text.trim() && !attachment) || !active || sending) return;
+    setSending(true);
+    try {
+      const toUserId = active.userId;
+      const r = await api.sendMessage({ toUserId, message: text.trim(), attachment: attachment || undefined });
+      const newMsg = r?.data || r;
+      setThread(prev => [...prev, newMsg]);
+      setText('');
+      setAttachment(null);
+      loadContacts();
+    } catch (e) {
+      alert(e.message || 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const searchUser = async () => {
+    if (!newRecipEmail.trim()) return;
+    try {
+      const r = await api.getUsers();
+      const all = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+      const found = all.find(u => u.email?.toLowerCase() === newRecipEmail.trim().toLowerCase());
+      setNewRecipResult(found || 'notfound');
+    } catch { setNewRecipResult('notfound'); }
+  };
+
+  const startChat = (user) => {
+    const contact = { userId: user._id || user.id, name: user.name, role: user.role };
+    setActive(contact);
+    setMobileShowThread(true);
+    setShowNewChat(false);
+    setNewRecipEmail('');
+    setNewRecipResult(null);
+    loadThread(contact.userId);
+  };
+
+  if (!open) return null;
+
+  const filteredContacts = contacts.filter(c =>
+    !searchContacts ||
+    c.name?.toLowerCase().includes(searchContacts.toLowerCase()) ||
+    c.email?.toLowerCase().includes(searchContacts.toLowerCase())
+  );
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000 }} />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%,-50%)',
+        width: 'min(840px, 98vw)', height: 'min(620px, 95vh)',
+        background: '#fff', borderRadius: 20, zIndex: 9001,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+        display: 'flex', overflow: 'hidden',
+      }}>
+
+        {/* Sidebar */}
+        <div style={{
+          width: isMobile ? '100%' : 280,
+          borderRight: '1px solid #F3F2F2',
+          display: 'flex', flexDirection: 'column', background: '#FAFAFA',
+          flexShrink: 0,
+          ...(isMobile ? { display: mobileShowThread ? 'none' : 'flex' } : {}),
+        }}>
+          <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '16px 16px 12px', color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>💬</span>
+            <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Messages</span>
+            <button onClick={() => setShowNewChat(p => !p)} title="New chat" style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 16, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✎</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+
+          {showNewChat && (
+            <div style={{ padding: '10px 12px', background: '#EEF4FF', borderBottom: '1px solid #D8E9FF' }}>
+              <div style={{ fontSize: 12, color: '#0176D3', fontWeight: 700, marginBottom: 6 }}>Start new chat</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={newRecipEmail}
+                  onChange={e => { setNewRecipEmail(e.target.value); setNewRecipResult(null); }}
+                  onKeyDown={e => e.key === 'Enter' && searchUser()}
+                  placeholder="Search by email…"
+                  style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(1,118,211,0.3)', fontSize: 12, outline: 'none', background: '#fff' }}
+                />
+                <button onClick={searchUser} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '7px 12px', cursor: 'pointer', fontSize: 12 }}>→</button>
+              </div>
+              {newRecipResult === 'notfound' && <div style={{ fontSize: 11, color: '#BA0517', marginTop: 6 }}>No user found.</div>}
+              {newRecipResult && newRecipResult !== 'notfound' && (
+                <div onClick={() => startChat(newRecipResult)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 10, border: '1px solid rgba(1,118,211,0.2)', cursor: 'pointer' }}>
+                  <Avatar name={newRecipResult.name} role={newRecipResult.role} size={30} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{newRecipResult.name}</div>
+                    <div style={{ fontSize: 11, color: '#706E6B' }}>{ROLE_LABEL[newRecipResult.role]}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ padding: '8px 10px' }}>
+            <input
+              value={searchContacts}
+              onChange={e => setSearchContacts(e.target.value)}
+              placeholder="Search conversations…"
+              style={{ width: '100%', padding: '7px 12px', borderRadius: 8, border: '1px solid #E8E7E5', fontSize: 12, outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {loadingContacts ? (
+              <div style={{ textAlign: 'center', padding: 32, color: '#9E9D9B', fontSize: 13 }}>Loading…</div>
+            ) : filteredContacts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
+                <div style={{ color: '#706E6B', fontSize: 12 }}>No conversations yet.</div>
+                <div style={{ color: '#9E9D9B', fontSize: 11, marginTop: 4 }}>Click ✎ to start a new chat</div>
+              </div>
+            ) : (
+              filteredContacts.map(c => (
+                <ContactItem key={c.userId} contact={c} active={active?.userId === c.userId} onClick={() => selectContact(c)} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Thread */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
+          ...(isMobile ? { display: mobileShowThread ? 'flex' : 'none' } : {}),
+        }}>
+          {active ? (
+            <>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #F3F2F2', display: 'flex', alignItems: 'center', gap: 10, background: '#FAFAFA' }}>
+                {isMobile && (
+                  <button onClick={() => setMobileShowThread(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#0176D3', padding: '0 4px 0 0', lineHeight: 1 }}>‹</button>
+                )}
+                <Avatar name={active.name} role={active.role} size={36} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{active.name}</div>
+                  <div style={{ fontSize: 11, color: ROLE_COLOR[active.role] || '#64748b' }}>{ROLE_LABEL[active.role] || active.role}</div>
+                </div>
+                {!isMobile && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>}
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px' }}>
+                {loadingThread ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#9E9D9B', fontSize: 13 }}>Loading…</div>
+                ) : thread.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 60 }}>
+                    <div style={{ fontSize: 40, marginBottom: 8 }}>👋</div>
+                    <div style={{ color: '#706E6B', fontSize: 13 }}>Start the conversation with {active.name}</div>
+                  </div>
+                ) : (
+                  thread.map(m => <MessageBubble key={m._id} msg={m} myId={myId} />)
+                )}
+                <div ref={bottomRef} />
+              </div>
+
+              {attachment && (
+                <div style={{ padding: '6px 16px', background: '#EEF4FF', display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid #D8E9FF' }}>
+                  <span style={{ fontSize: 18 }}>{attachment.type?.startsWith('image/') ? '🖼' : '📎'}</span>
+                  <span style={{ fontSize: 12, color: '#0176D3', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
+                  <span style={{ fontSize: 11, color: '#9E9D9B' }}>{(attachment.size / 1024).toFixed(0)} KB</span>
+                  <button onClick={() => setAttachment(null)} style={{ background: 'none', border: 'none', color: '#BA0517', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                </div>
+              )}
+
+              <div style={{ padding: '10px 12px', borderTop: '1px solid #F3F2F2', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" style={{ display: 'none' }} onChange={pickFile} />
+                <button onClick={() => fileRef.current?.click()} title="Attach file (PDF, image, doc — max 8 MB)" style={{ background: 'none', border: '1px solid #E8E7E5', borderRadius: 10, color: '#706E6B', fontSize: 18, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
+                <textarea
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  placeholder="Type a message… (Enter to send)"
+                  rows={1}
+                  style={{ flex: 1, padding: '9px 14px', background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 12, color: '#181818', fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', lineHeight: 1.45, maxHeight: 120, overflowY: 'auto' }}
+                />
+                <button
+                  onClick={send}
+                  disabled={sending || (!text.trim() && !attachment)}
+                  style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 700, width: 38, height: 38, cursor: 'pointer', fontSize: 16, opacity: (sending || (!text.trim() && !attachment)) ? 0.5 : 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {sending ? '…' : '➤'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#706E6B' }}>
+              <div style={{ fontSize: 56, marginBottom: 12 }}>💬</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#181818', marginBottom: 6 }}>TalentNest Chat</div>
+              <div style={{ fontSize: 13, textAlign: 'center', maxWidth: 260, lineHeight: 1.6 }}>Select a conversation from the left, or click ✎ to start a new chat</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
