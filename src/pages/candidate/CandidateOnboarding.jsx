@@ -30,15 +30,12 @@ export default function CandidateOnboarding({ user }) {
   const [toast,   setToast]   = useState('');
   const [toggling, setToggling] = useState('');
 
-  const candidateId = user?.candidateId || user?.id || user?._id;
-
   useEffect(() => {
-    if (!candidateId) { setLoading(false); return; }
-    api.getMyPreBoarding(candidateId)
+    api.getMyPreBoarding()
       .then(r => setRecord(r?.data || null))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [candidateId]);
+  }, [user?.id]);
 
   const toggleTask = async (taskId, completed) => {
     if (!record) return;
@@ -54,7 +51,7 @@ export default function CandidateOnboarding({ user }) {
   const confirmJoining = async () => {
     if (!record) return;
     try {
-      const r = await api.updatePreBoarding(record._id || record.id, { joiningConfirmed: true });
+      const r = await api.confirmPreBoardingJoining(record._id || record.id);
       setRecord(r?.data || r);
       setToast('✅ Joining confirmed! We\'re excited to have you.');
     } catch (e) { setToast('❌ ' + e.message); }

@@ -286,6 +286,21 @@ export default function CandidateApplications({ user }) {
       {/* ── APPLICATIONS TAB ── */}
       {activeTab === 'applications' && (
         <>
+          {/* HR-assigned jobs alert banner */}
+          {!loading && apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length > 0 && (
+            <div style={{ background:'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,68,134,0.04))', border:'1.5px solid rgba(1,118,211,0.3)', borderRadius:14, padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>🎯</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:13, color:'#032D60' }}>
+                  HR added you to {apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length} job pipeline{apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length > 1 ? 's' : ''}
+                </div>
+                <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>
+                  These roles have been handpicked for you. Review and keep or withdraw.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Stage filter tabs */}
           {!loading && apps.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -361,9 +376,17 @@ export default function CandidateApplications({ user }) {
                         <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>
                           {jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}
                         </div>
-                        <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3 }}>
-                          Applied {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                          {a.source && a.source !== 'direct' && <span style={{ marginLeft: 8, color: '#A07E00', fontWeight: 600 }}>via {a.source}</span>}
+                        <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                          <span>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
+                          {a.source === 'admin_assign' && (
+                            <span style={{ background:'rgba(1,118,211,0.1)', color:'#0176D3', border:'1px solid rgba(1,118,211,0.25)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>🎯 Added by HR</span>
+                          )}
+                          {a.source === 'career_page' && (
+                            <span style={{ background:'rgba(46,132,74,0.08)', color:'#2E844A', border:'1px solid rgba(46,132,74,0.2)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>🌐 Career Page</span>
+                          )}
+                          {a.source === 'referral' && (
+                            <span style={{ background:'rgba(245,158,11,0.08)', color:'#A07E00', border:'1px solid rgba(245,158,11,0.25)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>👥 Referral</span>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>

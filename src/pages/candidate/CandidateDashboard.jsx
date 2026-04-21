@@ -103,24 +103,39 @@ export default function CandidateDashboard({ user }) {
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} />
 
-      {/* ── Admin-Assigned Jobs Alert ── */}
+      {/* ── Admin-Assigned Jobs — Detailed Cards ── */}
       {assignedByAdmin.length > 0 && (
-        <div
-          onClick={() => navigate("/app/applications")}
-          style={{ background:"linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,118,211,0.03))", border:"1.5px solid rgba(1,118,211,0.3)", borderRadius:12, padding:"14px 18px", marginBottom:20, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}
-        >
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontSize:20 }}>📬</span>
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+            <span style={{ fontSize:18 }}>📬</span>
             <div>
-              <div style={{ fontWeight:700, fontSize:13, color:"#032D60" }}>
-                You've been added to {assignedByAdmin.length} job pipeline{assignedByAdmin.length>1?'s':''}!
+              <div style={{ fontWeight:800, fontSize:14, color:"#032D60" }}>
+                You've been added to {assignedByAdmin.length} job pipeline{assignedByAdmin.length>1?'s':''}
               </div>
-              <div style={{ fontSize:11, color:"#0176D3", marginTop:2 }}>
-                {assignedByAdmin.slice(0,2).map(a => a.jobId?.title || 'a role').join(', ')}{assignedByAdmin.length > 2 ? ` +${assignedByAdmin.length-2} more` : ''}
-              </div>
+              <div style={{ fontSize:12, color:"#706E6B", marginTop:1 }}>Review these opportunities and respond</div>
             </div>
           </div>
-          <button style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", flexShrink:0 }}>View →</button>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {assignedByAdmin.map(a => {
+              const job = a.jobId || {};
+              const company = job.companyName || job.company || '';
+              return (
+                <div key={a.id||a._id} style={{ background:"linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.02))", border:"1.5px solid rgba(1,118,211,0.25)", borderRadius:14, padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#0176D3,#032D60)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:18, flexShrink:0 }}>🎯</div>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:14, color:"#181818" }}>{job.title || 'New Role'}</div>
+                      <div style={{ fontSize:12, color:"#0176D3", marginTop:2 }}>{company}{job.location ? ` · ${job.location}` : ''}</div>
+                      <div style={{ fontSize:11, color:"#706E6B", marginTop:2 }}>Added to pipeline on {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'recently'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:8, flexShrink:0, flexWrap:"wrap" }}>
+                    <button onClick={() => navigate("/app/applications")} style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:8, padding:"8px 16px", fontSize:12, fontWeight:700, cursor:"pointer" }}>View Details →</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

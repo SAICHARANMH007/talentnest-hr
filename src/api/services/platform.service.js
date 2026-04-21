@@ -195,7 +195,8 @@ export const platformService = {
 
   // Pre-boarding
   async getPreBoardings(qs)                  { return req('GET',    `/preboarding${qs ? `?${qs}` : ''}`); },
-  async getMyPreBoarding(candidateId)        { return req('GET',    `/preboarding/mine/${candidateId}`); },
+  async getMyPreBoarding()                   { return req('GET',    '/preboarding/mine'); },
+  async confirmPreBoardingJoining(id)        { return req('PATCH',  `/preboarding/${id}/candidate-confirm`, {}); },
   async updatePreBoarding(id, data)          { return req('PATCH',  `/preboarding/${id}`, data); },
   async addPreBoardingTask(id, data)         { return req('POST',   `/preboarding/${id}/tasks`, data); },
   async updatePreBoardingTask(id, taskId, data) { return req('PATCH', `/preboarding/${id}/tasks/${taskId}`, data); },

@@ -52,10 +52,34 @@ router.get('/:id', authenticate, tenantGuard, asyncHandler(async (req, res) => {
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
-// ── Candidate: get own pre-boarding ──────────────────────────────────────────
-router.get('/mine/:candidateId', authenticate, asyncHandler(async (req, res) => {
-  const record = await PreBoarding.findOne({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
+// ── Candidate: get own pre-boarding (by email — works regardless of Candidate vs User _id) ──
+router.get('/mine', authenticate, asyncHandler(async (req, res) => {
+  if (!req.user?.email) return res.json({ success: true, data: null });
+  const record = await PreBoarding.findOne({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
   if (!record) return res.json({ success: true, data: null });
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
+// ── Candidate: get own pre-boarding by candidateId (legacy — keep for compat) ─
+router.get('/mine/:candidateId', authenticate, asyncHandler(async (req, res) => {
+  let record = await PreBoarding.findOne({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
+  if (!record && req.user?.email) {
+    record = await PreBoarding.findOne({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
+  }
+  if (!record) return res.json({ success: true, data: null });
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
+// ── Candidate: confirm joining ─────────────────────────────────────────────────
+router.patch('/:id/candidate-confirm', authenticate, asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id };
+  if (req.user.role === 'candidate') filter.candidateEmail = req.user.email;
+  const record = await PreBoarding.findOneAndUpdate(
+    filter,
+    { $set: { joiningConfirmed: true, joiningConfirmedAt: new Date() } },
+    { new: true }
+  ).lean();
+  if (!record) throw new AppError('Pre-boarding record not found.', 404);
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
