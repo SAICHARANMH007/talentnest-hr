@@ -140,11 +140,11 @@ export default function AdminPipeline({ user }) {
 
       {/* Filters */}
       <div style={S.filters}>
-        <select value={jobFilter} onChange={e => setJobFilter(e.target.value)} style={{ ...inp, width: 220 }}>
+        <select value={jobFilter} onChange={e => setJobFilter(e.target.value)} style={{ ...inp, flex: '1 1 160px', maxWidth: 280 }}>
           <option value="">All Jobs</option>
           {jobs.map(j => <option key={j.id || j._id} value={j.id || j._id}>{j.title}</option>)}
         </select>
-        <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} style={{ ...inp, width: 180 }}>
+        <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} style={{ ...inp, flex: '1 1 140px', maxWidth: 220 }}>
           <option value="">All Stages</option>
           {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
         </select>

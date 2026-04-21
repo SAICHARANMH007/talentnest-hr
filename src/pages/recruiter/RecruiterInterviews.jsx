@@ -9,7 +9,8 @@ import { api } from '../../api/api.js';
 
 // ── Styles outside component ───────────────────────────────────────────────────
 const S = {
-  table: { width: '100%', borderCollapse: 'collapse' },
+  tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 600 },
   th: { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid #F3F2F2' },
   td: { padding: '12px 14px', fontSize: 13, color: '#181818', borderBottom: '1px solid #F3F2F2', verticalAlign: 'top' },
   empty: { textAlign: 'center', padding: '60px 24px', color: '#706E6B', fontSize: 14 },
@@ -145,10 +146,12 @@ export default function RecruiterInterviews({ user }) {
 
       <div style={card}>
         {loading ? (
-          <table style={S.table}>
-            <thead><tr>{['Candidate','Job','Round','Date','Format','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-            <tbody>{[1,2,3].map(i => <SkeletonRow key={i} />)}</tbody>
-          </table>
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead><tr>{['Candidate','Job','Round','Date','Format','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>{[1,2,3].map(i => <SkeletonRow key={i} />)}</tbody>
+            </table>
+          </div>
         ) : displayed.length === 0 ? (
           <div style={S.empty}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'upcoming' ? '📅' : '📁'}</div>
@@ -156,6 +159,7 @@ export default function RecruiterInterviews({ user }) {
             <div style={{ fontSize: 12 }}>{tab === 'upcoming' ? 'Schedule interviews for shortlisted candidates above' : 'Past interviews will appear here'}</div>
           </div>
         ) : (
+          <div style={S.tableWrap}>
           <table style={S.table}>
             <thead><tr>{['Candidate','Job','Round','Date','Format','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -186,6 +190,7 @@ export default function RecruiterInterviews({ user }) {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

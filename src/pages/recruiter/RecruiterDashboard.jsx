@@ -245,7 +245,7 @@ export default function RecruiterDashboard({ user }) {
       <div style={{ ...card, marginBottom:20 }}>
         <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:"0 0 14px", letterSpacing:1 }}>💼 JOB PERFORMANCE</p>
         <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", minWidth: 560 }}>
             <thead>
               <tr>{["Job","Company","Urgency","Applicants","Shortlisted","Interviewed","Hired","Conversion"].map(h => (
                 <th key={h} style={{ color:"#0176D3", fontSize:10, fontWeight:700, textAlign:"left", padding:"0 12px 10px", whiteSpace:"nowrap", letterSpacing:0.5 }}>{h.toUpperCase()}</th>
