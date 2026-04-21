@@ -914,39 +914,39 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             const isExpanded = filterRole === 'recruiter' && expandedRec === u.id;
             const isSelected = selectedIds.has(u.id);
             return (
-              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : '#E8ECF0'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '16px' }}>
+              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : '#E8ECF0'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '16px', overflow: 'hidden' }}>
 
-                {/* ── Row 1: avatar + name/email + checkbox ── */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                {/* ── Row 1: avatar + name/email + badges ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'nowrap' }}>
                   {isCandidates && (
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(u.id)} onClick={e => e.stopPropagation()}
                       style={{ accentColor: '#0176D3', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }} />
                   )}
-                  {/* Avatar */}
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18, flexShrink: 0, letterSpacing: -1 }}>
+                  {/* Avatar — flex-shrink-0 so it never collapses */}
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
                     {(u.name || u.email || '?')[0].toUpperCase()}
                   </div>
-                  {/* Name + email block */}
+                  {/* Name + email — min-w-0 so it truncates instead of overflowing */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {u.name || u.email?.split('@')[0] || 'No Name'}
                     </div>
-                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {u.email}
                     </div>
                   </div>
-                  {/* Status badges — right side, don't compete with name */}
-                  <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
+                  {/* Badges — flex-shrink-0, hidden on very small screens if needed */}
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '40%' }}>
                     <Badge label={u.role} color="#0176D3" />
                     {u.isActive === false && (
-                      <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
+                      <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
                     )}
                   </div>
                 </div>
 
                 {/* ── Row 2: title / location ── */}
                 {(u.title || u.location) && (
-                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
                   </div>
                 )}
@@ -972,23 +972,25 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
 
                 {/* ── Action strip ── */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid #F3F2F2', alignItems: 'center' }}>
-                  {filterRole === 'candidate' && (
-                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>📋 Resume</button>
-                  )}
-                  {filterRole === 'recruiter' && (
-                    <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
-                      {isExpanded ? '▲ Hide' : '👁 Activity'}
-                    </button>
-                  )}
-                  <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '6px 13px' }}>✏️ Edit</button>
-                  {u.isActive === false && (
-                    <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Resend</button>
-                  )}
-                  {isSuperAdmin && u.isActive !== false && (
-                    <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px' }}>🔒 Reset Pwd</button>
-                  )}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
+                    {filterRole === 'candidate' && (
+                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>📋 Resume</button>
+                    )}
+                    {filterRole === 'recruiter' && (
+                      <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
+                        {isExpanded ? '▲ Hide' : '👁 Activity'}
+                      </button>
+                    )}
+                    <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '6px 13px' }}>✏️ Edit</button>
+                    {u.isActive === false && (
+                      <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Resend</button>
+                    )}
+                    {isSuperAdmin && u.isActive !== false && (
+                      <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px' }}>🔒 Reset Pwd</button>
+                    )}
+                  </div>
                   {!recruiterView && (
-                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '6px 13px', fontSize: 11, marginLeft: 'auto' }}>🗑 Delete</button>
+                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '6px 13px', fontSize: 11, flexShrink: 0 }}>🗑 Delete</button>
                   )}
                 </div>
 
