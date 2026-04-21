@@ -913,84 +913,99 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
           {filtered.map(u => {
             const isExpanded = filterRole === 'recruiter' && expandedRec === u.id;
             const isSelected = selectedIds.has(u.id);
+            const skillArr = Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+            const certArr = (() => { try { return Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); } catch { return []; } })();
             return (
-              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : '#E8ECF0'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'all 0.15s', padding: '16px', overflow: 'hidden' }}>
+              <div key={u.id} style={{ ...card, border: `1px solid ${isSelected ? 'rgba(1,118,211,0.4)' : '#E8ECF0'}`, background: isSelected ? 'rgba(1,118,211,0.03)' : '#fff', transition: 'border-color 0.15s, background 0.15s', padding: '14px 16px', overflow: 'hidden' }}>
 
-                {/* ── Row 1: avatar + name/email + badges ── */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'nowrap' }}>
+                {/* ── Header: checkbox + avatar + identity block ── */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+
+                  {/* Checkbox (candidates only) */}
                   {isCandidates && (
                     <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(u.id)} onClick={e => e.stopPropagation()}
-                      style={{ accentColor: '#0176D3', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }} />
+                      style={{ accentColor: '#0176D3', width: 15, height: 15, cursor: 'pointer', flexShrink: 0, marginTop: 3 }} />
                   )}
-                  {/* Avatar — flex-shrink-0 so it never collapses */}
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+
+                  {/* Avatar — fixed size, never shrinks */}
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 17, flexShrink: 0, letterSpacing: -0.5 }}>
                     {(u.name || u.email || '?')[0].toUpperCase()}
                   </div>
-                  {/* Name + email — min-w-0 so it truncates instead of overflowing */}
+
+                  {/* Identity block — takes remaining width, min-w-0 enables text-overflow */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {u.name || u.email?.split('@')[0] || 'No Name'}
+
+                    {/* Name + status badges on same line — badges wrap below on narrow screens */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                        {u.name || u.email?.split('@')[0] || 'No Name'}
+                      </span>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Badge label={u.role} color="#0176D3" />
+                        {u.isActive === false && (
+                          <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
+                        )}
+                        {u.availability && (
+                          <span style={{ background: 'rgba(46,132,74,0.08)', color: '#2E844A', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(46,132,74,0.2)', whiteSpace: 'nowrap' }}>
+                            {u.availability === 'Immediate' ? '🟢 Available Now' : `🕐 ${u.availability}`}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+
+                    {/* Email */}
+                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {u.email}
                     </div>
-                  </div>
-                  {/* Badges — flex-shrink-0, hidden on very small screens if needed */}
-                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '40%' }}>
-                    <Badge label={u.role} color="#0176D3" />
-                    {u.isActive === false && (
-                      <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
+
+                    {/* Title + location — subtle meta line */}
+                    {(u.title || u.location) && (
+                      <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* ── Row 2: title / location ── */}
-                {(u.title || u.location) && (
-                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
+                {/* ── HR meta chips (candidates only) ── */}
+                {isCandidates && (u.experience || u.currentCTC || u.client || u.ta || u.jobRole || certArr.length > 0) && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                    {u.experience ? <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, border: '1px solid #bfdbfe', whiteSpace: 'nowrap' }}>🎓 {u.experience} yrs</span> : null}
+                    {u.currentCTC && <span style={{ background: '#F0FFF4', color: '#2E844A', fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, border: '1px solid rgba(46,132,74,0.25)', whiteSpace: 'nowrap' }}>💰 {u.currentCTC}</span>}
+                    {u.client && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 9px', borderRadius: 20, border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>🏢 {u.client}</span>}
+                    {u.ta && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 9px', borderRadius: 20, border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>👤 {u.ta}</span>}
+                    {u.jobRole && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 9px', borderRadius: 20, border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>💼 {u.jobRole}</span>}
+                    {certArr.length > 0 && <span style={{ background: '#FFFBEA', color: '#A07E00', fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, border: '1px solid rgba(245,158,11,0.3)', whiteSpace: 'nowrap' }}>🏅 Certified</span>}
                   </div>
                 )}
 
-                {/* ── Row 3: HR meta (candidates only) ── */}
-                {isCandidates && (u.client || u.ta || u.jobRole || u.experience || u.currentCTC) && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 7 }}>
-                    {u.experience ? <span style={{ background: '#F0F7FF', color: '#0176D3', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>🎓 {u.experience} yrs</span> : null}
-                    {u.currentCTC && <span style={{ background: '#F0FFF4', color: '#2E844A', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>💰 {u.currentCTC}</span>}
-                    {u.client && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>🏢 {u.client}</span>}
-                    {u.ta && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>👤 {u.ta}</span>}
-                    {u.jobRole && <span style={{ background: '#F8F8F8', color: '#706E6B', fontSize: 11, padding: '2px 8px', borderRadius: 8 }}>💼 {u.jobRole}</span>}
-                    {(() => { try { const c = Array.isArray(u.certifications) ? u.certifications : JSON.parse(u.certifications || '[]'); return c.length > 0 ? <span style={{ background: '#FFFBEA', color: '#A07E00', fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600 }}>✓ Certified</span> : null; } catch { return null; } })()}
+                {/* ── Skills badges ── */}
+                {skillArr.length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+                    {skillArr.slice(0, 6).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
+                    {skillArr.length > 6 && <span style={{ color: '#9E9D9B', fontSize: 11, alignSelf: 'center' }}>+{skillArr.length - 6} more</span>}
                   </div>
                 )}
 
-                {/* ── Row 4: skills ── */}
-                {u.skills && (Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length > 0 && (
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 7 }}>
-                    {(Array.isArray(u.skills) ? u.skills : (u.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 5).map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
-                  </div>
-                )}
-
-                {/* ── Action strip ── */}
+                {/* ── Action strip — all buttons in one wrapping row ── */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid #F3F2F2', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
-                    {filterRole === 'candidate' && (
-                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3' }}>📋 Resume</button>
-                    )}
-                    {filterRole === 'recruiter' && (
-                      <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '6px 13px', fontSize: 11, ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
-                        {isExpanded ? '▲ Hide' : '👁 Activity'}
-                      </button>
-                    )}
-                    <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '6px 13px' }}>✏️ Edit</button>
-                    {u.isActive === false && (
-                      <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00' }}>📧 Resend</button>
-                    )}
-                    {isSuperAdmin && u.isActive !== false && (
-                      <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '6px 13px' }}>🔒 Reset Pwd</button>
-                    )}
-                  </div>
+                  {filterRole === 'candidate' && (
+                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3', whiteSpace: 'nowrap' }}>📋 Resume</button>
+                  )}
+                  {filterRole === 'recruiter' && (
+                    <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, whiteSpace: 'nowrap', ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
+                      {isExpanded ? '▲ Hide' : '👁 Activity'}
+                    </button>
+                  )}
+                  <button onClick={() => setDrawerUser(u)} style={{ ...btnP, fontSize: 11, padding: '7px 12px', whiteSpace: 'nowrap' }}>✏️ Edit</button>
+                  {u.isActive === false && (
+                    <button onClick={() => resendInvite(u)} style={{ ...btnG, fontSize: 11, padding: '7px 12px', borderColor: 'rgba(245,158,11,0.5)', color: '#A07E00', whiteSpace: 'nowrap' }}>📧 Resend Invite</button>
+                  )}
+                  {isSuperAdmin && u.isActive !== false && (
+                    <button onClick={() => setResetPwdUser(u)} style={{ ...btnG, fontSize: 11, padding: '7px 12px', whiteSpace: 'nowrap' }}>🔒 Reset Pwd</button>
+                  )}
                   {!recruiterView && (
-                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '6px 13px', fontSize: 11, flexShrink: 0 }}>🗑 Delete</button>
+                    <button onClick={() => del(u.id)} style={{ ...btnD, padding: '7px 12px', fontSize: 11, whiteSpace: 'nowrap' }}>🗑 Delete</button>
                   )}
                 </div>
 
