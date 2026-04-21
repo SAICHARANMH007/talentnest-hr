@@ -329,7 +329,7 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {candidates.map(app => {
-                    const c = (typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || {};
+                    const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || {};
                     const stage = SM[app.stage] || { color:'#0176D3', label: app.stage, icon:'•' };
                     return (
                       <div key={app.id || app._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'#F3F2F2', borderRadius:6, border:'1px solid #DDDBDA' }}>

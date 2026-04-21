@@ -105,8 +105,8 @@ export default function RecruiterDashboard({ user }) {
   });
 
   const recentActs = [...myApps].sort((a,b) => {
-    const la = a.stageHistory?.[a.stageHistory.length-1]?.changedAt || a.createdAt;
-    const lb = b.stageHistory?.[b.stageHistory.length-1]?.changedAt || b.createdAt;
+    const la = a.stageHistory?.[a.stageHistory.length-1]?.movedAt || a.updatedAt || a.createdAt;
+    const lb = b.stageHistory?.[b.stageHistory.length-1]?.movedAt || b.updatedAt || b.createdAt;
     return new Date(lb)-new Date(la);
   }).slice(0,6);
 
@@ -147,7 +147,7 @@ export default function RecruiterDashboard({ user }) {
   const openJobDrill = (bar) => {
     const items = myApps
       .filter(a => toId(a.jobId) === bar.jobId)
-      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidateName || a.candidate?.name || 'Candidate', _displaySub: `${STAGES.find(s=>s.id===a.stage)?.label||a.stage}` }));
+      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown', _displaySub: `${STAGES.find(s=>s.id===a.stage)?.label||a.stage}` }));
     setDrillDown({ title: `${bar.jobTitle || bar.label} — Applicants (${items.length})`, items });
   };
 
@@ -155,7 +155,7 @@ export default function RecruiterDashboard({ user }) {
     if (!seg || !seg.stageKey) return;
     const items = myApps
       .filter(a => a.stage === seg.stageKey)
-      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidateName || a.candidate?.name || 'Candidate', _displaySub: `${a.jobId?.title || 'Unknown Job'}` }));
+      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown', _displaySub: `${a.jobId?.title || 'Unknown Job'}` }));
     setDrillDown({ title: `${seg.label} (${items.length})`, items });
   };
 
@@ -371,7 +371,7 @@ export default function RecruiterDashboard({ user }) {
           {recentActs.map(a => {
             const lastH = a.stageHistory?.[a.stageHistory.length-1];
             const s = SM[a.stage]||{color:"#0176D3",label:a.stage};
-            const candName = a.candidateId?.name || a.candidateName || 'Candidate';
+            const candName = a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown Candidate';
             return (
               <div key={a.id || a._id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#FAFAFA", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer", flexWrap:"wrap" }}>
                 <ActivityDot stage={a.stage} />
@@ -384,7 +384,7 @@ export default function RecruiterDashboard({ user }) {
                   <div style={{ color:"#706E6B", fontSize:11, marginTop:1 }}>{a.jobId?.title || 'Job'} @ {a.jobId?.companyName || a.jobId?.company || 'Internal'}</div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); setDrawerUser(a.candidateId || a.candidate); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
-                <TimeAgo date={lastH?.changedAt||a.createdAt} />
+                <TimeAgo date={lastH?.movedAt||a.updatedAt||a.createdAt} />
               </div>
             );
           })}

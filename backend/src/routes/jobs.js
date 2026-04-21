@@ -35,6 +35,9 @@ function normalizeJob(job) {
   // Ensure both company aliases are always populated
   if (j.company && !j.companyName) j.companyName = j.company;
   if (j.companyName && !j.company) j.company = j.companyName;
+  // Map DB field names to frontend field names
+  j.applicantsCount = j.applicationCount || 0;
+  j.selectedCount   = j.hiredCount || 0;
   return j;
 }
 
@@ -319,20 +322,42 @@ router.post('/:id/assign-candidates', ...guard,
 
 // GET /api/jobs/:id/candidates — applications for job (admin or assigned recruiter)
 router.get('/:id/candidates', ...guard, asyncHandler(async (req, res) => {
-  const job = await Job.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null })
-    .select('assignedRecruiters').lean();
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const isAdmin      = ['admin', 'super_admin'].includes(req.user.role);
+
+  const jobFilter = { _id: req.params.id, deletedAt: null };
+  if (!isSuperAdmin) jobFilter.tenantId = req.user.tenantId;
+  const job = await Job.findOne(jobFilter).select('assignedRecruiters tenantId').lean();
   if (!job) throw new AppError('Job not found.', 404);
 
-  const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
   const isAssigned = job.assignedRecruiters?.some(id => id.toString() === req.user.id);
   if (!isAdmin && !isAssigned) throw new AppError('Access denied.', 403);
 
-  const apps = await Application.find({ jobId: req.params.id, tenantId: req.user.tenantId, deletedAt: null })
-    .populate('candidateId', 'name email phone location skills')
+  const appFilter = { jobId: req.params.id, deletedAt: null };
+  if (!isSuperAdmin) appFilter.tenantId = req.user.tenantId;
+
+  const DB_STAGE_TO_FRONTEND = {
+    'Applied': 'applied', 'Screening': 'screening', 'Shortlisted': 'shortlisted',
+    'Interview Round 1': 'interview_scheduled', 'Interview Round 2': 'interview_completed',
+    'Offer': 'offer_extended', 'Hired': 'selected', 'Rejected': 'rejected',
+  };
+
+  const apps = await Application.find(appFilter)
+    .populate('candidateId', 'name email phone location skills title experience summary')
     .sort({ aiMatchScore: -1, createdAt: -1 })
     .lean();
 
-  const result = apps.map(a => ({ ...a, id: a._id?.toString() }));
+  const result = apps.map(a => {
+    const out = { ...a, id: a._id?.toString() };
+    if (!out.stage && out.currentStage) {
+      out.stage = DB_STAGE_TO_FRONTEND[out.currentStage]
+        || out.currentStage.toLowerCase().replace(/\s+/g, '_');
+    }
+    if (out.candidateId && typeof out.candidateId === 'object' && !out.candidate) {
+      out.candidate = out.candidateId;
+    }
+    return out;
+  });
   res.json({ success: true, data: result });
 }));
 
