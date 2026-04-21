@@ -267,11 +267,14 @@ router.patch('/:id/reach-out', authenticate, allowRoles('admin','super_admin','r
   const { note } = req.body;
   const user = await User.findByIdAndUpdate(
     req.params.id,
-    { $push: { contactLog: { note: note || 'Reached out', date: new Date(), by: req.user._id } }, $set: { lastContactedAt: new Date() } },
+    {
+      $push: { contactLog: { note: note || 'Reached out', date: new Date(), by: req.user._id } },
+      $set: { lastReachedOutAt: new Date(), reachOutNote: note || 'Reached out' },
+    },
     { new: true }
-  ).select('-password').lean();
+  ).select('-passwordHash').lean();
   if (!user) throw new AppError('User not found.', 404);
-  logger.audit('Candidate reach-out logged', req.user._id, req.user.orgId, { targetUserId: req.params.id });
+  logger.audit('Candidate reach-out logged', req.user._id, req.user.tenantId, { targetUserId: req.params.id });
   res.json({ success: true, data: userService.normalize(user) });
 }));
 
@@ -280,11 +283,11 @@ router.patch('/:id/assign', authenticate, allowRoles('admin','super_admin','recr
   const { recruiterId } = req.body;
   const user = await User.findByIdAndUpdate(
     req.params.id,
-    { $set: { assignedRecruiter: recruiterId || null } },
+    { $set: { assignedRecruiterId: recruiterId || null } },
     { new: true }
-  ).select('-password').lean();
+  ).select('-passwordHash').lean();
   if (!user) throw new AppError('User not found.', 404);
-  logger.audit('Recruiter assigned to candidate', req.user._id, req.user.orgId, { targetUserId: req.params.id, recruiterId });
+  logger.audit('Recruiter assigned to candidate', req.user._id, req.user.tenantId, { targetUserId: req.params.id, recruiterId });
   res.json({ success: true, data: userService.normalize(user) });
 }));
 

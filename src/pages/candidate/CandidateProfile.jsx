@@ -247,7 +247,7 @@ export default function CandidateProfile({ user }) {
 
   // flat fields
   const [form, setForm] = useState({
-    name:'', email:'', phone:'', title:'', location:'', linkedin:'', github:'', portfolio:'',
+    name:'', email:'', phone:'', title:'', location:'', linkedinUrl:'', github:'', portfolio:'',
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'',
     experience:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     // HR placement fields
@@ -267,7 +267,7 @@ export default function CandidateProfile({ user }) {
         setProfile(d);
         setForm({
           name: d.name||'', email: d.email||'', phone: d.phone||'', title: d.title||'',
-          location: d.location||'', linkedin: d.linkedin||'', github: d.github||'',
+          location: d.location||'', linkedinUrl: d.linkedinUrl||d.linkedin||'', github: d.github||'',
           portfolio: d.portfolio||'', availability: d.availability||'Immediate',
           summary: d.summary||'', skills: Array.isArray(d.skills) ? d.skills.join(', ') : (d.skills||''), languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages||''),
           industry: d.industry||'', experience: String(d.experience||''),
@@ -291,16 +291,16 @@ export default function CandidateProfile({ user }) {
   const save = async () => {
     if (!form.name?.trim()) { setToast('❌ Full name is required'); setTab('personal'); return; }
     if (!form.email?.trim()) { setToast('❌ Email address is required'); setTab('personal'); return; }
-    if (form.linkedin && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(form.linkedin)) {
+    if (form.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(form.linkedinUrl)) {
       setToast('❌ LinkedIn URL must start with https://linkedin.com/in/'); setTab('personal'); return;
     }
     setSaving(true);
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
       const languages = typeof form.languages === 'string' ? form.languages.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.languages) ? form.languages : []);
-      const d = await api.updateProfile({
+      const res = await api.updateProfile({
         ...form,
-        phone: (form.phone || '').replace(/\s+/g, ''),  // strip spaces (Bug #83)
+        phone: (form.phone || '').replace(/\s+/g, ''),
         skills,
         languages,
         experience: parseInt(form.experience) || 0,
@@ -308,6 +308,8 @@ export default function CandidateProfile({ user }) {
         educationList: JSON.stringify(eduList),
         certifications: JSON.stringify(certList),
       });
+      // Unwrap { success, data } envelope if present
+      const d = res?.data || res;
       setProfile(d);
       setToast('✅ Profile saved!');
     } catch(e) { setToast('❌ ' + e.message); }
@@ -354,7 +356,7 @@ export default function CandidateProfile({ user }) {
               <Field label="Email *" value={form.email} onChange={v=>sf('email',v)} type="email"/>
               <Field label="Phone *" value={form.phone} onChange={v=>sf('phone',v)} type="tel" placeholder="+91 99999 00000"/>
               <Field label="City, State / Location" value={form.location} onChange={v=>sf('location',v)} placeholder="Hyderabad, Telangana"/>
-              <Field label="LinkedIn URL" value={form.linkedin} onChange={v=>sf('linkedin',v)} type="url" placeholder="https://linkedin.com/in/username"/>
+              <Field label="LinkedIn URL" value={form.linkedinUrl} onChange={v=>sf('linkedinUrl',v)} type="url" placeholder="https://linkedin.com/in/username"/>
               <Field label="GitHub URL" value={form.github} onChange={v=>sf('github',v)} type="url" placeholder="https://github.com/username"/>
               <Field label="Portfolio / Website" value={form.portfolio} onChange={v=>sf('portfolio',v)} type="url" placeholder="https://yoursite.com"/>
               <div>

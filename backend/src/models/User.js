@@ -48,6 +48,49 @@ const userSchema = new mongoose.Schema({
   resumeUrl   : { type: String },
   linkedinUrl : { type: String },
 
+  // ── Candidate extended profile ────────────────────────────
+  github           : { type: String, trim: true },
+  portfolio        : { type: String, trim: true },
+  availability     : { type: String, trim: true },
+  languages        : [{ type: String, trim: true }],
+  industry         : { type: String, trim: true },
+  currentCompany   : { type: String, trim: true },
+  culture          : { type: String },
+  projects         : { type: String },
+  achievements     : { type: String },
+  volunteering     : { type: String },
+  workHistory      : { type: String }, // JSON string array
+  educationList    : { type: String }, // JSON string array
+  certifications   : { type: String }, // JSON string array / CSV
+  videoResumeUrl   : { type: String },
+
+  // ── HR placement fields ───────────────────────────────────
+  relevantExperience : { type: String, trim: true },
+  preferredLocation  : { type: String, trim: true },
+  currentCTC         : { type: String, trim: true },
+  expectedCTC        : { type: String, trim: true },
+  source             : { type: String, trim: true },
+  dateAdded          : { type: String, trim: true },
+  candidateStatus    : { type: String, trim: true },
+  additionalDetails  : { type: String },
+  client             : { type: String, trim: true },
+  ta                 : { type: String, trim: true },
+  jobRole            : { type: String, trim: true },
+  clientSpoc         : { type: String, trim: true },
+  addedBy            : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // ── Recruiter assignment & outreach ──────────────────────
+  assignedRecruiterId : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  lastReachedOutAt    : { type: Date, default: null },
+  reachOutNote        : { type: String },
+  contactLog          : [{ note: String, date: Date, by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } }],
+
+  // ── Invite tracking ───────────────────────────────────────
+  inviteStatus : { type: String, enum: ['pending', 'accepted', null], default: null },
+  invitedBy    : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  invitedAt    : { type: Date, default: null },
+  deletedAt    : { type: Date, default: null },
+
   settings: { type: Object, default: {} },
 
   // ── Presence ──────────────────────────────────────────────

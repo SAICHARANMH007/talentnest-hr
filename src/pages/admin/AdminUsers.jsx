@@ -604,11 +604,13 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
           currentUserRole={user?.role}
           onClose={() => setDrawerUser(null)} 
           onDelete={(id) => { del(id); setDrawerUser(null); }} 
-          onUpdated={(updated) => { 
-            setUsers(prev => prev.map(u => u.id === (updated?.id || updated?._id) ? { ...u, ...updated } : u)); 
-            setDrawerUser(updated); 
-            setToast('✅ Profile updated!'); 
-            load(); // reload to ensure lists are fresh
+          onUpdated={(updated) => {
+            const clean = updated?.data || updated;
+            const uid = clean?.id || clean?._id;
+            setUsers(prev => prev.map(u => (u.id === uid || u._id === uid) ? { ...u, ...clean } : u));
+            setDrawerUser(clean);
+            setToast('✅ Profile updated!');
+            load();
           }} 
         />
       )}

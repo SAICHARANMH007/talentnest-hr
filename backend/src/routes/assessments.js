@@ -157,6 +157,27 @@ router.get('/job/:jobId', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/assessments/:id — Fetch single assessment (candidate or recruiter)
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const assessment = await Assessment.findById(req.params.id);
+    if (!assessment) return res.status(404).json({ error: 'Assessment not found.' });
+    const parsed = parseQ(assessment);
+
+    // Candidates: only sanitized questions (no isCorrect), also include job title
+    if (req.user.role === 'candidate') {
+      parsed.questions = sanitizeQuestions(parsed.questions);
+      const job = await Job.findById(parsed.jobId).lean();
+      parsed.jobTitle = job?.title || '';
+      parsed.jobCompany = job?.company || '';
+    } else {
+      if (!(await canManage(req.user, parsed))) return res.status(403).json({ error: 'Access denied.' });
+    }
+
+    res.json(parsed);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── PATCH /api/assessments/:id ────────────────────────────────────────────────
 router.patch('/:id', auth, async (req, res) => {
   try {

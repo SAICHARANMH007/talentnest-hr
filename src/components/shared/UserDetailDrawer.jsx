@@ -25,8 +25,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     location:        u?.location        || '',
     experience:      u?.experience      || '',
     currentCompany:  u?.currentCompany  || '',
-    education:       u?.education       || '',
-    linkedin:        u?.linkedin        || '',
+    linkedinUrl:     u?.linkedinUrl     || u?.linkedin || '',
     skills:          Array.isArray(u?.skills) ? u.skills.join(', ') : (u?.skills || ''),
     availability:    u?.availability    || 'immediate',
     summary:         u?.summary         || '',
@@ -37,8 +36,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     expectedCTC:     u?.expectedCTC     || '',
     certifications:  u?.certifications  || '',
     preferredLocation: u?.preferredLocation || '',
+    relevantExperience: u?.relevantExperience || '',
+    candidateStatus: u?.candidateStatus  || '',
     role:            u?.role            || 'candidate',
-    orgId:           (typeof u?.orgId === 'object' ? (u.orgId?._id?.toString() || u.orgId?.id || '') : u?.orgId) || u?._id?.$oid || '',
+    tenantId:        (typeof u?.tenantId === 'object' ? (u.tenantId?._id?.toString() || u.tenantId?.id || '') : u?.tenantId) || (typeof u?.orgId === 'object' ? (u.orgId?._id?.toString() || u.orgId?.id || '') : u?.orgId) || '',
     isActive:        u?.isActive !== false,
   });
   const [currentStage, setCurrentStage] = useState(initialApp?.stage || '');
@@ -77,7 +78,9 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
       const mid = u.id || u._id;
-      const updated = await api.updateUser(mid, { ...form, skills });
+      const raw = await api.updateUser(mid, { ...form, skills });
+      // Unwrap { success, data } envelope — pass clean user object to consumers
+      const updated = raw?.data || raw;
       setToast('✅ Profile saved!');
       onUpdated?.(updated);
     } catch (e) { setToast(`❌ ${e.message}`); }
@@ -185,7 +188,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                   <Field label="Current Title" value={form.title}    onChange={v => sf('title', v)} />
                   <Field label="Exp. (Years)" value={form.experience} onChange={v => sf('experience', v)} type="number" min="0" max="60" />
                   <Field label="Availability" value={form.availability} onChange={v => sf('availability', v)} />
-                  <Field label="LinkedIn URL" value={form.linkedin}   onChange={v => sf('linkedin', v)} type="url" />
+                  <Field label="LinkedIn URL" value={form.linkedinUrl} onChange={v => sf('linkedinUrl', v)} type="url" />
                   
                   {(isSuperAdmin || currentUserRole === 'admin') && (
                     <div className="span-2" style={{ background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -203,7 +206,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                         {isSuperAdmin && (
                           <div>
                             <label style={{ fontSize: 11, color: '#3E3E3C', marginBottom: 4, display: 'block' }}>Organization</label>
-                            <select value={form.orgId} onChange={e => sf('orgId', e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #DDDBDA', fontSize: 13 }}>
+                            <select value={form.tenantId} onChange={e => sf('tenantId', e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #DDDBDA', fontSize: 13 }}>
                               <option value="">No Organization</option>
                               {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                             </select>
@@ -223,6 +226,24 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <div style={{ marginTop: 14 }}>
                    <Field label="Skills (comma-separated)" value={form.skills} onChange={v => sf('skills', v)} />
                 </div>
+
+                {u?.role === 'candidate' && (
+                  <div style={{ marginTop: 14, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 800, color: '#475569', letterSpacing: 1 }}>📋 PLACEMENT DETAILS</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 10 }}>
+                      <Field label="Current CTC"          value={form.currentCTC}         onChange={v => sf('currentCTC', v)} placeholder="12 LPA" />
+                      <Field label="Expected CTC"         value={form.expectedCTC}         onChange={v => sf('expectedCTC', v)} placeholder="18 LPA" />
+                      <Field label="Relevant Experience"  value={form.relevantExperience}  onChange={v => sf('relevantExperience', v)} placeholder="3y Java" />
+                      <Field label="Preferred Location"   value={form.preferredLocation}   onChange={v => sf('preferredLocation', v)} placeholder="Hyderabad" />
+                      <Field label="Current Company"      value={form.currentCompany}      onChange={v => sf('currentCompany', v)} placeholder="TCS" />
+                      <Field label="Client"               value={form.client}              onChange={v => sf('client', v)} placeholder="Infosys" />
+                      <Field label="TA / Source Owner"    value={form.ta}                  onChange={v => sf('ta', v)} placeholder="Ravi Kumar" />
+                      <Field label="Client SPOC"          value={form.clientSpoc}          onChange={v => sf('clientSpoc', v)} placeholder="Arun Mehta" />
+                      <Field label="Candidate Status"     value={form.candidateStatus}     onChange={v => sf('candidateStatus', v)} placeholder="Active" />
+                      <Field label="Certifications"       value={form.certifications}      onChange={v => sf('certifications', v)} placeholder="AWS, CKA" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

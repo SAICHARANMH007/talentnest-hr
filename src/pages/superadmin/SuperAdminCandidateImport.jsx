@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api/api.js';
 import Field from '../../components/ui/Field.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 
 const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 };
 const btnP  = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
@@ -219,6 +220,7 @@ export default function SuperAdminCandidateImport({ user }) {
   const [bulkRecruiter, setBulkRecruiter] = useState('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [bulkToast, setBulkToast] = useState('');
+  const [drawerCandidate, setDrawerCandidate] = useState(null);
   const fileRef = useRef();
 
   const refreshCount = async () => {
@@ -757,108 +759,175 @@ export default function SuperAdminCandidateImport({ user }) {
       {tab === 'candidates' && (
         <>
           {/* Filters */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Field value={search} onChange={v => setSearch(v)} placeholder="Search name, email, role, company…" style={{ maxWidth: 260 }} />
-            <Field value={filterClient} onChange={v => setFilterClient(v)} placeholder="Filter by Client" style={{ maxWidth: 160 }} />
-            <datalist id="cl-list">{uniqueClients.map(c => <option key={c} value={c} />)}</datalist>
-            <Field value={filterRole} onChange={v => setFilterRole(v)} placeholder="Filter by Role" style={{ maxWidth: 160 }} />
-            <datalist id="rl-list">{uniqueRoles.map(r => <option key={r} value={r} />)}</datalist>
-            <Field value={filterAssigned} onChange={v => setFilterAssigned(v)} style={{ maxWidth: 160 }}
-              options={[{value:'all',label:'All assignments'},{value:'assigned',label:'Assigned'},{value:'unassigned',label:'Unassigned'}]} />
-            <span style={{ color: '#706E6B', fontSize: 13, whiteSpace: 'nowrap' }}>{filtered.length.toLocaleString()} candidates</span>
-            <button onClick={loadCandidates} style={{ ...btnG, padding: '8px 14px', fontSize: 12 }}>↻ Refresh</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Field value={search} onChange={v => setSearch(v)} placeholder="Search name, email, role, company…" style={{ flex: '1 1 200px', minWidth: 160 }} />
+            <Field value={filterClient} onChange={v => setFilterClient(v)} placeholder="Client" style={{ flex: '1 1 120px', minWidth: 100 }} />
+            <Field value={filterRole} onChange={v => setFilterRole(v)} placeholder="Role" style={{ flex: '1 1 120px', minWidth: 100 }} />
+            <Field value={filterAssigned} onChange={v => setFilterAssigned(v)} style={{ flex: '1 1 140px', minWidth: 120 }}
+              options={[{value:'all',label:'All'},{value:'assigned',label:'Assigned'},{value:'unassigned',label:'Unassigned'}]} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+              <span style={{ color: '#706E6B', fontSize: 12, whiteSpace: 'nowrap' }}>{filtered.length.toLocaleString()} results</span>
+              <button onClick={loadCandidates} style={{ ...btnG, padding: '8px 12px', fontSize: 12 }}>↻</button>
+            </div>
           </div>
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: 56, color: '#706E6B' }}>
-              <div style={{ fontSize: 32, marginBottom: 12, animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</div>
-              <div>Loading candidates…</div>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+              <div style={{ fontSize: 14 }}>Loading candidates…</div>
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ ...card, textAlign: 'center', padding: 56 }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
               <div style={{ color: '#706E6B', fontSize: 15, fontWeight: 600 }}>No candidates found</div>
-              <div style={{ color: '#C9C7C5', fontSize: 12, marginTop: 6 }}>Import your Excel data to get started</div>
+              <div style={{ color: '#C9C7C5', fontSize: 12, marginTop: 6 }}>Import Excel data or adjust your filters</div>
               <button onClick={() => setTab('import')} style={{ ...btnP, marginTop: 16, fontSize: 13 }}>📥 Import Excel</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0}
+            <>
+              {/* Select-all bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid rgba(1,118,211,0.12)' }}>
+                <input type="checkbox"
+                  checked={selected.size === filtered.length && filtered.length > 0}
                   onChange={e => setSelected(e.target.checked ? new Set(filtered.map(c => c.id)) : new Set())}
-                  style={{ accentColor: '#0176D3', cursor: 'pointer' }} />
-                <span style={{ color: '#706E6B', fontSize: 12 }}>Select All ({filtered.length})</span>
-                {selected.size > 0 && <span style={{ color: '#0176D3', fontSize: 12, fontWeight: 700 }}>{selected.size} selected</span>}
+                  style={{ accentColor: '#0176D3', cursor: 'pointer', width: 15, height: 15 }} />
+                <span style={{ color: '#706E6B', fontSize: 12 }}>Select all ({filtered.length})</span>
+                {selected.size > 0 && (
+                  <span style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, marginLeft: 4 }}>{selected.size} selected</span>
+                )}
               </div>
-              {filtered.map(c => (
-                <div key={c.id} style={{ ...card, padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    {/* Checkbox */}
-                    <input type="checkbox" checked={selected.has(c.id)} onChange={e => { const s = new Set(selected); e.target.checked ? s.add(c.id) : s.delete(c.id); setSelected(s); }} style={{ accentColor: '#0176D3', cursor: 'pointer', marginTop: 12 }} />
-                    {/* Avatar */}
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#181818', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-                      {(c.name || '?')[0].toUpperCase()}
-                    </div>
-                    {/* Main info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Row 1: name + role + exp */}
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{c.name}</span>
-                        {(c.jobRole || c.title) && <span style={{ color: '#0176D3', fontSize: 12, background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '1px 10px' }}>{c.jobRole || c.title}</span>}
-                        {c.experience > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>{c.experience}y exp{c.relevantExperience ? ` · ${c.relevantExperience} relevant` : ''}</span>}
-                        {c.currentCTC && <span style={{ color: '#34d399', fontSize: 11, background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 20, padding: '1px 8px' }}>CTC: {c.currentCTC}</span>}
-                        {c.expectedCTC && <span style={{ color: '#F59E0B', fontSize: 11, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 20, padding: '1px 8px' }}>Exp: {c.expectedCTC}</span>}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {filtered.map(c => (
+                  <div key={c.id} style={{ ...card, padding: '14px 16px', position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+
+                      {/* Checkbox */}
+                      <input type="checkbox"
+                        checked={selected.has(c.id)}
+                        onChange={e => { const s = new Set(selected); e.target.checked ? s.add(c.id) : s.delete(c.id); setSelected(s); }}
+                        style={{ accentColor: '#0176D3', cursor: 'pointer', marginTop: 4, width: 15, height: 15, flexShrink: 0 }} />
+
+                      {/* Avatar */}
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #0176D3, #014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0, boxShadow: '0 2px 8px rgba(1,118,211,0.2)' }}>
+                        {(c.name || '?')[0].toUpperCase()}
                       </div>
-                      {/* Row 2: contact + location */}
-                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: '#706E6B', marginBottom: 4 }}>
-                        {c.email && !c.email.includes('@placeholder.tn') && <span>✉️ {c.email}</span>}
-                        {c.phone && <span>📞 {c.phone}</span>}
-                        {c.location && <span>📍 {c.location}{c.preferredLocation ? ` → pref: ${c.preferredLocation}` : ''}</span>}
-                        {c.currentCompany && <span>🏢 {c.currentCompany}</span>}
-                      </div>
-                      {/* Row 3: client + TA + SPOC */}
-                      {(c.client || c.ta || c.clientSpoc) && (
-                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11, color: '#706E6B', marginBottom: 4 }}>
-                          {c.client && <span style={{ color: '#a78bfa' }}>🏛 Client: <b style={{ color: '#c4b5fd' }}>{c.client}</b></span>}
-                          {c.ta    && <span>👤 TA: {c.ta}</span>}
-                          {c.clientSpoc && <span>🤝 SPOC: {c.clientSpoc}</span>}
+
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+
+                        {/* Line 1: Name + role badge + exp */}
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                          <span style={{ color: '#0A1628', fontWeight: 700, fontSize: 14 }}>{c.name || '—'}</span>
+                          {(c.jobRole || c.title) && (
+                            <span style={{ color: '#0176D3', fontSize: 11, background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '1px 9px', fontWeight: 600 }}>
+                              {c.jobRole || c.title}
+                            </span>
+                          )}
+                          {c.candidateStatus && (
+                            <span style={{ color: '#34d399', fontSize: 11, background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 20, padding: '1px 9px', fontWeight: 600 }}>
+                              {c.candidateStatus}
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {/* Row 4: certifications */}
-                      {c.certifications && (
-                        <div style={{ fontSize: 11, color: '#706E6B', marginBottom: 4 }}>🏅 {c.certifications}</div>
-                      )}
-                      {/* Assign recruiter (super admin only) */}
-                      <AssignDropdown candidate={c} recruiters={recruiters} onAssigned={updateCandidate} />
-                      {/* Contact logger */}
-                      <ContactLogger candidate={c} onUpdate={updateCandidate} />
+
+                        {/* Line 2: Contact info */}
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+                          {c.email && !c.email.includes('@placeholder.tn') && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>✉ {c.email}</span>
+                          )}
+                          {c.phone && <span>📞 {c.phone}</span>}
+                          {c.location && <span>📍 {c.location}</span>}
+                          {c.currentCompany && <span>🏢 {c.currentCompany}</span>}
+                        </div>
+
+                        {/* Line 3: Experience + CTC badges */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+                          {(c.experience > 0 || c.relevantExperience) && (
+                            <span style={{ fontSize: 11, color: '#706E6B', background: '#F3F2F2', borderRadius: 20, padding: '2px 9px' }}>
+                              {c.experience > 0 ? `${c.experience}y exp` : ''}{c.relevantExperience ? ` · ${c.relevantExperience} relevant` : ''}
+                            </span>
+                          )}
+                          {c.currentCTC && (
+                            <span style={{ fontSize: 11, color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 20, padding: '2px 9px', fontWeight: 600 }}>
+                              CTC {c.currentCTC}
+                            </span>
+                          )}
+                          {c.expectedCTC && (
+                            <span style={{ fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 20, padding: '2px 9px', fontWeight: 600 }}>
+                              Exp {c.expectedCTC}
+                            </span>
+                          )}
+                          {c.preferredLocation && (
+                            <span style={{ fontSize: 11, color: '#7c3aed', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 20, padding: '2px 9px' }}>
+                              Pref: {c.preferredLocation}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Line 4: Client/TA/SPOC meta */}
+                        {(c.client || c.ta || c.clientSpoc || c.certifications) && (
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: '#706E6B', marginBottom: 6 }}>
+                            {c.client      && <span>🏛 {c.client}</span>}
+                            {c.ta          && <span>👤 TA: {c.ta}</span>}
+                            {c.clientSpoc  && <span>🤝 {c.clientSpoc}</span>}
+                            {c.certifications && <span>🏅 {c.certifications}</span>}
+                          </div>
+                        )}
+
+                        {/* Actions: Assign + Contact */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+                          <AssignDropdown candidate={c} recruiters={recruiters} onAssigned={updateCandidate} />
+                          <ContactLogger candidate={c} onUpdate={updateCandidate} />
+                        </div>
+                      </div>
+
+                      {/* Edit button */}
+                      <button
+                        onClick={() => setDrawerCandidate(c)}
+                        title="View / Edit candidate"
+                        style={{ flexShrink: 0, background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>
+                        ✏ Edit
+                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
 
+          {/* Bulk action bar */}
           {selected.size > 0 && (
-            <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.4)', borderRadius: 14, padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, zIndex: 1000, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', flexWrap: 'wrap', maxWidth: '90vw' }}>
-              <span style={{ color: '#0176D3', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>{selected.size} selected</span>
-
-              {/* Assign recruiter */}
+            <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', background: '#fff', border: '1.5px solid rgba(1,118,211,0.4)', borderRadius: 14, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 1000, boxShadow: '0 8px 32px rgba(0,0,0,0.15)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 32px)' }}>
+              <span style={{ color: '#0176D3', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{selected.size} selected</span>
               <select value={bulkRecruiter} onChange={e => setBulkRecruiter(e.target.value)}
-                style={{ padding: '8px 12px', background: '#FAFAF9', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 8, color: '#181818', fontSize: 12 }}>
+                style={{ padding: '7px 10px', background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 8, color: '#181818', fontSize: 12, flex: '1 1 140px', minWidth: 120 }}>
                 <option value="">Assign recruiter…</option>
                 {recruiters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
               <button onClick={bulkAssign} disabled={!bulkRecruiter || bulkAssigning}
-                style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '8px 16px', cursor: 'pointer', fontSize: 12, opacity: (!bulkRecruiter || bulkAssigning) ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '8px 14px', cursor: 'pointer', fontSize: 12, opacity: (!bulkRecruiter || bulkAssigning) ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {bulkAssigning ? 'Assigning…' : 'Assign →'}
               </button>
-
-              <button onClick={() => { setSelected(new Set()); setBulkToast(''); }} style={{ background: 'none', border: 'none', color: '#9E9D9B', cursor: 'pointer', fontSize: 18 }}>✕</button>
-              {bulkToast && <span style={{ color: '#34d399', fontSize: 13, fontWeight: 600 }}>{bulkToast}</span>}
+              <button onClick={() => { setSelected(new Set()); setBulkToast(''); }} style={{ background: 'none', border: 'none', color: '#9E9D9B', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>✕</button>
+              {bulkToast && <span style={{ color: '#34d399', fontSize: 12, fontWeight: 600 }}>{bulkToast}</span>}
             </div>
           )}
         </>
+      )}
+
+      {/* Edit drawer */}
+      {drawerCandidate && (
+        <UserDetailDrawer
+          user={drawerCandidate}
+          isSuperAdmin={true}
+          currentUserRole="super_admin"
+          onClose={() => setDrawerCandidate(null)}
+          onUpdated={(updated) => {
+            if (updated) updateCandidate(updated?.data || updated);
+            setDrawerCandidate(null);
+          }}
+        />
       )}
     </div>
   );

@@ -58,10 +58,17 @@ export default function CandidateAssessment({ user, onBack }) {
 
   // ── Load assessment ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!assessmentId) { setPhase('error'); return; }
-    api.getAssessmentForJob(assessmentId.startsWith('job:') ? assessmentId.slice(4) : assessmentId)
-      .then(a => { setAssmt(a); setPhase('pre-start'); })
-      .catch(() => setPhase('error'));
+    if (!assessmentId) { setPhase('error'); setErrorMsg('No assessment ID provided.'); return; }
+    const load = assessmentId.startsWith('job:')
+      ? api.getAssessmentForJob(assessmentId.slice(4))
+      : api.getAssessment(assessmentId);
+    load
+      .then(a => {
+        if (!a) { setPhase('error'); setErrorMsg('Assessment not found or not yet available.'); return; }
+        setAssmt(a);
+        setPhase('pre-start');
+      })
+      .catch(e => { setPhase('error'); setErrorMsg(e.message || 'Could not load assessment.'); });
   }, [assessmentId]);
 
   // ── Timer ──────────────────────────────────────────────────────────────────
@@ -264,8 +271,6 @@ export default function CandidateAssessment({ user, onBack }) {
     <div style={{ background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: 36, maxWidth: 560, width: '100%' }}>
       <div style={{ fontSize: 36, marginBottom: 12, textAlign: 'center' }}>📝</div>
       <h2 style={{ color: '#181818', fontSize: 20, fontWeight: 800, textAlign: 'center', margin: '0 0 4px' }}>{assessment.title}</h2>
-      {jobTitle && <p style={{ color: '#0176D3', textAlign: 'center', fontSize: 13, margin: '0 0 20px' }}>for {jobTitle}</p>}
-
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, background: '#FFFFFF', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
           <div style={{ color: '#0176D3', fontSize: 20, fontWeight: 700 }}>{(assessment.questions || []).length}</div>
@@ -284,6 +289,8 @@ export default function CandidateAssessment({ user, onBack }) {
           </div>
         )}
       </div>
+
+      {assessment.jobTitle && <p style={{ color: '#0176D3', textAlign: 'center', fontSize: 13, margin: '0 0 20px' }}>for {assessment.jobTitle}{assessment.jobCompany ? ` · ${assessment.jobCompany}` : ''}</p>}
 
       {assessment.instructions && (
         <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>

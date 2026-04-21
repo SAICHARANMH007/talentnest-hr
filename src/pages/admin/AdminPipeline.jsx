@@ -213,8 +213,9 @@ export default function AdminPipeline({ user }) {
           user={drawerApp.candidateId || drawerApp.candidate}
           app={drawerApp}
           onClose={() => setDrawerApp(null)}
-          onUpdated={(updated) => {
-            setApps(prev => prev.map(a => (a.id || a._id?.toString()) === (updated?.id || updated?._id?.toString()) ? { ...a, ...updated } : a));
+          onUpdated={() => {
+            // Stage change or profile save — just reload to get fresh data
+            load?.();
             setDrawerApp(null);
           }}
         />

@@ -52,6 +52,7 @@ export const platformService = {
   async logJobShare(data)                { return req('POST', '/invites/log-share', data); },
   
   // Assessments
+  async getAssessment(id)                { return req('GET', `/assessments/${id}`); },
   async getAssessmentForJob(jobId)       { return req('GET', `/assessments/job/${jobId}`); },
   async createAssessment(data)           { return req('POST', '/assessments', data); },
   async updateAssessment(id, data)       { return req('PATCH', `/assessments/${id}`, data); },

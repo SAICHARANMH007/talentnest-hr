@@ -133,6 +133,29 @@ class UserService {
     const stats = { created: 0, updated: 0, skipped: 0, errors: [] };
     const inserted = [];
 
+    const buildFields = (c, email) => ({
+      name             : c.name || email.split('@')[0],
+      phone            : c.phone ? String(c.phone).replace(/\s+/g, '') : undefined,
+      location         : c.location         || undefined,
+      skills           : Array.isArray(c.skills) ? c.skills : (c.skills ? c.skills.split(',').map(s => s.trim()).filter(Boolean) : undefined),
+      linkedinUrl      : c.linkedin || c.linkedinUrl || undefined,
+      experience       : c.experience ? (parseFloat(c.experience) || undefined) : undefined,
+      source           : c.source           || 'Bulk Import',
+      ta               : c.ta               || undefined,
+      dateAdded        : c.dateAdded        || new Date().toISOString().split('T')[0],
+      relevantExperience: c.relevantExperience || undefined,
+      currentCompany   : c.currentCompany   || undefined,
+      client           : c.client           || undefined,
+      jobRole          : c.jobRole          || undefined,
+      certifications   : c.certifications   || undefined,
+      currentCTC       : c.currentCTC       || undefined,
+      expectedCTC      : c.expectedCTC      || undefined,
+      clientSpoc       : c.clientSpoc       || undefined,
+      candidateStatus  : c.candidateStatus  || undefined,
+      additionalDetails: c.additionalDetails|| undefined,
+      preferredLocation: c.preferredLocation|| undefined,
+    });
+
     for (const c of candidates) {
       if (!c.email) { stats.skipped++; continue; }
       const email = c.email.toLowerCase().trim();
@@ -141,31 +164,29 @@ class UserService {
         let user = await User.findOne({ email, tenantId }).setOptions({ includeDeleted: true });
 
         if (user) {
-          if (user.deletedAt) {
-            // Restore soft-deleted candidate
-            user.deletedAt = null;
-            user.isActive = true;
-            await user.save();
-            inserted.push(user);
-            stats.updated++;
-          } else {
-            // Duplicate — skip without creating
-            stats.skipped++;
+          // Restore soft-deleted or update existing candidate with new data
+          const fields = buildFields(c, email);
+          const update = { $set: {} };
+          if (user.deletedAt) { update.$set.deletedAt = null; update.$set.isActive = true; }
+          // Only overwrite non-empty string fields if the candidate doesn't already have them
+          for (const [k, v] of Object.entries(fields)) {
+            if (v !== undefined && !user[k]) update.$set[k] = v;
           }
+          if (Object.keys(update.$set).length > 0) {
+            await User.findByIdAndUpdate(user._id, update);
+          }
+          inserted.push(user);
+          stats.updated++;
           continue;
         }
 
         const newUser = await User.create({
-          name: c.name || email.split('@')[0],
+          ...Object.fromEntries(Object.entries(buildFields(c, email)).filter(([, v]) => v !== undefined)),
           email,
           passwordHash: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
           role: 'candidate',
           tenantId, addedBy,
           isActive: true,
-          phone: c.phone ? String(c.phone).replace(/\s+/g, '') : '',
-          location: c.location || '',
-          skills: Array.isArray(c.skills) ? c.skills : (c.skills ? c.skills.split(',').map(s=>s.trim()) : []),
-          source: c.source || 'Bulk Import',
         });
 
         inserted.push(newUser);
