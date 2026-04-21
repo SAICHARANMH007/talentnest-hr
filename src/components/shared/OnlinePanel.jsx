@@ -27,7 +27,7 @@ export default function OnlinePanel({ user, open, onClose }) {
   const [msgTarget, setMsgTarget] = useState(null);
   const [search, setSearch] = useState('');
 
-  const canMessage = user?.role === 'recruiter' || user?.role === 'admin' || user?.role === 'super_admin';
+  const canMessage = true; // all roles with access to OnlinePanel can message
 
   const load = useCallback(() => {
     api.getOnlineUsers()

@@ -9,8 +9,8 @@ const asyncHandler   = require('../utils/asyncHandler');
 // POST /api/messages — send a message (recruiter → candidate only)
 router.post('/', authenticate, asyncHandler(async (req, res) => {
   const { role, tenantId } = req.user;
-  if (role !== 'recruiter' && role !== 'admin' && role !== 'super_admin') {
-    return res.status(403).json({ success: false, error: 'Only recruiters can send messages.' });
+  if (!['recruiter', 'admin', 'super_admin', 'candidate'].includes(role)) {
+    return res.status(403).json({ success: false, error: 'Not allowed to send messages.' });
   }
 
   const { toUserId, message, jobId, jobTitle } = req.body;
