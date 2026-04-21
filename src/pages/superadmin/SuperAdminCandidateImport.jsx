@@ -240,7 +240,8 @@ export default function SuperAdminCandidateImport({ user }) {
     setLoading(true);
     try {
       const res = await api.getUsers('candidate');
-      const data = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      const data = raw.map(c => ({ ...c, id: c.id || c._id?.toString() }));
       setCandidates(data);
       setCandidateCount(data.length);
     } catch {}
@@ -547,8 +548,13 @@ export default function SuperAdminCandidateImport({ user }) {
   });
 
   const updateCandidate = (updated) => {
-    const u = updated.toJSON ? updated.toJSON() : updated;
-    setCandidates(prev => prev.map(c => c.id === u.id ? { ...c, ...u } : c));
+    const raw = updated?.data || updated;
+    const u = { ...raw, id: raw?.id || raw?._id?.toString() };
+    setCandidates(prev => prev.map(c => {
+      const cid = c.id || c._id?.toString();
+      const uid = u.id;
+      return cid === uid ? { ...c, ...u } : c;
+    }));
   };
 
   // ── Unique filter options ────────────────────────────────────────────────────
@@ -801,7 +807,7 @@ export default function SuperAdminCandidateImport({ user }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filtered.map(c => (
-                  <div key={c.id} style={{ ...card, padding: '14px 16px', position: 'relative' }}>
+                  <div key={c.id || c._id} style={{ ...card, padding: '14px 16px', position: 'relative' }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
 
                       {/* Checkbox */}
@@ -934,7 +940,7 @@ export default function SuperAdminCandidateImport({ user }) {
           currentUserRole="super_admin"
           onClose={() => setDrawerCandidate(null)}
           onUpdated={(updated) => {
-            if (updated) updateCandidate(updated?.data || updated);
+            if (updated) updateCandidate(updated);
             setDrawerCandidate(null);
           }}
         />
