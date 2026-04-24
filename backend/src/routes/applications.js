@@ -16,6 +16,7 @@ const { calculateMatchScore } = require('../utils/matchScore');
 const email          = require('../utils/email');
 const logger         = require('../middleware/logger');
 const crypto         = require('crypto');
+const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
 
 const guard = [authMiddleware, tenantGuard];
 
@@ -572,6 +573,23 @@ router.patch('/:id/stage', ...guard,
     }).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
+
+    // Notify all super_admins about significant stage movements (non-blocking)
+    const significantStages = ['shortlisted', 'offer_extended', 'selected', 'rejected'];
+    if (significantStages.includes(stage)) {
+      const cDoc = await Candidate.findById(app.candidateId).select('name').lean().catch(() => null);
+      const jDoc = await Job.findById(app.jobId).select('title').lean().catch(() => null);
+      if (cDoc && jDoc) {
+        const stageLabels = { shortlisted: 'Shortlisted', offer_extended: 'Offer Extended', selected: 'Hired 🎉', rejected: 'Rejected' };
+        notifyAllSuperAdmins(
+          'stage_update',
+          `${stageLabels[stage] || stage}: ${cDoc.name}`,
+          `${cDoc.name} was moved to "${stageLabels[stage] || stage}" for ${jDoc.title}`,
+          { applicationId: app._id.toString(), candidateId: app.candidateId?.toString(), jobId: app.jobId?.toString() }
+        );
+      }
+    }
+
     res.json({ success: true, data: normalizeApp(app) });
   })
 );

@@ -186,6 +186,33 @@ const templates = {
         <p style="color:#9ca3af;font-size:12px;text-align:center">This link will expire in 1 hour. If you didn't request this, you can safely ignore this email.</p>
       `, 'Reset Password', opts)
     };
+  },
+
+  /**
+   * Admin-initiated password change notification
+   */
+  passwordChangedByAdmin: (name, adminName, orgName, opts = {}) => {
+    return {
+      subject: `Your password was reset by ${adminName} — ${orgName}`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Password Changed 🔒</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+          Hi <strong>${name}</strong>,<br><br>
+          Your account password has been reset by <strong>${adminName}</strong> (${orgName} administrator).<br>
+          You can now log in with your new password.
+        </p>
+        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:16px 20px;margin:20px 0">
+          <p style="color:#92400E;font-size:13px;margin:0;font-weight:600">
+            ⚠️ If you did not expect this change, please contact your administrator immediately or use Forgot Password to regain control of your account.
+          </p>
+        </div>
+        <div style="text-align:center;margin:28px 0">
+          <a href="${process.env.FRONTEND_URL || 'https://talentnesthr.com'}/login" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0154A4);color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(1,118,211,0.3)">
+            Log In Now →
+          </a>
+        </div>
+      `, 'Password Reset Notification', { orgName, ...opts })
+    };
   }
 };
 

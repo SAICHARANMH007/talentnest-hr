@@ -3,12 +3,15 @@ import Field from '../ui/Field.jsx';
 import { api } from '../../api/api.js';
 
 export default function ChangePasswordModal({ user, targetUser, onClose, isSuperAdminReset = false }) {
-  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [form, setForm]   = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
+  const [showCur, setShowCur] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showCon, setShowCon] = useState(false);
 
-  const target = targetUser || user;
+  const target   = targetUser || user;
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const pwMatch    = form.newPassword && form.confirmPassword && form.newPassword === form.confirmPassword;
@@ -25,15 +28,25 @@ export default function ChangePasswordModal({ user, targetUser, onClose, isSuper
     setSaving(true);
     try {
       if (isSuperAdminReset) {
-        await api.resetPassword(target.id || target._id, form.newPassword);
+        await api.adminResetPassword(target.id || target._id, form.newPassword);
       } else {
-        await api.changePassword(target.id || target._id, form.currentPassword, form.newPassword);
+        await api.changePassword(form.currentPassword, form.newPassword);
       }
-      setSuccess('Password changed successfully!');
-      setTimeout(() => onClose(), 1500);
+      setSuccess(isSuperAdminReset ? `Password for ${target.name} has been reset. They will receive an email notification.` : 'Password changed successfully!');
+      setTimeout(() => onClose(), 2200);
     } catch (e) { setError(e.message); }
     setSaving(false);
   };
+
+  const EyeBtn = ({ show, onToggle }) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
+    >
+      {show ? '🙈' : '👁'}
+    </button>
+  );
 
   return (
     <div
@@ -49,7 +62,7 @@ export default function ChangePasswordModal({ user, targetUser, onClose, isSuper
               {isSuperAdminReset ? 'Admin Action' : 'Security'}
             </div>
             <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 800, margin: 0 }}>
-              {isSuperAdminReset ? 'Reset Password' : '🔒 Change Password'}
+              {isSuperAdminReset ? '🔒 Reset Password' : '🔒 Change Password'}
             </h2>
             {isSuperAdminReset && <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>for {target.name}</div>}
           </div>
@@ -69,22 +82,40 @@ export default function ChangePasswordModal({ user, targetUser, onClose, isSuper
             </div>
           )}
 
+          {isSuperAdminReset && (
+            <div style={{ padding: '10px 14px', background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 10, color: '#92400E', fontSize: 12 }}>
+              ⚠️ The user will be notified by email that their password was reset.
+            </div>
+          )}
+
           {!isSuperAdminReset && (
-            <Field
-              label="Current Password" required
-              type="password" value={form.currentPassword}
-              onChange={v => sf('currentPassword', v)}
-              placeholder="Enter your current password"
-            />
+            <div>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Current Password *</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showCur ? 'text' : 'password'}
+                  value={form.currentPassword}
+                  onChange={e => sf('currentPassword', e.target.value)}
+                  placeholder="Enter your current password"
+                  style={{ width: '100%', padding: '10px 44px 10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                <EyeBtn show={showCur} onToggle={() => setShowCur(p => !p)} />
+              </div>
+            </div>
           )}
 
           <div>
-            <Field
-              label="New Password" required
-              type="password" value={form.newPassword}
-              onChange={v => sf('newPassword', v)}
-              placeholder="Minimum 8 characters"
-            />
+            <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>New Password *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={form.newPassword}
+                onChange={e => sf('newPassword', e.target.value)}
+                placeholder="Minimum 8 characters"
+                style={{ width: '100%', padding: '10px 44px 10px 12px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+              <EyeBtn show={showNew} onToggle={() => setShowNew(p => !p)} />
+            </div>
             {form.newPassword && (
               <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {[1,2,3].map(i => (
@@ -95,21 +126,31 @@ export default function ChangePasswordModal({ user, targetUser, onClose, isSuper
             )}
           </div>
 
-          <Field
-            label="Confirm New Password" required
-            type="password" value={form.confirmPassword}
-            onChange={v => sf('confirmPassword', v)}
-            placeholder="Repeat new password"
-            error={pwMismatch ? 'Passwords do not match' : undefined}
-            hint={pwMatch ? '✓ Passwords match' : undefined}
-            inputStyle={pwMismatch ? { borderColor: '#FECACA' } : pwMatch ? { borderColor: '#86EFAC' } : {}}
-          />
+          <div>
+            <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Confirm New Password *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showCon ? 'text' : 'password'}
+                value={form.confirmPassword}
+                onChange={e => sf('confirmPassword', e.target.value)}
+                placeholder="Repeat new password"
+                style={{ width: '100%', padding: '10px 44px 10px 12px', border: `1.5px solid ${pwMismatch ? '#FECACA' : pwMatch ? '#86EFAC' : '#E2E8F0'}`, borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+              <EyeBtn show={showCon} onToggle={() => setShowCon(p => !p)} />
+            </div>
+            {pwMismatch && <p style={{ color: '#BA0517', fontSize: 11, margin: '4px 0 0', fontWeight: 600 }}>⚠️ Passwords do not match</p>}
+            {pwMatch    && <p style={{ color: '#15803D', fontSize: 11, margin: '4px 0 0', fontWeight: 600 }}>✓ Passwords match</p>}
+          </div>
         </div>
 
-        {/* Sticky footer */}
+        {/* Footer */}
         <div style={{ flexShrink: 0, padding: '16px 28px', borderTop: '1px solid #F1F5F9', background: '#fff', display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '11px', background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#374151', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Cancel</button>
-          <button onClick={submit} disabled={saving || !!pwMismatch} style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 10, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, opacity: (saving || !!pwMismatch) ? 0.65 : 1 }}>
+          <button
+            onClick={submit}
+            disabled={saving || !!pwMismatch || !form.newPassword || !form.confirmPassword || (!isSuperAdminReset && !form.currentPassword)}
+            style={{ flex: 2, padding: '11px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 10, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, opacity: (saving || !!pwMismatch || !form.newPassword || !form.confirmPassword || (!isSuperAdminReset && !form.currentPassword)) ? 0.65 : 1 }}
+          >
             {saving ? '⏳ Saving…' : isSuperAdminReset ? '🔒 Reset Password' : '🔒 Change Password'}
           </button>
         </div>

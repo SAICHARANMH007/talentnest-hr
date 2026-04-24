@@ -212,17 +212,33 @@ router.post('/bulk-import', authenticate, allowRoles('admin','super_admin','recr
 
 // PATCH /api/users/:id/change-password — Self or Super Admin change
 router.patch('/:id/change-password', authenticate, asyncHandler(async (req, res) => {
-  if (req.user.role !== 'super_admin' && String(req.user._id || req.user.id) !== req.params.id) {
-    throw new AppError('Unauthorized', 403);
-  }
+  const isSelf      = String(req.user._id || req.user.id) === req.params.id;
+  const isSuperAdmin = req.user.role === 'super_admin';
+  if (!isSelf && !isSuperAdmin) throw new AppError('Unauthorized', 403);
+
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 8) throw new AppError('New password must be at least 8 chars', 400);
-  
+
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found', 404);
 
   user.passwordHash = bcrypt.hashSync(newPassword, 10);
   await user.save();
+
+  // Notify target user by email when an admin resets their password
+  if (!isSelf && isSuperAdmin) {
+    try {
+      const org = user.tenantId ? await Organization.findById(user.tenantId).lean() : null;
+      const tpl = templates.passwordChangedByAdmin(
+        user.name,
+        req.user.name || 'Super Admin',
+        org?.name || 'TalentNest HR',
+        { orgId: org?._id?.toString() }
+      );
+      await sendEmailWithRetry(user.email, tpl.subject, tpl.html);
+    } catch (_) { /* email failure is non-fatal */ }
+  }
+
   res.json({ success: true, message: 'Password updated.' });
 }));
 

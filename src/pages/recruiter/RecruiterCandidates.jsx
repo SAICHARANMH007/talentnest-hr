@@ -11,6 +11,20 @@ import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
+function useOnlineIds() {
+  const [ids, setIds] = useState(new Set());
+  useEffect(() => {
+    const load = () => api.getOnlineUsers().then(r => {
+      const list = Array.isArray(r?.data) ? r.data : [];
+      setIds(new Set(list.map(u => u.id)));
+    }).catch(() => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, []);
+  return ids;
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 const parseJ = (s, fb = []) => { try { return typeof s === 'string' ? JSON.parse(s || '[]') : (Array.isArray(s) ? s : fb); } catch { return fb; } };
 
@@ -73,7 +87,7 @@ function matchCandidate(c, filters) {
 }
 
 // ── CandidateCard ─────────────────────────────────────────────────────────────
-function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast }) {
+function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, isOnline }) {
   const [selJobs, setSelJobs] = useState([]); // multi-select job IDs
   const [dropOpen, setDropOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -105,11 +119,17 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
-            {(c.name || '?')[0].toUpperCase()}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18 }}>
+              {(c.name || '?')[0].toUpperCase()}
+            </div>
+            <div style={{ position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: '50%', background: isOnline ? '#22c55e' : '#d1d5db', border: '2px solid #fff' }} title={isOnline ? 'Online now' : 'Offline'} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+              {isOnline && <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>● Online</span>}
+            </div>
             {c.title && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
               {c.location && <span style={{ color: '#706E6B', fontSize: 11 }}>📍 {c.location}</span>}
@@ -256,6 +276,8 @@ export default function RecruiterCandidates({ user }) {
   const [waModal, setWaModal] = useState(false);
   const [waTemplate, setWaTemplate] = useState('Hi {candidateName}, we have an exciting opportunity for {jobTitle} at {companyName}. Please reply to express your interest. Regards, {recruiterName}');
   const [waSending, setWaSending] = useState(false);
+  const [onlineOnly, setOnlineOnly] = useState(false);
+  const onlineIds = useOnlineIds();
 
   const [filters, setFilters] = useState({
     designation: '',
@@ -313,17 +335,29 @@ export default function RecruiterCandidates({ user }) {
     }
   }, [loading, allCandidates]);
 
+  const applyFilters = (candidates, onlyOnline) => {
+    let res = candidates.filter(c => matchCandidate(c, filters) && roleMatch(c));
+    if (onlyOnline) res = res.filter(c => onlineIds.has(c.id || c._id?.toString()));
+    return res;
+  };
+
   const search = () => {
-    const res = allCandidates.filter(c => matchCandidate(c, filters) && roleMatch(c));
-    setResults(res);
+    setResults(applyFilters(allCandidates, onlineOnly));
     setSearched(true);
   };
 
   const reset = () => {
     setFilters({ designation: '', skills: '', location: '', expMin: '', expMax: '', roles: [] });
+    setOnlineOnly(false);
     setResults(allCandidates);
     setSearched(true);
   };
+
+  // Re-apply online filter live as online status changes
+  useEffect(() => {
+    if (!searched) return;
+    setResults(applyFilters(allCandidates, onlineOnly));
+  }, [onlineIds]); // eslint-disable-line
 
   const addToPipeline = async (candidate, jobId) => {
     try {
@@ -352,7 +386,7 @@ export default function RecruiterCandidates({ user }) {
     }
   };
 
-  const hasFilters = filters.designation || filters.skills || filters.location || filters.expMin || filters.expMax || filters.roles.length > 0;
+  const hasFilters = filters.designation || filters.skills || filters.location || filters.expMin || filters.expMax || filters.roles.length > 0 || onlineOnly;
 
   return (
     <div>
@@ -420,8 +454,20 @@ export default function RecruiterCandidates({ user }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={search} style={btnP}>🔍 Search</button>
+              <button
+                onClick={() => {
+                  const next = !onlineOnly;
+                  setOnlineOnly(next);
+                  setResults(applyFilters(allCandidates, next));
+                  setSearched(true);
+                }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${onlineOnly ? '#22c55e' : '#DDDBDA'}`, background: onlineOnly ? '#f0fdf4' : '#fff', color: onlineOnly ? '#15803D' : '#706E6B', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: onlineOnly ? '#22c55e' : '#d1d5db', display: 'inline-block' }} />
+                {onlineOnly ? `Online Now (${onlineIds.size})` : 'Online Now'}
+              </button>
               {hasFilters && <button onClick={reset} style={btnG}>✕ Clear</button>}
               <span style={{ color: '#9E9D9B', fontSize: 12 }}>
                 {allCandidates.length} candidate{allCandidates.length !== 1 ? 's' : ''} in pool
@@ -486,6 +532,7 @@ export default function RecruiterCandidates({ user }) {
                           onReachOut={handleReachOut}
                           onToast={setToast}
                           onInvite={setInviteCandidate}
+                          isOnline={onlineIds.has(c.id || c._id?.toString())}
                         />
                       </div>
                     </div>

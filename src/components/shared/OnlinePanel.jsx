@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import OnlineDot from '../ui/OnlineDot.jsx';
-import MessageModal from './MessageModal.jsx';
 
 const ROLE_LABEL = {
   super_admin    : 'Super Admin',
@@ -21,13 +20,10 @@ const ROLE_COLOR = {
   client         : '#6b7280',
 };
 
-export default function OnlinePanel({ user, open, onClose }) {
+export default function OnlinePanel({ user, open, onClose, onMessage }) {
   const [users,   setUsers]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [msgTarget, setMsgTarget] = useState(null);
-  const [search, setSearch] = useState('');
-
-  const canMessage = true; // all roles with access to OnlinePanel can message
+  const [search, setSearch]   = useState('');
 
   const load = useCallback(() => {
     api.getOnlineUsers()
@@ -47,18 +43,14 @@ export default function OnlinePanel({ user, open, onClose }) {
   if (!open) return null;
 
   const filtered = users.filter(u =>
-    !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.role?.includes(search.toLowerCase())
+    !search ||
+    u.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    u.role?.includes(search.toLowerCase())
   );
 
   return (
     <>
-      {msgTarget && (
-        <MessageModal
-          recipient={msgTarget}
-          onClose={() => setMsgTarget(null)}
-        />
-      )}
-
       {/* Backdrop */}
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 8998 }} />
 
@@ -83,7 +75,7 @@ export default function OnlinePanel({ user, open, onClose }) {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or role…"
+            placeholder="Search by name, email or role…"
             style={{ marginTop: 12, width: '100%', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
@@ -91,7 +83,17 @@ export default function OnlinePanel({ user, open, onClose }) {
         {/* List */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#9E9D9B', fontSize: 13 }}>Loading…</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(1,118,211,0.03)', border: '1px solid rgba(1,118,211,0.06)' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#E8E7E5', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 12, background: '#E8E7E5', borderRadius: 6, marginBottom: 6, width: '55%' }} />
+                    <div style={{ height: 10, background: '#F3F2F2', borderRadius: 6, width: '35%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40 }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>👤</div>
@@ -125,23 +127,21 @@ export default function OnlinePanel({ user, open, onClose }) {
                   </div>
                 </div>
 
-                {/* Message button */}
-                {canMessage && (
-                  <button
-                    onClick={() => setMsgTarget(u)}
-                    title={`Message ${u.name}`}
-                    style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700, color: '#0176D3', cursor: 'pointer', flexShrink: 0 }}
-                  >
-                    💬
-                  </button>
-                )}
+                {/* Message button — opens ChatPanel directly */}
+                <button
+                  onClick={() => onMessage?.({ userId: u.id, name: u.name, role: u.role })}
+                  title={`Message ${u.name}`}
+                  style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700, color: '#0176D3', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  💬
+                </button>
               </div>
             ))
           )}
         </div>
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F2F2', fontSize: 11, color: '#9E9D9B', textAlign: 'center' }}>
-          Updates every 30 seconds · Last 2 minutes activity
+          Updates every 30 seconds · Active in last 2 minutes
         </div>
       </div>
     </>

@@ -48,101 +48,238 @@ function timeAgo(dateStr) {
 }
 
 // ── Notification Bell ──────────────────────────────────────────────────────────
-function NotificationBell() {
-  const [notifs, setNotifs]   = React.useState([]);
-  const [open,   setOpen]     = React.useState(false);
-  const [tab,    setTab]      = React.useState('unread');
-  const btnRef                = React.useRef(null);
-  const [pos,    setPos]      = React.useState({ top: 0, left: 0 });
-  const navigate              = useNavigate();
+function NotificationBell({ userRole }) {
+  const [notifs,   setNotifs]   = React.useState([]);
+  const [open,     setOpen]     = React.useState(false);
+  const [tab,      setTab]      = React.useState('unread');
+  const [detail,   setDetail]   = React.useState(null);   // selected notification for drill-down
+  const [loading,  setLoading]  = React.useState(false);
+  const btnRef                  = React.useRef(null);
+  const [pos,      setPos]      = React.useState({ top: 0, left: 0 });
+  const navigate                = useNavigate();
+  const summaryFetched          = React.useRef(false);
 
-  const load = async () => {
-    try { const d = await api.getNotifications(); setNotifs(Array.isArray(d) ? d : []); } catch {}
-  };
+  const load = React.useCallback(async () => {
+    try {
+      const d = await api.getNotifications();
+      setNotifs(Array.isArray(d) ? d : []);
+    } catch {}
+  }, []);
 
-  React.useEffect(() => { load(); const iv = setInterval(load, 30000); return () => clearInterval(iv); }, []);
+  React.useEffect(() => {
+    load();
+    const iv = setInterval(load, 30000);
+    return () => clearInterval(iv);
+  }, [load]);
 
   const unread = notifs.filter(n => !n.read).length;
 
-  // Keep browser tab title in sync with unread count
   React.useEffect(() => {
     document.title = unread > 0 ? `(${unread}) TalentNest HR` : 'TalentNest HR';
   }, [unread]);
 
-  const openPanel = () => {
+  const openPanel = async () => {
     if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      const panelW = Math.min(360, window.innerWidth - 32);
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - panelW - 8));
+      const rect   = btnRef.current.getBoundingClientRect();
+      const panelW = Math.min(380, window.innerWidth - 24);
+      const left   = Math.max(8, Math.min(rect.left, window.innerWidth - panelW - 8));
       setPos({ top: rect.bottom + 8, left });
     }
-    setOpen(true); load();
+    setOpen(true);
+
+    // For super_admin: auto-generate platform summary on first open
+    if (userRole === 'super_admin' && !summaryFetched.current) {
+      summaryFetched.current = true;
+      setLoading(true);
+      try {
+        const fresh = await api.generatePlatformNotifications();
+        if (Array.isArray(fresh)) setNotifs(fresh);
+      } catch { await load(); }
+      setLoading(false);
+    } else {
+      await load();
+    }
   };
 
-  const markOne  = async (id) => { try { await api.markRead(id); setNotifs(p => p.map(n => n._id === id || n.id === id ? { ...n, read: true } : n)); } catch {} };
-  const markAll  = async () => { try { await api.markAllRead(); setNotifs(p => p.map(n => ({ ...n, read: true }))); } catch {} };
-  const clearAll = async () => { try { await api.clearAllNotifications(); setNotifs([]); setOpen(false); } catch {} };
+  const markOne  = async (id) => {
+    try {
+      await api.markRead(id);
+      setNotifs(p => p.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
+    } catch {}
+  };
+  const markAll  = async () => {
+    try { await api.markAllRead(); setNotifs(p => p.map(n => ({ ...n, read: true }))); } catch {}
+  };
+  const clearAll = async () => {
+    try { await api.clearAllNotifications(); setNotifs([]); setOpen(false); } catch {}
+  };
 
-  const TYPE_MAP = { application: 'pipeline', stage_update: 'pipeline', interview: 'interviews', offer: 'offers', system: 'dashboard', assessment_submitted: 'assessments' };
+  const TYPE_MAP = {
+    application: 'pipeline', stage_update: 'pipeline', stage_change: 'pipeline',
+    interview: 'interviews', offer: 'offers', system: 'analytics',
+    assessment_submitted: 'assessments', job_approved: 'jobs', job_rejected: 'jobs',
+    invite_interested: 'candidates',
+  };
+  const TYPE_ICONS  = { application:'📋', stage_update:'🔄', stage_change:'🔄', interview:'📅', offer:'🎉', system:'⚙️', assessment_submitted:'📊', job_approved:'✅', job_rejected:'❌', invite_interested:'🙋' };
+  const TYPE_LABELS = { application:'Application', stage_update:'Stage Update', stage_change:'Stage Update', interview:'Interview', offer:'Offer', system:'System', assessment_submitted:'Assessment', job_approved:'Approved', job_rejected:'Rejected', invite_interested:'Interest' };
 
-  const handleClick = async (n) => {
-    if (!n.read) { setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x)); await markOne(n.id); }
+  // Open detail modal — mark read + store for display
+  const openDetail = async (n) => {
+    if (!n.read) {
+      setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x));
+      await markOne(n.id);
+    }
+    setDetail(n);
+  };
+
+  // Navigate after viewing detail
+  const goToDetail = (n) => {
+    setDetail(null);
     setOpen(false);
     const candidateId = n.metadata?.candidateId || n.data?.candidateId;
-    if (candidateId) { sessionStorage.setItem('tn_open_candidate_id', candidateId); navigate('/app/candidates'); }
-    else navigate(`/app/${TYPE_MAP[n.type] || 'dashboard'}`);
+    if (candidateId) {
+      sessionStorage.setItem('tn_open_candidate_id', candidateId);
+      navigate('/app/candidates');
+    } else {
+      navigate(`/app/${TYPE_MAP[n.type] || 'analytics'}`);
+    }
   };
 
   React.useEffect(() => {
     if (!open) return;
-    const h = (e) => { if (!e.target.closest('[data-notif-panel]') && !e.target.closest('[data-notif-btn]')) setOpen(false); };
+    const h = (e) => {
+      if (!e.target.closest('[data-notif-panel]') && !e.target.closest('[data-notif-btn]')) setOpen(false);
+    };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
 
-  const TYPE_ICONS  = { application:'📋', stage_update:'🔄', interview:'📅', offer:'🎉', system:'⚙️', assessment_submitted:'📊', job_approved:'✅', job_rejected:'❌' };
-  const TYPE_LABELS = { application:'Applied', stage_update:'Stage Update', interview:'Interview', offer:'Offer', system:'System', assessment_submitted:'Submitted', job_approved:'Approved', job_rejected:'Rejected' };
-  const displayed   = tab === 'unread' ? notifs.filter(n => !n.read) : notifs;
-  const panelW      = Math.min(360, window.innerWidth - 32);
+  const displayed = tab === 'unread' ? notifs.filter(n => !n.read) : notifs;
+  const panelW    = Math.min(380, window.innerWidth - 24);
 
   return (
     <>
-      <button ref={btnRef} data-notif-btn="true" onClick={() => open ? setOpen(false) : openPanel()}
+      {/* Detail drill-down modal */}
+      {detail && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
+        >
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+            {/* Modal header */}
+            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                  {TYPE_ICONS[detail.type] || '🔔'}
+                </div>
+                <div>
+                  <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
+                    {TYPE_LABELS[detail.type] || detail.type}
+                  </div>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, lineHeight: 1.3 }}>{detail.title}</div>
+                </div>
+              </div>
+              <button onClick={() => setDetail(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+            </div>
+
+            {/* Modal body */}
+            <div style={{ padding: '20px 24px' }}>
+              {(detail.body || detail.message) && (
+                <div style={{ background: '#F8FAFF', border: '1px solid #E8F0FE', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                  <p style={{ color: '#374151', fontSize: 14, lineHeight: 1.7, margin: 0 }}>{detail.body || detail.message}</p>
+                </div>
+              )}
+
+              {/* Metadata chips */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                <span style={{ fontSize: 11, color: '#706E6B', background: '#F3F4F6', borderRadius: 20, padding: '3px 10px' }}>
+                  🕐 {timeAgo(detail.createdAt)}
+                </span>
+                <span style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  {TYPE_LABELS[detail.type] || detail.type}
+                </span>
+                {detail.metadata?.orgName && (
+                  <span style={{ fontSize: 11, color: '#059669', background: 'rgba(5,150,105,0.08)', borderRadius: 20, padding: '3px 10px' }}>
+                    🏢 {detail.metadata.orgName}
+                  </span>
+                )}
+                {detail.metadata?.totalUsers !== undefined && (
+                  <span style={{ fontSize: 11, color: '#7c3aed', background: 'rgba(124,58,237,0.08)', borderRadius: 20, padding: '3px 10px' }}>
+                    👥 {detail.metadata.totalUsers} users
+                  </span>
+                )}
+                {detail.metadata?.pendingInvites !== undefined && (
+                  <span style={{ fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.08)', borderRadius: 20, padding: '3px 10px' }}>
+                    📧 {detail.metadata.pendingInvites} pending
+                  </span>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => goToDetail(detail)}
+                  style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                >
+                  View Details →
+                </button>
+                <button
+                  onClick={() => setDetail(null)}
+                  style={{ padding: '11px 18px', background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bell button */}
+      <button
+        ref={btnRef}
+        data-notif-btn="true"
+        onClick={() => open ? setOpen(false) : openPanel()}
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
-        aria-haspopup="true" aria-expanded={open}
-        style={{ background: open ? 'rgba(255,255,255,0.2)' : 'none', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', color: '#FFFFFF', fontSize: 17, position: 'relative', padding: '5px 8px', transition: 'all 0.15s', minHeight: 36 }}>
+        style={{ background: open ? 'rgba(255,255,255,0.2)' : 'none', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', color: '#FFFFFF', fontSize: 17, position: 'relative', padding: '5px 8px', transition: 'all 0.15s', minHeight: 36 }}
+      >
         🔔
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
+      {/* Notification panel */}
       {open && (
-        <div data-notif-panel="true" style={{ 
-          position: 'fixed', 
-          top: pos.top, 
-          left: pos.left, 
-          width: panelW, 
-          maxHeight: 'calc(100vh - 120px)', 
-          background: 'rgba(255, 255, 255, 0.82)', 
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(0, 0, 0, 0.08)', 
-          borderRadius: 16, 
-          zIndex: 9999, 
-          boxShadow: '0 20px 48px rgba(0,0,0,0.22)', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          overflow: 'hidden',
-          animation: 'tn-modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both'
+        <div data-notif-panel="true" style={{
+          position: 'fixed', top: pos.top, left: pos.left, width: panelW,
+          maxHeight: 'min(520px, calc(100vh - 120px))',
+          background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: 16, zIndex: 9999,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
-          {/* Header */}
-          <div style={{ padding: '13px 16px 0', flexShrink: 0, borderBottom: '1px solid #DDDBDA' }}>
+          {/* Panel header */}
+          <div style={{ padding: '13px 16px 0', flexShrink: 0, borderBottom: '1px solid #F3F2F2' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ color: '#181818', fontWeight: 800, fontSize: 14 }}>
-                Notifications {unread > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, marginLeft: 7, fontWeight: 700 }}>{unread} new</span>}
+                🔔 Notifications
+                {unread > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, marginLeft: 7, fontWeight: 700 }}>{unread} new</span>}
               </span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {userRole === 'super_admin' && (
+                  <button
+                    onClick={async () => {
+                      setLoading(true);
+                      try { const f = await api.generatePlatformNotifications(); if (Array.isArray(f)) setNotifs(f); } catch {}
+                      setLoading(false);
+                    }}
+                    title="Refresh platform summary"
+                    style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                  >
+                    🔄 Refresh
+                  </button>
+                )}
                 {unread > 0 && <button onClick={markAll} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, cursor: 'pointer', fontWeight: 600, padding: 0 }}>Mark all read</button>}
-                <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 16, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>✕</button>
+                <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>✕</button>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 0 }}>
@@ -153,38 +290,73 @@ function NotificationBell() {
               ))}
             </div>
           </div>
-          {/* Body */}
+
+          {/* Panel body */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-            {displayed.length === 0 ? (
+            {loading ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#706E6B', fontSize: 13 }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+                Loading platform data…
+              </div>
+            ) : displayed.length === 0 ? (
               <div style={{ padding: '36px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🔕</div>
-                <div style={{ color: '#3E3E3C', fontSize: 13, fontWeight: 600 }}>{tab === 'unread' ? 'All caught up!' : 'No notifications yet'}</div>
-                <div style={{ color: '#706E6B', fontSize: 11, marginTop: 5 }}>{tab === 'unread' ? 'Switch to "All" to see past notifications' : "You'll see updates here when things happen"}</div>
+                <div style={{ color: '#3E3E3C', fontSize: 13, fontWeight: 600 }}>
+                  {tab === 'unread' ? 'All caught up!' : 'No notifications yet'}
+                </div>
+                <div style={{ color: '#706E6B', fontSize: 11, marginTop: 5 }}>
+                  {tab === 'unread' ? 'Switch to "All" to see past notifications' : "You'll see updates here when things happen"}
+                </div>
+                {userRole === 'super_admin' && tab !== 'unread' && (
+                  <button
+                    onClick={async () => {
+                      setLoading(true);
+                      try { const f = await api.generatePlatformNotifications(); if (Array.isArray(f)) { setNotifs(f); setTab('all'); } } catch {}
+                      setLoading(false);
+                    }}
+                    style={{ marginTop: 14, padding: '8px 18px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    🔄 Load Platform Summary
+                  </button>
+                )}
               </div>
-            ) : displayed.map(n => (
-              <div key={n.id} onClick={() => handleClick(n)}
-                style={{ padding: '11px 16px', borderBottom: '1px solid #F3F2F2', background: n.read ? '#FFFFFF' : 'rgba(1,118,211,0.06)', cursor: 'pointer', display: 'flex', gap: 11, alignItems: 'flex-start' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F3F2F2'}
-                onMouseLeave={e => e.currentTarget.style.background = n.read ? '#FFFFFF' : 'rgba(1,118,211,0.06)'}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: n.read ? '#F3F2F2' : 'rgba(1,118,211,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{TYPE_ICONS[n.type] || '🔔'}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <span style={{ color: n.read ? '#3E3E3C' : '#181818', fontSize: 12, fontWeight: n.read ? 500 : 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>{n.title}</span>
-                    {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0176D3', flexShrink: 0 }} />}
+            ) : (
+              displayed.map(n => (
+                <div
+                  key={n.id || n._id}
+                  onClick={() => openDetail(n)}
+                  style={{ padding: '11px 16px', borderBottom: '1px solid #F3F2F2', background: n.read ? '#FFFFFF' : 'rgba(1,118,211,0.05)', cursor: 'pointer', display: 'flex', gap: 11, alignItems: 'flex-start', transition: 'background 0.1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F8F9FA'}
+                  onMouseLeave={e => e.currentTarget.style.background = n.read ? '#FFFFFF' : 'rgba(1,118,211,0.05)'}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: n.read ? '#F3F4F6' : 'rgba(1,118,211,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                    {TYPE_ICONS[n.type] || '🔔'}
                   </div>
-                  {n.body && <div style={{ color: '#3E3E3C', fontSize: 11, lineHeight: 1.45, marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.body}</div>}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#706E6B', fontSize: 10 }}>{timeAgo(n.createdAt)}</span>
-                    {n.type && <span style={{ color: '#0176D3', fontSize: 10, background: 'rgba(1,118,211,0.08)', borderRadius: 4, padding: '1px 5px' }}>{TYPE_LABELS[n.type] || n.type}</span>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
+                      <span style={{ color: n.read ? '#374151' : '#181818', fontSize: 12, fontWeight: n.read ? 500 : 700, lineHeight: 1.4, flex: 1 }}>{n.title}</span>
+                      {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0176D3', flexShrink: 0, marginTop: 3 }} />}
+                    </div>
+                    {(n.body || n.message) && (
+                      <div style={{ color: '#6B7280', fontSize: 11, lineHeight: 1.5, marginBottom: 5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {n.body || n.message}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#9CA3AF', fontSize: 10 }}>{timeAgo(n.createdAt)}</span>
+                      {n.type && <span style={{ color: '#0176D3', fontSize: 10, background: 'rgba(1,118,211,0.08)', borderRadius: 4, padding: '1px 6px', fontWeight: 600 }}>{TYPE_LABELS[n.type] || n.type}</span>}
+                      <span style={{ color: '#0176D3', fontSize: 10, marginLeft: 'auto' }}>View →</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
+
           {notifs.length > 0 && (
-            <div style={{ padding: '10px 16px', borderTop: '1px solid #DDDBDA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#F3F2F2' }}>
-              <span style={{ color: '#706E6B', fontSize: 11 }}>{notifs.length} total</span>
-              <button onClick={clearAll} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 11, cursor: 'pointer', padding: 0 }}>Clear all</button>
+            <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F2F2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#FAFAFA' }}>
+              <span style={{ color: '#9CA3AF', fontSize: 11 }}>{notifs.length} total · {unread} unread</span>
+              <button onClick={clearAll} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>Clear all</button>
             </div>
           )}
         </div>
@@ -221,13 +393,11 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
           </div>
           <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>{(user.role || '').toUpperCase()}</div>
         </div>
-        <NotificationBell />
-        {user?.role === 'candidate' && (
-          <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <NotificationBell userRole={user?.role} />
+        <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             💬
             {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
           </button>
-        )}
         <button onClick={() => setShowOnline?.(true)} title="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🟢</button>
       </div>
 
@@ -349,6 +519,7 @@ export default function Layout({ user, onLogout }) {
   const [showOnline, setShowOnline]   = useState(false);
   const [showInbox,  setShowInbox]    = useState(false);
   const [unreadMsgs, setUnreadMsgs]   = useState(0);
+  const [chatRecipient, setChatRecipient] = useState(null);
   useHeartbeat(user);
 
   useEffect(() => {
@@ -365,8 +536,8 @@ export default function Layout({ user, onLogout }) {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#F3F2F2', fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
       {showChangePwd && <ChangePasswordModal user={user} onClose={() => setShowChangePwd(false)} />}
       {showEmailSettings && <EmailSettingsModal user={user} onClose={() => setShowEmailSettings(false)} />}
-      <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} />
-      <ChatPanel open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); }} myUser={user} />
+      <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} onMessage={u => { setShowOnline(false); setChatRecipient(u); setShowInbox(true); }} />
+      <ChatPanel open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); setChatRecipient(null); }} myUser={user} initialRecipient={chatRecipient} />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
@@ -404,13 +575,11 @@ export default function Layout({ user, onLogout }) {
           <div className="tn-hamburger" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, background: '#032D60', borderRadius: 12, padding: '10px 14px' }}>
             <button onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
             <div style={{ flex: 1 }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>
-            <NotificationBell />
-            {user?.role === 'candidate' && (
-              <button onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <NotificationBell userRole={user?.role} />
+            <button onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 💬
                 {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', borderRadius: '50%', width: 14, height: 14, fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
               </button>
-            )}
             <button onClick={() => setShowOnline(true)} title="Who's Online" aria-label="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               🟢
             </button>

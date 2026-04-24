@@ -26,9 +26,8 @@ router.get('/online', authenticate, asyncHandler(async (req, res) => {
   } else if (role === 'admin') {
     filter.tenantId = tenantId;
   } else if (role === 'recruiter') {
-    // recruiters can only see candidates in their org
+    // recruiters see all users in their org (candidates, admins, other recruiters)
     filter.tenantId = tenantId;
-    filter.role = 'candidate';
   } else if (role === 'candidate') {
     // candidates can only see recruiters in their org
     filter.tenantId = tenantId;

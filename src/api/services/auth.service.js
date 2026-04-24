@@ -37,6 +37,8 @@ export const authService = {
 
   async verifyDomain(domain) { return req('POST', '/auth/verify-domain', { domain }, false); },
   async forgotPassword(email) { return req('POST', '/auth/forgot-password', { email }, false); },
+  async sendResetOtp(email)   { return req('POST', '/auth/send-reset-otp', { email }, false); },
+  async verifyResetOtp(email, otp) { return req('POST', '/auth/verify-reset-otp', { email, otp }, false); },
   async setPassword(token, email, newPassword) { return req('POST', '/auth/set-password', { token, email, newPassword }, false); },
   async resetPassword(email, token, newPassword) { return req('POST', '/auth/reset-password', { email, token, newPassword }, false); },
   async changePassword(currentPassword, newPassword) { return req('POST', '/auth/change-password', { currentPassword, newPassword }); },

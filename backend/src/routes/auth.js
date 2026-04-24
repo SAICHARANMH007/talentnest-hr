@@ -15,6 +15,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/auth.service');
 const AppError = require('../utils/AppError');
 const logger = require('../middleware/logger');
+const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
 
 // ── Rate limiters ────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
@@ -102,6 +103,14 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const tpl = templates.welcome(result.user.name, result.user.role, { orgId: result.user.orgId?.toString() });
   sendEmailWithRetry(result.user.email, tpl.subject, tpl.html).catch(err =>
     logger.error('Welcome email failed', { to: result.user.email, err: err.message })
+  );
+
+  // Notify super_admins about new registration (non-blocking)
+  notifyAllSuperAdmins(
+    'system',
+    `New ${result.user.role === 'candidate' ? 'candidate' : 'organisation'} registered`,
+    `${result.user.name} (${result.user.email}) joined as ${result.user.role} · ${result.tenant.name}`,
+    { userId: result.user._id.toString(), orgId: result.tenant._id.toString(), orgName: result.tenant.name }
   );
 
   const tokens = await authService.issueTokens(res, result.user, req);
@@ -205,6 +214,77 @@ router.post('/forgot-password', otpLimiter, asyncHandler(async (req, res) => {
 
   // Always return success to prevent user enumeration
   res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+}));
+
+// ── POST /api/auth/send-reset-otp — send 6-digit OTP for password reset ──────
+router.post('/send-reset-otp', otpLimiter, asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw new AppError('Email is required.', 400);
+
+  const user = await User.findOne({ email: email.toLowerCase().trim() });
+  if (user) {
+    const Otp = require('../models/Otp');
+    const otp = crypto.randomInt(100000, 999999).toString();
+    await Otp.findOneAndUpdate(
+      { email: user.email, purpose: 'password_reset' },
+      { otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000), purpose: 'password_reset' },
+      { upsert: true, new: true }
+    );
+    // Send OTP email
+    const { templates } = require('../utils/email');
+    const subject = 'Your TalentNest Password Reset OTP';
+    const html = templates.baseLayout
+      ? `<p>Use this OTP to reset your password for <strong>${user.email}</strong>:</p>
+         <div style="font-size:36px;font-weight:800;letter-spacing:8px;color:#0176D3;text-align:center;padding:20px 0">${otp}</div>
+         <p style="color:#706E6B;font-size:12px;text-align:center">This OTP expires in 10 minutes. Do not share it with anyone.</p>`
+      : `Your password reset OTP: ${otp} (valid 10 minutes)`;
+
+    const { sendEmailWithRetry: sendEmail } = require('../utils/email');
+    await sendEmail(user.email, subject, require('../utils/emailTemplates').baseLayout
+      ? require('../utils/emailTemplates').baseLayout(
+          `<h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Password Reset OTP 🔑</h2>
+           <p style="color:#374151;font-size:14px;line-height:1.7">Hi <strong>${user.name}</strong>,<br>Use the OTP below to reset your TalentNest HR password.</p>
+           <div style="background:linear-gradient(135deg,#032D60,#0176D3);border-radius:12px;padding:24px;text-align:center;margin:24px 0">
+             <div style="font-size:42px;font-weight:900;letter-spacing:12px;color:#fff;font-family:monospace">${otp}</div>
+             <div style="color:rgba(255,255,255,0.75);font-size:12px;margin-top:8px">Valid for 10 minutes</div>
+           </div>
+           <p style="color:#9ca3af;font-size:12px;text-align:center">Never share this OTP with anyone. If you didn't request this, ignore this email.</p>`,
+          'Password Reset OTP', {}
+        )
+      : `Your OTP: ${otp}`
+    ).catch(() => {});
+  }
+  // Always success to prevent enumeration
+  res.json({ success: true, message: 'If that email exists, an OTP has been sent.' });
+}));
+
+// ── POST /api/auth/verify-reset-otp — verify OTP and return a reset token ────
+router.post('/verify-reset-otp', otpLimiter, asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) throw new AppError('Email and OTP are required.', 400);
+
+  const Otp = require('../models/Otp');
+  const record = await Otp.findOne({
+    email: email.toLowerCase().trim(),
+    purpose: 'password_reset',
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!record || record.otp !== otp.toString().trim()) {
+    throw new AppError('Invalid or expired OTP. Please try again.', 400);
+  }
+
+  // OTP is valid — delete it and issue a short-lived reset token
+  await Otp.deleteOne({ _id: record._id });
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  await User.findOneAndUpdate(
+    { email: email.toLowerCase().trim() },
+    { resetPasswordToken: tokenHash, resetPasswordExpires: new Date(Date.now() + 15 * 60 * 1000) }
+  );
+
+  res.json({ success: true, token: rawToken, email: email.toLowerCase().trim() });
 }));
 
 // ── POST /api/auth/reset-password/:token ─────────────────────────────────────

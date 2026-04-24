@@ -50,5 +50,6 @@ export const userService = {
   async bulkUpdateTA(body)              { return req('PATCH', '/users/bulk-ta', body); },
   async markReachOut(id, note)          { return req('PATCH', `/users/${id}/reach-out`, { note }); },
   async assignCandidate(id, recruiterId) { return req('PATCH', `/users/${id}/assign`, { recruiterId }); },
-  async mergeUsers(primaryId, duplicateId) { return req('POST', '/users/merge', { primaryId, duplicateId }); }
+  async mergeUsers(primaryId, duplicateId) { return req('POST', '/users/merge', { primaryId, duplicateId }); },
+  async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); }
 };

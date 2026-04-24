@@ -16,7 +16,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, error: 'Not allowed to send messages.' });
   }
 
-  const { toUserId, message, jobId, jobTitle, attachment } = req.body;
+  const { toUserId, message, jobId, jobTitle, attachment, replyTo } = req.body;
   if (!toUserId || (!message?.trim() && !attachment)) {
     return res.status(400).json({ success: false, error: 'toUserId and message or attachment are required.' });
   }
@@ -39,6 +39,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     jobId     : jobId || null,
     jobTitle  : jobTitle || null,
     attachment: attachment || null,
+    replyTo   : replyTo   || null,
   });
 
   res.json({ success: true, data: msg });

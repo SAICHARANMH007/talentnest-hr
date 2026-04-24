@@ -30,6 +30,7 @@ export const platformService = {
   async markAllRead()                    { return req('PATCH', '/notifications/read-all', {}); },
   async markRead(id)                     { return req('PATCH', `/notifications/${id}/read`, {}); },
   async clearAllNotifications()          { return req('DELETE', '/notifications'); },
+  async generatePlatformNotifications()  { return req('POST',  '/notifications/platform-summary', {}); },
 
   
   // Contact Leads

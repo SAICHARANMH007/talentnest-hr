@@ -19,6 +19,15 @@ const directMessageSchema = new mongoose.Schema({
   jobTitle  : { type: String, default: null },
   attachment: { type: attachmentSchema, default: null },
   readAt    : { type: Date, default: null },
+  replyTo   : {
+    type: new mongoose.Schema({
+      msgId   : { type: mongoose.Schema.Types.ObjectId },
+      fromName: { type: String },
+      message : { type: String },
+      isAttachment: { type: Boolean, default: false },
+    }, { _id: false }),
+    default: null,
+  },
 }, { timestamps: true });
 
 directMessageSchema.index({ tenantId: 1, toUserId: 1, createdAt: -1 });

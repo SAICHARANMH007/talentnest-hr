@@ -4,6 +4,16 @@ import { api } from '../../api/api.js';
 const ROLE_COLOR = { candidate: '#0176D3', recruiter: '#7c3aed', admin: '#d97706', super_admin: '#059669' };
 const ROLE_LABEL = { candidate: 'Candidate', recruiter: 'Recruiter', admin: 'Admin', super_admin: 'Super Admin' };
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
+
 function fmt(d) {
   if (!d) return '';
   const date = new Date(d);
@@ -20,11 +30,30 @@ function fmtFull(d) {
   return new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function Avatar({ name, role, size = 36 }) {
+function fmtLastSeen(d) {
+  if (!d) return 'Offline';
+  const diffMs = Date.now() - new Date(d).getTime();
+  if (diffMs < 2 * 60 * 1000) return 'Online';
+  if (diffMs < 60 * 60 * 1000) return `${Math.floor(diffMs / 60000)}m ago`;
+  if (diffMs < 24 * 60 * 60 * 1000) return `${Math.floor(diffMs / 3600000)}h ago`;
+  return `${Math.floor(diffMs / 86400000)}d ago`;
+}
+
+function Avatar({ name, role, size = 36, online }) {
   const color = ROLE_COLOR[role] || '#64748b';
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: `${color}22`, border: `2px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: size * 0.38, flexShrink: 0 }}>
-      {(name || '?')[0].toUpperCase()}
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: `${color}22`, border: `2px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: size * 0.38 }}>
+        {(name || '?')[0].toUpperCase()}
+      </div>
+      {online !== undefined && (
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0,
+          width: size * 0.3, height: size * 0.3, borderRadius: '50%',
+          background: online ? '#22c55e' : '#d1d5db',
+          border: '2px solid #fff',
+        }} />
+      )}
     </div>
   );
 }
@@ -62,45 +91,85 @@ function AttachmentBubble({ attachment, isMine }) {
   );
 }
 
-function MessageBubble({ msg, myId }) {
+function MessageBubble({ msg, myId, onReply }) {
   const isMine = msg.fromUserId?.toString() === myId?.toString();
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div style={{ display: 'flex', flexDirection: isMine ? 'row-reverse' : 'row', gap: 8, marginBottom: 12, alignItems: 'flex-end' }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ display: 'flex', flexDirection: isMine ? 'row-reverse' : 'row', gap: 8, marginBottom: 12, alignItems: 'flex-end', position: 'relative' }}
+    >
       {!isMine && <Avatar name={msg.fromName} role={msg.fromRole} size={28} />}
+
       <div style={{ maxWidth: '72%', display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
         {!isMine && (
           <div style={{ fontSize: 11, color: '#9E9D9B', marginBottom: 3, paddingLeft: 4 }}>{msg.fromName}</div>
         )}
+
+        {/* Reply-to quote */}
+        {msg.replyTo && (
+          <div style={{ background: isMine ? 'rgba(255,255,255,0.15)' : 'rgba(1,118,211,0.07)', borderLeft: `3px solid ${isMine ? 'rgba(255,255,255,0.5)' : '#0176D3'}`, borderRadius: '8px 8px 0 0', padding: '6px 10px', marginBottom: -4, maxWidth: '100%' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: isMine ? 'rgba(255,255,255,0.8)' : '#0176D3', marginBottom: 2 }}>{msg.replyTo.fromName}</div>
+            <div style={{ fontSize: 11, color: isMine ? 'rgba(255,255,255,0.7)' : '#706E6B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+              {msg.replyTo.isAttachment ? '📎 Attachment' : msg.replyTo.message}
+            </div>
+          </div>
+        )}
+
         <div style={{ background: isMine ? 'linear-gradient(135deg,#0176D3,#014486)' : '#F3F4F6', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: msg.attachment && !msg.message ? '8px' : '10px 14px', color: isMine ? '#fff' : '#181818', fontSize: 14, lineHeight: 1.55, wordBreak: 'break-word', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
           {msg.attachment && <AttachmentBubble attachment={msg.attachment} isMine={isMine} />}
           {msg.message && <div style={{ marginTop: msg.attachment ? 6 : 0 }}>{msg.message}</div>}
         </div>
+
         {msg.jobTitle && (
           <div style={{ fontSize: 10, color: '#0176D3', marginTop: 3, paddingLeft: 2 }}>💼 {msg.jobTitle}</div>
         )}
-        <div style={{ fontSize: 10, color: '#C9C7C5', marginTop: 3, paddingLeft: 2 }}>{fmtFull(msg.createdAt)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, paddingLeft: 2 }}>
+          <span style={{ fontSize: 10, color: '#C9C7C5' }}>{fmtFull(msg.createdAt)}</span>
+          {isMine && (
+            <span style={{ fontSize: 10, color: msg.readAt ? '#22c55e' : '#C9C7C5' }} title={msg.readAt ? `Seen ${fmtFull(msg.readAt)}` : 'Delivered'}>
+              {msg.readAt ? '✓✓' : '✓'}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Reply button — appears on hover */}
+      {hovered && (
+        <button
+          onClick={() => onReply(msg)}
+          title="Reply"
+          style={{ alignSelf: 'center', background: '#F3F4F6', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, order: isMine ? -1 : 1, marginBottom: 20 }}
+        >
+          ↩
+        </button>
+      )}
     </div>
   );
 }
 
-function ContactItem({ contact, active, onClick }) {
+function ContactItem({ contact, active, onClick, online }) {
   const color = ROLE_COLOR[contact.role] || '#64748b';
   return (
     <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', background: active ? 'rgba(1,118,211,0.08)' : 'transparent', borderLeft: active ? '3px solid #0176D3' : '3px solid transparent', transition: 'background 0.15s' }}>
-      <Avatar name={contact.name} role={contact.role} size={38} />
+      <Avatar name={contact.name} role={contact.role} size={38} online={online} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 700, fontSize: 13, color: '#181818', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{contact.name}</span>
           <span style={{ fontSize: 10, color: '#9E9D9B', flexShrink: 0 }}>{fmt(contact.lastAt)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-          <span style={{ fontSize: 11, color: '#706E6B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{contact.lastMsg || String.fromCharCode(8212)}</span>
+          <span style={{ fontSize: 11, color: '#706E6B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{contact.lastMsg || '—'}</span>
           {contact.unread > 0 && (
             <span style={{ background: '#0176D3', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{contact.unread}</span>
           )}
         </div>
-        <span style={{ fontSize: 10, color, background: `${color}15`, borderRadius: 20, padding: '1px 7px', fontWeight: 600, display: 'inline-block', marginTop: 2 }}>{ROLE_LABEL[contact.role] || contact.role}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+          <span style={{ fontSize: 10, color, background: `${color}15`, borderRadius: 20, padding: '1px 7px', fontWeight: 600 }}>{ROLE_LABEL[contact.role] || contact.role}</span>
+          {online && <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 700 }}>● Online</span>}
+        </div>
       </div>
     </div>
   );
@@ -120,10 +189,14 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const [showNewChat, setShowNewChat]   = useState(false);
   const [searchContacts, setSearchContacts] = useState('');
   const [mobileShowThread, setMobileShowThread] = useState(false);
-  const bottomRef = useRef(null);
-  const fileRef   = useRef(null);
-  const pollRef   = useRef(null);
-  const isMobile  = window.innerWidth < 640;
+  const [onlineIds, setOnlineIds]       = useState(new Set());
+  const [activeLastSeen, setActiveLastSeen] = useState(null);
+  const [replyTo, setReplyTo]           = useState(null);
+  const bottomRef  = useRef(null);
+  const fileRef    = useRef(null);
+  const pollRef    = useRef(null);
+  const onlinePoll = useRef(null);
+  const isMobile   = useIsMobile();
   const myId = myUser?._id || myUser?.id;
 
   const loadContacts = useCallback(async () => {
@@ -144,10 +217,26 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     setLoadingThread(false);
   }, []);
 
+  const loadOnline = useCallback(async () => {
+    try {
+      const r = await api.getOnlineUsers();
+      const list = Array.isArray(r?.data) ? r.data : [];
+      setOnlineIds(new Set(list.map(u => u.id)));
+      // update active contact's lastSeen if they're in the list
+      if (active) {
+        const match = list.find(u => u.id === active.userId);
+        setActiveLastSeen(match ? new Date() : activeLastSeen);
+      }
+    } catch {}
+  }, [active, activeLastSeen]);
+
   useEffect(() => {
     if (!open) return;
     loadContacts();
-  }, [open, loadContacts]);
+    loadOnline();
+    onlinePoll.current = setInterval(loadOnline, 30_000);
+    return () => clearInterval(onlinePoll.current);
+  }, [open]); // eslint-disable-line
 
   useEffect(() => {
     if (!open || !initialRecipient) return;
@@ -165,7 +254,7 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     if (!active) return;
     loadThread(active.userId);
     clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => loadThread(active.userId), 4000);
+    pollRef.current = setInterval(() => loadThread(active.userId), 5000);
     return () => clearInterval(pollRef.current);
   }, [active, loadThread]);
 
@@ -176,7 +265,10 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const selectContact = (c) => {
     setActive(c);
     setMobileShowThread(true);
+    setReplyTo(null);
     loadThread(c.userId);
+    // mark as read immediately in contacts list
+    setContacts(prev => prev.map(x => x.userId === c.userId ? { ...x, unread: 0 } : x));
   };
 
   const pickFile = (e) => {
@@ -194,15 +286,30 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const send = async () => {
     if ((!text.trim() && !attachment) || !active || sending) return;
     setSending(true);
+    const msgText = text.trim();
+    const curReplyTo = replyTo;
+    setText('');
+    setAttachment(null);
+    setReplyTo(null);
     try {
-      const toUserId = active.userId;
-      const r = await api.sendMessage({ toUserId, message: text.trim(), attachment: attachment || undefined });
+      const r = await api.sendMessage({ toUserId: active.userId, message: msgText, attachment: attachment || undefined, replyTo: curReplyTo || undefined });
       const newMsg = r?.data || r;
       setThread(prev => [...prev, newMsg]);
-      setText('');
-      setAttachment(null);
-      loadContacts();
+      // bump contact to top of list
+      setContacts(prev => {
+        const updated = prev.map(c => c.userId === active.userId
+          ? { ...c, lastMsg: msgText || (attachment ? `📎 ${attachment.name}` : ''), lastAt: new Date().toISOString() }
+          : c
+        );
+        const idx = updated.findIndex(c => c.userId === active.userId);
+        if (idx > 0) {
+          const [item] = updated.splice(idx, 1);
+          updated.unshift(item);
+        }
+        return updated;
+      });
     } catch (e) {
+      setText(msgText); // restore text on failure
       alert(e.message || 'Failed to send');
     } finally {
       setSending(false);
@@ -237,25 +344,27 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     c.email?.toLowerCase().includes(searchContacts.toLowerCase())
   );
 
+  const activeIsOnline = active ? onlineIds.has(active.userId) : false;
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000 }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%,-50%)',
-        width: 'min(840px, 98vw)', height: 'min(620px, 95vh)',
+        width: 'min(860px, 98vw)', height: 'min(640px, 95vh)',
         background: '#fff', borderRadius: 20, zIndex: 9001,
         boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
         display: 'flex', overflow: 'hidden',
       }}>
 
-        {/* Sidebar */}
+        {/* ── Sidebar ──────────────────────────────────────────── */}
         <div style={{
           width: isMobile ? '100%' : 280,
           borderRight: '1px solid #F3F2F2',
-          display: 'flex', flexDirection: 'column', background: '#FAFAFA',
+          display: isMobile ? (mobileShowThread ? 'none' : 'flex') : 'flex',
+          flexDirection: 'column', background: '#FAFAFA',
           flexShrink: 0,
-          ...(isMobile ? { display: mobileShowThread ? 'none' : 'flex' } : {}),
         }}>
           <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '16px 16px 12px', color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>💬</span>
@@ -280,10 +389,10 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
               {newRecipResult === 'notfound' && <div style={{ fontSize: 11, color: '#BA0517', marginTop: 6 }}>No user found.</div>}
               {newRecipResult && newRecipResult !== 'notfound' && (
                 <div onClick={() => startChat(newRecipResult)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 10, border: '1px solid rgba(1,118,211,0.2)', cursor: 'pointer' }}>
-                  <Avatar name={newRecipResult.name} role={newRecipResult.role} size={30} />
+                  <Avatar name={newRecipResult.name} role={newRecipResult.role} size={30} online={onlineIds.has(newRecipResult._id || newRecipResult.id)} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{newRecipResult.name}</div>
-                    <div style={{ fontSize: 11, color: '#706E6B' }}>{ROLE_LABEL[newRecipResult.role]}</div>
+                    <div style={{ fontSize: 11, color: '#706E6B' }}>{ROLE_LABEL[newRecipResult.role] || newRecipResult.role}</div>
                   </div>
                 </div>
               )}
@@ -301,7 +410,17 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {loadingContacts ? (
-              <div style={{ textAlign: 'center', padding: 32, color: '#9E9D9B', fontSize: 13 }}>Loading…</div>
+              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#E8E7E5', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: 12, background: '#E8E7E5', borderRadius: 6, marginBottom: 6, width: '60%' }} />
+                      <div style={{ height: 10, background: '#F3F2F2', borderRadius: 6, width: '80%' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredContacts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
@@ -310,45 +429,90 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
               </div>
             ) : (
               filteredContacts.map(c => (
-                <ContactItem key={c.userId} contact={c} active={active?.userId === c.userId} onClick={() => selectContact(c)} />
+                <ContactItem
+                  key={c.userId}
+                  contact={c}
+                  active={active?.userId === c.userId}
+                  onClick={() => selectContact(c)}
+                  online={onlineIds.has(c.userId)}
+                />
               ))
             )}
           </div>
         </div>
 
-        {/* Thread */}
+        {/* ── Thread ───────────────────────────────────────────── */}
         <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
-          ...(isMobile ? { display: mobileShowThread ? 'flex' : 'none' } : {}),
+          flex: 1, display: isMobile ? (mobileShowThread ? 'flex' : 'none') : 'flex',
+          flexDirection: 'column', minWidth: 0,
         }}>
           {active ? (
             <>
+              {/* Thread header */}
               <div style={{ padding: '12px 16px', borderBottom: '1px solid #F3F2F2', display: 'flex', alignItems: 'center', gap: 10, background: '#FAFAFA' }}>
                 {isMobile && (
                   <button onClick={() => setMobileShowThread(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#0176D3', padding: '0 4px 0 0', lineHeight: 1 }}>‹</button>
                 )}
-                <Avatar name={active.name} role={active.role} size={36} />
+                <Avatar name={active.name} role={active.role} size={36} online={activeIsOnline} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{active.name}</div>
-                  <div style={{ fontSize: 11, color: ROLE_COLOR[active.role] || '#64748b' }}>{ROLE_LABEL[active.role] || active.role}</div>
+                  <div style={{ fontSize: 11, color: activeIsOnline ? '#22c55e' : '#9E9D9B', fontWeight: activeIsOnline ? 600 : 400 }}>
+                    {activeIsOnline ? '● Online now' : ROLE_LABEL[active.role] || active.role}
+                  </div>
                 </div>
                 {!isMobile && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>}
               </div>
 
+              {/* Messages */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px' }}>
                 {loadingThread ? (
-                  <div style={{ textAlign: 'center', padding: 40, color: '#9E9D9B', fontSize: 13 }}>Loading…</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}>
+                    {[1,2,3,4].map((i, idx) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: idx % 2 === 0 ? 'row' : 'row-reverse', gap: 8, alignItems: 'flex-end' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E8E7E5', flexShrink: 0 }} />
+                        <div style={{ height: 38, background: '#F3F4F6', borderRadius: 12, width: `${40 + idx * 15}%` }} />
+                      </div>
+                    ))}
+                  </div>
                 ) : thread.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 60 }}>
                     <div style={{ fontSize: 40, marginBottom: 8 }}>👋</div>
                     <div style={{ color: '#706E6B', fontSize: 13 }}>Start the conversation with {active.name}</div>
                   </div>
                 ) : (
-                  thread.map(m => <MessageBubble key={m._id} msg={m} myId={myId} />)
+                  thread.map(m => (
+                    <MessageBubble
+                      key={m._id}
+                      msg={m}
+                      myId={myId}
+                      onReply={msg => {
+                        setReplyTo({
+                          msgId: msg._id,
+                          fromName: msg.fromName,
+                          message: msg.message || '',
+                          isAttachment: !msg.message && !!msg.attachment,
+                        });
+                      }}
+                    />
+                  ))
                 )}
                 <div ref={bottomRef} />
               </div>
 
+              {/* Reply preview strip */}
+              {replyTo && (
+                <div style={{ padding: '8px 16px', background: '#EEF4FF', borderTop: '1px solid #D8E9FF', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, borderLeft: '3px solid #0176D3', paddingLeft: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', marginBottom: 2 }}>Replying to {replyTo.fromName}</div>
+                    <div style={{ fontSize: 11, color: '#706E6B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {replyTo.isAttachment ? '📎 Attachment' : replyTo.message}
+                    </div>
+                  </div>
+                  <button onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 18, cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}>×</button>
+                </div>
+              )}
+
+              {/* Attachment preview */}
               {attachment && (
                 <div style={{ padding: '6px 16px', background: '#EEF4FF', display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid #D8E9FF' }}>
                   <span style={{ fontSize: 18 }}>{attachment.type?.startsWith('image/') ? '🖼' : '📎'}</span>
@@ -358,6 +522,7 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                 </div>
               )}
 
+              {/* Input bar */}
               <div style={{ padding: '10px 12px', borderTop: '1px solid #F3F2F2', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                 <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" style={{ display: 'none' }} onChange={pickFile} />
                 <button onClick={() => fileRef.current?.click()} title="Attach file (PDF, image, doc — max 8 MB)" style={{ background: 'none', border: '1px solid #E8E7E5', borderRadius: 10, color: '#706E6B', fontSize: 18, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>

@@ -1,4 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+function useIsMobile() {
+  const [m, setM] = React.useState(() => window.innerWidth < 640);
+  React.useEffect(() => {
+    const h = () => setM(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return m;
+}
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -18,6 +28,7 @@ const SkeletonCard = () => (
 
 export default function CandidateDashboard({ user }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [jobs, setJobs]     = useState([]);
   const [apps, setApps]     = useState([]);
   const [profile, setProfile] = useState(null);
@@ -120,7 +131,7 @@ export default function CandidateDashboard({ user }) {
               const job = a.jobId || {};
               const company = job.companyName || job.company || '';
               return (
-                <div key={a.id||a._id} style={{ background:"linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.02))", border:"1.5px solid rgba(1,118,211,0.25)", borderRadius:14, padding:"14px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+                <div key={a.id||a._id} style={{ background:"linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.02))", border:"1.5px solid rgba(1,118,211,0.25)", borderRadius:14, padding:"14px 16px", display:"flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent:"space-between", gap:12 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                     <div style={{ width:40, height:40, borderRadius:10, background:"linear-gradient(135deg,#0176D3,#032D60)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:18, flexShrink:0 }}>🎯</div>
                     <div>
@@ -129,8 +140,8 @@ export default function CandidateDashboard({ user }) {
                       <div style={{ fontSize:11, color:"#706E6B", marginTop:2 }}>Added to pipeline on {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'recently'}</div>
                     </div>
                   </div>
-                  <div style={{ display:"flex", gap:8, flexShrink:0, flexWrap:"wrap" }}>
-                    <button onClick={() => navigate("/app/applications")} style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:8, padding:"8px 16px", fontSize:12, fontWeight:700, cursor:"pointer" }}>View Details →</button>
+                  <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+                    <button onClick={() => navigate("/app/applications")} style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:8, padding:"10px 16px", fontSize:13, fontWeight:700, cursor:"pointer", width: isMobile ? "100%" : "auto" }}>View Details →</button>
                   </div>
                 </div>
               );
@@ -181,7 +192,7 @@ export default function CandidateDashboard({ user }) {
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill,minmax(160px,1fr))", gap: isMobile ? 10 : 12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/applications")}>
           <KpiCard icon="📋" label="Applications Sent"  value={appliedCount}  color="#0176D3" trend={12} sparkValues={[1,2,2,3,3,appliedCount]} />
         </div>
@@ -237,21 +248,25 @@ export default function CandidateDashboard({ user }) {
         )}
         <div style={{ ...card, cursor:"pointer" }} onClick={() => navigate("/app/profile")}>
           <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:"0 0 14px", letterSpacing:1 }}>PROFILE SCORE</p>
-          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-            <RingProgress pct={profilePct} color={profilePct>=80?"#2E844A":profilePct>=60?"#A07E00":"#BA0517"} size={72} />
-            <div style={{ flex:1 }}>
-              {profileFields.map(f => {
-                const filled = profile?.[f] && String(profile[f]).trim() !== "";
-                return (
-                  <div key={f} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                    <span style={{ color:filled?"#3BA755":"#9E9D9B", fontSize:10 }}>{filled?"✓":"○"}</span>
-                    <span style={{ color:filled?"#706E6B":"#9E9D9B", fontSize:11, textTransform:"capitalize" }}>{f}</span>
-                  </div>
-                );
-              })}
+          <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap: isMobile ? "wrap" : "nowrap" }}>
+            <div style={{ display:"flex", justifyContent:"center", width: isMobile ? "100%" : "auto" }}>
+              <RingProgress pct={profilePct} color={profilePct>=80?"#2E844A":profilePct>=60?"#A07E00":"#BA0517"} size={isMobile ? 80 : 72} />
+            </div>
+            <div style={{ flex:1, width: isMobile ? "100%" : "auto" }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr", gap:"4px 12px" }}>
+                {profileFields.map(f => {
+                  const filled = profile?.[f] && String(profile[f]).trim() !== "";
+                  return (
+                    <div key={f} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ color:filled?"#3BA755":"#9E9D9B", fontSize:12 }}>{filled?"✓":"○"}</span>
+                      <span style={{ color:filled?"#374151":"#9E9D9B", fontSize:12, textTransform:"capitalize" }}>{f}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          {profilePct < 100 && <button onClick={e => { e.stopPropagation(); navigate("/app/profile"); }} style={{ ...btnG, width:"100%", marginTop:12, padding:"7px 0", fontSize:11, textAlign:"center" }}>✏️ Complete Profile</button>}
+          {profilePct < 100 && <button onClick={e => { e.stopPropagation(); navigate("/app/profile"); }} style={{ ...btnG, width:"100%", marginTop:12, padding:"10px 0", fontSize:12, textAlign:"center" }}>✏️ Complete Profile →</button>}
         </div>
       </div>
       {apps.length > 0 && (

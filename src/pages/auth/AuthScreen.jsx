@@ -423,45 +423,145 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   );
 }
 
-// ── Forgot Password Form ───────────────────────────────────────────────────────
+// ── Forgot Password Form — OTP flow ──────────────────────────────────────────
 function ForgotPasswordForm({ onBack }) {
+  const navigate              = useNavigate();
   const [email, setEmail]     = useState('');
+  const [otp, setOtp]         = useState('');
+  const [step, setStep]       = useState('email'); // email | otp | done
   const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
   const [toast, setToast]     = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpRefs = [useRef(),useRef(),useRef(),useRef(),useRef(),useRef()];
 
-  const submit = async () => {
-    if (!email) return setToast('❌ Enter your email address');
+  // Countdown timer for resend
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const sendOtp = async () => {
+    if (!email.trim()) return setToast('❌ Enter your email address');
     setLoading(true);
     try {
-      await api.forgotPassword(email);
-      setDone(true);
+      await api.sendResetOtp(email.trim());
+      setStep('otp');
+      setResendCooldown(60);
     } catch (e) { setToast('❌ ' + e.message); }
     setLoading(false);
+  };
+
+  const verifyOtp = async () => {
+    if (otp.length < 6) return setToast('❌ Enter the 6-digit OTP');
+    setLoading(true);
+    try {
+      const res = await api.verifyResetOtp(email.trim(), otp);
+      // Navigate to set-password page with the token
+      navigate(`/set-password?token=${encodeURIComponent(res.token)}&email=${encodeURIComponent(email.trim())}&mode=reset`);
+    } catch (e) { setToast('❌ ' + e.message); otp && setOtp(''); }
+    setLoading(false);
+  };
+
+  // Handle OTP digit input with auto-focus
+  const handleOtpKey = (idx, value, e) => {
+    if (!/^\d*$/.test(value)) return;
+    const digits = otp.split('');
+    digits[idx] = value.slice(-1);
+    const next = digits.join('');
+    setOtp(next);
+    if (value && idx < 5) otpRefs[idx + 1].current?.focus();
+    if (e.key === 'Backspace' && !value && idx > 0) otpRefs[idx - 1].current?.focus();
   };
 
   return (
     <div style={BG}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#0176D3', cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 20 }}>← Back to Login</button>
-        <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Reset Password</h2>
-        <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 24px' }}>Enter your registered email and we'll send a reset link from hr@talentnesthr.com</p>
+        <button onClick={step === 'otp' ? () => setStep('email') : onBack} style={{ background: 'none', border: 'none', color: '#0176D3', cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 20 }}>
+          ← {step === 'otp' ? 'Change email' : 'Back to Login'}
+        </button>
 
-        {done ? (
-          <div style={{ background: 'rgba(46,132,74,0.08)', border: '1px solid rgba(46,132,74,0.3)', borderRadius: 12, padding: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>📧</div>
-            <p style={{ color: '#2E844A', fontWeight: 700, margin: '0 0 6px' }}>Reset link sent!</p>
-            <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>Check your inbox at <strong>{email}</strong>. The link expires in 1 hour.</p>
-            <button onClick={onBack} style={{ ...BTN_P, marginTop: 20, padding: '10px 24px' }}>Back to Login</button>
-          </div>
-        ) : (
+        {step === 'email' && (
           <>
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>EMAIL ADDRESS *</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="you@example.com" style={{ ...INP, marginBottom: 16 }} autoFocus />
-            <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', opacity: loading ? 0.7 : 1 }}>
-              {loading ? <><Spinner /> Sending…</> : '📧 Send Reset Link'}
+            <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Reset Password</h2>
+            <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 24px', lineHeight: 1.6 }}>
+              Enter your registered email. We'll send a 6-digit OTP to verify it's you.
+            </p>
+            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EMAIL ADDRESS *</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendOtp()}
+              placeholder="you@example.com"
+              style={{ ...INP, marginBottom: 16 }}
+              autoFocus
+            />
+            <button onClick={sendOtp} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', opacity: loading ? 0.7 : 1 }}>
+              {loading ? <><Spinner /> Sending OTP…</> : '📧 Send OTP'}
             </button>
+          </>
+        )}
+
+        {step === 'otp' && (
+          <>
+            <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Enter OTP</h2>
+            <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 6px', lineHeight: 1.6 }}>
+              We sent a 6-digit code to <strong style={{ color: '#181818' }}>{email}</strong>
+            </p>
+            <p style={{ color: '#9CA3AF', fontSize: 11, margin: '0 0 24px' }}>Check your inbox (and spam folder). Valid for 10 minutes.</p>
+
+            {/* OTP digit boxes */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 24 }}>
+              {[0,1,2,3,4,5].map(i => (
+                <input
+                  key={i}
+                  ref={otpRefs[i]}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={otp[i] || ''}
+                  onChange={e => handleOtpKey(i, e.target.value, e)}
+                  onKeyDown={e => { if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs[i-1].current?.focus(); }}
+                  style={{
+                    width: 46, height: 54,
+                    textAlign: 'center',
+                    fontSize: 22,
+                    fontWeight: 800,
+                    fontFamily: 'monospace',
+                    border: `2px solid ${otp[i] ? '#0176D3' : '#E2E8F0'}`,
+                    borderRadius: 10,
+                    outline: 'none',
+                    background: otp[i] ? 'rgba(1,118,211,0.06)' : '#fff',
+                    color: '#0176D3',
+                    transition: 'all 0.15s',
+                  }}
+                  autoFocus={i === 0}
+                />
+              ))}
+            </div>
+
+            <button
+              onClick={verifyOtp}
+              disabled={loading || otp.length < 6}
+              style={{ ...BTN_P, width: '100%', padding: '13px 0', marginBottom: 12, opacity: (loading || otp.length < 6) ? 0.6 : 1 }}
+            >
+              {loading ? <><Spinner /> Verifying…</> : '🔓 Verify OTP & Continue'}
+            </button>
+
+            <div style={{ textAlign: 'center' }}>
+              {resendCooldown > 0 ? (
+                <p style={{ color: '#9CA3AF', fontSize: 12, margin: 0 }}>Resend in {resendCooldown}s</p>
+              ) : (
+                <button
+                  onClick={async () => { setOtp(''); await sendOtp(); }}
+                  style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  🔄 Resend OTP
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
