@@ -102,6 +102,7 @@ function NotificationBell({ userRole }) {
   };
 
   const markOne  = async (id) => {
+    if (!id) return;
     try {
       await api.markRead(id);
       setNotifs(p => p.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
@@ -125,9 +126,10 @@ function NotificationBell({ userRole }) {
 
   // Open detail modal — mark read + store for display
   const openDetail = async (n) => {
+    const nid = n._id || n.id;
     if (!n.read) {
-      setNotifs(p => p.map(x => x.id === n.id ? { ...x, read: true } : x));
-      await markOne(n.id);
+      setNotifs(p => p.map(x => (x._id || x.id) === nid ? { ...x, read: true } : x));
+      await markOne(nid);
     }
     setDetail(n);
   };

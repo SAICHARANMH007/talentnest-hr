@@ -65,7 +65,9 @@ export async function initAuth() {
     }
     return null;
   } catch {
-    return null;
+    // Network error (backend cold-start, offline) — signal the caller so it can
+    // restore the session from sessionStorage rather than forcing a logout.
+    return { networkError: true };
   }
 }
 

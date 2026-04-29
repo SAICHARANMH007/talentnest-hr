@@ -13,11 +13,8 @@ import { SM, STAGES } from '../../constants/stages.js';
  * Handles both "User/Admin Edit" and "Candidate/Pipeline Stage Management".
  * Props: user (required), app (optional), onClose, onUpdated
  */
-export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmin, currentUserRole, onClose, onDelete, onUpdated }) {
-  const [tab, setTab] = useState('profile');
-  const [app, setApp] = useState(initialApp);
-  const [orgs, setOrgs] = useState([]);
-  const [form, setForm] = useState({
+function buildForm(u) {
+  return {
     name:            u?.name            || '',
     email:           u?.email           || '',
     phone:           u?.phone           || '',
@@ -41,7 +38,15 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     role:            u?.role            || 'candidate',
     tenantId:        (typeof u?.tenantId === 'object' ? (u.tenantId?._id?.toString() || u.tenantId?.id || '') : u?.tenantId) || (typeof u?.orgId === 'object' ? (u.orgId?._id?.toString() || u.orgId?.id || '') : u?.orgId) || '',
     isActive:        u?.isActive !== false,
-  });
+  };
+}
+
+export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmin, currentUserRole, onClose, onDelete, onUpdated }) {
+  const [tab, setTab] = useState('profile');
+  const [app, setApp] = useState(initialApp);
+  const [orgs, setOrgs] = useState([]);
+  const [fullUser, setFullUser] = useState(u);
+  const [form, setForm] = useState(() => buildForm(u));
   const [currentStage, setCurrentStage] = useState(initialApp?.stage || '');
   const [changingStage, setChangingStage] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,19 +55,49 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // When a partial candidate object is passed (populated from application.candidateId),
+  // fetch the full Candidate profile so all fields are available for editing.
+  useEffect(() => {
+    const uid = u?.id || u?._id?.toString();
+    if (!uid) return;
+    const isCandidate = (u?.role || 'candidate') === 'candidate';
+    if (!isCandidate) return;
+    // Detect partial object — application populate only returns a handful of fields
+    const hasFullData = u?.currentCTC !== undefined || u?.expectedCTC !== undefined || u?.workHistory !== undefined;
+    if (hasFullData) return;
+    // Fetch the full Candidate model record
+    api.getCandidate(uid).then(full => {
+      if (!full) return;
+      const enriched = { role: 'candidate', ...full, id: full.id || full._id?.toString() };
+      setFullUser(enriched);
+      setForm(buildForm(enriched));
+    }).catch(() => {
+      // Fallback: try the Users endpoint (for self-registered candidates)
+      api.getUser(uid).then(full => {
+        if (!full) return;
+        const enriched = { ...full, id: full.id || full._id?.toString() };
+        setFullUser(enriched);
+        setForm(buildForm(enriched));
+      }).catch(() => {});
+    });
+  }, [u?.id, u?._id]); // eslint-disable-line
+
   // If we have a candidate but no app context, try to find the last application for context
   useEffect(() => {
-    if (u?.role === 'candidate' && !app) {
-       setLoadingApp(true);
-       api.getApplications({ candidateId: u.id || u._id }).then(apps => {
-         const list = Array.isArray(apps) ? apps : (apps?.data || []);
-         if (list.length > 0) {
-           setApp(list[0]);
-           setCurrentStage(list[0].stage);
-         }
-       }).catch(() => {}).finally(() => setLoadingApp(false));
+    const isCandidate = (u?.role || 'candidate') === 'candidate';
+    if (isCandidate && !app) {
+      const uid = u?.id || u?._id?.toString();
+      if (!uid) return;
+      setLoadingApp(true);
+      api.getApplications({ candidateId: uid }).then(apps => {
+        const list = Array.isArray(apps) ? apps : (apps?.data || []);
+        if (list.length > 0) {
+          setApp(list[0]);
+          setCurrentStage(list[0].stage);
+        }
+      }).catch(() => {}).finally(() => setLoadingApp(false));
     }
-  }, [u?.id, u?.role, app]);
+  }, [u?.id, u?._id, u?.role, app]); // eslint-disable-line
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -77,10 +112,18 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     setSaving(true);
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
-      const mid = u.id || u._id;
-      const raw = await api.updateUser(mid, { ...form, skills });
-      // Unwrap { success, data } envelope — pass clean user object to consumers
-      const updated = raw?.data || raw;
+      const mid = fullUser?.id || fullUser?._id || u.id || u._id;
+      const isUserModel = !!(fullUser?.role || u?.role); // User model records always have a role
+      let updated;
+      if (isUserModel) {
+        const raw = await api.updateUser(mid, { ...form, skills });
+        updated = raw?.data || raw;
+      } else {
+        // Candidate model record (added by recruiter/admin, no User account)
+        const raw = await api.updateCandidate(mid, { ...form, skills });
+        updated = raw?.data || raw;
+        if (updated) updated = { role: 'candidate', ...updated, id: updated.id || updated._id?.toString() };
+      }
       setToast('✅ Profile saved!');
       onUpdated?.(updated);
     } catch (e) { setToast(`❌ ${e.message}`); }
@@ -128,14 +171,14 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         <div style={{ padding: 'clamp(14px,3vw,24px) clamp(16px,4vw,28px)', borderBottom: '1px solid #E2E8F0', background: '#fff', flexShrink: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <div style={{ width: 44, height: 44, borderRadius: 14, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
-              {(u.name || '?')[0].toUpperCase()}
+              {(form.name || u.name || '?')[0].toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ color: '#0A1628', fontSize: 'clamp(15px,3vw,20px)', fontWeight: 900, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || '—'}</h2>
+              <h2 style={{ color: '#0A1628', fontSize: 'clamp(15px,3vw,20px)', fontWeight: 900, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.name || u.name || '—'}</h2>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Badge label={u.role?.replace('_', ' ')} color="#0176D3" />
+                <Badge label={(form.role || u.role || 'candidate').replace('_', ' ')} color="#0176D3" />
                 {app && <Badge label={(SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
-                {u.orgName && <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {u.orgName}</span>}
+                {(fullUser?.orgName || u.orgName) && <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {fullUser?.orgName || u.orgName}</span>}
               </div>
             </div>
             <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
@@ -143,7 +186,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
           <div style={{ display: 'flex', gap: 0, marginTop: 16, borderBottom: '1px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none' }}>
             <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 Profile</button>
-            {u.role === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Pipeline</button>}
+            {(form.role || u.role || 'candidate') === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Pipeline</button>}
             <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 Resume</button>
           </div>
         </div>
@@ -227,7 +270,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                    <Field label="Skills (comma-separated)" value={form.skills} onChange={v => sf('skills', v)} />
                 </div>
 
-                {u?.role === 'candidate' && (
+                {(form.role || u?.role || 'candidate') === 'candidate' && (
                   <div style={{ marginTop: 14, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                     <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 800, color: '#475569', letterSpacing: 1 }}>📋 PLACEMENT DETAILS</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 10 }}>
@@ -284,7 +327,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
           {tab === 'resume' && (
              <div style={{ border: '2px solid #F1F5F9', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
-                <ResumeCard candidate={u} />
+                <ResumeCard candidate={fullUser || u} />
              </div>
           )}
 

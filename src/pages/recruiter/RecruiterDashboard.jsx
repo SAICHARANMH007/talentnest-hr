@@ -59,6 +59,17 @@ export default function RecruiterDashboard({ user }) {
     return () => { cancelled = true; };
   }, [user.id]);
 
+  // ALL hooks must be declared before any conditional return — Rules of Hooks
+  const appsByJob = React.useMemo(() => {
+    const map = new Map();
+    apps.forEach(a => {
+      const jid = toId(a.jobId);
+      if (!map.has(jid)) map.set(jid, []);
+      map.get(jid).push(a);
+    });
+    return map;
+  }, [apps]);
+
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
 
   const myApps = apps;
@@ -79,17 +90,6 @@ export default function RecruiterDashboard({ user }) {
     .sort((a,b) => a.dateObj - b.dateObj);
 
   const funnelData = STAGES.filter(s=>s.id!=="rejected").map(s => ({ ...s, count:myApps.filter(a=>a.stage===s.id).length })).filter(s=>s.count>0||["applied","shortlisted","interview_scheduled","selected"].includes(s.id));
-
-  // Optimization: Pre-group applications by jobId for O(1) access
-  const appsByJob = React.useMemo(() => {
-    const map = new Map();
-    apps.forEach(a => {
-      const jid = toId(a.jobId);
-      if (!map.has(jid)) map.set(jid, []);
-      map.get(jid).push(a);
-    });
-    return map;
-  }, [apps]);
 
   const jobPerf = jobs.map(j => {
     const jid = String(j.id || j._id);
@@ -224,13 +224,13 @@ export default function RecruiterDashboard({ user }) {
                 const iv = a.interviewRounds[0]; // guaranteed by upcomingInterviews filter
                 const ivDate = new Date(iv.scheduledAt);
                 return (
-                <div key={a.id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"rgba(245,158,11,0.08)", borderRadius:12, border:"1px solid rgba(245,158,11,0.2)", cursor:"pointer" }}>
+                <div key={a.id} onClick={() => { const c = a.candidateId || a.candidate; c ? setDrawerUser({ role:'candidate', ...c, id: c.id||c._id?.toString() }) : navigate("/app/candidates"); }} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"rgba(245,158,11,0.08)", borderRadius:12, border:"1px solid rgba(245,158,11,0.2)", cursor:"pointer" }}>
                   <div style={{ width:36, height:36, borderRadius:10, background:"rgba(245,158,11,0.2)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <div style={{ color:"#F59E0B", fontSize:13, fontWeight:700, lineHeight:1 }}>{ivDate.getDate()}</div>
                     <div style={{ color:"#706E6B", fontSize:8 }}>{ivDate.toLocaleString("en",{month:"short"})}</div>
                   </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ color:"#181818", fontWeight:600, fontSize:13 }}>{a.candidateId?.name}</div>
+                    <div style={{ color:"#181818", fontWeight:600, fontSize:13 }}>{(a.candidateId||a.candidate)?.name}</div>
                     <div style={{ color:"#0176D3", fontSize:11 }}>{a.jobId?.title}</div>
                     <div style={{ color:"#706E6B", fontSize:10 }}>{iv.type==="video"?"📹 Video":iv.type==="phone"?"📞 Phone":iv.type==="technical"?"💻 Technical":"🏢 In-Person"}</div>
                   </div>
@@ -289,9 +289,9 @@ export default function RecruiterDashboard({ user }) {
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
               {adminAssigned.slice(0,6).map(a => {
                 const s = SM[a.stage]||{color:"#0176D3",label:a.stage,icon:"•"};
-                const cand = a.candidateId;
+                const cand = a.candidateId || a.candidate;
                 return (
-                  <div key={a.id} onClick={() => cand ? setDrawerUser(cand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(1,118,211,0.04)", borderRadius:10, border:"1px solid rgba(1,118,211,0.15)", cursor:"pointer", flexWrap:"wrap" }}
+                  <div key={a.id} onClick={() => cand ? setDrawerUser({ role:'candidate', ...cand, id: cand.id||cand._id?.toString() }) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(1,118,211,0.04)", borderRadius:10, border:"1px solid rgba(1,118,211,0.15)", cursor:"pointer", flexWrap:"wrap" }}
                     onMouseEnter={e => e.currentTarget.style.background="rgba(1,118,211,0.08)"}
                     onMouseLeave={e => e.currentTarget.style.background="rgba(1,118,211,0.04)"}>
                     <div style={{ width:36,height:36,borderRadius:"50%",background:"#0176D3",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:14,flexShrink:0 }}>
@@ -330,12 +330,13 @@ export default function RecruiterDashboard({ user }) {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {interestedInvites.slice(0,8).map(inv => {
-              const invCand = inv.candidateId;
+              const invCand = inv.candidateId || inv.candidate;
               const invName = invCand?.name || 'Candidate';
               const invEmail = invCand?.email || '';
               const invJob = inv.jobId?.title || '';
+              const openInvDrawer = () => invCand ? setDrawerUser({ role:'candidate', ...invCand, id: invCand.id||invCand._id?.toString() }) : navigate("/app/candidates");
               return (
-              <div key={inv.id} onClick={() => invCand ? setDrawerUser(invCand) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(46,132,74,0.04)", borderRadius:10, border:"1px solid rgba(46,132,74,0.2)", cursor:"pointer", flexWrap:"wrap" }}
+              <div key={inv.id} onClick={openInvDrawer} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(46,132,74,0.04)", borderRadius:10, border:"1px solid rgba(46,132,74,0.2)", cursor:"pointer", flexWrap:"wrap" }}
                 onMouseEnter={e => e.currentTarget.style.background="rgba(46,132,74,0.1)"}
                 onMouseLeave={e => e.currentTarget.style.background="rgba(46,132,74,0.04)"}>
                 <div style={{ width:36, height:36, borderRadius:"50%", background:"#2E844A", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:700, fontSize:14, flexShrink:0 }}>
@@ -345,7 +346,7 @@ export default function RecruiterDashboard({ user }) {
                   <div style={{ color:"#181818", fontWeight:600, fontSize:13 }}>{invName}</div>
                   <div style={{ color:"#706E6B", fontSize:11, marginTop:1 }}>{invEmail}{invJob ? ` · for ${invJob}` : ''}</div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); setDrawerUser(invCand || inv.candidate); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
+                <button onClick={(e) => { e.stopPropagation(); openInvDrawer(); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   <span style={{ background:"rgba(46,132,74,0.15)", color:"#2E844A", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>✅ Interested</span>
                   <span style={{ color:"#9E9D9B", fontSize:10 }}>{inv.respondedAt ? new Date(inv.respondedAt).toLocaleDateString() : ''}</span>
@@ -371,9 +372,14 @@ export default function RecruiterDashboard({ user }) {
           {recentActs.map(a => {
             const lastH = a.stageHistory?.[a.stageHistory.length-1];
             const s = SM[a.stage]||{color:"#0176D3",label:a.stage};
-            const candName = a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown Candidate';
+            const candObj = a.candidateId || a.candidate;
+            const candName = candObj?.name || a.candidateName || candObj?.email?.split('@')[0] || 'Unknown Candidate';
+            const openDrawer = () => {
+              if (!candObj) { navigate("/app/candidates"); return; }
+              setDrawerUser({ role: 'candidate', ...candObj, id: candObj.id || candObj._id?.toString() });
+            };
             return (
-              <div key={a.id || a._id} onClick={() => a.candidateId ? setDrawerUser(a.candidateId) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#FAFAFA", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer", flexWrap:"wrap" }}>
+              <div key={a.id || a._id} onClick={openDrawer} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#FAFAFA", borderRadius:10, border:"1px solid #F3F2F2", cursor:"pointer", flexWrap:"wrap" }}>
                 <ActivityDot stage={a.stage} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -383,7 +389,7 @@ export default function RecruiterDashboard({ user }) {
                   </div>
                   <div style={{ color:"#706E6B", fontSize:11, marginTop:1 }}>{a.jobId?.title || 'Job'} @ {a.jobId?.companyName || a.jobId?.company || 'Internal'}</div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); setDrawerUser(a.candidateId || a.candidate); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
+                <button onClick={(e) => { e.stopPropagation(); openDrawer(); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
                 <TimeAgo date={lastH?.movedAt||a.updatedAt||a.createdAt} />
               </div>
             );
@@ -404,17 +410,21 @@ export default function RecruiterDashboard({ user }) {
               {drillDown.items.length === 0 && <p style={{ color:'#94A3B8', textAlign:'center', padding:'40px 0' }}>No records found.</p>}
               {drillDown.items.map((item, idx) => {
                 const s = SM[item.stage] || { color:'#0176D3', label: item.stage };
-                const cand = item.candidateId;
+                const rawCand = item.candidateId || item.candidate;
+                const candObj = rawCand && typeof rawCand === 'object'
+                  ? { role:'candidate', ...rawCand, id: rawCand.id || rawCand._id?.toString() }
+                  : null;
+                const openCandDrawer = () => { if (candObj) setDrawerUser(candObj); };
                 return (
-                  <div key={item.id || item._id || idx} onClick={() => cand ? setDrawerUser(cand) : null} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid #F8FAFC', cursor: cand ? 'pointer' : 'default', flexWrap:'wrap' }}>
+                  <div key={item.id || item._id || idx} onClick={openCandDrawer} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid #F8FAFC', cursor: candObj ? 'pointer' : 'default', flexWrap:'wrap' }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:13, flexShrink:0 }}>
-                      {(item._displayName || cand?.name || 'C')[0].toUpperCase()}
+                      {(item._displayName || candObj?.name || 'C')[0].toUpperCase()}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || cand?.name || item.candidateName || 'Candidate'}</div>
+                      <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || candObj?.name || item.candidateName || 'Candidate'}</div>
                       <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{item._displaySub || `${item.jobId?.title || ''}`}</div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); setDrawerUser(cand || item.candidate || item); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
+                    <button onClick={(e) => { e.stopPropagation(); openCandDrawer(); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
                     <span style={{ background:`${s.color}15`, color:s.color, border:`1px solid ${s.color}33`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                 );

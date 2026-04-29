@@ -77,33 +77,42 @@ export default function CandidateDashboard({ user }) {
     .slice(0, 3);
 
   // Weighted profile strength
+  // Each entry has primary field key + optional alias keys (backend may use either)
   const PROFILE_WEIGHTS = [
-    { f:"name",       w:15, label:"Full Name" },
-    { f:"title",      w:12, label:"Job Title / Role" },
-    { f:"skills",     w:12, label:"Skills" },
-    { f:"phone",      w:10, label:"Phone" },
-    { f:"summary",    w:10, label:"Summary / Bio" },
-    { f:"experience", w:10, label:"Years of Experience" },
-    { f:"location",   w:8,  label:"Location" },
-    { f:"linkedin",   w:6,  label:"LinkedIn" },
-    { f:"education",  w:7,  label:"Education" },
-    { f:"certifications", w:5, label:"Certifications" },
-    { f:"avatar",     w:5,  label:"Profile Photo" },
+    { f:"name",       aliases:[],                         w:15, label:"Full Name" },
+    { f:"title",      aliases:["jobRole","currentRole"],  w:12, label:"Job Title / Role" },
+    { f:"skills",     aliases:[],                         w:12, label:"Skills" },
+    { f:"phone",      aliases:[],                         w:10, label:"Phone" },
+    { f:"summary",    aliases:["bio"],                    w:10, label:"Summary / Bio" },
+    { f:"experience", aliases:["experienceYears"],        w:10, label:"Years of Experience" },
+    { f:"location",   aliases:[],                         w:8,  label:"Location" },
+    { f:"linkedinUrl",aliases:["linkedin"],               w:6,  label:"LinkedIn" },
+    { f:"education",  aliases:["workHistory"],            w:7,  label:"Education / Work History" },
+    { f:"certifications", aliases:[],                     w:5,  label:"Certifications" },
+    { f:"avatarUrl",  aliases:["avatar","profilePic"],    w:5,  label:"Profile Photo" },
   ];
+  const src = profile || user; // fallback to JWT user if profile not yet loaded
+  const getField = (x) => {
+    const keys = [x.f, ...(x.aliases || [])];
+    for (const k of keys) {
+      const val = src?.[k];
+      if (val !== undefined && val !== null && val !== '') {
+        if (Array.isArray(val)) return val.length > 0 ? val : null;
+        return String(val).trim() !== '' ? val : null;
+      }
+    }
+    return null;
+  };
   const totalWeight = PROFILE_WEIGHTS.reduce((s,x)=>s+x.w,0);
-  const earnedWeight = PROFILE_WEIGHTS.reduce((s,x) => {
-    const val = profile?.[x.f];
-    const filled = val && (Array.isArray(val) ? val.length > 0 : String(val).trim() !== "");
-    return s + (filled ? x.w : 0);
-  }, 0);
+  const earnedWeight = PROFILE_WEIGHTS.reduce((s,x) => s + (getField(x) ? x.w : 0), 0);
   const profilePct = Math.round((earnedWeight / totalWeight) * 100);
-  const firstMissing = PROFILE_WEIGHTS.find(x => {
-    const val = profile?.[x.f];
-    return !val || (Array.isArray(val) ? val.length === 0 : String(val).trim() === "");
-  });
+  const firstMissing = PROFILE_WEIGHTS.find(x => !getField(x));
 
   const profileFields = ["name","title","skills","location","summary","phone","experience"];
-  const filledFields  = profileFields.filter(f => profile?.[f] && String(profile[f]).trim() !== "");
+  const filledFields  = profileFields.filter(f => {
+    const val = (profile || user)?.[f];
+    return val && String(val).trim() !== "" && (!Array.isArray(val) || val.length > 0);
+  });
   const activeApps    = apps.filter(a => !["rejected","selected"].includes(a.stage)).length;
   const appliedCount  = apps.length;
   const shortlisted   = apps.filter(a => ["shortlisted","interview_scheduled","interview_completed","offer_extended","selected"].includes(a.stage)).length;

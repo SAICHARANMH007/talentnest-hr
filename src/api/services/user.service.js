@@ -51,5 +51,15 @@ export const userService = {
   async markReachOut(id, note)          { return req('PATCH', `/users/${id}/reach-out`, { note }); },
   async assignCandidate(id, recruiterId) { return req('PATCH', `/users/${id}/assign`, { recruiterId }); },
   async mergeUsers(primaryId, duplicateId) { return req('POST', '/users/merge', { primaryId, duplicateId }); },
-  async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); }
+  async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); },
+
+  // Candidate-model (separate from User model) — used by pipeline/application populate
+  async getCandidate(id) {
+    const r = await req('GET', `/candidates/${id}`);
+    return r?.data || r;
+  },
+  async updateCandidate(id, data) {
+    const r = await req('PATCH', `/candidates/${id}`, data);
+    return r?.data || r;
+  },
 };

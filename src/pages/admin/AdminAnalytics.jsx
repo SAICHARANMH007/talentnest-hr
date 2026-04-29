@@ -586,7 +586,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 <button 
                   onClick={() => {
                     const id = extractId(a.candidateId || a.candidate);
-                    const userToEdit = fullUser || allCandidates.find(c => String(c.id || c._id) === id) || { id, name: candidateName, email: a.candidateEmail };
+                    const candObj = a.candidateId && typeof a.candidateId === 'object' ? a.candidateId : null;
+                    const userToEdit = fullUser
+                      || allCandidates.find(c => String(c.id || c._id) === id)
+                      || (candObj ? { role: 'candidate', ...candObj, id: candObj.id || candObj._id?.toString() } : null)
+                      || { role: 'candidate', id, name: candidateName, email: a.candidateEmail };
                     setDrawerUser(userToEdit);
                   }}
                   style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -907,7 +911,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
                         <button 
                           onClick={() => {
                             const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
-                            const userToEdit = allCandidates.find(c => String(c.id || c._id) === String(id)) || item;
+                            const candObj = item.candidateId && typeof item.candidateId === 'object' ? item.candidateId : null;
+                            const userToEdit = allCandidates.find(c => String(c.id || c._id) === String(id))
+                              || (candObj ? { role: 'candidate', ...candObj, id: candObj.id || candObj._id?.toString() } : null)
+                              || { role: 'candidate', id, name: item.name || item._displayName, email: item.email };
                             setDrawerUser(userToEdit);
                           }}
                           style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0176D3', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}

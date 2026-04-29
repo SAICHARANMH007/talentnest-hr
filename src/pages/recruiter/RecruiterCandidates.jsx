@@ -25,6 +25,16 @@ function useOnlineIds() {
   return ids;
 }
 
+function useIsMobile() {
+  const [m, setM] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return m;
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 const parseJ = (s, fb = []) => { try { return typeof s === 'string' ? JSON.parse(s || '[]') : (Array.isArray(s) ? s : fb); } catch { return fb; } };
 
@@ -88,9 +98,13 @@ function matchCandidate(c, filters) {
 
 // ── CandidateCard ─────────────────────────────────────────────────────────────
 function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, isOnline }) {
-  const [selJobs, setSelJobs] = useState([]); // multi-select job IDs
+  const isMobile  = useIsMobile();
+  const [selJobs, setSelJobs]   = useState([]);
   const [dropOpen, setDropOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [adding,   setAdding]   = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const [note,     setNote]     = useState('');
+  const [marking,  setMarking]  = useState(false);
   const dropRef = React.useRef(null);
 
   useEffect(() => {
@@ -100,12 +114,10 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
     return () => document.removeEventListener('mousedown', h);
   }, [dropOpen]);
 
-  const toggleJob = (id) => setSelJobs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const [showNote, setShowNote] = useState(false);
-  const [note, setNote] = useState('');
-  const [marking, setMarking] = useState(false);
-  const exp = expYears(c);
-  const skills = (Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 5);
+  const toggleJob   = (id) => setSelJobs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const exp         = expYears(c);
+  const allSkills   = Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+  const skills      = allSkills.slice(0, isMobile ? 4 : 5);
 
   const markReached = async () => {
     setMarking(true);
@@ -115,120 +127,150 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
   };
 
   return (
-    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18 }}>
-              {(c.name || '?')[0].toUpperCase()}
-            </div>
-            <div style={{ position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: '50%', background: isOnline ? '#22c55e' : '#d1d5db', border: '2px solid #fff' }} title={isOnline ? 'Online now' : 'Offline'} />
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10, padding: isMobile ? '12px 14px' : undefined }}>
+
+      {/* ── Header: avatar + identity + resume button ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        {/* Avatar with online dot */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{ width: isMobile ? 40 : 44, height: isMobile ? 40 : 44, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 16 : 18 }}>
+            {(c.name || '?')[0].toUpperCase()}
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-              {isOnline && <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>● Online</span>}
-            </div>
-            {c.title && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>}
-            <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
-              {c.location && <span style={{ color: '#706E6B', fontSize: 11 }}>📍 {c.location}</span>}
-              {exp > 0 && <span style={{ color: '#706E6B', fontSize: 11 }}>⏱ {exp}y exp</span>}
-              {c.phone && <span style={{ color: '#706E6B', fontSize: 11 }}>📞 {c.phone}</span>}
-            </div>
-            {c.email && <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✉ {c.email}</div>}
-          </div>
+          <div style={{ position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: '50%', background: isOnline ? '#22c55e' : '#d1d5db', border: '2px solid #fff' }} title={isOnline ? 'Online now' : 'Offline'} />
         </div>
-        <button onClick={() => onViewResume(c)} style={{ ...btnG, padding: '6px 14px', fontSize: 12, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0 }}>
-          📋 Resume
+
+        {/* Identity */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Name + online badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+            <div style={{ color: '#181818', fontWeight: 700, fontSize: isMobile ? 14 : 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+              {c.name || '—'}
+            </div>
+            {isOnline && (
+              <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>● Online</span>
+            )}
+          </div>
+
+          {/* Title */}
+          {c.title && (
+            <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {c.title}
+            </div>
+          )}
+
+          {/* Meta row — location / exp / phone, always wraps */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {c.location && (
+              <span style={{ color: '#706E6B', fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
+                📍 <span style={{ maxWidth: isMobile ? 90 : 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{c.location}</span>
+              </span>
+            )}
+            {exp > 0 && <span style={{ color: '#706E6B', fontSize: 11, whiteSpace: 'nowrap' }}>⏱ {exp}y exp</span>}
+            {c.phone && <span style={{ color: '#706E6B', fontSize: 11, whiteSpace: 'nowrap' }}>📞 {c.phone}</span>}
+          </div>
+
+          {/* Email */}
+          {c.email && (
+            <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              ✉ {c.email}
+            </div>
+          )}
+        </div>
+
+        {/* Resume button — top-right, always visible */}
+        <button
+          onClick={() => onViewResume(c)}
+          style={{ ...btnG, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0, minHeight: 36 }}
+        >
+          {isMobile ? '📋' : '📋 Resume'}
         </button>
       </div>
 
-      {/* Skills */}
+      {/* ── Skills ── */}
       {skills.length > 0 && (
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {skills.map(s => <Badge key={s} label={s.trim()} color="#0154A4" />)}
-          {(Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length > 5 && (
-            <span style={{ color: '#4c9bbf', fontSize: 11, alignSelf: 'center' }}>+{(Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length - 5} more</span>
+          {allSkills.length > (isMobile ? 4 : 5) && (
+            <span style={{ color: '#9E9D9B', fontSize: 11, alignSelf: 'center' }}>+{allSkills.length - (isMobile ? 4 : 5)} more</span>
           )}
         </div>
       )}
 
-      {/* Summary */}
+      {/* ── Summary ── */}
       {c.summary && (
-        <div style={{ color: '#706E6B', fontSize: 12, lineHeight: 1.5, borderLeft: '2px solid rgba(1,118,211,0.3)', paddingLeft: 10 }}>
-          {c.summary.slice(0, 180)}{c.summary.length > 180 ? '…' : ''}
+        <div style={{ color: '#706E6B', fontSize: 12, lineHeight: 1.55, borderLeft: '2px solid rgba(1,118,211,0.25)', paddingLeft: 10 }}>
+          {c.summary.slice(0, isMobile ? 120 : 180)}{c.summary.length > (isMobile ? 120 : 180) ? '…' : ''}
         </div>
       )}
 
-      {/* Recruiter collab tracker */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+      {/* ── Outreach tracker ── */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {c.lastReachedOutAt ? (
-          <span style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>
-            📬 Last contact: {timeAgo(c.lastReachedOutAt)}
+          <span style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '3px 10px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            📬 {timeAgo(c.lastReachedOutAt)}
           </span>
         ) : (
-          <span style={{ fontSize: 11, color: '#C9C7C5', background: '#FFFFFF', border: '1px solid #FAFAF9', borderRadius: 20, padding: '2px 10px' }}>
-            Not yet contacted
-          </span>
+          <span style={{ fontSize: 11, color: '#C9C7C5', borderRadius: 20, padding: '3px 8px' }}>Not contacted</span>
         )}
-        {c.reachOutNote && <span style={{ fontSize: 11, color: '#706E6B', fontStyle: 'italic' }}>"{c.reachOutNote}"</span>}
+        {c.reachOutNote && !isMobile && (
+          <span style={{ fontSize: 11, color: '#706E6B', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{c.reachOutNote}"</span>
+        )}
         <button
-          onClick={() => setShowNote(!showNote)}
-          style={{ fontSize: 11, background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}
+          onClick={() => setShowNote(p => !p)}
+          style={{ fontSize: 11, background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', padding: '4px 10px', cursor: 'pointer', fontWeight: 600, minHeight: 32 }}
         >
-          + Log Outreach
+          {showNote ? '✕ Cancel' : '+ Log Outreach'}
         </button>
       </div>
+
       {showNote && (
-        <div className="tn-note-row" style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="Add a note (e.g. Sent LinkedIn, called…)"
-            style={{ flex: 1, minWidth: 160, padding: '8px 10px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#181818', fontSize: 13, outline: 'none' }}
+            style={{ width: '100%', padding: '9px 12px', background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 8, color: '#181818', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
           />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={markReached} disabled={marking} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '8px 14px', cursor: 'pointer', opacity: marking ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-              {marking ? '…' : '✓ Mark'}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={markReached} disabled={marking} style={{ flex: 1, background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '9px 0', cursor: 'pointer', opacity: marking ? 0.6 : 1, minHeight: 40 }}>
+              {marking ? '…' : '✓ Save Note'}
             </button>
-            <button onClick={() => setShowNote(false)} style={{ background: '#FFFFFF', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 13, padding: '8px 10px', cursor: 'pointer' }}>✕</button>
+            <button onClick={() => setShowNote(false)} style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 13, padding: '9px 14px', cursor: 'pointer', minHeight: 40 }}>✕</button>
           </div>
         </div>
       )}
 
-      {/* Multi-select add to pipeline */}
-      <div style={{ paddingTop: 6, borderTop: '1px solid #F3F2F2' }}>
-        <span style={{ color: '#706E6B', fontSize: 12 }}>Add to pipeline:</span>
-        <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }} ref={dropRef}>
-          {/* Multi-select job picklist */}
+      {/* ── Add to pipeline ── */}
+      <div style={{ paddingTop: 8, borderTop: '1px solid #F3F2F2' }}>
+        <div style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>ADD TO PIPELINE</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} ref={dropRef}>
           <div style={{ position: 'relative', flex: 1 }}>
             <button
-              onClick={() => setDropOpen(!dropOpen)}
-              style={{ width: '100%', padding: '5px 10px', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: '#fff', textAlign: 'left', border: '1px solid #DDDBDA', borderRadius: 4, color: '#181818', outline: 'none', fontFamily: 'inherit' }}
+              onClick={() => setDropOpen(p => !p)}
+              style={{ width: '100%', padding: '8px 10px', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: '#fff', border: '1.5px solid #DDDBDA', borderRadius: 8, color: '#181818', outline: 'none', fontFamily: 'inherit', minHeight: 38 }}
             >
-              <span style={{ color: selJobs.length > 0 ? '#181818' : '#9E9D9B' }}>
+              <span style={{ color: selJobs.length > 0 ? '#181818' : '#9E9D9B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selJobs.length > 0 ? `${selJobs.length} role${selJobs.length > 1 ? 's' : ''} selected` : '— Select role(s) —'}
               </span>
-              <span style={{ fontSize: 9, opacity: 0.6 }}>{dropOpen ? '▲' : '▼'}</span>
+              <span style={{ fontSize: 10, opacity: 0.5, flexShrink: 0, marginLeft: 4 }}>{dropOpen ? '▲' : '▼'}</span>
             </button>
             {dropOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: '#fff', border: '1px solid #DDDBDA', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto', marginTop: 2 }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 300, background: '#fff', border: '1px solid #DDDBDA', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
                 {jobs.length === 0 ? (
-                  <div style={{ padding: '12px', color: '#9E9D9B', fontSize: 12 }}>No jobs available</div>
+                  <div style={{ padding: 14, color: '#9E9D9B', fontSize: 12 }}>No jobs available</div>
                 ) : jobs.map(j => {
                   const checked = selJobs.includes(j.id);
                   return (
                     <div key={j.id} onClick={() => toggleJob(j.id)}
-                      style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 12px', cursor: 'pointer', background: checked ? 'rgba(1,118,211,0.06)' : '#fff', borderBottom: '1px solid #F3F2F2' }}
+                      style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: checked ? 'rgba(1,118,211,0.06)' : '#fff', borderBottom: '1px solid #F3F2F2' }}
                       onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F3F2F2'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = checked ? 'rgba(1,118,211,0.06)' : '#fff'; }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${checked ? '#0176D3' : '#DDDBDA'}`, background: checked ? '#0176D3' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {checked && <span style={{ color: '#fff', fontSize: 9, fontWeight: 700 }}>✓</span>}
+                      <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? '#0176D3' : '#DDDBDA'}`, background: checked ? '#0176D3' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#181818', fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</div>
-                        <div style={{ color: '#706E6B', fontSize: 10 }}>{j.company}</div>
+                        <div style={{ color: '#181818', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</div>
+                        <div style={{ color: '#706E6B', fontSize: 11 }}>{j.company}</div>
                       </div>
                     </div>
                   );
@@ -242,18 +284,17 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
               if (!selJobs.length) return;
               setAdding(true);
               for (const jobId of selJobs) await onAddPipeline(c, jobId);
-              setSelJobs([]);
-              setDropOpen(false);
-              setAdding(false);
+              setSelJobs([]); setDropOpen(false); setAdding(false);
             }}
-            style={{ ...btnP, padding: '6px 16px', fontSize: 12, whiteSpace: 'nowrap', opacity: (selJobs.length === 0 || adding) ? 0.5 : 1 }}
+            style={{ ...btnP, padding: '8px 14px', fontSize: 12, whiteSpace: 'nowrap', opacity: (selJobs.length === 0 || adding) ? 0.5 : 1, minHeight: 38, flexShrink: 0 }}
           >
-            {adding ? <Spinner /> : `➕ Add${selJobs.length > 1 ? ` (${selJobs.length})` : ''}`}
+            {adding ? <Spinner /> : `➕${selJobs.length > 1 ? ` (${selJobs.length})` : ' Add'}`}
           </button>
         </div>
+
         <button
           onClick={() => onInvite(c)}
-          style={{ marginTop: 8, width: '100%', padding: '7px 0', background: 'rgba(1,118,211,0.07)', border: '1.5px dashed rgba(1,118,211,0.35)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          style={{ marginTop: 8, width: '100%', padding: '9px 0', background: 'rgba(1,118,211,0.05)', border: '1.5px dashed rgba(1,118,211,0.35)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}
         >
           📧 Send Invite to Apply
         </button>

@@ -279,12 +279,30 @@ export default function App() {
     import('./api/api.js').then(({ initAuth }) => {
       initAuth().then(result => {
         if (result?.user) {
+          // Happy path: refresh token exchanged for fresh access token
           sessionStorage.setItem('tn_user', JSON.stringify(result.user));
           setUser(result.user);
+          window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: result.user } }));
+        } else if (result?.networkError) {
+          // Backend unreachable (Render cold-start, offline) — keep the cached
+          // session so the user doesn't get bounced to /login.  The next API
+          // call will retry and either succeed (token refreshed) or 401-logout.
+          const stored = sessionStorage.getItem('tn_user');
+          let restoredUser = null;
+          if (stored) {
+            try { restoredUser = JSON.parse(stored); setUser(restoredUser); } catch {}
+          }
+          window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: restoredUser } }));
+        } else {
+          // null = refresh token absent/expired — legitimate session end
+          window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: null } }));
         }
-        window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: result?.user || null } }));
       }).catch(() => {
-        window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: null } }));
+        // Unexpected JS error — fall back to sessionStorage
+        const stored = sessionStorage.getItem('tn_user');
+        let restoredUser = null;
+        if (stored) { try { restoredUser = JSON.parse(stored); setUser(restoredUser); } catch {} }
+        window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: restoredUser } }));
       }).finally(() => setAuthLoading(false));
     }).catch(() => setAuthLoading(false));
 
