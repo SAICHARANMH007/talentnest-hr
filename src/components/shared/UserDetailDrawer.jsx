@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
@@ -52,6 +53,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [saving, setSaving] = useState(false);
   const [loadingApp, setLoadingApp] = useState(false);
   const [toast, setToast] = useState('');
+  const [isCandidateModel, setIsCandidateModel] = useState(false);
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -71,6 +73,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       const enriched = { role: 'candidate', ...full, id: full.id || full._id?.toString() };
       setFullUser(enriched);
       setForm(buildForm(enriched));
+      setIsCandidateModel(true); // record lives in the Candidate collection
     }).catch(() => {
       // Fallback: try the Users endpoint (for self-registered candidates)
       api.getUser(uid).then(full => {
@@ -78,6 +81,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         const enriched = { ...full, id: full.id || full._id?.toString() };
         setFullUser(enriched);
         setForm(buildForm(enriched));
+        setIsCandidateModel(false); // record lives in the User collection
       }).catch(() => {});
     });
   }, [u?.id, u?._id]); // eslint-disable-line
@@ -113,16 +117,16 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
       const mid = fullUser?.id || fullUser?._id || u.id || u._id;
-      const isUserModel = !!(fullUser?.role || u?.role); // User model records always have a role
       let updated;
-      if (isUserModel) {
-        const raw = await api.updateUser(mid, { ...form, skills });
-        updated = raw?.data || raw;
-      } else {
-        // Candidate model record (added by recruiter/admin, no User account)
+      if (isCandidateModel) {
+        // Record lives in the Candidate collection (added by recruiter/admin, no User account)
         const raw = await api.updateCandidate(mid, { ...form, skills });
         updated = raw?.data || raw;
         if (updated) updated = { role: 'candidate', ...updated, id: updated.id || updated._id?.toString() };
+      } else {
+        // Record lives in the User collection (self-registered or invited candidate)
+        const raw = await api.updateUser(mid, { ...form, skills });
+        updated = raw?.data || raw;
       }
       setToast('✅ Profile saved!');
       onUpdated?.(updated);
@@ -151,6 +155,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     interview_scheduled: '#F59E0B', interview_completed: '#A07E00',
     offer_extended: '#7c3aed', selected: '#10b981', rejected: '#BA0517',
   };
+
+  const navigate = useNavigate();
 
   const tabStyle = (t) => ({
     padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
@@ -326,9 +332,23 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
           )}
 
           {tab === 'resume' && (
-             <div style={{ border: '2px solid #F1F5F9', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
+            <div>
+              {/* Full-page resume button */}
+              <div style={{ marginBottom: 12, display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => {
+                    const cid = fullUser?.id || u?.id || fullUser?._id?.toString() || u?._id?.toString();
+                    if (cid) navigate(`/app/resume/${cid}`);
+                  }}
+                  style={{ ...btnP, padding: '8px 18px', fontSize: 13 }}
+                >
+                  🖥️ View Full-Page Resume
+                </button>
+              </div>
+              <div style={{ border: '2px solid #F1F5F9', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
                 <ResumeCard candidate={fullUser || u} />
-             </div>
+              </div>
+            </div>
           )}
 
         </div>

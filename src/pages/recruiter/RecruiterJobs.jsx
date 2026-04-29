@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -15,99 +17,86 @@ import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
 
 // ── Applicants Panel ──────────────────────────────────────────────────────────
 function ApplicantsPanel({ job, onClose }) {
+  const navigate = useNavigate ? useNavigate() : null;
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewResume, setViewResume] = useState(null);
+  const [editCandidate, setEditCandidate] = useState(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.getApplications({ jobId: job._id || job.id })
+    api.getApplications({ jobId: job._id || job.id, limit: 500 })
       .then(a => setApps(Array.isArray(a) ? a : (a?.data || [])))
       .finally(() => setLoading(false));
   }, [job.id]);
 
+  const displayed = search
+    ? apps.filter(a => { const n = (a.candidateId||a.candidate)?.name||''; return n.toLowerCase().includes(search.toLowerCase()) || (a.candidateId||a.candidate)?.email?.toLowerCase().includes(search.toLowerCase()); })
+    : apps;
+
   return (
-    <Modal title={`Applicants — ${job.title} @ ${job.companyName || job.company}`} onClose={onClose} wide>
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
-      ) : apps.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#706E6B' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
-          <p>No applicants yet for this job.</p>
-        </div>
-      ) : (
-        <>
-          <p style={{ color: '#706E6B', fontSize: 12, marginBottom: 16 }}>{apps.length} candidate{apps.length !== 1 ? 's' : ''} applied</p>
-
-          {/* Resume overlay */}
-          {viewResume && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-              <div style={{ width: '100%', maxWidth: 880, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ color: '#181818', fontWeight: 600 }}>📋 Resume — {viewResume.name}</div>
-                  <button onClick={() => setViewResume(null)} style={{ background: '#DDDBDA', border: '1px solid #DDDBDA', color: '#fff', borderRadius: 8, padding: '5px 14px', cursor: 'pointer' }}>✕ Close</button>
-                </div>
-                <div style={{ border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, overflow: 'hidden' }}>
-                  <ResumeCard candidate={viewResume} />
-                </div>
-              </div>
+    <>
+      {editCandidate && <UserDetailDrawer user={editCandidate} onClose={() => setEditCandidate(null)} onUpdated={() => setEditCandidate(null)} />}
+      <Modal title={`👥 Applicants — ${job.title} @ ${job.companyName || job.company}`} onClose={onClose} wide>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
+        ) : apps.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#706E6B' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
+            <p>No applicants yet for this job.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email…" style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #DDDBDA', fontSize: 13, outline: 'none' }} />
+              <span style={{ color: '#706E6B', fontSize: 12, whiteSpace: 'nowrap' }}>{displayed.length} / {apps.length} shown</span>
             </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {apps.map(app => {
-              const c = app.candidate || {};
-              const s = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
-              return (
-                <div key={app.id} style={{ ...card, border: `1px solid ${s.color}22` }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flexShrink: 0, fontSize: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {displayed.map(app => {
+                const c = app.candidateId || app.candidate || {};
+                const s = SM[app.stage] || { color: '#0176D3', label: app.stage || 'Applied', icon: '•' };
+                const cid = c.id || c._id?.toString();
+                return (
+                  <div key={app.id || app._id} style={{ background: '#F8FAFF', border: `1.5px solid ${s.color}25`, borderRadius: 14, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 17, flexShrink: 0 }}>
                         {(c.name || '?')[0].toUpperCase()}
                       </div>
-                      <div>
-                        <div style={{ color: '#181818', fontWeight: 600, fontSize: 14 }}>{c.name || 'Unknown'}</div>
-                        <div style={{ color: '#0176D3', fontSize: 12 }}>{c.title || '—'}{c.experience ? ` · ${c.experience}y exp` : ''}</div>
-                        <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2 }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{c.name || 'Unknown'}</div>
+                        {c.title && <div style={{ fontSize: 12, color: '#0176D3', marginTop: 1 }}>{c.title}{c.currentCompany ? ` @ ${c.currentCompany}` : ''}</div>}
+                        <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                          {c.experience !== undefined && c.experience !== null && <span style={{ fontSize: 11, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px', color: '#706E6B' }}>⏱ {c.experience}y exp</span>}
+                          {c.currentCTC && <span style={{ fontSize: 11, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px', color: '#706E6B' }}>CTC: {c.currentCTC}</span>}
+                          {c.expectedCTC && <span style={{ fontSize: 11, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px', color: '#706E6B' }}>Exp: {c.expectedCTC}</span>}
+                          {c.candidateStatus && <span style={{ fontSize: 11, background: 'rgba(1,118,211,0.08)', borderRadius: 20, padding: '2px 8px', color: '#0176D3' }}>{c.candidateStatus}</span>}
+                        </div>
+                        {c.skills && (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                            {(Array.isArray(c.skills) ? c.skills : (c.skills||'').split(',').map(s=>s.trim()).filter(Boolean)).slice(0,5).map(sk => <Badge key={sk} label={sk} color="#0154A4" />)}
+                          </div>
+                        )}
+                        {c.summary && <p style={{ color: '#706E6B', fontSize: 11, lineHeight: 1.5, margin: '6px 0 0', borderLeft: '2px solid rgba(1,118,211,0.25)', paddingLeft: 8 }}>{c.summary.slice(0,140)}{c.summary.length>140?'…':''}</p>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                        <span style={{ background:`${s.color}18`, color:s.color, border:`1px solid ${s.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700 }}>{s.label}</span>
+                        <span style={{ color:'#9E9D9B', fontSize:10 }}>{new Date(app.createdAt).toLocaleDateString('en-IN')}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                      <Badge label={`${s.icon} ${s.label}`} color={s.color} />
-                      <span style={{ color: '#9E9D9B', fontSize: 11 }}>Applied {new Date(app.createdAt).toLocaleDateString()}</span>
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F3F2F2', display: 'flex', gap: 8 }}>
+                      <button onClick={() => setEditCandidate(cid ? { role:'candidate', ...c, id: cid } : null)} style={{ ...btnP, padding:'6px 14px', fontSize:12 }}>✏️ Edit Profile</button>
+                      <button onClick={() => cid && navigate(`/app/resume/${cid}`)} style={{ ...btnG, padding:'6px 14px', fontSize:12 }}>📋 View Resume</button>
                     </div>
                   </div>
-
-                  {c.skills && (
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
-                      {(Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0, 6).map(sk => (
-                        <Badge key={sk} label={sk.trim()} color="#0154A4" />
-                      ))}
-                      {(Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length > 6 && (
-                        <span style={{ color: '#4c9bbf', fontSize: 11, alignSelf: 'center' }}>+{(Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim()).filter(Boolean)).length - 6} more</span>
-                      )}
-                    </div>
-                  )}
-
-                  {c.summary && (
-                    <p style={{ color: '#706E6B', fontSize: 12, lineHeight: 1.5, margin: '8px 0 0', borderLeft: '2px solid rgba(1,118,211,0.3)', paddingLeft: 10 }}>
-                      {c.summary.slice(0, 160)}{c.summary.length > 160 ? '…' : ''}
-                    </p>
-                  )}
-
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F3F2F2', display: 'flex', gap: 8 }}>
-                    <button onClick={() => setViewResume(c)} style={{ ...btnG, padding: '6px 14px', fontSize: 12, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}>
-                      📋 View Profile & Resume
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </Modal>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Modal>
+    </>
   );
 }
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RecruiterJobs({ user }) {
   const [jobs, setJobs] = useState([]); const [loading, setLoad] = useState(true); const [showModal, setShow] = useState(false);

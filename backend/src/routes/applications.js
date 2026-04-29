@@ -170,7 +170,32 @@ router.post('/public', asyncHandler(async (req, res) => {
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
 
-  // Notify assigned recruiters about the new career-page application
+  // ── Send candidate an invite to create an account and track their application ──
+  // Only send if they don't already have a User account
+  const User = require('../models/User');
+  const existingUser = await User.findOne({ email: candidateEmail.toLowerCase().trim() }).lean();
+  if (!existingUser) {
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+    const trackLink = `${FRONTEND_URL}/login?prefill=${encodeURIComponent(candidateEmail.toLowerCase().trim())}&ref=career_apply`;
+    email.sendEmailWithRetry?.(candidateEmail,
+      `✅ Application received — ${job.title} | Create your account to track it`,
+      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <h2 style="color:#032D60">Hi ${name.trim()},</h2>
+        <p>We received your application for <strong>${job.title}</strong>. 🎉</p>
+        <p>Create a free account to track your application status in real time, receive interview updates, and manage all your applications in one place.</p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${trackLink}" style="background:#0176D3;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px">
+            Create Account & Track Application →
+          </a>
+        </div>
+        <p style="color:#706E6B;font-size:13px">Your email address (<strong>${candidateEmail}</strong>) will be automatically linked to this application.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+        <p style="color:#9E9D9B;font-size:12px">This email was sent by TalentNest HR on behalf of the hiring team. If you did not apply for this role, please ignore this email.</p>
+      </div>`
+    ).catch(() => {});
+  }
+
+  // ── Notify assigned recruiters ──────────────────────────────────────────────
   const recruiters = job.assignedRecruiters || [];
   for (const rid of recruiters) {
     Notification.create({
@@ -179,8 +204,7 @@ router.post('/public', asyncHandler(async (req, res) => {
       message: `${candidate.name} applied for ${job.title} via the career page`,
       link: `/recruiter/pipeline?jobId=${jobId}`,
     }).catch(() => {});
-    // Email notification
-    const recruiter = await require('../models/User').findById(rid).select('name email').lean();
+    const recruiter = await User.findById(rid).select('name email').lean();
     if (recruiter?.email) {
       email.sendEmailWithRetry?.(recruiter.email,
         `New Application — ${candidate.name} for ${job.title}`,
@@ -399,7 +423,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   const [apps, total] = await Promise.all([
     Application.find(filter)
       .populate('jobId', 'title company companyName location department')
-      .populate('candidateId', 'name email phone title skills experience summary location source videoResumeUrl')
+      .populate('candidateId', 'name email phone title skills experience summary location source videoResumeUrl currentCompany currentCTC expectedCTC relevantExperience candidateStatus linkedinUrl availability workHistory educationList certifications client ta clientSpoc addedBy')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Application.countDocuments(filter),
   ]);

@@ -45,9 +45,9 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
   res.json({ success: true, data: { ...r, id: r._id?.toString() } });
 }));
 
-// POST /api/candidate-requests — admin submits request
+// POST /api/candidate-requests — admin or recruiter submits request
 router.post('/', ...guard,
-  allowRoles('admin', 'super_admin'),
+  allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
     const { roleTitle, requirements, urgency, budget } = req.body;
     if (!roleTitle) throw new AppError('roleTitle is required.', 400);

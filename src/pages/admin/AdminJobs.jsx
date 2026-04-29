@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -7,8 +8,10 @@ import Modal from '../../components/ui/Modal.jsx';
 import JobDetailDrawer from '../../components/shared/JobDetailDrawer.jsx';
 import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
 import PostJobForm from '../../components/shared/PostJobForm.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { SM } from '../../constants/stages.js';
 
 const fInp = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box' };
 const fSel = { ...fInp, cursor:'pointer' };
@@ -35,6 +38,10 @@ export default function AdminJobs({ user }) {
   const [selectedCandIds, setSelectedCandIds] = useState([]);
   const [jobApplications, setJobApplications] = useState([]);
   const [assessmentJob, setAssessmentJob] = useState(null); // job for add-assessment
+  const [applicantsJob, setApplicantsJob] = useState(null); // { job, apps[] }
+  const [applicantsLoading, setApplicantsLoading] = useState(false);
+  const [drawerCandidate, setDrawerCandidate] = useState(null);
+  const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
   const load = () => { setLoad(true); api.getJobs({ limit: 200 }).then(r => { const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []); setJobs(raw.map(normalizeJob)); }).catch(() => setJobs([])).finally(() => setLoad(false)); };
@@ -85,6 +92,73 @@ export default function AdminJobs({ user }) {
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
       {shareJob && <ShareJobModal job={shareJob} onClose={() => setShareJob(null)} user={user} />}
+      {drawerCandidate && <UserDetailDrawer user={drawerCandidate} onClose={() => setDrawerCandidate(null)} onUpdated={() => setDrawerCandidate(null)} />}
+
+      {/* ── Applicants Modal ── */}
+      {applicantsJob && (
+        <div style={{ position:'fixed', inset:0, zIndex:9500, display:'flex', alignItems:'flex-end', justifyContent:'flex-end' }}>
+          <div onClick={() => setApplicantsJob(null)} style={{ position:'absolute', inset:0, background:'rgba(5,13,26,0.45)', backdropFilter:'blur(6px)' }} />
+          <div style={{ position:'relative', width:'100%', maxWidth:740, height:'100vh', background:'#fff', display:'flex', flexDirection:'column', boxShadow:'-16px 0 48px rgba(0,0,0,0.18)', borderRadius:'20px 0 0 20px', overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ padding:'18px 24px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+              <div>
+                <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>👥 Applicants — {applicantsJob.job.title}</div>
+                <div style={{ color:'rgba(255,255,255,0.75)', fontSize:12, marginTop:2 }}>{applicantsJob.apps.length} candidate{applicantsJob.apps.length!==1?'s':''} · {applicantsJob.job.company}</div>
+              </div>
+              <button onClick={() => setApplicantsJob(null)} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:36, height:36, borderRadius:10, cursor:'pointer', fontSize:18 }}>✕</button>
+            </div>
+            {/* Body */}
+            <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
+              {applicantsLoading ? (
+                <div style={{ textAlign:'center', padding:48 }}><Spinner /></div>
+              ) : applicantsJob.apps.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'48px 0', color:'#706E6B' }}>
+                  <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
+                  <div style={{ fontWeight:600 }}>No applicants yet</div>
+                  <div style={{ fontSize:13, marginTop:4 }}>Share the job link to get candidates</div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {applicantsJob.apps.map(a => {
+                    const cand = a.candidateId || a.candidate;
+                    const candName = cand?.name || a.candidateName || 'Candidate';
+                    const s = SM[a.stage] || { color:'#706E6B', label: a.stage || 'Applied' };
+                    return (
+                      <div key={a.id||a._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#F8FAFF', border:'1px solid rgba(1,118,211,0.12)', borderRadius:14 }}>
+                        {/* Avatar */}
+                        <div style={{ width:44, height:44, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:17, flexShrink:0 }}>
+                          {candName[0].toUpperCase()}
+                        </div>
+                        {/* Info */}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:700, fontSize:14, color:'#181818', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
+                          <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || ''}{cand?.phone ? ` · ${cand.phone}` : ''}</div>
+                          {(cand?.currentCompany || cand?.title) && (
+                            <div style={{ fontSize:12, color:'#0176D3', marginTop:1 }}>{cand.title}{cand.currentCompany ? ` @ ${cand.currentCompany}` : ''}</div>
+                          )}
+                          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
+                            {cand?.currentCTC && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>CTC: {cand.currentCTC}</span>}
+                            {cand?.expectedCTC && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>Exp: {cand.expectedCTC}</span>}
+                            {cand?.experience !== undefined && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>⏱ {cand.experience}y</span>}
+                          </div>
+                        </div>
+                        {/* Stage badge */}
+                        <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
+                          <span style={{ background:`${s.color}18`, color:s.color, border:`1px solid ${s.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>{s.label}</span>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => { const c = cand ? { role:'candidate', ...cand, id: cand.id||cand._id?.toString() } : null; if(c) setDrawerCandidate(c); }} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>✏️ Edit</button>
+                            <button onClick={() => { const cid = cand?.id||cand?._id?.toString(); if(cid) navigate(`/app/resume/${cid}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <Modal title="💼 Post New Job" onClose={() => setShowModal(false)}>
@@ -170,6 +244,12 @@ export default function AdminJobs({ user }) {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                   <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '7px 12px', fontSize: 11 }}>View Details</button>
+                  <button onClick={async e => {
+                    e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
+                    const r = await api.getApplications({ jobId: j.id, limit: 500 }).catch(() => ({ data: [] }));
+                    setApplicantsJob({ job: j, apps: Array.isArray(r) ? r : (r?.data || []) });
+                    setApplicantsLoading(false);
+                  }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👥 Applicants</button>
                   <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📣 Share</button>
                   <button onClick={e => { e.stopPropagation(); setAssessmentJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📋 Assessment</button>
                   <button onClick={e => { e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');

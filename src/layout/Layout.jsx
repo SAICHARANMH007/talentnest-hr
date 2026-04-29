@@ -29,7 +29,7 @@ function PageLoader() {
 // ── Nav definitions ────────────────────────────────────────────────────────────
 const NAVS = {
   candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"ai-match",icon:"🤖",label:"Explore Jobs"},{id:"applications",icon:"📋",label:"My Applications"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"profile",icon:"👤",label:"My Profile"}],
-  recruiter:  [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"jobs",icon:"💼",label:"My Jobs"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"🧑‍💼",label:"My Candidates"},{id:"assigned-candidates",icon:"🎯",label:"Assigned to Me"},{id:"ai-match",icon:"🤖",label:"AI Match"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"talent-pool",icon:"🅿️",label:"Talent Pool"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"offers",icon:"📄",label:"Offers"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"profile",icon:"👤",label:"My Profile"}],
+  recruiter:  [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"jobs",icon:"💼",label:"My Jobs"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"🧑‍💼",label:"My Candidates"},{id:"assigned-candidates",icon:"🎯",label:"Assigned to Me"},{id:"ai-match",icon:"🤖",label:"AI Match"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"talent-pool",icon:"🅿️",label:"Talent Pool"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"offers",icon:"📄",label:"Offers"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"profile",icon:"👤",label:"My Profile"}],
   admin:      [{id:"analytics",icon:"📈",label:"Overview"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"assigned-candidates",icon:"🎯",label:"Assignments"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"automation",icon:"⚡",label:"Automation"},{id:"custom-fields",icon:"🧩",label:"Custom Fields"},{id:"org-settings",icon:"⚙️",label:"Org Settings"},{id:"billing",icon:"💳",label:"Billing"},{id:"profile",icon:"👤",label:"My Profile"}],
   superadmin: [{id:"analytics",icon:"📈",label:"Overview"},{id:"platform",icon:"🌐",label:"Platform"},{id:"organisations",icon:"🏢",label:"Organisations"},{id:"billing",icon:"💳",label:"Billing"},{id:"security",icon:"🛡️",label:"Security"},{id:"permissions",icon:"🔐",label:"Permissions"},{id:"import-candidates",icon:"📥",label:"Import & Assign"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"admins",icon:"🔑",label:"Admins"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"⚙️",label:"Customizations"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"playbooks",icon:"📚",label:"Playbooks"},{id:"blogs",icon:"✍️",label:"Blog Manager"},{id:"profile",icon:"👤",label:"My Profile"}],
   client:     [{id:"dashboard",icon:"🏢",label:"Dashboard"},{id:"shortlists",icon:"🌟",label:"Shortlists"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"placements",icon:"🏆",label:"Placements"},{id:"profile",icon:"👤",label:"My Profile"}],
@@ -388,19 +388,21 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
   return (
     <>
       {/* Logo + Bell */}
-      <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', minHeight: 38 }}>
             <Logo size="md" variant="full" theme="dark" customLogoUrl={orgLogo} />
           </div>
           <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>{(user.role || '').toUpperCase()}</div>
         </div>
-        <NotificationBell userRole={user?.role} />
-        <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 9, flexShrink: 0 }}>
+          <NotificationBell userRole={user?.role} />
+          <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             💬
             {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
           </button>
-        <button onClick={() => setShowOnline?.(true)} title="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🟢</button>
+          <button onClick={() => setShowOnline?.(true)} title="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🟢</button>
+        </div>
       </div>
 
       {/* Nav items */}

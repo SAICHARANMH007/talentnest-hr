@@ -1,12 +1,16 @@
 'use strict';
-const Tenant = require('../models/Tenant');
+const Organization = require('../models/Organization');
+const Tenant       = require('../models/Tenant');
 
 /**
  * tenantGuard — ensures every non-super_admin request has a valid, active tenant.
  *
- * - Skips check for super_admin (they operate across all tenants).
- * - Returns 403 if tenantId is missing from the JWT.
- * - Returns 403 if the tenant does not exist or has a suspended subscription.
+ * The platform historically has two org models:
+ *   • Organization — used by seed.js, admin invite, and most existing data
+ *   • Tenant       — used by the register flow for new self-service sign-ups
+ *
+ * We look in Organization first (covers ~100% of existing data), then fall back
+ * to Tenant so new self-service registrations also work.
  *
  * Must be placed AFTER authMiddleware in the middleware chain.
  */
@@ -22,33 +26,51 @@ const tenantGuard = async (req, res, next) => {
       });
     }
 
-    const tenant = await Tenant.findById(tenantId).lean();
-    if (!tenant) {
+    // ── Look up the organisation record ──────────────────────────────────────
+    let org    = await Organization.findById(tenantId).lean();
+    let model  = 'org';   // which model we found it in
+    if (!org) {
+      org   = await Tenant.findById(tenantId).lean();
+      model = 'tenant';
+    }
+
+    if (!org) {
       return res.status(403).json({
         success: false,
-        error: 'Tenant not found. Please contact support.',
+        error: 'Organisation not found. Please contact support.',
       });
     }
 
-    if (tenant.subscriptionStatus === 'suspended') {
+    // ── Status checks (field name differs between the two models) ─────────────
+    // Organization uses:  status ('active'|'suspended'|'trial'|'pending')
+    // Tenant uses:        subscriptionStatus ('active'|'expired'|'suspended'|'cancelled')
+    //                     subscriptionExpiry (Date)
+    const isSuspended = model === 'org'
+      ? org.status === 'suspended'
+      : org.subscriptionStatus === 'suspended';
+
+    const isExpired = model === 'tenant' && (
+      org.subscriptionStatus === 'expired' ||
+      (org.subscriptionExpiry && new Date(org.subscriptionExpiry) < new Date())
+    );
+
+    if (isSuspended) {
       return res.status(403).json({
         success: false,
         error: 'Your organisation account is suspended. Please contact support.',
       });
     }
 
-    if (
-      tenant.subscriptionStatus === 'expired' ||
-      (tenant.subscriptionExpiry && new Date(tenant.subscriptionExpiry) < new Date())
-    ) {
+    if (isExpired) {
       return res.status(403).json({
         success: false,
         error: 'Your subscription has expired. Please renew to continue.',
       });
     }
 
-    // Attach tenant to request for downstream use
-    req.tenant = tenant;
+    // Attach to request for downstream use (billing, limits, etc.)
+    req.tenant = org;
+    req.org    = org; // alias — some routes use req.org
     next();
   } catch (err) {
     next(err);

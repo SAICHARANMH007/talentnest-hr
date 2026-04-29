@@ -93,6 +93,7 @@ const CandidateRejectionPage = lazy(() => import('./pages/recruiter/CandidateRej
 const SecuritySettingsPage = lazy(() => import('./pages/shared/SecuritySettingsPage.jsx'));
 const EmailSettingsPage = lazy(() => import('./pages/shared/EmailSettingsPage.jsx'));
 const ChangePasswordPage = lazy(() => import('./pages/shared/ChangePasswordPage.jsx'));
+const ResumeViewPage = lazy(() => import('./pages/shared/ResumeViewPage.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -441,6 +442,8 @@ export default function App() {
         <Route path="settings/email" element={<EmailSettingsPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/security" element={<SecuritySettingsPage user={user} onBack={() => window.history.back()} />} />
         <Route path="add-candidate" element={<Suspense fallback={<PageLoader />}><AddCandidateForm addedBy={user} onSuccess={() => { }} /></Suspense>} />
+        {/* Resume full-page view — accessible by all logged-in roles */}
+        <Route path="resume/:candidateId" element={<Suspense fallback={<PageLoader />}><ResumeViewPage user={user} /></Suspense>} />
 
         {/* Candidate Routes */}
         {rk === 'candidate' && (
@@ -474,6 +477,8 @@ export default function App() {
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
+            {/* Recruiter can submit candidate requests (same component as admin) */}
+            {rk === 'recruiter' && <Route path="candidate-requests" element={<AdminCandidateRequest user={user} />} />}
 
             {/* Form-specific routes */}
             <Route path="forms/invite" element={<InviteCandidatePage user={user} onBack={() => window.history.back()} />} />

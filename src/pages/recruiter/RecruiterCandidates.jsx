@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
-import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import InviteModal from '../../components/shared/InviteModal.jsx';
 import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
@@ -305,11 +305,11 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RecruiterCandidates({ user }) {
+  const navigate = useNavigate();
   const [allCandidates, setAllCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
-  const [detailUser, setDetailUser] = useState(null);
   const [inviteCandidate, setInviteCandidate] = useState(null);
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState([]);
@@ -442,21 +442,6 @@ export default function RecruiterCandidates({ user }) {
         />
       )}
 
-      {/* Resume modal */}
-      {detailUser && (
-        <div className="tn-resume-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-          <div className="tn-resume-modal" style={{ width: '100%', maxWidth: 880, maxHeight: 'calc(100dvh - 48px)', display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid #E5E7EB', flexShrink: 0, background: '#fff' }}>
-              <div style={{ color: '#181818', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📋 Resume — {detailUser.name}</div>
-              <button onClick={() => setDetailUser(null)} style={{ background: '#DDDBDA', border: '1px solid #C9C7C5', color: '#3E3E3C', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontWeight: 600, flexShrink: 0, marginLeft: 12 }}>✕ Close</button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <ResumeCard candidate={detailUser} />
-            </div>
-          </div>
-        </div>
-      )}
-
       <PageHeader
         title="Talent Pool"
         subtitle={`${allCandidates.length} candidate${allCandidates.length !== 1 ? 's' : ''} in pool · filter by designation, skills, location or experience`}
@@ -569,7 +554,7 @@ export default function RecruiterCandidates({ user }) {
                           c={c}
                           jobs={jobs}
                           onAddPipeline={addToPipeline}
-                          onViewResume={setDetailUser}
+                          onViewResume={(cand) => navigate(`/app/resume/${cand.id || cand._id?.toString()}`)}
                           onReachOut={handleReachOut}
                           onToast={setToast}
                           onInvite={setInviteCandidate}
