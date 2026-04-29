@@ -30,14 +30,17 @@ export const userService = {
   async getUsers(params)          {
     const toArr = r => Array.isArray(r) ? r : (Array.isArray(r?.candidates) ? r.candidates : (Array.isArray(r?.data) ? r.data : []));
     if (typeof params === 'string') {
-      const url = params === 'candidate' ? '/users/candidates' : (`/users?role=${params}`);
+      // /users/candidates has a built-in 500 default; other roles default to 20 so we bump them
+      const url = params === 'candidate'
+        ? '/users/candidates?limit=500'
+        : `/users?role=${params}&limit=200`;
       return toArr(await req('GET', url));
     }
     const { role, orgId, limit } = params || {};
     const q = new URLSearchParams();
     if (role) q.set('role', role);
     if (orgId) q.set('orgId', orgId);
-    if (limit) q.set('limit', limit);
+    q.set('limit', String(limit || (role === 'candidate' ? 500 : 200)));
     return toArr(await req('GET', `/users?${q.toString()}`));
   },
   async getUserCount(role)      { return req('GET', `/users/count${role ? `?role=${role}` : ''}`); },

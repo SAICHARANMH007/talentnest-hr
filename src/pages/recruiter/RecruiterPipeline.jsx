@@ -462,7 +462,7 @@ export default function RecruiterPipeline({ user }) {
   const [offerApp, setOfferApp] = useState(null);
 
   useEffect(() => {
-    api.getJobs(user.id).then(j => {
+    api.getJobs({ recruiterId: user.id, limit: 200 }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
       setJobs(raw.map(job => ({
         ...job,
@@ -479,7 +479,7 @@ export default function RecruiterPipeline({ user }) {
     setAssessmentData(null);
     if (!jid) { setApps([]); return; }
     setLoad(true);
-    api.getApplications({ jobId: jid }).then(a => setApps(Array.isArray(a) ? a : (a?.data || []))).catch(() => setApps([])).finally(() => setLoad(false));
+    api.getApplications({ jobId: jid, limit: 500 }).then(a => setApps(Array.isArray(a) ? a : (a?.data || []))).catch(() => setApps([])).finally(() => setLoad(false));
     // Load assessment for this job
     api.getAssessmentForJob(jid).then(async (a) => {
       if (!a?.id) return;

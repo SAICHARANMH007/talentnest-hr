@@ -53,7 +53,7 @@ export default function RecruiterInterviews({ user }) {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getApplications({})
+    api.getApplications({ limit: 500 })
       .then(r => setApps(Array.isArray(r) ? r : (r?.data || [])))
       .catch(e => { setError(e.message); setApps([]); })
       .finally(() => setLoading(false));

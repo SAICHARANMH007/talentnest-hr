@@ -123,7 +123,7 @@ export default function RecruiterJobs({ user }) {
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const postJobRef = useRef(null);
 
-  const load = () => { setLoad(true); api.getJobs(user.id).then(j => setJobs(Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []))).catch(() => setJobs([])).finally(() => setLoad(false)); };
+  const load = () => { setLoad(true); api.getJobs({ recruiterId: user.id, limit: 200 }).then(j => setJobs(Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []))).catch(() => setJobs([])).finally(() => setLoad(false)); };
   useEffect(load, [user.id]);
 
   const filteredJobs = jobs.filter(j => {

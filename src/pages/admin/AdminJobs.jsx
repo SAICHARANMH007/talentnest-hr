@@ -37,7 +37,7 @@ export default function AdminJobs({ user }) {
   const [assessmentJob, setAssessmentJob] = useState(null); // job for add-assessment
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
-  const load = () => { setLoad(true); api.getJobs().then(r => { const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []); setJobs(raw.map(normalizeJob)); }).catch(() => setJobs([])).finally(() => setLoad(false)); };
+  const load = () => { setLoad(true); api.getJobs({ limit: 200 }).then(r => { const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []); setJobs(raw.map(normalizeJob)); }).catch(() => setJobs([])).finally(() => setLoad(false)); };
   useEffect(() => {
     load();
     api.getUsers('recruiter').then(u => setRecruiterUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setRecruiterUsers([]));
@@ -173,7 +173,7 @@ export default function AdminJobs({ user }) {
                   <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📣 Share</button>
                   <button onClick={e => { e.stopPropagation(); setAssessmentJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📋 Assessment</button>
                   <button onClick={e => { e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');
-                    api.getApplications({ jobId: j.id }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
+                    api.getApplications({ jobId: j.id, limit: 500 }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
                   }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👤 Assign</button>
                   <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
                   <button onClick={() => del(j.id)} style={btnD}>Delete</button>
@@ -292,7 +292,7 @@ export default function AdminJobs({ user }) {
                           await api.assignCandidatesToJob(assigningJob.id, selectedCandIds);
                           setToast(`✅ ${selectedCandIds.length} candidate${selectedCandIds.length!==1?'s':''} assigned!`);
                           setSelectedCandIds([]);
-                          api.getApplications({ jobId: assigningJob.id }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => {});
+                          api.getApplications({ jobId: assigningJob.id, limit: 500 }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => {});
                           load();
                         } catch (e) { setToast('❌ ' + e.message); }
                         setAssigningLoading(false);

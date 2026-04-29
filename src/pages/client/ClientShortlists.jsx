@@ -40,7 +40,7 @@ export default function ClientShortlists({ user }) {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getApplications({})
+    api.getApplications({ limit: 500 })
       .then(r => {
         const arr = Array.isArray(r) ? r : (r?.data || []);
         const sl  = arr.filter(a => ['Shortlisted','Interview Round 1','Interview Round 2','Offer','Hired'].includes(a.currentStage));
