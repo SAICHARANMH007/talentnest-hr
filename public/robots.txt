@@ -4,6 +4,8 @@ Allow: /careers
 Allow: /careers/crawl
 Allow: /careers/job/
 Allow: /careers/jobs.xml
+Allow: /careers/jobs.json
+Allow: /jobs.xml
 Disallow: /app/
 Disallow: /api/
 Sitemap: https://www.talentnesthr.com/sitemap.xml

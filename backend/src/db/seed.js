@@ -20,6 +20,357 @@ const VALID_STAGES = [
   'Offer', 'Hired', 'Rejected',
 ];
 
+const linkedInTalentNestJobs = [
+  {
+    title: 'Node.js React Developer',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Engineering',
+    urgency: 'High',
+    numberOfOpenings: 3,
+    experience: '2+ years',
+    salaryType: 'CTC',
+    skills: ['Node.js', 'React', 'Advanced JavaScript', 'ES6+', 'API Integration', 'MERN Stack', 'Backend Integration'],
+    contactEmail: 'hr@talentnesthr.com',
+    contactPhone: '7995535539',
+    description: `Hiring Requirement for Hyderabad Location
+
+We are looking for candidates with strong experience in Node.js, React, and advanced JavaScript concepts.
+
+Experience:
+Minimum 2+ years
+
+Key Expectations:
+- Hands-on experience in real-time / production-level projects
+- Strong understanding of ES6+ concepts
+- Experience with APIs and backend integration
+- Component-based architecture in React
+- Ability to work on scalable and performance-driven applications
+
+Interested candidates can share CV at hr@talentnesthr.com or reach out at 7995535539.`,
+  },
+  {
+    title: 'Freelance Recruiter',
+    location: 'Remote',
+    jobType: 'Contract',
+    department: 'Recruitment',
+    urgency: 'High',
+    numberOfOpenings: 10,
+    experience: '2-3 years',
+    skills: ['IT Recruitment', 'Healthcare Recruitment', 'Mortgage Hiring', 'Sourcing', 'Candidate Screening', 'Closure Hiring', 'Client Coordination'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    description: `Hiring Freelance Recruiters with 2-3 years of experience.
+
+Work areas:
+- IT positions
+- Healthcare domain
+- Mortgage domain
+
+Compensation:
+Closure-based commission
+
+Work mode:
+Remote
+
+Requirements:
+- Strong experience in sourcing and closing positions
+- Hands-on experience in IT, healthcare, or mortgage hiring
+- Ability to work on priority requirements
+- Good communication and client coordination skills
+
+Interested recruiters can DM or share their profile at mhsaicharan@talentnesthr.com.`,
+  },
+  {
+    title: 'Agricultural Promotions Executive / Store Assistant',
+    location: 'Tirupati',
+    jobType: 'Full-Time',
+    department: 'Agriculture Operations',
+    urgency: 'High',
+    numberOfOpenings: 2,
+    experience: '1-3 years',
+    skills: ['B.Sc Chemistry', 'Agrochemicals', 'Fertilizers', 'Seeds', 'Pesticides', 'Warehouse Management', 'MS Excel', 'Farmer Education'],
+    contactEmail: 'info@talentnesthr.com',
+    alternateContactEmail: 'hr@selfcrops.com',
+    contactPhone: '9121895028',
+    description: `We are hiring an Agricultural Promotions Executive / Store Assistant for Tirupati.
+
+Qualification:
+B.Sc. Chemistry is mandatory.
+
+Experience:
+1-3 years
+
+About the company:
+Self Crops Farm Operation Center empowers farmers by providing certified seeds, fertilizers, and pesticides while educating them on correct and efficient usage.
+
+Key Responsibilities:
+- Manage day-to-day farm input godown operations
+- Maintain stock records and inventory with FIFO/FEFO rotation
+- Ensure proper storage conditions as per safety and regulatory norms
+- Educate farmers about products and correct usage
+- Conduct awareness sessions and product training camps if required
+- Communicate the startup vision and value proposition
+- Build relationships with the farming community
+- Monitor market prices of seeds, fertilizers, and pesticides
+- Identify cost-effective procurement sources
+- Maintain customer database using Excel / basic CRM tools
+
+Interested candidates can share resumes at info@talentnesthr.com or hr@selfcrops.com. Reach out: 9121895028.`,
+  },
+  {
+    title: 'Senior Frappe Developer (ERPNext Backend)',
+    location: 'Madhapur',
+    jobType: 'Full-Time',
+    department: 'Engineering',
+    urgency: 'High',
+    numberOfOpenings: 2,
+    experience: '4+ years',
+    salaryMin: 1000000,
+    salaryMax: 1200000,
+    salaryType: 'CTC',
+    skills: ['Frappe Framework', 'ERPNext', 'Python', 'JavaScript', 'REST APIs', 'MariaDB', 'PostgreSQL', 'Git', 'ERP Implementation'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    contactPhone: '7995535539',
+    description: `Hiring Senior Backend Developer with Frappe / ERPNext experience for a leading organization based in Madhapur.
+
+Qualification:
+B.Tech
+
+Budget:
+10-12 LPA
+
+Notice Period:
+Immediate joiners / maximum 1 week
+
+Role Overview:
+Lead backend development for custom Frappe / ERPNext applications, build scalable REST APIs, and ensure secure high-performance server-side systems for web, mobile, and IoT platforms.
+
+Key Responsibilities:
+- Custom Frappe application and module development
+- High-performance REST API development
+- ERP integration with payment gateways, SMS providers, and third-party services
+- Database design and optimization for MariaDB / PostgreSQL
+- Code reviews and mentoring junior developers
+- Performance tuning and security best practices
+
+Required Skills:
+- 5+ years software development experience
+- 3+ years hands-on Frappe Framework and Python experience
+- Strong Python and JavaScript knowledge
+- Expertise in MariaDB / PostgreSQL
+- Strong REST API experience
+- Deep understanding of Frappe internals including hooks, controllers, scheduler events
+- Proficiency in Git
+
+Interview Process:
+1. Virtual round
+2. Walk-in round mandatory
+
+Interested candidates can share resumes at mhsaicharan@talentnesthr.com or reach out at 7995535539.`,
+  },
+  {
+    title: 'Android Developer',
+    location: 'Madhapur',
+    jobType: 'Full-Time',
+    department: 'Mobile Engineering',
+    urgency: 'High',
+    numberOfOpenings: 2,
+    experience: '4-6 years',
+    salaryMin: 1000000,
+    salaryMax: 1200000,
+    salaryType: 'CTC',
+    skills: ['Android', 'Java', 'Kotlin', 'Android SDK', 'REST APIs', 'JSON', 'MVVM', 'MVP', 'SQLite', 'Room', 'Git'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    contactPhone: '7995535539',
+    description: `Hiring Android Developer for Madhapur, work from office.
+
+Experience:
+4-6 years
+
+Budget:
+10-12 LPA
+
+Notice Period:
+Immediate to 15 days
+
+Job Summary:
+We are looking for a skilled Android Developer with strong Java / Kotlin expertise to build high-performance, secure, and scalable Android applications.
+
+Key Responsibilities:
+- Design, develop, and maintain Android applications
+- Integrate REST APIs, JSON, and third-party SDKs
+- Ensure application performance, scalability, and security
+- Work with MVVM / MVP architecture
+- Collaborate with UI/UX, backend, and product teams
+- Debug issues and optimize app performance
+- Maintain code quality, documentation, and version control
+
+Required Skills:
+- Strong Java / Kotlin proficiency
+- Hands-on Android SDK experience
+- REST API and JSON integration experience
+- MVVM / MVP architecture knowledge
+- SQLite / Room familiarity
+- Git / version control experience
+
+Share your resume at mhsaicharan@talentnesthr.com or contact 7995535539.`,
+  },
+  {
+    title: 'Full Stack Developer',
+    location: 'Madhapur',
+    jobType: 'Full-Time',
+    department: 'Engineering',
+    urgency: 'High',
+    numberOfOpenings: 4,
+    experience: '2-3 years',
+    salaryMin: 1000000,
+    salaryMax: 1200000,
+    salaryType: 'CTC',
+    skills: ['Angular', 'React.js', 'Node.js', 'JavaScript', 'REST APIs', 'MongoDB', 'PostgreSQL', 'MySQL', 'Git', 'Postman', 'Agile', 'Next.js', 'Docker'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    contactPhone: '7995535539',
+    description: `Hiring Full Stack Developer for Madhapur, work from office.
+
+Experience:
+2-3 years
+
+Budget:
+10-12 LPA
+
+Notice Period:
+Immediate joiners preferred
+
+Interview:
+Round 1 virtual
+
+Job Summary:
+We are looking for a skilled and proactive Full Stack Developer with hands-on experience building scalable front-end and back-end applications using JavaScript frameworks such as Angular, React.js, and Node.js.
+
+Responsibilities:
+- Develop scalable frontend and backend features using Angular, React.js, Node.js, and other JavaScript frameworks
+- Build and maintain REST APIs and UI components
+- Ensure documentation, testing, and version control
+- Collaborate with design, QA, DevOps, and PM teams
+- Maintain and enhance existing applications
+- Participate in sprint planning and code reviews
+- Ensure technical feasibility of UI/UX designs
+
+Required Skills:
+- Frontend: Angular, React.js, Vue.js preferred
+- Backend: Node.js
+- Databases: MongoDB, PostgreSQL, MySQL
+- Tools: Git, GitHub portfolio/project links, Postman
+- Methodology: Agile / Scrum
+- Good to have: Next.js, Nuxt.js, Docker
+- AI dev tools exposure: Cursor, Cline, ROO Code preferred
+
+Interested candidates can share resumes at mhsaicharan@talentnesthr.com or reach out at 7995535539.`,
+  },
+  {
+    title: 'Recruitment Vendor Partner - IT & Support Hiring',
+    location: 'India',
+    jobType: 'Contract',
+    department: 'Vendor Partnerships',
+    urgency: 'Medium',
+    numberOfOpenings: 20,
+    experience: '2+ years',
+    skills: ['IT Hiring', 'Vendor Hiring', 'Recruitment Partnership', 'Sourcing', 'Candidate Screening', 'Full Stack Hiring', 'Android Hiring', 'Frappe Hiring'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    description: `Talent Nest HR is seeking experienced and reliable recruitment vendors to support ongoing full-time hiring requirements.
+
+Active positions include:
+- Full Stack Developers
+- Android Developers
+- Frappe Developers
+- Personal Assistant to Management
+
+We are looking for vendors who can:
+- Share quality screened profiles
+- Maintain strong candidate coordination
+- Deliver with quick turnaround time
+- Support long-term hiring partnerships
+
+Interested vendors can DM for empanelment and rate card details or email mhsaicharan@talentnesthr.com.`,
+  },
+  {
+    title: 'Personal Assistant to Management',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Administration',
+    urgency: 'Medium',
+    numberOfOpenings: 1,
+    experience: '2+ years',
+    skills: ['Executive Assistance', 'Calendar Management', 'Communication', 'Coordination', 'MS Office', 'Documentation', 'Follow-ups'],
+    contactEmail: 'mhsaicharan@talentnesthr.com',
+    description: `Hiring Personal Assistant to Management through Talent Nest HR.
+
+Role Overview:
+Support management with daily coordination, communication, scheduling, documentation, and follow-up activities.
+
+Key Responsibilities:
+- Calendar and meeting coordination
+- Internal and external communication support
+- Documentation and reporting
+- Travel / administrative coordination as needed
+- Follow-up tracking across business priorities
+
+Interested candidates can share profiles at mhsaicharan@talentnesthr.com.`,
+  },
+];
+
+function careerSlug(str) {
+  return String(str || '').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+async function seedTalentNestLinkedInJobs({ tenantId, createdBy }) {
+  let created = 0;
+  let updated = 0;
+
+  for (const def of linkedInTalentNestJobs) {
+    const careerPageSlug = `talentnest-${careerSlug(def.title)}`;
+    const payload = {
+      tenantId,
+      createdBy,
+      title: def.title,
+      description: def.description,
+      company: 'Talent Nest HR',
+      companyName: 'Talent Nest HR',
+      department: def.department,
+      skills: def.skills,
+      niceToHaveSkills: [],
+      salaryMin: def.salaryMin,
+      salaryMax: def.salaryMax,
+      salaryCurrency: 'INR',
+      salaryType: def.salaryType || 'CTC',
+      location: def.location,
+      jobType: def.jobType,
+      numberOfOpenings: def.numberOfOpenings || 1,
+      urgency: def.urgency || 'Medium',
+      status: 'active',
+      approvalStatus: 'approved',
+      careerPageSlug,
+      source: 'linkedin',
+      contactEmail: def.contactEmail,
+      alternateContactEmail: def.alternateContactEmail,
+      contactPhone: def.contactPhone,
+    };
+
+    const existing = await Job.findOne({ tenantId, careerPageSlug }).select('_id').lean();
+    await Job.findOneAndUpdate(
+      { tenantId, careerPageSlug },
+      { $set: payload, $setOnInsert: { applicationCount: 0, assignedRecruiters: [] } },
+      { upsert: true, new: true }
+    );
+    if (existing) updated++;
+    else created++;
+  }
+
+  console.log(`✅  TalentNest LinkedIn jobs synced → ${created} created, ${updated} updated`);
+}
+
 async function seed() {
   // ── 0. Drop stale unique indexes that cause duplicate-null crashes ───────────
   try {
@@ -84,6 +435,9 @@ async function seed() {
     await User.create({ name: 'Super Admin', email: ADMIN_EMAIL, passwordHash: bcrypt.hashSync(ADMIN_PASSWORD, 10), role: 'super_admin', title: 'Super Administrator', tenantId, orgId: tenantId, orgName: od.name, isActive: true });
     console.log(`✅  Super Admin created → ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
   }
+
+  const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
+  await seedTalentNestLinkedInJobs({ tenantId, createdBy: superAdmin?._id });
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {

@@ -48,7 +48,7 @@ const guard = [authMiddleware, tenantGuard];
 
 // GET /api/jobs/public — public career-page feed, filtered by slug or tenantId
 router.get('/public', asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req, { limit: 12 });
+  const { page, limit, skip } = getPagination(req, { limit: 200 });
   const filter = { status: 'active', deletedAt: null };
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;

@@ -42,6 +42,13 @@ const jobSchema = new mongoose.Schema({
 
   location: { type: String, trim: true },
   jobType : { type: String },
+  experience: { type: String, trim: true, default: '' },
+  requirements: { type: String, default: '' },
+  externalUrl: { type: String, trim: true, default: '' },
+  source: { type: String, trim: true, default: '' },
+  contactEmail: { type: String, trim: true, lowercase: true, default: '' },
+  alternateContactEmail: { type: String, trim: true, lowercase: true, default: '' },
+  contactPhone: { type: String, trim: true, default: '' },
 
   numberOfOpenings: { type: Number, default: 1 },
   targetHireDate  : { type: Date },
