@@ -12,6 +12,7 @@ export default function SuperAdminCandidates() {
   const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all'); // all, applied, platform
+  const [totalUsers, setTotalUsers] = useState(0);
   const [drawerUser, setDrawerUser] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -20,6 +21,9 @@ export default function SuperAdminCandidates() {
     try {
       const res = await api.getCandidateRecords({ limit: 0 }); // limit 0 means all for super_admin optimization
       setCandidates(Array.isArray(res?.data) ? res.data : []);
+      
+      const uCount = await api.getUserCount().catch(() => 0);
+      setTotalUsers(typeof uCount === 'number' ? uCount : (uCount?.count || uCount?.data || 0));
     } catch (err) {
       setToast('Failed to fetch candidate records');
     }
@@ -44,7 +48,7 @@ export default function SuperAdminCandidates() {
   const stats = {
     total: candidates.length,
     applied: candidates.filter(c => c.isApplied).length,
-    platform: candidates.filter(c => !c.isApplied).length
+    platform: totalUsers
   };
 
   return (

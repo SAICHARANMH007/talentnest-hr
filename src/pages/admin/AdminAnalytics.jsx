@@ -807,16 +807,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     </div>
                   );
                 })}
-                {filtered.length > drillPage * DRILL_PAGE_SIZE && (
-                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                    <button 
-                      onClick={() => setDrillPage(p => p + 1)} 
-                      style={{ ...btnP, padding: '10px 32px', borderRadius: 14 }}
-                    >
-                      Load More Records ({filtered.length - drillPage * DRILL_PAGE_SIZE} remaining)
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })()}
@@ -1048,6 +1038,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{drillDown.title}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <button onClick={downloadCSV} style={{ ...btnG, padding: '8px 16px', fontSize: 12, borderRadius: 10 }}>⬇ CSV</button>
                   <button onClick={() => { setDrillDown(null); setDrillDownSearch(''); }} style={{ width: 40, height: 40, border: 'none', background: '#F8FAFC', borderRadius: 12, cursor: 'pointer', fontSize: 18 }}>✕</button>
                 </div>
               </div>
@@ -1088,7 +1079,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
                             {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
                           </select>
                         )}
-                        {/* Senior Developer Addition: Contextual Edit in Drill-down */}
                         <button 
                           onClick={() => {
                             const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
@@ -1108,6 +1098,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     </div>
                   );
                 })}
+                {filtered.length > drillPage * DRILL_PAGE_SIZE && (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <button 
+                      onClick={() => setDrillPage(p => p + 1)} 
+                      style={{ ...btnP, padding: '10px 32px', borderRadius: 14 }}
+                    >
+                      Load More Records ({filtered.length - drillPage * DRILL_PAGE_SIZE} remaining)
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
