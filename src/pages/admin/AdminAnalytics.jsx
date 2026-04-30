@@ -1153,62 +1153,65 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   const itemId = item.id || item._id;
                   const isSel = selectedItems.includes(String(itemId));
                   return (
-                    <div key={itemId} style={{ padding: '16px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isSel ? '#FFF1F2' : 'transparent' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <input type="checkbox" checked={isSel} 
-                          onChange={e => {
-                            const sid = String(itemId);
-                            setSelectedItems(p => e.target.checked ? [...p, sid] : p.filter(x => x !== sid));
-                          }}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }} />
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
-                          <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
-                        {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                            {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
-                            {item.phone && <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.phone}</span>}
-                            {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
-                            {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
-                            {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
-                            {item.skills && <span style={{ background: '#F5F3FF', color: '#6D28D9', fontSize: 11, padding: '3px 8px', borderRadius: 20, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.skills}</span>}
-                          </div>
-                        )}
+                    <React.Fragment key={itemId}>
+                      <div style={{ padding: '16px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isSel ? '#FFF1F2' : 'transparent' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <input type="checkbox" checked={isSel} 
+                            onChange={e => {
+                              const sid = String(itemId);
+                              setSelectedItems(p => e.target.checked ? [...p, sid] : p.filter(x => x !== sid));
+                            }}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
+                            <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
+                          {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                              {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
+                              {item.phone && <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.phone}</span>}
+                              {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
+                              {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
+                              {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
+                              {item.skills && <span style={{ background: '#F5F3FF', color: '#6D28D9', fontSize: 11, padding: '3px 8px', borderRadius: 20, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.skills}</span>}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        {drillDown.type === 'app' && (
-                          <select value={item.stage || item.currentStage || ''}
-                            onChange={e => triggerUpdate('app', itemId, { stage: e.target.value }, `Move candidate to ${STAGE_LABELS[e.target.value]}?`)}
-                            style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
-                          </select>
-                        )}
-                        {drillDown.type === 'job' && (
-                          <select value={item.status || ''}
-                            onChange={e => triggerUpdate('job', itemId, { status: e.target.value }, `Change job status to ${e.target.value}?`)}
-                            style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            <option value="active">Active</option>
-                            <option value="closed">Closed</option>
-                            <option value="draft">Draft</option>
-                          </select>
-                        )}
-                        <button 
-                          onClick={() => {
-                            const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
-                            const candObj = item.candidateId && typeof item.candidateId === 'object' ? item.candidateId : null;
-                            const userToEdit = allCandidates.find(c => String(c.id || c._id) === String(id))
-                              || (candObj ? { role: 'candidate', ...candObj, id: candObj.id || candObj._id?.toString() } : null)
-                              || { role: 'candidate', id, name: item.name || item._displayName, email: item.email };
-                            setDrawerUser(userToEdit);
-                          }}
-                          style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0176D3', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
-                        >
-                          ✏️ Edit
-                        </button>
+                          {drillDown.type === 'app' && (
+                            <select value={item.stage || item.currentStage || ''}
+                              onChange={e => triggerUpdate('app', itemId, { stage: e.target.value }, `Move candidate to ${STAGE_LABELS[e.target.value]}?`)}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                              {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+                            </select>
+                          )}
+                          {drillDown.type === 'job' && (
+                            <select value={item.status || ''}
+                              onChange={e => triggerUpdate('job', itemId, { status: e.target.value }, `Change job status to ${e.target.value}?`)}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                              <option value="active">Active</option>
+                              <option value="closed">Closed</option>
+                              <option value="draft">Draft</option>
+                            </select>
+                          )}
+                          <button 
+                            onClick={() => {
+                              const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
+                              const candObj = item.candidateId && typeof item.candidateId === 'object' ? item.candidateId : null;
+                              const userToEdit = allCandidates.find(c => String(c.id || c._id) === String(id))
+                                || (candObj ? { role: 'candidate', ...candObj, id: candObj.id || candObj._id?.toString() } : null)
+                                || { role: 'candidate', id, name: item.name || item._displayName, email: item.email };
+                              setDrawerUser(userToEdit);
+                            }}
+                            style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0176D3', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
                 {filtered.length > drillPage * DRILL_PAGE_SIZE && (
