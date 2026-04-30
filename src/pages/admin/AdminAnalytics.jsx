@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api, downloadBlob } from '../../api/api.js';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { api, downloadBlob } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import HorizBar from '../../components/charts/HorizBar.jsx';
