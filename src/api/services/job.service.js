@@ -8,12 +8,13 @@ export const jobService = {
       // Always request a generous limit — default backend limit is 20 which truncates data
       return req('GET', `/jobs?limit=200${rid ? `&recruiterId=${rid}` : ''}`);
     }
-    const { recruiterId, limit, status, search } = recruiterIdOrOpts;
+    const { recruiterId, limit, status, search, platform } = recruiterIdOrOpts;
     const p = new URLSearchParams();
     if (recruiterId) p.set('recruiterId', recruiterId);
-    p.set('limit', String(limit || 200)); // always set limit
+    p.set('limit', String(limit || 200)); 
     if (status)      p.set('status', status);
     if (search)      p.set('search', search);
+    if (platform)    p.set('platform', 'true');
     return req('GET', `/jobs?${p.toString()}`);
   },
   async getJob(id)                    { return req('GET', `/jobs/${id}`); },

@@ -40,10 +40,11 @@ export const userService = {
         : `/users?role=${params}&limit=200`;
       return toArr(await req('GET', url));
     }
-    const { role, orgId, limit } = params || {};
+    const { role, orgId, limit, platform } = params || {};
     const q = new URLSearchParams();
     if (role) q.set('role', role);
     if (orgId) q.set('orgId', orgId);
+    if (platform) q.set('platform', 'true');
     q.set('limit', String(limit || (role === 'candidate' ? 500 : 200)));
     return toArr(await req('GET', `/users?${q.toString()}`));
   },

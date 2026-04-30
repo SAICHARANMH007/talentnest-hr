@@ -198,22 +198,27 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }, 50);
 
       setTimeout(() => {
-        api.getJobs({ limit: 1000 }).then(unwrap).then(list => {
+        // High-Capacity Global Job Scan
+        api.getJobs({ limit: 1000, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
           const active = list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
           setJobCounts({ active, total: list.length });
         }).catch(() => setAllJobs([]));
         
-        // Accurate Application & Pipeline Tracking
-        api.getApplications({ limit: 2000 }).then(unwrap).then(list => {
+        // High-Capacity Global Application & Pipeline Tracking (10,000 Limit)
+        api.getApplications({ limit: 10000, platform: platformWide }).then(unwrap).then(list => {
           setAllApps(list);
-          // Calculate pipeline stages using official MASTER_STAGES keys
           const pipe = {};
           MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
+          const now = Date.now();
+          const thirtyDaysAgo = now - (30 * 86400000);
+          let appsLast30 = 0;
 
           list.forEach(a => {
             const raw = (a.stage || a.currentStage || '').toLowerCase();
-            // Map raw DB strings to official Frontend IDs
+            const created = new Date(a.createdAt).getTime();
+            if (created >= thirtyDaysAgo) appsLast30++;
+
             let mapped = null;
             if (raw === 'new' || raw === 'applied') mapped = 'applied';
             else if (raw === 'screening' || raw === 'shortlist' || raw === 'shortlisted') mapped = 'screening';
@@ -226,16 +231,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
             if (mapped && pipe[mapped] !== undefined) pipe[mapped]++;
           });
 
-          // The total in the pipeline should be the sum of its visible segments
           const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
-          setLocalAppStats({ total: pipeSum, pipeline: pipe });
+          setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: appsLast30 });
         }).catch(() => setAllApps([]));
       }, 150);
 
       setTimeout(() => {
-        api.getUsers({ role: 'candidate', limit: 2000 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-        api.getApplicants({ limit: 200 }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
-        api.getCandidateRecords({ limit: 200 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
+        // High-Capacity Global Candidate Scan
+        api.getUsers({ role: 'candidate', limit: 10000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getApplicants({ limit: 1000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        api.getCandidateRecords({ limit: 1000, platform: platformWide }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
       }, 300);
     }).catch(() => setLoading(false));
   }, [period, platformWide]);
@@ -399,29 +404,34 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allApps, period]);
 
   const stats = useMemo(() => {
-    const hiredCount = localAppStats.pipeline.selected || 0;
-    const totalApps = localAppStats.total || 0;
+    // Priority 1: Use Backend Aggregates (Most Reliable for High Volume)
+    // Priority 2: Use Local Verified Data (Best for Real-time sync)
+    const hiredCount = localAppStats.pipeline.selected || serverStats?.placements || 0;
+    const totalApps  = Math.max(localAppStats.total || 0, serverStats?.applications || 0);
+    const candCount  = Math.max(allCandidates.length || 0, serverStats?.candidates || 0);
+    const activeJobs = jobCounts.active || serverStats?.openJobs || 0;
+    const totalJobs  = jobCounts.total || serverStats?.totalJobs || 0;
 
     if (serverStats) {
       return {
         ...serverStats,
-        totalCandidates: allCandidates.length || serverStats.candidates || 0,
-        activeJobs:      jobCounts.total > 0 ? `${jobCounts.active} / ${jobCounts.total}` : (serverStats.openJobs || 0),
+        totalCandidates: candCount,
+        activeJobs:      totalJobs > 0 ? `${activeJobs} / ${totalJobs}` : activeJobs,
         totalApps:       totalApps,
-        appsLast30:      serverStats.appsLast30 || 0,
-        placements:      hiredCount || serverStats.placements || 0,
+        appsLast30:      localAppStats.last30 || serverStats.appsLast30 || 0,
+        placements:      hiredCount,
         placementsLast30: serverStats.placementsLast30 || 0,
-        fillRate:        jobCounts.total > 0 ? Math.round((hiredCount / jobCounts.total) * 100) : (serverStats.fillRate || 0),
+        fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : (serverStats.fillRate || 0),
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
     }
     // Fallback if API fails
     return {
-      totalCandidates: allCandidates.length,
-      activeJobs:      jobCounts.active,
+      totalCandidates: candCount,
+      activeJobs:      activeJobs,
       totalApps:       totalApps,
       placements:      hiredCount,
-      fillRate:        jobCounts.total > 0 ? Math.round((hiredCount / jobCounts.total) * 100) : 0,
+      fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : 0,
       avgTimeToHire:   null,
     };
   }, [serverStats, allCandidates, jobCounts, localAppStats]);
