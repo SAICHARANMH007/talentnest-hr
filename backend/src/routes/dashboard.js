@@ -61,10 +61,17 @@ function buildDateRange(startDate, endDate) {
 
 /**
  * Build the tenant filter. super_admin sees everything; others scoped to tenantId.
+ * Supports hierarchical access for Parent Organizations.
  */
 function tenantFilter(req) {
   if (req.user.role === 'super_admin') return {};
-  return { tenantId: new mongoose.Types.ObjectId(req.user.tenantId) };
+  
+  const ids = [new mongoose.Types.ObjectId(req.user.tenantId)];
+  if (Array.isArray(req.user.childTenantIds)) {
+    req.user.childTenantIds.forEach(id => ids.push(new mongoose.Types.ObjectId(id)));
+  }
+  
+  return { tenantId: { $in: ids } };
 }
 
 async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
@@ -614,115 +621,88 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
 */
 router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
-  const fetchAll = req.query.limit === 'all' || req.query.limit === '0';
-  const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
-  const search = String(req.query.search || '').trim().toLowerCase();
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+  const skip = (page - 1) * limit;
+  const search = String(req.query.search || '').trim();
 
-  const [apps, candidateProfiles, candidateUsers, tenantMap] = await Promise.all([
-    Application.find({ ...tf, deletedAt: null })
-      .select('candidateId jobId currentStage status createdAt updatedAt candidateEmail candidatePhone candidateName email source tenantId stageHistory rejectionReason')
-      .populate({ path: 'jobId', select: 'title tenantId' })
-      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
-      .sort({ createdAt: -1 })
-      .lean(),
-    Candidate.find({ ...tf, deletedAt: null })
-      .select('name email phone title currentCompany location skills tenantId createdAt userId parsedProfile.totalExperienceYears')
-      .lean(),
-    User.find({ ...tf, role: 'candidate', isActive: true })
-      .select('name email phone role tenantId createdAt currentCompany jobRole location skills')
-      .lean(),
-    orgNameMap(),
-  ]);
-
-  // Map for deduplication and grouping
-  const candidateMap = new Map(); // key -> { profile, user, apps: [], latestApp, userId }
-
-  const getCandidateKey = (email, phone, name) => {
-    if (email) return `email:${email.toLowerCase().trim()}`;
-    if (phone) return `phone:${phone.trim()}`;
-    if (name) return `name:${name.toLowerCase().trim()}`;
-    return null;
-  };
-
-  // 1. Initialize from User accounts
-  for (const u of candidateUsers) {
-    const key = getCandidateKey(u.email, u.phone, u.name) || `user:${u._id}`;
-    if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: u, profile: null, apps: [], latestApp: null, userId: String(u._id) });
-    }
-  }
-
-  // Map identifiers to primary keys for linking profiles
-  const userToKey = new Map();
-  const candToKey = new Map();
-  for (const [key, val] of candidateMap.entries()) {
-    if (val.userId) userToKey.set(val.userId, key);
-  }
-
-  // 2. Merge with Candidate profiles
-  for (const p of candidateProfiles) {
-    let key = getCandidateKey(p.email, p.phone, p.name);
-    if (!key && p.userId && userToKey.has(String(p.userId))) {
-      key = userToKey.get(String(p.userId));
-    }
-    if (!key) key = `cand:${p._id}`;
-
-    if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: null, profile: p, apps: [], latestApp: null, userId: p.userId ? String(p.userId) : null });
-    } else {
-      const entry = candidateMap.get(key);
-      if (!entry.profile) entry.profile = p;
-      if (!entry.userId && p.userId) entry.userId = String(p.userId);
-    }
-    candToKey.set(String(p._id), key);
-  }
-
-  // 3. Group all Applications
-  for (const app of apps) {
-    const cand = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    const email = cand.email || app.candidateEmail || app.email || '';
-    const phone = cand.phone || app.candidatePhone || '';
-    const name = cand.candidateName || cand.name || app.candidateName || '';
-    
-    let key = getCandidateKey(email, phone, name);
-    if (!key && cand._id && candToKey.has(String(cand._id))) {
-      key = candToKey.get(String(cand._id));
-    }
-    if (!key && cand._id) key = `cand:${cand._id}`;
-    
-    if (!key) continue; 
-
-    if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: null, profile: cand._id ? cand : null, apps: [app], latestApp: app, userId: cand.userId ? String(cand.userId) : null });
-      if (cand._id) candToKey.set(String(cand._id), key);
-    } else {
-      const entry = candidateMap.get(key);
-      entry.apps.push(app);
-      if (!entry.latestApp || new Date(app.createdAt) > new Date(entry.latestApp.createdAt)) {
-        entry.latestApp = app;
+  // Unified Aggregation Pipeline for "The Human" (Candidate)
+  // This offloads deduplication to MongoDB and supports pagination at the DB level.
+  const pipeline = [
+    { $match: { ...tf, deletedAt: null } },
+    { $sort: { createdAt: -1 } },
+    {
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'userId',
+              foreignField: '_id',
+              as: 'userDetails'
+            }
+          },
+          {
+            $lookup: {
+              from: 'applications',
+              localField: '_id',
+              foreignField: 'candidateId',
+              pipeline: [
+                { $match: { deletedAt: null } },
+                { $sort: { createdAt: -1 } },
+                { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
+                { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } }
+              ],
+              as: 'apps'
+            }
+          }
+        ]
       }
     }
+  ];
+
+  if (search) {
+    const searchRe = { $regex: search, $options: 'i' };
+    pipeline.unshift({
+      $match: {
+        $or: [
+          { name: searchRe },
+          { email: searchRe },
+          { phone: searchRe },
+          { title: searchRe }
+        ]
+      }
+    });
   }
 
-  const rows = [];
-  for (const entry of candidateMap.values()) {
-    const { profile, user, apps: candApps, latestApp } = entry;
-    const primary = profile || user || (latestApp?.candidateId && typeof latestApp.candidateId === 'object' ? latestApp.candidateId : {});
+  const [result, tenantMap] = await Promise.all([
+    Candidate.aggregate(pipeline),
+    orgNameMap()
+  ]);
+
+  const total = result[0].metadata[0]?.total || 0;
+  const candidates = result[0].data;
+
+  const rows = candidates.map(cand => {
+    const user = cand.userDetails?.[0] || {};
+    const latestApp = cand.apps?.[0] || null;
     
     const row = profileRow({
-      candidate: profile || (latestApp?.candidateId && typeof latestApp.candidateId === 'object' ? latestApp.candidateId : {}),
-      user: user || {},
+      candidate: cand,
+      user,
       app: latestApp,
-      job: latestApp?.jobId && typeof latestApp.jobId === 'object' ? latestApp.jobId : null,
-      orgName: tenantMap[String(primary.tenantId)] || tenantMap[String(latestApp?.tenantId)] || '',
+      job: latestApp?.job || null,
+      orgName: tenantMap[String(cand.tenantId)] || tenantMap[String(latestApp?.tenantId)] || '',
     });
 
-    row.isApplied = candApps.length > 0;
-    row.applicationCount = candApps.length;
-    row.allApplications = candApps.map(a => ({
-      id: a._id?.toString() || a.id,
-      jobId: a.jobId?._id?.toString() || a.jobId,
-      jobTitle: a.jobId?.title || 'Unknown Job',
+    row.applicationCount = cand.apps.length;
+    row.allApplications = cand.apps.map(a => ({
+      id: a._id?.toString(),
+      jobId: a.jobId?.toString(),
+      jobTitle: a.job?.title || 'Unknown Job',
       stage: a.currentStage,
       status: a.status,
       appliedAt: a.createdAt,
@@ -731,36 +711,47 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
       stageHistory: a.stageHistory,
     }));
     
-    rows.push(row);
-  }
+    return row;
+  });
 
-  const filtered = search
-    ? rows.filter(r => [r.candidateName, r.email, r.phone, r.jobTitle, r.organisation, r.source, r.stage].some(v => String(v || '').toLowerCase().includes(search)))
-    : rows;
-
-  filtered.sort((a, b) => new Date(b.appliedAt || b.profileCreatedAt || b.joinedAt || 0) - new Date(a.appliedAt || a.profileCreatedAt || a.joinedAt || 0));
-  res.json({ success: true, data: fetchAll ? filtered : filtered.slice(0, limit), total: filtered.length });
+  res.json({ 
+    success: true, 
+    data: rows, 
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) } 
+  });
 }));
 
 /* GET /api/dashboard/applicants
    Applicants are application rows only: one row per job application.
 */
 router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const fetchAll = req.query.limit === 'all' || req.query.limit === '0';
-  const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim().toLowerCase();
+  
   const filter = await buildApplicationFilters(req);
 
-  const appQuery = Application.find(filter)
-    .select('candidateId jobId currentStage status createdAt updatedAt candidateEmail candidatePhone candidateName email source tenantId stageHistory rejectionReason matchBreakdown assessmentScore assessmentViolations tags inviteStatus inviteMessage screeningAnswers')
-    .populate({ path: 'jobId', select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters' })
-    .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
-    .sort({ createdAt: -1 })
-    .lean();
-  if (!fetchAll) appQuery.limit(limit);
+  // If search exists, we add it to the DB query instead of filtering in memory
+  if (search) {
+    const searchRe = { $regex: search, $options: 'i' };
+    filter.$or = [
+      { candidateName: searchRe },
+      { candidateEmail: searchRe },
+      { candidatePhone: searchRe },
+      { email: searchRe }
+    ];
+  }
 
-  const [apps, tenantMap] = await Promise.all([
-    appQuery,
+  const [apps, total, tenantMap] = await Promise.all([
+    Application.find(filter)
+      .populate({ path: 'jobId', select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters' })
+      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Application.countDocuments(filter),
     orgNameMap(),
   ]);
 
@@ -782,11 +773,11 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
     });
   });
 
-  const filtered = search
-    ? rows.filter(r => [r.candidateName, r.email, r.phone, r.jobTitle, r.jobCompany, r.organisation, r.stage, r.source, r.skills, r.currentCompany].some(v => String(v || '').toLowerCase().includes(search)))
-    : rows;
-
-  res.json({ success: true, data: filtered, total: filtered.length });
+  res.json({ 
+    success: true, 
+    data: rows, 
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) } 
+  });
 }));
 
 /* GET /api/dashboard/applicants/export */

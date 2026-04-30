@@ -9,6 +9,10 @@ const JWT_SECRET = (() => {
   return s;
 })();
 
+// Senior Optimization: In-memory cache for User lookups (TTL 1 min)
+const userCache = new Map();
+const USER_CACHE_TTL = 1 * 60 * 1000;
+
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '15m';
 
 // Sign a new access token — embeds userId, tenantId, and role
@@ -28,9 +32,16 @@ const authMiddleware = async (req, res, next) => {
     const token   = header.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    const user = await User.findById(decoded.userId)
-      .select('-passwordHash -resetPasswordToken -resetPasswordExpires')
-      .lean();
+    // Check Cache first
+    let user = userCache.get(decoded.userId);
+    if (user && (Date.now() - user.cachedAt < USER_CACHE_TTL)) {
+      user = user.data;
+    } else {
+      user = await User.findById(decoded.userId)
+        .select('-passwordHash -resetPasswordToken -resetPasswordExpires')
+        .lean();
+      if (user) userCache.set(decoded.userId, { data: user, cachedAt: Date.now() });
+    }
 
     if (!user)       return res.status(401).json({ success: false, error: 'User no longer exists' });
     if (!user.isActive) return res.status(403).json({ success: false, error: 'Account is deactivated' });

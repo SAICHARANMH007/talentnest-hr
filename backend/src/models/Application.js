@@ -130,6 +130,9 @@ const applicationSchema = new mongoose.Schema({
   // Soft-delete
   deletedAt: { type: Date, default: null },
 
+  // Attribution (VMS Support)
+  submittedByTenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
+
   // Invite flow — enum extended to cover all invite lifecycle states
   inviteToken  : { type: String, default: null },
   inviteStatus : {

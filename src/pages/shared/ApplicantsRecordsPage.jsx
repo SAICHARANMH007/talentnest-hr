@@ -199,6 +199,8 @@ export default function ApplicantsRecordsPage({ user }) {
   const [recruiters, setRecruiters] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState('');
@@ -230,25 +232,32 @@ export default function ApplicantsRecordsPage({ user }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getApplicants({ ...filters, limit: 'all' });
+      const res = await api.getApplicants({ ...filters, page, limit: 50 });
       setRows(Array.isArray(res?.data) ? res.data : []);
-      setTotal(res?.total || 0);
+      setTotal(res?.pagination?.total || res?.total || 0);
+      setPages(res?.pagination?.pages || 1);
     } catch (e) {
-      setToast('Export-ready applicant records could not load: ' + e.message);
+      setToast('Applicant records could not load: ' + e.message);
       setRows([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, page]);
 
   useEffect(() => { load(); }, [load]);
 
   const visibleRows = useMemo(() => rows, [rows]);
 
-  const updateFilter = (key, value) => setFilters(p => ({ ...p, [key]: value }));
+  const updateFilter = (key, value) => {
+    setFilters(p => ({ ...p, [key]: value }));
+    setPage(1); // Reset to page 1 on filter change
+  };
 
-  const clearFilters = () => setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '' });
+  const clearFilters = () => {
+    setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '' });
+    setPage(1);
+  };
 
   const exportRows = async () => {
     setExporting(true);
@@ -356,6 +365,28 @@ export default function ApplicantsRecordsPage({ user }) {
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <div style={{ fontWeight: 800, color: '#0A1628' }}>{total} applicant record{total === 1 ? '' : 's'}</div>
+          
+          {/* Pagination Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button 
+              disabled={page <= 1 || loading} 
+              onClick={() => setPage(p => p - 1)}
+              style={{ ...btnG, padding: '4px 12px', fontSize: 12, opacity: page <= 1 ? 0.5 : 1 }}
+            >
+              Previous
+            </button>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>
+              Page {page} of {pages}
+            </span>
+            <button 
+              disabled={page >= pages || loading} 
+              onClick={() => setPage(p => p + 1)}
+              style={{ ...btnG, padding: '4px 12px', fontSize: 12, opacity: page >= pages ? 0.5 : 1 }}
+            >
+              Next
+            </button>
+          </div>
+
           <div style={{ color: '#64748B', fontSize: 12 }}>Status changes are saved immediately</div>
         </div>
         {loading ? (

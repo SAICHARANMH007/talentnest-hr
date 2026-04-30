@@ -81,6 +81,9 @@ const candidateSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
   // ── Soft delete ─────────────────────────────────────────────────────────────
+  // Attribution (VMS Support)
+  submittedByTenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
+
   deletedAt: { type: Date, default: null },
 }, { timestamps: true });
 

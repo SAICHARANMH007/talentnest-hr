@@ -535,7 +535,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       return;
     }
     fetchDrill('Candidate Database', 'user', async () => {
-      const raw = await api.getCandidateRecords({ limit: 'all' }).catch(() => ({ data: [] }));
+      const raw = await api.getCandidateRecords({ limit: 500 }).catch(() => ({ data: [] }));
       const list = Array.isArray(raw?.data) ? raw.data : [];
       return list.map(c => ({
         ...c,
@@ -553,7 +553,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getApplicants({ limit: isSuperAdmin ? 'all' : 1000 }).catch(() => ({ data: [] }));
+    const raw = await api.getApplicants({ limit: 500 }).catch(() => ({ data: [] }));
     const list = raw?.data || [];
     return list.map(c => ({
       ...c,
@@ -567,8 +567,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const openVelocityDrill = (point = null) => fetchDrill(point?.date ? `Applications on ${point.label}` : 'Application Velocity — Last 14 Days', 'app', async () => {
     const params = point?.date
-      ? { startDate: point.date, endDate: point.date, limit: 'all' }
-      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 'all' };
+      ? { startDate: point.date, endDate: point.date, limit: 500 }
+      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 500 };
     const raw = await api.getApplicants(params).catch(() => ({ data: [] }));
     return (raw?.data || []).map(r => ({
       ...r,
@@ -581,7 +581,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
-    const raw = await api.getApplications({ stage: 'Hired', limit: isSuperAdmin ? 'all' : 500 }).then(unwrap).catch(() => []);
+    const raw = await api.getApplications({ stage: 'Hired', limit: 500 }).then(unwrap).catch(() => []);
     return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired` }));
   });
 
@@ -589,7 +589,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     if (!seg.stageKey || seg.value === 0) return;
     const dbStage = FRONTEND_TO_DB_STAGE[seg.stageKey] || seg.stageKey;
     fetchDrill(STAGE_LABELS[seg.stageKey] || seg.stageKey, 'app', async () => {
-      const raw = await api.getApplications({ stage: dbStage, limit: isSuperAdmin ? 'all' : 500 }).then(unwrap).catch(() => []);
+      const raw = await api.getApplications({ stage: dbStage, limit: 500 }).then(unwrap).catch(() => []);
       return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[seg.stageKey]}` }));
     });
   };
