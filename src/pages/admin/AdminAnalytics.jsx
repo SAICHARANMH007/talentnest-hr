@@ -139,6 +139,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [trendData,     setTrendData]     = useState([]);
   const [applicantRows, setApplicantRows] = useState([]);
   const [candidateRecords, setCandidateRecords] = useState([]);
+  const [selectedJobIds, setSelectedJobIds] = useState([]);
+  const [mergeReview, setMergeReview] = useState(null); // { groups: { primary, dupes, candCount }[] }
+  const [merging, setMerging] = useState(false);
+  const [mergeSummary, setMergeSummary] = useState(null); // { totalMoved, details: { title, count }[] }
   const [jobCounts, setJobCounts] = useState({ active: 0, total: 0 });
   const [localAppStats, setLocalAppStats] = useState({ total: 0, pipeline: {} });
   const [loading,       setLoading]       = useState(true);
@@ -322,79 +326,75 @@ export default function AdminAnalytics({ user, onNavigate }) {
     });
   };
 
-  const handleDeduplicateJobs = async (items) => {
-    setConfirmAction({
-      message: `Deep-scan and merge duplicates among ${items.length} jobs? This will consolidate all applicants into primary records and clean up redundant postings across the platform.`,
-      onConfirm: async () => {
-        setConfirmAction(null);
-        setToast('🧹 Starting high-volume deduplication scan...');
-        try {
-          const groups = {};
-          items.forEach(j => {
-            // High-Performance Fuzzy Key: Title + Company (Ignoring minor location strings)
-            const title = (j.name || j.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-            const subParts = (j.sub || '').toLowerCase().split('·');
-            const company = (subParts[0] || '').replace(/[^a-z0-9]/g, '').trim();
-            const key = `${title}|${company}`; 
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(j);
-          });
-
-          const toProcess = Object.values(groups).filter(g => g.length > 1);
-          if (toProcess.length === 0) {
-            setToast('✅ No duplicates found in this set.');
-            return;
-          }
-
-          setToast(`⚙️ Found ${toProcess.length} duplicate groups. Processing...`);
-          let totalMerged = 0;
-          let processedGroups = 0;
-
-          // Process in small batches to avoid 429 Rate Limits or Timeout
-          for (const group of toProcess) {
-            const primary = group[0];
-            const primaryId = String(primary.id || primary._id);
-            const duplicates = group.slice(1);
-
-            await Promise.all(duplicates.map(async (dupe) => {
-              const dupeId = String(dupe.id || dupe._id);
-              try {
-                // 1. Get ALL candidates from duplicate (high limit)
-                const candsRes = await req('GET', `/jobs/${dupeId}/candidates?limit=1000`).catch(() => []);
-                const cands = Array.isArray(candsRes) ? candsRes : (Array.isArray(candsRes?.data) ? candsRes.data : []);
-                const candIds = cands.map(c => String(c.id || c._id)).filter(id => id && id !== 'undefined');
-                
-                // 2. Move candidates to primary record
-                if (candIds.length > 0) {
-                  await api.assignCandidatesToJob(primaryId, candIds).catch(() => null);
-                }
-                
-                // 3. Close the duplicate job safely
-                await api.patchJob(dupeId, { status: 'closed' }).catch(() => null);
-                totalMerged++;
-              } catch (err) {
-                console.error('Migration error for job', dupeId, err);
-              }
-            }));
-            
-            processedGroups++;
-            if (processedGroups % 5 === 0) {
-              setToast(`⏳ Data Migration Progress: ${Math.round((processedGroups / toProcess.length) * 100)}%`);
-            }
-          }
-
-          setToast(`🎉 Successfully consolidated ${totalMerged} jobs and all applicants!`);
-          await load(); 
-          openActiveJobsDrill(); // Refresh the list view to show changes
-        } catch (e) {
-          setToast('❌ Data migration failed: ' + e.message);
-        }
-      },
-      onCancel: () => setConfirmAction(null),
+  const findDuplicates = () => {
+    const items = allJobs;
+    if (items.length === 0) return;
+    
+    const groups = {};
+    items.forEach(j => {
+      const title = (j.title || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const company = (j.company || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const key = `${title}|${company}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(j);
     });
+
+    const groupList = Object.values(groups).filter(g => g.length > 1).map(g => {
+      const sorted = [...g].sort((a,b) => (b.applicantsCount||0) - (a.applicantsCount||0));
+      return {
+        primary: sorted[0],
+        duplicates: sorted.slice(1)
+      };
+    });
+
+    if (groupList.length === 0) {
+      setToast('✅ No duplicates found');
+      return;
+    }
+    setMergeReview(groupList);
   };
 
-  // ── Derived Stats ─────────────────────────────────────────────────────────
+  const executeMerge = async () => {
+    if (!mergeReview) return;
+    setMerging(true);
+    setToast('🧹 Starting migration...');
+    let totalMerged = 0;
+    let totalMoved = 0;
+    const details = [];
+    
+    try {
+      for (const group of mergeReview) {
+        const primary = group.primary;
+        const primaryId = String(primary.id);
+        let groupMoved = 0;
+        
+        for (const dupe of group.duplicates) {
+          const dupeId = String(dupe.id);
+          const res = await api.getApplications({ jobId: dupeId, limit: 1000 }).catch(() => []);
+          const apps = Array.isArray(res) ? res : (res?.data || []);
+          const candIds = apps.map(a => String(a.candidateId || a.candidate?._id)).filter(id => id && id !== 'undefined');
+          
+          if (candIds.length > 0) {
+            await api.assignCandidatesToJob(primaryId, candIds);
+            groupMoved += candIds.length;
+          }
+          await api.patchJob(dupeId, { status: 'closed' });
+          totalMerged++;
+        }
+        if (groupMoved > 0) {
+          details.push({ title: primary.title, count: groupMoved });
+        }
+        totalMoved += groupMoved;
+      }
+      setMergeSummary({ totalMoved, totalMerged, details });
+      setMergeReview(null);
+      load();
+    } catch (e) {
+      setToast(`❌ Error: ${e.message}`);
+    }
+    setMerging(false);
+  };
+
   // ── Derived Stats ─────────────────────────────────────────────────────────
   const filteredApps = useMemo(() => {
     const days = PERIODS[period].days;
@@ -641,6 +641,104 @@ export default function AdminAnalytics({ user, onNavigate }) {
     <ErrorReportBoundary componentName="AdminAnalytics">
       <div style={{ maxWidth: '100%', paddingBottom: 80 }}>
 
+      {/* ── Merge Review Modal ── */}
+      {mergeReview && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:11000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:600, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.25)' }}>
+            <div style={{ padding:'24px 32px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <h2 style={{ margin:0, color:'#fff', fontSize:20, fontWeight:800 }}>🪄 Review Job Migration</h2>
+                <p style={{ margin:'4px 0 0', color:'rgba(255,255,255,0.7)', fontSize:13 }}>Merging {mergeReview.length} groups of duplicate jobs</p>
+              </div>
+              <button onClick={() => setMergeReview(null)} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer' }}>✕</button>
+            </div>
+            
+            <div style={{ flex:1, overflowY:'auto', padding:32 }}>
+              <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:24, display:'flex', gap:12 }}>
+                <div style={{ fontSize:20 }}>🛡️</div>
+                <div style={{ color:'#991B1B', fontSize:13, lineHeight:1.5 }}>
+                  <strong>Safety Protocol Active:</strong> Candidates from duplicate jobs will be linked to the primary job <strong>before</strong> the duplicates are closed. No data will be lost.
+                </div>
+              </div>
+
+              <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                {mergeReview.map((group, i) => (
+                  <div key={i} style={{ border:'1px solid #E2E8F0', borderRadius:16, overflow:'hidden' }}>
+                    <div style={{ background:'#F8FAFF', padding:'12px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <span style={{ fontSize:12, fontWeight:800, color:'#032D60' }}>GROUP {i+1}</span>
+                      <span style={{ fontSize:11, color:'#0176D3', background:'rgba(1,118,211,0.1)', padding:'2px 8px', borderRadius:20 }}>{group.duplicates.length + 1} Identical Postings</span>
+                    </div>
+                    <div style={{ padding:20 }}>
+                      <div style={{ marginBottom:16 }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>KEEPING AS PRIMARY</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <div style={{ background:'#2E844A', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>PRIMARY</div>
+                          <div>
+                            <div style={{ fontWeight:700, fontSize:14 }}>{group.primary.title}</div>
+                            <div style={{ fontSize:12, color:'#706E6B' }}>{group.primary.company} · {group.primary.applicantsCount || 0} existing apps</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>CONSOLIDATING (TO BE CLOSED)</div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                          {group.duplicates.map(d => (
+                            <div key={d.id} style={{ display:'flex', alignItems:'center', gap:12, opacity:0.8 }}>
+                              <div style={{ background:'#BA0517', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>CLOSE</div>
+                              <div style={{ fontSize:13 }}>{d.title} <span style={{ color:'#706E6B' }}>({d.applicantsCount || 0} to migrate)</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding:24, borderTop:'1px solid #E2E8F0', display:'flex', gap:12 }}>
+              <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:15, justifyContent:'center' }}>
+                {merging ? '⚙️ Migrating Candidates...' : '✓ Confirm & Merge All'}
+              </button>
+              <button onClick={() => setMergeReview(null)} style={{ ...btnG, flex:1, height:48, fontSize:15, justifyContent:'center' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mergeSummary && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:11000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:480, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.25)' }}>
+            <div style={{ padding:'24px 32px', background:'#2E844A', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h2 style={{ margin:0, color:'#fff', fontSize:20, fontWeight:800 }}>🎉 Migration Complete</h2>
+              <button onClick={() => setMergeSummary(null)} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding:32 }}>
+              <div style={{ textAlign:'center', marginBottom:24 }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+                <div style={{ fontSize:24, fontWeight:800, color:'#181818' }}>{mergeSummary.totalMoved} Candidates Moved</div>
+                <div style={{ color:'#706E6B', fontSize:14, marginTop:4 }}>{mergeSummary.totalMerged} duplicate jobs closed successfully</div>
+              </div>
+              
+              <div style={{ background:'#F8FAFF', borderRadius:16, padding:20, border:'1px solid #E2E8F0' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#032D60', letterSpacing:1, marginBottom:12, textTransform:'uppercase' }}>Migration Details</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {mergeSummary.details.map((d, i) => (
+                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13 }}>
+                      <span style={{ fontWeight:600, color:'#181818' }}>{d.title}</span>
+                      <span style={{ color:'#2E844A', fontWeight:700 }}>+{d.count} candidates</span>
+                    </div>
+                  ))}
+                  {mergeSummary.details.length === 0 && <div style={{ color:'#706E6B', fontSize:12 }}>No candidates were found in duplicates.</div>}
+                </div>
+              </div>
+              
+              <button onClick={() => setMergeSummary(null)} style={{ ...btnP, width:'100%', height:48, marginTop:24, justifyContent:'center', fontSize:15 }}>Great, thanks!</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Unified Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -717,56 +815,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
         <div style={{ ...glassPanel, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
-              <h3 style={{ ...sectionTitle, margin: 0 }}>Applicants Applying For Jobs</h3>
-              <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
-                One row per submitted application, with candidate contact details and job context.
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={openAppsDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View Applicants</button>
-              <button
-                disabled={exporting.applicants}
-                onClick={() => handleExport('applicants', '/dashboard/applicants/export', `applicants-${new Date().toISOString().split('T')[0]}.xlsx`)}
-                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.applicants ? 0.6 : 1 }}>
-                {exporting.applicants ? 'Exporting…' : 'Export Applicants Excel'}
-              </button>
-            </div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 920 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC' }}>
-                  {['Candidate', 'Email', 'Mobile', 'Organisation', 'Job', 'Stage', 'Source', 'Applied'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800, color: '#0A1628', borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {applicantRows.slice(0, 8).map((r, i) => (
-                  <tr key={r.applicationId || r.candidateId || r.userId || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.candidateName || 'Candidate'}</td>
-                    <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.phone || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.organisation || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.jobTitle || '-'}</td>
-                    <td style={{ padding: '10px 12px' }}><Badge label={r.stage || r.recordType || 'Profile'} color="#0176D3" /></td>
-                    <td style={{ padding: '10px 12px', color: '#706E6B' }}>{r.source || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#706E6B', whiteSpace: 'nowrap' }}>{r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : '-'}</td>
-                  </tr>
-                ))}
-                {applicantRows.length === 0 && (
-                  <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No applicants found yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {isSuperAdmin && (
-        <div style={{ ...glassPanel, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div>
               <h3 style={{ ...sectionTitle, margin: 0 }}>All Candidate Records</h3>
               <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
                 Candidate accounts and profiles, including those who have not applied yet.
@@ -781,6 +829,38 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 {exporting.candidates ? 'Exporting…' : 'Export Candidate Excel'}
               </button>
             </div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC' }}>
+                  {['Candidate', 'Email', 'Mobile', 'Organisation', 'Role', 'Status'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800, color: '#0A1628', borderBottom: '2px solid #E2E8F0' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {candidateRecords.slice(0, 8).map((r, i) => (
+                  <tr key={r.id || r._id || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.name || 'Candidate'}</td>
+                    <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || 'No email'}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {r.phone ? (
+                        <span style={{ color: '#166534', background: '#F0FDF4', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>📞 {r.phone}</span>
+                      ) : (
+                        <span style={{ color: '#BE123C', background: '#FFF1F2', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800 }}>⚠️ Missing Mobile</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.organisationName || '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#706E6B' }}>{r.title || '-'}</td>
+                    <td style={{ padding: '10px 12px' }}><Badge label="Active" color="#10b981" /></td>
+                  </tr>
+                ))}
+                {candidateRecords.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No candidate records found yet.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -813,7 +893,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     const rid = String(r.recruiterId);
                     setDrillDown({ title: `${r.name}'s Pipeline — Loading…`, type: 'app', items: [] });
                     try {
-                      const raw = await api.getApplications({ recruiterId: rid, limit: 500 }).then(unwrap).catch(() => []);
+                      const raw = await api.getApplications({ recruiterId: rid, limit: 500, platform: platformWide }).then(unwrap).catch(() => []);
                       const items = raw.map(a => ({
                         ...a,
                         id: a.id || a._id,
@@ -865,7 +945,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   </div>
                   <TimeAgo date={a.createdAt} />
                 </div>
-                {/* Senior Developer Addition: Direct Edit Shortcut */}
                 <button 
                   onClick={() => {
                     const id = extractId(a.candidateId || a.candidate);
@@ -890,11 +969,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          ADVANCED ANALYTICS SECTION
-      ══════════════════════════════════════════════════════════════════════ */}
-
-      {/* ── Date Range Picker ── */}
+      {/* ── Advanced Analytics Section ── */}
       <div style={{ ...glassPanel, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0A1628', whiteSpace: 'nowrap' }}>📅 Advanced Analytics</h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
@@ -909,6 +984,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
               style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, outline: 'none' }} />
           </div>
           <button onClick={applyFilter} style={{ ...btnP, borderRadius: 10, padding: '8px 20px' }}>Apply Filter</button>
+          {isSuperAdmin && <button onClick={findDuplicates} style={{ ...btnG, color:'#0176D3', borderColor:'#0176D3' }}>🪄 Merge & Keep One</button>}
           <span style={{ fontSize: 11, color: '#94A3B8' }}>Showing: {appliedStart} → {appliedEnd}</span>
         </div>
       </div>
@@ -1189,7 +1265,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   {drillDown.type === 'job' && (
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button 
-                        onClick={() => handleDeduplicateJobs(drillDown.items)}
+                        onClick={findDuplicates}
                         style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700 }}>
                         🪄 Merge & Keep One
                       </button>

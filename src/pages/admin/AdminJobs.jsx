@@ -37,19 +37,21 @@ export default function AdminJobs({ user }) {
   const [candSearch, setCandSearch]     = useState('');
   const [selectedCandIds, setSelectedCandIds] = useState([]);
   const [jobApplications, setJobApplications] = useState([]);
-  const [assessmentJob, setAssessmentJob] = useState(null); // job for add-assessment
-  const [applicantsJob, setApplicantsJob] = useState(null); // { job, apps[] }
   const [applicantsLoading, setApplicantsLoading] = useState(false);
+  const [appSearch, setAppSearch] = useState('');
   const [drawerCandidate, setDrawerCandidate] = useState(null);
+  const [selectedJobIds, setSelectedJobIds] = useState([]);
+  const [mergeReview, setMergeReview] = useState(null); // { groups: { primary, dupes, candCount }[] }
+  const [merging, setMerging] = useState(false);
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
   const load = () => {
     setLoad(true);
-    api.getJobs({ limit: 200 })
+    // Super Admin sees everything across the platform
+    api.getJobs({ limit: 1000, platform: user?.role === 'super_admin' })
       .then(r => {
         const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
-        // Deduplicate by ID to prevent ghost/duplicate items
         const map = new Map();
         raw.forEach(item => {
           const job = normalizeJob(item);
@@ -91,6 +93,86 @@ export default function AdminJobs({ user }) {
     catch (e) { setToast(`❌ ${e.message}`); }
   };
 
+  const handleBulkClose = async () => {
+    if (selectedJobIds.length === 0) return;
+    if (!window.confirm(`Close ${selectedJobIds.length} selected jobs?`)) return;
+    setSaving(true);
+    try {
+      await Promise.all(selectedJobIds.map(id => api.patchJob(id, { status: 'closed' })));
+      setToast(`✅ ${selectedJobIds.length} jobs closed successfully`);
+      setSelectedJobIds([]);
+      load();
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setSaving(false);
+  };
+
+
+  const findDuplicates = () => {
+    const items = jobs;
+    if (items.length === 0) return;
+    
+    const groups = {};
+    items.forEach(j => {
+      const title = (j.title || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const company = (j.company || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const key = `${title}|${company}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(j);
+    });
+
+    const groupList = Object.values(groups).filter(g => g.length > 1).map(g => {
+      // Logic: Pick the one with the most applicants OR status='active' as primary
+      const sorted = [...g].sort((a,b) => (b.applicantsCount||0) - (a.applicantsCount||0));
+      return {
+        primary: sorted[0],
+        duplicates: sorted.slice(1)
+      };
+    });
+
+    if (groupList.length === 0) {
+      setToast('✅ No duplicates found');
+      return;
+    }
+    setMergeReview(groupList);
+  };
+
+  const executeMerge = async () => {
+    if (!mergeReview) return;
+    setMerging(true);
+    setToast('🧹 Starting migration...');
+    let totalMerged = 0;
+    let totalMoved = 0;
+    
+    try {
+      for (const group of mergeReview) {
+        const primary = group.primary;
+        const primaryId = String(primary.id);
+        
+        for (const dupe of group.duplicates) {
+          const dupeId = String(dupe.id);
+          // 1. Fetch Candidates
+          const res = await api.getApplications({ jobId: dupeId, limit: 1000 }).catch(() => []);
+          const apps = Array.isArray(res) ? res : (res?.data || []);
+          const candIds = apps.map(a => String(a.candidateId || a.candidate?._id)).filter(id => id && id !== 'undefined');
+          
+          if (candIds.length > 0) {
+            await api.assignCandidatesToJob(primaryId, candIds);
+            totalMoved += candIds.length;
+          }
+          // 2. Close duplicate
+          await api.patchJob(dupeId, { status: 'closed' });
+          totalMerged++;
+        }
+      }
+      setToast(`🎉 Success! Closed ${totalMerged} duplicates and migrated ${totalMoved} candidates to original jobs.`);
+      setMergeReview(null);
+      load();
+    } catch (e) {
+      setToast(`❌ Error: ${e.message}`);
+    }
+    setMerging(false);
+  };
+
   const locations   = [...new Set(jobs.map(j => j.location).filter(Boolean))];
   const recruiters  = [...new Set(jobs.map(j => j.recruiterName).filter(Boolean))];
   const filtered = jobs.filter(j => {
@@ -126,52 +208,70 @@ export default function AdminJobs({ user }) {
             </div>
             {/* Body */}
             <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
+              <div style={{ marginBottom: 16 }}>
+                <input 
+                  placeholder="Search applicants by name or email..." 
+                  value={appSearch} 
+                  onChange={e => setAppSearch(e.target.value)}
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:10, border:'1px solid #E2E8F0', fontSize:13, outline:'none' }}
+                />
+              </div>
+
               {applicantsLoading ? (
                 <div style={{ textAlign:'center', padding:48 }}><Spinner /></div>
-              ) : applicantsJob.apps.length === 0 ? (
-                <div style={{ textAlign:'center', padding:'48px 0', color:'#706E6B' }}>
-                  <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
-                  <div style={{ fontWeight:600 }}>No applicants yet</div>
-                  <div style={{ fontSize:13, marginTop:4 }}>Share the job link to get candidates</div>
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {applicantsJob.apps.map(a => {
-                    const cand = a.candidateId || a.candidate;
-                    const candName = cand?.name || a.candidateName || 'Candidate';
-                    const s = SM[a.stage] || { color:'#706E6B', label: a.stage || 'Applied' };
-                    return (
-                      <div key={a.id||a._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#F8FAFF', border:'1px solid rgba(1,118,211,0.12)', borderRadius:14 }}>
-                        {/* Avatar */}
-                        <div style={{ width:44, height:44, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:17, flexShrink:0 }}>
-                          {candName[0].toUpperCase()}
-                        </div>
-                        {/* Info */}
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:700, fontSize:14, color:'#181818', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
-                          <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || ''}{cand?.phone ? ` · ${cand.phone}` : ''}</div>
-                          {(cand?.currentCompany || cand?.title) && (
-                            <div style={{ fontSize:12, color:'#0176D3', marginTop:1 }}>{cand.title}{cand.currentCompany ? ` @ ${cand.currentCompany}` : ''}</div>
-                          )}
-                          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
-                            {cand?.currentCTC && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>CTC: {cand.currentCTC}</span>}
-                            {cand?.expectedCTC && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>Exp: {cand.expectedCTC}</span>}
-                            {cand?.experience !== undefined && <span style={{ fontSize:11, color:'#706E6B', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>⏱ {cand.experience}y</span>}
+              ) : (() => {
+                const filtApps = applicantsJob.apps.filter(a => {
+                  const cand = a.candidateId || a.candidate;
+                  const name = (cand?.name || a.candidateName || '').toLowerCase();
+                  const email = (cand?.email || '').toLowerCase();
+                  const q = appSearch.toLowerCase();
+                  return name.includes(q) || email.includes(q);
+                });
+
+                if (filtApps.length === 0) return (
+                  <div style={{ textAlign:'center', padding:'48px 0', color:'#706E6B' }}>
+                    <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
+                    <div style={{ fontWeight:600 }}>No applicants found</div>
+                    <div style={{ fontSize:13, marginTop:4 }}>Try a different search term</div>
+                  </div>
+                );
+
+                return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    {filtApps.map(a => {
+                      const cand = a.candidateId || a.candidate;
+                      const candName = cand?.name || a.candidateName || 'Candidate';
+                      const s = SM[a.stage] || { color:'#706E6B', label: a.stage || 'Applied' };
+                      return (
+                        <div key={a.id||a._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#F8FAFF', border:'1px solid rgba(1,118,211,0.12)', borderRadius:14 }}>
+                          {/* Avatar */}
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:17, flexShrink:0 }}>
+                            {(candName[0] || '?').toUpperCase()}
+                          </div>
+                          {/* Info */}
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:700, fontSize:14, color:'#181818', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
+                            <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || 'No email provided'}</div>
+                            {cand?.phone ? (
+                              <div style={{ fontSize:11, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {cand.phone}</div>
+                            ) : (
+                              <div style={{ fontSize:10, color:'#BE123C', background:'#FFF1F2', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4, fontWeight:800 }}>⚠️ Missing Mobile</div>
+                            )}
+                          </div>
+                          {/* Stage badge */}
+                          <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
+                            <span style={{ background:`${s.color}18`, color:s.color, border:`1px solid ${s.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>{s.label}</span>
+                            <div style={{ display:'flex', gap:6 }}>
+                              <button onClick={() => { const c = cand ? { role:'candidate', ...cand, id: cand.id||cand._id?.toString() } : null; if(c) setDrawerCandidate(c); }} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>✏️ Edit</button>
+                              <button onClick={() => { const cid = cand?.id||cand?._id?.toString(); if(cid) navigate(`/app/resume/${cid}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
+                            </div>
                           </div>
                         </div>
-                        {/* Stage badge */}
-                        <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
-                          <span style={{ background:`${s.color}18`, color:s.color, border:`1px solid ${s.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>{s.label}</span>
-                          <div style={{ display:'flex', gap:6 }}>
-                            <button onClick={() => { const c = cand ? { role:'candidate', ...cand, id: cand.id||cand._id?.toString() } : null; if(c) setDrawerCandidate(c); }} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>✏️ Edit</button>
-                            <button onClick={() => { const cid = cand?.id||cand?._id?.toString(); if(cid) navigate(`/app/resume/${cid}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -199,7 +299,19 @@ export default function AdminJobs({ user }) {
       )}
 
       <PageHeader title="All Job Postings" subtitle={hasFilters ? `${filtered.length} of ${jobs.length} jobs` : `${jobs.filter(j => j.status === 'active' || j.status === 'Open').length} open jobs out of ${jobs.length} total across all recruiters`}
-        action={<button onClick={() => setShowModal(true)} style={btnP}>+ Post Job</button>} />
+        action={
+          <div style={{ display: 'flex', gap: 10 }}>
+            {user?.role === 'super_admin' && (
+              <>
+                <button onClick={findDuplicates} style={{ ...btnG, color: '#0176D3', borderColor: '#0176D3' }}>🪄 Merge Duplicates</button>
+                {selectedJobIds.length > 0 && (
+                  <button onClick={handleBulkClose} style={{ ...btnD, background: '#BA0517', color: '#fff' }}>🚫 Close ({selectedJobIds.length})</button>
+                )}
+              </>
+            )}
+            <button onClick={() => setShowModal(true)} style={btnP}>+ Post Job</button>
+          </div>
+        } />
 
       {!loading && jobs.length > 0 && (
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, padding:'12px 16px', background:'#fff', borderRadius:12, border:'1px solid #F3F2F2', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -237,10 +349,20 @@ export default function AdminJobs({ user }) {
 
       {loading ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#706E6B', padding: '40px 0', justifyContent: 'center' }}><Spinner /> Loading jobs...</div> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, padding:'0 16px' }}>
+            <input type="checkbox" checked={selectedJobIds.length === filtered.length && filtered.length > 0} 
+              onChange={e => setSelectedJobIds(e.target.checked ? filtered.map(j => j.id) : [])}
+              style={{ accentColor:'#0176D3', cursor:'pointer' }} />
+            <span style={{ fontSize:12, color:'#706E6B', fontWeight:600 }}>Select All Visible</span>
+          </div>
           {filtered.length === 0 && jobs.length > 0 && <p style={{ color:'#9E9D9B', textAlign:'center', padding:'32px 0' }}>No jobs match your filters.</p>}
           {filtered.map(j => (
-            <div key={j.id} style={{ ...card, cursor: 'pointer' }} onClick={() => setSelectedJob(j)}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div key={j.id} style={{ ...card, cursor: 'pointer', border: selectedJobIds.includes(j.id) ? '2.5px solid #0176D3' : '1px solid #E2E8F0', position:'relative' }} onClick={() => setSelectedJob(j)}>
+              <div onClick={e => { e.stopPropagation(); setSelectedJobIds(prev => prev.includes(j.id) ? prev.filter(id => id !== j.id) : [...prev, j.id]); }}
+                style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', zIndex:10 }}>
+                <input type="checkbox" checked={selectedJobIds.includes(j.id)} readOnly style={{ accentColor:'#0176D3', cursor:'pointer', width:18, height:18 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingLeft:28 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{j.title}</span>
@@ -420,6 +542,70 @@ export default function AdminJobs({ user }) {
             </div>
             <button onClick={() => setAssessmentJob(null)} style={{ ...btnP, width:'100%' }}>✅ Got it</button>
             </div>{/* end padding */}
+          </div>
+        </div>
+      )}
+      {/* ── Merge Review Modal ── */}
+      {mergeReview && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:11000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:600, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.25)' }}>
+            <div style={{ padding:'24px 32px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <h2 style={{ margin:0, color:'#fff', fontSize:20, fontWeight:800 }}>🪄 Review Job Migration</h2>
+                <p style={{ margin:'4px 0 0', color:'rgba(255,255,255,0.7)', fontSize:13 }}>Merging {mergeReview.length} groups of duplicate jobs</p>
+              </div>
+              <button onClick={() => setMergeReview(null)} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer' }}>✕</button>
+            </div>
+            
+            <div style={{ flex:1, overflowY:'auto', padding:32 }}>
+              <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:24, display:'flex', gap:12 }}>
+                <div style={{ fontSize:20 }}>🛡️</div>
+                <div style={{ color:'#991B1B', fontSize:13, lineHeight:1.5 }}>
+                  <strong>Safety Protocol Active:</strong> Candidates from duplicate jobs will be linked to the primary job <strong>before</strong> the duplicates are closed. No data will be lost.
+                </div>
+              </div>
+
+              <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                {mergeReview.map((group, i) => (
+                  <div key={i} style={{ border:'1px solid #E2E8F0', borderRadius:16, overflow:'hidden' }}>
+                    <div style={{ background:'#F8FAFF', padding:'12px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <span style={{ fontSize:12, fontWeight:800, color:'#032D60' }}>GROUP {i+1}</span>
+                      <span style={{ fontSize:11, color:'#0176D3', background:'rgba(1,118,211,0.1)', padding:'2px 8px', borderRadius:20 }}>{group.duplicates.length + 1} Identical Postings</span>
+                    </div>
+                    <div style={{ padding:20 }}>
+                      <div style={{ marginBottom:16 }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>KEEPING AS PRIMARY</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <div style={{ background:'#2E844A', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>PRIMARY</div>
+                          <div>
+                            <div style={{ fontWeight:700, fontSize:14 }}>{group.primary.title}</div>
+                            <div style={{ fontSize:12, color:'#706E6B' }}>{group.primary.company} · {group.primary.applicantsCount || 0} existing apps</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>CONSOLIDATING (TO BE CLOSED)</div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                          {group.duplicates.map(d => (
+                            <div key={d.id} style={{ display:'flex', alignItems:'center', gap:12, opacity:0.8 }}>
+                              <div style={{ background:'#BA0517', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>CLOSE</div>
+                              <div style={{ fontSize:13 }}>{d.title} <span style={{ color:'#706E6B' }}>({d.applicantsCount || 0} to migrate)</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding:24, borderTop:'1px solid #E2E8F0', display:'flex', gap:12 }}>
+              <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:15, justifyContent:'center' }}>
+                {merging ? '⚙️ Migrating Candidates...' : '✓ Confirm & Merge All'}
+              </button>
+              <button onClick={() => setMergeReview(null)} style={{ ...btnG, flex:1, height:48, fontSize:15, justifyContent:'center' }}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

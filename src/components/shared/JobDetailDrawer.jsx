@@ -173,6 +173,7 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
   const [addingCandidate, setAddingCandidate] = useState(false);
+  const [pipelineSearch, setPipelineSearch] = useState('');
   const [toast, setToast] = useState('');
 
   const isAdminOrSuper = ['admin','super_admin'].includes(user?.role);
@@ -318,62 +319,86 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                     adding={addingCandidate}
                   />
                 )}
-              </div>
-            )}
-
-            {/* Pipeline List */}
+                {/* Pipeline List */}
             <div style={SF.section}>
-              <div style={SF.label}>Candidates in Pipeline</div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                <div style={SF.label}>Candidates in Pipeline</div>
+                <input 
+                  placeholder="Search pipeline..." 
+                  value={pipelineSearch} 
+                  onChange={e => setPipelineSearch(e.target.value)}
+                  style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:11, outline:'none', width:140 }}
+                />
+              </div>
+
               {candidates.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'24px 0', color:'#706E6B', fontSize:13 }}>No candidates in pipeline yet.</div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {candidates.map(app => {
-                    const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || {};
-                    const stage = SM[app.stage] || { color:'#0176D3', label: app.stage, icon:'•' };
-                    return (
-                      <div key={app.id || app._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'#F3F2F2', borderRadius:6, border:'1px solid #DDDBDA' }}>
-                        <div style={{ width:36, height:36, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
-                          {(c.name || '?')[0].toUpperCase()}
+              ) : (() => {
+                const filt = candidates.filter(app => {
+                  const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
+                  const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
+                  const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
+                  const q = pipelineSearch.toLowerCase();
+                  return (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q);
+                });
+
+                if (filt.length === 0) return <div style={{ textAlign:'center', padding:20, color:'#706E6B', fontSize:12 }}>No matching candidates</div>;
+
+                return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {filt.map(app => {
+                      const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
+                      const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
+                      const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
+                      const stage = SM[app.stage] || { color:'#0176D3', label: app.stage, icon:'•' };
+                      const candName = c.name || app.candidateName || 'Candidate';
+
+                      return (
+                        <div key={app.id || app._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'#F8FAFF', borderRadius:10, border:'1px solid rgba(1,118,211,0.1)' }}>
+                          <div style={{ width:36, height:36, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
+                            {(candName[0] || '?').toUpperCase()}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ color:'#181818', fontWeight:700, fontSize:14 }}>{candName}</div>
+                            <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{c.email || 'No email provided'}</div>
+                            {c.phone ? (
+                              <div style={{ fontSize:10, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {c.phone}</div>
+                            ) : (
+                              <div style={{ fontSize:10, color:'#BE123C', background:'#FFF1F2', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4, fontWeight:800 }}>⚠️ Missing Mobile</div>
+                            )}
+                          </div>
+                          <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+                            {isAdminOrSuper ? (
+                              <select
+                                value={app.stage}
+                                onChange={async (e) => {
+                                  const newStage = e.target.value;
+                                  const appId = app.id || app._id;
+                                  try {
+                                    await api.updateStage(appId, newStage);
+                                    setCandidates(prev => prev.map(a => (a.id || a._id) === appId ? { ...a, stage: newStage } : a));
+                                    setToast(`✅ Stage → ${newStage}`);
+                                  } catch (err) { setToast(`❌ ${err.message}`); }
+                                }}
+                                style={{ padding:'4px 8px', borderRadius:8, border:`1.5px solid ${stage.color}60`, background:`${stage.color}10`, color:stage.color, fontSize:11, fontWeight:700, cursor:'pointer', outline:'none' }}
+                              >
+                                {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                              </select>
+                            ) : (
+                              <span style={{ background:`${stage.color}15`, color:stage.color, border:`1px solid ${stage.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
+                                {stage.icon} {stage.label}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ color:'#181818', fontWeight:600, fontSize:13 }}>{c.name || 'Unknown'}</div>
-                          <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{c.title || ''}{c.location ? ` · ${c.location}` : ''}</div>
-                        </div>
-                        <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
-                          {isAdminOrSuper ? (
-                            <select
-                              value={app.stage}
-                              onChange={async (e) => {
-                                const newStage = e.target.value;
-                                const appId = app.id || app._id;
-                                try {
-                                  await api.updateStage(appId, newStage);
-                                  setCandidates(prev => prev.map(a => (a.id || a._id) === appId ? { ...a, stage: newStage } : a));
-                                  setToast(`✅ Stage → ${newStage}`);
-                                } catch (err) { setToast(`❌ ${err.message}`); }
-                              }}
-                              style={{ padding:'4px 8px', borderRadius:8, border:`1.5px solid ${stage.color}60`, background:`${stage.color}10`, color:stage.color, fontSize:11, fontWeight:700, cursor:'pointer', outline:'none' }}
-                            >
-                              {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
-                            </select>
-                          ) : (
-                            <span style={{ background:`${stage.color}15`, color:stage.color, border:`1px solid ${stage.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                              {stage.icon} {stage.label}
-                            </span>
-                          )}
-                          {app.interviewDate && (
-                            <span style={{ color:'#A07E00', fontSize:11, background:'#FFF3CD', borderRadius:4, padding:'2px 8px', border:'1px solid #F59E0B' }}>
-                              📅 {app.interviewDate}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
+          </div>
+        )}
 
             {/* Job Details */}
             <div style={SF.section}>
