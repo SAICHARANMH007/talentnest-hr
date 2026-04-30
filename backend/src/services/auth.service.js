@@ -21,9 +21,11 @@ class AuthService {
   checkOrgAccess(org) {
     if (!org) return;
     const o = (org.toObject && org.toObject()) || (org.toJSON && org.toJSON()) || org;
-    if (o.status === 'suspended' || o.isActive === false) throw new AppError('Your organization account is suspended.', 403);
+    if (o.status === 'suspended' || o.subscriptionStatus === 'suspended' || o.isActive === false) throw new AppError('Your organization account is suspended.', 403);
     if (o.status === 'trial' && o.trialEndsAt && new Date(o.trialEndsAt) < new Date())
       throw new AppError('Your organization trial has expired.', 403);
+    if ((o.subscriptionStatus === 'expired') || (o.subscriptionExpiry && new Date(o.subscriptionExpiry) < new Date()))
+      throw new AppError('Your subscription has expired. Please renew to continue.', 403);
   }
 
   /**
@@ -60,10 +62,10 @@ class AuthService {
     const tenant = await Tenant.findOne({
       domain: domainRegex,
       subscriptionStatus: { $ne: 'suspended' },
-    }).select('name logoUrl subscriptionStatus').lean();
+    }).select('name logoUrl subscriptionStatus plan').lean();
 
     if (tenant) {
-      return { exists: true, domain, organization: { name: tenant.name, logo: tenant.logoUrl, status: tenant.subscriptionStatus } };
+      return { exists: true, domain, organization: { name: tenant.name, logo: tenant.logoUrl, status: tenant.subscriptionStatus, plan: tenant.plan } };
     }
 
     // Fall back to Organization (super admin-created orgs)

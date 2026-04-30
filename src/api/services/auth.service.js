@@ -51,6 +51,7 @@ export const authService = {
     }
     return data;
   },
+  async resendOtp(email) { return req('POST', '/auth/resend-otp', { email }, false); },
 
   async logout() {
     try { await req('POST', '/auth/logout'); } catch {}

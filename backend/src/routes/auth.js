@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Candidate = require('../models/Candidate');
 const Tenant = require('../models/Tenant');
+const Organization = require('../models/Organization');
 const RefreshToken = require('../models/RefreshToken');
 const { authMiddleware, authenticate } = require('../middleware/auth');
 const { sendEmailWithRetry } = require('../utils/email');
@@ -37,6 +38,34 @@ function slugify(str) {
   return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function cleanDomain(input) {
+  return (input || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .split('/')[0]
+    .split('?')[0]
+    .replace(/\.$/, '');
+}
+
+async function findActiveOrgByDomain(domain, session) {
+  const clean = cleanDomain(domain);
+  if (!clean) return null;
+  const domainRegex = { $regex: `^(www\\.)?${clean.replace(/\./g, '\\.')}$`, $options: 'i' };
+
+  const tenant = await Tenant.findOne({
+    domain: domainRegex,
+    subscriptionStatus: { $ne: 'suspended' },
+  }).session(session || null);
+  if (tenant) return tenant;
+
+  return Organization.findOne({
+    domain: domainRegex,
+    status: { $in: ['active', 'trial'] },
+  }).session(session || null);
+}
+
 async function getTalentNestTenant(session) {
   const domain = 'talentnesthr.com';
   const existing = await Tenant.findOne({
@@ -63,11 +92,13 @@ async function getTalentNestTenant(session) {
 // Creates a Tenant + admin User in one atomic transaction.
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const { name, email, password, domain } = req.body;
-  const role = req.body.role === 'candidate' ? 'candidate' : 'admin';
-  // For employer/admin signups companyName is required; candidates belong to TalentNest HR.
+  const requestedRole = ['candidate', 'recruiter', 'admin'].includes(req.body.role) ? req.body.role : 'admin';
+  const role = requestedRole;
+  // Candidates belong to TalentNest HR. Recruiter self-registration must attach
+  // to an already verified organisation. Admin signups create a new trial org.
   const companyName = req.body.companyName || (role === 'candidate' ? 'TalentNest HR' : null);
-  if (!name || !email || !password || !companyName)
-    throw new AppError('name, email, password, and companyName are required.', 400);
+  if (!name || !email || !password || (role !== 'recruiter' && !companyName))
+    throw new AppError(role === 'recruiter' ? 'name, email, password, and a verified company domain are required.' : 'name, email, password, and companyName are required.', 400);
   if (password.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
   if (await User.findOne({ email: email.toLowerCase().trim() }))
@@ -79,20 +110,27 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     await session.withTransaction(async () => {
       // 1. Create tenant. Candidate signups are grouped under TalentNest HR so
       //    super admins get one canonical organisation for platform applicants.
-      const tenant = role === 'candidate'
-        ? await getTalentNestTenant(session)
-        : (await Tenant.create([{
+      let tenant;
+      if (role === 'candidate') {
+        tenant = await getTalentNestTenant(session);
+      } else if (role === 'recruiter') {
+        const verifiedOrg = await findActiveOrgByDomain(domain || authService.emailDomain(email), session);
+        if (!verifiedOrg) throw new AppError('No active organisation found for this domain. Ask your admin to invite you.', 403);
+        tenant = verifiedOrg;
+      } else {
+        [tenant] = await Tenant.create([{
             name: companyName.trim(),
             slug: slugify(companyName) + '-' + crypto.randomBytes(3).toString('hex'),
-            domain: domain || authService.emailDomain(email),
+            domain: cleanDomain(domain) || authService.emailDomain(email),
             plan: 'trial',
             subscriptionStatus: 'active',
             subscriptionExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          }], { session }))[0];
+          }], { session });
+      }
 
       // 2. Create user
-      const user = await User.create([{
-        tenantId: tenant[0]._id,
+      const [user] = await User.create([{
+        tenantId: tenant._id,
         name: name.trim(),
         email: email.toLowerCase().trim(),
         passwordHash: bcrypt.hashSync(password, 12),
@@ -104,10 +142,10 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       // 3. Auto-create Candidate profile for self-registered job seekers so the
       //    recruiter pipeline (Application.candidateId → Candidate) works immediately.
       if (role === 'candidate') {
-        const existing = await Candidate.findOne({ email: email.toLowerCase().trim(), tenantId: tenant[0]._id }).session(session);
+        const existing = await Candidate.findOne({ email: email.toLowerCase().trim(), tenantId: tenant._id }).session(session);
         if (!existing) {
           await Candidate.create([{
-            tenantId: tenant[0]._id,
+            tenantId: tenant._id,
             name: name.trim(),
             email: email.toLowerCase().trim(),
             phone: req.body.phone || '',
@@ -116,7 +154,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         }
       }
 
-      result = { tenant: tenant[0], user: user[0] };
+      result = { tenant, user };
     });
   } finally {
     await session.endSession();
@@ -170,6 +208,16 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
       await User.findByIdAndUpdate(user._id, { $set: updates });
     }
     throw new AppError('Invalid email or password.', 401);
+  }
+
+  if (user.isActive === false) {
+    throw new AppError('Account is deactivated. Please contact your administrator.', 403);
+  }
+
+  if (user.role !== 'super_admin') {
+    const org = await Organization.findById(user.tenantId).lean() || await Tenant.findById(user.tenantId).lean();
+    if (!org) throw new AppError('Organisation not found. Please contact support.', 403);
+    authService.checkOrgAccess(org);
   }
 
   // Reset failed attempts
@@ -443,6 +491,21 @@ router.post('/verify-otp', otpLimiter, asyncHandler(async (req, res) => {
   res.json({ success: true, ...result });
 }));
 
+// ── POST /api/auth/resend-otp ────────────────────────────────────────────────
+// Resends a login 2FA OTP after password verification has already started.
+router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw new AppError('Email is required.', 400);
+
+  const user = await User.findOne({ email: email.toLowerCase().trim() });
+  if (!user || !user.twoFactorEnabled) {
+    throw new AppError('No active 2FA challenge found for this account.', 400);
+  }
+
+  await authService.generateAndSendOtp(user);
+  res.json({ success: true, message: 'A new OTP has been sent.' });
+}));
+
 // ── POST /api/auth/impersonate ────────────────────────────────────────────────
 router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
   if (req.user.role !== 'super_admin')
@@ -498,8 +561,8 @@ router.post('/google', loginLimiter, asyncHandler(async (req, res) => {
     const domain = authService.emailDomain(cleanEmail);
     const Tenant = require('../models/Tenant');
 
-    // Try to find existing tenant by domain
-    let tenant = await Tenant.findOne({ domain: { $regex: domain.replace(/\./g, '\\.'), $options: 'i' } });
+    // Try to find existing organisation by domain across both org stores.
+    let tenant = await findActiveOrgByDomain(domain);
 
     // For candidates: create a solo personal tenant if none found
     if (!tenant && role === 'candidate') {

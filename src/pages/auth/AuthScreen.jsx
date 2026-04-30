@@ -33,14 +33,11 @@ function OtpScreen({ email, onVerified, onBack }) {
   const resend = async () => {
     setResending(true);
     try {
-      await api.login(email, ''); // login returns requires2FA again — but we can't resend without password
-      // Instead call a dedicated resend endpoint — we use forgotPassword style approach:
-      // The backend regenerates OTP on new login attempt; just show guidance
+      await api.resendOtp(email);
       setResent(true);
       setTimeout(() => setResent(false), 4000);
-    } catch {
-      setResent(true);
-      setTimeout(() => setResent(false), 4000);
+    } catch (e) {
+      setError(e.message || 'Could not resend OTP. Please go back and sign in again.');
     }
     setResending(false);
   };
@@ -1006,6 +1003,7 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
 export default function AuthScreen({ onAuth }) {
   const navigate = useNavigate();
   const [screen, setScreen] = useState('entry'); // entry | candidate | employer | forgot | reset
+  const [lastAuthScreen, setLastAuthScreen] = useState('candidate');
   const [prefill, setPrefill] = useState(null);
   const [resetParams, setResetParams] = useState({ token: '', email: '' });
 
@@ -1024,12 +1022,19 @@ export default function AuthScreen({ onAuth }) {
 
   const handleSelect = (type, pf = null) => {
     setPrefill(pf);
-    setScreen(type === 'candidate' ? 'candidate' : 'employer');
+    const next = type === 'candidate' ? 'candidate' : 'employer';
+    setLastAuthScreen(next);
+    setScreen(next);
   };
 
-  if (screen === 'forgot') return <ForgotPasswordForm onBack={() => setScreen(screen === 'employer' ? 'employer' : 'candidate')} />;
+  const openForgot = (from) => {
+    setLastAuthScreen(from);
+    setScreen('forgot');
+  };
+
+  if (screen === 'forgot') return <ForgotPasswordForm onBack={() => setScreen(lastAuthScreen)} />;
   if (screen === 'reset')  return <ResetPasswordForm token={resetParams.token} email={resetParams.email} onBack={() => setScreen('candidate')} />;
-  if (screen === 'candidate') return <CandidateForm onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => setScreen('forgot')} navigate={navigate} prefill={prefill} />;
-  if (screen === 'employer')  return <EmployerForm  onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => setScreen('forgot')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'candidate') return <CandidateForm onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('candidate')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'employer')  return <EmployerForm  onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('employer')} navigate={navigate} prefill={prefill} />;
   return <EntryScreen onSelect={handleSelect} navigate={navigate} />;
 }

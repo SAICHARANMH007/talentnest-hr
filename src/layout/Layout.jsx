@@ -243,6 +243,7 @@ function NotificationBell({ userRole, compact = false }) {
       <button
         ref={btnRef}
         data-notif-btn="true"
+        className="tn-app-icon-btn"
         onClick={() => open ? setOpen(false) : openPanel()}
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
         style={{ background: open ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer', color: '#FFFFFF', fontSize: compact ? 14 : 16, position: 'relative', padding: 0, transition: 'all 0.15s', width: iconButtonSize, minWidth: iconButtonSize, height: iconButtonSize, minHeight: iconButtonSize, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
@@ -407,22 +408,20 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
     <>
       {/* Logo + quick controls */}
       <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', minHeight: 38, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', minHeight: 42, overflow: 'hidden', minWidth: 0, flex: 1 }}>
             <Logo size="md" variant="full" theme="dark" customLogoUrl={orgLogo} />
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{(user.role || '').toUpperCase()}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <NotificationBell userRole={user?.role} compact />
-          <button onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-            💬
-            {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
-          </button>
-          <button onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>🟢</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, height: 36 }}>
+            <NotificationBell userRole={user?.role} compact />
+            <button className="tn-app-icon-btn" onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              💬
+              {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
+            </button>
+            <button className="tn-app-icon-btn" onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>🟢</button>
           </div>
         </div>
+        <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{(user.role || '').toUpperCase()}</div>
       </div>
 
       {/* Nav items */}
@@ -568,6 +567,8 @@ export default function Layout({ user, onLogout }) {
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }
+        .tn-app-icon-btn { aspect-ratio: 1 / 1; line-height: 1; place-items: center; }
+        .tn-app-icon-btn > span:first-child { line-height: 1; }
       `}</style>
 
       {/* Trial Banner */}
@@ -597,20 +598,20 @@ export default function Layout({ user, onLogout }) {
         <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: '24px', background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
           {/* Mobile Hamburger Header */}
           <div className="tn-hamburger" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, background: '#032D60', borderRadius: 12, padding: '10px 14px' }}>
-            <button onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
-            <div style={{ flex: 1 }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>
+            <button className="tn-app-icon-btn" onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>☰</button>
+            <div className="tn-hamburger-logo" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>
             <NotificationBell userRole={user?.role} />
-            <button onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button className="tn-app-icon-btn" onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 💬
                 {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', borderRadius: '50%', width: 14, height: 14, fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
               </button>
-            <button onClick={() => setShowOnline(true)} title="Who's Online" aria-label="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <button className="tn-app-icon-btn" onClick={() => setShowOnline(true)} title="Who's Online" aria-label="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
               🟢
             </button>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600, marginLeft: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 10, minWidth: 10, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
             </span>
-            <button onClick={onLogout} title="Sign Out" aria-label="Sign Out" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🚪</button>
+            <button className="tn-app-icon-btn" onClick={onLogout} title="Sign Out" aria-label="Sign Out" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🚪</button>
           </div>
 
           <Suspense fallback={<PageLoader />}>
