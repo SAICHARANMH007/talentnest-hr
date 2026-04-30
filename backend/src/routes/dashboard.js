@@ -75,7 +75,9 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
   ]);
 
   const keys = new Set();
-  const userToCandidate = new Map(); // userId -> candidateKey
+  const userToKey = new Map(); // userId -> key
+  const candToKey = new Map(); // candidateId -> key
+  
   const getCandidateKey = (email, phone, name) => {
     if (email) return `email:${email.toLowerCase().trim()}`;
     if (phone) return `phone:${phone.trim()}`;
@@ -87,23 +89,34 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
   userDocs.forEach(d => {
     const k = getCandidateKey(d.email, d.phone, d.name) || `user:${d._id}`;
     keys.add(k);
-    userToCandidate.set(String(d._id), k);
+    userToKey.set(String(d._id), k);
   });
 
   // 2. Process candidates (link to users via userId)
   candidateDocs.forEach(d => {
     let k = getCandidateKey(d.email, d.phone, d.name);
-    if (!k && d.userId && userToCandidate.has(String(d.userId))) {
-      k = userToCandidate.get(String(d.userId));
+    if (!k && d.userId && userToKey.has(String(d.userId))) {
+      k = userToKey.get(String(d.userId));
     }
     if (!k) k = `cand:${d._id}`;
     keys.add(k);
+    candToKey.set(String(d._id), k);
+    if (d.userId && !userToKey.has(String(d.userId))) {
+      userToKey.set(String(d.userId), k);
+    }
   });
 
-  // 3. Process applications
+  // 3. Process applications (only if they have a valid identifier)
   appDocs.forEach(d => {
-    const k = getCandidateKey(d.candidateEmail || d.email, d.candidatePhone, d.candidateName) || (d.candidateId ? `cand:${d.candidateId}` : null);
-    if (k) keys.add(k);
+    let k = getCandidateKey(d.candidateEmail || d.email, d.candidatePhone, d.candidateName);
+    if (!k && d.candidateId && candToKey.has(String(d.candidateId))) {
+      k = candToKey.get(String(d.candidateId));
+    }
+    if (k) {
+      keys.add(k);
+    } else if (d.candidateId) {
+      keys.add(`cand:${d.candidateId}`);
+    }
   });
   
   return keys.size;
@@ -201,6 +214,7 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     applicationId: app?._id?.toString() || '',
     candidateId: candidate?._id?.toString() || '',
     userId: user?._id?.toString() || candidate?.userId?.toString() || '',
+    name: candidate?.name || user?.name || '',
     candidateName: candidate?.name || user?.name || '',
     email: candidate?.email || user?.email || '',
     phone: candidate?.phone || user?.phone || '',
@@ -638,8 +652,9 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
     }
   }
 
-  // Map userId to primary key for linking profiles
+  // Map identifiers to primary keys for linking profiles
   const userToKey = new Map();
+  const candToKey = new Map();
   for (const [key, val] of candidateMap.entries()) {
     if (val.userId) userToKey.set(val.userId, key);
   }
@@ -659,6 +674,7 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
       if (!entry.profile) entry.profile = p;
       if (!entry.userId && p.userId) entry.userId = String(p.userId);
     }
+    candToKey.set(String(p._id), key);
   }
 
   // 3. Group all Applications
@@ -669,18 +685,16 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
     const name = cand.candidateName || cand.name || app.candidateName || '';
     
     let key = getCandidateKey(email, phone, name);
-    if (!key && cand._id) {
-      // Check if this candidate profile is already mapped
-      for (const [k, v] of candidateMap.entries()) {
-        if (v.profile && String(v.profile._id) === String(cand._id)) {
-          key = k; break;
-        }
-      }
+    if (!key && cand._id && candToKey.has(String(cand._id))) {
+      key = candToKey.get(String(cand._id));
     }
-    if (!key) key = cand._id ? `cand:${cand._id}` : `app:${app._id}`;
+    if (!key && cand._id) key = `cand:${cand._id}`;
+    
+    if (!key) continue; 
 
     if (!candidateMap.has(key)) {
       candidateMap.set(key, { user: null, profile: cand._id ? cand : null, apps: [app], latestApp: app, userId: cand.userId ? String(cand.userId) : null });
+      if (cand._id) candToKey.set(String(cand._id), key);
     } else {
       const entry = candidateMap.get(key);
       entry.apps.push(app);

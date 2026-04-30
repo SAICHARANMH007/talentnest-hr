@@ -410,7 +410,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getApplicants({ limit: 'all' }).catch(() => ({ data: [] }));
+    const raw = await api.getApplicants({ limit: isSuperAdmin ? 'all' : 1000 }).catch(() => ({ data: [] }));
     const list = raw?.data || [];
     return list.map(r => ({
       ...r,
@@ -438,7 +438,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
-    const raw = await api.getApplications({ stage: 'Hired', limit: 500 }).then(unwrap).catch(() => []);
+    const raw = await api.getApplications({ stage: 'Hired', limit: isSuperAdmin ? 'all' : 500 }).then(unwrap).catch(() => []);
     return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired` }));
   });
 
@@ -446,7 +446,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     if (!seg.stageKey || seg.value === 0) return;
     const dbStage = FRONTEND_TO_DB_STAGE[seg.stageKey] || seg.stageKey;
     fetchDrill(STAGE_LABELS[seg.stageKey] || seg.stageKey, 'app', async () => {
-      const raw = await api.getApplications({ stage: dbStage, limit: 500 }).then(unwrap).catch(() => []);
+      const raw = await api.getApplications({ stage: dbStage, limit: isSuperAdmin ? 'all' : 500 }).then(unwrap).catch(() => []);
       return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[seg.stageKey]}` }));
     });
   };
@@ -565,7 +565,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
         <div style={{ ...glassPanel, cursor: 'pointer' }}>
           <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
-            centerValue={filteredApps.length} centerLabel="TOTAL" onItemClick={openStageDrill} />
+            centerValue={stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
           <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
         </div>
       </div>
@@ -807,6 +807,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     </div>
                   );
                 })}
+                {filtered.length > drillPage * DRILL_PAGE_SIZE && (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <button 
+                      onClick={() => setDrillPage(p => p + 1)} 
+                      style={{ ...btnP, padding: '10px 32px', borderRadius: 14 }}
+                    >
+                      Load More Records ({filtered.length - drillPage * DRILL_PAGE_SIZE} remaining)
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}

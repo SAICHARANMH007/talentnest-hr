@@ -97,21 +97,22 @@ export default function SuperAdminCandidates() {
               {filtered.map(c => (
                 <tr key={c.id || c._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                   <td style={tdS}>
-                    <div style={{ fontWeight: 700, color: '#0A1628' }}>{c.name || 'Anonymous'}</div>
+                    <div style={{ fontWeight: 700, color: '#0A1628' }}>{c.name || c.candidateName || 'Anonymous'}</div>
                     <div style={{ fontSize: 11, color: '#706E6B' }}>{c.title || 'No Title'}</div>
                   </td>
                   <td style={tdS}>
-                    <div style={{ fontSize: 12 }}>{c.email}</div>
-                    <div style={{ fontSize: 11, color: '#706E6B' }}>{c.phone}</div>
+                    <div style={{ fontSize: 12 }}>{c.email || 'No email'}</div>
+                    <div style={{ fontSize: 11, color: '#706E6B' }}>{c.phone || 'No phone'}</div>
                   </td>
                   <td style={tdS}>
                     <Badge 
                       label={c.isApplied ? 'Applied' : 'Platform'} 
                       color={c.isApplied ? '#10b981' : '#7c3aed'} 
                     />
+                    <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}>Source: {c.source || 'N/A'}</div>
                   </td>
                   <td style={tdS}>
-                    <div style={{ fontWeight: 600 }}>{c.applicationCount || 0}</div>
+                    <div style={{ fontWeight: 600 }}>{c.applicationCount || 0} apps</div>
                   </td>
                   <td style={tdS}>
                     <div style={{ fontSize: 12, color: '#706E6B' }}>{c.organisation || 'N/A'}</div>
@@ -121,7 +122,7 @@ export default function SuperAdminCandidates() {
                       onClick={() => setDrawerUser(c)} 
                       style={{ ...btnG, padding: '4px 12px', fontSize: 11 }}
                     >
-                      View Profile
+                      Deep Dive
                     </button>
                   </td>
                 </tr>
