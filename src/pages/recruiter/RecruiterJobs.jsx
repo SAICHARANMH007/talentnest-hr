@@ -113,12 +113,31 @@ export default function RecruiterJobs({ user }) {
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const postJobRef = useRef(null);
 
-  const load = () => { setLoad(true); api.getJobs({ recruiterId: user.id, limit: 200 }).then(j => setJobs(Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []))).catch(() => setJobs([])).finally(() => setLoad(false)); };
+  const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
+
+  const load = () => {
+    setLoad(true);
+    api.getJobs({ recruiterId: user.id, limit: 200 })
+      .then(r => {
+        const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+        // Deduplicate by ID to prevent ghost/duplicate items
+        const map = new Map();
+        raw.forEach(item => {
+          const job = normalizeJob(item);
+          if (job.id) map.set(job.id, job);
+        });
+        setJobs(Array.from(map.values()));
+      })
+      .catch(() => setJobs([]))
+      .finally(() => setLoad(false));
+  };
   useEffect(load, [user.id]);
 
   const filteredJobs = jobs.filter(j => {
     if (search) { const q=search.toLowerCase(); if (!j.title?.toLowerCase().includes(q) && !j.company?.toLowerCase().includes(q)) return false; }
-    if (statusFilter !== 'All' && j.status !== statusFilter) return false;
+    // Handle both backend 'active' and frontend 'Open' labels
+    const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');
+    if (statusFilter !== 'All' && mappedStatus !== statusFilter) return false;
     if (urgencyFilter !== 'All' && j.urgency !== urgencyFilter) return false;
     return true;
   });
@@ -150,8 +169,11 @@ export default function RecruiterJobs({ user }) {
   };
   const toggle = async (id, status) => {
     const isClosed = status === 'closed' || status === 'Closed';
-    try { await api.patchJob(id, { status: isClosed ? 'active' : 'closed' }); load(); setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`); }
-    catch (e) { setToast(`❌ ${e.message}`); }
+    try {
+      await api.patchJob(id, { status: isClosed ? 'active' : 'closed' });
+      load();
+      setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`);
+    } catch (e) { setToast(`❌ ${e.message}`); }
   };
 
   return (
@@ -170,7 +192,11 @@ export default function RecruiterJobs({ user }) {
         />
       )}
       {applicantsJob && <ApplicantsPanel job={applicantsJob} onClose={() => setApplicantsJob(null)} />}
-      <PageHeader title="My Job Postings" subtitle={hasJobFilters ? `${filteredJobs.length} of ${jobs.length} roles` : `${jobs.length} roles`} action={<button onClick={() => setShow(true)} style={btnP}>+ Post Job</button>} />
+      <PageHeader 
+        title="My Job Postings" 
+        subtitle={hasJobFilters ? `${filteredJobs.length} of ${jobs.length} roles` : `${jobs.filter(j => j.status === 'active' || j.status === 'Open').length} open roles out of ${jobs.length} total`} 
+        action={<button onClick={() => setShow(true)} style={btnP}>+ Post Job</button>} 
+      />
 
       {!loading && jobs.length > 0 && (
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, padding:'12px 16px', background:'#fff', borderRadius:12, border:'1px solid #F3F2F2', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -204,8 +230,8 @@ export default function RecruiterJobs({ user }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
                     <span style={{ color: "#181818", fontWeight: 600 }}>{j.title}</span>
-                    <Badge label={j.status} color="#2E844A" />
-                    <Badge label={`⚡ ${j.urgency}`} color={j.urgency === "High" ? "#BA0517" : "#A07E00"} />
+                    <Badge label={(j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft')} color={(j.status === 'closed' || j.status === 'Closed') ? '#BA0517' : (j.status === 'draft' ? '#A07E00' : '#2E844A')} />
+                    <Badge label={j.urgency || 'Medium'} color={j.urgency === 'High' ? '#BA0517' : j.urgency === 'Medium' ? '#A07E00' : '#2E844A'} />
                     {j.externalUrl && <Badge label="🌐 External" color="#F59E0B" />}
                   </div>
                   <div style={{ color: "#0176D3", fontSize: 12 }}>{j.company} · {j.location} · {j.experience}</div>

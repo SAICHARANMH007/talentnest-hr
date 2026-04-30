@@ -44,13 +44,28 @@ export default function RecruiterDashboard({ user }) {
       api.getInvites({ status: 'interested' }).catch(() => []),
     ]).then(([j, a, inv]) => {
       if (!cancelled) {
-        const jArr = Array.isArray(j) ? j : (j?.data || []);
-        const aArr = Array.isArray(a) ? a : (a?.data || []);
-        setJobs(jArr);
+        const jArrRaw = Array.isArray(j) ? j : (j?.data || []);
+        const aArrRaw = Array.isArray(a) ? a : (a?.data || []);
         
-        // Optimization: Use a Set for O(1) job lookup during application filtering
-        const jobIds = new Set(jArr.map(jb => String(jb.id || jb._id)));
-        setApps(aArr.filter(ap => jobIds.has(toId(ap.jobId))));
+        // Deduplicate jobs by ID
+        const jMap = new Map();
+        jArrRaw.forEach(item => {
+          const id = String(item.id || item._id);
+          if (id) jMap.set(id, { ...item, id });
+        });
+        const jArr = Array.from(jMap.values());
+        setJobs(jArr);
+
+        // Deduplicate applications by ID
+        const aMap = new Map();
+        const jobIds = new Set(jArr.map(jb => jb.id));
+        aArrRaw.forEach(item => {
+          const id = String(item.id || item._id);
+          if (id && jobIds.has(toId(item.jobId))) {
+            aMap.set(id, { ...item, id });
+          }
+        });
+        setApps(Array.from(aMap.values()));
 
         const invArr = Array.isArray(inv) ? inv : (inv?.data || []);
         setInterestedInvites(invArr.filter(i => i.status === 'interested'));
@@ -166,7 +181,7 @@ export default function RecruiterDashboard({ user }) {
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={`${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} · ${activeApps} active candidates in pipeline`} />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/jobs")}>
-          <KpiCard icon="💼" label="Jobs Posted"      value={jobs.length}        color="#0176D3" trend={8}  sparkValues={[1,2,2,3,3,jobs.length]} />
+          <KpiCard icon="💼" label="Active Jobs"      value={jobs.filter(j => j.status === 'active' || j.status === 'Open').length} color="#0176D3" trend={8}  sparkValues={[1,2,2,3,3,jobs.length]} />
         </div>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/pipeline")}>
           <KpiCard icon="👥" label="Total Applicants" value={totalApplicants}    color="#014486" trend={15} sparkValues={[2,3,5,6,7,totalApplicants]} />

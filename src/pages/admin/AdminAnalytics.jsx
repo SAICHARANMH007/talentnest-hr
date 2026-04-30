@@ -166,6 +166,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
   // ── Export loading ────────────────────────────────────────────────────────
   const [exporting, setExporting] = useState({});
 
+  // ── Drill-down pagination ──────────────────────────────────────────────────
+  const [drillPage, setDrillPage] = useState(1);
+  const DRILL_PAGE_SIZE = 40;
+
   const unwrap = (r) => Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
 
   // ── Core data load ────────────────────────────────────────────────────────
@@ -175,7 +179,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const end = new Date().toISOString().split('T')[0];
     const start = days ? new Date(Date.now() - days * 86400000).toISOString().split('T')[0] : null;
 
-    // Phase 1: fast stats — unblocks KPI cards immediately
+    // Phase 1: FAST STATS — unblocks KPI cards immediately (Critical Path)
     Promise.all([
       api.getDashboardStats(platformWide).catch(() => null),
       api.getRecruiterLeaderboard().catch(() => []),
@@ -183,16 +187,24 @@ export default function AdminAnalytics({ user, onNavigate }) {
       setServerStats(s?.data || null);
       setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
       setLoading(false);
-    }).catch(() => setLoading(false));
+      
+      // Phase 2: Progressively load heavier data in chunks to avoid blocking main thread
+      setTimeout(() => {
+        api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
+        api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
+      }, 50);
 
-    // Phase 2: heavier data loads progressively in background
-    api.getApplications({ limit: 200 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
-    api.getJobs({ limit: 200 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
-    api.getUsers({ role: 'candidate', limit: 200 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-    api.getApplicants({ limit: 500 }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
-    api.getCandidateRecords({ limit: 500 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
-    api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
-    api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
+      setTimeout(() => {
+        api.getJobs({ limit: 100 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
+        api.getApplications({ limit: 100 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
+      }, 150);
+
+      setTimeout(() => {
+        api.getUsers({ role: 'candidate', limit: 100 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getApplicants({ limit: 200 }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        api.getCandidateRecords({ limit: 200 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
+      }, 300);
+    }).catch(() => setLoading(false));
   }, [period, platformWide]);
 
   useEffect(() => { load(); }, [load]);
@@ -1034,7 +1046,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   </div>
                 )}
                 {!drillDown.title.endsWith('Loading…') && filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No records found.</div>}
-                {filtered.map(item => {
+                {filtered.slice(0, drillPage * DRILL_PAGE_SIZE).map(item => {
                   const itemId = item.id || item._id;
                   return (
                     <div key={itemId} style={{ padding: '16px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -310,22 +310,69 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
           {tab === 'pipeline' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {loadingApp ? <div style={{ textAlign: 'center', padding: 40 }}>Analysing career footprint...</div> : (
+              {loadingApp ? (
+                <div style={{ textAlign: 'center', padding: 40 }}><Spinner /> Analysing career footprint...</div>
+              ) : (
                 <>
-                  {!app ? <div style={{ ...card, textAlign: 'center', padding: 40, color: '#94A3B8' }}>No active job applications found for this candidate.</div> : (
-                    <>
-                      <div style={card}>
-                         <h4 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800 }}>Stage Timeline</h4>
-                         <StageHistory history={app.stageHistory} />
-                      </div>
-                      {app.rejectionReason && (
-                        <div style={{ ...card, background: 'rgba(186,5,23,0.06)', border: '1.5px solid rgba(186,5,23,0.2)' }}>
-                           <p style={{ color: '#BA0517', fontSize: 11, fontWeight: 800, margin: '0 0 4px' }}>REJECTION INSIGHT</p>
-                           <p style={{ margin: 0, fontSize: 13, color: '#BA0517' }}>{app.rejectionReason}</p>
+                  {/* Activity List: Show all applications */}
+                  {(() => {
+                    const allApps = u.allApplications || [];
+                    // If we only have one app or it's the active one, show details.
+                    // But if there are multiple, show a summary list first.
+                    if (allApps.length === 0 && !app) {
+                      return <div style={{ ...card, textAlign: 'center', padding: 40, color: '#94A3B8' }}>No active job applications found for this candidate.</div>;
+                    }
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={card}>
+                          <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 1, margin: '0 0 16px' }}>CAREER FOOTPRINT — {allApps.length || (app?1:0)} APPLICATIONS</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* Current/Latest App Details */}
+                            {app && (
+                              <div style={{ padding: '12px 14px', background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
+                                  <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
+                                </div>
+                                <StageHistory history={app.stageHistory} />
+                              </div>
+                            )}
+
+                            {/* Other Applications */}
+                            {allApps.filter(a => (a.id || a._id) !== (app?.id || app?._id)).map(a => (
+                              <div key={a.id || a._id} style={{ padding: '12px 14px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle}</div>
+                                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Applied {new Date(a.appliedAt).toLocaleDateString()}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <Badge label={SM[a.stage]?.label || a.stage} color={SM[a.stage]?.color} />
+                                  <button 
+                                    onClick={() => {
+                                      // Toggle this app as the "main" one to see history
+                                      setApp(a);
+                                      setCurrentStage(a.stage);
+                                    }}
+                                    style={{ display: 'block', background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}
+                                  >
+                                    View Details →
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                    </>
-                  )}
+
+                        {app?.rejectionReason && (
+                          <div style={{ ...card, background: 'rgba(186,5,23,0.06)', border: '1.5px solid rgba(186,5,23,0.2)' }}>
+                             <p style={{ color: '#BA0517', fontSize: 11, fontWeight: 800, margin: '0 0 4px' }}>REJECTION INSIGHT</p>
+                             <p style={{ margin: 0, fontSize: 13, color: '#BA0517' }}>{app.rejectionReason}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>

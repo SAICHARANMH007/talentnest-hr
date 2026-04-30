@@ -44,7 +44,22 @@ export default function AdminJobs({ user }) {
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
-  const load = () => { setLoad(true); api.getJobs({ limit: 200 }).then(r => { const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []); setJobs(raw.map(normalizeJob)); }).catch(() => setJobs([])).finally(() => setLoad(false)); };
+  const load = () => {
+    setLoad(true);
+    api.getJobs({ limit: 200 })
+      .then(r => {
+        const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+        // Deduplicate by ID to prevent ghost/duplicate items
+        const map = new Map();
+        raw.forEach(item => {
+          const job = normalizeJob(item);
+          if (job.id) map.set(job.id, job);
+        });
+        setJobs(Array.from(map.values()));
+      })
+      .catch(() => setJobs([]))
+      .finally(() => setLoad(false));
+  };
   useEffect(() => {
     load();
     api.getUsers('recruiter').then(u => setRecruiterUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setRecruiterUsers([]));
@@ -80,7 +95,9 @@ export default function AdminJobs({ user }) {
   const recruiters  = [...new Set(jobs.map(j => j.recruiterName).filter(Boolean))];
   const filtered = jobs.filter(j => {
     if (search) { const q=search.toLowerCase(); if (!j.title?.toLowerCase().includes(q) && !j.company?.toLowerCase().includes(q) && !(j.skills||'').toLowerCase().includes(q)) return false; }
-    if (statusFilter !== 'All' && j.status !== statusFilter) return false;
+    // Handle both backend 'active' and frontend 'Open' labels
+    const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');
+    if (statusFilter !== 'All' && mappedStatus !== statusFilter) return false;
     if (urgencyFilter !== 'All' && j.urgency !== urgencyFilter) return false;
     if (locFilter !== 'All' && j.location !== locFilter) return false;
     if (recruiterFilter !== 'All' && j.recruiterName !== recruiterFilter) return false;
@@ -181,7 +198,7 @@ export default function AdminJobs({ user }) {
         />
       )}
 
-      <PageHeader title="All Job Postings" subtitle={hasFilters ? `${filtered.length} of ${jobs.length} jobs` : `${jobs.length} total jobs across all recruiters`}
+      <PageHeader title="All Job Postings" subtitle={hasFilters ? `${filtered.length} of ${jobs.length} jobs` : `${jobs.filter(j => j.status === 'active' || j.status === 'Open').length} open jobs out of ${jobs.length} total across all recruiters`}
         action={<button onClick={() => setShowModal(true)} style={btnP}>+ Post Job</button>} />
 
       {!loading && jobs.length > 0 && (
@@ -227,7 +244,7 @@ export default function AdminJobs({ user }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{j.title}</span>
-                    <Badge label={j.status === 'active' ? 'Open' : j.status === 'closed' ? 'Closed' : j.status === 'draft' ? 'Draft' : (j.status || 'Draft')} color={j.status === 'closed' || j.status === 'Closed' ? '#BA0517' : j.status === 'draft' ? '#A07E00' : '#2E844A'} />
+                    <Badge label={(j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft')} color={(j.status === 'closed' || j.status === 'Closed') ? '#BA0517' : (j.status === 'draft' ? '#A07E00' : '#2E844A')} />
                     <Badge label={j.urgency || 'Medium'} color={j.urgency === 'High' ? '#BA0517' : j.urgency === 'Medium' ? '#A07E00' : '#2E844A'} />
                     {j.approvalStatus === 'pending' && <Badge label="Pending Approval" color="#A07E00" />}
                   </div>

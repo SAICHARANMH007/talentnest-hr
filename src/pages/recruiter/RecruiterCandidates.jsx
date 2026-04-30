@@ -333,11 +333,24 @@ export default function RecruiterCandidates({ user }) {
           api.getJobs(user.id),
         ]);
         const rawCands = Array.isArray(cands) ? cands : (Array.isArray(cands?.data) ? cands.data : []);
-        const normalized = rawCands.map(c => ({ ...c, id: c.id || c._id?.toString() || String(c._id || '') }));
+        // Deduplicate candidates by ID to prevent ghost/duplicate items
+        const cMap = new Map();
+        rawCands.forEach(item => {
+          const id = (item.id || item._id)?.toString();
+          if (id) cMap.set(id, { ...item, id });
+        });
+        const normalized = Array.from(cMap.values());
         setAllCandidates(normalized);
-        // Normalize _id → id so CandidateCard's toggleJob/checked work with lean() results
+
+        // Normalize jobs and deduplicate them too
         const rawJobs = Array.isArray(myJobs) ? myJobs : (Array.isArray(myJobs?.data) ? myJobs.data : []);
-        setJobs(rawJobs.map(j => ({ ...j, id: j.id || j._id?.toString() || String(j._id) })));
+        const jMap = new Map();
+        rawJobs.forEach(item => {
+          const id = (item.id || item._id)?.toString();
+          if (id) jMap.set(id, { ...item, id });
+        });
+        setJobs(Array.from(jMap.values()));
+
         // Auto-show all candidates on load
         setResults(normalized);
         setSearched(true);

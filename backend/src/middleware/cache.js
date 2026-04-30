@@ -21,7 +21,8 @@ function cacheRoute(ttlSeconds = 60) {
   return function cacheMiddleware(req, res, next) {
     if (req.method !== 'GET') return next();
 
-    const key = req.originalUrl || req.url;
+    // Critical fix: Key must be isolated by tenant and user role to prevent data leaks between organizations.
+    const key = `${req.user?.tenantId || 'global'}:${req.user?.id || 'anon'}:${req.originalUrl || req.url}`;
     const cached = store.get(key);
     if (cached && Date.now() - cached.at < ttlSeconds * 1000) {
       res.set('X-Cache', 'HIT');

@@ -464,10 +464,12 @@ export default function RecruiterPipeline({ user }) {
   useEffect(() => {
     api.getJobs({ recruiterId: user.id, limit: 200 }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
-      setJobs(raw.map(job => ({
-        ...job,
-        id: (job._id ? job._id.toString() : job.id) || undefined,
-      })).filter(job => job.id));
+      const map = new Map();
+      raw.forEach(item => {
+        const id = (item._id ? item._id.toString() : item.id) || undefined;
+        if (id) map.set(id, { ...item, id });
+      });
+      setJobs(Array.from(map.values()));
     }).catch(() => setJobs([]));
     api.getUser(user.id).then(r => setRecruiter(r?.data || r)).catch(() => {});
   }, [user.id]);
@@ -479,7 +481,15 @@ export default function RecruiterPipeline({ user }) {
     setAssessmentData(null);
     if (!jid) { setApps([]); return; }
     setLoad(true);
-    api.getApplications({ jobId: jid, limit: 500 }).then(a => setApps(Array.isArray(a) ? a : (a?.data || []))).catch(() => setApps([])).finally(() => setLoad(false));
+    api.getApplications({ jobId: jid, limit: 500 }).then(a => {
+      const raw = Array.isArray(a) ? a : (a?.data || []);
+      const map = new Map();
+      raw.forEach(item => {
+        const id = String(item.id || item._id);
+        if (id) map.set(id, { ...item, id });
+      });
+      setApps(Array.from(map.values()));
+    }).catch(() => setApps([])).finally(() => setLoad(false));
     // Load assessment for this job
     api.getAssessmentForJob(jid).then(async (a) => {
       if (!a?.id) return;

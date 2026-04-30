@@ -68,15 +68,29 @@ function tenantFilter(req) {
 }
 
 async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
-  const [candidateDocs, userDocs] = await Promise.all([
-    Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email').lean(),
-    User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email').lean(),
+  const [candidateDocs, userDocs, appDocs] = await Promise.all([
+    Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email phone name').lean(),
+    User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email phone name').lean(),
+    Application.find({ deletedAt: null, ...candidateFilter }).select('candidateId candidateEmail candidatePhone candidateName email').lean(),
   ]);
   const keys = new Set();
-  [...candidateDocs, ...userDocs].forEach((doc) => {
-    const email = (doc.email || '').trim().toLowerCase();
-    keys.add(email || String(doc._id));
+  const getCandidateKey = (email, phone, name) => {
+    if (email) return `email:${email.toLowerCase().trim()}`;
+    if (phone) return `phone:${phone.trim()}`;
+    if (name) return `name:${name.toLowerCase().trim()}`;
+    return null;
+  };
+
+  candidateDocs.forEach(d => { const k = getCandidateKey(d.email, d.phone, d.name) || `id:${d._id}`; if (k) keys.add(k); });
+  userDocs.forEach(d => { const k = getCandidateKey(d.email, d.phone, d.name) || `id:${d._id}`; if (k) keys.add(k); });
+  appDocs.forEach(d => {
+    const email = d.candidateEmail || d.email;
+    const phone = d.candidatePhone;
+    const name = d.candidateName;
+    const k = getCandidateKey(email, phone, name) || (d.candidateId ? `id:${d.candidateId}` : null);
+    if (k) keys.add(k);
   });
+  
   return keys.size;
 }
 
@@ -575,96 +589,101 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
   const search = String(req.query.search || '').trim().toLowerCase();
 
-  const appQuery = Application.find({ ...tf, deletedAt: null })
-    .populate(CANDIDATE_APPLICANT_POPULATE)
-    .populate(JOB_APPLICANT_POPULATE)
-    .sort({ createdAt: -1 });
-  const profileQuery = Candidate.find({ ...tf, deletedAt: null })
-    .select(CANDIDATE_APPLICANT_POPULATE.select.replace('parsedProfile.totalExperienceYears', 'parsedProfile'))
-    .sort({ createdAt: -1 });
-  const userQuery = User.find({ ...tf, role: 'candidate', deletedAt: null })
-    .select('-password -passwordHash -settings')
-    .sort({ createdAt: -1 });
-  if (!fetchAll) {
-    appQuery.limit(limit);
-    profileQuery.limit(limit);
-    userQuery.limit(limit);
-  }
-
   const [apps, candidateProfiles, candidateUsers, tenantMap] = await Promise.all([
-    appQuery.lean(),
-    profileQuery.lean(),
-    userQuery.lean(),
+    Application.find({ ...tf, deletedAt: null })
+      .select('candidateId jobId currentStage status createdAt updatedAt candidateEmail candidatePhone candidateName email source tenantId stageHistory rejectionReason')
+      .populate({ path: 'jobId', select: 'title tenantId' })
+      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
+      .sort({ createdAt: -1 })
+      .lean(),
+    Candidate.find({ ...tf, deletedAt: null })
+      .select('name email phone title currentCompany location skills tenantId createdAt userId parsedProfile.totalExperienceYears')
+      .lean(),
+    User.find({ ...tf, role: 'candidate', isActive: true })
+      .select('name email phone role tenantId createdAt currentCompany jobRole location skills')
+      .lean(),
     orgNameMap(),
   ]);
 
-  const usersByEmail = new Map(candidateUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
-  const appsByEmail = new Map();
-  const appsById = new Map();
+  // Map for deduplication and grouping
+  const candidateMap = new Map(); // key -> { profile, user, apps: [], job: latestJob }
 
-  // apps is already sorted by createdAt: -1, so the first one we see is the most recent
-  apps.forEach(app => {
-    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
-    const id = candidate._id ? String(candidate._id) : null;
+  const getCandidateKey = (email, phone, name) => {
+    if (email) return `email:${email.toLowerCase().trim()}`;
+    if (phone) return `phone:${phone.trim()}`;
+    if (name) return `name:${name.toLowerCase().trim()}`;
+    return null;
+  };
+
+  // 1. Initialize from User accounts
+  for (const u of candidateUsers) {
+    const key = getCandidateKey(u.email, u.phone, u.name);
+    if (!key) continue;
+    if (!candidateMap.has(key)) {
+      candidateMap.set(key, { user: u, profile: null, apps: [], latestApp: null });
+    }
+  }
+
+  // 2. Merge with Candidate profiles
+  for (const p of candidateProfiles) {
+    const key = getCandidateKey(p.email, p.phone, p.name) || `id:${p._id}`;
+    if (!candidateMap.has(key)) {
+      candidateMap.set(key, { user: null, profile: p, apps: [], latestApp: null });
+    } else {
+      const entry = candidateMap.get(key);
+      if (!entry.profile) entry.profile = p;
+    }
+  }
+
+  // 3. Group all Applications
+  for (const app of apps) {
+    const cand = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    const email = cand.email || app.candidateEmail || app.email || '';
+    const phone = cand.phone || app.candidatePhone || '';
+    const name = cand.name || app.candidateName || '';
     
-    if (email && !appsByEmail.has(email)) appsByEmail.set(email, app);
-    if (id && !appsById.has(id)) appsById.set(id, app);
-  });
+    const key = getCandidateKey(email, phone, name) || (cand._id ? `id:${cand._id}` : null);
+    if (!key) continue;
+
+    if (!candidateMap.has(key)) {
+      candidateMap.set(key, { user: null, profile: cand._id ? cand : null, apps: [app], latestApp: app });
+    } else {
+      const entry = candidateMap.get(key);
+      entry.apps.push(app);
+      // Update latestApp if this one is newer
+      if (!entry.latestApp || new Date(app.createdAt) > new Date(entry.latestApp.createdAt)) {
+        entry.latestApp = app;
+      }
+    }
+  }
 
   const rows = [];
-  const seenEmails = new Set();
-
-  // 1. Process all candidate profiles (the source of truth for resumes/experience)
-  for (const profile of candidateProfiles) {
-    const email = (profile.email || '').toLowerCase();
-    if (email) seenEmails.add(email);
+  for (const entry of candidateMap.values()) {
+    const { profile, user, apps: candApps, latestApp } = entry;
+    const primary = profile || user || (latestApp?.candidateId && typeof latestApp.candidateId === 'object' ? latestApp.candidateId : {});
     
-    const user = usersByEmail.get(email) || {};
-    const app = appsById.get(String(profile._id)) || appsByEmail.get(email) || null;
-    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
+    const row = profileRow({
+      candidate: profile || (latestApp?.candidateId && typeof latestApp.candidateId === 'object' ? latestApp.candidateId : {}),
+      user: user || {},
+      app: latestApp,
+      job: latestApp?.jobId && typeof latestApp.jobId === 'object' ? latestApp.jobId : null,
+      orgName: tenantMap[String(primary.tenantId)] || tenantMap[String(latestApp?.tenantId)] || '',
+    });
 
-    rows.push(profileRow({
-      candidate: profile,
-      user,
-      app,
-      job,
-      orgName: tenantMap[String(profile.tenantId)] || tenantMap[String(app?.tenantId)] || '',
+    // Attach all applications for the "Activity" section in frontend
+    row.allApplications = candApps.map(a => ({
+      id: a._id?.toString() || a.id,
+      jobId: a.jobId?._id?.toString() || a.jobId,
+      jobTitle: a.jobId?.title || 'Unknown Job',
+      stage: a.currentStage,
+      status: a.status,
+      appliedAt: a.createdAt,
+      updatedAt: a.updatedAt,
+      rejectionReason: a.rejectionReason,
+      stageHistory: a.stageHistory,
     }));
-  }
-
-  // 2. Process candidate users who don't have a formal profile yet
-  for (const user of candidateUsers) {
-    const email = (user.email || '').toLowerCase();
-    if (email && seenEmails.has(email)) continue;
-    if (email) seenEmails.add(email);
-
-    const app = appsByEmail.get(email) || null;
-    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
-
-    rows.push(profileRow({
-      user,
-      app,
-      job,
-      orgName: tenantMap[String(user.tenantId)] || tenantMap[String(app?.tenantId)] || '',
-    }));
-  }
-
-  // 3. Process applications that somehow have neither a profile nor a user (legacy data)
-  for (const app of apps) {
-    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
-    if (email && seenEmails.has(email)) continue;
-    if (email) seenEmails.add(email);
-
-    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : null;
-    rows.push(profileRow({
-      candidate,
-      user: {},
-      app,
-      job,
-      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job?.tenantId)] || '',
-    }));
+    
+    rows.push(row);
   }
 
   const filtered = search
@@ -685,19 +704,21 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
   const filter = await buildApplicationFilters(req);
 
   const appQuery = Application.find(filter)
-    .populate(CANDIDATE_APPLICANT_POPULATE)
-    .populate(JOB_APPLICANT_POPULATE)
-    .sort({ createdAt: -1 });
+    .select('candidateId jobId currentStage status createdAt updatedAt candidateEmail candidatePhone candidateName email source tenantId stageHistory rejectionReason matchBreakdown assessmentScore assessmentViolations tags inviteStatus inviteMessage screeningAnswers')
+    .populate({ path: 'jobId', select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters' })
+    .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
+    .sort({ createdAt: -1 })
+    .lean();
   if (!fetchAll) appQuery.limit(limit);
 
   const [apps, tenantMap] = await Promise.all([
-    appQuery.lean(),
+    appQuery,
     orgNameMap(),
   ]);
 
-  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const emails = [...new Set(apps.map(a => a.candidateId?.email || a.email).filter(Boolean).map(e => e.toLowerCase()))];
   const users = emails.length
-    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('-password -passwordHash').lean()
+    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('name email phone role tenantId createdAt').lean()
     : [];
   const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
 
