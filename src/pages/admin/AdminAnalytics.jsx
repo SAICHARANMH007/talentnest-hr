@@ -196,7 +196,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }, 50);
 
       setTimeout(() => {
-        api.getJobs({ limit: 100 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
+        api.getJobs({ status: 'active', limit: 1000 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
         api.getApplications({ limit: 100 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
       }, 150);
 
@@ -356,7 +356,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     if (serverStats) {
       return {
         totalCandidates: serverStats.candidates || 0,
-        activeJobs:      serverStats.openJobs || 0,
+        activeJobs:      allJobs.length > 0 ? allJobs.length : (serverStats.openJobs || 0),
         totalApps:       serverStats.applications || 0,
         appsLast30:      serverStats.appsLast30 || 0,
         placements:      serverStats.placements || 0,
