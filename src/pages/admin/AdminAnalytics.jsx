@@ -139,6 +139,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [trendData,     setTrendData]     = useState([]);
   const [applicantRows, setApplicantRows] = useState([]);
   const [candidateRecords, setCandidateRecords] = useState([]);
+  const [jobCounts, setJobCounts] = useState({ active: 0, total: 0 });
   const [loading,       setLoading]       = useState(true);
   const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
   const [period,        setPeriod]        = useState(1); // default 30 days
@@ -196,7 +197,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }, 50);
 
       setTimeout(() => {
-        api.getJobs({ status: 'active', limit: 1000 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
+        api.getJobs({ limit: 1000 }).then(unwrap).then(list => {
+          setAllJobs(list);
+          const active = list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
+          setJobCounts({ active, total: list.length });
+        }).catch(() => setAllJobs([]));
         api.getApplications({ limit: 100 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
       }, 150);
 
@@ -356,7 +361,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     if (serverStats) {
       return {
         totalCandidates: serverStats.candidates || 0,
-        activeJobs:      allJobs.length > 0 ? allJobs.length : (serverStats.openJobs || 0),
+        activeJobs:      jobCounts.total > 0 ? `${jobCounts.active} / ${jobCounts.total}` : (serverStats.openJobs || 0),
         totalApps:       serverStats.applications || 0,
         appsLast30:      serverStats.appsLast30 || 0,
         placements:      serverStats.placements || 0,
@@ -1124,17 +1129,19 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   {drillDown.type === 'job' && (
-                    <button 
-                      onClick={() => handleDeduplicateJobs(drillDown.items)}
-                      style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(3,45,96,0.2)' }}>
-                      🪄 Merge & Clean Duplicates
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        onClick={() => handleDeduplicateJobs(drillDown.items)}
+                        style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700 }}>
+                        🪄 Merge & Keep One
+                      </button>
+                    </div>
                   )}
                   {selectedItems.length > 0 && (
                     <button 
                       onClick={() => triggerBulkUpdate(drillDown.type, selectedItems, drillDown.type === 'job' ? { status: 'closed' } : { stage: 'rejected' }, `Close/Reject ${selectedItems.length} selected records?`)}
-                      style={{ ...btnG, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12 }}>
-                      Bulk {drillDown.type === 'job' ? 'Close' : 'Reject'} ({selectedItems.length})
+                      style={{ ...btnG, background: '#BA0517', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700 }}>
+                      🚫 Close All Selected ({selectedItems.length})
                     </button>
                   )}
                   <button onClick={downloadCSV} style={{ ...btnG, padding: '8px 16px', fontSize: 12, borderRadius: 10 }}>⬇ CSV</button>
@@ -1146,24 +1153,35 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <input placeholder={`Search in ${drillDown.title}...`} value={drillDownSearch} onChange={e => setDrillDownSearch(e.target.value)} style={{ width: '100%', padding: '12px 20px', borderRadius: 14, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none' }} />
                 </div>
                 {drillDown.type === 'job' && (
-                  <button 
-                    onClick={() => {
-                      const counts = {};
-                      drillDown.items.forEach(j => {
-                        const k = `${(j.name || j.title || '').toLowerCase().trim()}|${(j.sub || '').toLowerCase().trim()}`;
-                        counts[k] = (counts[k] || 0) + 1;
-                      });
-                      const dupeKeys = Object.entries(counts).filter(([k,v]) => v > 1).map(([k]) => k);
-                      if (dupeKeys.length > 0) {
-                        setDrillDownSearch(dupeKeys[0].split('|')[0]); // Auto-search first dupe group
-                        setToast(`🔍 Found ${dupeKeys.length} groups of duplicate jobs.`);
-                      } else {
-                        setToast('✅ No duplicates found in this set.');
-                      }
-                    }}
-                    style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#706E6B' }}>
-                    🔍 Find Duplicates
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      onClick={() => {
+                        const counts = {};
+                        drillDown.items.forEach(j => {
+                          const k = `${(j.name || j.title || '').toLowerCase().trim()}|${(j.sub || '').toLowerCase().trim()}`;
+                          counts[k] = (counts[k] || 0) + 1;
+                        });
+                        const dupeKeys = Object.entries(counts).filter(([k,v]) => v > 1).map(([k]) => k);
+                        if (dupeKeys.length > 0) {
+                          setDrillDownSearch(dupeKeys[0].split('|')[0]);
+                          setToast(`🔍 Found ${dupeKeys.length} groups of duplicates.`);
+                        } else {
+                          setToast('✅ No duplicates found.');
+                        }
+                      }}
+                      style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#706E6B' }}>
+                      🔍 Find Duplicates
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const allIds = filtered.map(item => String(item.id || item._id));
+                        setSelectedItems(allIds);
+                        setToast(`✅ Selected all ${allIds.length} visible records.`);
+                      }}
+                      style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#0176D3' }}>
+                      ☑️ Select All Visible
+                    </button>
+                  </div>
                 )}
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 32px 32px' }}>
