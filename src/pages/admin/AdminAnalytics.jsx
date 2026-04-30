@@ -147,6 +147,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [confirmAction, setConfirmAction] = useState(null);
   const [toast,         setToast]         = useState('');
   const [drawerUser,    setDrawerUser]    = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]); // For bulk actions
 
   // ── Date range for advanced analytics ────────────────────────────────────
   const defaultStart = () => {
@@ -256,6 +257,86 @@ export default function AdminAnalytics({ user, onNavigate }) {
       message,
       onConfirm: () => handleInlineUpdate(type, id, updates),
       onCancel : () => setConfirmAction(null),
+    });
+  };
+
+  const handleBulkUpdate = async (type, ids, updates) => {
+    try {
+      if (type === 'job') {
+        await Promise.all(ids.map(id => api.patchJob(id, updates)));
+      } else if (type === 'app' && updates.stage) {
+        await Promise.all(ids.map(id => api.updateStage(id, updates.stage)));
+      }
+      setDrillDown(p => p ? { ...p, items: p.items.map(i => ids.includes(String(i.id || i._id)) ? { ...i, ...updates } : i) } : p);
+      setSelectedItems([]);
+      setToast(`✅ ${ids.length} records updated successfully`);
+      setConfirmAction(null);
+    } catch (e) {
+      setToast('❌ ERROR: ' + (e.message || 'Bulk action failed'));
+      setConfirmAction(null);
+    }
+  };
+
+  const triggerBulkUpdate = (type, ids, updates, message) => {
+    setConfirmAction({
+      message,
+      onConfirm: () => handleBulkUpdate(type, ids, updates),
+      onCancel : () => setConfirmAction(null),
+    });
+  };
+
+  const handleDeduplicateJobs = async (items) => {
+    setConfirmAction({
+      message: `Deep-scan and merge duplicates among ${items.length} jobs? This will move all applicants to primary records and close redundant postings.`,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        setToast('🧹 Starting deep deduplication scan...');
+        try {
+          const groups = {};
+          items.forEach(j => {
+            // Group by title and sub (which contains company + location)
+            const key = `${(j.name || j.title || '').toLowerCase().trim()}|${(j.sub || '').toLowerCase().trim()}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(j);
+          });
+
+          const toProcess = Object.values(groups).filter(g => g.length > 1);
+          if (toProcess.length === 0) {
+            setToast('✅ No exact duplicates found.');
+            return;
+          }
+
+          let totalMerged = 0;
+          for (const group of toProcess) {
+            const primary = group[0];
+            const primaryId = String(primary.id || primary._id);
+            const duplicates = group.slice(1);
+
+            for (const dupe of duplicates) {
+              const dupeId = String(dupe.id || dupe._id);
+              // 1. Get candidates from duplicate
+              const candsRes = await api.getJobCandidates(dupeId).catch(() => []);
+              const cands = Array.isArray(candsRes) ? candsRes : (Array.isArray(candsRes?.data) ? candsRes.data : []);
+              const candIds = cands.map(c => String(c.id || c._id)).filter(id => id && id !== 'undefined');
+              
+              // 2. Move candidates to primary
+              if (candIds.length > 0) {
+                await api.assignCandidatesToJob(primaryId, candIds).catch(() => null);
+              }
+              
+              // 3. Close duplicate
+              await api.patchJob(dupeId, { status: 'closed' }).catch(() => null);
+              totalMerged++;
+            }
+          }
+
+          setToast(`🎉 Successfully merged ${totalMerged} duplicate jobs!`);
+          openActiveJobsDrill(); // Reload
+        } catch (e) {
+          setToast('❌ Error during deduplication: ' + e.message);
+        }
+      },
+      onCancel: () => setConfirmAction(null),
     });
   };
 
@@ -377,6 +458,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   // ── Drill-down helpers ────────────────────────────────────────────────────
   // Shared: sets loading title, fetches, then populates drawer
   const fetchDrill = useCallback(async (loadingTitle, type, fetcher) => {
+    setSelectedItems([]); // Reset selection
     setDrillDown({ title: `${loadingTitle} — Loading…`, type, items: [] });
     try {
       const items = await fetcher();
@@ -405,8 +487,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
   };
 
   const openActiveJobsDrill = () => fetchDrill('Active Postings', 'job', async () => {
-    const raw = await api.getJobs({ status: 'active', limit: 500 }).then(unwrap).catch(() => []);
-    return raw.map(j => ({ ...j, id: j.id || j._id, name: j.title, sub: `${j.companyName || 'Internal'} · ${j.location || ''}` }));
+    const raw = await api.getJobs({ status: 'active', limit: 1000 }).then(unwrap).catch(() => []);
+    return raw.map(j => ({ ...j, id: j.id || j._id, name: j.title, sub: `${j.companyName || 'Internal'} · ${j.location || ''}`, status: j.status }));
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
@@ -1038,8 +1120,22 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{drillDown.title}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {drillDown.type === 'job' && drillDown.items.length > 1 && (
+                    <button 
+                      onClick={() => handleDeduplicateJobs(drillDown.items)}
+                      style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12 }}>
+                      🪄 Deep Merge Duplicates
+                    </button>
+                  )}
+                  {selectedItems.length > 0 && (
+                    <button 
+                      onClick={() => triggerBulkUpdate(drillDown.type, selectedItems, drillDown.type === 'job' ? { status: 'closed' } : { stage: 'rejected' }, `Close/Reject ${selectedItems.length} selected records?`)}
+                      style={{ ...btnG, background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12 }}>
+                      Bulk {drillDown.type === 'job' ? 'Close' : 'Reject'} ({selectedItems.length})
+                    </button>
+                  )}
                   <button onClick={downloadCSV} style={{ ...btnG, padding: '8px 16px', fontSize: 12, borderRadius: 10 }}>⬇ CSV</button>
-                  <button onClick={() => { setDrillDown(null); setDrillDownSearch(''); }} style={{ width: 40, height: 40, border: 'none', background: '#F8FAFC', borderRadius: 12, cursor: 'pointer', fontSize: 18 }}>✕</button>
+                  <button onClick={() => { setDrillDown(null); setDrillDownSearch(''); setSelectedItems([]); }} style={{ width: 40, height: 40, border: 'none', background: '#F8FAFC', borderRadius: 12, cursor: 'pointer', fontSize: 18 }}>✕</button>
                 </div>
               </div>
               <div style={{ padding: '16px 32px', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
@@ -1055,11 +1151,19 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 {!drillDown.title.endsWith('Loading…') && filtered.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>No records found.</div>}
                 {filtered.slice(0, drillPage * DRILL_PAGE_SIZE).map(item => {
                   const itemId = item.id || item._id;
+                  const isSel = selectedItems.includes(String(itemId));
                   return (
-                    <div key={itemId} style={{ padding: '16px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
-                        <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
+                    <div key={itemId} style={{ padding: '16px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isSel ? '#FFF1F2' : 'transparent' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <input type="checkbox" checked={isSel} 
+                          onChange={e => {
+                            const sid = String(itemId);
+                            setSelectedItems(p => e.target.checked ? [...p, sid] : p.filter(x => x !== sid));
+                          }}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
+                          <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
                         {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                             {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
@@ -1077,6 +1181,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
                             onChange={e => triggerUpdate('app', itemId, { stage: e.target.value }, `Move candidate to ${STAGE_LABELS[e.target.value]}?`)}
                             style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                             {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+                          </select>
+                        )}
+                        {drillDown.type === 'job' && (
+                          <select value={item.status || ''}
+                            onChange={e => triggerUpdate('job', itemId, { status: e.target.value }, `Change job status to ${e.target.value}?`)}
+                            style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            <option value="active">Active</option>
+                            <option value="closed">Closed</option>
+                            <option value="draft">Draft</option>
                           </select>
                         )}
                         <button 
