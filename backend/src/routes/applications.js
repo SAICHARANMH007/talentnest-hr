@@ -408,14 +408,21 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
   if (req.user.role === 'recruiter') {
     const myJobs = await Job.find({ tenantId: req.user.tenantId, assignedRecruiters: req.user.id }).select('_id').lean();
-    filter.jobId = { $in: myJobs.map(j => j._id) };
+    const myJobIds = myJobs.map(j => j._id);
+    if (req.query.jobId) {
+      filter.jobId = myJobIds.some(id => String(id) === String(req.query.jobId))
+        ? req.query.jobId
+        : { $in: [] };
+    } else {
+      filter.jobId = { $in: myJobIds };
+    }
   }
   // Filter by a specific recruiter's assigned jobs (used by analytics drill-down)
   if (req.query.recruiterId && ['admin', 'super_admin'].includes(req.user.role)) {
     const recJobs = await Job.find({ assignedRecruiters: req.query.recruiterId }).select('_id').lean();
     filter.jobId = { $in: recJobs.map(j => j._id) };
   }
-  if (req.query.jobId)       filter.jobId       = req.query.jobId;
+  if (req.query.jobId && req.user.role !== 'recruiter') filter.jobId = req.query.jobId;
   if (req.query.candidateId) filter.candidateId = req.query.candidateId;
   if (req.query.stage)       filter.currentStage = req.query.stage;
   if (req.query.status)      filter.status       = req.query.status;
@@ -883,6 +890,7 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
 router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { exportToExcel } = require('../utils/exportToExcel');
   const Tenant = require('../models/Tenant');
+  const User = require('../models/User');
   const filter = { deletedAt: null };
   if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
   if (req.query.jobId) filter.jobId = req.query.jobId;
@@ -898,6 +906,11 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
     Tenant.find({}).select('name').lean(),
   ]);
   const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
+  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const candidateUsers = emails.length
+    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('email phone name title currentCompany currentCTC expectedCTC').lean()
+    : [];
+  const usersByEmail = new Map(candidateUsers.map(u => [String(u.email || '').toLowerCase(), u]));
 
   const columns = [
     { header: 'Candidate',       key: 'candidateName',  width: 24 },
@@ -938,11 +951,12 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
 
   const rows = apps.map(a => {
     const c = a.candidateId || {};
+    const u = usersByEmail.get(String(c.email || '').toLowerCase()) || {};
     const j = a.jobId || {};
     return {
-      candidateName: c.name || '',
-      email:         c.email || '',
-      phone:         c.phone || '',
+      candidateName: c.name || u.name || '',
+      email:         c.email || u.email || '',
+      phone:         c.phone || u.phone || '',
       organisation:  tenantMap[String(a.tenantId)] || '',
       jobTitle:      j.title || '',
       company:       j.companyName || j.company || '',
@@ -952,15 +966,15 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
       aiMatchScore:  a.aiMatchScore ?? '',
       source:        a.source || c.source || '',
       appliedDate:   a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN') : '',
-      title:         c.title || '',
-      currentCompany: c.currentCompany || '',
+      title:         c.title || u.title || '',
+      currentCompany: c.currentCompany || u.currentCompany || '',
       location:      c.location || '',
       preferredLocation: c.preferredLocation || '',
       skills:        Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || ''),
       experience:    c.experience ?? '',
       relevantExperience: c.relevantExperience || '',
-      currentCTC:    c.currentCTC || '',
-      expectedCTC:   c.expectedCTC || '',
+      currentCTC:    c.currentCTC || u.currentCTC || '',
+      expectedCTC:   c.expectedCTC || u.expectedCTC || '',
       availability:  c.availability || '',
       noticePeriodDays: c.noticePeriodDays ?? '',
       candidateStatus: c.candidateStatus || '',

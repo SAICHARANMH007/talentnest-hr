@@ -12,6 +12,7 @@ const STAGE_COLOR = {
   'Interview Round 1': '#F59E0B', 'Interview Round 2': '#a78bfa',
   Offer: '#059669', Hired: '#2E844A', Rejected: '#e53e3e',
 };
+const STAGES = Object.keys(STAGE_COLOR);
 
 export default function AssignedCandidates({ user }) {
   const navigate   = useNavigate();
@@ -67,6 +68,18 @@ export default function AssignedCandidates({ user }) {
       (a.jobId?.title || '').toLowerCase().includes(q)
     );
   });
+
+  const changeStage = async (app, stage) => {
+    try {
+      const appId = app.id || app._id;
+      await api.updateStage(appId, stage);
+      setApps(prev => prev.map(a => (a.id || a._id) === appId
+        ? { ...a, currentStage: stage, stage }
+        : a));
+    } catch (_e) {
+      // Keep the page quiet; the Pipeline page still exposes the full error path.
+    }
+  };
 
   // Group apps by job
   const byJob = {};
@@ -200,12 +213,17 @@ export default function AssignedCandidates({ user }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#181818' }}>{name}</div>
                         <div style={{ fontSize: 11, color: '#706E6B' }}>
-                          {c.email || ''}{c.title ? ` · ${c.title}` : ''}
+                          {c.email || ''}{c.phone ? ` · ${c.phone}` : ''}{c.title ? ` · ${c.title}` : ''}
                         </div>
                       </div>
-                      <span style={{ background: `${stageColor}18`, color: stageColor, border: `1px solid ${stageColor}40`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        {stage}
-                      </span>
+                      <select
+                        value={stage}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => changeStage(a, e.target.value)}
+                        style={{ background: `${stageColor}18`, color: stageColor, border: `1px solid ${stageColor}40`, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', outline: 'none', cursor: 'pointer' }}
+                      >
+                        {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                   );
                 })}
