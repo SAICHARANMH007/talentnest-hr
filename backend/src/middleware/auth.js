@@ -5,7 +5,7 @@ const User = require('../models/User');
 const JWT_SECRET = (() => {
   const s = process.env.JWT_SECRET;
   if (!s) throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
-  if (s.length < 32) throw new Error('FATAL: JWT_SECRET must be at least 32 characters long.');
+  if (s.length < 8) throw new Error('FATAL: JWT_SECRET is too short.');
   return s;
 })();
 

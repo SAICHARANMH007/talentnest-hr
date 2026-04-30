@@ -183,7 +183,7 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter
   if (req.user.role === 'recruiter') {
     if (userToUpdate.role !== 'candidate') throw new AppError('Forbidden: Recruiters can only update candidates.', 403);
     if (userToUpdate.tenantId?.toString() !== req.user.tenantId?.toString()) {
-      throw new AppError('Forbidden: Candidate belongs to a different organisation.', 403);
+      throw new AppError('Forbidden: Candidate belongs to a different organization.', 403);
     }
   }
 
@@ -313,14 +313,14 @@ async function syncCandidateApplicationsToRecruiter(candidateUser, recruiterId, 
     .lean();
   if (!recruiter) throw new AppError('Recruiter not found.', 404);
   if (actor.role !== 'super_admin' && String(recruiter.tenantId) !== String(actor.tenantId)) {
-    throw new AppError('Recruiter must belong to your organisation.', 403);
+    throw new AppError('Recruiter must belong to your organization.', 403);
   }
 
   const candidateFilter = {
     email: String(candidateUser.email).toLowerCase().trim(),
     deletedAt: null,
   };
-  // Keep job visibility inside the recruiter's organisation. This is what makes
+  // Keep job visibility inside the recruiter's organization. This is what makes
   // existing applied jobs appear in that recruiter's Applicants/Pipeline views.
   candidateFilter.tenantId = recruiter.tenantId;
 
@@ -367,10 +367,10 @@ async function syncCandidateProfileToRecruiter(candidate, recruiterId, actor) {
     .lean();
   if (!recruiter) throw new AppError('Recruiter not found.', 404);
   if (actor.role !== 'super_admin' && String(recruiter.tenantId) !== String(actor.tenantId)) {
-    throw new AppError('Recruiter must belong to your organisation.', 403);
+    throw new AppError('Recruiter must belong to your organization.', 403);
   }
   if (String(candidate.tenantId) !== String(recruiter.tenantId)) {
-    throw new AppError('Candidate and recruiter must belong to the same organisation.', 403);
+    throw new AppError('Candidate and recruiter must belong to the same organization.', 403);
   }
 
   await Candidate.updateOne(
@@ -409,7 +409,7 @@ router.patch('/:id/assign', authenticate, allowRoles('admin','super_admin','recr
   const { recruiterId } = req.body;
   const target = await User.findOne({ _id: req.params.id, role: 'candidate', deletedAt: null }).lean();
   if (target && req.user.role !== 'super_admin' && String(target.tenantId) !== String(req.user.tenantId)) {
-    throw new AppError('Candidate must belong to your organisation.', 403);
+    throw new AppError('Candidate must belong to your organization.', 403);
   }
 
   if (target) {

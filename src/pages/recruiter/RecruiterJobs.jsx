@@ -17,7 +17,7 @@ import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
 
 // ── Applicants Panel ──────────────────────────────────────────────────────────
 function ApplicantsPanel({ job, onClose }) {
-  const navigate = useNavigate ? useNavigate() : null;
+  const navigate = useNavigate();
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editCandidate, setEditCandidate] = useState(null);
@@ -99,6 +99,7 @@ function ApplicantsPanel({ job, onClose }) {
 }
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RecruiterJobs({ user }) {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]); const [loading, setLoad] = useState(true); const [showModal, setShow] = useState(false);
   const [saving, setSaving] = useState(false); const [toast, setToast] = useState("");
   const [applicantsJob, setApplicantsJob] = useState(null);

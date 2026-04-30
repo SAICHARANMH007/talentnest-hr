@@ -101,7 +101,7 @@ userSchema.index({ tenantId: 1 });
 userSchema.index({ tenantId: 1, role: 1 });
 userSchema.index({ role: 1 });
 // ── Performance indexes ───────────────────────────────────────────────────
-userSchema.index({ email: 1 }, { unique: true });                         // login / dedup
+// userSchema.index({ email: 1 }, { unique: true });                         // login / dedup (Already handled in schema definition)
 userSchema.index({ tenantId: 1, role: 1, isActive: 1 });                  // stats queries
 userSchema.index({ tenantId: 1, deletedAt: 1 });                          // soft-delete scans
 userSchema.index({ assignedRecruiterId: 1, tenantId: 1 });                // pipeline assignment
