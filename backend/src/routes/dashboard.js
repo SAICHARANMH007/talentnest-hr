@@ -69,11 +69,13 @@ function tenantFilter(req) {
 
 async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
   const [candidateDocs, userDocs, appDocs] = await Promise.all([
-    Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email phone name').lean(),
+    Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email phone name userId').lean(),
     User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email phone name').lean(),
     Application.find({ deletedAt: null, ...candidateFilter }).select('candidateId candidateEmail candidatePhone candidateName email').lean(),
   ]);
+
   const keys = new Set();
+  const userToCandidate = new Map(); // userId -> candidateKey
   const getCandidateKey = (email, phone, name) => {
     if (email) return `email:${email.toLowerCase().trim()}`;
     if (phone) return `phone:${phone.trim()}`;
@@ -81,13 +83,26 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
     return null;
   };
 
-  candidateDocs.forEach(d => { const k = getCandidateKey(d.email, d.phone, d.name) || `id:${d._id}`; if (k) keys.add(k); });
-  userDocs.forEach(d => { const k = getCandidateKey(d.email, d.phone, d.name) || `id:${d._id}`; if (k) keys.add(k); });
+  // 1. Process users
+  userDocs.forEach(d => {
+    const k = getCandidateKey(d.email, d.phone, d.name) || `user:${d._id}`;
+    keys.add(k);
+    userToCandidate.set(String(d._id), k);
+  });
+
+  // 2. Process candidates (link to users via userId)
+  candidateDocs.forEach(d => {
+    let k = getCandidateKey(d.email, d.phone, d.name);
+    if (!k && d.userId && userToCandidate.has(String(d.userId))) {
+      k = userToCandidate.get(String(d.userId));
+    }
+    if (!k) k = `cand:${d._id}`;
+    keys.add(k);
+  });
+
+  // 3. Process applications
   appDocs.forEach(d => {
-    const email = d.candidateEmail || d.email;
-    const phone = d.candidatePhone;
-    const name = d.candidateName;
-    const k = getCandidateKey(email, phone, name) || (d.candidateId ? `id:${d.candidateId}` : null);
+    const k = getCandidateKey(d.candidateEmail || d.email, d.candidatePhone, d.candidateName) || (d.candidateId ? `cand:${d.candidateId}` : null);
     if (k) keys.add(k);
   });
   
@@ -606,7 +621,7 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   ]);
 
   // Map for deduplication and grouping
-  const candidateMap = new Map(); // key -> { profile, user, apps: [], job: latestJob }
+  const candidateMap = new Map(); // key -> { profile, user, apps: [], latestApp, userId }
 
   const getCandidateKey = (email, phone, name) => {
     if (email) return `email:${email.toLowerCase().trim()}`;
@@ -617,21 +632,32 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
 
   // 1. Initialize from User accounts
   for (const u of candidateUsers) {
-    const key = getCandidateKey(u.email, u.phone, u.name);
-    if (!key) continue;
+    const key = getCandidateKey(u.email, u.phone, u.name) || `user:${u._id}`;
     if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: u, profile: null, apps: [], latestApp: null });
+      candidateMap.set(key, { user: u, profile: null, apps: [], latestApp: null, userId: String(u._id) });
     }
+  }
+
+  // Map userId to primary key for linking profiles
+  const userToKey = new Map();
+  for (const [key, val] of candidateMap.entries()) {
+    if (val.userId) userToKey.set(val.userId, key);
   }
 
   // 2. Merge with Candidate profiles
   for (const p of candidateProfiles) {
-    const key = getCandidateKey(p.email, p.phone, p.name) || `id:${p._id}`;
+    let key = getCandidateKey(p.email, p.phone, p.name);
+    if (!key && p.userId && userToKey.has(String(p.userId))) {
+      key = userToKey.get(String(p.userId));
+    }
+    if (!key) key = `cand:${p._id}`;
+
     if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: null, profile: p, apps: [], latestApp: null });
+      candidateMap.set(key, { user: null, profile: p, apps: [], latestApp: null, userId: p.userId ? String(p.userId) : null });
     } else {
       const entry = candidateMap.get(key);
       if (!entry.profile) entry.profile = p;
+      if (!entry.userId && p.userId) entry.userId = String(p.userId);
     }
   }
 
@@ -640,17 +666,24 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
     const cand = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const email = cand.email || app.candidateEmail || app.email || '';
     const phone = cand.phone || app.candidatePhone || '';
-    const name = cand.name || app.candidateName || '';
+    const name = cand.candidateName || cand.name || app.candidateName || '';
     
-    const key = getCandidateKey(email, phone, name) || (cand._id ? `id:${cand._id}` : null);
-    if (!key) continue;
+    let key = getCandidateKey(email, phone, name);
+    if (!key && cand._id) {
+      // Check if this candidate profile is already mapped
+      for (const [k, v] of candidateMap.entries()) {
+        if (v.profile && String(v.profile._id) === String(cand._id)) {
+          key = k; break;
+        }
+      }
+    }
+    if (!key) key = cand._id ? `cand:${cand._id}` : `app:${app._id}`;
 
     if (!candidateMap.has(key)) {
-      candidateMap.set(key, { user: null, profile: cand._id ? cand : null, apps: [app], latestApp: app });
+      candidateMap.set(key, { user: null, profile: cand._id ? cand : null, apps: [app], latestApp: app, userId: cand.userId ? String(cand.userId) : null });
     } else {
       const entry = candidateMap.get(key);
       entry.apps.push(app);
-      // Update latestApp if this one is newer
       if (!entry.latestApp || new Date(app.createdAt) > new Date(entry.latestApp.createdAt)) {
         entry.latestApp = app;
       }
@@ -670,7 +703,8 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
       orgName: tenantMap[String(primary.tenantId)] || tenantMap[String(latestApp?.tenantId)] || '',
     });
 
-    // Attach all applications for the "Activity" section in frontend
+    row.isApplied = candApps.length > 0;
+    row.applicationCount = candApps.length;
     row.allApplications = candApps.map(a => ({
       id: a._id?.toString() || a.id,
       jobId: a.jobId?._id?.toString() || a.jobId,

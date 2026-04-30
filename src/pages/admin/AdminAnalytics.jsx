@@ -386,17 +386,23 @@ export default function AdminAnalytics({ user, onNavigate }) {
     }
   }, []);
 
-  const openCandidatesDrill = () => fetchDrill('Candidate Database', 'user', async () => {
-    const raw = await api.getCandidateRecords({ limit: 'all' }).catch(() => ({ data: [] }));
-    const list = Array.isArray(raw?.data) ? raw.data : [];
-    return list.map(c => ({
-      ...c,
-      id: c.applicationId || c.candidateId || c.userId || `${c.email}-${c.jobTitle}`,
-      name: c.candidateName || c.email || 'Candidate',
-      email: c.email || '',
-      sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}${c.organisation ? ` · ${c.organisation}` : ''}`,
-    }));
-  });
+  const openCandidatesDrill = () => {
+    if (isSuperAdmin && onNavigate) {
+      onNavigate('all-candidates');
+      return;
+    }
+    fetchDrill('Candidate Database', 'user', async () => {
+      const raw = await api.getCandidateRecords({ limit: 'all' }).catch(() => ({ data: [] }));
+      const list = Array.isArray(raw?.data) ? raw.data : [];
+      return list.map(c => ({
+        ...c,
+        id: c.applicationId || c.candidateId || c.userId || `${c.email}-${c.jobTitle}`,
+        name: c.candidateName || c.email || 'Candidate',
+        email: c.email || '',
+        sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}${c.organisation ? ` · ${c.organisation}` : ''}`,
+      }));
+    });
+  };
 
   const openActiveJobsDrill = () => fetchDrill('Active Postings', 'job', async () => {
     const raw = await api.getJobs({ status: 'active', limit: 500 }).then(unwrap).catch(() => []);
