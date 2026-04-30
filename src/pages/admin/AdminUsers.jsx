@@ -502,6 +502,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     if (!form.email?.trim()) errs.email = 'Email address is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Enter a valid email address';
     if (effectiveRole === 'admin' && !form.domain?.trim()) errs.domain = 'Company domain is required for admin accounts';
+    if (!form.phone?.trim()) errs.phone = 'Phone number is required';
     if (isSuperAdmin && !form.tenantId) errs.tenantId = 'Please select an organisation';
     return errs;
   };
@@ -1055,7 +1056,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             {/* Extra fields for candidates */}
             {(form.role === 'candidate' || filterRole === 'candidate') && (
               <div style={{ display: 'flex', gap: 10 }}>
-                <Field label="Phone" value={form.phone || ''} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" type="tel" style={{ flex: 1 }} />
+                <Field label="Phone *" value={form.phone || ''} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" type="tel" style={{ flex: 1 }} error={formErrors.phone} />
                 <Field label="Job Title" value={form.jobTitle || ''} onChange={v => sf('jobTitle', v)} placeholder="e.g. Java Developer" style={{ flex: 1 }} />
               </div>
             )}

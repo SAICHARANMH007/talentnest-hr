@@ -227,7 +227,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
   };
 
   const save = async () => {
-    if (!form.name || !form.email) { setToast('❌ Name and email required'); return; }
+    if (!form.name || !form.email || !form.phone) { setToast('❌ Name, email, and phone number are required'); return; }
     if (!form.tenantId && !defaultTenantId) {
       setToast(isSuperAdmin ? '❌ Please choose an organisation before saving the candidate' : '❌ Candidate organisation could not be determined');
       return;
@@ -330,7 +330,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
           </ConfidenceWrapper>
 
           <ConfidenceWrapper confValue={conf.phone}>
-            <Field label="Phone" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" />
+            <Field label="Phone *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" />
           </ConfidenceWrapper>
 
           {isSuperAdmin && (

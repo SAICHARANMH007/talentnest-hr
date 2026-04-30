@@ -14,7 +14,7 @@ const PLAN_COLORS = { free: '#64748b', trial: '#F59E0B', starter: '#0176D3', gro
 const STATUS_COLORS = { active: '#2E844A', trial: '#A07E00', suspended: '#BA0517', inactive: '#706E6B' };
 
 const EMPTY_FORM = { name: '', domain: '', industry: '', size: '1-10', plan: 'trial', logo: '', isStaffingAgency: false };
-const INVITE_EMPTY = { name: '', email: '' };
+const INVITE_EMPTY = { name: '', email: '', phone: '' };
 
 function Lbl({ children, required }) {
   return <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>{children}{required && <span style={{ color: '#BA0517', marginLeft: 3 }}>*</span>}</label>;
@@ -54,7 +54,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState('');
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [userForm, setUserForm] = useState({ name: '', email: '', role: 'recruiter' });
+  const [userForm, setUserForm] = useState({ name: '', email: '', phone: '', role: 'recruiter' });
   const [creatingUser, setCreatingUser] = useState(false);
   
   // Member management
@@ -100,11 +100,11 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
   };
 
   const createUser = async () => {
-    if (!userForm.name || !userForm.email) { setToast('❌ Name and email are required'); return; }
+    if (!userForm.name || !userForm.email || !userForm.phone) { setToast('❌ Name, email, and phone are required'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email)) { setToast('❌ Please enter a valid email address'); return; }
     setCreatingUser(true);
     try {
-      await api.createUser({ name: userForm.name, email: userForm.email, role: userForm.role, tenantId: orgId, domain: org.domain });
+      await api.createUser({ name: userForm.name, email: userForm.email, phone: userForm.phone, role: userForm.role, tenantId: orgId, domain: org.domain });
       setToast(`✅ Invitation email sent to ${userForm.email}`);
       setShowCreateUser(false);
       setUserForm({ name: '', email: '', role: 'recruiter' });
@@ -251,6 +251,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                          <FormRow cols={2} style={{ marginBottom: 16 }}>
                            <Field label="User Full Name" required value={userForm.name} onChange={v => setUserForm({...userForm, name: v})} />
                            <Field label="Primary Email" required type="email" value={userForm.email} onChange={v => setUserForm({...userForm, email: v})} />
+                           <Field label="Phone Number" required type="tel" value={userForm.phone} onChange={v => setUserForm({...userForm, phone: v})} />
                          </FormRow>
                          <div style={{ width: '50%', marginBottom: 20 }}>
                            <Field label="Platform Role" value={userForm.role} onChange={v => setUserForm({...userForm, role: v})}
@@ -422,10 +423,10 @@ export default function SuperAdminOrgs() {
   };
 
   const inviteAdmin = async () => {
-    if (!inviteForm.name || !inviteForm.email) { setToast('❌ Name and email required'); return; }
+    if (!inviteForm.name || !inviteForm.email || !inviteForm.phone) { setToast('❌ Name, email, and phone required'); return; }
     setSaving(true);
     try {
-      await api.createUser({ name: inviteForm.name, email: inviteForm.email, role: 'admin', tenantId: showInvite, orgId: showInvite });
+      await api.createUser({ name: inviteForm.name, email: inviteForm.email, phone: inviteForm.phone, role: 'admin', tenantId: showInvite, orgId: showInvite });
       setShowInvite(null);
       setInviteForm(INVITE_EMPTY);
       setToast('✅ Admin invitation sent — they will receive an email to set their password');
@@ -601,8 +602,9 @@ export default function SuperAdminOrgs() {
               <button onClick={() => { setShowInvite(null); setInviteForm(INVITE_EMPTY); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
             </div>
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
-              <Field label="Full Name" required value={inviteForm.name} onChange={v => sif('name', v)} placeholder="Priya Sharma" />
-              <Field label="Email" required type="email" value={inviteForm.email} onChange={v => sif('email', v)} placeholder="admin@company.com" />
+               <Field label="Full Name" required value={inviteForm.name} onChange={v => sif('name', v)} placeholder="Priya Sharma" />
+               <Field label="Email" required type="email" value={inviteForm.email} onChange={v => sif('email', v)} placeholder="admin@company.com" />
+               <Field label="Phone Number" required type="tel" value={inviteForm.phone} onChange={v => sif('phone', v)} placeholder="+91 ..." />
             </div>
             <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #F1F5F9', background: '#fff', display: 'flex', gap: 12 }}>
               <button onClick={inviteAdmin} disabled={saving} style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : 1 }}>{saving ? 'Creating…' : '✅ Create Admin Account'}</button>

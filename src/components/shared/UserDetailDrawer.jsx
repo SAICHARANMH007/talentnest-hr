@@ -112,7 +112,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   if (!u) return null;
 
   const saveProfile = async () => {
-    if (!form.name || !form.email) { setToast('❌ Name and email are required'); return; }
+    if (!form.name || !form.email || !form.phone) { 
+      setToast('❌ Name, Email, and Phone Number are required'); 
+      return; 
+    }
     setSaving(true);
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
@@ -232,7 +235,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <div className="form-grid-2" style={{ gap: 14 }}>
                   <Field label="Full Name *"  value={form.name}     onChange={v => sf('name', v)} />
                   <Field label="Email Address *" value={form.email} onChange={v => sf('email', v)} type="email" />
-                  <Field label="Phone Number"  value={form.phone}    onChange={v => sf('phone', v)} type="tel" />
+                  <Field label="Phone Number *"  value={form.phone}    onChange={v => sf('phone', v)} type="tel" />
                   <Field label="Location"     value={form.location} onChange={v => sf('location', v)} />
                   <Field label="Current Title" value={form.title}    onChange={v => sf('title', v)} />
                   <Field label="Exp. (Years)" value={form.experience} onChange={v => sf('experience', v)} type="number" min="0" max="60" />

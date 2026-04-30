@@ -6,7 +6,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import { btnP, btnG } from '../../constants/styles.js';
 
-const EMPTY_USER = { name: '', email: '', role: 'recruiter', tenantId: '' };
+const EMPTY_USER = { name: '', email: '', phone: '', role: 'recruiter', tenantId: '' };
 
 /**
  * Dedicated page for Provisioning a new Platform User.
@@ -37,8 +37,8 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!form.name || !form.email || !form.tenantId) { 
-      setToast('❌ Name, email, and organisation are required'); 
+    if (!form.name || !form.email || !form.phone || !form.tenantId) { 
+      setToast('❌ Name, email, phone, and organisation are required'); 
       return; 
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { 
@@ -51,6 +51,7 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
       await api.createUser({ 
         name: form.name, 
         email: form.email, 
+        phone: form.phone,
         role: form.role, 
         tenantId: form.tenantId 
       });
@@ -84,6 +85,9 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
            <Field label="Full Name" required value={form.name} onChange={v => sf('name', v)} placeholder="Priya Sharma" />
            <Field label="Work Email" required type="email" value={form.email} onChange={v => sf('email', v)} placeholder="priya@company.com" />
         </FormRow>
+        <div style={{ width: '50%' }}>
+           <Field label="Work Phone" required type="tel" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 ..." />
+        </div>
 
         <FormRow cols={2}>
            <Field 

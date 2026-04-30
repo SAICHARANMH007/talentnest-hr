@@ -140,6 +140,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [applicantRows, setApplicantRows] = useState([]);
   const [candidateRecords, setCandidateRecords] = useState([]);
   const [jobCounts, setJobCounts] = useState({ active: 0, total: 0 });
+  const [localAppStats, setLocalAppStats] = useState({ total: 0, pipeline: {} });
   const [loading,       setLoading]       = useState(true);
   const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
   const [period,        setPeriod]        = useState(1); // default 30 days
@@ -202,11 +203,37 @@ export default function AdminAnalytics({ user, onNavigate }) {
           const active = list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
           setJobCounts({ active, total: list.length });
         }).catch(() => setAllJobs([]));
-        api.getApplications({ limit: 100 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
+        
+        // Accurate Application & Pipeline Tracking
+        api.getApplications({ limit: 2000 }).then(unwrap).then(list => {
+          setAllApps(list);
+          // Calculate pipeline stages using official MASTER_STAGES keys
+          const pipe = {};
+          MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
+
+          list.forEach(a => {
+            const raw = (a.stage || a.currentStage || '').toLowerCase();
+            // Map raw DB strings to official Frontend IDs
+            let mapped = null;
+            if (raw === 'new' || raw === 'applied') mapped = 'applied';
+            else if (raw === 'screening' || raw === 'shortlist' || raw === 'shortlisted') mapped = 'screening';
+            else if (raw.includes('scheduled') || raw.includes('round 1')) mapped = 'interview_scheduled';
+            else if (raw.includes('completed') || raw.includes('round 2')) mapped = 'interview_completed';
+            else if (raw.includes('offer')) mapped = 'offer_extended';
+            else if (raw === 'hired' || raw === 'selected') mapped = 'selected';
+            else if (raw === 'rejected' || raw === 'declined') mapped = 'rejected';
+            
+            if (mapped && pipe[mapped] !== undefined) pipe[mapped]++;
+          });
+
+          // The total in the pipeline should be the sum of its visible segments
+          const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
+          setLocalAppStats({ total: pipeSum, pipeline: pipe });
+        }).catch(() => setAllApps([]));
       }, 150);
 
       setTimeout(() => {
-        api.getUsers({ role: 'candidate', limit: 100 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getUsers({ role: 'candidate', limit: 2000 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
         api.getApplicants({ limit: 200 }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
         api.getCandidateRecords({ limit: 200 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
       }, 300);
@@ -292,56 +319,70 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const handleDeduplicateJobs = async (items) => {
     setConfirmAction({
-      message: `Deep-scan and merge duplicates among ${items.length} jobs? This will move all applicants to primary records and close redundant postings.`,
+      message: `Deep-scan and merge duplicates among ${items.length} jobs? This will consolidate all applicants into primary records and clean up redundant postings across the platform.`,
       onConfirm: async () => {
         setConfirmAction(null);
-        setToast('🧹 Starting deep deduplication scan...');
+        setToast('🧹 Starting high-volume deduplication scan...');
         try {
           const groups = {};
           items.forEach(j => {
-            // Senior Developer Logic: Robust Multi-Field Key
-            const title = (j.name || j.title || '').toLowerCase().trim();
-            const details = (j.sub || '').toLowerCase().trim();
-            const key = `${title}|${details}`; 
+            // High-Performance Fuzzy Key: Title + Company (Ignoring minor location strings)
+            const title = (j.name || j.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+            const subParts = (j.sub || '').toLowerCase().split('·');
+            const company = (subParts[0] || '').replace(/[^a-z0-9]/g, '').trim();
+            const key = `${title}|${company}`; 
             if (!groups[key]) groups[key] = [];
             groups[key].push(j);
           });
 
           const toProcess = Object.values(groups).filter(g => g.length > 1);
           if (toProcess.length === 0) {
-            setToast('✅ No exact duplicates found.');
+            setToast('✅ No duplicates found in this set.');
             return;
           }
 
+          setToast(`⚙️ Found ${toProcess.length} duplicate groups. Processing...`);
           let totalMerged = 0;
+          let processedGroups = 0;
+
+          // Process in small batches to avoid 429 Rate Limits or Timeout
           for (const group of toProcess) {
             const primary = group[0];
             const primaryId = String(primary.id || primary._id);
             const duplicates = group.slice(1);
 
-            for (const dupe of duplicates) {
+            await Promise.all(duplicates.map(async (dupe) => {
               const dupeId = String(dupe.id || dupe._id);
-              // 1. Get candidates from duplicate
-              const candsRes = await api.getJobCandidates(dupeId).catch(() => []);
-              const cands = Array.isArray(candsRes) ? candsRes : (Array.isArray(candsRes?.data) ? candsRes.data : []);
-              const candIds = cands.map(c => String(c.id || c._id)).filter(id => id && id !== 'undefined');
-              
-              // 2. Move candidates to primary
-              if (candIds.length > 0) {
-                await api.assignCandidatesToJob(primaryId, candIds).catch(() => null);
+              try {
+                // 1. Get ALL candidates from duplicate (high limit)
+                const candsRes = await req('GET', `/jobs/${dupeId}/candidates?limit=1000`).catch(() => []);
+                const cands = Array.isArray(candsRes) ? candsRes : (Array.isArray(candsRes?.data) ? candsRes.data : []);
+                const candIds = cands.map(c => String(c.id || c._id)).filter(id => id && id !== 'undefined');
+                
+                // 2. Move candidates to primary record
+                if (candIds.length > 0) {
+                  await api.assignCandidatesToJob(primaryId, candIds).catch(() => null);
+                }
+                
+                // 3. Close the duplicate job safely
+                await api.patchJob(dupeId, { status: 'closed' }).catch(() => null);
+                totalMerged++;
+              } catch (err) {
+                console.error('Migration error for job', dupeId, err);
               }
-              
-              // 3. Close duplicate
-              await api.patchJob(dupeId, { status: 'closed' }).catch(() => null);
-              totalMerged++;
+            }));
+            
+            processedGroups++;
+            if (processedGroups % 5 === 0) {
+              setToast(`⏳ Data Migration Progress: ${Math.round((processedGroups / toProcess.length) * 100)}%`);
             }
           }
 
-          setToast(`🎉 Successfully merged ${totalMerged} duplicate jobs!`);
-          load(); // Refresh global counts
-          openActiveJobsDrill(); // Reload current list
+          setToast(`🎉 Successfully consolidated ${totalMerged} jobs and all applicants!`);
+          await load(); 
+          openActiveJobsDrill(); // Refresh the list view to show changes
         } catch (e) {
-          setToast('❌ Error during deduplication: ' + e.message);
+          setToast('❌ Data migration failed: ' + e.message);
         }
       },
       onCancel: () => setConfirmAction(null),
@@ -358,29 +399,32 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allApps, period]);
 
   const stats = useMemo(() => {
+    const hiredCount = localAppStats.pipeline.selected || 0;
+    const totalApps = localAppStats.total || 0;
+
     if (serverStats) {
       return {
-        totalCandidates: serverStats.candidates || 0,
+        ...serverStats,
+        totalCandidates: allCandidates.length || serverStats.candidates || 0,
         activeJobs:      jobCounts.total > 0 ? `${jobCounts.active} / ${jobCounts.total}` : (serverStats.openJobs || 0),
-        totalApps:       serverStats.applications || 0,
+        totalApps:       totalApps,
         appsLast30:      serverStats.appsLast30 || 0,
-        placements:      serverStats.placements || 0,
+        placements:      hiredCount || serverStats.placements || 0,
         placementsLast30: serverStats.placementsLast30 || 0,
-        fillRate:        serverStats.fillRate || 0,
+        fillRate:        jobCounts.total > 0 ? Math.round((hiredCount / jobCounts.total) * 100) : (serverStats.fillRate || 0),
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
     }
     // Fallback if API fails
-    const hiredCount = allApps.filter(a => ['selected', 'hired', 'Hired'].includes(a.stage || a.currentStage)).length;
     return {
       totalCandidates: allCandidates.length,
-      activeJobs:      allJobs.filter(j => j.status === 'active' || j.status === 'Open').length,
-      totalApps:       allApps.length,
+      activeJobs:      jobCounts.active,
+      totalApps:       totalApps,
       placements:      hiredCount,
-      fillRate:        allJobs.length > 0 ? Math.round((hiredCount / allJobs.length) * 100) : 0,
+      fillRate:        jobCounts.total > 0 ? Math.round((hiredCount / jobCounts.total) * 100) : 0,
       avgTimeToHire:   null,
     };
-  }, [serverStats, allApps, allCandidates, allJobs]);
+  }, [serverStats, allCandidates, jobCounts, localAppStats]);
   
   // ── Name & User Resolver ──────────────────────────────────────────────────
   const getCandidateData = useCallback((app) => {
@@ -408,9 +452,17 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allCandidates]);
 
   const stageBreakdown = useMemo(() => {
-    if (analyticsData?.byStage && analyticsData.byStage.length > 0) {
-      // Backend returns title-case currentStage values ('Applied', 'Interview Round 1', etc.)
-      // Map them to frontend lowercase IDs before matching against STAGES.
+    // Priority: use local calculated stats for 100% real-time accuracy
+    if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
+      return STAGES.map((s, i) => ({
+        label: STAGE_LABELS[s] || s,
+        value: localAppStats.pipeline[s] || 0,
+        color: STAGE_COLORS[i],
+        stageKey: s,
+      }));
+    }
+    // Fallback: server data
+    if (analyticsData?.byStage) {
       const countMap = {};
       analyticsData.byStage.forEach(x => {
         const fId = DB_TO_FRONTEND_STAGE[x.stage] || x.stage?.toLowerCase().replace(/\s+/g, '_');
@@ -423,17 +475,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
         stageKey: s,
       }));
     }
-    // Fallback: compute from local allApps sample (normalizeApp already sets a.stage)
-    return STAGES.map((s, i) => ({
-      label: STAGE_LABELS[s],
-      value: allApps.filter(a => {
-        const fId = a.stage || DB_TO_FRONTEND_STAGE[a.currentStage];
-        return fId === s;
-      }).length,
-      color: STAGE_COLORS[i],
-      stageKey: s,
-    }));
-  }, [analyticsData, allApps]);
+    return STAGES.map((s, i) => ({ label: STAGE_LABELS[s], value: 0, color: STAGE_COLORS[i], stageKey: s }));
+  }, [localAppStats, analyticsData]);
 
   const topJobs = useMemo(() => {
     if (analyticsData?.topJobs) {
@@ -502,13 +545,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
     const raw = await api.getApplicants({ limit: isSuperAdmin ? 'all' : 1000 }).catch(() => ({ data: [] }));
     const list = raw?.data || [];
-    return list.map(r => ({
-      ...r,
-      id: r.applicationId,
-      name: r.candidateName || r.email || 'Candidate',
-      sub: `${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}`,
-      stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
-      currentStage: r.stage,
+    return list.map(c => ({
+      ...c,
+      id: c.id || c._id,
+      name: c.name || c._displayName || c.candidateName || c.email || 'Candidate',
+      sub: `${c.jobTitle || c.title || 'Unknown Job'} · ${c.stage || c.currentStage || 'Applied'} · ${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}`,
+      stage: DB_TO_FRONTEND_STAGE[c.stage] || c.stage,
+      currentStage: c.stage,
     }));
   });
 
@@ -1125,7 +1168,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
               <div style={{ padding: '24px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#0176D3', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Deep Dive Inspection</div>
-                  <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{drillDown.title}</h3>
+                  <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>
+                    {drillDown.title} 
+                    <span style={{ marginLeft: 12, fontSize: 16, color: '#64748B', fontWeight: 500 }}>
+                      ({filtered.length} {filtered.length === drillDown.items.length ? 'total' : `of ${drillDown.items.length}`})
+                    </span>
+                  </h3>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   {drillDown.type === 'job' && (
@@ -1219,7 +1267,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
                           {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                               {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
-                              {item.phone && <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.phone}</span>}
+                                {item.phone ? (
+                                  <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(22,101,52,0.2)', fontWeight: 600 }}>
+                                    📞 {item.phone}
+                                  </span>
+                                ) : (
+                                  <span style={{ background: '#FFF1F2', color: '#BE123C', fontSize: 10, padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(190,18,60,0.2)', fontWeight: 800 }}>
+                                    ⚠️ Missing Mobile
+                                  </span>
+                                )}
                               {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
                               {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
                               {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
