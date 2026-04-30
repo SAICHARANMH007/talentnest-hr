@@ -11,6 +11,49 @@ import useHeartbeat from '../hooks/useHeartbeat.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
 import ChatPanel from '../components/shared/ChatPanel.jsx';
 
+function AppIcon({ name, size = 18, color = 'currentColor' }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: color,
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+    focusable: 'false',
+    style: { display: 'block' },
+  };
+  if (name === 'bell') {
+    return (
+      <svg {...common}>
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+      </svg>
+    );
+  }
+  if (name === 'message') {
+    return (
+      <svg {...common}>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+        <path d="M8 9h8" />
+        <path d="M8 13h5" />
+      </svg>
+    );
+  }
+  if (name === 'online') {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="4" fill="#22c55e" stroke="none" />
+        <path d="M5 12a7 7 0 0 1 14 0" opacity="0.7" />
+        <path d="M2.5 12a9.5 9.5 0 0 1 19 0" opacity="0.45" />
+      </svg>
+    );
+  }
+  return null;
+}
+
 // ── Page Loader (Skeletal) ───────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -31,7 +74,7 @@ const NAVS = {
   candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"ai-match",icon:"🤖",label:"Explore Jobs"},{id:"applications",icon:"📋",label:"My Applications"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"profile",icon:"👤",label:"My Profile"}],
   recruiter:  [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"jobs",icon:"💼",label:"My Jobs"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"🧑‍💼",label:"My Candidates"},{id:"assigned-candidates",icon:"🎯",label:"Assigned to Me"},{id:"ai-match",icon:"🤖",label:"AI Match"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"talent-pool",icon:"🅿️",label:"Talent Pool"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"offers",icon:"📄",label:"Offers"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"profile",icon:"👤",label:"My Profile"}],
   admin:      [{id:"analytics",icon:"📈",label:"Overview"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"add-candidate",icon:"➕",label:"Add Candidate"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"assigned-candidates",icon:"🎯",label:"Assignments"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"automation",icon:"⚡",label:"Automation"},{id:"custom-fields",icon:"🧩",label:"Custom Fields"},{id:"org-settings",icon:"⚙️",label:"Org Settings"},{id:"billing",icon:"💳",label:"Billing"},{id:"profile",icon:"👤",label:"My Profile"}],
-  superadmin: [{id:"analytics",icon:"📈",label:"Overview"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"platform",icon:"🌐",label:"Platform"},{id:"organisations",icon:"🏢",label:"Organisations"},{id:"billing",icon:"💳",label:"Billing"},{id:"security",icon:"🛡️",label:"Security"},{id:"permissions",icon:"🔐",label:"Permissions"},{id:"import-candidates",icon:"📥",label:"Import & Assign"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"admins",icon:"🔑",label:"Admins"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"⚙️",label:"Customizations"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"playbooks",icon:"📚",label:"Playbooks"},{id:"blogs",icon:"✍️",label:"Blog Manager"},{id:"profile",icon:"👤",label:"My Profile"}],
+  superadmin: [{id:"analytics",icon:"📈",label:"Overview"},{id:"applicants",icon:"📇",label:"Applicant Records"},{id:"platform",icon:"🌐",label:"Platform"},{id:"organisations",icon:"🏢",label:"Organisations"},{id:"billing",icon:"💳",label:"Billing"},{id:"security",icon:"🛡️",label:"Security"},{id:"permissions",icon:"🔐",label:"Permissions"},{id:"import-candidates",icon:"📥",label:"Import & Assign"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"admins",icon:"🔑",label:"Admins"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"⚙️",label:"Customizations"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"playbooks",icon:"📚",label:"Playbooks"},{id:"blogs",icon:"✍️",label:"Blog Manager"},{id:"profile",icon:"👤",label:"My Profile"}],
   client:     [{id:"dashboard",icon:"🏢",label:"Dashboard"},{id:"shortlists",icon:"🌟",label:"Shortlists"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"placements",icon:"🏆",label:"Placements"},{id:"profile",icon:"👤",label:"My Profile"}],
   hiring_manager: [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"profile",icon:"👤",label:"My Profile"}],
 };
@@ -248,7 +291,7 @@ function NotificationBell({ userRole, compact = false }) {
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
         style={{ background: open ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer', color: '#FFFFFF', fontSize: compact ? 14 : 16, position: 'relative', padding: 0, transition: 'all 0.15s', width: iconButtonSize, minWidth: iconButtonSize, height: iconButtonSize, minHeight: iconButtonSize, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
       >
-        🔔
+        <AppIcon name="bell" size={compact ? 16 : 18} />
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
@@ -415,10 +458,10 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, height: 36 }}>
             <NotificationBell userRole={user?.role} compact />
             <button className="tn-app-icon-btn" onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-              💬
+              <AppIcon name="message" size={16} />
               {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
             </button>
-            <button className="tn-app-icon-btn" onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>🟢</button>
+            <button className="tn-app-icon-btn" onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}><AppIcon name="online" size={17} /></button>
           </div>
         </div>
         <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{(user.role || '').toUpperCase()}</div>
@@ -567,8 +610,8 @@ export default function Layout({ user, onLogout }) {
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }
-        .tn-app-icon-btn { aspect-ratio: 1 / 1; line-height: 1; place-items: center; }
-        .tn-app-icon-btn > span:first-child { line-height: 1; }
+        .tn-app-icon-btn { aspect-ratio: 1 / 1; line-height: 1; place-items: center; overflow: hidden; }
+        .tn-app-icon-btn svg { flex: 0 0 auto; }
       `}</style>
 
       {/* Trial Banner */}
@@ -602,11 +645,11 @@ export default function Layout({ user, onLogout }) {
             <div className="tn-hamburger-logo" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>
             <NotificationBell userRole={user?.role} />
             <button className="tn-app-icon-btn" onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                💬
+                <AppIcon name="message" size={18} />
                 {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', borderRadius: '50%', width: 14, height: 14, fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
               </button>
             <button className="tn-app-icon-btn" onClick={() => setShowOnline(true)} title="Who's Online" aria-label="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
-              🟢
+              <AppIcon name="online" size={18} />
             </button>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 10, minWidth: 10, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
