@@ -19,13 +19,61 @@ export default function SuperAdminCandidates() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getCandidateRecords({ limit: 0 }); // limit 0 means all for super_admin optimization
-      setCandidates(Array.isArray(res?.data) ? res.data : []);
+      // 1. Fetch Candidate Records (Applied candidates)
+      const res = await api.getCandidateRecords({ limit: 0 }); 
+      const appliedList = Array.isArray(res?.data) ? res.data : [];
       
-      const uCount = await api.getUserCount().catch(() => 0);
-      setTotalUsers(typeof uCount === 'number' ? uCount : (uCount?.count || uCount?.data || 0));
+      // 2. Fetch All Platform Users (Registered accounts)
+      const usersList = await api.getUsers({ role: 'candidate', limit: 1000 });
+      
+      // 3. Robust Merge: Deduplicate by email
+      const mergedMap = new Map();
+      
+      // First pass: Register all platform users
+      usersList.forEach(u => {
+        const email = u.email?.toLowerCase();
+        if (email) {
+          mergedMap.set(email, {
+            ...u,
+            id: u.id || u._id,
+            name: u.name || u.displayName || 'Anonymous',
+            title: u.title || u.headline || u.jobTitle || 'No Title',
+            organisation: u.organisation || u.company || u.currentCompany || 'N/A',
+            isApplied: false,
+            isPlatformUser: true, // Specific flag for registered accounts
+            applicationCount: 0,
+            source: u.source || 'Platform'
+          });
+        }
+      });
+      
+      // Second pass: Layer applied data
+      appliedList.forEach(c => {
+        const email = c.email?.toLowerCase();
+        if (email) {
+          const existing = mergedMap.get(email);
+          mergedMap.set(email, {
+            ...existing,
+            ...c,
+            id: c.id || c._id || existing?.id,
+            // Prioritize best available data from both sources
+            name: c.candidateName || c.name || existing?.name || existing?.displayName,
+            title: c.title || c.jobTitle || existing?.title || existing?.headline || existing?.jobTitle,
+            organisation: c.organisation || c.currentCompany || c.company || existing?.organisation || existing?.company || existing?.currentCompany,
+            isApplied: true,
+            isPlatformUser: existing ? true : false,
+            applicationCount: Math.max(c.applicationCount || 0, existing?.applicationCount || 0) || 1
+          });
+        }
+      });
+      
+      const finalCandidates = Array.from(mergedMap.values());
+      setCandidates(finalCandidates);
+      
+      // Set total users count from the true user record source
+      setTotalUsers(usersList.length);
     } catch (err) {
-      setToast('Failed to fetch candidate records');
+      setToast('Failed to fetch unified records');
     }
     setLoading(false);
   }, []);
@@ -34,21 +82,21 @@ export default function SuperAdminCandidates() {
 
   const filtered = candidates.filter(c => {
     const q = search.toLowerCase();
-    const matchesSearch = (c.name || '').toLowerCase().includes(q) || 
+    const matchesSearch = (c.name || c.candidateName || '').toLowerCase().includes(q) || 
                          (c.email || '').toLowerCase().includes(q) || 
                          (c.phone || '').includes(q) ||
                          (c.title || '').toLowerCase().includes(q);
     
     if (!matchesSearch) return false;
     if (tab === 'applied') return c.isApplied;
-    if (tab === 'platform') return !c.isApplied;
+    if (tab === 'platform') return c.isPlatformUser; // Now shows ALL 89 registered users
     return true;
   });
 
   const stats = {
     total: candidates.length,
     applied: candidates.filter(c => c.isApplied).length,
-    platform: totalUsers
+    platform: candidates.filter(c => c.isPlatformUser).length // Matches the 89 platform registered
   };
 
   return (
@@ -70,8 +118,8 @@ export default function SuperAdminCandidates() {
       <div style={{ ...card, padding: '16px 24px', marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <TabButton active={tab === 'all'} onClick={() => setTab('all')} label="All Records" count={stats.total} />
-          <TabButton active={tab === 'applied'} onClick={() => setTab('applied')} label="Applied" count={stats.applied} />
-          <TabButton active={tab === 'platform'} onClick={() => setTab('platform')} label="Platform Only" count={stats.platform} />
+          <TabButton active={tab === 'applied'} onClick={() => setTab('applied')} label="All Applications" count={stats.applied} />
+          <TabButton active={tab === 'platform'} onClick={() => setTab('platform')} label="Registered Users" count={stats.platform} />
         </div>
         <input 
           placeholder="Search by name, email, or title..." 
