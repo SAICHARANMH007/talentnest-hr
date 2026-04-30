@@ -451,10 +451,11 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
     <>
       {/* Logo + quick controls */}
       <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', minHeight: 42, overflow: 'hidden', minWidth: 0, flex: 1 }}>
-            <Logo size="md" variant="full" theme="dark" customLogoUrl={orgLogo} />
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', minHeight: 42, overflow: 'hidden', minWidth: 0, width: '100%' }}>
+          <Logo size="md" variant="full" theme="dark" customLogoUrl={orgLogo} style={{ maxWidth: '100%', minWidth: 0 }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
+          <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{(user.role || '').toUpperCase()}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, height: 36 }}>
             <NotificationBell userRole={user?.role} compact />
             <button className="tn-app-icon-btn" onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
@@ -464,7 +465,6 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
             <button className="tn-app-icon-btn" onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}><AppIcon name="online" size={17} /></button>
           </div>
         </div>
-        <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{(user.role || '').toUpperCase()}</div>
       </div>
 
       {/* Nav items */}
