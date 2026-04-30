@@ -294,8 +294,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
         try {
           const groups = {};
           items.forEach(j => {
-            // Group by title and sub (which contains company + location)
-            const key = `${(j.name || j.title || '').toLowerCase().trim()}|${(j.sub || '').toLowerCase().trim()}`;
+            // Senior Developer Logic: Robust Multi-Field Key
+            const title = (j.name || j.title || '').toLowerCase().trim();
+            const details = (j.sub || '').toLowerCase().trim();
+            const key = `${title}|${details}`; 
             if (!groups[key]) groups[key] = [];
             groups[key].push(j);
           });
@@ -331,7 +333,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
           }
 
           setToast(`🎉 Successfully merged ${totalMerged} duplicate jobs!`);
-          openActiveJobsDrill(); // Reload
+          load(); // Refresh global counts
+          openActiveJobsDrill(); // Reload current list
         } catch (e) {
           setToast('❌ Error during deduplication: ' + e.message);
         }
@@ -1120,11 +1123,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{drillDown.title}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  {drillDown.type === 'job' && drillDown.items.length > 1 && (
+                  {drillDown.type === 'job' && (
                     <button 
                       onClick={() => handleDeduplicateJobs(drillDown.items)}
-                      style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12 }}>
-                      🪄 Deep Merge Duplicates
+                      style={{ ...btnG, background: '#032D60', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(3,45,96,0.2)' }}>
+                      🪄 Merge & Clean Duplicates
                     </button>
                   )}
                   {selectedItems.length > 0 && (
@@ -1138,8 +1141,30 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <button onClick={() => { setDrillDown(null); setDrillDownSearch(''); setSelectedItems([]); }} style={{ width: 40, height: 40, border: 'none', background: '#F8FAFC', borderRadius: 12, cursor: 'pointer', fontSize: 18 }}>✕</button>
                 </div>
               </div>
-              <div style={{ padding: '16px 32px', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
-                <input placeholder={`Search in ${drillDown.title}...`} value={drillDownSearch} onChange={e => setDrillDownSearch(e.target.value)} style={{ width: '100%', padding: '12px 20px', borderRadius: 14, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none' }} />
+              <div style={{ padding: '16px 32px', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC', display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input placeholder={`Search in ${drillDown.title}...`} value={drillDownSearch} onChange={e => setDrillDownSearch(e.target.value)} style={{ width: '100%', padding: '12px 20px', borderRadius: 14, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none' }} />
+                </div>
+                {drillDown.type === 'job' && (
+                  <button 
+                    onClick={() => {
+                      const counts = {};
+                      drillDown.items.forEach(j => {
+                        const k = `${(j.name || j.title || '').toLowerCase().trim()}|${(j.sub || '').toLowerCase().trim()}`;
+                        counts[k] = (counts[k] || 0) + 1;
+                      });
+                      const dupeKeys = Object.entries(counts).filter(([k,v]) => v > 1).map(([k]) => k);
+                      if (dupeKeys.length > 0) {
+                        setDrillDownSearch(dupeKeys[0].split('|')[0]); // Auto-search first dupe group
+                        setToast(`🔍 Found ${dupeKeys.length} groups of duplicate jobs.`);
+                      } else {
+                        setToast('✅ No duplicates found in this set.');
+                      }
+                    }}
+                    style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#706E6B' }}>
+                    🔍 Find Duplicates
+                  </button>
+                )}
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 32px 32px' }}>
                 {drillDown.title.endsWith('Loading…') && (
@@ -1163,7 +1188,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
                             }}
                             style={{ width: 18, height: 18, cursor: 'pointer' }} />
                           <div>
-                            <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
+                            <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {item.name || item.title || 'Record'}
+                              {drillDown.type === 'job' && drillDown.items.filter(x => 
+                                (x.name || x.title || '').toLowerCase().trim() === (item.name || item.title || '').toLowerCase().trim() &&
+                                (x.sub || '').toLowerCase().trim() === (item.sub || '').toLowerCase().trim()
+                              ).length > 1 && (
+                                <span style={{ fontSize: 9, background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: 6, fontWeight: 900 }}>DUPLICATE</span>
+                              )}
+                            </div>
                             <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
                           {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
@@ -1179,7 +1212,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                           {drillDown.type === 'app' && (
-                            <select value={item.stage || item.currentStage || ''}
+                            <select value={DB_TO_FRONTEND_STAGE[item.stage] || item.stage || DB_TO_FRONTEND_STAGE[item.currentStage] || item.currentStage || ''}
                               onChange={e => triggerUpdate('app', itemId, { stage: e.target.value }, `Move candidate to ${STAGE_LABELS[e.target.value]}?`)}
                               style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                               {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
@@ -1194,8 +1227,21 @@ export default function AdminAnalytics({ user, onNavigate }) {
                               <option value="draft">Draft</option>
                             </select>
                           )}
-                          <button 
-                            onClick={() => {
+                            <button 
+                              onClick={() => {
+                                fetchDrill(item.name || item.title || 'Applicants', 'app', async () => {
+                                  const raw = await api.getApplications({ jobId: itemId, limit: 500 }).then(unwrap).catch(() => []);
+                                  return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${STAGE_LABELS[a.stage || a.currentStage] || a.currentStage || a.stage}` }));
+                                });
+                              }}
+                              style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#7c3aed', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#F5F3FF'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
+                            >
+                              👥 Applicants
+                            </button>
+                            <button 
+                              onClick={() => {
                               const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
                               const candObj = item.candidateId && typeof item.candidateId === 'object' ? item.candidateId : null;
                               const userToEdit = allCandidates.find(c => String(c.id || c._id) === String(id))
