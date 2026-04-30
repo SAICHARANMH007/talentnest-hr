@@ -189,6 +189,138 @@ app.use('/api/blogs', require('./src/routes/blogs'));
 app.use('/api/presence', require('./src/routes/presence'));
 app.use('/api/messages', require('./src/routes/messages'));
 
+function escHtml(v = '') {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function publicBaseUrl(req) {
+  return process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+function jobSlug(job) {
+  return job.careerPageSlug || String(job._id);
+}
+
+function jobStructuredData(job, baseUrl) {
+  const company = job.companyName || job.company || 'TalentNest HR';
+  const posted = job.createdAt ? new Date(job.createdAt).toISOString() : new Date().toISOString();
+  const validThrough = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'JobPosting',
+    title: job.title,
+    description: job.description || `${job.title} opening at ${company}.`,
+    datePosted: posted,
+    validThrough,
+    employmentType: job.jobType || 'FULL_TIME',
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: company,
+      sameAs: baseUrl,
+    },
+    jobLocation: {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: job.location || 'India',
+        addressCountry: 'IN',
+      },
+    },
+    applicantLocationRequirements: {
+      '@type': 'Country',
+      name: 'India',
+    },
+    directApply: true,
+    url: `${baseUrl}/careers/job/${jobSlug(job)}`,
+  };
+}
+
+async function publicJobs(limit = 200) {
+  const Job = require('./src/models/Job');
+  return Job.find({ status: 'active', deletedAt: null })
+    .select('-__v')
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+}
+
+app.get('/careers/jobs.xml', async (req, res, next) => {
+  try {
+    const base = publicBaseUrl(req);
+    const jobs = await publicJobs(5000);
+    const urls = jobs.map(job => {
+      const updated = job.updatedAt ? new Date(job.updatedAt).toISOString() : new Date().toISOString();
+      return `<url><loc>${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}</loc><lastmod>${updated}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+    }).join('');
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+  } catch (err) { next(err); }
+});
+
+app.get('/careers/job/:slug', async (req, res, next) => {
+  try {
+    const Job = require('./src/models/Job');
+    const clauses = [{ careerPageSlug: req.params.slug }];
+    if (/^[a-f\d]{24}$/i.test(req.params.slug)) clauses.push({ _id: req.params.slug });
+    const job = await Job.findOne({
+      status: 'active',
+      deletedAt: null,
+      $or: clauses,
+    }).lean();
+    if (!job) return next(new AppError('Job not found', 404));
+    const base = publicBaseUrl(req);
+    const company = job.companyName || job.company || 'TalentNest HR';
+    const skills = Array.isArray(job.skills) ? job.skills : [];
+    const applyUrl = `${base}/careers?job=${job._id}`;
+    const structured = JSON.stringify(jobStructuredData(job, base)).replace(/</g, '\\u003c');
+    res.type('html').send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escHtml(job.title)} | ${escHtml(company)} | TalentNest HR Careers</title>
+  <meta name="description" content="${escHtml(`${job.title} opening at ${company}. Apply through TalentNest HR.`)}">
+  <link rel="canonical" href="${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}">
+  <script type="application/ld+json">${structured}</script>
+  <style>body{font-family:Arial,sans-serif;margin:0;color:#0f172a;background:#f8fafc}.wrap{max-width:860px;margin:0 auto;padding:40px 20px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px;box-shadow:0 8px 30px rgba(15,23,42,.08)}.badge{display:inline-block;background:#eff6ff;color:#075985;border-radius:999px;padding:5px 10px;margin:4px;font-size:13px}.btn{display:inline-block;background:#0176d3;color:#fff;text-decoration:none;border-radius:10px;padding:13px 22px;font-weight:700;margin-top:20px}</style>
+</head>
+<body>
+  <main class="wrap">
+    <article class="card">
+      <p style="color:#0176d3;font-weight:700;margin:0 0 8px">TalentNest HR Careers</p>
+      <h1>${escHtml(job.title)}</h1>
+      <p><strong>Company:</strong> ${escHtml(company)}</p>
+      <p><strong>Location:</strong> ${escHtml(job.location || 'Remote / India')}</p>
+      <p><strong>Type:</strong> ${escHtml(job.jobType || 'Full-time')} ${job.department ? ` · <strong>Department:</strong> ${escHtml(job.department)}` : ''}</p>
+      ${job.salaryMin || job.salaryMax ? `<p><strong>Salary:</strong> ${escHtml(job.salaryCurrency || 'INR')} ${escHtml(job.salaryMin || '')}${job.salaryMax ? ` - ${escHtml(job.salaryMax)}` : ''} ${escHtml(job.salaryType || '')}</p>` : ''}
+      <h2>Job Description</h2>
+      <p style="white-space:pre-line;line-height:1.65">${escHtml(job.description || '')}</p>
+      ${skills.length ? `<h2>Skills</h2><p>${skills.map(s => `<span class="badge">${escHtml(s)}</span>`).join('')}</p>` : ''}
+      <a class="btn" href="${escHtml(applyUrl)}">Apply on TalentNest HR</a>
+    </article>
+  </main>
+</body>
+</html>`);
+  } catch (err) { next(err); }
+});
+
+app.get('/careers/crawl', async (req, res, next) => {
+  try {
+    const base = publicBaseUrl(req);
+    const jobs = await publicJobs(500);
+    const items = jobs.map(job => {
+      const company = job.companyName || job.company || 'TalentNest HR';
+      const skills = Array.isArray(job.skills) ? job.skills.join(', ') : '';
+      return `<li><h2><a href="${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}">${escHtml(job.title)}</a></h2><p>${escHtml(company)} · ${escHtml(job.location || 'Remote / India')}</p><p>${escHtml(job.description || '')}</p><p>${escHtml(skills)}</p></li>`;
+    }).join('');
+    res.type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>TalentNest HR Jobs</title><meta name="description" content="Open jobs at TalentNest HR. Apply directly on TalentNest HR careers."></head><body><main><h1>TalentNest HR Open Jobs</h1><ul>${items}</ul></main></body></html>`);
+  } catch (err) { next(err); }
+});
+
 if (IS_PROD) {
   if (HAS_DIST) {
     console.info('✅  Static Assets     →  Loaded from /dist');
@@ -275,4 +407,3 @@ connectDB()
     }
   })
   .catch(err => console.error('❌  DB connection failed:', err.message));
-

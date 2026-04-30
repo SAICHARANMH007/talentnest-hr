@@ -136,6 +136,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [serverStats,   setServerStats]   = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [trendData,     setTrendData]     = useState([]);
+  const [applicantRows, setApplicantRows] = useState([]);
   const [candidateRecords, setCandidateRecords] = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
@@ -187,6 +188,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     api.getApplications({ limit: 200 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
     api.getJobs({ limit: 200 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
     api.getUsers({ role: 'candidate', limit: 200 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+    api.getApplicants({ limit: 500 }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
     api.getCandidateRecords({ limit: 500 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
     api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
     api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
@@ -389,8 +391,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
-    const list = (raw?.data || []).filter(r => r.recordType === 'Application');
+    const raw = await api.getApplicants({ limit: 1000 }).catch(() => ({ data: [] }));
+    const list = raw?.data || [];
     return list.map(r => ({
       ...r,
       id: r.applicationId,
@@ -402,12 +404,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openVelocityDrill = () => fetchDrill('Application Velocity — Last 14 Days', 'app', async () => {
-    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
+    const raw = await api.getApplicants({ limit: 1000 }).catch(() => ({ data: [] }));
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 14);
     cutoff.setHours(0, 0, 0, 0);
     return (raw?.data || [])
-      .filter(r => r.recordType === 'Application' && r.appliedAt && new Date(r.appliedAt) >= cutoff)
+      .filter(r => r.appliedAt && new Date(r.appliedAt) >= cutoff)
       .map(r => ({
         ...r,
         id: r.applicationId,
@@ -506,6 +508,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
             style={{ padding: '7px 16px', borderRadius: 10, border: '2px solid #E2E8F0', background: '#fff', color: '#0176D3', fontSize: 12, fontWeight: 800, cursor: exporting.candidates ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: exporting.candidates ? 0.6 : 1 }}>
             {exporting.candidates ? 'Exporting…' : '⬇ Export Candidate Excel'}
           </button>
+          <button
+            disabled={exporting.applicants}
+            onClick={() => handleExport('applicants', '/dashboard/applicants/export', `applicants-${new Date().toISOString().split('T')[0]}.xlsx`)}
+            style={{ padding: '7px 16px', borderRadius: 10, border: '2px solid #E2E8F0', background: '#fff', color: '#7c3aed', fontSize: 12, fontWeight: 800, cursor: exporting.applicants ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: exporting.applicants ? 0.6 : 1 }}>
+            {exporting.applicants ? 'Exporting…' : '⬇ Export Applicants Excel'}
+          </button>
           <div style={{ display: 'flex', background: 'rgba(1,118,211,0.06)', padding: 4, borderRadius: 14, flexWrap: 'wrap', gap: 2 }}>
             {PERIODS.map((p, i) => (
               <button key={i} onClick={() => setPeriod(i)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: period === i ? '#0176D3' : 'transparent', color: period === i ? '#fff' : '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{p.label}</button>
@@ -545,18 +553,18 @@ export default function AdminAnalytics({ user, onNavigate }) {
         <div style={{ ...glassPanel, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
-              <h3 style={{ ...sectionTitle, margin: 0 }}>All Candidate Records</h3>
+              <h3 style={{ ...sectionTitle, margin: 0 }}>Applicants Applying For Jobs</h3>
               <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
-                Joined application, candidate profile, and candidate account data.
+                One row per submitted application, with candidate contact details and job context.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={openCandidatesDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View All</button>
+              <button onClick={openAppsDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View Applicants</button>
               <button
-                disabled={exporting.candidates}
-                onClick={() => handleExport('candidates', '/dashboard/candidate-records/export', `candidate-records-${new Date().toISOString().split('T')[0]}.xlsx`)}
-                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.candidates ? 0.6 : 1 }}>
-                {exporting.candidates ? 'Exporting…' : 'Export Excel'}
+                disabled={exporting.applicants}
+                onClick={() => handleExport('applicants', '/dashboard/applicants/export', `applicants-${new Date().toISOString().split('T')[0]}.xlsx`)}
+                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.applicants ? 0.6 : 1 }}>
+                {exporting.applicants ? 'Exporting…' : 'Export Applicants Excel'}
               </button>
             </div>
           </div>
@@ -570,7 +578,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 </tr>
               </thead>
               <tbody>
-                {candidateRecords.slice(0, 8).map((r, i) => (
+                {applicantRows.slice(0, 8).map((r, i) => (
                   <tr key={r.applicationId || r.candidateId || r.userId || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.candidateName || 'Candidate'}</td>
                     <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || '-'}</td>
@@ -582,11 +590,33 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     <td style={{ padding: '10px 12px', color: '#706E6B', whiteSpace: 'nowrap' }}>{r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : '-'}</td>
                   </tr>
                 ))}
-                {candidateRecords.length === 0 && (
-                  <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No candidate records found.</td></tr>
+                {applicantRows.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No applicants found yet.</td></tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {isSuperAdmin && (
+        <div style={{ ...glassPanel, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ ...sectionTitle, margin: 0 }}>All Candidate Records</h3>
+              <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
+                Candidate accounts and profiles, including those who have not applied yet.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={openCandidatesDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View All Candidates</button>
+              <button
+                disabled={exporting.candidates}
+                onClick={() => handleExport('candidates', '/dashboard/candidate-records/export', `candidate-records-${new Date().toISOString().split('T')[0]}.xlsx`)}
+                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.candidates ? 0.6 : 1 }}>
+                {exporting.candidates ? 'Exporting…' : 'Export Candidate Excel'}
+              </button>
+            </div>
           </div>
         </div>
       )}

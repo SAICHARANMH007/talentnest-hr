@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
+Allow: /careers
+Allow: /careers/crawl
+Allow: /careers/job/
+Allow: /careers/jobs.xml
 Disallow: /app/
 Disallow: /api/
 Sitemap: https://www.talentnesthr.com/sitemap.xml
+Sitemap: https://www.talentnesthr.com/careers/jobs.xml

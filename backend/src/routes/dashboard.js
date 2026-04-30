@@ -473,6 +473,134 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   res.json({ success: true, data: filtered.slice(0, limit), total: filtered.length });
 }));
 
+/* GET /api/dashboard/applicants
+   Applicants are application rows only: one row per job application.
+*/
+router.get('/applicants', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tf = tenantFilter(req);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
+  const search = String(req.query.search || '').trim().toLowerCase();
+
+  const [apps, tenants] = await Promise.all([
+    Application.find({ ...tf, deletedAt: null })
+      .populate('candidateId')
+      .populate('jobId', 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean(),
+    Tenant.find({}).select('name').lean(),
+  ]);
+
+  const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
+  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const users = emails.length
+    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('-password -passwordHash').lean()
+    : [];
+  const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
+
+  const rows = apps.map(app => {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    return profileRow({
+      candidate,
+      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
+    });
+  });
+
+  const filtered = search
+    ? rows.filter(r => [r.candidateName, r.email, r.phone, r.jobTitle, r.organisation, r.stage, r.source].some(v => String(v || '').toLowerCase().includes(search)))
+    : rows;
+
+  res.json({ success: true, data: filtered, total: filtered.length });
+}));
+
+/* GET /api/dashboard/applicants/export */
+router.get('/applicants/export', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tf = tenantFilter(req);
+  const [apps, tenants] = await Promise.all([
+    Application.find({ ...tf, deletedAt: null })
+      .populate('candidateId')
+      .populate('jobId', 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType')
+      .sort({ createdAt: -1 })
+      .limit(10000)
+      .lean(),
+    Tenant.find({}).select('name').lean(),
+  ]);
+
+  const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
+  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const users = emails.length
+    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('-password -passwordHash').lean()
+    : [];
+  const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
+
+  const rows = apps.map(app => {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    return profileRow({
+      candidate,
+      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
+    });
+  }).map(r => ({
+    ...r,
+    appliedAt: fmtDate(r.appliedAt),
+    joinedAt: fmtDate(r.joinedAt),
+    profileCreatedAt: fmtDate(r.profileCreatedAt),
+    lastUpdatedAt: fmtDate(r.lastUpdatedAt),
+  }));
+
+  const columns = [
+    { header: 'Applicant Name', key: 'candidateName', width: 24 },
+    { header: 'Email', key: 'email', width: 30 },
+    { header: 'Mobile Number', key: 'phone', width: 18 },
+    { header: 'Applied Organisation', key: 'organisation', width: 24 },
+    { header: 'Job Applied For', key: 'jobTitle', width: 32 },
+    { header: 'Hiring Company', key: 'jobCompany', width: 24 },
+    { header: 'Job Location', key: 'jobLocation', width: 20 },
+    { header: 'Current Stage', key: 'stage', width: 18 },
+    { header: 'Application Status', key: 'status', width: 18 },
+    { header: 'Application Source', key: 'source', width: 18 },
+    { header: 'AI Match Score', key: 'aiMatchScore', width: 15 },
+    { header: 'Applied Date', key: 'appliedAt', width: 16 },
+    { header: 'Candidate Title', key: 'title', width: 24 },
+    { header: 'Current Company', key: 'currentCompany', width: 24 },
+    { header: 'Candidate Location', key: 'location', width: 22 },
+    { header: 'Preferred Location', key: 'preferredLocation', width: 22 },
+    { header: 'Skills', key: 'skills', width: 42 },
+    { header: 'Experience Years', key: 'experience', width: 16 },
+    { header: 'Relevant Experience', key: 'relevantExperience', width: 22 },
+    { header: 'Current CTC', key: 'currentCTC', width: 16 },
+    { header: 'Expected CTC', key: 'expectedCTC', width: 16 },
+    { header: 'Availability', key: 'availability', width: 18 },
+    { header: 'Notice Period Days', key: 'noticePeriodDays', width: 18 },
+    { header: 'Candidate Status', key: 'candidateStatus', width: 18 },
+    { header: 'Certifications', key: 'certifications', width: 30 },
+    { header: 'LinkedIn', key: 'linkedinUrl', width: 34 },
+    { header: 'Resume URL', key: 'resumeUrl', width: 34 },
+    { header: 'Video Resume URL', key: 'videoResumeUrl', width: 34 },
+    { header: 'Joined Account Date', key: 'joinedAt', width: 18 },
+    { header: 'Candidate Profile Created', key: 'profileCreatedAt', width: 22 },
+    { header: 'Last Updated', key: 'lastUpdatedAt', width: 18 },
+    { header: 'Client', key: 'client', width: 20 },
+    { header: 'TA', key: 'ta', width: 18 },
+    { header: 'Client SPOC', key: 'clientSpoc', width: 20 },
+    { header: 'Cover Letter', key: 'coverLetter', width: 45 },
+    { header: 'Recruiter Notes', key: 'recruiterNotes', width: 45 },
+    { header: 'Additional Details', key: 'additionalDetails', width: 45 },
+  ];
+
+  const buf = exportToExcel('Applicants', columns, rows);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="applicants-${Date.now()}.xlsx"`);
+  res.send(buf);
+}));
+
 /* GET /api/dashboard/candidate-records/export */
 router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);

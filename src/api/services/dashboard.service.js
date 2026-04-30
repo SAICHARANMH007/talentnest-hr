@@ -37,6 +37,7 @@ export const dashboardService = {
   async getAIMatchedJobs(limit = 5)      { return req('GET', `/dashboard/ai-matched-jobs?limit=${limit}`); },
   async getCandidateUpcomingInterviews() { return req('GET', '/dashboard/candidate-upcoming-interviews'); },
   async getTrends()                      { return req('GET', '/dashboard/trends'); },
+  async getApplicants(params = {})       { return req('GET', `/dashboard/applicants${qs(params)}`); },
   async getCandidateRecords(params = {}) { return req('GET', `/dashboard/candidate-records${qs(params)}`); },
 
   // ── Advanced analytics endpoints (Task 3.2) ──────────────────────────────
