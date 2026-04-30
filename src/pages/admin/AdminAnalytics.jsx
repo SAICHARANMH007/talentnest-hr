@@ -6,8 +6,6 @@ import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
 import DonutChart from '../../components/charts/DonutChart.jsx';
-import AnimatedLoader from '../../components/shared/AnimatedLoader';
-import PresenceBadge from '../../components/shared/PresenceBadge';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
