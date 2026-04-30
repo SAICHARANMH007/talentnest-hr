@@ -38,6 +38,11 @@ function normalizeJob(job) {
   // Map DB field names to frontend field names
   j.applicantsCount = j.applicationCount || 0;
   j.selectedCount   = j.hiredCount || 0;
+  // SEO: canonical URL and slug for structured data injection in the SPA
+  const _slug = j.careerPageSlug || String(j._id);
+  const _base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  j.canonicalUrl = `${_base}/careers/job/${_slug}`;
+  j.seoSlug      = _slug;
   return j;
 }
 
@@ -59,7 +64,7 @@ router.get('/public', asyncHandler(async (req, res) => {
   }
 
   const [jobs, total] = await Promise.all([
-    Job.find(filter).select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Job.find(filter).populate('assignedRecruiters', 'name id _id').select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Job.countDocuments(filter),
   ]);
   res.json(paginatedResponse(jobs.map(normalizeJob), total, limit, page));

@@ -147,6 +147,11 @@ applicationSchema.index({ tenantId: 1, status: 1 });
 // Performance: /mine endpoint and duplicate-check query
 applicationSchema.index({ candidateId: 1, deletedAt: 1 });
 applicationSchema.index({ jobId: 1, candidateId: 1, deletedAt: 1 });
+// ── Additional performance indexes ────────────────────────────────────
+applicationSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 });   // date-range scans
+applicationSchema.index({ tenantId: 1, currentStage: 1, deletedAt: 1 }); // stage funnels
+applicationSchema.index({ jobId: 1, deletedAt: 1 });                      // per-job counts
+applicationSchema.index({ createdAt: -1 });                               // global ordering
 
 applicationSchema.set('toJSON', { virtuals: true });
 applicationSchema.set('toObject', { virtuals: true });

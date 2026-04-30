@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect, useCallback, Component } from 'react';
 import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -212,6 +212,37 @@ export default function CareersPage() {
       .then(res => {
         const arr = Array.isArray(res) ? res : (res?.data || []);
         setJobs(arr);
+
+        // ── Inject JSON-LD for Googlebot's JS indexer ──────────────────────
+        // Remove any previously injected job JSON-LD tags first
+        document.querySelectorAll('script[data-tn-job-ld]').forEach(el => el.remove());
+        const BASE = window.location.origin;
+        arr.slice(0, 50).forEach(j => {
+          const company = j.companyName || j.company || 'TalentNest HR';
+          const remote  = (j.location || '').toLowerCase().includes('remote');
+          const ld = {
+            '@context': 'https://schema.org',
+            '@type':    'JobPosting',
+            title:       j.title,
+            description: j.description || `${j.title} opening at ${company}.`,
+            datePosted:  j.createdAt || new Date().toISOString(),
+            validThrough: new Date(Date.now() + 60 * 864e5).toISOString(),
+            hiringOrganization: { '@type': 'Organization', name: company, sameAs: BASE },
+            employmentType: 'FULL_TIME',
+            jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: j.location || 'India', addressCountry: 'IN' } },
+            url: j.canonicalUrl || `${BASE}/careers/job/${j.seoSlug || j._id || j.id}`,
+            directApply: true,
+            ...(remote ? { jobLocationType: 'TELECOMMUTE' } : {}),
+            ...(j.skills?.length ? { skills: j.skills.join(', ') } : {}),
+            ...(j.salaryMin || j.salaryMax ? { baseSalary: { '@type': 'MonetaryAmount', currency: j.salaryCurrency || 'INR', value: { '@type': 'QuantitativeValue', unitText: 'YEAR', ...(j.salaryMin ? { minValue: j.salaryMin } : {}), ...(j.salaryMax ? { maxValue: j.salaryMax } : {}) } } } : {}),
+          };
+          const tag = document.createElement('script');
+          tag.type = 'application/ld+json';
+          tag.setAttribute('data-tn-job-ld', j._id || j.id);
+          tag.textContent = JSON.stringify(ld);
+          document.head.appendChild(tag);
+        });
+
         // Auto-open job from invite link (?job=<id>)
         const jobParam = searchParams.get('job');
         if (jobParam) {
@@ -430,7 +461,14 @@ export default function CareersPage() {
                           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
                             {(j.company || 'T').charAt(0).toUpperCase()}
                           </div>
-                          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0A1628', margin: 0 }}>{j.title}</h3>
+                          {/* Crawlable link to the SSR canonical page for non-JS bots */}
+                          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0A1628', margin: 0 }}>
+                            <a href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}
+                               style={{ color: 'inherit', textDecoration: 'none' }}
+                               aria-label={`View ${j.title} at ${j.company} job details`}>
+                              {j.title}
+                            </a>
+                          </h3>
                         </div>
 
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#64748B', fontSize: '0.85rem', marginBottom: 10 }}>

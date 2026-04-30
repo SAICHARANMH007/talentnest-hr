@@ -174,7 +174,6 @@ function WakingUp() {
 
 // ── Auth helpers ───────────────────────────────────────────────────────────────
 
-
 const Layout = lazy(() => import('./layout/Layout.jsx'));
 const AssessmentReviewPage = lazy(() => import('./pages/recruiter/AssessmentReviewPage.jsx'));
 
@@ -336,6 +335,19 @@ export default function App() {
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => scheduleAppPreload(user?.role), [user?.role]);
+
+  // Heartbeat loop for presence API
+  useEffect(() => {
+    if (!user) return;
+    const heartbeat = () => {
+      import('./api/api.js').then(({ default: api }) => {
+        if (api.sendHeartbeat) api.sendHeartbeat().catch(() => {});
+      });
+    };
+    heartbeat(); // initial call
+    const interval = setInterval(heartbeat, 60000); // every 1 min
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Show clean loader while silent refresh is in-flight
   if (authLoading) {

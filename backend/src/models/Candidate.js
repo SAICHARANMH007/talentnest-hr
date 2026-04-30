@@ -88,6 +88,11 @@ candidateSchema.index({ tenantId: 1 });
 candidateSchema.index({ tenantId: 1, source: 1 });
 candidateSchema.index({ email: 1 });
 candidateSchema.index({ email: 1, tenantId: 1, deletedAt: 1 });
+// ── Additional performance indexes ───────────────────────────────────────────────
+candidateSchema.index({ assignedRecruiterId: 1, tenantId: 1 }); // recruiter assignment queries
+candidateSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 }); // paginated list views
+candidateSchema.index({ skills: 1 });                           // AI match scoring
+
 
 candidateSchema.set('toJSON', { virtuals: true });
 candidateSchema.set('toObject', { virtuals: true });

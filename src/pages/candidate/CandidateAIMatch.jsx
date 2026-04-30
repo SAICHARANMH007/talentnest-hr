@@ -28,15 +28,31 @@ export default function CandidateAIMatch({ user }) {
     }).catch(() => {});
   }, [user.id]);
 
-  const run = async () => {
-    setLoad(true); setResults([]);
+  const run = async (currentQuery = query) => {
+    setLoad(true);
     try {
       const profileRes = await api.getUser(user.id);
       const profile = profileRes.data || profileRes;
-      setResults(matchJobsToCandidate(profile, jobs, query));
+      setResults(matchJobsToCandidate(profile, jobs, currentQuery));
     } catch (e) { setToast(`❌ Matching failed: ${e.message}`); }
     setLoad(false);
   };
+
+  // Auto-run when jobs are loaded
+  useEffect(() => {
+    if (jobs.length > 0) {
+      run(query);
+    }
+  }, [jobs]);
+
+  // Debounced search
+  useEffect(() => {
+    if (jobs.length === 0) return;
+    const timer = setTimeout(() => {
+      run(query);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const apply = async (jobId) => {
     if (!jobId) return;
@@ -66,23 +82,29 @@ export default function CandidateAIMatch({ user }) {
           <Field
             value={query}
             onChange={v => setQuery(v)}
-            placeholder="Keyword e.g. React, Python, Hyderabad (optional)"
+            placeholder="Search by role, skill, or location..."
             style={{ flex: 1 }}
           />
-          <button onClick={run} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
-            {loading ? <><Spinner /> Matching…</> : "🤖 Find Jobs"}
+          <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
+            {loading ? <><Spinner /> Matching…</> : "🤖 Refresh Match"}
           </button>
         </div>
         {jobs.length > 0 && <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-          Searching across {jobs.length} open positions · Click any job to view full details before applying
+          Searching across {jobs.length} open positions · Real-time AI matching based on your profile
         </p>}
       </div>
 
-      {results.length === 0 && !loading && (
+      {results.length === 0 && !loading && jobs.length > 0 && (
         <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🤖</div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginBottom: 6 }}>Find your best-fit jobs</p>
-          <p style={{ fontSize: 13 }}>Click "Find Jobs" to match your profile against all open positions. Add a keyword to narrow results.</p>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginBottom: 6 }}>No exact matches found</p>
+          <p style={{ fontSize: 13 }}>Try adjusting your search keyword or updating your profile to see more roles.</p>
+        </div>
+      )}
+      {jobs.length === 0 && loading && (
+        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
+          <Spinner size={32} />
+          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginTop: 12 }}>Loading open positions...</p>
         </div>
       )}
 

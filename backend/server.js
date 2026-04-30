@@ -206,65 +206,124 @@ function jobSlug(job) {
   return job.careerPageSlug || String(job._id);
 }
 
+/** Map free-text jobType → Google-approved Schema.org employmentType values */
+function normalizeEmploymentType(raw) {
+  if (!raw) return 'FULL_TIME';
+  const s = raw.toString().toLowerCase();
+  if (s.includes('part')) return 'PART_TIME';
+  if (s.includes('contract') || s.includes('c2c') || s.includes('c2h')) return 'CONTRACTOR';
+  if (s.includes('intern')) return 'INTERN';
+  if (s.includes('temp')) return 'TEMPORARY';
+  if (s.includes('freelance') || s.includes('volunteer')) return 'VOLUNTEER';
+  return 'FULL_TIME';
+}
+
+/** Detect remote jobs — triggers Google's "Remote" badge */
+function isRemoteJob(location) {
+  if (!location) return false;
+  const l = location.toLowerCase();
+  return l.includes('remote') || l.includes('work from home') || l.includes('wfh');
+}
+
+/**
+ * Build a complete Schema.org JobPosting JSON-LD object.
+ * Every optional field is only included when data is available.
+ */
 function jobStructuredData(job, baseUrl) {
-  const company = job.companyName || job.company || 'TalentNest HR';
-  const posted = job.createdAt ? new Date(job.createdAt).toISOString() : new Date().toISOString();
-  const validThrough = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+  const company   = job.companyName || job.company || 'TalentNest HR';
+  const posted    = job.createdAt ? new Date(job.createdAt).toISOString() : new Date().toISOString();
+  const postedMs  = job.createdAt ? new Date(job.createdAt).getTime() : Date.now();
+  // 60-day validity window — Google deprioritises stale listings
+  const validThrough = new Date(postedMs + 60 * 24 * 60 * 60 * 1000).toISOString();
+  const remote    = isRemoteJob(job.location);
+  const applyUrl  = `${baseUrl}/careers/job/${jobSlug(job)}`;
+
+  // Enrich description with skills/experience so crawlers can categorise
+  const skillsAppend = Array.isArray(job.skills) && job.skills.length
+    ? `\n\nRequired Skills: ${job.skills.join(', ')}` : '';
+  const niceAppend = Array.isArray(job.niceToHaveSkills) && job.niceToHaveSkills.length
+    ? `\nNice to Have: ${job.niceToHaveSkills.join(', ')}` : '';
+  const expAppend = job.experience ? `\nExperience Required: ${job.experience}` : '';
+  const fullDesc = (job.description || `${job.title} opening at ${company}.`)
+    + skillsAppend + niceAppend + expAppend;
+
   const data = {
     '@context': 'https://schema.org',
-    '@type': 'JobPosting',
-    title: job.title,
-    description: job.description || `${job.title} opening at ${company}.`,
-    identifier: {
-      '@type': 'PropertyValue',
-      name: 'TalentNest HR',
-      value: String(job._id),
-    },
-    datePosted: posted,
+    '@type':    'JobPosting',
+    // ── Required ──────────────────────────────────────────────────────────
+    title:       job.title,
+    description: fullDesc,
+    datePosted:  posted,
     validThrough,
-    employmentType: job.jobType || 'FULL_TIME',
     hiringOrganization: {
       '@type': 'Organization',
-      name: company,
-      sameAs: baseUrl,
+      name:    company,
+      sameAs:  baseUrl,
+      url:     baseUrl,
+      logo:    `${baseUrl}/favicon.svg`,
     },
+    // ── Employment type ───────────────────────────────────────────────────
+    employmentType: normalizeEmploymentType(job.jobType),
+    // ── Location ─────────────────────────────────────────────────────────
     jobLocation: {
       '@type': 'Place',
       address: {
-        '@type': 'PostalAddress',
-        addressLocality: job.location || 'India',
-        addressCountry: 'IN',
+        '@type':         'PostalAddress',
+        addressLocality: remote ? 'India' : (job.location || 'Hyderabad'),
+        addressCountry:  'IN',
       },
     },
-    applicantLocationRequirements: {
-      '@type': 'Country',
-      name: 'India',
-    },
+    // ── Identifiers & apply ───────────────────────────────────────────────
+    identifier: { '@type': 'PropertyValue', name: 'TalentNest HR', value: String(job._id) },
+    url:         applyUrl,
     directApply: true,
-    url: `${baseUrl}/careers/job/${jobSlug(job)}`,
+    applicantLocationRequirements: { '@type': 'Country', name: 'India' },
   };
-  if (Array.isArray(job.skills) && job.skills.length) data.skills = job.skills.join(', ');
-  if (job.experience) data.experienceRequirements = job.experience;
-  if (job.contactEmail || job.contactPhone) {
-    data.applicationContact = {
-      '@type': 'ContactPoint',
-      contactType: 'Recruitment',
-      email: job.contactEmail || undefined,
-      telephone: job.contactPhone || undefined,
-    };
+
+  // Remote label — triggers Google's "Remote" filter tag
+  if (remote) data.jobLocationType = 'TELECOMMUTE';
+
+  // Openings count
+  if (job.numberOfOpenings && job.numberOfOpenings > 1) {
+    data.totalJobOpenings = job.numberOfOpenings;
   }
+
+  // Experience
+  if (job.experience) data.experienceRequirements = job.experience;
+
+  // Skills
+  if (Array.isArray(job.skills) && job.skills.length) {
+    data.skills = job.skills.join(', ');
+  }
+
+  // Salary — only when actual values provided
   if (job.salaryMin || job.salaryMax) {
+    const unitMap = { monthly: 'MONTH', annual: 'YEAR', CTC: 'YEAR' };
     data.baseSalary = {
-      '@type': 'MonetaryAmount',
+      '@type':  'MonetaryAmount',
       currency: job.salaryCurrency || 'INR',
       value: {
-        '@type': 'QuantitativeValue',
-        minValue: job.salaryMin || undefined,
-        maxValue: job.salaryMax || job.salaryMin || undefined,
-        unitText: job.salaryType || 'YEAR',
+        '@type':    'QuantitativeValue',
+        unitText:   unitMap[job.salaryType] || 'YEAR',
+        ...(job.salaryMin ? { minValue: job.salaryMin } : {}),
+        ...(job.salaryMax ? { maxValue: job.salaryMax } : {}),
       },
     };
   }
+
+  // Application contact
+  if (job.contactEmail || job.contactPhone) {
+    data.applicationContact = {
+      '@type':     'ContactPoint',
+      contactType: 'Human Resources',
+      ...(job.contactEmail ? { email:     job.contactEmail }   : {}),
+      ...(job.contactPhone ? { telephone: job.contactPhone }   : {}),
+    };
+  }
+
+  // Department
+  if (job.department) data.occupationalCategory = job.department;
+
   return data;
 }
 
@@ -323,51 +382,206 @@ app.get('/careers/jobs.json', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── robots.txt ──────────────────────────────────────────────────────────────
+app.get('/robots.txt', (req, res) => {
+  const base = publicBaseUrl(req);
+  res.type('text/plain').send([
+    'User-agent: *',
+    'Allow: /',
+    'Allow: /careers',
+    'Allow: /careers/',
+    'Allow: /careers/job/',
+    'Allow: /careers/jobs.xml',
+    'Allow: /careers/jobs.json',
+    'Allow: /careers/crawl',
+    '',
+    `Sitemap: ${base}/sitemap.xml`,
+    `Sitemap: ${base}/careers/jobs.xml`,
+  ].join('\n'));
+});
+
+// ── Sitemap index (points to both sitemaps) ─────────────────────────────────
+app.get('/sitemap.xml', (req, res) => {
+  const base = publicBaseUrl(req);
+  const now  = new Date().toISOString();
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+    `<sitemap><loc>${escHtml(base)}/careers/jobs.xml</loc><lastmod>${now}</lastmod></sitemap>` +
+    `</sitemapindex>`
+  );
+});
+
+// ── SSR Job detail page — fully Google Jobs compliant ───────────────────────
 app.get('/careers/job/:slug', async (req, res, next) => {
   try {
     const Job = require('./src/models/Job');
     const clauses = [{ careerPageSlug: req.params.slug }];
     if (/^[a-f\d]{24}$/i.test(req.params.slug)) clauses.push({ _id: req.params.slug });
-    const job = await Job.findOne({
-      status: 'active',
-      deletedAt: null,
-      $or: clauses,
-    }).lean();
+    const job = await Job.findOne({ status: 'active', deletedAt: null, $or: clauses }).lean();
     if (!job) return next(new AppError('Job not found', 404));
-    const base = publicBaseUrl(req);
-    const company = job.companyName || job.company || 'TalentNest HR';
-    const skills = Array.isArray(job.skills) ? job.skills : [];
-    const applyUrl = `${base}/careers?job=${job._id}`;
+
+    const base       = publicBaseUrl(req);
+    const company    = job.companyName || job.company || 'TalentNest HR';
+    const skills     = Array.isArray(job.skills) ? job.skills : [];
+    const niceSkills = Array.isArray(job.niceToHaveSkills) ? job.niceToHaveSkills : [];
+    const canonUrl   = `${base}/careers/job/${escHtml(jobSlug(job))}`;
+    const applyUrl   = `${base}/careers?job=${job._id}`;
+    const remote     = isRemoteJob(job.location);
+    const empType    = normalizeEmploymentType(job.jobType);
+    const empLabel   = { FULL_TIME: 'Full-time', PART_TIME: 'Part-time', CONTRACTOR: 'Contract', INTERN: 'Internship', TEMPORARY: 'Temporary' }[empType] || job.jobType || 'Full-time';
+    const locationLabel = remote ? `${job.location} (Remote)` : (job.location || 'India');
+    const metaDesc   = `${empLabel} ${job.title} role at ${company} in ${locationLabel}. ${job.experience ? `${job.experience} experience required. ` : ''}Apply on TalentNest HR.`;
     const structured = JSON.stringify(jobStructuredData(job, base)).replace(/</g, '\\u003c');
+    const postedDate = job.createdAt ? new Date(job.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently';
+
     res.type('html').send(`<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escHtml(job.title)} | ${escHtml(company)} | TalentNest HR Careers</title>
-  <meta name="description" content="${escHtml(`${job.title} opening at ${company}. Apply through TalentNest HR.`)}">
-  <link rel="canonical" href="${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}">
+  <title>${escHtml(job.title)} — ${escHtml(empLabel)} at ${escHtml(company)} | TalentNest HR</title>
+  <meta name="description" content="${escHtml(metaDesc)}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${canonUrl}">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${canonUrl}">
+  <meta property="og:title" content="${escHtml(job.title)} at ${escHtml(company)}">
+  <meta property="og:description" content="${escHtml(metaDesc)}">
+  <meta property="og:image" content="${escHtml(base)}/og-image.png">
+  <meta property="og:site_name" content="TalentNest HR">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escHtml(job.title)} at ${escHtml(company)}">
+  <meta name="twitter:description" content="${escHtml(metaDesc)}">
+  <meta name="twitter:image" content="${escHtml(base)}/og-image.png">
+  <!-- Schema.org JobPosting JSON-LD -->
   <script type="application/ld+json">${structured}</script>
-  <style>body{font-family:Arial,sans-serif;margin:0;color:#0f172a;background:#f8fafc}.wrap{max-width:860px;margin:0 auto;padding:40px 20px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px;box-shadow:0 8px 30px rgba(15,23,42,.08)}.badge{display:inline-block;background:#eff6ff;color:#075985;border-radius:999px;padding:5px 10px;margin:4px;font-size:13px}.btn{display:inline-block;background:#0176d3;color:#fff;text-decoration:none;border-radius:10px;padding:13px 22px;font-weight:700;margin-top:20px}</style>
+  <!-- Breadcrumb JSON-LD -->
+  <script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',    item: base },
+      { '@type': 'ListItem', position: 2, name: 'Careers', item: `${base}/careers` },
+      { '@type': 'ListItem', position: 3, name: job.title, item: `${base}/careers/job/${jobSlug(job)}` },
+    ],
+  }).replace(/</g, '\\u003c')}</script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#0f172a;line-height:1.6}
+    .wrap{max-width:900px;margin:0 auto;padding:32px 20px}
+    nav.breadcrumb{font-size:13px;color:#64748b;margin-bottom:24px}
+    nav.breadcrumb a{color:#0176d3;text-decoration:none}
+    nav.breadcrumb a:hover{text-decoration:underline}
+    nav.breadcrumb span{margin:0 6px}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:36px;box-shadow:0 4px 24px rgba(15,23,42,.07)}
+    .brand{display:inline-flex;align-items:center;gap:8px;background:#eff6ff;color:#0176d3;font-size:13px;font-weight:700;padding:5px 12px;border-radius:50px;margin-bottom:18px;text-decoration:none}
+    h1{font-size:clamp(1.4rem,3vw,2rem);font-weight:800;color:#0a1628;margin-bottom:10px}
+    .meta{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:#475569;margin:14px 0 24px;padding-bottom:20px;border-bottom:1px solid #f1f5f9}
+    .meta strong{color:#0f172a}
+    h2{font-size:1.05rem;font-weight:700;color:#0a1628;margin:24px 0 10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}
+    h3{font-size:.95rem;font-weight:700;color:#334155;margin:16px 0 8px}
+    p{color:#475569;font-size:.9rem;line-height:1.75;margin-bottom:12px}
+    pre{white-space:pre-wrap;font-family:inherit;font-size:.9rem;color:#475569;line-height:1.75}
+    ul.skills{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+    ul.skills li{background:#eff6ff;color:#075985;border:1px solid #bfdbfe;border-radius:50px;padding:4px 14px;font-size:13px;font-weight:600}
+    ul.nice li{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+    .salary{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 16px;font-size:.88rem;color:#78350f;margin-bottom:20px}
+    .apply-box{margin-top:32px;padding-top:24px;border-top:2px solid #e2e8f0;text-align:center}
+    .apply-btn{display:inline-block;background:linear-gradient(135deg,#0176d3,#014486);color:#fff;text-decoration:none;border-radius:10px;padding:14px 36px;font-weight:800;font-size:1rem;box-shadow:0 4px 18px rgba(1,118,211,.35);transition:opacity .2s}
+    .apply-btn:hover{opacity:.9}
+    .secondary-link{display:block;margin-top:12px;color:#64748b;font-size:13px}
+    .secondary-link a{color:#0176d3}
+    footer{text-align:center;padding:32px 20px;color:#94a3b8;font-size:13px}
+    footer a{color:#0176d3;text-decoration:none}
+    @media(max-width:600px){.card{padding:22px 16px}}
+  </style>
 </head>
 <body>
   <main class="wrap">
-    <article class="card">
-      <p style="color:#0176d3;font-weight:700;margin:0 0 8px">TalentNest HR Careers</p>
-      <h1>${escHtml(job.title)}</h1>
-      <p><strong>Company:</strong> ${escHtml(company)}</p>
-      <p><strong>Location:</strong> ${escHtml(job.location || 'Remote / India')}</p>
-      <p><strong>Type:</strong> ${escHtml(job.jobType || 'Full-time')} ${job.department ? ` · <strong>Department:</strong> ${escHtml(job.department)}` : ''}</p>
-      ${job.experience ? `<p><strong>Experience:</strong> ${escHtml(job.experience)}</p>` : ''}
-      ${job.salaryMin || job.salaryMax ? `<p><strong>Salary:</strong> ${escHtml(job.salaryCurrency || 'INR')} ${escHtml(job.salaryMin || '')}${job.salaryMax ? ` - ${escHtml(job.salaryMax)}` : ''} ${escHtml(job.salaryType || '')}</p>` : ''}
-      ${job.contactEmail || job.contactPhone ? `<p><strong>Apply Contact:</strong> ${job.contactEmail ? `<a href="mailto:${escHtml(job.contactEmail)}">${escHtml(job.contactEmail)}</a>` : ''}${job.alternateContactEmail ? `, <a href="mailto:${escHtml(job.alternateContactEmail)}">${escHtml(job.alternateContactEmail)}</a>` : ''}${job.contactPhone ? ` · ${escHtml(job.contactPhone)}` : ''}</p>` : ''}
-      <h2>Job Description</h2>
-      <p style="white-space:pre-line;line-height:1.65">${escHtml(job.description || '')}</p>
-      ${job.requirements ? `<h2>Requirements</h2><p style="white-space:pre-line;line-height:1.65">${escHtml(job.requirements)}</p>` : ''}
-      ${skills.length ? `<h2>Skills</h2><p>${skills.map(s => `<span class="badge">${escHtml(s)}</span>`).join('')}</p>` : ''}
-      <a class="btn" href="${escHtml(applyUrl)}">Apply on TalentNest HR</a>
+    <!-- Breadcrumb navigation — crawlable by Googlebot -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="${escHtml(base)}">Home</a>
+      <span aria-hidden="true">›</span>
+      <a href="${escHtml(base)}/careers">Careers</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">${escHtml(job.title)}</span>
+    </nav>
+
+    <article class="card" itemscope itemtype="https://schema.org/JobPosting">
+      <a class="brand" href="${escHtml(base)}/careers">← TalentNest HR Careers</a>
+
+      <!-- H1: Job Title (one per page — Google Jobs requirement) -->
+      <h1 itemprop="title">${escHtml(job.title)}</h1>
+
+      <!-- Structured meta row — crawlable text, not images -->
+      <div class="meta">
+        <div><strong>🏢 Company:</strong> <span itemprop="hiringOrganization" itemscope itemtype="https://schema.org/Organization"><span itemprop="name">${escHtml(company)}</span></span></div>
+        <div><strong>📍 Location:</strong> <span itemprop="jobLocation" itemscope itemtype="https://schema.org/Place"><span itemprop="address">${escHtml(locationLabel)}</span></span>${remote ? ' <span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:50px;font-weight:700">REMOTE</span>' : ''}</div>
+        <div><strong>💼 Type:</strong> <span itemprop="employmentType">${escHtml(empLabel)}</span></div>
+        ${job.experience ? `<div><strong>🎯 Experience:</strong> <span itemprop="experienceRequirements">${escHtml(job.experience)}</span></div>` : ''}
+        ${job.department ? `<div><strong>🏷 Department:</strong> <span itemprop="occupationalCategory">${escHtml(job.department)}</span></div>` : ''}
+        <div><strong>📅 Posted:</strong> <time itemprop="datePosted" datetime="${job.createdAt ? new Date(job.createdAt).toISOString() : ''}">${postedDate}</time></div>
+        ${job.numberOfOpenings > 1 ? `<div><strong>👥 Openings:</strong> ${job.numberOfOpenings}</div>` : ''}
+      </div>
+
+      ${(job.salaryMin || job.salaryMax) ? `
+      <div class="salary" itemprop="baseSalary" itemscope itemtype="https://schema.org/MonetaryAmount">
+        💰 <strong>Salary Range:</strong>
+        <meta itemprop="currency" content="${escHtml(job.salaryCurrency || 'INR')}">
+        ${job.salaryCurrency || 'INR'} ${job.salaryMin ? escHtml(String(job.salaryMin)) : ''}${job.salaryMin && job.salaryMax ? ' – ' : ''}${job.salaryMax ? escHtml(String(job.salaryMax)) : ''} ${escHtml(job.salaryType || 'per year')}
+      </div>` : ''}
+
+      <!-- H2: About the Role -->
+      <h2>About the Role</h2>
+      <div itemprop="description">
+        <pre>${escHtml(job.description || '')}</pre>
+      </div>
+
+      ${job.requirements ? `
+      <!-- H2: Requirements -->
+      <h2>Requirements</h2>
+      <pre>${escHtml(job.requirements)}</pre>` : ''}
+
+      ${skills.length ? `
+      <!-- H2: Required Skills — bulleted list for crawler categorisation -->
+      <h2>Required Skills</h2>
+      <ul class="skills" aria-label="Required skills">
+        ${skills.map(s => `<li itemprop="skills">${escHtml(s)}</li>`).join('')}
+      </ul>` : ''}
+
+      ${niceSkills.length ? `
+      <!-- H3: Nice to Have -->
+      <h3>Nice to Have</h3>
+      <ul class="skills nice" aria-label="Nice to have skills">
+        ${niceSkills.map(s => `<li>${escHtml(s)}</li>`).join('')}
+      </ul>` : ''}
+
+      ${(job.contactEmail || job.contactPhone) ? `
+      <!-- H2: How to Apply — direct email link, crawlable -->
+      <h2>How to Apply</h2>
+      <p>
+        ${job.contactEmail ? `Send your resume to <a href="mailto:${escHtml(job.contactEmail)}">${escHtml(job.contactEmail)}</a>` : ''}
+        ${job.contactPhone ? ` or call <a href="tel:${escHtml(job.contactPhone)}">${escHtml(job.contactPhone)}</a>` : ''}.
+        Alternatively, use the Apply button below to submit through TalentNest HR.
+      </p>` : ''}
+
+      <!-- CTA: Direct <a href> apply button — bots can follow this link -->
+      <div class="apply-box">
+        <a class="apply-btn" href="${escHtml(applyUrl)}" rel="noopener">Apply Now →</a>
+        <p class="secondary-link">
+          Or <a href="${escHtml(base)}/careers">browse all open positions</a> at TalentNest HR
+        </p>
+      </div>
     </article>
   </main>
+
+  <footer>
+    <p><a href="${escHtml(base)}">TalentNest HR</a> · India's AI-Powered Staffing Platform ·
+    <a href="${escHtml(base)}/careers">View All Jobs</a></p>
+  </footer>
 </body>
 </html>`);
   } catch (err) { next(err); }
@@ -377,14 +591,32 @@ app.get('/careers/crawl', async (req, res, next) => {
   try {
     const base = publicBaseUrl(req);
     const jobs = await publicJobs(500);
+    const ldItems = jobs.map(j => JSON.stringify(jobStructuredData(j, base)).replace(/</g, '\\u003c'));
     const items = jobs.map(job => {
       const company = job.companyName || job.company || 'TalentNest HR';
-      const skills = Array.isArray(job.skills) ? job.skills.join(', ') : '';
-      return `<li><h2><a href="${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}">${escHtml(job.title)}</a></h2><p>${escHtml(company)} · ${escHtml(job.location || 'Remote / India')} · ${escHtml(job.experience || '')}</p><p>${escHtml(job.description || '')}</p><p>${escHtml(skills)}</p><p>${escHtml(job.contactEmail || '')} ${escHtml(job.contactPhone || '')}</p></li>`;
+      const skills  = Array.isArray(job.skills) ? job.skills.join(', ') : '';
+      return `<li itemscope itemtype="https://schema.org/JobPosting">
+        <h2><a href="${escHtml(base)}/careers/job/${escHtml(jobSlug(job))}" itemprop="url">${escHtml(job.title)}</a></h2>
+        <p><strong itemprop="hiringOrganization">${escHtml(company)}</strong> · <span itemprop="jobLocation">${escHtml(job.location || 'India')}</span> · ${escHtml(job.experience || '')}</p>
+        <p itemprop="description">${escHtml((job.description || '').slice(0, 300))}…</p>
+        ${skills ? `<p><strong>Skills:</strong> <span itemprop="skills">${escHtml(skills)}</span></p>` : ''}
+      </li>`;
     }).join('');
-    res.type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>TalentNest HR Jobs</title><meta name="description" content="Open jobs at TalentNest HR. Apply directly on TalentNest HR careers."></head><body><main><h1>TalentNest HR Open Jobs</h1><ul>${items}</ul></main></body></html>`);
+    res.type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>TalentNest HR — All Open Jobs</title>
+<meta name="description" content="Browse all open jobs at TalentNest HR. IT, cybersecurity, finance and executive roles across India.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="${escHtml(base)}/careers/crawl">
+${ldItems.map(ld => `<script type="application/ld+json">${ld}</script>`).join('\n')}
+</head><body><main>
+<h1>TalentNest HR — Open Jobs (${jobs.length})</h1>
+<ul>${items}</ul>
+<p><a href="${escHtml(base)}/careers">View Interactive Job Board</a></p>
+</main></body></html>`);
   } catch (err) { next(err); }
 });
+
+
 
 if (IS_PROD) {
   if (HAS_DIST) {
@@ -397,13 +629,18 @@ if (IS_PROD) {
 if (HAS_DIST) {
   app.use(express.static(DIST_PATH));
 
-  // SPA fallback: all non-API routes serve the frontend when a bundle is present.
+  // SSR routes that must NOT fall through to the React bundle
+  const SSR_PREFIXES = ['/careers/job/', '/careers/crawl', '/careers/jobs.xml', '/careers/jobs.json', '/robots.txt', '/sitemap.xml'];
+
+  // SPA fallback: all non-API, non-SSR routes serve the frontend when a bundle is present.
   app.get('*', (req, res, next) => {
     if (req.originalUrl.startsWith('/api')) return next();
+    if (SSR_PREFIXES.some(p => req.originalUrl.startsWith(p))) return next();
     res.sendFile(path.join(DIST_PATH, 'index.html'), (err) => {
       if (err) next();
     });
   });
+
 } else {
   // Keep backend-only hosts healthy without pretending they serve the UI.
   app.get('/', (req, res) => {

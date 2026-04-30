@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api, downloadBlob } from '../../api/api.js';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { api, downloadBlob } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
 import DonutChart from '../../components/charts/DonutChart.jsx';
+import AnimatedLoader from '../../components/shared/AnimatedLoader';
+import PresenceBadge from '../../components/shared/PresenceBadge';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
@@ -1020,7 +1024,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
                   <h3 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{drillDown.title}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <button onClick={downloadCSV} style={{ padding: '8px 16px', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>⬇ Export CSV</button>
                   <button onClick={() => { setDrillDown(null); setDrillDownSearch(''); }} style={{ width: 40, height: 40, border: 'none', background: '#F8FAFC', borderRadius: 12, cursor: 'pointer', fontSize: 18 }}>✕</button>
                 </div>
               </div>

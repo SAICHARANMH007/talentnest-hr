@@ -11,19 +11,8 @@ import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
-function useOnlineIds() {
-  const [ids, setIds] = useState(new Set());
-  useEffect(() => {
-    const load = () => api.getOnlineUsers().then(r => {
-      const list = Array.isArray(r?.data) ? r.data : [];
-      setIds(new Set(list.map(u => u.id)));
-    }).catch(() => {});
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, []);
-  return ids;
-}
+import { usePresence } from '../../hooks/usePresence.js';
+import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
 function useIsMobile() {
   const [m, setM] = useState(() => window.innerWidth < 640);
@@ -131,24 +120,19 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
 
       {/* ── Header: avatar + identity + resume button ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        {/* Avatar with online dot */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{ width: isMobile ? 40 : 44, height: isMobile ? 40 : 44, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 16 : 18 }}>
             {(c.name || '?')[0].toUpperCase()}
           </div>
-          <div style={{ position: 'absolute', bottom: 1, right: 1, width: 11, height: 11, borderRadius: '50%', background: isOnline ? '#22c55e' : '#d1d5db', border: '2px solid #fff' }} title={isOnline ? 'Online now' : 'Offline'} />
         </div>
 
         {/* Identity */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Name + online badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
             <div style={{ color: '#181818', fontWeight: 700, fontSize: isMobile ? 14 : 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
               {c.name || '—'}
             </div>
-            {isOnline && (
-              <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 800, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>● Online</span>
-            )}
+            <PresenceBadge userId={c.id || c._id} showLabel={true} />
           </div>
 
           {/* Title */}
@@ -318,7 +302,8 @@ export default function RecruiterCandidates({ user }) {
   const [waTemplate, setWaTemplate] = useState('Hi {candidateName}, we have an exciting opportunity for {jobTitle} at {companyName}. Please reply to express your interest. Regards, {recruiterName}');
   const [waSending, setWaSending] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
-  const onlineIds = useOnlineIds();
+  const { onlineUsers } = usePresence();
+  const onlineIds = new Set(onlineUsers.map(u => String(u.id)));
 
   const [filters, setFilters] = useState({
     designation: '',

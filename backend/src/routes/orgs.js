@@ -28,18 +28,20 @@ function normalizeDomain(raw) {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'super_admin') {
-      const orgs = await Org.find({ slug: { $ne: '__platform__' } }).sort({ createdAt: -1 });
-      const enriched = await Promise.all((Array.isArray(orgs) ? orgs : []).map(async (org) => {
-        // Count both Users and Candidates assigned to this organization (standardized on tenantId)
-        // Highly resilient query (checks both tenantId and legacy orgId to ensure accurate headcount)
-        const userCount = await User.countDocuments({ 
-          $or: [
-            { tenantId: org._id },
-            { orgId: String(org._id) },
-            { orgId: org._id }
-          ]
-        });
-        return { ...normalize(org), userCount };
+      const orgs = await Org.find({ slug: { $ne: '__platform__' } }).sort({ createdAt: -1 }).lean();
+
+      // Single aggregation to count users per org — avoids N+1 queries
+      const orgIds = orgs.map(o => o._id);
+      const countAgg = await User.aggregate([
+        { $match: { tenantId: { $in: orgIds } } },
+        { $group: { _id: '$tenantId', count: { $sum: 1 } } },
+      ]);
+      const countMap = {};
+      countAgg.forEach(r => { countMap[String(r._id)] = r.count; });
+
+      const enriched = orgs.map(org => ({
+        ...normalize(org),
+        userCount: countMap[String(org._id)] || 0,
       }));
       return res.json(enriched);
     }

@@ -147,6 +147,11 @@ export default function RecruiterJobs({ user }) {
     try { await api.deleteJob(id); load(); setToast("✅ Job deleted"); }
     catch (e) { setToast(`❌ ${e.message}`); }
   };
+  const toggle = async (id, status) => {
+    const isClosed = status === 'closed' || status === 'Closed';
+    try { await api.patchJob(id, { status: isClosed ? 'active' : 'closed' }); load(); setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`); }
+    catch (e) { setToast(`❌ ${e.message}`); }
+  };
 
   return (
     <div>
@@ -245,6 +250,7 @@ export default function RecruiterJobs({ user }) {
                       🚀 Submit for Approval
                     </button>
                   )}
+                  <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
                   <button onClick={() => del(j.id)} style={{ ...btnD, padding: '6px 14px', fontSize: 12 }}>Delete</button>
                 </div>
               </div>

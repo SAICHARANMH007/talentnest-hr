@@ -6,6 +6,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import { card, btnP } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import JobAlertsManager from '../../components/candidate/JobAlertsManager.jsx';
+import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
 // ── Job Detail Modal ─────────────────────────────────────────────────────────
 function JobDetailModal({ job, applied, applying, onApply, onClose }) {
@@ -113,7 +114,19 @@ function JobDetailModal({ job, applied, applying, onApply, onClose }) {
                 </div>
               </div>
             )}
-            {job.recruiterName && (
+            {job.assignedRecruiters?.length > 0 ? (
+              <div style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: '12px 16px' }}>
+                <div style={{ color: '#706E6B', fontSize: 10, fontWeight: 600, marginBottom: 4, letterSpacing: '0.5px' }}>POSTED BY</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {job.assignedRecruiters.map(r => (
+                    <div key={r._id || r.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ color: '#181818', fontSize: 13, fontWeight: 600 }}>{r.name}</div>
+                      <PresenceBadge userId={r._id || r.id} showLabel={true} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : job.recruiterName && (
               <div style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: '12px 16px' }}>
                 <div style={{ color: '#706E6B', fontSize: 10, fontWeight: 600, marginBottom: 4, letterSpacing: '0.5px' }}>POSTED BY</div>
                 <div style={{ color: '#181818', fontSize: 13, fontWeight: 600 }}>{job.recruiterName}</div>

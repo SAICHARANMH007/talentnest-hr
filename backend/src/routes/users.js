@@ -173,12 +173,19 @@ router.delete('/:id', authenticate, allowRoles('admin','super_admin'), asyncHand
 }));
 
 // PATCH /api/users/:id — Generic User Update (e.g., Role)
-router.patch('/:id', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const forbidden = req.user.role === 'super_admin' ? ['password'] : ['password','orgId','email','role'];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
   
   const userToUpdate = await User.findById(req.params.id);
   if (!userToUpdate) throw new AppError('User not found.', 404);
+
+  if (req.user.role === 'recruiter') {
+    if (userToUpdate.role !== 'candidate') throw new AppError('Forbidden: Recruiters can only update candidates.', 403);
+    if (userToUpdate.tenantId?.toString() !== req.user.tenantId?.toString()) {
+      throw new AppError('Forbidden: Candidate belongs to a different organisation.', 403);
+    }
+  }
 
   // Super admins are protected — their isActive and role can never be changed via this endpoint
   if (userToUpdate.role === 'super_admin' && ('isActive' in update || 'role' in update)) {

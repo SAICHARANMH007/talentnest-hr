@@ -100,6 +100,12 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ tenantId: 1 });
 userSchema.index({ tenantId: 1, role: 1 });
 userSchema.index({ role: 1 });
+// ── Performance indexes ───────────────────────────────────────────────────
+userSchema.index({ email: 1 }, { unique: true });                         // login / dedup
+userSchema.index({ tenantId: 1, role: 1, isActive: 1 });                  // stats queries
+userSchema.index({ tenantId: 1, deletedAt: 1 });                          // soft-delete scans
+userSchema.index({ assignedRecruiterId: 1, tenantId: 1 });                // pipeline assignment
+userSchema.index({ createdAt: -1 });                                      // list ordering
 
 userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.passwordHash || '');

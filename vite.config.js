@@ -7,6 +7,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     minify: 'esbuild',
     target: 'es2020',
+    cssCodeSplit: true,           // split CSS per-chunk so pages only load what they need
+    reportCompressedSize: false,  // skip brotli reporting — saves ~10s on large builds
+    sourcemap: false,             // no sourcemaps in production build
+    assetsInlineLimit: 4096,      // inline assets < 4KB as base64 (fewer HTTP round-trips)
+    modulePreload: { polyfill: false }, // modern browsers handle preload natively
     rollupOptions: {
       output: {
         // Fine-grained manual chunks — each role group gets its own chunk so the

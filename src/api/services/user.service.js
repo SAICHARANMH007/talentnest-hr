@@ -1,6 +1,10 @@
 import { req } from '../client.js';
 
 export const userService = {
+  // Presence
+  async sendHeartbeat()         { return req('POST', '/presence/heartbeat', {}, false); },
+  async getOnlineUsers()        { return req('GET', '/presence/online'); },
+
   async getProfile()            { return req('GET', '/users/me'); },
   async updateProfile(data)     { return req('PATCH', '/users/me', data); },
   async verifyInvite(token, email) { return req('GET', `/auth/verify-invite?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`, null, false); },

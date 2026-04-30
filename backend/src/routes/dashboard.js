@@ -13,6 +13,8 @@ const { allowRoles }  = require('../middleware/rbac');
 const asyncHandler    = require('../utils/asyncHandler');
 const AppError        = require('../utils/AppError');
 const { exportToExcel } = require('../utils/exportToExcel');
+const { cacheRoute }  = require('../middleware/cache');
+
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const STAGE_DONE    = 'selected';
@@ -266,7 +268,7 @@ router.get('/public', asyncHandler(async (_req, res) => {
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────
 
 /* GET /api/dashboard/stats */
-router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user.role === 'super_admin';
   // platform=true → super_admin sees ALL orgs; default scopes to own org for accurate numbers
   const platformWide = isSuperAdmin && req.query.platform === 'true';
@@ -324,16 +326,37 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHand
 }));
 
 /* GET /api/dashboard/pipeline-health */
-router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const orgF  = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
   const stages = ['Applied', 'Screening', 'Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'];
 
-  const raw = await Application.aggregate([
-    { $match: orgF },
-    { $group: { _id: '$currentStage', count: { $sum: 1 } } },
+  // Compute stage counts AND avg time-to-hire in one aggregation
+  const [stageAgg, timeAgg] = await Promise.all([
+    Application.aggregate([
+      { $match: orgF },
+      { $group: { _id: '$currentStage', count: { $sum: 1 } } },
+    ]),
+    Application.aggregate([
+      { $match: { ...orgF, currentStage: 'Hired' } },
+      {
+        $project: {
+          daysToHire: {
+            $divide: [
+              { $subtract: [
+                { $ifNull: [{ $arrayElemAt: [{ $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Hired'] } } }, -1] }, '$updatedAt'] },
+                '$createdAt',
+              ]},
+              86400000,
+            ],
+          },
+        },
+      },
+      { $group: { _id: null, avg: { $avg: '$daysToHire' }, count: { $sum: 1 } } },
+    ]),
   ]);
+
   const m = {};
-  raw.forEach(r => { m[r._id] = r.count; });
+  stageAgg.forEach(r => { m[r._id] = r.count; });
 
   const stageData = stages.map((s, i) => {
     const count = m[s] || 0;
@@ -344,18 +367,10 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
     };
   });
 
-  const rejected = m['Rejected'] || 0;
-  const hiredApps = await Application.find({ ...orgF, currentStage: 'Hired' }).lean();
-  const avgDays = hiredApps.length > 0
-    ? Math.round(hiredApps.reduce((s, a) => {
-        const hiredEntry = (a.stageHistory || []).find(h => h.stage === 'Hired');
-        const hiredAt = hiredEntry ? hiredEntry.movedAt : a.updatedAt;
-        return s + ((new Date(hiredAt) - new Date(a.createdAt)) / 86400000);
-      }, 0) / hiredApps.length)
-    : 0;
-
-  const offerApps  = m['Offer'] || 0;
-  const offerRate  = offerApps > 0 ? Math.round(((m['Hired'] || 0) / offerApps) * 100) : 82;
+  const rejected  = m['Rejected'] || 0;
+  const avgDays   = timeAgg[0]?.count > 0 ? Math.round(timeAgg[0].avg || 0) : 0;
+  const offerApps = m['Offer'] || 0;
+  const offerRate = offerApps > 0 ? Math.round(((m['Hired'] || 0) / offerApps) * 100) : 82;
 
   res.json({ success: true, data: {
     stages: stageData,
@@ -364,23 +379,49 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
 }));
 
 /* GET /api/dashboard/recruiter-leaderboard */
-router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const recruiters = await User.find({ ...orgF, role: { $in: ['recruiter', 'admin'] } }).lean();
+  const recruiters = await User.find({ ...orgF, role: { $in: ['recruiter', 'admin'] } }).select('_id name photoUrl').lean();
 
-  const board = await Promise.all(recruiters.map(async (r) => {
-    const rJobs  = await Job.find({ assignedRecruiters: r._id, status: { $in: ['active', 'closed'] } }).select('_id').lean();
-    const jobIds = rJobs.map(j => j._id);
-    const [cands, hired] = await Promise.all([
-      Application.countDocuments({ jobId: { $in: jobIds } }),
-      Application.countDocuments({ jobId: { $in: jobIds }, currentStage: 'Hired' }),
-    ]);
+  if (!recruiters.length) return res.json({ success: true, data: [] });
+
+  // Single aggregation: group applications by (jobId, stage) then join jobs to get assignedRecruiters
+  const [jobStats, appStats] = await Promise.all([
+    // Per-recruiter: how many active/closed jobs they're assigned to
+    Job.aggregate([
+      { $match: { ...orgF, status: { $in: ['active', 'closed'] } } },
+      { $unwind: '$assignedRecruiters' },
+      { $group: { _id: '$assignedRecruiters', jobs: { $sum: 1 } } },
+    ]),
+    // Per-recruiter: total candidates and hires via their job assignments
+    Application.aggregate([
+      { $match: orgF },
+      { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
+      { $unwind: '$job' },
+      { $unwind: '$job.assignedRecruiters' },
+      { $group: {
+          _id: '$job.assignedRecruiters',
+          candidates: { $sum: 1 },
+          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } },
+        },
+      },
+    ]),
+  ]);
+
+  const jobMap = {};
+  jobStats.forEach(r => { jobMap[String(r._id)] = r.jobs; });
+  const appMap = {};
+  appStats.forEach(r => { appMap[String(r._id)] = { candidates: r.candidates, hired: r.hired }; });
+
+  const board = recruiters.map(r => {
+    const rid = String(r._id);
+    const { candidates = 0, hired = 0 } = appMap[rid] || {};
     return {
       rank: 0, recruiterId: r._id, name: r.name, photoUrl: r.photoUrl,
-      jobs: rJobs.length, candidates: cands, hired,
-      conversion: cands > 0 ? `${Math.round((hired / cands) * 100)}%` : '0%',
+      jobs: jobMap[rid] || 0, candidates, hired,
+      conversion: candidates > 0 ? `${Math.round((hired / candidates) * 100)}%` : '0%',
     };
-  }));
+  });
 
   board.sort((a, b) => b.hired - a.hired || b.candidates - a.candidates);
   board.forEach((r, i) => r.rank = i + 1);
@@ -388,7 +429,7 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
 }));
 
 /* GET /api/dashboard/top-skills */
-router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
   const match = req.user.role === 'super_admin'
     ? { role: 'candidate', skills: { $exists: true, $ne: [] } }
     : { role: 'candidate', tenantId: req.user.tenantId, skills: { $exists: true, $ne: [] } };
@@ -402,7 +443,7 @@ router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), asyn
 }));
 
 /* GET /api/dashboard/availability-pool */
-router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
   const base = req.user.role === 'super_admin' ? { role: 'candidate' } : { role: 'candidate', tenantId: req.user.tenantId };
   const [total, raw] = await Promise.all([
     User.countDocuments(base),
@@ -421,7 +462,7 @@ router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'
 }));
 
 /* GET /api/dashboard/jobs-breakdown */
-router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const match = req.user.role === 'super_admin' ? { status: 'active' } : { tenantId: req.user.tenantId, status: 'active' };
   const raw = await Job.aggregate([{ $match: match }, { $group: { _id: '$urgency', count: { $sum: 1 } } }]);
   const map = { high: 0, medium: 0, low: 0 };
@@ -430,7 +471,7 @@ router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), 
 }));
 
 /* GET /api/dashboard/analytics */
-router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
   const { startDate, endDate } = req.query;
   const dateFilter = {};
@@ -438,7 +479,8 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), async
   if (endDate)   dateFilter.$lte = new Date(endDate);
   const dateF = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
-  const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs] = await Promise.all([
+  // Compute avgTimeToHire via aggregation — avoids fetching all hired docs to Node memory
+  const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg] = await Promise.all([
     Application.countDocuments({ ...orgF, ...dateF }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
@@ -459,16 +501,17 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), async
       { $unwind: '$job' },
       { $project: { title: '$job.title', count: 1 } },
     ]),
+    Application.aggregate([
+      { $match: { ...orgF, currentStage: 'Hired' } },
+      { $project: {
+          daysToHire: { $divide: [{ $subtract: ['$updatedAt', '$createdAt'] }, 86400000] },
+        },
+      },
+      { $group: { _id: null, avg: { $avg: '$daysToHire' }, count: { $sum: 1 } } },
+    ]),
   ]);
 
-  const hiredAppsWithDates = await Application.find({ ...orgF, currentStage: 'Hired' }).lean();
-  const avgTimeToHire = hiredAppsWithDates.length > 0
-    ? Math.round(hiredAppsWithDates.reduce((s, a) => {
-        const hiredEntry = (a.stageHistory || []).find(h => h.stage === 'Hired');
-        const hiredAt = hiredEntry ? hiredEntry.movedAt : a.updatedAt;
-        return s + ((new Date(hiredAt) - new Date(a.createdAt)) / 86400000);
-      }, 0) / hiredAppsWithDates.length)
-    : 0;
+  const avgTimeToHire = timeAgg[0]?.count > 0 ? Math.round(timeAgg[0].avg || 0) : 0;
 
   res.json({ success: true, data: {
     overview: {
@@ -556,39 +599,71 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   ]);
 
   const usersByEmail = new Map(candidateUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
-  const profilesById = new Map(candidateProfiles.map(c => [String(c._id), c]));
-  const profileIdsWithApps = new Set();
+  const appsByEmail = new Map();
+  const appsById = new Map();
 
-  const rows = apps.map(app => {
+  // apps is already sorted by createdAt: -1, so the first one we see is the most recent
+  apps.forEach(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    if (candidate?._id) profileIdsWithApps.add(String(candidate._id));
-    const user = usersByEmail.get((candidate.email || '').toLowerCase()) || {};
-    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
-    return profileRow({
-      candidate,
-      user,
-      app,
-      job,
-      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
-    });
+    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
+    const id = candidate._id ? String(candidate._id) : null;
+    
+    if (email && !appsByEmail.has(email)) appsByEmail.set(email, app);
+    if (id && !appsById.has(id)) appsById.set(id, app);
   });
 
+  const rows = [];
+  const seenEmails = new Set();
+
+  // 1. Process all candidate profiles (the source of truth for resumes/experience)
   for (const profile of candidateProfiles) {
-    if (profileIdsWithApps.has(String(profile._id))) continue;
-    const user = usersByEmail.get((profile.email || '').toLowerCase()) || {};
+    const email = (profile.email || '').toLowerCase();
+    if (email) seenEmails.add(email);
+    
+    const user = usersByEmail.get(email) || {};
+    const app = appsById.get(String(profile._id)) || appsByEmail.get(email) || null;
+    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
+
     rows.push(profileRow({
       candidate: profile,
       user,
-      orgName: tenantMap[String(profile.tenantId)] || '',
+      app,
+      job,
+      orgName: tenantMap[String(profile.tenantId)] || tenantMap[String(app?.tenantId)] || '',
     }));
   }
 
-  const profileEmails = new Set(candidateProfiles.map(c => (c.email || '').toLowerCase()).filter(Boolean));
+  // 2. Process candidate users who don't have a formal profile yet
   for (const user of candidateUsers) {
-    if (profileEmails.has((user.email || '').toLowerCase())) continue;
+    const email = (user.email || '').toLowerCase();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+
+    const app = appsByEmail.get(email) || null;
+    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
+
     rows.push(profileRow({
       user,
-      orgName: tenantMap[String(user.tenantId)] || '',
+      app,
+      job,
+      orgName: tenantMap[String(user.tenantId)] || tenantMap[String(app?.tenantId)] || '',
+    }));
+  }
+
+  // 3. Process applications that somehow have neither a profile nor a user (legacy data)
+  for (const app of apps) {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : null;
+    rows.push(profileRow({
+      candidate,
+      user: {},
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job?.tenantId)] || '',
     }));
   }
 
@@ -783,36 +858,63 @@ router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super
   ]);
 
   const usersByEmail = new Map(candidateUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
-  const profileIdsWithApps = new Set();
-  const rows = [];
+  const appsByEmail = new Map();
+  const appsById = new Map();
 
   apps.forEach(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    if (candidate?._id) profileIdsWithApps.add(String(candidate._id));
-    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
+    const id = candidate._id ? String(candidate._id) : null;
+    if (email && !appsByEmail.has(email)) appsByEmail.set(email, app);
+    if (id && !appsById.has(id)) appsById.set(id, app);
+  });
+
+  const rows = [];
+  const seenEmails = new Set();
+
+  for (const candidate of candidateProfiles) {
+    const email = (candidate.email || '').toLowerCase();
+    if (email) seenEmails.add(email);
+    const user = usersByEmail.get(email) || {};
+    const app = appsById.get(String(candidate._id)) || appsByEmail.get(email) || null;
+    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
     rows.push(profileRow({
       candidate,
-      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      user,
       app,
       job,
-      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
+      orgName: tenantMap[String(candidate.tenantId)] || tenantMap[String(app?.tenantId)] || '',
     }));
-  });
+  }
 
-  candidateProfiles.forEach(candidate => {
-    if (profileIdsWithApps.has(String(candidate._id))) return;
+  for (const user of candidateUsers) {
+    const email = (user.email || '').toLowerCase();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+    const app = appsByEmail.get(email) || null;
+    const job = app?.jobId && typeof app.jobId === 'object' ? app.jobId : null;
+    rows.push(profileRow({
+      user,
+      app,
+      job,
+      orgName: tenantMap[String(user.tenantId)] || tenantMap[String(app?.tenantId)] || '',
+    }));
+  }
+
+  for (const app of apps) {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    const email = (candidate.email || app.candidateEmail || app.email || '').toLowerCase();
+    if (email && seenEmails.has(email)) continue;
+    if (email) seenEmails.add(email);
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : null;
     rows.push(profileRow({
       candidate,
-      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
-      orgName: tenantMap[String(candidate.tenantId)] || '',
+      user: {},
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job?.tenantId)] || '',
     }));
-  });
-
-  const profileEmails = new Set(candidateProfiles.map(c => (c.email || '').toLowerCase()).filter(Boolean));
-  candidateUsers.forEach(user => {
-    if (profileEmails.has((user.email || '').toLowerCase())) return;
-    rows.push(profileRow({ user, orgName: tenantMap[String(user.tenantId)] || '' }));
-  });
+  }
 
   const exportRows = rows.map(r => ({
     ...r,
