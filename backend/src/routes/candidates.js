@@ -146,7 +146,9 @@ router.post('/parse-resume', ...guard,
 router.get('/:id', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
-    const candidate = await Candidate.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+    const filter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+    const candidate = await Candidate.findOne(filter).lean();
     if (!candidate) throw new AppError('Candidate not found.', 404);
     res.json({ success: true, data: { ...candidate, id: candidate._id?.toString() } });
   })
@@ -204,8 +206,11 @@ router.patch('/:id', ...guard,
       throw new AppError('LinkedIn URL must start with https://linkedin.com/in/', 400);
     }
 
+    const filter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
     const candidate = await Candidate.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+      filter,
       { $set: updates },
       { new: true }
     );

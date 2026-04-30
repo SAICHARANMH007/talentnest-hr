@@ -375,7 +375,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, []);
 
   const openCandidatesDrill = () => fetchDrill('Candidate Database', 'user', async () => {
-    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
+    const raw = await api.getCandidateRecords({ limit: 'all' }).catch(() => ({ data: [] }));
     const list = Array.isArray(raw?.data) ? raw.data : [];
     return list.map(c => ({
       ...c,
@@ -392,7 +392,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getApplicants({ limit: 1000 }).catch(() => ({ data: [] }));
+    const raw = await api.getApplicants({ limit: 'all' }).catch(() => ({ data: [] }));
     const list = raw?.data || [];
     return list.map(r => ({
       ...r,
@@ -406,8 +406,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const openVelocityDrill = (point = null) => fetchDrill(point?.date ? `Applications on ${point.label}` : 'Application Velocity — Last 14 Days', 'app', async () => {
     const params = point?.date
-      ? { startDate: point.date, endDate: point.date, limit: 1000 }
-      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 1000 };
+      ? { startDate: point.date, endDate: point.date, limit: 'all' }
+      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 'all' };
     const raw = await api.getApplicants(params).catch(() => ({ data: [] }));
     return (raw?.data || []).map(r => ({
       ...r,

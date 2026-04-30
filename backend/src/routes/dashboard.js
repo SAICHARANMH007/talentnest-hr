@@ -24,6 +24,14 @@ const JOB_APPLICANT_POPULATE = {
   select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters',
   populate: { path: 'assignedRecruiters', select: 'name email role' },
 };
+const CANDIDATE_APPLICANT_POPULATE = {
+  path: 'candidateId',
+  select: [
+    'name email phone title currentCompany location preferredLocation skills experience relevantExperience',
+    'currentCTC expectedCTC availability noticePeriodDays candidateStatus certifications linkedinUrl resumeUrl videoResumeUrl',
+    'source tenantId assignedRecruiterId parsedProfile.totalExperienceYears additionalDetails client ta clientSpoc userId createdAt updatedAt',
+  ].join(' '),
+};
 
 // Default SLA hours per stage
 const DEFAULT_SLA_HOURS = {
@@ -92,9 +100,14 @@ async function orgNameMap() {
 
 async function buildApplicationFilters(req) {
   const filter = { ...tenantFilter(req), deletedAt: null };
-  const { stage, source, jobId, startDate, endDate } = req.query;
+  const { stage, source, jobId, startDate, endDate, status, recruiterId, minScore } = req.query;
   if (stage) filter.currentStage = stage;
   if (source) filter.source = source;
+  if (status) filter.status = status;
+  if (minScore !== undefined && minScore !== '') {
+    const score = Number(minScore);
+    if (!Number.isNaN(score)) filter.aiMatchScore = { $gte: score };
+  }
   if (startDate || endDate) {
     filter.createdAt = {};
     if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -115,8 +128,20 @@ async function buildApplicationFilters(req) {
     } else {
       filter.jobId = { $in: myJobIds };
     }
-  } else if (jobId) {
-    filter.jobId = new mongoose.Types.ObjectId(jobId);
+  } else {
+    const recruiterJobIds = recruiterId
+      ? (await Job.find({ ...tenantFilter(req), assignedRecruiters: recruiterId, deletedAt: null }).select('_id').lean()).map(j => j._id)
+      : null;
+    if (jobId && recruiterJobIds) {
+      const requested = String(jobId);
+      filter.jobId = recruiterJobIds.some(id => String(id) === requested)
+        ? new mongoose.Types.ObjectId(jobId)
+        : { $in: [] };
+    } else if (jobId) {
+      filter.jobId = new mongoose.Types.ObjectId(jobId);
+    } else if (recruiterJobIds) {
+      filter.jobId = { $in: recruiterJobIds };
+    }
   }
   return filter;
 }
@@ -134,6 +159,12 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
         .filter(Boolean)
         .join(', ')
     : '';
+  const assignedRecruiterIds = Array.isArray(job?.assignedRecruiters)
+    ? job.assignedRecruiters
+        .map(r => (typeof r === 'object' ? (r._id || r.id) : r)?.toString())
+        .filter(Boolean)
+    : [];
+  const assignedRecruiterId = (candidate?.assignedRecruiterId || user?.assignedRecruiterId)?.toString?.() || '';
   return {
     recordType: app ? 'Application' : (candidate?._id ? 'Candidate Profile' : 'Candidate Account'),
     applicationId: app?._id?.toString() || '',
@@ -160,6 +191,7 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     videoResumeUrl: candidate?.videoResumeUrl || user?.videoResumeUrl || '',
     source: app?.source || candidate?.source || user?.source || 'platform',
     organisation: orgName,
+    jobId: job?._id?.toString() || app?.jobId?.toString?.() || '',
     jobTitle: job?.title || '',
     jobCompany: job?.companyName || job?.company || '',
     jobLocation: job?.location || '',
@@ -170,6 +202,8 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     salaryCurrency: job?.salaryCurrency || '',
     salaryType: job?.salaryType || '',
     assignedRecruiters,
+    assignedRecruiterIds,
+    assignedRecruiterId,
     stage: app?.currentStage || '',
     status: app?.status || '',
     aiMatchScore: app?.aiMatchScore ?? '',
@@ -494,18 +528,30 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
 */
 router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
+  const fetchAll = req.query.limit === 'all' || req.query.limit === '0';
   const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
   const search = String(req.query.search || '').trim().toLowerCase();
 
+  const appQuery = Application.find({ ...tf, deletedAt: null })
+    .populate(CANDIDATE_APPLICANT_POPULATE)
+    .populate(JOB_APPLICANT_POPULATE)
+    .sort({ createdAt: -1 });
+  const profileQuery = Candidate.find({ ...tf, deletedAt: null })
+    .select(CANDIDATE_APPLICANT_POPULATE.select.replace('parsedProfile.totalExperienceYears', 'parsedProfile'))
+    .sort({ createdAt: -1 });
+  const userQuery = User.find({ ...tf, role: 'candidate', deletedAt: null })
+    .select('-password -passwordHash -settings')
+    .sort({ createdAt: -1 });
+  if (!fetchAll) {
+    appQuery.limit(limit);
+    profileQuery.limit(limit);
+    userQuery.limit(limit);
+  }
+
   const [apps, candidateProfiles, candidateUsers, tenantMap] = await Promise.all([
-    Application.find({ ...tf, deletedAt: null })
-      .populate('candidateId')
-      .populate(JOB_APPLICANT_POPULATE)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean(),
-    Candidate.find({ ...tf, deletedAt: null }).sort({ createdAt: -1 }).limit(limit).lean(),
-    User.find({ ...tf, role: 'candidate', deletedAt: null }).select('-password -passwordHash').sort({ createdAt: -1 }).limit(limit).lean(),
+    appQuery.lean(),
+    profileQuery.lean(),
+    userQuery.lean(),
     orgNameMap(),
   ]);
 
@@ -551,24 +597,26 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
     : rows;
 
   filtered.sort((a, b) => new Date(b.appliedAt || b.profileCreatedAt || b.joinedAt || 0) - new Date(a.appliedAt || a.profileCreatedAt || a.joinedAt || 0));
-  res.json({ success: true, data: filtered.slice(0, limit), total: filtered.length });
+  res.json({ success: true, data: fetchAll ? filtered : filtered.slice(0, limit), total: filtered.length });
 }));
 
 /* GET /api/dashboard/applicants
    Applicants are application rows only: one row per job application.
 */
 router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const fetchAll = req.query.limit === 'all' || req.query.limit === '0';
   const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
   const search = String(req.query.search || '').trim().toLowerCase();
   const filter = await buildApplicationFilters(req);
 
+  const appQuery = Application.find(filter)
+    .populate(CANDIDATE_APPLICANT_POPULATE)
+    .populate(JOB_APPLICANT_POPULATE)
+    .sort({ createdAt: -1 });
+  if (!fetchAll) appQuery.limit(limit);
+
   const [apps, tenantMap] = await Promise.all([
-    Application.find(filter)
-      .populate('candidateId')
-      .populate(JOB_APPLICANT_POPULATE)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean(),
+    appQuery.lean(),
     orgNameMap(),
   ]);
 
@@ -603,10 +651,9 @@ router.get('/applicants/export', authenticate, allowRoles('admin', 'super_admin'
   const search = String(req.query.search || '').trim().toLowerCase();
   const [apps, tenantMap] = await Promise.all([
     Application.find(filter)
-      .populate('candidateId')
+      .populate(CANDIDATE_APPLICANT_POPULATE)
       .populate(JOB_APPLICANT_POPULATE)
       .sort({ createdAt: -1 })
-      .limit(10000)
       .lean(),
     orgNameMap(),
   ]);
@@ -720,13 +767,18 @@ router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super
 
   const [apps, candidateProfiles, candidateUsers, tenantMap] = await Promise.all([
     Application.find({ ...tf, deletedAt: null })
-      .populate('candidateId')
+      .populate(CANDIDATE_APPLICANT_POPULATE)
       .populate(JOB_APPLICANT_POPULATE)
       .sort({ createdAt: -1 })
-      .limit(10000)
       .lean(),
-    Candidate.find({ ...tf, deletedAt: null }).sort({ createdAt: -1 }).limit(10000).lean(),
-    User.find({ ...tf, role: 'candidate', deletedAt: null }).select('-password -passwordHash').sort({ createdAt: -1 }).limit(10000).lean(),
+    Candidate.find({ ...tf, deletedAt: null })
+      .select(CANDIDATE_APPLICANT_POPULATE.select.replace('parsedProfile.totalExperienceYears', 'parsedProfile'))
+      .sort({ createdAt: -1 })
+      .lean(),
+    User.find({ ...tf, role: 'candidate', deletedAt: null })
+      .select('-password -passwordHash -settings')
+      .sort({ createdAt: -1 })
+      .lean(),
     orgNameMap(),
   ]);
 

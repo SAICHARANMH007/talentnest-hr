@@ -352,27 +352,90 @@ async function syncCandidateApplicationsToRecruiter(candidateUser, recruiterId, 
   return { jobCount: jobIds.length, applicationCount: apps.length };
 }
 
+async function syncCandidateProfileToRecruiter(candidate, recruiterId, actor) {
+  if (!candidate?._id || !recruiterId) return { jobCount: 0, applicationCount: 0 };
+
+  const recruiter = await User.findOne({ _id: recruiterId, role: 'recruiter', deletedAt: null })
+    .select('_id tenantId name email')
+    .lean();
+  if (!recruiter) throw new AppError('Recruiter not found.', 404);
+  if (actor.role !== 'super_admin' && String(recruiter.tenantId) !== String(actor.tenantId)) {
+    throw new AppError('Recruiter must belong to your organisation.', 403);
+  }
+  if (String(candidate.tenantId) !== String(recruiter.tenantId)) {
+    throw new AppError('Candidate and recruiter must belong to the same organisation.', 403);
+  }
+
+  await Candidate.updateOne(
+    { _id: candidate._id },
+    { $set: { assignedRecruiterId: recruiter._id } }
+  );
+
+  const apps = await Application.find({
+    candidateId: candidate._id,
+    tenantId: recruiter.tenantId,
+    deletedAt: null,
+  }).select('_id jobId tenantId').lean();
+
+  const jobIds = [...new Set(apps.map(a => String(a.jobId)).filter(Boolean))];
+  if (jobIds.length) {
+    await Job.updateMany(
+      { _id: { $in: jobIds }, tenantId: recruiter.tenantId, deletedAt: null },
+      { $addToSet: { assignedRecruiters: recruiter._id } }
+    );
+
+    Notification.create({
+      userId: recruiter._id,
+      tenantId: recruiter.tenantId,
+      type: 'application',
+      title: 'Candidate Applications Assigned',
+      message: `${candidate.name || candidate.email} is now assigned to you across ${jobIds.length} applied job${jobIds.length === 1 ? '' : 's'}.`,
+      link: '/app/applicants',
+    }).catch(() => {});
+  }
+
+  return { jobCount: jobIds.length, applicationCount: apps.length };
+}
+
 // PATCH /api/users/:id/assign — Assign recruiter to candidate
 router.patch('/:id/assign', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
   const { recruiterId } = req.body;
   const target = await User.findOne({ _id: req.params.id, role: 'candidate', deletedAt: null }).lean();
-  if (!target) throw new AppError('Candidate user not found.', 404);
-  if (req.user.role !== 'super_admin' && String(target.tenantId) !== String(req.user.tenantId)) {
+  if (target && req.user.role !== 'super_admin' && String(target.tenantId) !== String(req.user.tenantId)) {
     throw new AppError('Candidate must belong to your organisation.', 403);
   }
 
-  const sync = recruiterId
-    ? await syncCandidateApplicationsToRecruiter(target, recruiterId, req.user)
-    : { jobCount: 0, applicationCount: 0 };
+  if (target) {
+    const sync = recruiterId
+      ? await syncCandidateApplicationsToRecruiter(target, recruiterId, req.user)
+      : { jobCount: 0, applicationCount: 0 };
 
-  const user = await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: { assignedRecruiterId: recruiterId || null } },
+      { new: true }
+    ).select('-passwordHash').lean();
+    if (!user) throw new AppError('User not found.', 404);
+    logger.audit('Recruiter assigned to candidate', req.user._id, req.user.tenantId, { targetUserId: req.params.id, recruiterId, ...sync });
+    return res.json({ success: true, data: { ...userService.normalize(user), assignmentSync: sync } });
+  }
+
+  const candidateFilter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') candidateFilter.tenantId = req.user.tenantId;
+  const candidate = await Candidate.findOne(candidateFilter).lean();
+  if (!candidate) throw new AppError('Candidate not found.', 404);
+
+  const sync = recruiterId
+    ? await syncCandidateProfileToRecruiter(candidate, recruiterId, req.user)
+    : { jobCount: 0, applicationCount: 0 };
+  const updated = await Candidate.findByIdAndUpdate(
     req.params.id,
     { $set: { assignedRecruiterId: recruiterId || null } },
     { new: true }
-  ).select('-passwordHash').lean();
-  if (!user) throw new AppError('User not found.', 404);
-  logger.audit('Recruiter assigned to candidate', req.user._id, req.user.tenantId, { targetUserId: req.params.id, recruiterId, ...sync });
-  res.json({ success: true, data: { ...userService.normalize(user), assignmentSync: sync } });
+  ).lean();
+
+  logger.audit('Recruiter assigned to candidate profile', req.user._id, req.user.tenantId, { candidateId: req.params.id, recruiterId, ...sync });
+  res.json({ success: true, data: { ...updated, id: updated._id.toString(), role: 'candidate', assignmentSync: sync } });
 }));
 
 // POST /api/users/bulk-whatsapp — send personalised WhatsApp to multiple candidates

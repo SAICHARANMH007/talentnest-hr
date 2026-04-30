@@ -72,13 +72,13 @@ export default function Logo({
   if (variant === 'icon') return <IconMark />;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: gaps[size], ...style }} className={className}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: gaps[size], minWidth: 0, ...style }} className={className}>
       {variant !== 'wordmark' && <IconMark />}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-        <span style={{ fontSize: textSizes[size], fontWeight: 800, color: mainColor, letterSpacing: '-0.03em', fontFamily: 'inherit' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, minWidth: 0, overflow: 'hidden' }}>
+        <span style={{ fontSize: textSizes[size], fontWeight: 800, color: mainColor, letterSpacing: '-0.03em', fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           TalentNest
         </span>
-        <span style={{ fontSize: tagSizes[size], fontWeight: 700, color: tagColor, letterSpacing: '0.3em', marginTop: size === 'xs' ? 0 : 1, fontFamily: 'inherit' }}>
+        <span style={{ fontSize: tagSizes[size], fontWeight: 700, color: tagColor, letterSpacing: '0.3em', marginTop: size === 'xs' ? 0 : 1, fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           HR
         </span>
       </div>
