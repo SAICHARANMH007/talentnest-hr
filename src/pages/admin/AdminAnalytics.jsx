@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api, downloadBlob } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
+import Badge from '../../components/ui/Badge.jsx';
 import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
@@ -403,21 +404,19 @@ export default function AdminAnalytics({ user, onNavigate }) {
     }));
   });
 
-  const openVelocityDrill = () => fetchDrill('Application Velocity — Last 14 Days', 'app', async () => {
-    const raw = await api.getApplicants({ limit: 1000 }).catch(() => ({ data: [] }));
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 14);
-    cutoff.setHours(0, 0, 0, 0);
-    return (raw?.data || [])
-      .filter(r => r.appliedAt && new Date(r.appliedAt) >= cutoff)
-      .map(r => ({
-        ...r,
-        id: r.applicationId,
-        name: r.candidateName || r.email || 'Candidate',
-        sub: `${r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : ''} · ${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}`,
-        stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
-        currentStage: r.stage,
-      }));
+  const openVelocityDrill = (point = null) => fetchDrill(point?.date ? `Applications on ${point.label}` : 'Application Velocity — Last 14 Days', 'app', async () => {
+    const params = point?.date
+      ? { startDate: point.date, endDate: point.date, limit: 1000 }
+      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 1000 };
+    const raw = await api.getApplicants(params).catch(() => ({ data: [] }));
+    return (raw?.data || []).map(r => ({
+      ...r,
+      id: r.applicationId,
+      name: r.candidateName || r.email || 'Candidate',
+      sub: `${r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : ''} · ${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}${r.assignedRecruiters ? ` · ${r.assignedRecruiters}` : ''}`,
+      stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
+      currentStage: r.stage,
+    }));
   });
 
   const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
@@ -538,9 +537,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       {/* ── Charts Row ── */}
       <div className="analytics-chart-row">
-        <div style={{ ...glassPanel, cursor: 'pointer' }} onClick={openVelocityDrill} title="View candidate records behind this trend">
+        <div style={{ ...glassPanel }} title="Click a date to view candidate records behind that point">
           <AreaChart data={trends} color="#0176D3" height={220} title="Application Velocity"
-            subtitle="Candidates joining the pipeline across all jobs (Last 14 days)" />
+            subtitle="Candidates joining the pipeline across all jobs (Last 14 days)" onItemClick={openVelocityDrill} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8 }}>
+            <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>Click any date on the chart to drill into actual applicant records.</p>
+            {onNavigate && <button onClick={() => onNavigate('applicants')} style={{ ...btnG, padding: '6px 12px', fontSize: 11 }}>Open Applicants</button>}
+          </div>
         </div>
         <div style={{ ...glassPanel, cursor: 'pointer' }}>
           <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
@@ -973,12 +976,34 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
         const downloadCSV = () => {
           if (!filtered.length) return;
-          const headers = ['Name', 'Detail', 'Date'];
-          const rows = filtered.map(item => [
-            item.name || item.title || 'Record',
-            item.sub || item.email || '',
-            item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '',
-          ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+          const columns = [
+            ['name', 'Name'],
+            ['email', 'Email'],
+            ['phone', 'Mobile'],
+            ['organisation', 'Organisation'],
+            ['jobTitle', 'Job'],
+            ['jobCompany', 'Hiring Company'],
+            ['assignedRecruiters', 'Assigned Recruiters'],
+            ['currentStage', 'Stage'],
+            ['status', 'Status'],
+            ['source', 'Source'],
+            ['aiMatchScore', 'AI Match Score'],
+            ['skills', 'Skills'],
+            ['experience', 'Experience'],
+            ['currentCompany', 'Current Company'],
+            ['location', 'Location'],
+            ['currentCTC', 'Current CTC'],
+            ['expectedCTC', 'Expected CTC'],
+            ['appliedAt', 'Applied At'],
+            ['recruiterNotes', 'Recruiter Notes'],
+            ['coverLetter', 'Cover Letter'],
+          ];
+          const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+          const rows = filtered.map(item => columns.map(([key]) => {
+            const value = key === 'appliedAt' && item[key] ? new Date(item[key]).toLocaleDateString() : item[key];
+            return esc(value);
+          }).join(','));
+          const headers = columns.map(([, label]) => label);
           const blob = new Blob([`${headers.join(',')}\n${rows.join('\n')}`], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');

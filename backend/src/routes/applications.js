@@ -467,6 +467,14 @@ router.patch('/:id/stage', ...guard,
         if (req.user.role !== 'super_admin') stageFilter.tenantId = req.user.tenantId;
         app = await Application.findOne(stageFilter).session(session);
         if (!app) throw new AppError('Application not found.', 404);
+        if (req.user.role === 'recruiter') {
+          const assignedJob = await Job.findOne({
+            _id: app.jobId,
+            tenantId: req.user.tenantId,
+            assignedRecruiters: req.user.id,
+          }).select('_id').session(session);
+          if (!assignedJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
+        }
 
         app.currentStage = stage;
         app.stageHistory.push({ stage, movedBy: req.user.id, movedAt: new Date(), notes: notes || '' });

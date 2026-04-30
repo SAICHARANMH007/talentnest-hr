@@ -5,6 +5,7 @@ const router       = express.Router();
 /** Escape regex special chars to prevent ReDoS on user-supplied search strings */
 function escRe(s) { return String(s).slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 const User         = require('../models/User');
+const Candidate    = require('../models/Candidate');
 const { authenticate } = require('../middleware/auth');
 const { allowRoles } = require('../middleware/rbac');
 const { getPagination, paginatedResponse } = require('../middleware/paginate');
@@ -405,28 +406,75 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   if (req.query.role) filter.role = req.query.role;
 
   const users = await User.find(filter).select('-password -passwordHash').sort({ createdAt: -1 }).limit(5000).lean();
+  const candidateEmails = [...new Set(users
+    .filter(u => u.role === 'candidate' && u.email)
+    .map(u => u.email.toLowerCase()))];
+  const candidateProfiles = candidateEmails.length
+    ? await Candidate.find({ email: { $in: candidateEmails }, deletedAt: null }).lean()
+    : [];
+  const profilesByEmail = new Map(candidateProfiles.map(c => [c.email.toLowerCase(), c]));
 
   const columns = [
     { header: 'Name',       key: 'name',      width: 22 },
     { header: 'Email',      key: 'email',      width: 28 },
     { header: 'Role',       key: 'role',       width: 16 },
     { header: 'Phone',      key: 'phone',      width: 16 },
+    { header: 'Title',      key: 'title',      width: 24 },
+    { header: 'Current Company', key: 'currentCompany', width: 24 },
     { header: 'Location',   key: 'location',   width: 20 },
+    { header: 'Preferred Location', key: 'preferredLocation', width: 22 },
     { header: 'Skills',     key: 'skillsStr',  width: 35 },
+    { header: 'Experience Years', key: 'experience', width: 16 },
+    { header: 'Relevant Experience', key: 'relevantExperience', width: 22 },
+    { header: 'Current CTC', key: 'currentCTC', width: 16 },
+    { header: 'Expected CTC', key: 'expectedCTC', width: 16 },
+    { header: 'Availability', key: 'availability', width: 18 },
+    { header: 'Notice Period Days', key: 'noticePeriodDays', width: 18 },
+    { header: 'Candidate Status', key: 'candidateStatus', width: 18 },
+    { header: 'Certifications', key: 'certifications', width: 30 },
+    { header: 'LinkedIn', key: 'linkedinUrl', width: 34 },
+    { header: 'Resume URL', key: 'resumeUrl', width: 34 },
+    { header: 'Video Resume URL', key: 'videoResumeUrl', width: 34 },
+    { header: 'Client', key: 'client', width: 20 },
+    { header: 'TA', key: 'ta', width: 18 },
+    { header: 'Client SPOC', key: 'clientSpoc', width: 20 },
+    { header: 'Additional Details', key: 'additionalDetails', width: 45 },
     { header: 'Status',     key: 'status',     width: 12 },
     { header: 'Joined',     key: 'joined',     width: 16 },
   ];
 
-  const rows = users.map(u => ({
-    name:      u.name || '',
-    email:     u.email || '',
-    role:      u.role || '',
-    phone:     u.phone || '',
-    location:  u.location || '',
-    skillsStr: Array.isArray(u.skills) ? u.skills.join(', ') : (u.skills || ''),
-    status:    u.isActive ? 'Active' : 'Inactive',
-    joined:    u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '',
-  }));
+  const rows = users.map(u => {
+    const c = profilesByEmail.get((u.email || '').toLowerCase()) || {};
+    const merged = { ...u, ...Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined && v !== null && v !== '')) };
+    return {
+      name:      merged.name || '',
+      email:     merged.email || '',
+      role:      merged.role || u.role || '',
+      phone:     merged.phone || '',
+      title:     merged.title || u.jobRole || '',
+      currentCompany: merged.currentCompany || '',
+      location:  merged.location || '',
+      preferredLocation: merged.preferredLocation || '',
+      skillsStr: Array.isArray(merged.skills) ? merged.skills.join(', ') : (merged.skills || ''),
+      experience: merged.experience ?? '',
+      relevantExperience: merged.relevantExperience || '',
+      currentCTC: merged.currentCTC || '',
+      expectedCTC: merged.expectedCTC || '',
+      availability: merged.availability || '',
+      noticePeriodDays: merged.noticePeriodDays ?? '',
+      candidateStatus: merged.candidateStatus || '',
+      certifications: Array.isArray(merged.certifications) ? merged.certifications.join(', ') : (merged.certifications || ''),
+      linkedinUrl: merged.linkedinUrl || '',
+      resumeUrl: merged.resumeUrl || '',
+      videoResumeUrl: merged.videoResumeUrl || '',
+      client: merged.client || '',
+      ta: merged.ta || '',
+      clientSpoc: merged.clientSpoc || '',
+      additionalDetails: merged.additionalDetails || '',
+      status:    merged.isActive === false ? 'Inactive' : 'Active',
+      joined:    merged.createdAt ? new Date(merged.createdAt).toLocaleDateString('en-IN') : '',
+    };
+  });
 
   const buf = exportToExcel('Users', columns, rows);
   const role = req.query.role || 'users';

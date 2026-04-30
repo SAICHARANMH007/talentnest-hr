@@ -81,6 +81,7 @@ const InterestDeclinedPage = lazy(() => import('./pages/public/InterestDeclinedP
 
 const AddCandidateForm = lazy(() => import('./components/shared/AddCandidateForm.jsx'));
 const AssignedCandidates = lazy(() => import('./pages/shared/AssignedCandidates.jsx'));
+const ApplicantsRecordsPage = lazy(() => import('./pages/shared/ApplicantsRecordsPage.jsx'));
 const ProfilePage = lazy(() => import('./pages/shared/ProfilePage.jsx'));
 const CreateJobPage = lazy(() => import('./pages/shared/CreateJobPage.jsx'));
 const FormsHub = lazy(() => import('./pages/shared/FormsHub.jsx'));
@@ -466,6 +467,7 @@ export default function App() {
             <Route path="jobs" element={rk === 'recruiter' ? <RecruiterJobs user={user} /> : <AdminJobs user={user} />} />
             <Route path="jobs/create" element={<CreateJobPage user={user} onBack={() => window.history.back()} onSuccess={() => window.history.back()} />} />
             <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="applicants" element={<ApplicantsRecordsPage user={user} />} />
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="ai-match" element={<RecruiterAIMatch user={user} />} />
