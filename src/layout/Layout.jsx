@@ -69,20 +69,6 @@ function PageLoader() {
   );
 }
 
-// ── Page Loader (Skeletal) ───────────────────────────────────────────────────
-function PageLoader() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Skeleton height="40px" width="300px" style={{ marginBottom: 20 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-        <Skeleton height="200px" />
-        <Skeleton height="200px" />
-        <Skeleton height="200px" />
-      </div>
-      <Skeleton height="400px" style={{ marginTop: 20 }} />
-    </div>
-  );
-}
 
 // ── Nav definitions ────────────────────────────────────────────────────────────
 const NAVS = {
