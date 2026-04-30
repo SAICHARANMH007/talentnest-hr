@@ -874,40 +874,100 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
 // GET /api/applications/export — export pipeline to Excel
 router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { exportToExcel } = require('../utils/exportToExcel');
-  const filter = { deletedAt: null, tenantId: req.user.tenantId };
+  const Tenant = require('../models/Tenant');
+  const filter = { deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
   if (req.query.jobId) filter.jobId = req.query.jobId;
   if (req.query.stage) filter.currentStage = req.query.stage;
 
-  const apps = await Application.find(filter)
-    .populate('candidateId', 'name email phone location skills')
-    .populate('jobId', 'title company companyName location')
+  const [apps, tenants] = await Promise.all([
+    Application.find(filter)
+    .populate('candidateId', 'name email phone title summary location skills experience relevantExperience currentCompany currentCTC expectedCTC preferredLocation availability noticePeriodDays candidateStatus certifications linkedinUrl resumeUrl videoResumeUrl source client ta clientSpoc additionalDetails')
+    .populate('jobId', 'title company companyName location department')
     .sort({ createdAt: -1 })
     .limit(5000)
-    .lean();
+    .lean(),
+    Tenant.find({}).select('name').lean(),
+  ]);
+  const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
 
   const columns = [
-    { header: 'Candidate',    key: 'candidateName',  width: 22 },
-    { header: 'Email',        key: 'email',          width: 28 },
-    { header: 'Phone',        key: 'phone',          width: 16 },
-    { header: 'Job',          key: 'jobTitle',       width: 30 },
-    { header: 'Stage',        key: 'currentStage',   width: 20 },
-    { header: 'Status',       key: 'status',         width: 12 },
-    { header: 'AI Score',     key: 'aiMatchScore',   width: 12 },
-    { header: 'Source',       key: 'source',         width: 14 },
-    { header: 'Applied Date', key: 'appliedDate',    width: 16 },
+    { header: 'Candidate',       key: 'candidateName',  width: 24 },
+    { header: 'Email',           key: 'email',          width: 30 },
+    { header: 'Mobile Number',   key: 'phone',          width: 18 },
+    { header: 'Organisation',    key: 'organisation',   width: 24 },
+    { header: 'Job',             key: 'jobTitle',       width: 30 },
+    { header: 'Company',         key: 'company',        width: 24 },
+    { header: 'Job Location',    key: 'jobLocation',    width: 20 },
+    { header: 'Stage',           key: 'currentStage',   width: 20 },
+    { header: 'Status',          key: 'status',         width: 12 },
+    { header: 'AI Score',        key: 'aiMatchScore',   width: 12 },
+    { header: 'Source',          key: 'source',         width: 14 },
+    { header: 'Applied Date',    key: 'appliedDate',    width: 16 },
+    { header: 'Current Title',   key: 'title',          width: 24 },
+    { header: 'Current Company', key: 'currentCompany', width: 24 },
+    { header: 'Candidate Location', key: 'location',    width: 22 },
+    { header: 'Preferred Location', key: 'preferredLocation', width: 22 },
+    { header: 'Skills',          key: 'skills',         width: 42 },
+    { header: 'Experience Years', key: 'experience',    width: 16 },
+    { header: 'Relevant Experience', key: 'relevantExperience', width: 22 },
+    { header: 'Current CTC',     key: 'currentCTC',     width: 16 },
+    { header: 'Expected CTC',    key: 'expectedCTC',    width: 16 },
+    { header: 'Availability',    key: 'availability',   width: 18 },
+    { header: 'Notice Days',     key: 'noticePeriodDays', width: 14 },
+    { header: 'Candidate Status', key: 'candidateStatus', width: 18 },
+    { header: 'Certifications',  key: 'certifications', width: 28 },
+    { header: 'LinkedIn',        key: 'linkedinUrl',    width: 34 },
+    { header: 'Resume URL',      key: 'resumeUrl',      width: 34 },
+    { header: 'Video Resume URL', key: 'videoResumeUrl', width: 34 },
+    { header: 'Client',          key: 'client',         width: 20 },
+    { header: 'TA',              key: 'ta',             width: 18 },
+    { header: 'Client SPOC',     key: 'clientSpoc',     width: 20 },
+    { header: 'Cover Letter',    key: 'coverLetter',    width: 45 },
+    { header: 'Recruiter Notes', key: 'recruiterNotes', width: 45 },
+    { header: 'Additional Details', key: 'additionalDetails', width: 45 },
   ];
 
-  const rows = apps.map(a => ({
-    candidateName: a.candidateId?.name || '',
-    email:         a.candidateId?.email || '',
-    phone:         a.candidateId?.phone || '',
-    jobTitle:      a.jobId?.title || '',
-    currentStage:  a.currentStage || '',
-    status:        a.status || '',
-    aiMatchScore:  a.aiMatchScore ?? '',
-    source:        a.source || '',
-    appliedDate:   a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN') : '',
-  }));
+  const rows = apps.map(a => {
+    const c = a.candidateId || {};
+    const j = a.jobId || {};
+    return {
+      candidateName: c.name || '',
+      email:         c.email || '',
+      phone:         c.phone || '',
+      organisation:  tenantMap[String(a.tenantId)] || '',
+      jobTitle:      j.title || '',
+      company:       j.companyName || j.company || '',
+      jobLocation:   j.location || '',
+      currentStage:  a.currentStage || '',
+      status:        a.status || '',
+      aiMatchScore:  a.aiMatchScore ?? '',
+      source:        a.source || c.source || '',
+      appliedDate:   a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN') : '',
+      title:         c.title || '',
+      currentCompany: c.currentCompany || '',
+      location:      c.location || '',
+      preferredLocation: c.preferredLocation || '',
+      skills:        Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || ''),
+      experience:    c.experience ?? '',
+      relevantExperience: c.relevantExperience || '',
+      currentCTC:    c.currentCTC || '',
+      expectedCTC:   c.expectedCTC || '',
+      availability:  c.availability || '',
+      noticePeriodDays: c.noticePeriodDays ?? '',
+      candidateStatus: c.candidateStatus || '',
+      certifications: Array.isArray(c.certifications) ? c.certifications.join(', ') : (c.certifications || ''),
+      linkedinUrl:   c.linkedinUrl || '',
+      resumeUrl:     c.resumeUrl || '',
+      videoResumeUrl: c.videoResumeUrl || '',
+      client:        c.client || '',
+      ta:            c.ta || '',
+      clientSpoc:    c.clientSpoc || '',
+      coverLetter:   a.coverLetter || '',
+      recruiterNotes: a.recruiterNotes || '',
+      additionalDetails: c.additionalDetails || '',
+    };
+  });
 
   const buf = exportToExcel('Pipeline', columns, rows);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

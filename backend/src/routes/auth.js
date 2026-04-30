@@ -37,13 +37,35 @@ function slugify(str) {
   return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+async function getTalentNestTenant(session) {
+  const domain = 'talentnesthr.com';
+  const existing = await Tenant.findOne({
+    $or: [
+      { slug: /^talentnesthr(?:-|$)/i },
+      { domain },
+      { name: /^TalentNest HR$/i },
+    ],
+  }).session(session);
+  if (existing) return existing;
+
+  const [tenant] = await Tenant.create([{
+    name: 'TalentNest HR',
+    slug: `talentnesthr-${crypto.randomBytes(3).toString('hex')}`,
+    domain,
+    plan: 'enterprise',
+    subscriptionStatus: 'active',
+    isRecruitmentAgency: true,
+  }], { session });
+  return tenant;
+}
+
 // ── POST /api/auth/register ──────────────────────────────────────────────────
 // Creates a Tenant + admin User in one atomic transaction.
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const { name, email, password, domain } = req.body;
   const role = req.body.role === 'candidate' ? 'candidate' : 'admin';
-  // For employer/admin signups companyName is required; candidates get a personal tenant
-  const companyName = req.body.companyName || (role === 'candidate' ? `${name?.trim()} (Personal)` : null);
+  // For employer/admin signups companyName is required; candidates belong to TalentNest HR.
+  const companyName = req.body.companyName || (role === 'candidate' ? 'TalentNest HR' : null);
   if (!name || !email || !password || !companyName)
     throw new AppError('name, email, password, and companyName are required.', 400);
   if (password.length < 8)
@@ -55,16 +77,18 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   let result;
   try {
     await session.withTransaction(async () => {
-      // 1. Create tenant
-      const slug = slugify(companyName);
-      const tenant = await Tenant.create([{
-        name: companyName.trim(),
-        slug: slug + '-' + crypto.randomBytes(3).toString('hex'),
-        domain: domain || authService.emailDomain(email),
-        plan: role === 'candidate' ? 'free' : 'trial',
-        subscriptionStatus: 'active',
-        subscriptionExpiry: role === 'candidate' ? undefined : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      }], { session });
+      // 1. Create tenant. Candidate signups are grouped under TalentNest HR so
+      //    super admins get one canonical organisation for platform applicants.
+      const tenant = role === 'candidate'
+        ? await getTalentNestTenant(session)
+        : (await Tenant.create([{
+            name: companyName.trim(),
+            slug: slugify(companyName) + '-' + crypto.randomBytes(3).toString('hex'),
+            domain: domain || authService.emailDomain(email),
+            plan: 'trial',
+            subscriptionStatus: 'active',
+            subscriptionExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          }], { session }))[0];
 
       // 2. Create user
       const user = await User.create([{

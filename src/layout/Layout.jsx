@@ -48,7 +48,7 @@ function timeAgo(dateStr) {
 }
 
 // ── Notification Bell ──────────────────────────────────────────────────────────
-function NotificationBell({ userRole }) {
+function NotificationBell({ userRole, compact = false }) {
   const [notifs,   setNotifs]   = React.useState([]);
   const [open,     setOpen]     = React.useState(false);
   const [tab,      setTab]      = React.useState('unread');
@@ -159,6 +159,8 @@ function NotificationBell({ userRole }) {
   const displayed = tab === 'unread' ? notifs.filter(n => !n.read) : notifs;
   const panelW    = Math.min(380, window.innerWidth - 24);
 
+  const iconButtonSize = compact ? 36 : 40;
+
   return (
     <>
       {/* Detail drill-down modal */}
@@ -243,7 +245,7 @@ function NotificationBell({ userRole }) {
         data-notif-btn="true"
         onClick={() => open ? setOpen(false) : openPanel()}
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
-        style={{ background: open ? 'rgba(255,255,255,0.2)' : 'none', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', color: '#FFFFFF', fontSize: 17, position: 'relative', padding: '5px 8px', transition: 'all 0.15s', minHeight: 36 }}
+        style={{ background: open ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer', color: '#FFFFFF', fontSize: compact ? 14 : 16, position: 'relative', padding: 0, transition: 'all 0.15s', width: iconButtonSize, minWidth: iconButtonSize, height: iconButtonSize, minHeight: iconButtonSize, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
       >
         🔔
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
@@ -377,6 +379,22 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
   const activeBg = 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.1))';
   const activeBorder = '1px solid rgba(255,255,255,0.16)';
   const hoverBg = 'rgba(255,255,255,0.1)';
+  const sidebarActionBtn = {
+    width: 36,
+    minWidth: 36,
+    height: 36,
+    minHeight: 36,
+    borderRadius: 8,
+    padding: 0,
+    cursor: 'pointer',
+    fontSize: 14,
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    position: 'relative',
+  };
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -387,21 +405,23 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
 
   return (
     <>
-      {/* Logo + Bell */}
-      <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', minHeight: 38 }}>
+      {/* Logo + quick controls */}
+      <div style={{ padding: '18px 16px 16px', borderBottom: `1px solid ${sidebarLine}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', minHeight: 38, overflow: 'hidden' }}>
             <Logo size="md" variant="full" theme="dark" customLogoUrl={orgLogo} />
           </div>
-          <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>{(user.role || '').toUpperCase()}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 9, flexShrink: 0 }}>
-          <NotificationBell userRole={user?.role} />
-          <button onClick={() => setShowInbox?.(true)} title="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{(user.role || '').toUpperCase()}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <NotificationBell userRole={user?.role} compact />
+          <button onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             💬
             {unreadMsgs > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: '#ef4444', borderRadius: '50%', width: 12, height: 12, fontSize: 8, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadMsgs > 9 ? '9+' : unreadMsgs}</span>}
           </button>
-          <button onClick={() => setShowOnline?.(true)} title="Who's Online" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontSize: 14, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🟢</button>
+          <button onClick={() => setShowOnline?.(true)} title="Who's Online" aria-label="Who's Online" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>🟢</button>
+          </div>
         </div>
       </div>
 

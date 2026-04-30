@@ -7,7 +7,33 @@ const { authenticate: auth } = require('../middleware/auth');
 const { tenantGuard } = require('../middleware/tenantGuard');
 const { allowRoles } = require('../middleware/rbac');
 const Tenant = require('../models/Tenant');
+const Organization = require('../models/Organization');
 const Job = require('../models/Job');
+
+// ── Helpers: normalize across Organization + Tenant models ─────────────────
+// Platform data lives in Organization; self-service sign-ups use Tenant.
+// Always check Organization first.
+async function resolveOrg(tenantId) {
+  const org = await Organization.findById(tenantId).lean();
+  if (org) return { ...org, _model: 'org' };
+  const ten = await Tenant.findById(tenantId).lean();
+  if (ten) return { ...ten, _model: 'tenant' };
+  return null;
+}
+
+async function updateOrg(tenantId, update) {
+  const org = await Organization.findByIdAndUpdate(tenantId, update, { new: true });
+  if (!org) await Tenant.findByIdAndUpdate(tenantId, update);
+}
+
+// Normalize plan/status fields that differ between models
+function normBilling(org) {
+  if (!org) return null;
+  const status = org.subscriptionStatus
+    || (org.status === 'suspended' ? 'suspended' : org.status === 'active' ? 'active' : 'active');
+  const expiry = org.subscriptionExpiry || org.trialEndsAt || null;
+  return { plan: org.plan || 'trial', subscriptionStatus: status, subscriptionExpiry: expiry, name: org.name };
+}
 const User = require('../models/User');
 const Candidate = require('../models/Candidate');
 const PaymentRecord = require('../models/PaymentRecord');

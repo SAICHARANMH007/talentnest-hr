@@ -136,6 +136,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [serverStats,   setServerStats]   = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [trendData,     setTrendData]     = useState([]);
+  const [candidateRecords, setCandidateRecords] = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
   const [period,        setPeriod]        = useState(1); // default 30 days
@@ -186,6 +187,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     api.getApplications({ limit: 200 }).then(unwrap).then(setAllApps).catch(() => setAllApps([]));
     api.getJobs({ limit: 200 }).then(unwrap).then(setAllJobs).catch(() => setAllJobs([]));
     api.getUsers({ role: 'candidate', limit: 200 }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+    api.getCandidateRecords({ limit: 500 }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
     api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
     api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
   }, [period, platformWide]);
@@ -370,9 +372,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, []);
 
   const openCandidatesDrill = () => fetchDrill('Candidate Database', 'user', async () => {
-    const raw = await api.getUsers({ role: 'candidate', limit: 500 }).catch(() => []);
-    const list = Array.isArray(raw) ? raw : (raw?.data || []);
-    return list.map(c => ({ id: c.id || c._id, name: c.name || c.email || 'Candidate', email: c.email || '', sub: c.title || c.location || 'Registered Candidate' }));
+    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
+    const list = Array.isArray(raw?.data) ? raw.data : [];
+    return list.map(c => ({
+      ...c,
+      id: c.applicationId || c.candidateId || c.userId || `${c.email}-${c.jobTitle}`,
+      name: c.candidateName || c.email || 'Candidate',
+      email: c.email || '',
+      sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}${c.organisation ? ` · ${c.organisation}` : ''}`,
+    }));
   });
 
   const openActiveJobsDrill = () => fetchDrill('Active Postings', 'job', async () => {
@@ -381,8 +389,33 @@ export default function AdminAnalytics({ user, onNavigate }) {
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getApplications({ limit: 500 }).then(unwrap).catch(() => []);
-    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.currentStage || a.stage}` }));
+    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
+    const list = (raw?.data || []).filter(r => r.recordType === 'Application');
+    return list.map(r => ({
+      ...r,
+      id: r.applicationId,
+      name: r.candidateName || r.email || 'Candidate',
+      sub: `${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}`,
+      stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
+      currentStage: r.stage,
+    }));
+  });
+
+  const openVelocityDrill = () => fetchDrill('Application Velocity — Last 14 Days', 'app', async () => {
+    const raw = await api.getCandidateRecords({ limit: 1000 }).catch(() => ({ data: [] }));
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    cutoff.setHours(0, 0, 0, 0);
+    return (raw?.data || [])
+      .filter(r => r.recordType === 'Application' && r.appliedAt && new Date(r.appliedAt) >= cutoff)
+      .map(r => ({
+        ...r,
+        id: r.applicationId,
+        name: r.candidateName || r.email || 'Candidate',
+        sub: `${r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : ''} · ${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}`,
+        stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
+        currentStage: r.stage,
+      }));
   });
 
   const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
@@ -467,6 +500,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
               {platformWide ? '🌐 All Orgs' : '🏢 My Org'}
             </button>
           )}
+          <button
+            disabled={exporting.candidates}
+            onClick={() => handleExport('candidates', '/dashboard/candidate-records/export', `candidate-records-${new Date().toISOString().split('T')[0]}.xlsx`)}
+            style={{ padding: '7px 16px', borderRadius: 10, border: '2px solid #E2E8F0', background: '#fff', color: '#0176D3', fontSize: 12, fontWeight: 800, cursor: exporting.candidates ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: exporting.candidates ? 0.6 : 1 }}>
+            {exporting.candidates ? 'Exporting…' : '⬇ Export Candidate Excel'}
+          </button>
           <div style={{ display: 'flex', background: 'rgba(1,118,211,0.06)', padding: 4, borderRadius: 14, flexWrap: 'wrap', gap: 2 }}>
             {PERIODS.map((p, i) => (
               <button key={i} onClick={() => setPeriod(i)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: period === i ? '#0176D3' : 'transparent', color: period === i ? '#fff' : '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{p.label}</button>
@@ -491,7 +530,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       {/* ── Charts Row ── */}
       <div className="analytics-chart-row">
-        <div style={glassPanel}>
+        <div style={{ ...glassPanel, cursor: 'pointer' }} onClick={openVelocityDrill} title="View candidate records behind this trend">
           <AreaChart data={trends} color="#0176D3" height={220} title="Application Velocity"
             subtitle="Candidates joining the pipeline across all jobs (Last 14 days)" />
         </div>
@@ -501,6 +540,56 @@ export default function AdminAnalytics({ user, onNavigate }) {
           <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
         </div>
       </div>
+
+      {isSuperAdmin && (
+        <div style={{ ...glassPanel, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ ...sectionTitle, margin: 0 }}>All Candidate Records</h3>
+              <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
+                Joined application, candidate profile, and candidate account data.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={openCandidatesDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View All</button>
+              <button
+                disabled={exporting.candidates}
+                onClick={() => handleExport('candidates', '/dashboard/candidate-records/export', `candidate-records-${new Date().toISOString().split('T')[0]}.xlsx`)}
+                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.candidates ? 0.6 : 1 }}>
+                {exporting.candidates ? 'Exporting…' : 'Export Excel'}
+              </button>
+            </div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 920 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC' }}>
+                  {['Candidate', 'Email', 'Mobile', 'Organisation', 'Job', 'Stage', 'Source', 'Applied'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800, color: '#0A1628', borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {candidateRecords.slice(0, 8).map((r, i) => (
+                  <tr key={r.applicationId || r.candidateId || r.userId || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.candidateName || 'Candidate'}</td>
+                    <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.phone || '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.organisation || '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.jobTitle || '-'}</td>
+                    <td style={{ padding: '10px 12px' }}><Badge label={r.stage || r.recordType || 'Profile'} color="#0176D3" /></td>
+                    <td style={{ padding: '10px 12px', color: '#706E6B' }}>{r.source || '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#706E6B', whiteSpace: 'nowrap' }}>{r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : '-'}</td>
+                  </tr>
+                ))}
+                {candidateRecords.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No candidate records found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="analytics-chart-row-rev">
         <div style={glassPanel}>
@@ -898,6 +987,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
                       <div>
                         <div style={{ fontWeight: 700, color: '#0A1628', fontSize: 14 }}>{item.name || item.title || 'Record'}</div>
                         <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{item.sub || item.email || (item.createdAt ? `Added ${new Date(item.createdAt).toLocaleDateString()}` : '')}</div>
+                        {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                            {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
+                            {item.phone && <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.phone}</span>}
+                            {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
+                            {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
+                            {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
+                            {item.skills && <span style={{ background: '#F5F3FF', color: '#6D28D9', fontSize: 11, padding: '3px 8px', borderRadius: 20, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.skills}</span>}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         {drillDown.type === 'app' && (

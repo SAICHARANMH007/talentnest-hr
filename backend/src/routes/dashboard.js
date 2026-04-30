@@ -3,7 +3,9 @@ const express         = require('express');
 const router          = express.Router();
 const mongoose        = require('mongoose');
 const User            = require('../models/User');
+const Tenant          = require('../models/Tenant');
 const Job             = require('../models/Job');
+const Candidate       = require('../models/Candidate');
 const Application     = require('../models/Application');
 const { authenticate } = require('../middleware/auth');
 const { allowRoles }  = require('../middleware/rbac');
@@ -49,6 +51,76 @@ function tenantFilter(req) {
   return { tenantId: new mongoose.Types.ObjectId(req.user.tenantId) };
 }
 
+async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
+  const [candidateDocs, userDocs] = await Promise.all([
+    Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email').lean(),
+    User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email').lean(),
+  ]);
+  const keys = new Set();
+  [...candidateDocs, ...userDocs].forEach((doc) => {
+    const email = (doc.email || '').trim().toLowerCase();
+    keys.add(email || String(doc._id));
+  });
+  return keys.size;
+}
+
+function csv(v) {
+  if (Array.isArray(v)) return v.filter(Boolean).join(', ');
+  return v || '';
+}
+
+function fmtDate(v) {
+  return v ? new Date(v).toLocaleDateString('en-IN') : '';
+}
+
+function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName = '' }) {
+  const sourceDoc = candidate?._id ? candidate : user;
+  const parsed = candidate?.parsedProfile || {};
+  return {
+    recordType: app ? 'Application' : (candidate?._id ? 'Candidate Profile' : 'Candidate Account'),
+    applicationId: app?._id?.toString() || '',
+    candidateId: candidate?._id?.toString() || '',
+    userId: user?._id?.toString() || candidate?.userId?.toString() || '',
+    candidateName: candidate?.name || user?.name || '',
+    email: candidate?.email || user?.email || '',
+    phone: candidate?.phone || user?.phone || '',
+    title: candidate?.title || user?.title || user?.jobRole || '',
+    currentCompany: candidate?.currentCompany || user?.currentCompany || '',
+    location: candidate?.location || user?.location || '',
+    preferredLocation: candidate?.preferredLocation || user?.preferredLocation || '',
+    skills: csv(candidate?.skills?.length ? candidate.skills : user?.skills),
+    experience: candidate?.experience ?? user?.experience ?? parsed.totalExperienceYears ?? '',
+    relevantExperience: candidate?.relevantExperience || user?.relevantExperience || '',
+    currentCTC: candidate?.currentCTC || user?.currentCTC || '',
+    expectedCTC: candidate?.expectedCTC || user?.expectedCTC || '',
+    availability: candidate?.availability || user?.availability || '',
+    noticePeriodDays: candidate?.noticePeriodDays ?? '',
+    candidateStatus: candidate?.candidateStatus || user?.candidateStatus || '',
+    certifications: csv(candidate?.certifications || user?.certifications),
+    linkedinUrl: candidate?.linkedinUrl || user?.linkedinUrl || '',
+    resumeUrl: candidate?.resumeUrl || user?.resumeUrl || '',
+    videoResumeUrl: candidate?.videoResumeUrl || user?.videoResumeUrl || '',
+    source: app?.source || candidate?.source || user?.source || 'platform',
+    organisation: orgName,
+    jobTitle: job?.title || '',
+    jobCompany: job?.companyName || job?.company || '',
+    jobLocation: job?.location || '',
+    stage: app?.currentStage || '',
+    status: app?.status || '',
+    aiMatchScore: app?.aiMatchScore ?? '',
+    appliedAt: app?.createdAt || null,
+    joinedAt: user?.createdAt || null,
+    profileCreatedAt: sourceDoc?.createdAt || null,
+    lastUpdatedAt: app?.updatedAt || sourceDoc?.updatedAt || null,
+    coverLetter: app?.coverLetter || '',
+    recruiterNotes: app?.recruiterNotes || '',
+    additionalDetails: candidate?.additionalDetails || user?.additionalDetails || '',
+    client: candidate?.client || user?.client || '',
+    ta: candidate?.ta || user?.ta || '',
+    clientSpoc: candidate?.clientSpoc || user?.clientSpoc || '',
+  };
+}
+
 // ── Public Stats ─────────────────────────────────────────────────────────────
 
 const BASE_HIRED   = 20;
@@ -89,7 +161,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), asyncHand
 
   const del = { deletedAt: null };
   const [candidates, recruiters, openJobs, applications, hired] = await Promise.all([
-    User.countDocuments({ ...candF, isActive: true }),
+    countUniqueCandidateProfiles(platformWide ? {} : tenantScope, platformWide ? { isActive: true } : { ...tenantScope, isActive: true }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
     Application.countDocuments({ ...orgF, ...del }),
@@ -333,6 +405,176 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   }
 
   res.json({ success: true, data });
+}));
+
+/* GET /api/dashboard/candidate-records
+   Joined super-admin/admin view of every candidate account/profile/application.
+*/
+router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tf = tenantFilter(req);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 1000, 5000);
+  const search = String(req.query.search || '').trim().toLowerCase();
+
+  const [apps, candidateProfiles, candidateUsers, tenants] = await Promise.all([
+    Application.find({ ...tf, deletedAt: null })
+      .populate('candidateId')
+      .populate('jobId', 'title company companyName location tenantId')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean(),
+    Candidate.find({ ...tf, deletedAt: null }).sort({ createdAt: -1 }).limit(limit).lean(),
+    User.find({ ...tf, role: 'candidate', deletedAt: null }).select('-password -passwordHash').sort({ createdAt: -1 }).limit(limit).lean(),
+    Tenant.find({}).select('name').lean(),
+  ]);
+
+  const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
+  const usersByEmail = new Map(candidateUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
+  const profilesById = new Map(candidateProfiles.map(c => [String(c._id), c]));
+  const profileIdsWithApps = new Set();
+
+  const rows = apps.map(app => {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    if (candidate?._id) profileIdsWithApps.add(String(candidate._id));
+    const user = usersByEmail.get((candidate.email || '').toLowerCase()) || {};
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    return profileRow({
+      candidate,
+      user,
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
+    });
+  });
+
+  for (const profile of candidateProfiles) {
+    if (profileIdsWithApps.has(String(profile._id))) continue;
+    const user = usersByEmail.get((profile.email || '').toLowerCase()) || {};
+    rows.push(profileRow({
+      candidate: profile,
+      user,
+      orgName: tenantMap[String(profile.tenantId)] || '',
+    }));
+  }
+
+  const profileEmails = new Set(candidateProfiles.map(c => (c.email || '').toLowerCase()).filter(Boolean));
+  for (const user of candidateUsers) {
+    if (profileEmails.has((user.email || '').toLowerCase())) continue;
+    rows.push(profileRow({
+      user,
+      orgName: tenantMap[String(user.tenantId)] || '',
+    }));
+  }
+
+  const filtered = search
+    ? rows.filter(r => [r.candidateName, r.email, r.phone, r.jobTitle, r.organisation, r.source, r.stage].some(v => String(v || '').toLowerCase().includes(search)))
+    : rows;
+
+  filtered.sort((a, b) => new Date(b.appliedAt || b.profileCreatedAt || b.joinedAt || 0) - new Date(a.appliedAt || a.profileCreatedAt || a.joinedAt || 0));
+  res.json({ success: true, data: filtered.slice(0, limit), total: filtered.length });
+}));
+
+/* GET /api/dashboard/candidate-records/export */
+router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tf = tenantFilter(req);
+
+  const [apps, candidateProfiles, candidateUsers, tenants] = await Promise.all([
+    Application.find({ ...tf, deletedAt: null })
+      .populate('candidateId')
+      .populate('jobId', 'title company companyName location tenantId')
+      .sort({ createdAt: -1 })
+      .limit(10000)
+      .lean(),
+    Candidate.find({ ...tf, deletedAt: null }).sort({ createdAt: -1 }).limit(10000).lean(),
+    User.find({ ...tf, role: 'candidate', deletedAt: null }).select('-password -passwordHash').sort({ createdAt: -1 }).limit(10000).lean(),
+    Tenant.find({}).select('name').lean(),
+  ]);
+
+  const tenantMap = Object.fromEntries(tenants.map(t => [String(t._id), t.name]));
+  const usersByEmail = new Map(candidateUsers.filter(u => u.email).map(u => [u.email.toLowerCase(), u]));
+  const profileIdsWithApps = new Set();
+  const rows = [];
+
+  apps.forEach(app => {
+    const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
+    if (candidate?._id) profileIdsWithApps.add(String(candidate._id));
+    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    rows.push(profileRow({
+      candidate,
+      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      app,
+      job,
+      orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
+    }));
+  });
+
+  candidateProfiles.forEach(candidate => {
+    if (profileIdsWithApps.has(String(candidate._id))) return;
+    rows.push(profileRow({
+      candidate,
+      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      orgName: tenantMap[String(candidate.tenantId)] || '',
+    }));
+  });
+
+  const profileEmails = new Set(candidateProfiles.map(c => (c.email || '').toLowerCase()).filter(Boolean));
+  candidateUsers.forEach(user => {
+    if (profileEmails.has((user.email || '').toLowerCase())) return;
+    rows.push(profileRow({ user, orgName: tenantMap[String(user.tenantId)] || '' }));
+  });
+
+  const exportRows = rows.map(r => ({
+    ...r,
+    appliedAt: fmtDate(r.appliedAt),
+    joinedAt: fmtDate(r.joinedAt),
+    profileCreatedAt: fmtDate(r.profileCreatedAt),
+    lastUpdatedAt: fmtDate(r.lastUpdatedAt),
+  }));
+
+  const columns = [
+    { header: 'Record Type', key: 'recordType', width: 20 },
+    { header: 'Candidate Name', key: 'candidateName', width: 24 },
+    { header: 'Email', key: 'email', width: 30 },
+    { header: 'Mobile Number', key: 'phone', width: 18 },
+    { header: 'Organisation', key: 'organisation', width: 24 },
+    { header: 'Job Title', key: 'jobTitle', width: 30 },
+    { header: 'Job Company', key: 'jobCompany', width: 24 },
+    { header: 'Job Location', key: 'jobLocation', width: 20 },
+    { header: 'Stage', key: 'stage', width: 18 },
+    { header: 'Status', key: 'status', width: 14 },
+    { header: 'Source', key: 'source', width: 16 },
+    { header: 'AI Match Score', key: 'aiMatchScore', width: 15 },
+    { header: 'Current Title', key: 'title', width: 24 },
+    { header: 'Current Company', key: 'currentCompany', width: 24 },
+    { header: 'Location', key: 'location', width: 20 },
+    { header: 'Preferred Location', key: 'preferredLocation', width: 22 },
+    { header: 'Skills', key: 'skills', width: 42 },
+    { header: 'Experience Years', key: 'experience', width: 16 },
+    { header: 'Relevant Experience', key: 'relevantExperience', width: 22 },
+    { header: 'Current CTC', key: 'currentCTC', width: 16 },
+    { header: 'Expected CTC', key: 'expectedCTC', width: 16 },
+    { header: 'Availability', key: 'availability', width: 18 },
+    { header: 'Notice Period Days', key: 'noticePeriodDays', width: 18 },
+    { header: 'Candidate Status', key: 'candidateStatus', width: 18 },
+    { header: 'Certifications', key: 'certifications', width: 30 },
+    { header: 'LinkedIn', key: 'linkedinUrl', width: 34 },
+    { header: 'Resume URL', key: 'resumeUrl', width: 34 },
+    { header: 'Video Resume URL', key: 'videoResumeUrl', width: 34 },
+    { header: 'Applied At', key: 'appliedAt', width: 16 },
+    { header: 'Joined At', key: 'joinedAt', width: 16 },
+    { header: 'Profile Created At', key: 'profileCreatedAt', width: 18 },
+    { header: 'Last Updated At', key: 'lastUpdatedAt', width: 18 },
+    { header: 'Client', key: 'client', width: 20 },
+    { header: 'TA', key: 'ta', width: 18 },
+    { header: 'Client SPOC', key: 'clientSpoc', width: 20 },
+    { header: 'Cover Letter', key: 'coverLetter', width: 45 },
+    { header: 'Recruiter Notes', key: 'recruiterNotes', width: 45 },
+    { header: 'Additional Details', key: 'additionalDetails', width: 45 },
+  ];
+
+  const buf = exportToExcel('Candidate Records', columns, exportRows);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="candidate-records-${Date.now()}.xlsx"`);
+  res.send(buf);
 }));
 
 // ── Recruiter Dashboard ───────────────────────────────────────────────────────
