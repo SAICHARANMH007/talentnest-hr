@@ -25,6 +25,7 @@ async function deduplicateJobs(tenantId) {
 
   for (const j of jobs) {
     // Normalize: lowercase + collapse whitespace for robust matching
+    if (!j.title) continue; // Safety check
     const titleNorm = j.title.toLowerCase().trim().replace(/\s+/g, ' ');
     const locNorm   = (j.location || '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/,.*$/, '').trim();
     const key = `${titleNorm}__${locNorm}`;
@@ -381,6 +382,42 @@ Key Responsibilities:
 
 Interested candidates can share profiles at mhsaicharan@talentnesthr.com.`,
   },
+  {
+    title: 'Cybersecurity Analyst',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Security',
+    urgency: 'High',
+    numberOfOpenings: 10,
+    experience: '2-5 years',
+    skills: ['SOC', 'SIEM', 'Penetration Testing', 'GRC', 'Network Security'],
+    contactEmail: 'hr@talentnesthr.com',
+    description: 'We are hiring Cybersecurity Analysts for our SOC operations. Candidates should have experience in threat monitoring and incident response.'
+  },
+  {
+    title: 'HR Business Partner',
+    location: 'Mumbai',
+    jobType: 'Full-Time',
+    department: 'HR',
+    urgency: 'Medium',
+    numberOfOpenings: 5,
+    experience: '3-6 years',
+    skills: ['HRMS', 'Employee Relations', 'Talent Management', 'Policy Design'],
+    contactEmail: 'hr@talentnesthr.com',
+    description: 'Looking for an HRBP to partner with business leaders on people strategy and talent management.'
+  },
+  {
+    title: 'React Native Developer',
+    location: 'Pune',
+    jobType: 'Full-Time',
+    department: 'Mobile Engineering',
+    urgency: 'High',
+    numberOfOpenings: 19,
+    experience: '2-4 years',
+    skills: ['React Native', 'TypeScript', 'iOS', 'Android', 'Redux'],
+    contactEmail: 'hr@talentnesthr.com',
+    description: 'Join our mobile team to build cross-platform applications for our HRMS suite.'
+  },
 ];
 
 
@@ -519,7 +556,8 @@ async function seed() {
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
 
-  // Deduplication disabled — run manually via /api/admin/deduplicate-jobs if needed
+  // ── 2.2 Cleanup Duplicates ──────────────────────────────────────────────────
+  await deduplicateJobs(tenantId);
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {

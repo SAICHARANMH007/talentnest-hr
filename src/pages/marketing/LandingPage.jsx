@@ -235,6 +235,8 @@ export default function LandingPage() {
   const [liveStats, setLiveStats] = useState(null);
   const [applying, setApplying]   = useState(null);
   const [liveJobs,  setLiveJobs]  = useState([]);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [urgentJobs, setUrgentJobs] = useState(0);
   const [jobTick,   setJobTick]   = useState(0);
 
   const loadLiveData = () => {
@@ -247,6 +249,9 @@ export default function LandingPage() {
       .then(d => {
         const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
         setLiveJobs(arr.slice(0, 6));
+        // Use pagination total or array length for the stat counters
+        setTotalJobs(d?.pagination?.total || arr.length);
+        setUrgentJobs(arr.filter(j => j.urgency === 'High' || j.urgency === 'high').length);
       })
       .catch(() => {});
   };

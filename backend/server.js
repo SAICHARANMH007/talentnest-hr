@@ -657,16 +657,22 @@ if (HAS_DIST) {
   });
 }
 
+// ── Video rooms REST
+app.use('/api/video-rooms', require('./src/routes/videoRooms'));
+
+// ── Calls REST
+app.use('/api/calls', require('./src/routes/calls'));
+
 // ── 404 handler (Wrap in AppError for API)
 app.all('*', (req, res, next) => {
-  next(new AppError(`Route not found: ${req.method} ${req.originalUrl}`, 404));
+  if (req.originalUrl.startsWith('/api/')) {
+    return next(new AppError(`API Route not found: ${req.method} ${req.originalUrl}`, 404));
+  }
+  next();
 });
 
 // ── Global error handler (Industry Standard)
 app.use(errorMiddleware);
-
-// ── Video rooms REST
-app.use('/api/video-rooms', require('./src/routes/videoRooms'));
 
 // ── Socket.IO (Video Interview + Chat + Calling)
 const http = require('http');
@@ -696,7 +702,7 @@ setupChatSocket(io);
 setupCallSocket(io);
 
 // ── Calls REST
-app.use('/api/calls', require('./src/routes/calls'));
+// (Moved up)
 
 // ── Start
 const PORT = process.env.PORT || 5000;

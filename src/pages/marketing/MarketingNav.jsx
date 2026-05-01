@@ -271,14 +271,14 @@ export default function MarketingNav({ active = 'home' }) {
             >
               <span style={{ fontSize: 15 }}>💼</span> Jobs
             </Link>
-            <a
-              href="https://www.talentnesthr.com/app"
+            <Link
+              to="/app"
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark})`, color: '#fff', border: 'none', borderRadius: 12, padding: '10px 22px', fontSize: 13, fontWeight: 900, textDecoration: 'none', boxShadow: `0 4px 12px rgba(var(--mkt-primary-rgb),0.30)`, transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${theme.primaryDark}, ${theme.primary})`; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 6px 18px rgba(var(--mkt-primary-rgb),0.40)`; }}
               onMouseLeave={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${theme.primary}, ${theme.primaryDark})`; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `0 4px 12px rgba(var(--mkt-primary-rgb),0.30)`; }}
             >
               🔐 Login
-            </a>
+            </Link>
           </div>
 
           {/* Hamburger Btn */}
