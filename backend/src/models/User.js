@@ -65,6 +65,8 @@ const userSchema = new mongoose.Schema({
   videoResumeUrl   : { type: String },
 
   // ── HR placement fields ───────────────────────────────────
+  organisation       : { type: String, trim: true },
+  orgName            : { type: String, trim: true },
   relevantExperience : { type: String, trim: true },
   preferredLocation  : { type: String, trim: true },
   currentCTC         : { type: String, trim: true },

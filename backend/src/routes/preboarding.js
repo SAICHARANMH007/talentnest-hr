@@ -141,6 +141,44 @@ router.patch('/:id/tasks/:taskId', authenticate, asyncHandler(async (req, res) =
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
+// ── Upload document for a task (Candidate) ────────────────────────────────────
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+const Tenant = require('../models/Tenant');
+const checkPlanLimits = require('../middleware/checkPlanLimits');
+
+router.post('/:id/tasks/:taskId/upload', authenticate, checkPlanLimits('storage'), upload.single('file'), asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('No file uploaded.', 400);
+
+  const pb = await PreBoarding.findOne({ _id: req.params.id, 'tasks._id': req.params.taskId });
+  if (!pb) throw new AppError('Pre-boarding record or task not found.', 404);
+
+  // In a real app, you would upload to S3/Cloudinary here.
+  // We'll simulate by creating a local link if it were a real file system, 
+  // or just use a data URI / placeholder for this demo.
+  const fileUrl = `https://storage.talentnesthr.com/preboarding/${pb.tenantId}/${req.params.id}/${req.file.originalname}`;
+  
+  // Update task with file info
+  const record = await PreBoarding.findOneAndUpdate(
+    { _id: req.params.id, 'tasks._id': req.params.taskId },
+    { 
+      $set: { 
+        'tasks.$.fileUrl': fileUrl,
+        'tasks.$.fileName': req.file.originalname,
+        'tasks.$.fileSize': req.file.size,
+        'tasks.$.completedAt': new Date(),
+        'tasks.$.completedBy': 'candidate'
+      } 
+    },
+    { new: true }
+  ).lean();
+
+  // Update storage usage in Tenant record
+  await Tenant.findByIdAndUpdate(pb.tenantId, { $inc: { 'stats.storageUsed': req.file.size } });
+
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
 // ── Send/resend welcome kit email ─────────────────────────────────────────────
 router.post('/:id/send-welcome-kit', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const record = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId });

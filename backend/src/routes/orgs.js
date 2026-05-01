@@ -270,6 +270,19 @@ router.patch('/:id', auth, async (req, res) => {
     const org = await Org.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
     if (!org) return res.status(404).json({ error: 'Organisation not found.' });
 
+    // ── Sync Name to Associated Users ──────────────────────────────────────────
+    // If name changed, propagate to recruiter/admin 'organisation' and 'currentCompany' fields
+    if (updates.name) {
+      try {
+        await User.updateMany(
+          { tenantId: org._id, role: { $in: ['admin', 'recruiter', 'hiring_manager'] } },
+          { $set: { organisation: org.name, orgName: org.name, currentCompany: org.name } }
+        );
+      } catch (syncErr) {
+        console.error(`[Org Name Sync Failed] orgId: ${org._id}`, syncErr.message);
+      }
+    }
+
     logger.audit('Organization updated', req.user.id, org._id, { updates: Object.keys(updates) });
     res.json(normalize(org));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }

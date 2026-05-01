@@ -306,10 +306,10 @@ router.get('/public', asyncHandler(async (_req, res) => {
     User.countDocuments({ role: 'candidate' }),
   ]);
   publicCache = {
-    candidatesHired : Math.max(BASE_HIRED,   hiredCount),
-    openJobs        : Math.max(BASE_JOBS,     jobsCount),
-    clientsServed   : Math.max(BASE_CLIENTS,  (clientsRaw || []).length),
-    candidatesInPool: Math.max(50,            totalUsers),
+    candidatesHired : hiredCount,
+    openJobs        : jobsCount,
+    clientsServed   : (clientsRaw || []).length,
+    candidatesInPool: totalUsers,
   };
   publicCacheAt = Date.now();
   res.json(publicCache);
@@ -332,7 +332,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
     Application.countDocuments({ ...orgF, ...del }),
-    Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
+    Application.countDocuments({ ...orgF, currentStage: 'selected', ...del }),
   ]);
 
   const avgPerJob = openJobs > 0 ? parseFloat((applications / openJobs).toFixed(1)) : 0;
@@ -343,10 +343,10 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     User.countDocuments({ ...candF, isActive: true, createdAt: { $gte: ago30 } }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true, createdAt: { $gte: ago30 } }),
     Application.countDocuments({ ...orgF, ...del, createdAt: { $gte: ago30 } }),
-    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'selected', updatedAt: { $gte: ago30 } }),
     User.countDocuments({ ...candF, isActive: true, createdAt: { $lt: ago30 } }),
     Application.countDocuments({ ...orgF, ...del, createdAt: { $lt: ago30 } }),
-    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'selected', updatedAt: { $lt: ago30 } }),
     Job.countDocuments({ ...orgF, ...del, status: 'active', createdAt: { $lt: ago30 } }),
     Job.countDocuments({ ...orgF, ...del, status: { $in: ['active', 'closed'] } }),
   ]);
@@ -393,7 +393,7 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
           daysToHire: {
             $divide: [
               { $subtract: [
-                { $ifNull: [{ $arrayElemAt: [{ $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Hired'] } } }, -1] }, '$updatedAt'] },
+                { $ifNull: [{ $arrayElemAt: [{ $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'selected'] } } }, -1] }, '$updatedAt'] },
                 '$createdAt',
               ]},
               86400000,
@@ -452,7 +452,7 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
       { $group: {
           _id: '$job.assignedRecruiters',
           candidates: { $sum: 1 },
-          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } },
+          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'selected'] }, 1, 0] } },
         },
       },
     ]),
@@ -532,7 +532,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
   // Compute avgTimeToHire via aggregation — avoids fetching all hired docs to Node memory
   const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg] = await Promise.all([
     Application.countDocuments({ ...orgF, ...dateF }),
-    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
+    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'selected' }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
     Application.aggregate([
       { $match: { ...orgF, ...dateF } },
@@ -552,7 +552,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       { $project: { title: '$job.title', count: 1 } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, currentStage: 'Hired' } },
+      { $match: { ...orgF, currentStage: 'selected' } },
       { $project: {
           daysToHire: { $divide: [{ $subtract: ['$updatedAt', '$createdAt'] }, 86400000] },
         },
@@ -622,7 +622,8 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
 router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+  const rawLimit = parseInt(req.query.limit, 10);
+  const limit = (rawLimit === 0) ? 1000 : Math.min(rawLimit || 50, 500);
   const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim();
 

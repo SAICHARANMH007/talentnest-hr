@@ -31,6 +31,7 @@ const orgSchema = new mongoose.Schema({
     features          : [{ type: String }], // e.g., ['ai_match', 'reports']
     brandColor        : { type: String, default: '#0176D3' },
     allowPublicJobs   : { type: Boolean, default: true },
+    maxStorageGB      : { type: Number, default: 5 }, // Default 5GB
     customPipelineStages: [String],
     dataVisibility    : { type: String, enum: ['own', 'org'], default: 'org' }
   },
@@ -39,6 +40,7 @@ const orgSchema = new mongoose.Schema({
   stats: {
     totalHires     : { type: Number, default: 0 },
     avgTimeToHire  : { type: Number, default: 0 },
+    storageUsed    : { type: Number, default: 0 }, // in bytes
   },
 
   // Organisation Type

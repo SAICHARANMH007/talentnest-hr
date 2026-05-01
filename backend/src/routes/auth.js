@@ -137,6 +137,8 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         phone: req.body.phone || undefined,
         role,
         isActive: true,
+        orgName: req.body.orgName || req.body.organisation || tenant.name || 'TalentNest HR',
+        organisation: req.body.organisation || req.body.orgName || tenant.name || 'TalentNest HR',
       }], { session });
 
       // 3. Auto-create Candidate profile for self-registered job seekers so the
@@ -586,6 +588,8 @@ router.post('/google', loginLimiter, asyncHandler(async (req, res) => {
       photoUrl: payload.picture || undefined,
       role,
       isActive: true,
+      orgName: req.body.orgName || req.body.organisation || tenant.name || 'TalentNest HR',
+      organisation: req.body.organisation || req.body.orgName || tenant.name || 'TalentNest HR',
     });
 
     // Auto-create Candidate profile for Google-authenticated candidates

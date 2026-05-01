@@ -187,7 +187,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Badge label={(form.role || u.role || 'candidate').replace('_', ' ')} color="#0176D3" />
                 {app && <Badge label={(SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
-                {(fullUser?.orgName || u.orgName) && <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {fullUser?.orgName || u.orgName}</span>}
+                <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {fullUser?.orgName || u.orgName || 'TalentNest HR'}</span>
               </div>
             </div>
             <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>

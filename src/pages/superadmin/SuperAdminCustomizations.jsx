@@ -48,7 +48,7 @@ const SYSTEM_FIELDS = {
     { id: 'applied_at',      label: 'Date Applied',           type: 'date',    required: true,  key: 'createdAt' },
     { id: 'notes',           label: 'Recruiter Notes',        type: 'textarea',required: false, key: 'notes' },
     { id: 'tags',            label: 'Application Tags',       type: 'tags',    required: false, key: 'tags' },
-    { id: 'aiMatchScore',    label: 'AI Match Score',         type: 'number',  required: false, key: 'aiMatchScore' },
+    { id: 'aiMatchScore',    label: 'Talent Match Score',         type: 'number',  required: false, key: 'aiMatchScore' },
     { id: 'rejectionReason', label: 'Rejection Reason',       type: 'select',  required: false, key: 'rejectionReason' },
   ],
   interview: [
@@ -930,7 +930,7 @@ const VISIBILITY_FIELDS = [
   { id: 'interview_feedback', label: 'Interview Feedback',    desc: 'Share feedback with candidates after rounds' },
   { id: 'offer_details',      label: 'Offer Details',         desc: 'Show full offer breakdown to candidates' },
   { id: 'internal_notes',     label: 'Internal Notes',        desc: 'Allow recruiter to add private notes on profiles' },
-  { id: 'candidate_score',    label: 'Candidate Score',       desc: 'Display AI match score to recruiters' },
+  { id: 'candidate_score',    label: 'Candidate Score',       desc: 'Display Talent Match Score to recruiters' },
   { id: 'source_tracking',    label: 'Source Tracking',       desc: 'Track where each candidate came from' },
   { id: 'diversity_data',     label: 'Diversity Fields',      desc: 'Collect optional diversity & inclusion data' },
 ];

@@ -30,6 +30,7 @@ function checkPlanLimits(resource) {
         jobs: 'maxActiveJobs',
         recruiters: 'maxRecruiterSeats',
         candidates: 'maxCandidateRecords',
+        storage: 'maxStorageGB',
       };
 
       const limitKey = resourceMap[resource];
@@ -56,14 +57,17 @@ function checkPlanLimits(resource) {
         current = await Candidate.countDocuments({
           tenantId: req.user.tenantId,
         });
+      } else if (resource === 'storage') {
+        // Current storage used in GB (convert bytes from tenant record)
+        current = (tenant.stats?.storageUsed || 0) / (1024 * 1024 * 1024);
       }
 
       if (current >= limit) {
-        throw new AppError(
-          `Your ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} plan allows a maximum of ${limit} ${resource}. You have currently used ${current}. Please upgrade your plan to increase your limits.`,
-          403,
-          { upgradeUrl: '/billing' }
-        );
+        const errorMsg = resource === 'storage'
+          ? `Your storage limit of ${limit}GB has been reached. Please upgrade to continue uploading documents.`
+          : `Your ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} plan allows a maximum of ${limit} ${resource}. You have currently used ${current}. Please upgrade your plan to increase your limits.`;
+        
+        throw new AppError(errorMsg, 403, { upgradeUrl: '/billing' });
       }
 
       next();

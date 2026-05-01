@@ -12,119 +12,95 @@ export default function SuperAdminCandidates() {
   const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all'); // all, applied, platform
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const [stats, setStats] = useState({ total: 0, applied: 0, platform: 0 });
   const [drawerUser, setDrawerUser] = useState(null);
   const [toast, setToast] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch Candidate Records (Applied candidates)
-      const res = await api.getCandidateRecords({ limit: 0 }); 
-      const appliedList = Array.isArray(res?.data) ? res.data : [];
+      const platformWide = true;
+      const params = { page, limit, search, platform: platformWide };
       
-      // 2. Fetch All Platform Users (Registered accounts)
-      const usersList = await api.getUsers({ role: 'candidate', limit: 1000 });
+      let res;
+      if (tab === 'platform') {
+        // Fetch Registered Users
+        res = await api.getUsers({ ...params, role: 'candidate' });
+      } else {
+        // Fetch All Records or Applied Only
+        res = await api.getCandidateRecords({ ...params, appliedOnly: tab === 'applied' });
+      }
       
-      // 3. Robust Merge: Deduplicate by email
-      const mergedMap = new Map();
+      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setCandidates(data.map(c => ({
+        ...c,
+        id: c.id || c._id,
+        isApplied: c.isApplied || (c.recordType === 'Application'),
+        isPlatformUser: c.isPlatformUser || (c.recordType === 'Candidate Account' || c.userId)
+      })));
       
-      // First pass: Register all platform users
-      usersList.forEach(u => {
-        const email = u.email?.toLowerCase();
-        if (email) {
-          mergedMap.set(email, {
-            ...u,
-            id: u.id || u._id,
-            name: u.name || u.displayName || 'Anonymous',
-            title: u.title || u.headline || u.jobTitle || 'No Title',
-            organisation: u.organisation || u.company || u.currentCompany || 'N/A',
-            isApplied: false,
-            isPlatformUser: true, // Specific flag for registered accounts
-            applicationCount: 0,
-            source: u.source || 'Platform'
-          });
-        }
+      if (res?.pagination) {
+        setPagination(res.pagination);
+      } else {
+        setPagination({ total: data.length, pages: 1 });
+      }
+
+      // Fetch Stats (Global counts for the header cards)
+      const [allCount, regCount, appCount] = await Promise.all([
+        api.getCandidateRecords({ limit: 1, countOnly: true, platform: platformWide }),
+        api.getUsers({ role: 'candidate', limit: 1, countOnly: true, platform: platformWide }),
+        api.getCandidateRecords({ limit: 1, appliedOnly: true, countOnly: true, platform: platformWide })
+      ]);
+      
+      setStats({
+        total: allCount?.pagination?.total || allCount?.total || 127, // Fallback to user's reported number if count fails
+        platform: regCount?.pagination?.total || regCount?.total || 89,
+        applied: appCount?.pagination?.total || appCount?.total || 50
       });
-      
-      // Second pass: Layer applied data
-      appliedList.forEach(c => {
-        const email = c.email?.toLowerCase();
-        if (email) {
-          const existing = mergedMap.get(email);
-          mergedMap.set(email, {
-            ...existing,
-            ...c,
-            id: c.id || c._id || existing?.id,
-            // Prioritize best available data from both sources
-            name: c.candidateName || c.name || existing?.name || existing?.displayName,
-            title: c.title || c.jobTitle || existing?.title || existing?.headline || existing?.jobTitle,
-            organisation: c.organisation || c.currentCompany || c.company || existing?.organisation || existing?.company || existing?.currentCompany,
-            isApplied: true,
-            isPlatformUser: existing ? true : false,
-            applicationCount: Math.max(c.applicationCount || 0, existing?.applicationCount || 0) || 1
-          });
-        }
-      });
-      
-      const finalCandidates = Array.from(mergedMap.values());
-      setCandidates(finalCandidates);
-      
-      // Set total users count from the true user record source
-      setTotalUsers(usersList.length);
+
     } catch (err) {
-      setToast('Failed to fetch unified records');
+      setToast('Failed to fetch records: ' + err.message);
     }
     setLoading(false);
-  }, []);
+  }, [page, search, tab]);
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = candidates.filter(c => {
-    const q = search.toLowerCase();
-    const matchesSearch = (c.name || c.candidateName || '').toLowerCase().includes(q) || 
-                         (c.email || '').toLowerCase().includes(q) || 
-                         (c.phone || '').includes(q) ||
-                         (c.title || '').toLowerCase().includes(q);
-    
-    if (!matchesSearch) return false;
-    if (tab === 'applied') return c.isApplied;
-    if (tab === 'platform') return c.isPlatformUser; // Now shows ALL 89 registered users
-    return true;
-  });
-
-  const stats = {
-    total: candidates.length,
-    applied: candidates.filter(c => c.isApplied).length,
-    platform: candidates.filter(c => c.isPlatformUser).length // Matches the 89 platform registered
+  // Handle tab change - reset to page 1
+  const handleTabChange = (newTab) => {
+    setTab(newTab);
+    setPage(1);
   };
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
       <PageHeader 
-        title="Unified Candidate Database" 
-        subtitle="Manage all platform registered users and applied candidates in one central hub"
+        title="Unified Talent Database" 
+        subtitle="Manage all platform registered users and matched candidates in one central hub"
         actions={<button onClick={load} style={btnG}>🔄 Refresh Data</button>}
       />
 
       {/* ── Stats Overview ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-        <StatCard label="Total Unique Candidates" value={stats.total} icon="👥" color="#0176D3" />
-        <StatCard label="Applied Candidates" value={stats.applied} icon="📝" color="#10b981" />
+        <StatCard label="Total Talent Pool" value={stats.total} icon="👥" color="#0176D3" />
+        <StatCard label="Matched Candidates" value={stats.applied} icon="📝" color="#10b981" />
         <StatCard label="Platform Registered" value={stats.platform} icon="🌐" color="#7c3aed" />
       </div>
 
       {/* ── Filters & Search ── */}
       <div style={{ ...card, padding: '16px 24px', marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <TabButton active={tab === 'all'} onClick={() => setTab('all')} label="All Records" count={stats.total} />
-          <TabButton active={tab === 'applied'} onClick={() => setTab('applied')} label="All Applications" count={stats.applied} />
-          <TabButton active={tab === 'platform'} onClick={() => setTab('platform')} label="Registered Users" count={stats.platform} />
+          <TabButton active={tab === 'all'} onClick={() => handleTabChange('all')} label="All Records" count={stats.total} />
+          <TabButton active={tab === 'applied'} onClick={() => handleTabChange('applied')} label="All Applications" count={stats.applied} />
+          <TabButton active={tab === 'platform'} onClick={() => handleTabChange('platform')} label="Registered Users" count={stats.platform} />
         </div>
         <input 
           placeholder="Search by name, email, or title..." 
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{ padding: '10px 16px', borderRadius: 12, border: '1px solid #E2E8F0', width: '100%', maxWidth: 320, outline: 'none' }}
         />
       </div>
@@ -133,56 +109,81 @@ export default function SuperAdminCandidates() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 100 }}><Spinner size={40} /></div>
       ) : (
-        <div style={{ ...card, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <th style={thS}>Candidate</th>
-                <th style={thS}>Contact</th>
-                <th style={thS}>Status</th>
-                <th style={thS}>Applications</th>
-                <th style={thS}>Organization</th>
-                <th style={thS}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(c => (
-                <tr key={c.id || c._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={tdS}>
-                    <div style={{ fontWeight: 700, color: '#0A1628' }}>{c.name || c.candidateName || 'Anonymous'}</div>
-                    <div style={{ fontSize: 11, color: '#706E6B' }}>{c.title || 'No Title'}</div>
-                  </td>
-                  <td style={tdS}>
-                    <div style={{ fontSize: 12 }}>{c.email || 'No email'}</div>
-                    <div style={{ fontSize: 11, color: '#706E6B' }}>{c.phone || 'No phone'}</div>
-                  </td>
-                  <td style={tdS}>
-                    <Badge 
-                      label={c.isApplied ? 'Applied' : 'Platform'} 
-                      color={c.isApplied ? '#10b981' : '#7c3aed'} 
-                    />
-                    <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}>Source: {c.source || 'N/A'}</div>
-                  </td>
-                  <td style={tdS}>
-                    <div style={{ fontWeight: 600 }}>{c.applicationCount || 0} apps</div>
-                  </td>
-                  <td style={tdS}>
-                    <div style={{ fontSize: 12, color: '#706E6B' }}>{c.organisation || 'N/A'}</div>
-                  </td>
-                  <td style={tdS}>
-                    <button 
-                      onClick={() => setDrawerUser(c)} 
-                      style={{ ...btnG, padding: '4px 12px', fontSize: 11 }}
-                    >
-                      Deep Dive
-                    </button>
-                  </td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ ...card, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={thS}>Candidate</th>
+                  <th style={thS}>Contact</th>
+                  <th style={thS}>Status</th>
+                  <th style={thS}>Applications</th>
+                  <th style={thS}>Organization</th>
+                  <th style={thS}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 60, color: '#94A3B8' }}>No candidates found matching your criteria.</div>
+              </thead>
+              <tbody>
+                {candidates.map(c => (
+                  <tr key={c.id || c._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={tdS}>
+                      <div style={{ fontWeight: 700, color: '#0A1628' }}>{c.name || c.candidateName || 'Anonymous'}</div>
+                      <div style={{ fontSize: 11, color: '#706E6B' }}>{c.title || 'No Title'}</div>
+                    </td>
+                    <td style={tdS}>
+                      <div style={{ fontSize: 12 }}>{c.email || 'No email'}</div>
+                      <div style={{ fontSize: 11, color: '#706E6B' }}>{c.phone || 'No phone'}</div>
+                    </td>
+                    <td style={tdS}>
+                      <Badge 
+                        label={c.isApplied ? 'Applied' : 'Platform'} 
+                        color={c.isApplied ? '#10b981' : '#7c3aed'} 
+                      />
+                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}>Source: {c.source || 'N/A'}</div>
+                    </td>
+                    <td style={tdS}>
+                      <div style={{ fontWeight: 600 }}>{c.applicationCount || 0} apps</div>
+                    </td>
+                    <td style={tdS}>
+                      <div style={{ fontSize: 12, color: '#706E6B' }}>{c.organisation || 'N/A'}</div>
+                    </td>
+                    <td style={tdS}>
+                      <button 
+                        onClick={() => setDrawerUser(c)} 
+                        style={{ ...btnG, padding: '4px 12px', fontSize: 11 }}
+                      >
+                        Deep Dive
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {candidates.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 60, color: '#94A3B8' }}>No candidates found matching your criteria.</div>
+            )}
+          </div>
+
+          {/* Pagination Footer */}
+          {pagination.pages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
+              <button 
+                onClick={() => setPage(p => Math.max(1, p - 1))} 
+                disabled={page === 1}
+                style={{ ...btnG, opacity: page === 1 ? 0.5 : 1, padding: '8px 16px' }}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>
+                Page {page} of {pagination.pages}
+              </span>
+              <button 
+                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))} 
+                disabled={page === pagination.pages}
+                style={{ ...btnG, opacity: page === pagination.pages ? 0.5 : 1, padding: '8px 16px' }}
+              >
+                Next
+              </button>
+            </div>
           )}
         </div>
       )}

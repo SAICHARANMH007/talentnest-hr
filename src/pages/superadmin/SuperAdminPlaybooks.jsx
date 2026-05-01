@@ -118,7 +118,7 @@ ${heroHtml('⚙️','DEVELOPER PLAYBOOK','Developer Playbook','Everything a deve
     <div class="alert alert-green">🟢 This playbook is regenerated on demand — every download reflects the current state of the platform as of <strong>${today}</strong>.</div>
     <table>
       <tr><th>Date</th><th>Area</th><th>Change</th><th>Files</th></tr>
-      <tr><td>${todayShort}</td><td><span class="badge badge-red">Bug Fix</span></td><td>All admin + candidate + recruiter pages were receiving paginated objects <code>{success,data,pagination}</code> from backend but treating them as arrays — now all pages unwrap <code>.data</code>. Fixed: AdminAnalytics, AdminJobs, AdminJobApproval, AdminDashboard, OrgSettings, RecruiterDashboard, RecruiterCandidates, RecruiterJobs, RecruiterPipeline, RecruiterAssessments, RecruiterAIMatch, CandidateDashboard, CandidateExploreJobs, CandidateProfile, CandidateAIMatch, SuperAdminCandidateImport, SuperAdminPlatform, SuperAdminSecurity, SuperAdminPermissions.</td><td>All page files, <code>api.js</code></td></tr>
+      <tr><td>${todayShort}</td><td><span class="badge badge-red">Bug Fix</span></td><td>All admin + candidate + recruiter pages were receiving paginated objects <code>{success,data,pagination}</code> from backend but treating them as arrays — now all pages unwrap <code>.data</code>. Fixed: AdminAnalytics, AdminJobs, AdminJobApproval, AdminDashboard, OrgSettings, RecruiterDashboard, RecruiterCandidates, RecruiterJobs, RecruiterPipeline, RecruiterAssessments, RecruiterTalentMatch, CandidateDashboard, CandidateExploreJobs, CandidateProfile, CandidateTalentMatch, SuperAdminCandidateImport, SuperAdminPlatform, SuperAdminSecurity, SuperAdminPermissions.</td><td>All page files, <code>api.js</code></td></tr>
       <tr><td>${todayShort}</td><td><span class="badge badge-red">Bug Fix</span></td><td>Added missing backend routes: GET/PATCH/DELETE /api/jobs, GET /api/jobs/:id, PATCH /api/jobs/:id/assign-recruiter, GET /api/jobs/:id/candidates. These were completely missing — all job list pages were getting 404s.</td><td><code>jobs.js</code></td></tr>
       <tr><td>${todayShort}</td><td><span class="badge badge-red">Bug Fix</span></td><td>Added missing GET /api/users/:id route. CandidateProfile, CandidateAIMatch, CandidateDashboard, RecruiterPipeline all call this and were getting "Route not found" 404.</td><td><code>users.js</code></td></tr>
       <tr><td>${todayShort}</td><td><span class="badge badge-red">Bug Fix</span></td><td>Candidate registration: <code>availability: 'Immediate'</code> (capital I) failed Mongoose enum (values are lowercase). Fixed to <code>'immediate'</code>. Also fixed <code>skills: ''</code> (string) → skills array properly parsed.</td><td><code>auth.js</code></td></tr>
@@ -320,8 +320,8 @@ router.<span class="fn">get</span>(<span class="s">'/protected'</span>, auth, <s
     <h3>Role → Nav Items → Component Mapping</h3>
     <table>
       <tr><th>Role</th><th>Landing Page</th><th>Nav Count</th><th>Notes</th></tr>
-      <tr><td><span class="badge badge-blue">candidate</span></td><td>dashboard</td><td>5</td><td>Dashboard, Explore Jobs, AI Job Search, My Applications, My Profile</td></tr>
-      <tr><td><span class="badge badge-green">recruiter</span></td><td>dashboard</td><td>11</td><td>Dashboard, My Jobs, Add Candidate, My Candidates, Assigned to Me, AI Match, Pipeline, Assessments, Outreach, Mail Queue, My Profile</td></tr>
+      <tr><td><span class="badge badge-blue">candidate</span></td><td>dashboard</td><td>5</td><td>Dashboard, Explore Jobs, Talent Match Search, My Applications, My Profile</td></tr>
+      <tr><td><span class="badge badge-green">recruiter</span></td><td>dashboard</td><td>11</td><td>Dashboard, My Jobs, Add Candidate, My Candidates, Assigned to Me, Talent Match, Pipeline, Assessments, Outreach, Mail Queue, My Profile</td></tr>
       <tr><td><span class="badge badge-amber">admin</span></td><td><strong>analytics</strong></td><td>14</td><td>Overview (Analytics), Job Approvals, Add Candidate, Candidates, Outreach, Assessments, Contact Enquiries, Mail Queue, Assignments, Recruiters, All Jobs, Org Settings, Billing, My Profile</td></tr>
       <tr><td><span class="badge badge-purple">super_admin</span></td><td><strong>analytics</strong></td><td>17</td><td>Overview, Platform, Organisations, Billing, Security, Permissions, Import &amp; Assign, Candidates, Recruiters, Admins, All Jobs, Assessments, Outreach, Contact Enquiries, Mail Queue, Playbooks, My Profile</td></tr>
     </table>
@@ -404,7 +404,7 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
 
   <div class="section" id="overview">
     <h2><span class="icon" style="background:#dbeafe">🌐</span>Platform Overview</h2>
-    <p>TalentNest HR is a full-featured Applicant Tracking System (ATS) with AI-powered matching, assessment tools, and pipeline management.</p>
+    <p>TalentNest HR is a full-featured Applicant Tracking System (ATS) with Talent Match scoring, assessment tools, and pipeline management.</p>
     <table>
       <tr><th>Role</th><th>Who</th><th>What they do</th><th>Nav Items</th></tr>
       <tr><td><span class="badge badge-blue">Candidate</span></td><td>Job seekers</td><td>Apply to jobs, track applications, take assessments</td><td>5 pages</td></tr>
@@ -418,12 +418,12 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
     <h2><span class="icon" style="background:#dbeafe">🧑‍💼</span>Candidate Guide</h2>
     <h3>Getting Started</h3>
     <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Register as a Job Seeker</h4><p>Go to the login page → select "Job Seeker" tab → fill name, email, password → account is active instantly</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Complete your Profile</h4><p>Navigate to My Profile → fill all 7 tabs (Personal, Summary, Work, Education, Skills, Extras, Preview) → higher profile score = better AI matches</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Find Jobs</h4><p>Use "Explore Jobs" to browse or "AI Job Search" for Gemini-powered smart matching based on your skills</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Complete your Profile</h4><p>Navigate to My Profile → fill all 7 tabs (Personal, Summary, Work, Education, Skills, Extras, Preview) → higher profile score = better Talent Match matches</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Find Jobs</h4><p>Use "Explore Jobs" to browse or "Talent Match Search" for Gemini-powered smart matching based on your skills</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Track Applications</h4><p>My Applications shows your full pipeline with stage badges, interview details, assessment status, and withdrawal option</p></div></div>
     <h3>Key Features</h3>
     <ul class="check">
-      <li>AI-matched job recommendations with fit score</li>
+      <li>Talent Match fit score</li>
       <li>Live pipeline tracker (Applied → Hired)</li>
       <li>Online assessments with instant feedback</li>
       <li>Interview scheduling with calendar details</li>
@@ -435,8 +435,8 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
   <div class="section" id="recruiter">
     <h2><span class="icon" style="background:#dcfce7">🧑‍💻</span>Recruiter Guide</h2>
     <h3>Daily Workflow</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Post a Job</h4><p>My Jobs → "+ Post Job" → upload JD (AI auto-fills fields) or fill manually → submit for admin approval</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add Candidates</h4><p>Add Candidate → upload resume (AI parses it) → review auto-filled profile → "Add Candidate" sends invitation email</p></div></div>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Post a Job</h4><p>My Jobs → "+ Post Job" → upload JD (Gemini auto-fills fields) or fill manually → submit for admin approval</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add Candidates</h4><p>Add Candidate → upload resume (Gemini parses it) → review auto-filled profile → "Add Candidate" sends invitation email</p></div></div>
     <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Manage Pipeline</h4><p>Pipeline (Kanban) → drag cards or use stage buttons → schedule interviews → add notes → send offers</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Run Assessments</h4><p>Assessments → select job → view submissions → review scores → mark pass/fail with feedback</p></div></div>
     <h3>Pipeline Stages</h3>
@@ -482,7 +482,7 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
   <div class="section" id="tips">
     <h2><span class="icon" style="background:#ccfbf1">💡</span>Pro Tips</h2>
     <div class="cards">
-      <div class="card"><div class="card-icon">⚡</div><h4>Use AI Parsing</h4><p>Upload resumes / JDs — Gemini fills 90% of fields automatically</p></div>
+      <div class="card"><div class="card-icon">⚡</div><h4>Use Gemini Parsing</h4><p>Upload resumes / JDs — Gemini fills 90% of fields automatically</p></div>
       <div class="card"><div class="card-icon">🎯</div><h4>Tag Candidates</h4><p>Use pipeline tags (Top Talent, Budget Fit, Culture Fit) for quick filtering</p></div>
       <div class="card"><div class="card-icon">📧</div><h4>Bulk Outreach</h4><p>Select candidates → Invite → pick template → personalise with tokens like [name]</p></div>
       <div class="card"><div class="card-icon">📊</div><h4>Drill Down</h4><p>In Analytics, click any KPI card to see the actual records behind the number</p></div>
@@ -515,7 +515,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
     <h2><span class="icon" style="background:#dbeafe">🏢</span>Company Overview</h2>
     <div class="cards">
       <div class="card"><div class="card-icon">🎯</div><h4>Mission</h4><p>Make world-class recruitment technology accessible to every growing organisation in India</p></div>
-      <div class="card"><div class="card-icon">🌐</div><h4>Product</h4><p>Full-stack ATS + HRMS with AI matching, assessments, and pipeline management</p></div>
+      <div class="card"><div class="card-icon">🌐</div><h4>Product</h4><p>Full-stack ATS + HRMS with Talent Match scoring, assessments, and pipeline management</p></div>
       <div class="card"><div class="card-icon">📍</div><h4>HQ</h4><p>Floor 3, Brindavanam Block C, Ganesh Nagar, Miyapur, Hyderabad – 502033</p></div>
       <div class="card"><div class="card-icon">📞</div><h4>Contact</h4><p>+91 79955 35539 · hr@talentnesthr.com · www.talentnesthr.com</p></div>
     </div>
@@ -535,7 +535,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
   <div class="section" id="value">
     <h2><span class="icon" style="background:#fef3c7">⭐</span>Value Proposition</h2>
     <div class="cards">
-      <div class="card"><div class="card-icon">🤖</div><h4>AI-Powered</h4><p>Gemini AI parses resumes, matches candidates to jobs, and ranks by fit score — saving hours per hire</p></div>
+      <div class="card"><div class="card-icon">🤖</div><h4>Talent Match Powered</h4><p>Gemini AI parses resumes, matches candidates to jobs, and ranks by fit score — saving hours per hire</p></div>
       <div class="card"><div class="card-icon">📊</div><h4>Full Pipeline</h4><p>Visual Kanban board from Applied to Hired with interview scheduling, assessments, and offer letters</p></div>
       <div class="card"><div class="card-icon">🏢</div><h4>Multi-Org</h4><p>One platform for multiple clients — super admin manages all orgs, each isolated with their own data</p></div>
       <div class="card"><div class="card-icon">📧</div><h4>Automated Emails</h4><p>Stage changes, interview invites, and offers sent automatically via Resend — zero manual follow-up</p></div>
@@ -559,7 +559,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
   <div class="section" id="demo">
     <h2><span class="icon" style="background:#ccfbf1">🎬</span>Demo Script (15 minutes)</h2>
     <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Hook (2 min)</h4><p>"How many hours does your team spend this week manually tracking candidate statuses?" → Show the pain → introduce TalentNest HR</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>AI Resume Parsing (3 min)</h4><p>Upload a sample resume → show AI extracting name, skills, experience, education in seconds → "Your recruiters never type candidate details again"</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Gemini Resume Parsing (3 min)</h4><p>Upload a sample resume → show Gemini extracting name, skills, experience, education in seconds → "Your recruiters never type candidate details again"</p></div></div>
     <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Kanban Pipeline (4 min)</h4><p>Show a job's pipeline → move a candidate to Interview → system auto-sends the interview email → no manual follow-up</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Analytics (3 min)</h4><p>Click the Admin Analytics → show KPIs → click a card to drill into real candidate records → "Your manager gets this dashboard every Monday"</p></div></div>
     <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Close (3 min)</h4><p>"We can have you live in 24 hours. Which team would you start with?" → Trial offer → schedule onboarding call</p></div></div>
@@ -572,7 +572,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
       <tr><td>"We use spreadsheets and they work fine"</td><td>Ask: "How long does it take to find out which candidates are in which stage across all your jobs?" — Pipeline view answers in 2 seconds</td></tr>
       <tr><td>"It looks complicated"</td><td>Show the Add Candidate flow — upload resume, AI fills everything, click submit. "That's all your recruiter ever does"</td></tr>
       <tr><td>"We don't have budget right now"</td><td>Start on the free tier — no credit card. Show ROI: "One hire made 2 weeks faster pays for the platform"</td></tr>
-      <tr><td>"We already have an ATS"</td><td>"Great — what's your AI match score? Can your recruiters see candidate fit % before they pick up the phone?"</td></tr>
+      <tr><td>"We already have an ATS"</td><td>"Great — what's your Talent Match score? Can your recruiters see candidate fit % before they pick up the phone?"</td></tr>
       <tr><td>"Is our data safe?"</td><td>MongoDB Atlas encrypted at rest, JWT auth, no plain-text passwords, Railway/Vercel SOC 2 compliant hosting</td></tr>
     </table>
   </div>
@@ -623,7 +623,7 @@ ${heroHtml('🧪','TESTER PLAYBOOK','Tester Playbook','Daily test loop, manual t
       <tr>
         <td>${todayShort}</td>
         <td><strong>🔴 Paginated API Unwrap:</strong> ALL pages (admin, recruiter, candidate) were receiving <code>{success,data[],pagination}</code> from backend but using the whole object as an array → empty screens everywhere. Fixed across 18 pages.</td>
-        <td>Login as admin → Analytics shows real counts. Jobs page shows jobs list. Users page shows candidates/recruiters. Login as recruiter → Pipeline shows jobs. Login as candidate → Explore Jobs shows jobs, My Profile loads, AI Job Search works.</td>
+        <td>Login as admin → Analytics shows real counts. Jobs page shows jobs list. Users page shows candidates/recruiters. Login as recruiter → Pipeline shows jobs. Login as candidate → Explore Jobs shows jobs, My Profile loads, Talent Match Search works.</td>
         <td><span class="badge badge-red">Critical Fix</span></td>
       </tr>
       <tr>
@@ -634,8 +634,8 @@ ${heroHtml('🧪','TESTER PLAYBOOK','Tester Playbook','Daily test loop, manual t
       </tr>
       <tr>
         <td>${todayShort}</td>
-        <td><strong>🔴 Missing /api/users/:id Route:</strong> GET /api/users/:id did not exist — CandidateProfile, CandidateAIMatch, RecruiterPipeline all got "Route not found".</td>
-        <td>Candidate → My Profile → loads name, email, skills. Candidate → AI Job Search → profile loads, matching works. Recruiter → Pipeline → recruiter profile loads. GET /api/users/:id with own token → 200. GET /api/users/:id with other user's token (non-admin) → 403.</td>
+        <td><strong>🔴 Missing /api/users/:id Route:</strong> GET /api/users/:id did not exist — CandidateProfile, CandidateTalentMatch, RecruiterPipeline all got "Route not found".</td>
+        <td>Candidate → My Profile → loads name, email, skills. Candidate → Talent Match Search → profile loads, matching works. Recruiter → Pipeline → recruiter profile loads. GET /api/users/:id with own token → 200. GET /api/users/:id with other user's token (non-admin) → 403.</td>
         <td><span class="badge badge-red">Critical Fix</span></td>
       </tr>
       <tr>
@@ -904,7 +904,7 @@ ${heroHtml('🧪','TESTER PLAYBOOK','Tester Playbook','Daily test loop, manual t
     <table>
       <tr><th>#</th><th>Test Case</th><th>Expected Result</th><th>Added</th></tr>
       <tr><td>CP01</td><td>Candidate → My Profile page loads</td><td>Profile data shows — no "Route not found" error</td><td>${todayShort}</td></tr>
-      <tr><td>CP02</td><td>Candidate → AI Job Search — click Match</td><td>Matching results appear, no "Matching failed" error</td><td>${todayShort}</td></tr>
+      <tr><td>CP02</td><td>Candidate → Talent Match Search — click Match</td><td>Matching results appear, no "Matching failed" error</td><td>${todayShort}</td></tr>
       <tr><td>CP03</td><td>Candidate Dashboard loads KPIs</td><td>Applications count, job matches, assessment status visible</td><td>${todayShort}</td></tr>
       <tr><td>CP04</td><td>Admin → Users → Candidates tab</td><td>Shows actual candidate list (not empty)</td><td>${todayShort}</td></tr>
       <tr><td>CP05</td><td>Admin → Users → Recruiters tab</td><td>Shows actual recruiter list (not empty)</td><td>${todayShort}</td></tr>
@@ -1066,7 +1066,7 @@ Prod:    https://talentnest-hr-production.up.railway.app/api</pre>
       <li>Recruiter → Jobs page shows assigned jobs (not empty)</li>
       <li>Candidate → Explore Jobs shows jobs, no 403 Access Denied</li>
       <li>Candidate → My Profile loads without "Route not found"</li>
-      <li>Candidate → AI Job Search matching works without error</li>
+      <li>Candidate → Talent Match Search matching works without error</li>
       <li>Admin → Users → Candidates tab shows candidates</li>
       <li>Admin → Users → Recruiters tab shows recruiters</li>
       <li>Admin → Analytics shows real KPI counts (not zeros)</li>

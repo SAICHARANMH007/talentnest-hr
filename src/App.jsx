@@ -22,14 +22,14 @@ const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
-const CandidateAIMatch = lazy(() => import('./pages/candidate/CandidateAIMatch.jsx'));
+const CandidateJobMatch = lazy(() => import('./pages/candidate/CandidateJobMatch.jsx'));
 const CandidateApplications = lazy(() => import('./pages/candidate/CandidateApplications.jsx'));
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
 const CandidateExploreJobs = lazy(() => import('./pages/candidate/CandidateExploreJobs.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
 const RecruiterDashboard = lazy(() => import('./pages/recruiter/RecruiterDashboard.jsx'));
 const RecruiterJobs = lazy(() => import('./pages/recruiter/RecruiterJobs.jsx'));
-const RecruiterAIMatch = lazy(() => import('./pages/recruiter/RecruiterAIMatch.jsx'));
+const RecruiterTalentMatch = lazy(() => import('./pages/recruiter/RecruiterTalentMatch.jsx'));
 const RecruiterPipeline = lazy(() => import('./pages/recruiter/RecruiterPipeline.jsx'));
 const RecruiterCandidates = lazy(() => import('./pages/recruiter/RecruiterCandidates.jsx'));
 const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAssessments.jsx'));
@@ -165,12 +165,23 @@ class ErrorBoundary extends Component {
   }
 }
 
-// ── Waking up notice (shown after 3s of loading — Render cold start) ──────────
+// ── Waking up notice (shown after 4s of loading — Render cold start) ──────────
 function WakingUp() {
   const [show, setShow] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setShow(true), 3000); return () => clearTimeout(t); }, []);
+  useEffect(() => { 
+    const t = setTimeout(() => setShow(true), 4000); 
+    return () => clearTimeout(t); 
+  }, []);
+  
   if (!show) return null;
-  return <p style={{ color: '#94A3B8', fontSize: 12, margin: 0 }}>Waking up server, please wait…</p>;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(1,118,211,0.05)', padding: '8px 16px', borderRadius: 12, border: '1px solid rgba(1,118,211,0.1)', animation: 'tn-fadein 0.5s ease' }}>
+      <div className="tn-spinner-small" style={{ width: 14, height: 14, border: '2px solid rgba(1,118,211,0.2)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: 0, letterSpacing: '0.3px' }}>
+        OPTIMIZING CONNECTION… (Waking up server)
+      </p>
+    </div>
+  );
 }
 
 // ── Auth helpers ───────────────────────────────────────────────────────────────
@@ -464,7 +475,7 @@ export default function App() {
           <>
             <Route path="dashboard" element={<CandidateDashboard user={user} />} />
             <Route path="explore-jobs" element={<CandidateExploreJobs user={user} />} />
-            <Route path="ai-match" element={<CandidateAIMatch user={user} />} />
+            <Route path="job-match" element={<CandidateJobMatch user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
@@ -483,7 +494,7 @@ export default function App() {
             <Route path="applicants" element={<ApplicantsRecordsPage user={user} />} />
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
-            <Route path="ai-match" element={<RecruiterAIMatch user={user} />} />
+            <Route path="talent-match" element={<RecruiterTalentMatch user={user} />} />
             <Route path="pipeline" element={rk === 'recruiter' ? <RecruiterPipeline user={user} /> : <AdminPipeline user={user} />} />
             <Route path="assessments" element={<RecruiterAssessments user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />

@@ -132,11 +132,11 @@ app.use('/api/', (req, res, next) => {
 });
 
 // ── Short-lived Cache-Control for GET-heavy read endpoints ────────────────────
-// 30s private cache — browser reuses response on back-nav / rapid re-renders.
+// 5s private cache — browser reuses response on back-nav / rapid re-renders.
 // Only applies to GET; POST/PATCH/DELETE requests bypass this middleware entirely.
 app.use(['/api/jobs', '/api/dashboard', '/api/stats', '/api/orgs', '/api/candidates', '/api/notifications'], (req, res, next) => {
   if (req.method === 'GET') {
-    res.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60');
+    res.set('Cache-Control', 'private, max-age=5, stale-while-revalidate=10');
   }
   next();
 });

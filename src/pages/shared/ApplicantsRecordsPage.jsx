@@ -138,7 +138,7 @@ function DetailDrawer({ record, onClose }) {
     ['Stage', record.stage],
     ['Status', record.status],
     ['Source', record.source],
-    ['AI Match Score', record.aiMatchScore],
+    ['Talent Match Score', record.aiMatchScore],
     ['Skills', record.skills],
     ['Experience', record.experience],
     ['Current Company', record.currentCompany],

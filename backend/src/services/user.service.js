@@ -45,6 +45,13 @@ class UserService {
     const hashed   = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+    // Fetch org details to populate denormalized fields
+    const Organization = mongoose.model('Organization');
+    const Tenant = mongoose.model('Tenant');
+    const org = await Organization.findById(tenantId).lean() || await Tenant.findById(tenantId).lean();
+    const orgNameFallback = org?.name || 'TalentNest HR';
+    const finalOrgName = metadata.orgName || metadata.organisation || orgNameFallback;
+
     const payload = {
       name: name.trim(), email: cleanEmail, role, tenantId, department, addedBy,
       isActive: false, 
@@ -55,6 +62,8 @@ class UserService {
       invitedBy: addedBy,
       invitedAt: new Date(),
       temporaryPassword: useTemporaryPassword ? TEMP_PWD : null,
+      orgName: finalOrgName,
+      organisation: finalOrgName,
       ...metadata
     };
 
@@ -130,6 +139,18 @@ class UserService {
   async bulkImport(candidates, tenantId, addedBy, targetJobId = null) {
     if (!Array.isArray(candidates)) throw new AppError('Candidates must be an array.', 400);
 
+    const Organization = mongoose.model('Organization');
+    const Tenant = mongoose.model('Tenant');
+    
+    // 1. Resolve Tenant — fallback to TalentNest HR if missing
+    let org = await Organization.findById(tenantId).lean() || await Tenant.findById(tenantId).lean();
+    let finalTenantId = tenantId;
+    if (!org) {
+      org = await Tenant.findOne({ name: /^TalentNest HR$/i }).lean();
+      if (org) finalTenantId = org._id;
+    }
+    const orgName = org?.name || 'TalentNest HR';
+
     const stats = { created: 0, updated: 0, skipped: 0, errors: [] };
     const inserted = [];
 
@@ -161,7 +182,7 @@ class UserService {
       const email = c.email.toLowerCase().trim();
 
       try {
-        let user = await User.findOne({ email, tenantId }).setOptions({ includeDeleted: true });
+        let user = await User.findOne({ email, tenantId: finalTenantId }).setOptions({ includeDeleted: true });
 
         if (user) {
           // Restore soft-deleted or update existing candidate with new data
@@ -171,6 +192,12 @@ class UserService {
           // Only overwrite non-empty string fields if the candidate doesn't already have them
           for (const [k, v] of Object.entries(fields)) {
             if (v !== undefined && !user[k]) update.$set[k] = v;
+          }
+          // Ensure orgName is set if missing
+          if (!user.orgName) {
+            const finalOrgName = c.orgName || c.organisation || orgName;
+            update.$set.orgName = finalOrgName;
+            update.$set.organisation = finalOrgName;
           }
           if (Object.keys(update.$set).length > 0) {
             await User.findByIdAndUpdate(user._id, update);
@@ -185,7 +212,9 @@ class UserService {
           email,
           passwordHash: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
           role: 'candidate',
-          tenantId, addedBy,
+          tenantId: finalTenantId, addedBy,
+          orgName: c.orgName || c.organisation || orgName,
+          organisation: c.organisation || c.orgName || orgName,
           isActive: true,
         });
 

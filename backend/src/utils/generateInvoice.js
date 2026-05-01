@@ -15,6 +15,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const { GST_PERCENTAGE, BASE_STATE } = require('../config/financials');
+
 /**
  * @param {object} tenant  - Tenant document (mongoose or plain object)
  * @param {object} payment - Payment details: { planName, amountINR, razorpayPaymentId, razorpayOrderId? }
@@ -26,13 +28,14 @@ async function generateInvoice(tenant, payment) {
   const sequence    = (tenant.invoiceSequence || 1).toString().padStart(4, '0');
   const invoiceNumber = `TNH-${year}-${sequence}`;
 
-  // ── 2. GST Calculation (18% inclusive in price) ───────────────────────────────
+  // ── 2. GST Calculation (inclusive in price) ───────────────────────────────
   const amountINR    = payment.amountINR;
   const tenantState  = (tenant.billingState || '').trim().toLowerCase();
-  const companyState = (process.env.TALENTNEST_STATE || 'telangana').trim().toLowerCase();
+  const companyState = BASE_STATE;
   const isInterState = tenantState !== '' && tenantState !== companyState;
 
-  const baseAmount = Math.round((amountINR / 1.18) * 100) / 100;
+  const gstDivisor = 1 + (GST_PERCENTAGE / 100);
+  const baseAmount = Math.round((amountINR / gstDivisor) * 100) / 100;
   const gstAmount  = Math.round((amountINR - baseAmount) * 100) / 100;
   let cgst = 0, sgst = 0, igst = 0;
   if (isInterState) {

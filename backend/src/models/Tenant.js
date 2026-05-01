@@ -87,6 +87,10 @@ const tenantSchema = new mongoose.Schema({
       primary  : { type: String, default: '#0176D3' },
       secondary: { type: String },
     },
+    maxStorageGB: { type: Number, default: 5 },
+  },
+  stats: {
+    storageUsed: { type: Number, default: 0 }, // in bytes
   },
   deletedAt: { type: Date, default: null },
 }, { timestamps: true });

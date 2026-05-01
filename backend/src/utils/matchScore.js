@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * calculateMatchScore — pure JS, no AI API.
+ * calculateTalentMatchScore — Deterministic Heuristics (RegEx-based matching).
  *
  * @param {object} job       — Job document (skills[], location, jobType)
  * @param {object} candidate — Candidate document (parsedProfile, location, noticePeriodDays, willingToRelocate)
  * @param {object} [opts]    — { maxNoticeDays: number } overrides from job
  * @returns {{ score: number, breakdown: object }}
  */
-function calculateMatchScore(job, candidate, opts = {}) {
+function calculateTalentMatchScore(job, candidate, opts = {}) {
   const profile = candidate.parsedProfile || {};
 
   // ── 1. Skills Score (45%) ──────────────────────────────────────────────────
@@ -109,4 +109,4 @@ function parseRequiredYears(text) {
   return 0;
 }
 
-module.exports = { calculateMatchScore };
+module.exports = { calculateTalentMatchScore };

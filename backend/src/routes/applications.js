@@ -12,7 +12,7 @@ const { allowRoles } = require('../middleware/rbac');
 const { getPagination, paginatedResponse } = require('../middleware/paginate');
 const asyncHandler   = require('../utils/asyncHandler');
 const AppError       = require('../utils/AppError');
-const { calculateMatchScore } = require('../utils/matchScore');
+const { calculateTalentMatchScore } = require('../utils/matchScore');
 const email          = require('../utils/email');
 const logger         = require('../middleware/logger');
 const crypto         = require('crypto');
@@ -153,7 +153,7 @@ router.post('/public', asyncHandler(async (req, res) => {
   const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });
   if (exists) throw new AppError('Already applied for this job.', 409);
 
-  const { score, breakdown } = calculateMatchScore(job, candidate);
+  const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
   const app = await Application.create({
     tenantId: job.tenantId,
@@ -161,7 +161,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     candidateId: candidate._id,
     source: 'career_page',
     coverLetter: coverLetter || '',
-    aiMatchScore: score,
+    talentMatchScore: score,
     matchBreakdown: breakdown,
     currentStage: 'Applied',
     stageHistory: [{ stage: 'Applied', movedAt: new Date(), notes: 'Applied via career page' }],
@@ -280,7 +280,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   const exists = await Application.findOne({ jobId, candidateId, deletedAt: null });
   if (exists) throw new AppError('This candidate has already been submitted for this job.', 409);
 
-  const { score, breakdown } = calculateMatchScore(job, candidate);
+  const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
   // Use job's tenantId for the application so it appears in the recruiter's pipeline.
   const appTenantId = isCandidate ? job.tenantId : req.user.tenantId;
@@ -291,7 +291,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
     candidateId,
     source: 'platform',
     coverLetter: coverLetter || '',
-    aiMatchScore: score,
+    talentMatchScore: score,
     matchBreakdown: breakdown,
     currentStage: 'Applied',
     stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date() }],
@@ -329,7 +329,7 @@ router.post('/invite', ...guard,
     if (!candidate) throw new AppError('Candidate not found.', 404);
 
     const inviteToken = crypto.randomBytes(32).toString('hex');
-    const { score, breakdown } = calculateMatchScore(job, candidate);
+    const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
     let app = await Application.findOne({ jobId, candidateId, tenantId: req.user.tenantId, deletedAt: null });
     if (app) {
@@ -347,7 +347,7 @@ router.post('/invite', ...guard,
         inviteToken,
         inviteStatus: 'sent',
         inviteMessage: message || '',
-        aiMatchScore: score,
+        talentMatchScore: score,
         matchBreakdown: breakdown,
         currentStage: 'Applied',
         stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date(), notes: 'Invited by recruiter' }],
@@ -922,7 +922,7 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
     { header: 'Job Location',    key: 'jobLocation',    width: 20 },
     { header: 'Stage',           key: 'currentStage',   width: 20 },
     { header: 'Status',          key: 'status',         width: 12 },
-    { header: 'AI Score',        key: 'aiMatchScore',   width: 12 },
+    { header: 'Talent Match Score', key: 'talentMatchScore', width: 15 },
     { header: 'Source',          key: 'source',         width: 14 },
     { header: 'Applied Date',    key: 'appliedDate',    width: 16 },
     { header: 'Current Title',   key: 'title',          width: 24 },
@@ -963,7 +963,7 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
       jobLocation:   j.location || '',
       currentStage:  a.currentStage || '',
       status:        a.status || '',
-      aiMatchScore:  a.aiMatchScore ?? '',
+      talentMatchScore:  a.talentMatchScore ?? '',
       source:        a.source || c.source || '',
       appliedDate:   a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN') : '',
       title:         c.title || u.title || '',

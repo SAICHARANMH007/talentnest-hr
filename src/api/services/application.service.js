@@ -10,7 +10,7 @@ export const applicationService = {
     const r = await req('GET', '/applications/mine');
     return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
   },
-  async getApplications({ jobId, candidateId, stage, limit, recruiterId, platform } = {}) {
+  async getApplications({ jobId, candidateId, stage, limit, recruiterId, platform, startDate, endDate } = {}) {
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);
     if (candidateId) params.set('candidateId', candidateId);
@@ -18,6 +18,8 @@ export const applicationService = {
     if (limit)       params.set('limit', limit);
     if (recruiterId) params.set('recruiterId', recruiterId);
     if (platform)    params.set('platform', 'true');
+    if (startDate)   params.set('startDate', startDate);
+    if (endDate)     params.set('endDate', endDate);
     const qs = params.toString();
     return req('GET', `/applications${qs ? `?${qs}` : ''}`);
   },

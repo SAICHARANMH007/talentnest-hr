@@ -43,6 +43,9 @@ export default function AdminJobs({ user }) {
   const [selectedJobIds, setSelectedJobIds] = useState([]);
   const [mergeReview, setMergeReview] = useState(null); // { groups: { primary, dupes, candCount }[] }
   const [merging, setMerging] = useState(false);
+  const [applicantsJob, setApplicantsJob] = useState(null);
+  const [assessmentJob, setAssessmentJob] = useState(null);
+  const [totalJobs, setTotalJobs] = useState(0);
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
@@ -58,6 +61,7 @@ export default function AdminJobs({ user }) {
           if (job.id) map.set(job.id, job);
         });
         setJobs(Array.from(map.values()));
+        setTotalJobs(raw.length);
       })
       .catch(() => setJobs([]))
       .finally(() => setLoad(false));
@@ -194,6 +198,25 @@ export default function AdminJobs({ user }) {
       {drawerCandidate && <UserDetailDrawer user={drawerCandidate} onClose={() => setDrawerCandidate(null)} onUpdated={() => setDrawerCandidate(null)} />}
 
       {/* ── Applicants Modal ── */}
+      {assessmentJob && (
+        <Modal title={`Assessment — ${assessmentJob.title}`} onClose={() => setAssessmentJob(null)}>
+          <div style={{ padding: '20px 0' }}>
+            <p style={{ color: '#706E6B', fontSize: 13, marginBottom: 20 }}>
+              Assessment management for this job. You can view, edit or assign assessments here.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => { navigate(`/admin/assessments?jobId=${assessmentJob._id || assessmentJob.id}`); setAssessmentJob(null); }}
+                className="btn btn-primary"
+              >
+                Go to Assessments →
+              </button>
+              <button onClick={() => setAssessmentJob(null)} className="btn btn-secondary">Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {applicantsJob && (
         <div style={{ position:'fixed', inset:0, zIndex:9500, display:'flex', alignItems:'flex-end', justifyContent:'flex-end' }}>
           <div onClick={() => setApplicantsJob(null)} style={{ position:'absolute', inset:0, background:'rgba(5,13,26,0.45)', backdropFilter:'blur(6px)' }} />
@@ -201,8 +224,8 @@ export default function AdminJobs({ user }) {
             {/* Header */}
             <div style={{ padding:'18px 24px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
               <div>
-                <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>👥 Applicants — {applicantsJob.job.title}</div>
-                <div style={{ color:'rgba(255,255,255,0.75)', fontSize:12, marginTop:2 }}>{applicantsJob.apps.length} candidate{applicantsJob.apps.length!==1?'s':''} · {applicantsJob.job.company}</div>
+                <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>👥 Applicants — {applicantsJob?.job?.title || 'Unknown Role'}</div>
+                <div style={{ color:'rgba(255,255,255,0.75)', fontSize:12, marginTop:2 }}>{applicantsJob?.apps?.length || 0} candidate{applicantsJob?.apps?.length!==1?'s':''} · {applicantsJob?.job?.companyName || applicantsJob?.job?.company || 'Organization'}</div>
               </div>
               <button onClick={() => setApplicantsJob(null)} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:36, height:36, borderRadius:10, cursor:'pointer', fontSize:18 }}>✕</button>
             </div>
@@ -385,9 +408,13 @@ export default function AdminJobs({ user }) {
                   <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '7px 12px', fontSize: 11 }}>View Details</button>
                   <button onClick={async e => {
                     e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
-                    const r = await api.getApplications({ jobId: j.id, limit: 500 }).catch(() => ({ data: [] }));
-                    setApplicantsJob({ job: j, apps: Array.isArray(r) ? r : (r?.data || []) });
-                    setApplicantsLoading(false);
+                    try {
+                      const r = await api.getApplications({ jobId: j.id, limit: 1000 }).catch(() => ({ data: [] }));
+                      const list = Array.isArray(r) ? r : (r?.data || []);
+                      setApplicantsJob({ job: j, apps: list });
+                    } finally {
+                      setApplicantsLoading(false);
+                    }
                   }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👥 Applicants</button>
                   <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📣 Share</button>
                   <button onClick={e => { e.stopPropagation(); setAssessmentJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📋 Assessment</button>

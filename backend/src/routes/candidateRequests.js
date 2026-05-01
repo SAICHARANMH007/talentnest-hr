@@ -64,23 +64,23 @@ router.post('/', ...guard,
 
     logger.audit('Candidate request submitted', req.user.id, req.user.tenantId, { requestId: r._id });
 
-    // Notify all super_admins by email
-    const superAdmins = await User.find({ role: 'super_admin' }).select('email name').lean();
-    const ADMIN_EMAIL = process.env.RESEND_FROM || 'hr@talentnesthr.com';
-    for (const sa of superAdmins) {
-      sendEmail(
-        sa.email,
-        `🚨 New Candidate Request — ${roleTitle} [${(urgency || 'medium').toUpperCase()}]`,
-        `<h2>New Candidate Request</h2>
-<p><b>Role:</b> ${roleTitle}</p>
-<p><b>Urgency:</b> ${urgency || 'medium'}</p>
-<p><b>Budget:</b> ${budget || 'Not specified'}</p>
-<p><b>Requirements:</b></p><pre style="background:#f4f4f4;padding:12px;border-radius:6px">${requirements || 'None'}</pre>
-<p><b>Submitted by:</b> ${req.user.name || req.user.email}</p>
-<hr/>
-<p><a href="${process.env.FRONTEND_URL || 'https://talentnesthr.com'}/app">View in TalentNest Dashboard →</a></p>`
-      ).catch(() => {});
-    }
+    // Notify centralized support/admin instead of spamming all super_admins
+    const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@talentnesthr.com';
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+
+    await sendEmail(
+      SUPPORT_EMAIL,
+      `🚨 New Candidate Request — ${roleTitle} [${(urgency || 'medium').toUpperCase()}]`,
+      `<h2>New Candidate Request</h2>
+      <p><b>Tenant:</b> ${req.user.tenantId}</p>
+      <p><b>Role:</b> ${roleTitle}</p>
+      <p><b>Urgency:</b> ${urgency || 'medium'}</p>
+      <p><b>Budget:</b> ${budget || 'Not specified'}</p>
+      <p><b>Requirements:</b></p><pre style="background:#f4f4f4;padding:12px;border-radius:6px">${requirements || 'None'}</pre>
+      <p><b>Submitted by:</b> ${req.user.name || req.user.email}</p>
+      <hr/>
+      <p><a href="${FRONTEND_URL}/app/superadmin/candidate-requests">View in TalentNest Dashboard →</a></p>`
+    ).catch(err => logger.error('Failed to send candidate request email', err));
 
     res.status(201).json({ success: true, data: normalize(r) });
   })

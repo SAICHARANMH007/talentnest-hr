@@ -30,7 +30,7 @@ const applicationSchema = new mongoose.Schema({
   }],
 
   // AI matching
-  aiMatchScore: { type: Number, min: 0, max: 100 },
+  talentMatchScore: { type: Number, min: 0, max: 100 },
   matchBreakdown: {
     skillScore     : { type: Number },
     experienceScore: { type: Number },

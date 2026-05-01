@@ -45,7 +45,7 @@ const PERMISSION_SCHEMA = [
       { key: 'app.recruiterNotes',   label: 'Recruiter Notes' },
       { key: 'app.interviewFeedback',label: 'Interview Feedback' },
       { key: 'app.tags',             label: 'Tags' },
-      { key: 'app.aiScore',          label: 'AI Match Score' },
+      { key: 'app.aiScore',          label: 'Talent Match Score' },
       { key: 'app.offerStatus',      label: 'Offer Status' },
       { key: 'app.timeline',         label: 'Activity Timeline' },
     ],

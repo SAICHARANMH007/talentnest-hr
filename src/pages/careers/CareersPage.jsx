@@ -187,6 +187,7 @@ export default function CareersPage() {
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
   const [applying, setApplying] = useState(null);
+  const [totalJobs, setTotalJobs] = useState(0);
   const [toast, setToast] = useState('');
   const initialCompanyFilter = searchParams.get('company') || '';
   const initialSearch = searchParams.get('search') || '';
@@ -212,6 +213,7 @@ export default function CareersPage() {
       .then(res => {
         const arr = Array.isArray(res) ? res : (res?.data || []);
         setJobs(arr);
+        setTotalJobs(res?.total || arr.length);
 
         // ── Inject JSON-LD for Googlebot's JS indexer ──────────────────────
         // Remove any previously injected job JSON-LD tags first
@@ -325,7 +327,7 @@ export default function CareersPage() {
               {/* Stats */}
               <div className="tn-mobile-center-flex" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
                 {[
-                  { icon: '💼', num: jobs.length, label: 'Open Roles' },
+                  { icon: '💼', num: totalJobs, label: 'Open Roles' },
                   { icon: '⚡', num: (Array.isArray(jobs) ? jobs : []).filter(j => j.urgency === 'High').length, label: 'Urgent Hiring' },
                   { icon: '🏢', num: new Set((Array.isArray(jobs) ? jobs : []).map(j => j.company)).size, label: 'Companies' },
                 ].map(s => (
@@ -342,14 +344,14 @@ export default function CareersPage() {
               <div style={{ position: 'relative', width: 360 }}>
                 {/* Glow */}
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 300, height: 300, background: 'radial-gradient(circle,rgba(1,118,211,0.2),transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
-                {[
+                {(jobs.length > 0 ? jobs.slice(0, 4) : [
                   { title: 'Senior React Developer', company: 'FinTech Corp', location: 'Hyderabad', urgency: 'High', color: '#BA0517', icon: '💻', salary: '₹18–25 LPA' },
                   { title: 'Cybersecurity Analyst', company: 'SecureNet Ltd', location: 'Bangalore', urgency: 'High', color: '#0176D3', icon: '🔐', salary: '₹12–18 LPA' },
                   { title: 'DevOps Engineer', company: 'CloudScale Inc', location: 'Remote', urgency: 'Medium', color: '#10B981', icon: '⚙️', salary: '₹15–22 LPA' },
                   { title: 'Data Scientist', company: 'Analytics Hub', location: 'Mumbai', urgency: 'Medium', color: '#F5A623', icon: '📊', salary: '₹20–30 LPA' },
-                ].map((job, idx) => (
+                ]).map((job, idx) => (
                   <div
-                    key={job.title}
+                    key={job.title + idx}
                     style={{
                       position: 'relative',
                       background: 'rgba(15,31,53,0.95)',
@@ -361,22 +363,22 @@ export default function CareersPage() {
                       boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                       animation: `tn-float ${5 + idx}s ease-in-out infinite`,
                       animationDelay: `${idx * 0.5}s`,
-                      borderLeft: `3px solid ${job.color}`,
+                      borderLeft: `3px solid ${job.color || (idx % 2 === 0 ? '#0176D3' : '#10B981')}`,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: `${job.color}20`, border: `1px solid ${job.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
-                        {job.icon}
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: `${job.color || '#0176D3'}20`, border: `1px solid ${job.color || '#0176D3'}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
+                        {job.icon || '💼'}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: 'white', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>{job.company} · {job.location}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>{job.company || job.companyName} · {job.location || 'India'}</div>
                       </div>
-                      <span style={{ background: `${job.color}22`, color: job.color, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>{job.urgency}</span>
+                      <span style={{ background: `${(job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981'))}22`, color: (job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981')), fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>{job.urgency || 'New'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#00C2CB', fontSize: 11, fontWeight: 700 }}>{job.salary}</span>
-                      <span style={{ background: 'rgba(1,118,211,0.15)', color: '#60a5fa', fontSize: 9, fontWeight: 600, padding: '3px 10px', borderRadius: 6 }}>Apply Now →</span>
+                      <span style={{ color: '#00C2CB', fontSize: 11, fontWeight: 700 }}>{job.salary || (job.salaryMin ? `₹${job.salaryMin} LPA+` : 'Best in Industry')}</span>
+                      <span style={{ background: 'rgba(1,118,211,0.15)', color: '#60a5fa', fontSize: 9, fontWeight: 600, padding: '3px 10px', borderRadius: 6 }}>View Details →</span>
                     </div>
                   </div>
                 ))}

@@ -406,11 +406,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const stats = useMemo(() => {
     // Priority 1: Use Backend Aggregates (Most Reliable for High Volume)
     // Priority 2: Use Local Verified Data (Best for Real-time sync)
-    const hiredCount = localAppStats.pipeline.selected || serverStats?.placements || 0;
-    const totalApps  = Math.max(localAppStats.total || 0, serverStats?.applications || 0);
-    const candCount  = Math.max(allCandidates.length || 0, serverStats?.candidates || 0);
+    const hiredCount = serverStats?.placements ?? localAppStats.pipeline.selected ?? 0;
+    const totalApps  = serverStats?.applications ?? localAppStats.total ?? 0;
+    const candCount  = serverStats?.candidates ?? allCandidates.length ?? 0;
     const activeJobs = jobCounts.active || serverStats?.openJobs || 0;
     const totalJobs  = jobCounts.total || serverStats?.totalJobs || 0;
+    const last30Hired = serverStats?.placementsLast30 ?? localAppStats.last30Hired ?? 0;
 
     if (serverStats) {
       return {
@@ -420,7 +421,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         totalApps:       totalApps,
         appsLast30:      localAppStats.last30 || serverStats.appsLast30 || 0,
         placements:      hiredCount,
-        placementsLast30: serverStats.placementsLast30 || 0,
+        placementsLast30: last30Hired,
         fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : (serverStats.fillRate || 0),
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
@@ -523,7 +524,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     setDrillDown({ title: `${loadingTitle} — Loading…`, type, items: [] });
     try {
       const items = await fetcher();
-      setDrillDown({ title: `${loadingTitle} (${items.length})`, type, items });
+      setDrillDown({ title: loadingTitle, type, items });
     } catch {
       setDrillDown({ title: loadingTitle, type, items: [] });
     }
@@ -542,7 +543,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         id: c.applicationId || c.candidateId || c.userId || `${c.email}-${c.jobTitle}`,
         name: c.candidateName || c.email || 'Candidate',
         email: c.email || '',
-        sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}${c.organisation ? ` · ${c.organisation}` : ''}`,
+        sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''} · ${c.organisation || 'TalentNest HR'}`,
       }));
     });
   };
@@ -580,9 +581,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
     }));
   });
 
-  const openPlacementsDrill = () => fetchDrill('Total Placements', 'app', async () => {
-    const raw = await api.getApplications({ stage: 'Hired', limit: 500 }).then(unwrap).catch(() => []);
-    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired` }));
+  const openPlacementsDrill = () => fetchDrill('Total Placements (Last 30 Days)', 'app', async () => {
+    const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const raw = await api.getApplications({ stage: 'selected', startDate: thirtyDaysAgo.toISOString().split('T')[0], limit: 500 }).then(unwrap).catch(() => []);
+    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired on ${fmtDate(a.updatedAt || a.createdAt)}` }));
   });
 
   const openStageDrill = (seg) => {
@@ -1224,7 +1226,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             ['currentStage', 'Stage'],
             ['status', 'Status'],
             ['source', 'Source'],
-            ['aiMatchScore', 'AI Match Score'],
+            ['aiMatchScore', 'Talent Match Score'],
             ['skills', 'Skills'],
             ['experience', 'Experience'],
             ['currentCompany', 'Current Company'],

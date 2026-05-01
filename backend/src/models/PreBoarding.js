@@ -9,6 +9,9 @@ const taskSchema = new mongoose.Schema({
   isRequired:  { type: Boolean, default: true },
   completedAt: { type: Date, default: null },
   completedBy: { type: String, enum: ['candidate', 'hr', 'system'], default: null },
+  fileUrl:     { type: String, default: null },
+  fileName:    { type: String, default: null },
+  fileSize:    { type: Number, default: 0 }, // in bytes
   notes:       { type: String },
 }, { _id: true });
 

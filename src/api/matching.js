@@ -2,7 +2,10 @@ export { parseFile, parseJD } from '../utils/fileParser.js';
 
 const toSkillArr = skills => (Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s=>s.trim()) : [])).map(s => s.toLowerCase()).filter(Boolean);
 
-// Local advanced skill-based matching
+/**
+ * matchCandidatesToJob — Deterministic Heuristics (RegEx-based)
+ * Ranks candidates against a job using weighted scoring of skills, experience, and location.
+ */
 export function matchCandidatesToJob(job, candidates) {
   const jobSkills = toSkillArr(job.skills);
   const expRange  = parseExpRange(job.experience || '');
