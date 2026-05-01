@@ -668,10 +668,13 @@ app.use(errorMiddleware);
 // ── Video rooms REST
 app.use('/api/video-rooms', require('./src/routes/videoRooms'));
 
-// ── Socket.IO (Video Interview)
+// ── Socket.IO (Video Interview + Chat + Calling)
 const http = require('http');
 const { Server: IOServer } = require('socket.io');
 const { setupVideoSocket } = require('./src/socket/videoSocket');
+const { setupChatSocket }  = require('./src/socket/chatSocket');
+const { setupCallSocket }  = require('./src/socket/callSocket');
+const socketRegistry       = require('./src/socket/index');
 const httpServer = http.createServer(app);
 const io = new IOServer(httpServer, {
   cors: {
@@ -684,10 +687,16 @@ const io = new IOServer(httpServer, {
     methods: ['GET', 'POST'],
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 180000,   // 3 min — keep alive for long interviews
+  pingTimeout: 180000,
   pingInterval: 25000,
 });
+socketRegistry.setIO(io);
 setupVideoSocket(io);
+setupChatSocket(io);
+setupCallSocket(io);
+
+// ── Calls REST
+app.use('/api/calls', require('./src/routes/calls'));
 
 // ── Start
 const PORT = process.env.PORT || 5000;

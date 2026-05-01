@@ -10,6 +10,7 @@ import { useLogo } from '../context/LogoContext.jsx';
 import useHeartbeat from '../hooks/useHeartbeat.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
 import ChatPanel from '../components/shared/ChatPanel.jsx';
+import CallManager from '../components/calling/CallManager.jsx';
 
 function AppIcon({ name, size = 18, color = 'currentColor' }) {
   const common = {
@@ -606,6 +607,7 @@ export default function Layout({ user, onLogout }) {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @keyframes pulse-dot { 0%,80%,100% { transform: scale(0.6); opacity: 0.4 } 40% { transform: scale(1); opacity: 1 } }
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }
@@ -667,6 +669,7 @@ export default function Layout({ user, onLogout }) {
       </div>
 
       <QuickActionMenu user={user} />
+      <CallManager user={user} />
     </div>
   );
 }

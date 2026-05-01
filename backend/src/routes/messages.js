@@ -6,6 +6,10 @@ const DirectMessage  = require('../models/DirectMessage');
 const User           = require('../models/User');
 const { authenticate } = require('../middleware/auth');
 const asyncHandler   = require('../utils/asyncHandler');
+const socketRegistry = require('../socket/index');
+
+// Deterministic conversation room name (mirrors chatSocket.js)
+const convRoom = (a, b) => `conv:${[String(a), String(b)].sort().join(':')}`;
 
 const CHAT_ROLES = ['recruiter', 'admin', 'super_admin', 'candidate'];
 
@@ -41,6 +45,12 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     attachment: attachment || null,
     replyTo   : replyTo   || null,
   });
+
+  // Push to both participants via Socket.IO — real-time delivery
+  const room = convRoom(req.user._id || req.user.id, toUserId);
+  socketRegistry.emitTo('/chat', room, 'message:new', msg);
+  // Also deliver to recipient's personal room in case they're not in conv room yet
+  socketRegistry.emitTo('/chat', `user:${toUserId}`, 'message:new', msg);
 
   res.json({ success: true, data: msg });
 }));

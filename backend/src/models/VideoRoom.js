@@ -28,8 +28,8 @@ const videoRoomSchema = new mongoose.Schema({
   jobTitle:       String,
   candidateName:  String,
   orgName:        String,
-  roomToken:      { type: String, unique: true, required: true }, // public join token
-  hostToken:      { type: String, unique: true, required: true }, // host-only token (not needed for client, just stored)
+  roomToken:      { type: String, required: true }, // public join token — unique index below
+  hostToken:      { type: String, required: true }, // host-only token
   scheduledAt:    { type: Date, required: true },
   validFrom:      Date, // scheduledAt - 15 min
   validUntil:     Date, // scheduledAt + 4 hours
@@ -43,7 +43,7 @@ const videoRoomSchema = new mongoose.Schema({
   endedAt:        Date,
 }, { timestamps: true });
 
-videoRoomSchema.index({ roomToken: 1 });
+videoRoomSchema.index({ roomToken: 1 }, { unique: true });
 videoRoomSchema.index({ interviewId: 1 });
 videoRoomSchema.index({ tenantId: 1, status: 1 });
 

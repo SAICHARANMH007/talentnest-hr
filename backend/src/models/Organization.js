@@ -4,7 +4,7 @@ const softDeletePlugin = require('./plugins/softDeletePlugin');
 const orgSchema = new mongoose.Schema({
   // Core
   name     : { type: String, required: true, trim: true },
-  slug     : { type: String, lowercase: true, trim: true, unique: true },
+  slug     : { type: String, lowercase: true, trim: true },
   logoUrl        : { type: String },
   logoUpdatedAt  : { type: Date },
   website  : { type: String },
@@ -57,6 +57,7 @@ const orgSchema = new mongoose.Schema({
 // Apply Professional Plugins
 orgSchema.plugin(softDeletePlugin);
 
+orgSchema.index({ slug: 1 }, { unique: true, sparse: true });
 orgSchema.index({ domain: 1 });
 
 orgSchema.set('toJSON', { virtuals: true });

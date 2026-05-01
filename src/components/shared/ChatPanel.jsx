@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import { api } from '../../api/api.js';
+import { API_BASE_URL } from '../../api/config.js';
+
+const CHAT_SOCKET_URL = API_BASE_URL.replace('/api', '');
 
 const ROLE_COLOR = { candidate: '#0176D3', recruiter: '#7c3aed', admin: '#d97706', super_admin: '#059669' };
 const ROLE_LABEL = { candidate: 'Candidate', recruiter: 'Recruiter', admin: 'Admin', super_admin: 'Super Admin' };
@@ -192,11 +196,16 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const [onlineIds, setOnlineIds]       = useState(new Set());
   const [activeLastSeen, setActiveLastSeen] = useState(null);
   const [replyTo, setReplyTo]           = useState(null);
-  const bottomRef  = useRef(null);
-  const fileRef    = useRef(null);
-  const pollRef    = useRef(null);
-  const onlinePoll = useRef(null);
-  const isMobile   = useIsMobile();
+  const [typingUser, setTypingUser] = useState(null); // name of person typing
+  const bottomRef   = useRef(null);
+  const fileRef     = useRef(null);
+  const pollRef     = useRef(null);
+  const onlinePoll  = useRef(null);
+  const chatSocket  = useRef(null);
+  const activeRef   = useRef(null);   // mirror of active for socket closures
+  const typingTimer = useRef(null);
+  const isTypingRef = useRef(false);
+  const isMobile    = useIsMobile();
   const myId = myUser?._id || myUser?.id;
 
   const loadContacts = useCallback(async () => {
@@ -250,12 +259,73 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     loadThread(contact.userId);
   }, [open, initialRecipient, loadThread]);
 
+  // ── Socket.IO real-time chat ────────────────────────────────────────────
+  useEffect(() => {
+    if (!open || !myId) return;
+    const token = sessionStorage.getItem('tn_token') || '';
+    const socket = io(`${CHAT_SOCKET_URL}/chat`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 16000,
+      reconnectionAttempts: Infinity,
+    });
+    chatSocket.current = socket;
+
+    socket.on('message:new', (msg) => {
+      const cur = activeRef.current;
+      const msgFrom = String(msg.fromUserId);
+      const msgTo   = String(msg.toUserId);
+      const myIdStr = String(myId);
+      // Only append if this message belongs to the active conversation
+      if (cur && (msgFrom === cur.userId || msgTo === cur.userId)) {
+        setThread(prev => {
+          // Deduplicate by _id
+          if (prev.some(m => String(m._id) === String(msg._id))) return prev;
+          return [...prev, msg].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        // Update contacts last message
+        const otherUserId = msgFrom === myIdStr ? msgTo : msgFrom;
+        setContacts(prev => prev.map(c => c.userId === otherUserId ? { ...c, lastMsg: msg.message || '📎', lastAt: msg.createdAt } : c));
+      } else if (msgTo === myIdStr) {
+        // Message for me but different conversation — bump unread
+        setContacts(prev => {
+          const exists = prev.find(c => c.userId === msgFrom);
+          if (exists) return prev.map(c => c.userId === msgFrom ? { ...c, unread: (c.unread || 0) + 1, lastMsg: msg.message || '📎', lastAt: msg.createdAt } : c);
+          return prev; // loadContacts will refresh if needed
+        });
+      }
+    });
+
+    socket.on('typing', ({ fromUserId, name }) => {
+      if (activeRef.current?.userId === String(fromUserId)) setTypingUser(name);
+    });
+    socket.on('typing-stop', ({ fromUserId }) => {
+      if (activeRef.current?.userId === String(fromUserId)) setTypingUser(null);
+    });
+
+    // After reconnect, reload thread to catch any missed messages
+    socket.on('connect', () => {
+      const cur = activeRef.current;
+      if (cur) { loadThread(cur.userId); socket.emit('join-conv', { withUserId: cur.userId }); }
+    });
+
+    return () => { socket.disconnect(); chatSocket.current = null; };
+  }, [open, myId]); // eslint-disable-line
+
+  // Keep active ref in sync and join/leave conversation rooms
+  useEffect(() => {
+    activeRef.current = active;
+    const socket = chatSocket.current;
+    if (!socket || !active) return;
+    socket.emit('join-conv', { withUserId: active.userId });
+    return () => { socket.emit('leave-conv', { withUserId: active.userId }); };
+  }, [active]);
+
   useEffect(() => {
     if (!active) return;
     loadThread(active.userId);
-    clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => loadThread(active.userId), 5000);
-    return () => clearInterval(pollRef.current);
   }, [active, loadThread]);
 
   useEffect(() => {
@@ -283,8 +353,23 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     e.target.value = '';
   };
 
+  const emitTyping = useCallback((withUserId) => {
+    const socket = chatSocket.current;
+    if (!socket || !withUserId) return;
+    if (!isTypingRef.current) { isTypingRef.current = true; socket.emit('typing-start', { withUserId }); }
+    clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => {
+      isTypingRef.current = false;
+      socket.emit('typing-stop', { withUserId });
+    }, 2000);
+  }, []);
+
   const send = async () => {
     if ((!text.trim() && !attachment) || !active || sending) return;
+    // Stop typing indicator
+    isTypingRef.current = false;
+    clearTimeout(typingTimer.current);
+    chatSocket.current?.emit('typing-stop', { withUserId: active.userId });
     setSending(true);
     const msgText = text.trim();
     const curReplyTo = replyTo;
@@ -460,6 +545,13 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                     {activeIsOnline ? '● Online now' : ROLE_LABEL[active.role] || active.role}
                   </div>
                 </div>
+                {/* Call buttons — only when recipient is online */}
+                {activeIsOnline && (
+                  <>
+                    <button title="Audio Call" onClick={() => window.__tnStartCall?.(active.userId, active.name, 'audio')} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#0176D3', padding: '4px 6px', borderRadius: 6 }}>📞</button>
+                    <button title="Video Call" onClick={() => window.__tnStartCall?.(active.userId, active.name, 'video')} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#0176D3', padding: '4px 6px', borderRadius: 6 }}>📹</button>
+                  </>
+                )}
                 {!isMobile && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>}
               </div>
 
@@ -522,13 +614,20 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                 </div>
               )}
 
+              {/* Typing indicator */}
+              {typingUser && (
+                <div style={{ padding: '3px 16px', fontSize: 11, color: '#706E6B', fontStyle: 'italic', borderTop: '1px solid #F3F2F2' }}>
+                  {typingUser} is typing…
+                </div>
+              )}
+
               {/* Input bar */}
               <div style={{ padding: '10px 12px', borderTop: '1px solid #F3F2F2', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                 <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" style={{ display: 'none' }} onChange={pickFile} />
                 <button onClick={() => fileRef.current?.click()} title="Attach file (PDF, image, doc — max 8 MB)" style={{ background: 'none', border: '1px solid #E8E7E5', borderRadius: 10, color: '#706E6B', fontSize: 18, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
                 <textarea
                   value={text}
-                  onChange={e => setText(e.target.value)}
+                  onChange={e => { setText(e.target.value); if (active) emitTyping(active.userId); }}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                   placeholder="Type a message… (Enter to send)"
                   rows={1}
