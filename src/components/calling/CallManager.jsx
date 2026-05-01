@@ -93,8 +93,10 @@ export default function CallManager({ user }) {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 8000,
+      reconnectionDelay: 500,       // fast reconnect — 500ms first attempt
+      reconnectionDelayMax: 4000,   // cap at 4s — don't wait too long
+      reconnectionAttempts: Infinity,
+      timeout: 10000,
     });
     socketRef.current = socket;
 
@@ -218,19 +220,45 @@ export default function CallManager({ user }) {
 
   const isVideo = callInfo?.callType === 'video';
 
-  // ── Incoming ──────────────────────────────────────────────────────────────
+  // ── Incoming — top banner + full overlay (impossible to miss) ────────────
   if (callState === 'incoming') return (
-    <div style={overlay}>
-      <div style={card}>
-        <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 4 }}>{isVideo ? '📹' : '📞'}</div>
-        <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginBottom: 4 }}>Incoming {isVideo ? 'Video' : 'Audio'} Call</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 32 }}>{callInfo?.peerName}</div>
-        <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
-          <CallBtn icon="📵" label="Decline" color="#DC2626" onClick={declineCall} />
-          <CallBtn icon="📞" label="Accept"  color="#16a34a" onClick={acceptCall} />
+    <>
+      {/* Top banner — visible even over other modals */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999,
+        background: 'linear-gradient(135deg, #0176D3, #0ea5e9)',
+        padding: '12px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 4px 24px rgba(1,118,211,0.5)',
+        animation: 'ring-pulse 1s ease-in-out infinite',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ fontSize: 28, animation: 'ring-shake 0.5s ease-in-out infinite' }}>
+            {isVideo ? '📹' : '📞'}
+          </div>
+          <div>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{callInfo?.peerName}</div>
+            <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              Incoming {isVideo ? 'Video' : 'Audio'} Call
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={declineCall} style={{ background: '#DC2626', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            📵 Decline
+          </button>
+          <button onClick={acceptCall} style={{ background: '#16a34a', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            📞 Accept
+          </button>
         </div>
       </div>
-    </div>
+      {/* Dimming overlay behind everything */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99990, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+      <style>{`
+        @keyframes ring-pulse { 0%,100%{opacity:1} 50%{opacity:0.9} }
+        @keyframes ring-shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-15deg)} 75%{transform:rotate(15deg)} }
+      `}</style>
+    </>
   );
 
   // ── Outgoing ──────────────────────────────────────────────────────────────

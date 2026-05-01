@@ -1,11 +1,33 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+// Multiple STUN servers across providers — prevents rate-limit failures at scale
+// (50 simultaneous calls from same IP could exhaust Google's STUN rate limits)
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:stun.nextcloud.com:443' },
+  // Free TURN relay — fallback for users behind strict NAT/firewalls
+  // without this, calls fail in corporate networks and mobile data
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
-const MAX_RECONNECT_ATTEMPTS = 5;
+const MAX_RECONNECT_ATTEMPTS = 8; // more attempts for production reliability
 
 /**
  * Shared WebRTC engine used by both chat calls and interview meeting rooms.
@@ -55,19 +77,25 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   const createPeer = useCallback((socketId, socket, signalingEvents, stream) => {
     if (peerConnsRef.current[socketId]) return peerConnsRef.current[socketId];
 
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceTransportPolicy: 'all',       // try direct first, relay as fallback
+      bundlePolicy: 'max-bundle',      // reduces port usage — important at scale
+      rtcpMuxPolicy: 'require',        // single port for RTP+RTCP
+    });
     peerConnsRef.current[socketId] = pc;
     reconnectCount.current[socketId] = 0;
 
     const src = stream || localStreamRef.current;
     if (src) src.getTracks().forEach(t => pc.addTrack(t, src));
 
+    // Trickle ICE — send candidates as they arrive for faster connection
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) signalingEvents.sendIce(socketId, candidate);
     };
 
     pc.ontrack = (e) => {
-      onRemoteStream?.(socketId, e.streams[0]);
+      if (e.streams?.[0]) onRemoteStream?.(socketId, e.streams[0]);
     };
 
     pc.onconnectionstatechange = () => {
@@ -76,7 +104,7 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
         const attempts = reconnectCount.current[socketId] || 0;
         if (attempts < MAX_RECONNECT_ATTEMPTS) {
           reconnectCount.current[socketId] = attempts + 1;
-          const delay = Math.min(1000 * 2 ** attempts, 16000); // exponential backoff
+          const delay = Math.min(500 * 2 ** attempts, 8000); // faster backoff
           setTimeout(() => { try { pc.restartIce(); } catch {} }, delay);
         }
       }

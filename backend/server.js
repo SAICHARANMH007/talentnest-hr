@@ -693,8 +693,10 @@ const io = new IOServer(httpServer, {
     methods: ['GET', 'POST'],
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 180000,
-  pingInterval: 25000,
+  pingTimeout: 60000,    // 1 min — detect dead connections faster
+  pingInterval: 20000,   // ping every 20s to keep 50+ connections alive on Render
+  maxHttpBufferSize: 1e6, // 1MB — enough for signaling payloads
+  connectTimeout: 10000,
 });
 socketRegistry.setIO(io);
 setupVideoSocket(io);

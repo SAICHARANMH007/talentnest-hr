@@ -230,10 +230,76 @@ router.post('/workflow-rules/:id/test', ...wfGuard, asyncHandler(async (req, res
   res.json({ success: true, matched: result.triggered > 0, ruleIds: result.ruleIds || [], sampleEventData });
 }));
 
-// POST /api/admin/deduplicate-jobs — one-time safe deduplication (super_admin only)
+// Stage priority — higher = further in pipeline (never downgrade a candidate)
+const STAGE_PRIORITY = {
+  'Applied': 1, 'Screening': 2, 'Shortlisted': 3,
+  'Interview Round 1': 4, 'Interview Round 2': 5,
+  'Offer': 6, 'Hired': 7, 'Rejected': 0,
+};
+
+/**
+ * Merge two applications for the same candidate into one, preserving all data.
+ * Keeps the application with the better pipeline stage.
+ * Never downgrades a candidate or loses interview/offer history.
+ */
+async function mergeApplications(winnerId, loserId) {
+  const [winnerApp, loserApp] = await Promise.all([
+    Application.findById(winnerId),
+    Application.findById(loserId),
+  ]);
+  if (!winnerApp || !loserApp) return;
+
+  const winStage  = STAGE_PRIORITY[winnerApp.currentStage] ?? 0;
+  const losStage  = STAGE_PRIORITY[loserApp.currentStage]  ?? 0;
+
+  // Merge stage history (deduplicate by stage+timestamp)
+  const allHistory = [...(winnerApp.stageHistory || []), ...(loserApp.stageHistory || [])];
+  const seenStages = new Set();
+  const mergedHistory = allHistory
+    .sort((a, b) => new Date(a.movedAt) - new Date(b.movedAt))
+    .filter(h => {
+      const key = `${h.stage}_${new Date(h.movedAt).getTime()}`;
+      if (seenStages.has(key)) return false;
+      seenStages.add(key);
+      return true;
+    });
+
+  // Merge interview rounds (deduplicate by scheduledAt)
+  const allInterviews = [...(winnerApp.interviewRounds || []), ...(loserApp.interviewRounds || [])];
+  const seenInterviews = new Set();
+  const mergedInterviews = allInterviews.filter(r => {
+    const key = new Date(r.scheduledAt).getTime();
+    if (seenInterviews.has(key)) return false;
+    seenInterviews.add(key);
+    return true;
+  });
+
+  // Build merged update — use better stage, prefer non-null fields from either app
+  const update = {
+    stageHistory   : mergedHistory,
+    interviewRounds: mergedInterviews,
+    // Use better stage
+    currentStage   : losStage > winStage ? loserApp.currentStage : winnerApp.currentStage,
+    // Prefer offer details from whichever app has them
+    offerDetails   : winnerApp.offerDetails || loserApp.offerDetails,
+    // Merge notes
+    notes          : [winnerApp.notes, loserApp.notes].filter(Boolean).join(' | ') || undefined,
+    // Keep best AI score
+    aiMatchScore   : Math.max(winnerApp.aiMatchScore || 0, loserApp.aiMatchScore || 0) || undefined,
+    // Keep rejection reason if either was rejected
+    rejectionReason: winnerApp.rejectionReason || loserApp.rejectionReason,
+  };
+
+  await Application.findByIdAndUpdate(winnerId, { $set: update });
+  // Soft-delete the loser (data is now merged into winner)
+  await Application.findByIdAndUpdate(loserId, { $set: { deletedAt: new Date() } });
+}
+
+// POST /api/admin/deduplicate-jobs — safe merge that NEVER loses candidate data
 router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const orgs = await Organization.find({}).select('_id name').lean();
   const summary = [];
+  let totalMergedApps = 0;
 
   for (const org of orgs) {
     const jobs = await Job.find({ tenantId: org._id, deletedAt: null }).lean();
@@ -262,23 +328,40 @@ router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncH
 
       const winner = list[0];
       for (const loser of list.slice(1)) {
-        const apps = await Application.find({ jobId: loser._id, deletedAt: null }).select('candidateId _id').lean();
-        for (const app of apps) {
-          const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId });
-          if (conflict) {
-            await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date() } });
+        // Fetch ALL loser apps (full docs for data preservation)
+        const loserApps = await Application.find({ jobId: loser._id, deletedAt: null }).lean();
+
+        for (const loserApp of loserApps) {
+          // Check if winner job already has an application from this same candidate
+          const winnerApp = await Application.findOne({
+            jobId: winner._id,
+            candidateId: loserApp.candidateId,
+          });
+
+          if (winnerApp) {
+            // CONFLICT: merge data into winner app, then soft-delete loser
+            await mergeApplications(winnerApp._id, loserApp._id);
           } else {
-            await Application.findByIdAndUpdate(app._id, { $set: { jobId: winner._id } });
+            // NO CONFLICT: simply re-point the application to the winner job
+            await Application.findByIdAndUpdate(loserApp._id, { $set: { jobId: winner._id } });
           }
+          totalMergedApps++;
         }
+
+        // Soft-delete the duplicate job (never hard delete — audit trail preserved)
         await Job.findByIdAndUpdate(loser._id, { $set: { deletedAt: new Date(), status: 'closed' } });
         merged++;
       }
     }
-    if (merged > 0) summary.push(`${org.name}: merged ${merged} duplicate jobs`);
+    if (merged > 0) summary.push(`${org.name}: ${merged} duplicate jobs merged, ${totalMergedApps} applications consolidated`);
   }
 
-  res.json({ success: true, summary, message: summary.length ? summary.join('; ') : 'No duplicates found' });
+  res.json({
+    success: true,
+    summary,
+    totalMergedApps,
+    message: summary.length ? summary.join(' | ') : 'No duplicate jobs found',
+  });
 }));
 
 module.exports = router;
