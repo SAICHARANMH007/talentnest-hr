@@ -4,7 +4,7 @@ import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
 import StageHistory from '../pipeline/StageHistory.jsx';
-import ResumeCard from '../shared/ResumeCard.jsx';
+import ResumeCard from './ResumeCard.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM, STAGES } from '../../constants/stages.js';

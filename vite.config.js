@@ -31,6 +31,9 @@ export default defineConfig({
 
           // ── Shared utils / components (loaded by many pages) ─────────────
           if (id.includes('src/components/charts')) return 'ui-charts';
+          if (id.includes('src/components/shared/UserDetailDrawer')) return 'ui-user-drawer';
+          if (id.includes('src/components/shared/JobDetailDrawer')) return 'ui-job-drawer';
+          if (id.includes('src/components/shared/ChatPanel')) return 'ui-chat';
           if (id.includes('src/components/shared')) return 'ui-shared';
           if (id.includes('src/utils/fileParser') || id.includes('src/utils/resumeParser')) return 'util-parser';
 

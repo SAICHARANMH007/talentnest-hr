@@ -422,52 +422,66 @@ Interested candidates can share profiles at mhsaicharan@talentnesthr.com.`,
 
 
 async function seedTalentNestLinkedInJobs({ tenantId, createdBy }) {
-  let created = 0;
-  let updated = 0;
+  try {
+    const baseJobs = [
+      { title: 'Senior Full Stack Developer', department: 'Engineering', type: 'Full-Time', experience: '4-8 years', salary: '₹18–32 LPA', skills: ['React', 'Node.js', 'MongoDB', 'AWS'], description: 'Lead the development of our core HR SaaS platform. Scaling features and mentoring juniors.' },
+      { title: 'Talent Acquisition Specialist', department: 'HR', type: 'Full-Time', experience: '2-5 years', salary: '₹8–14 LPA', skills: ['Sourcing', 'Screening', 'Stakeholder Management'], description: 'Help our clients find the best talent. Manage end-to-end recruitment pipelines.' },
+      { title: 'Cybersecurity Analyst (L2)', department: 'Security', type: 'Full-Time', experience: '3-6 years', salary: '₹14–22 LPA', skills: ['SOC', 'SIEM', 'Threat Hunting', 'GRC'], description: 'Protect our infrastructure and client data. Respond to incidents and perform threat audits.' },
+      { title: 'Product Manager', department: 'Product', type: 'Full-Time', experience: '5-9 years', salary: '₹22–38 LPA', skills: ['Agile', 'Market Research', 'Roadmapping', 'SaaS'], description: 'Define the future of automated recruitment.' },
+      { title: 'DevOps Engineer', department: 'Infrastructure', type: 'Full-Time', experience: '3-7 years', salary: '₹16–28 LPA', skills: ['Kubernetes', 'Terraform', 'CI/CD', 'Docker'], description: 'Optimize our cloud footprint.' },
+      { title: 'Data Scientist', department: 'Analytics', type: 'Full-Time', experience: '3-6 years', salary: '₹15–26 LPA', skills: ['Python', 'NLP', 'Matching Algorithms', 'SQL'], description: 'Build AI-powered matching.' },
+      { title: 'React Native Developer', department: 'Mobile', type: 'Full-Time', experience: '2-5 years', salary: '₹12–22 LPA', skills: ['React Native', 'TypeScript', 'iOS', 'Android'], description: 'Build a seamless mobile experience.' },
+      { title: 'Finance Manager', department: 'Finance', type: 'Full-Time', experience: '6-10 years', salary: '₹18–28 LPA', skills: ['Financial Planning', 'Taxation', 'ERP'], description: 'Oversee financial operations.' },
+      { title: 'Marketing Lead', department: 'Marketing', type: 'Full-Time', experience: '4-8 years', salary: '₹14–24 LPA', skills: ['Content Strategy', 'SEO', 'Lead Generation'], description: 'Drive growth and awareness.' },
+      { title: 'Sales Executive', department: 'Sales', type: 'Full-Time', experience: '2-5 years', salary: '₹6–12 LPA', skills: ['B2B Sales', 'Lead Gen', 'CRM'], description: 'Bring new enterprise clients.' },
+    ];
 
-  for (const def of linkedInTalentNestJobs) {
-    const careerPageSlug = `talentnest-${careerSlug(def.title)}`;
-    const payload = {
-      tenantId,
-      createdBy,
-      title: def.title,
-      description: def.description,
-      company: 'Talent Nest HR',
-      companyName: 'Talent Nest HR',
-      department: def.department,
-      skills: def.skills,
-      niceToHaveSkills: [],
-      salaryMin: def.salaryMin,
-      salaryMax: def.salaryMax,
-      salaryCurrency: 'INR',
-      salaryType: def.salaryType || 'CTC',
-      location: def.location,
-      jobType: def.jobType,
-      numberOfOpenings: def.numberOfOpenings || 1,
-      urgency: def.urgency || 'Medium',
-      status: 'active',
-      approvalStatus: 'approved',
-      careerPageSlug,
-      source: 'linkedin',
-      contactEmail: def.contactEmail,
-      alternateContactEmail: def.alternateContactEmail,
-      contactPhone: def.contactPhone,
-    };
+    const locations = ['Hyderabad', 'Bangalore', 'Mumbai', 'Pune', 'Chennai', 'Gurgaon', 'Noida', 'Remote'];
+    const departments = ['Engineering', 'Product', 'HR', 'Finance', 'Marketing', 'Sales', 'Infrastructure', 'Security', 'Operations'];
 
-    const existing = await Job.findOne({ tenantId, careerPageSlug }).select('_id').lean();
-    await Job.findOneAndUpdate(
-      { tenantId, careerPageSlug },
-      {
-        $set: { ...payload, assignedRecruiters: createdBy ? [createdBy] : [] },
-        $setOnInsert: { applicationCount: 0 }
-      },
-      { upsert: true, new: true }
-    );
-    if (existing) updated++;
-    else created++;
+    const jobsToCreate = [];
+    for (let i = 0; i < 200; i++) {
+      const base = baseJobs[i % baseJobs.length];
+      const loc = locations[i % locations.length];
+      const dept = departments[i % departments.length];
+      const level = i < 40 ? 'Senior ' : i > 160 ? 'Junior ' : '';
+      const title = `${level}${base.title}`;
+      const careerPageSlug = `seed-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${loc.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${i}`;
+
+      jobsToCreate.push({
+        title,
+        department: dept,
+        location: loc,
+        type: base.type,
+        experience: base.experience,
+        salary: base.salary,
+        skills: base.skills,
+        description: base.description,
+        urgency: i % 5 === 0 ? 'High' : 'Medium',
+        status: 'active',
+        approvalStatus: 'approved',
+        isPublic: true,
+        tenantId,
+        orgId: tenantId,
+        createdBy,
+        careerPageSlug,
+        companyName: 'TalentNest HR',
+        applicationCount: Math.floor(Math.random() * 15),
+      });
+    }
+
+    console.log(`🚀 Syncing ${jobsToCreate.length} seed jobs for TalentNest HR...`);
+    for (const job of jobsToCreate) {
+      await Job.findOneAndUpdate(
+        { tenantId, careerPageSlug: job.careerPageSlug },
+        { $set: job },
+        { upsert: true }
+      );
+    }
+    console.log(`✅  200 jobs synced successfully.`);
+  } catch (err) {
+    console.error('❌  Error seeding 200 jobs:', err.message);
   }
-
-  console.log(`✅  TalentNest LinkedIn jobs synced → ${created} created, ${updated} updated`);
 }
 
 async function seed() {
