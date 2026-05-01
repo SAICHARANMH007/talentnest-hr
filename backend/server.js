@@ -683,7 +683,15 @@ const { startJobAlertJobs } = require('./src/jobs/jobAlertCron');
 
 connectDB()
   .then(() => seed())
-  .then(() => seedDemo())
+  .then(() => {
+    // Only run demo seed if explicitly enabled OR NOT in production/Render
+    const skipDemo = process.env.SKIP_DEMO_SEED === 'true' || IS_PROD || !!process.env.RENDER;
+    if (!skipDemo) {
+      return seedDemo();
+    } else {
+      console.log('ℹ️   Skipping demo seed (Production/Render environment)');
+    }
+  })
   .then(() => {
     startWeeklyReportJob();
     startSlaMonitorJob();

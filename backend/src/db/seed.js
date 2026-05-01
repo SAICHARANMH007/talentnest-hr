@@ -12,6 +12,44 @@ const Application  = require('../models/Application');
 const daysAgo  = (n) => new Date(Date.now() - n * 86400000);
 const daysFrom = (n) => new Date(Date.now() + n * 86400000);
 const slug     = (name) => name.toLowerCase().replace(/\s+/g, '.');
+const careerSlug = (str) => String(str || '').toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+
+/** 
+ * Remove duplicate jobs while preserving application links
+ */
+async function deduplicateJobs(tenantId) {
+  const jobs = await Job.find({ tenantId }).lean();
+  const groups = {};
+  
+  for (const j of jobs) {
+    const key = `${j.title.toLowerCase().trim()}_${j.location?.toLowerCase().trim()}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(j);
+  }
+
+  let mergedCount = 0;
+  for (const key in groups) {
+    const list = groups[key];
+    if (list.length <= 1) continue;
+
+    // Keep the one with a slug or the oldest one
+    list.sort((a, b) => {
+      if (a.careerPageSlug && !b.careerPageSlug) return -1;
+      if (!a.careerPageSlug && b.careerPageSlug) return 1;
+      return a.createdAt - b.createdAt;
+    });
+
+    const winner = list[0];
+    const losers = list.slice(1);
+
+    for (const loser of losers) {
+      await Application.updateMany({ jobId: loser._id }, { $set: { jobId: winner._id } });
+      await Job.findByIdAndDelete(loser._id);
+      mergedCount++;
+    }
+  }
+  if (mergedCount > 0) console.log(`🧹  Deduplicated ${mergedCount} jobs for tenant ${tenantId}`);
+}
 
 // Valid canonical stages (must match backend VALID_STAGES in applications.js)
 const VALID_STAGES = [
@@ -27,27 +65,31 @@ const linkedInTalentNestJobs = [
     jobType: 'Full-Time',
     department: 'Engineering',
     urgency: 'High',
-    numberOfOpenings: 3,
+    numberOfOpenings: 5,
     experience: '2+ years',
     salaryType: 'CTC',
     skills: ['Node.js', 'React', 'Advanced JavaScript', 'ES6+', 'API Integration', 'MERN Stack', 'Backend Integration'],
     contactEmail: 'hr@talentnesthr.com',
     contactPhone: '7995535539',
-    description: `Hiring Requirement for Hyderabad Location
+    description: `✔️Hiring Requirement for Hyderabad Location
 
-We are looking for candidates with strong experience in Node.js, React, and advanced JavaScript concepts.
+We are looking for candidates with strong experience in:
+Node.js / React
+Advanced JavaScript concepts
 
-Experience:
+📌 Experience:
 Minimum 2+ years
 
-Key Expectations:
-- Hands-on experience in real-time / production-level projects
-- Strong understanding of ES6+ concepts
-- Experience with APIs and backend integration
-- Component-based architecture in React
-- Ability to work on scalable and performance-driven applications
+📌 Key Expectations:
+Hands-on experience in real-time / production-level projects
+Strong understanding of:
+ES6+ concepts
+APIs & backend integration
+Component-based architecture (React)
+Ability to work on scalable and performance-driven applications
 
-Interested candidates can share CV at hr@talentnesthr.com or reach out at 7995535539.`,
+Interested candidates kindly share cv on hr@talentnesthr.com
+Reachout : 7995535539`,
   },
   {
     title: 'Freelance Recruiter',
@@ -55,7 +97,7 @@ Interested candidates can share CV at hr@talentnesthr.com or reach out at 799553
     jobType: 'Contract',
     department: 'Recruitment',
     urgency: 'High',
-    numberOfOpenings: 10,
+    numberOfOpenings: 50,
     experience: '2-3 years',
     skills: ['IT Recruitment', 'Healthcare Recruitment', 'Mortgage Hiring', 'Sourcing', 'Candidate Screening', 'Closure Hiring', 'Client Coordination'],
     contactEmail: 'mhsaicharan@talentnesthr.com',
@@ -272,7 +314,7 @@ Interested candidates can share resumes at mhsaicharan@talentnesthr.com or reach
     jobType: 'Contract',
     department: 'Vendor Partnerships',
     urgency: 'Medium',
-    numberOfOpenings: 20,
+    numberOfOpenings: 100,
     experience: '2+ years',
     skills: ['IT Hiring', 'Vendor Hiring', 'Recruitment Partnership', 'Sourcing', 'Candidate Screening', 'Full Stack Hiring', 'Android Hiring', 'Frappe Hiring'],
     contactEmail: 'mhsaicharan@talentnesthr.com',
@@ -318,12 +360,6 @@ Interested candidates can share profiles at mhsaicharan@talentnesthr.com.`,
   },
 ];
 
-function careerSlug(str) {
-  return String(str || '').toLowerCase().trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
 
 async function seedTalentNestLinkedInJobs({ tenantId, createdBy }) {
   let created = 0;
@@ -436,8 +472,29 @@ async function seed() {
     console.log(`✅  Super Admin created → ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
   }
 
+  // ── 2.1 Ensure Recruiter "Vamsee" exists ───────────────────────────────────
+  const VAMSEE_EMAIL = 'vamsee@talentnesthr.com';
+  let vamsee = await User.findOne({ email: VAMSEE_EMAIL });
+  if (!vamsee) {
+    vamsee = await User.create({
+      name: 'Vamsee',
+      email: VAMSEE_EMAIL,
+      passwordHash: bcrypt.hashSync('Vamsee@2024', 10),
+      role: 'recruiter',
+      title: 'Senior Talent Acquisition',
+      tenantId,
+      orgId: tenantId,
+      orgName: od.name,
+      isActive: true
+    });
+    console.log(`✅  Recruiter Vamsee created → ${VAMSEE_EMAIL}`);
+  }
+
+  // ── 2.2 Cleanup Duplicates BEFORE syncing real jobs ────────────────────────
+  await deduplicateJobs(tenantId);
+
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
-  await seedTalentNestLinkedInJobs({ tenantId, createdBy: superAdmin?._id });
+  await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {

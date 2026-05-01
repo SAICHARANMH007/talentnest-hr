@@ -12,6 +12,10 @@ const daysAgo = (n) => new Date(Date.now() - Math.floor(Math.random() * n + 1) *
 const exactDaysAgo = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
 async function seedDemo() {
+  if (process.env.SKIP_DEMO_SEED === 'true') {
+    console.log('ℹ️   SKIP_DEMO_SEED=true — skipping demo data seed');
+    return;
+  }
   const tnOrg = await Organization.findOne({ domain: { $regex: /talentnesthr\.com/i } });
   if (!tnOrg) { console.log('⚠️  TalentNest org not found — run main seed first'); return; }
   const orgId = tnOrg._id;

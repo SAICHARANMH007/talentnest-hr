@@ -213,7 +213,7 @@ export default function CareersPage() {
       .then(res => {
         const arr = Array.isArray(res) ? res : (res?.data || []);
         setJobs(arr);
-        setTotalJobs(res?.total || arr.length);
+        setTotalJobs(res?.pagination?.total || arr.length);
 
         // ── Inject JSON-LD for Googlebot's JS indexer ──────────────────────
         // Remove any previously injected job JSON-LD tags first
