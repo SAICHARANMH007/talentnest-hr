@@ -46,7 +46,6 @@ class UserService {
     const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Fetch org details to populate denormalized fields
-    const Organization = mongoose.model('Organization');
     const Tenant = mongoose.model('Tenant');
     const org = await Organization.findById(tenantId).lean() || await Tenant.findById(tenantId).lean();
     const orgNameFallback = org?.name || 'TalentNest HR';
@@ -80,7 +79,6 @@ class UserService {
     }
 
     // Send Email via Unified Template
-    const org = await Organization.findById(tenantId).lean();
     const link = `${process.env.FRONTEND_URL}/set-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}`;
     
     let tpl;
@@ -139,7 +137,6 @@ class UserService {
   async bulkImport(candidates, tenantId, addedBy, targetJobId = null) {
     if (!Array.isArray(candidates)) throw new AppError('Candidates must be an array.', 400);
 
-    const Organization = mongoose.model('Organization');
     const Tenant = mongoose.model('Tenant');
     
     // 1. Resolve Tenant — fallback to TalentNest HR if missing
