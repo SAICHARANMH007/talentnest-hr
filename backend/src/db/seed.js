@@ -490,8 +490,9 @@ async function seed() {
     console.log(`✅  Recruiter Vamsee created → ${VAMSEE_EMAIL}`);
   }
 
-  // ── 2.2 Cleanup Duplicates BEFORE syncing real jobs ────────────────────────
-  await deduplicateJobs(tenantId);
+  // ── 2.2 Cleanup Duplicates BEFORE syncing real jobs (all tenants) ────────────
+  const allTenantIds = await Organization.find({}).select('_id').lean();
+  await Promise.all(allTenantIds.map(o => deduplicateJobs(o._id)));
 
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
@@ -558,7 +559,7 @@ async function seed() {
   const existingJobCount = await Job.countDocuments({ tenantId: demoTenant });
   let jobs = [];
 
-  if (existingJobCount < 10) {
+  if (existingJobCount === 0) {
     const jobPool = [
       { title: 'Senior React Developer',  dept: 'Engineering',     skills: ['React','TypeScript','Node.js','GraphQL'] },
       { title: 'Product Manager',         dept: 'Product',         skills: ['Product Management','Agile','Jira','Figma'] },
@@ -608,7 +609,7 @@ async function seed() {
   const existingCandidateCount = await Candidate.countDocuments({ tenantId: demoTenant });
   let candidates = [];
 
-  if (existingCandidateCount < 20) {
+  if (existingCandidateCount === 0) {
     const names = [
       'Karan Singh',    'Anjali Nair',    'Deepak Gupta',    'Meera Krishnan',
       'Rohit Sharma',   'Priyanka Joshi', 'Vikram Nambiar',  'Sonal Agarwal',
@@ -676,7 +677,7 @@ async function seed() {
   // ── 8. Applications ──────────────────────────────────────────────────────────
   const existingAppCount = await Application.countDocuments({ tenantId: demoTenant });
 
-  if (existingAppCount < 10 && jobs.length > 0 && candidates.length > 0) {
+  if (existingAppCount === 0 && jobs.length > 0 && candidates.length > 0) {
     const jIds  = jobs.map(j => j._id || j.id);
     const cIds  = candidates.map(c => c._id || c.id);
     const recId = recruiterUser._id || recruiterUser.id;

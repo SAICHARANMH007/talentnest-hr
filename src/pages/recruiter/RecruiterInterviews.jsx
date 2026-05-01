@@ -178,7 +178,13 @@ export default function RecruiterInterviews({ user }) {
                     <td style={S.td}>{FORMAT_LABELS[round.format] || round.format || '—'}</td>
                     <td style={S.td}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {round.videoLink && <a href={/^https?:\/\//i.test(round.videoLink) ? round.videoLink : `https://${round.videoLink}`} target="_blank" rel="noreferrer noopener" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>}
+                        {round.videoLink && (
+                          round.videoLink.includes('/meeting/') ? (
+                            <a href={round.videoLink} target="_blank" rel="noreferrer noopener" style={{ ...btnP, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>🎥 Start Room</a>
+                          ) : (
+                            <a href={/^https?:\/\//i.test(round.videoLink) ? round.videoLink : `https://${round.videoLink}`} target="_blank" rel="noreferrer noopener" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>
+                          )
+                        )}
                         {isPast(round.scheduledAt) && !hasFeedback && (
                           <button onClick={() => { setScorecardApp({ app, idx }); setScorecard(SCORECARD_EMPTY); }} style={{ ...btnP, fontSize: 12 }}>Scorecard</button>
                         )}
@@ -222,7 +228,11 @@ export default function RecruiterInterviews({ user }) {
             </div>
             <Field label="Interviewer Name" value={schedForm.interviewerName} onChange={v => sf('interviewerName', v)} />
             <Field label="Interviewer Email" value={schedForm.interviewerEmail} onChange={v => sf('interviewerEmail', v)} type="email" />
-            {schedForm.format === 'video' && <Field label="Video Call Link" value={schedForm.videoLink} onChange={v => sf('videoLink', v)} placeholder="https://meet.google.com/…" />}
+            {schedForm.format === 'video' && (
+              <div style={{ background: 'rgba(1,118,211,0.08)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#0176D3', fontWeight: 600 }}>
+                🎥 A private TalentNest video room will be created automatically and included in the interview invite.
+              </div>
+            )}
             <Field label="Notes" value={schedForm.notes} onChange={v => sf('notes', v)} type="textarea" placeholder="Preparation notes…" />
           </div>
         </Modal>

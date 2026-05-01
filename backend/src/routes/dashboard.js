@@ -17,7 +17,7 @@ const { cacheRoute }  = require('../middleware/cache');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const STAGE_DONE    = 'selected';
+const STAGE_DONE    = 'Hired';   // DB value — frontend maps this to 'selected'
 const STAGE_OFFER   = 'offer_extended';
 const STAGE_IV      = 'interview_scheduled';
 const STAGES_ACTIVE = ['invited', 'applied', 'screening', 'shortlisted', 'interview_scheduled', 'interview_completed', 'offer_extended'];
@@ -332,7 +332,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
     Application.countDocuments({ ...orgF, ...del }),
-    Application.countDocuments({ ...orgF, currentStage: 'selected', ...del }),
+    Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
   ]);
 
   const avgPerJob = openJobs > 0 ? parseFloat((applications / openJobs).toFixed(1)) : 0;
@@ -343,10 +343,10 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     User.countDocuments({ ...candF, isActive: true, createdAt: { $gte: ago30 } }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true, createdAt: { $gte: ago30 } }),
     Application.countDocuments({ ...orgF, ...del, createdAt: { $gte: ago30 } }),
-    Application.countDocuments({ ...orgF, ...del, currentStage: 'selected', updatedAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
     User.countDocuments({ ...candF, isActive: true, createdAt: { $lt: ago30 } }),
     Application.countDocuments({ ...orgF, ...del, createdAt: { $lt: ago30 } }),
-    Application.countDocuments({ ...orgF, ...del, currentStage: 'selected', updatedAt: { $lt: ago30 } }),
+    Application.countDocuments({ ...orgF, ...del, currentStage: 'Hired', updatedAt: { $lt: ago30 } }),
     Job.countDocuments({ ...orgF, ...del, status: 'active', createdAt: { $lt: ago30 } }),
     Job.countDocuments({ ...orgF, ...del, status: { $in: ['active', 'closed'] } }),
   ]);
@@ -452,7 +452,7 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
       { $group: {
           _id: '$job.assignedRecruiters',
           candidates: { $sum: 1 },
-          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'selected'] }, 1, 0] } },
+          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } },
         },
       },
     ]),
@@ -532,7 +532,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
   // Compute avgTimeToHire via aggregation — avoids fetching all hired docs to Node memory
   const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg] = await Promise.all([
     Application.countDocuments({ ...orgF, ...dateF }),
-    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'selected' }),
+    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
     Application.aggregate([
       { $match: { ...orgF, ...dateF } },
@@ -552,7 +552,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       { $project: { title: '$job.title', count: 1 } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, currentStage: 'selected' } },
+      { $match: { ...orgF, currentStage: 'Hired' } },
       { $project: {
           daysToHire: { $divide: [{ $subtract: ['$updatedAt', '$createdAt'] }, 86400000] },
         },
@@ -626,11 +626,21 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   const limit = (rawLimit === 0) ? 1000 : Math.min(rawLimit || 50, 500);
   const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim();
+  const appliedOnly = req.query.appliedOnly === 'true';
+
+  // For appliedOnly, pre-fetch candidate IDs that have at least one application
+  let appliedCandidateIds = null;
+  if (appliedOnly) {
+    appliedCandidateIds = await Application.distinct('candidateId', { deletedAt: null, ...tf });
+  }
 
   // Unified Aggregation Pipeline for "The Human" (Candidate)
   // This offloads deduplication to MongoDB and supports pagination at the DB level.
+  const baseMatch = { ...tf, deletedAt: null };
+  if (appliedCandidateIds) baseMatch._id = { $in: appliedCandidateIds };
+
   const pipeline = [
-    { $match: { ...tf, deletedAt: null } },
+    { $match: baseMatch },
     { $sort: { createdAt: -1 } },
     {
       $facet: {

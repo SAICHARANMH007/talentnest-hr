@@ -175,7 +175,7 @@ router.post('/public', asyncHandler(async (req, res) => {
   const User = require('../models/User');
   const existingUser = await User.findOne({ email: candidateEmail.toLowerCase().trim() }).lean();
   if (!existingUser) {
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     const trackLink = `${FRONTEND_URL}/login?prefill=${encodeURIComponent(candidateEmail.toLowerCase().trim())}&ref=career_apply`;
     email.sendEmailWithRetry?.(candidateEmail,
       `✅ Application received — ${job.title} | Create your account to track it`,
@@ -356,7 +356,7 @@ router.post('/invite', ...guard,
 
     // Send invite email if candidate has email
     if (candidate.email) {
-      const inviteLink = `${process.env.FRONTEND_URL || 'https://talentnesthr.com'}/invite/${inviteToken}`;
+      const inviteLink = `${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/invite/${inviteToken}`;
       const tpl = email.templates?.candidateInvite?.({
         name: candidate.name,
         recruiterName: req.user.name || 'The Recruiter',
@@ -426,6 +426,12 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   if (req.query.candidateId) filter.candidateId = req.query.candidateId;
   if (req.query.stage)       filter.currentStage = req.query.stage;
   if (req.query.status)      filter.status       = req.query.status;
+  if (req.query.startDate || req.query.endDate) {
+    const dateField = req.query.stage ? 'updatedAt' : 'createdAt';
+    filter[dateField] = {};
+    if (req.query.startDate) filter[dateField].$gte = new Date(req.query.startDate);
+    if (req.query.endDate)   filter[dateField].$lte = new Date(req.query.endDate);
+  }
 
   const [apps, total] = await Promise.all([
     Application.find(filter)
@@ -500,7 +506,7 @@ router.patch('/:id/stage', ...guard,
     const candidate = await Candidate.findById(app.candidateId).select('name email').lean();
     if (candidate?.email) {
       const jobDoc = await Job.findById(app.jobId).select('title').lean();
-      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
       const stageEmailMap = {
         Shortlisted: {
           subject: `🎉 You've been shortlisted for ${jobDoc?.title}`,
@@ -742,12 +748,41 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
   const roundIndex = app.interviewRounds.length; // 0-based index of this new round
   const roundLabel = `Interview Round ${roundIndex + 1}`;
 
+  // Auto-create TalentNest video room for this interview
+  let nativeJoinLink = '';
+  try {
+    const VideoRoom = require('../models/VideoRoom');
+    const crypto = require('crypto');
+    const genToken = () => crypto.randomBytes(20).toString('hex');
+    const frontendBase = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+    let vRoom = await VideoRoom.findOne({ interviewId: app._id });
+    if (!vRoom) {
+      vRoom = await VideoRoom.create({
+        interviewId: app._id,
+        tenantId: app.tenantId,
+        jobTitle: '',   // filled after job fetch below
+        candidateName: '',
+        orgName: req.tenant?.name || '',
+        roomToken: genToken(),
+        hostToken: genToken(),
+        scheduledAt,
+        validFrom: new Date(scheduledAt.getTime() - 15 * 60 * 1000),
+        validUntil: new Date(scheduledAt.getTime() + 4 * 60 * 60 * 1000),
+        hostUserId: String(req.user._id || req.user.id),
+        status: 'scheduled',
+      });
+    }
+    nativeJoinLink = `${frontendBase}/meeting/${vRoom.roomToken}`;
+  } catch (e) {
+    console.error('[interview] video room creation failed:', e.message);
+  }
+
   app.interviewRounds.push({
     scheduledAt,
     format: format || 'video',
     interviewerName: interviewerName || '',
     interviewerEmail: interviewerEmail || '',
-    videoLink: videoLink || '',
+    videoLink: nativeJoinLink || videoLink || '',
     feedback: {},
   });
 
@@ -771,10 +806,10 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
   // Build calendar invite
   const icalContent = buildICalEvent({
     summary: `${roundLabel} — ${job?.title || 'Interview'} @ ${orgName}`,
-    description: `Interview for ${job?.title || 'the role'}\nCandidate: ${candidate?.name || ''}\nFormat: ${format || 'Video'}\n${videoLink ? `Link: ${videoLink}` : ''}`,
+    description: `Interview for ${job?.title || 'the role'}\nCandidate: ${candidate?.name || ''}\nFormat: ${format || 'Video'}\n${nativeJoinLink ? `Join: ${nativeJoinLink}` : (videoLink ? `Link: ${videoLink}` : '')}`,
     startDt: scheduledAt,
     endDt: endAt,
-    location: videoLink || (format === 'in_person' ? 'Office' : 'Video Call'),
+    location: nativeJoinLink || videoLink || (format === 'in_person' ? 'Office' : 'TalentNest Video Call'),
     organizer: { name: req.user.name || orgName, email: process.env.RESEND_FROM || 'hr@talentnesthr.com' },
     attendees: [
       candidate?.email ? { name: candidate.name, email: candidate.email } : null,
@@ -782,22 +817,28 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     ].filter(Boolean),
   });
 
+  const joinLink = nativeJoinLink || videoLink || '';
   const inviteHtml = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <h2 style="color:#0176D3">🎉 Interview Scheduled — ${job?.title || 'Position'}</h2>
-      <p>Dear ${candidate?.name || 'Candidate'},</p>
-      <p>We are pleased to inform you that your interview has been scheduled.</p>
-      <table style="width:100%;border-collapse:collapse;margin:16px 0">
-        <tr><td style="padding:8px;background:#f0f9ff;font-weight:700;width:40%">Round</td><td style="padding:8px">${roundLabel}</td></tr>
-        <tr><td style="padding:8px;background:#f0f9ff;font-weight:700">Date</td><td style="padding:8px">${dateStr}</td></tr>
-        <tr><td style="padding:8px;background:#f0f9ff;font-weight:700">Time</td><td style="padding:8px">${timeStr}</td></tr>
-        <tr><td style="padding:8px;background:#f0f9ff;font-weight:700">Format</td><td style="padding:8px">${format || 'Video Call'}</td></tr>
-        <tr><td style="padding:8px;background:#f0f9ff;font-weight:700">Interviewer</td><td style="padding:8px">${interviewerName || 'To be confirmed'}</td></tr>
-        ${videoLink ? `<tr><td style="padding:8px;background:#f0f9ff;font-weight:700">Join Link</td><td style="padding:8px"><a href="${videoLink}">${videoLink}</a></td></tr>` : ''}
-      </table>
-      <p>A calendar invite is attached. Please accept it to confirm your attendance.</p>
-      <p>Best regards,<br>${orgName}</p>
-    </div>`;
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff">
+  <div style="background:linear-gradient(135deg,#0176D3,#0ea5e9);padding:32px;border-radius:12px 12px 0 0;text-align:center">
+    <div style="font-size:36px">🎉</div>
+    <h1 style="color:#fff;margin:8px 0 4px;font-size:22px">Interview Scheduled</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:0">${job?.title || 'Position'} — ${orgName}</p>
+  </div>
+  <div style="padding:32px;background:#F8FAFC;border-radius:0 0 12px 12px">
+    <p style="margin:0 0 20px;color:#374151">Dear <strong>${candidate?.name || 'Candidate'}</strong>, your ${roundLabel} has been scheduled. Please find the details below.</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;background:#fff;border-radius:8px;overflow:hidden">
+      <tr><td style="padding:12px 16px;font-weight:700;color:#374151;border-bottom:1px solid #F1F5F9;width:38%">Round</td><td style="padding:12px 16px;border-bottom:1px solid #F1F5F9">${roundLabel}</td></tr>
+      <tr><td style="padding:12px 16px;font-weight:700;color:#374151;border-bottom:1px solid #F1F5F9">Date</td><td style="padding:12px 16px;border-bottom:1px solid #F1F5F9">${dateStr}</td></tr>
+      <tr><td style="padding:12px 16px;font-weight:700;color:#374151;border-bottom:1px solid #F1F5F9">Time</td><td style="padding:12px 16px;border-bottom:1px solid #F1F5F9">${timeStr}</td></tr>
+      <tr><td style="padding:12px 16px;font-weight:700;color:#374151;border-bottom:1px solid #F1F5F9">Interviewer</td><td style="padding:12px 16px;border-bottom:1px solid #F1F5F9">${interviewerName || 'To be confirmed'}</td></tr>
+      <tr><td style="padding:12px 16px;font-weight:700;color:#374151">Format</td><td style="padding:12px 16px">${format === 'in_person' ? 'In Person' : 'TalentNest Video Interview'}</td></tr>
+    </table>
+    ${joinLink ? `<div style="text-align:center;margin:24px 0"><a href="${joinLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0ea5e9);color:#fff;text-decoration:none;padding:16px 40px;border-radius:12px;font-weight:700;font-size:16px;letter-spacing:0.3px">🎥 Join Interview Room</a><p style="color:#94A3B8;font-size:12px;margin:12px 0 0">This link is unique to your interview. Do not share it.</p></div>` : ''}
+    <p style="color:#374151;margin:0">A calendar invite is attached. Please accept it to confirm attendance.</p>
+    <p style="color:#94A3B8;font-size:13px;margin:16px 0 0">Best regards,<br><strong>${orgName}</strong></p>
+  </div>
+</div>`;
 
   const icalAttachment = icalContent
     ? [{ filename: 'interview-invite.ics', content: Buffer.from(icalContent).toString('base64') }]
@@ -812,9 +853,20 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     email.sendEmailWithRetry?.(interviewerEmail, `Interview Scheduled — ${candidate?.name || 'Candidate'} | ${job?.title || 'Position'}`, inviteHtml, icalAttachment).catch(() => {});
   }
 
+  // Backfill job/candidate names into the video room if we just created it
+  if (nativeJoinLink) {
+    try {
+      const VideoRoom = require('../models/VideoRoom');
+      await VideoRoom.updateOne(
+        { interviewId: app._id },
+        { $set: { jobTitle: job?.title || 'Interview', candidateName: candidate?.name || 'Candidate', orgName } }
+      );
+    } catch (e) { /* non-critical */ }
+  }
+
   // WhatsApp to candidate
   if (candidate?.phone) {
-    const waMsg = `Hi ${candidate?.name?.split(' ')[0] || 'there'} 👋\n\nYour *${roundLabel}* has been scheduled:\n📅 *${dateStr}*\n🕐 *${timeStr}*\n💼 Role: ${job?.title || 'Position'}\n${videoLink ? `🔗 Join: ${videoLink}` : ''}\n\nPlease confirm your availability. All the best! 🎯\n— ${orgName}`;
+    const waMsg = `Hi ${candidate?.name?.split(' ')[0] || 'there'} 👋\n\nYour *${roundLabel}* has been scheduled:\n📅 *${dateStr}*\n🕐 *${timeStr}*\n💼 Role: ${job?.title || 'Position'}\n${nativeJoinLink ? `🔗 Join: ${nativeJoinLink}` : (videoLink ? `🔗 Join: ${videoLink}` : '')}\n\nPlease confirm your availability. All the best! 🎯\n— ${orgName}`;
     sendWhatsApp(candidate.phone, waMsg).catch(() => {});
   }
 

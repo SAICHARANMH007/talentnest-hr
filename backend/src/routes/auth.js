@@ -280,7 +280,7 @@ router.post('/forgot-password', otpLimiter, asyncHandler(async (req, res) => {
       resetPasswordExpires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
     });
 
-    const link = `${process.env.FRONTEND_URL || 'https://talentnesthr.com'}/set-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}&mode=reset`;
+    const link = `${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/set-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}&mode=reset`;
     const { templates } = require('../utils/email');
     const tpl = templates.forgotPassword(user.name, link, { orgId: user.orgId?.toString() });
     await sendEmailWithRetry(user.email, tpl.subject, tpl.html).catch(() => { });

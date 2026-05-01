@@ -11,7 +11,7 @@ const Application = require('../models/Application');
 const EmailLog    = require('../models/EmailLog');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'talent_nest_dev_secret_key_2024_do_not_use_in_prod';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 const BACKEND_URL  = process.env.BACKEND_URL  || 'https://api.talentnesthr.com';
 
 const { authenticate: auth } = require('../middleware/auth');

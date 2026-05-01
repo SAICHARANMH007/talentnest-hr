@@ -86,7 +86,7 @@ async function seed() {
     name    : 'TalentNest HR Solutions Pvt Ltd',
     slug    : 'talentnesthr',
     domain  : 'talentnesthr.com',
-    website : 'https://talentnesthr.com',
+    website : 'https://www.talentnesthr.com',
     industry: 'Staffing & Recruitment',
     size    : '51-200',
     plan    : 'enterprise',

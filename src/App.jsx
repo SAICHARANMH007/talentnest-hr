@@ -5,6 +5,7 @@ import { usePushNotifications } from './hooks/usePushNotifications.js';
 import { API_BASE_URL } from './api/config.js';
 
 // ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────────────────
+const MeetingRoom = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
 const AuthScreen = lazy(() => import('./pages/auth/AuthScreen.jsx'));
 const SetPasswordPage = lazy(() => import('./pages/auth/SetPasswordPage.jsx'));
 const CareersPage = lazy(() => import('./pages/careers/CareersPage.jsx'));
@@ -421,6 +422,7 @@ export default function App() {
       <Route path="/terms" element={<Suspense fallback={<PageLoader />}><TermsPage /></Suspense>} />
 
       {/* ── Public job board + Companies ── */}
+      <Route path="/meeting/:roomToken" element={<Suspense fallback={<PageLoader />}><MeetingRoom /></Suspense>} />
       <Route path="/careers" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/careers/:companySlug" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/companies" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />

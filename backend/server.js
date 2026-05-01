@@ -665,10 +665,34 @@ app.all('*', (req, res, next) => {
 // ── Global error handler (Industry Standard)
 app.use(errorMiddleware);
 
+// ── Video rooms REST
+app.use('/api/video-rooms', require('./src/routes/videoRooms'));
+
+// ── Socket.IO (Video Interview)
+const http = require('http');
+const { Server: IOServer } = require('socket.io');
+const { setupVideoSocket } = require('./src/socket/videoSocket');
+const httpServer = http.createServer(app);
+const io = new IOServer(httpServer, {
+  cors: {
+    origin: (origin, cb) => {
+      if (!origin || origin.startsWith('http://localhost:')) return cb(null, true);
+      if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.endsWith('talentnesthr.com')) return cb(null, true);
+      if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true);
+      cb(new Error('Socket CORS: origin not allowed'));
+    },
+    methods: ['GET', 'POST'],
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 180000,   // 3 min — keep alive for long interviews
+  pingInterval: 25000,
+});
+setupVideoSocket(io);
+
 // ── Start
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀  Talent Nest API   →  Listening on port ${PORT}`);
   console.log(`📡  Mode             →  ${IS_PROD ? (process.env.RENDER ? 'Production (Render)' : 'Production') : 'Development'}`);
   if (IS_PROD) console.info('🔥  Production Environment Active & Bound to 0.0.0.0');

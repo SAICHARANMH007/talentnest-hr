@@ -14,7 +14,7 @@ const asyncHandler                          = require('../utils/asyncHandler');
 const AppError                              = require('../utils/AppError');
 const logger                                = require('../middleware/logger');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 // POST /api/recruiter/invite-candidate
 router.post('/invite-candidate', authenticate, allowRoles('super_admin', 'admin', 'recruiter'), asyncHandler(async (req, res) => {

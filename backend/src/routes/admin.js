@@ -17,7 +17,7 @@ const asyncHandler                          = require('../utils/asyncHandler');
 const AppError                              = require('../utils/AppError');
 const logger                                = require('../middleware/logger');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 /** Build a set-password invite link */
 function buildInviteLink(token, email) {

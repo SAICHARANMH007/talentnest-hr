@@ -13,7 +13,7 @@ const logger = require('../middleware/logger');
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN  = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 // ── Condition evaluator ────────────────────────────────────────────────────────
 function evaluateCondition(condition, eventData) {

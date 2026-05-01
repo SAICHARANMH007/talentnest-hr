@@ -212,7 +212,7 @@ router.post('/:id/send', ...guard,
       Job.findById(app.jobId).select('title').lean(),
     ]);
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     const offerLink = `${frontendUrl}/offer/${offer._id}`;
     const d = offer.templateData || {};
 

@@ -25,7 +25,7 @@ const DEFAULT_SLA = {
   Offer            : 72,
 };
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 function hoursInStage(app) {
   if (!app.stageHistory || app.stageHistory.length === 0) return 0;

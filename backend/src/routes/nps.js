@@ -15,7 +15,7 @@ const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 
 const JWT_SECRET   = process.env.JWT_SECRET;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 // GET /api/nps/respond/:token — handle email link click (no auth needed)
 router.get('/respond/:token', asyncHandler(async (req, res) => {

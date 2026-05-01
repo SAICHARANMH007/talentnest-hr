@@ -15,7 +15,7 @@ const cron       = require('node-cron');
 const PreBoarding = require('../models/PreBoarding');
 const { sendEmailWithRetry } = require('../utils/email');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysUntil(date) {

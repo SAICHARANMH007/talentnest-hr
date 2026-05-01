@@ -46,7 +46,7 @@ async function sendAlerts(frequency) {
       const jobs = await Job.find(filter).select('title location jobType company skills').sort({ createdAt: -1 }).limit(10).lean();
       if (!jobs.length) continue;
 
-      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
       const jobRows = jobs.map(j => `
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">

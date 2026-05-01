@@ -27,8 +27,8 @@ export default function SuperAdminCandidates() {
       
       let res;
       if (tab === 'platform') {
-        // Fetch Registered Users
-        res = await api.getUsers({ ...params, role: 'candidate' });
+        // Fetch Registered Users — use getUsersList to preserve paginated response
+        res = await api.getUsersList({ role: 'candidate', page, limit, search });
       } else {
         // Fetch All Records or Applied Only
         res = await api.getCandidateRecords({ ...params, appliedOnly: tab === 'applied' });
@@ -50,15 +50,15 @@ export default function SuperAdminCandidates() {
 
       // Fetch Stats (Global counts for the header cards)
       const [allCount, regCount, appCount] = await Promise.all([
-        api.getCandidateRecords({ limit: 1, countOnly: true, platform: platformWide }),
-        api.getUsers({ role: 'candidate', limit: 1, countOnly: true, platform: platformWide }),
-        api.getCandidateRecords({ limit: 1, appliedOnly: true, countOnly: true, platform: platformWide })
+        api.getCandidateRecords({ limit: 1 }),
+        api.getUsersList({ role: 'candidate', limit: 1 }),
+        api.getCandidateRecords({ limit: 1, appliedOnly: true }),
       ]);
-      
+
       setStats({
-        total: allCount?.pagination?.total || allCount?.total || 127, // Fallback to user's reported number if count fails
-        platform: regCount?.pagination?.total || regCount?.total || 89,
-        applied: appCount?.pagination?.total || appCount?.total || 50
+        total: allCount?.pagination?.total ?? 0,
+        platform: regCount?.pagination?.total ?? 0,
+        applied: appCount?.pagination?.total ?? 0,
       });
 
     } catch (err) {

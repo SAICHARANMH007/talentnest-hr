@@ -15,7 +15,7 @@ const { sendEmailWithRetry } = require('../utils/email');
 const logger = require('../middleware/logger');
 
 const JWT_SECRET   = process.env.JWT_SECRET;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 function generateSurveyToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });

@@ -13,7 +13,8 @@ import { jobService } from './services/job.service.js';
 import { applicationService } from './services/application.service.js';
 import { dashboardService } from './services/dashboard.service.js';
 import { platformService } from './services/platform.service.js';
-import { blogService }     from './services/blog.service.js';
+import { blogService }      from './services/blog.service.js';
+import { videoRoomService } from './services/videoRoom.service.js';
 
 // Re-export the 401 handler and auth initializer for global app subscription
 export const set401Handler = _set401;
@@ -31,6 +32,7 @@ export const api = {
   ...dashboardService,
   ...platformService,
   ...blogService,
+  ...videoRoomService,
 };
 
 // Default export for convenience

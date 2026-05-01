@@ -66,7 +66,7 @@ router.post('/', ...guard,
 
     // Notify centralized support/admin instead of spamming all super_admins
     const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@talentnesthr.com';
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
     await sendEmail(
       SUPPORT_EMAIL,

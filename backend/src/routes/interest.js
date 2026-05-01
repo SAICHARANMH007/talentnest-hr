@@ -18,7 +18,7 @@ const AppError       = require('../utils/AppError');
 const logger         = require('../middleware/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'talentnest_jwt_secret';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 function verifyToken(token) {
   try {

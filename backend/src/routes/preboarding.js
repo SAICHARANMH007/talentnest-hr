@@ -188,7 +188,7 @@ router.post('/:id/send-welcome-kit', authenticate, tenantGuard, allowRoles('admi
     ? new Date(record.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
     : 'your joining date';
 
-  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
   const html = `
     <div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:580px;margin:0 auto;background:#f8fafc;padding:32px 24px;">
       <div style="background:linear-gradient(135deg,#032D60,#0176D3);padding:28px 32px;border-radius:16px 16px 0 0;">

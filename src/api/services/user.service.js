@@ -48,6 +48,11 @@ export const userService = {
     q.set('limit', String(limit || (role === 'candidate' ? 500 : 200)));
     return toArr(await req('GET', `/users?${q.toString()}`));
   },
+  async getUsersList(params = {}) {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, v); });
+    return req('GET', `/users?${q.toString()}`);
+  },
   async getUserCount(role)      { return req('GET', `/users/count${role ? `?role=${role}` : ''}`); },
   async createUser(data)        { return req('POST', '/users', data); },
   async deleteUser(id)          { return req('DELETE', `/users/${id}`); },

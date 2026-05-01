@@ -50,7 +50,7 @@ async function sendWeeklyReportForTenant(tenant) {
     if (!admin) return;
 
     const weekStr = `${start.toLocaleDateString('en-IN')} – ${end.toLocaleDateString('en-IN')}`;
-    const frontendUrl = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
     const html = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">

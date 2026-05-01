@@ -1,5 +1,5 @@
 'use strict';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://talentnesthr.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 const BACKEND_URL  = process.env.BACKEND_URL
   || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : null)
   || 'https://resume-generator-production.up.railway.app';
@@ -13,7 +13,7 @@ const BACKEND_URL  = process.env.BACKEND_URL
 function baseLayout(bodyHtml, title = 'TalentNest HR', opts = {}) {
   const orgName     = opts.orgName     || 'TalentNest HR';
   const supportEmail= opts.supportEmail|| 'hr@talentnesthr.com';
-  const website     = opts.website     || 'https://talentnesthr.com';
+  const website     = opts.website     || 'https://www.talentnesthr.com';
 
   // Build logo HTML — prefer passed logoUrl (base64 or URL), fallback to public image endpoint
   let logoHtml;
@@ -207,7 +207,7 @@ const templates = {
           </p>
         </div>
         <div style="text-align:center;margin:28px 0">
-          <a href="${process.env.FRONTEND_URL || 'https://talentnesthr.com'}/login" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0154A4);color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(1,118,211,0.3)">
+          <a href="${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/login" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0154A4);color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(1,118,211,0.3)">
             Log In Now →
           </a>
         </div>
