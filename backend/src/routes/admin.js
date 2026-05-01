@@ -3,6 +3,8 @@ const express        = require('express');
 const router         = express.Router();
 const bcrypt         = require('bcryptjs');
 const User           = require('../models/User');
+const Job            = require('../models/Job');
+const Application    = require('../models/Application');
 const Organization   = require('../models/Organization');
 const WorkflowRule   = require('../models/WorkflowRule');
 const { authenticate }                      = require('../middleware/auth');
@@ -226,6 +228,57 @@ router.post('/workflow-rules/:id/test', ...wfGuard, asyncHandler(async (req, res
   };
   const result = await evaluateWorkflows(req.user.tenantId, sampleEventData, true);
   res.json({ success: true, matched: result.triggered > 0, ruleIds: result.ruleIds || [], sampleEventData });
+}));
+
+// POST /api/admin/deduplicate-jobs — one-time safe deduplication (super_admin only)
+router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const orgs = await Organization.find({}).select('_id name').lean();
+  const summary = [];
+
+  for (const org of orgs) {
+    const jobs = await Job.find({ tenantId: org._id, deletedAt: null }).lean();
+    const groups = {};
+    for (const j of jobs) {
+      if (!j.title) continue;
+      const key = `${j.title.toLowerCase().trim().replace(/\s+/g,' ')}__${(j.location||'').toLowerCase().trim().replace(/,.*$/,'').trim()}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(j);
+    }
+
+    let merged = 0;
+    for (const key in groups) {
+      const list = groups[key];
+      if (list.length <= 1) continue;
+
+      const counts = await Promise.all(list.map(j => Application.countDocuments({ jobId: j._id, deletedAt: null })));
+      list.forEach((j, i) => { j._c = counts[i]; });
+      list.sort((a, b) => {
+        if (a.careerPageSlug && !b.careerPageSlug) return -1;
+        if (!a.careerPageSlug && b.careerPageSlug) return 1;
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+        return b._c - a._c || new Date(a.createdAt) - new Date(b.createdAt);
+      });
+
+      const winner = list[0];
+      for (const loser of list.slice(1)) {
+        const apps = await Application.find({ jobId: loser._id, deletedAt: null }).select('candidateId _id').lean();
+        for (const app of apps) {
+          const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId });
+          if (conflict) {
+            await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date() } });
+          } else {
+            await Application.findByIdAndUpdate(app._id, { $set: { jobId: winner._id } });
+          }
+        }
+        await Job.findByIdAndUpdate(loser._id, { $set: { deletedAt: new Date(), status: 'closed' } });
+        merged++;
+      }
+    }
+    if (merged > 0) summary.push(`${org.name}: merged ${merged} duplicate jobs`);
+  }
+
+  res.json({ success: true, summary, message: summary.length ? summary.join('; ') : 'No duplicates found' });
 }));
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
+import { req } from '../../api/client.js';
 import LogoManager from '../../components/LogoManager.jsx';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -17,7 +18,21 @@ export default function SuperAdminPlatform({ onNavigate }) {
   const [backing, setBacking] = useState(false);
   const [backupDone, setBackupDone] = useState(false);
   const [lastBackup, setLastBackup] = useState(() => localStorage.getItem('tn_last_backup'));
+  const [deduping, setDeduping] = useState(false);
+  const [dedupResult, setDedupResult] = useState('');
   const [toast, setToast] = useState('');
+
+  const runDedup = async () => {
+    setDeduping(true); setDedupResult('');
+    try {
+      const r = await req('POST', '/admin/deduplicate-jobs');
+      setDedupResult(r?.message || 'Done');
+      setToast('✅ ' + (r?.message || 'Deduplication complete'));
+    } catch (e) {
+      setToast('❌ ' + (e.message || 'Failed'));
+    }
+    setDeduping(false);
+  };
 
   const doBackup = async () => {
     setBacking(true);
@@ -120,6 +135,24 @@ export default function SuperAdminPlatform({ onNavigate }) {
           <span>✓ Email Logs</span>
           <span>✓ Assessments</span>
         </div>
+      </div>
+
+      {/* Deduplicate Jobs */}
+      <div style={{...glass, marginTop:16, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16}}>
+        <div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+            <div style={{width:40,height:40,borderRadius:10,background:'linear-gradient(135deg,#F59E0B,#D97706)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🧹</div>
+            <div>
+              <h3 style={{fontWeight:700,color:'#0A1628',fontSize:16,margin:0}}>Fix Duplicate Jobs</h3>
+              <p style={{color:'#64748B',fontSize:12,margin:0}}>Merge duplicate job postings and move all applicants to primary job</p>
+            </div>
+          </div>
+          {dedupResult && <p style={{color:'#10b981',fontSize:12,margin:'4px 0 0',fontWeight:600}}>{dedupResult}</p>}
+        </div>
+        <button onClick={runDedup} disabled={deduping}
+          style={{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'white',border:'none',borderRadius:10,padding:'12px 24px',fontWeight:700,fontSize:14,cursor:deduping?'not-allowed':'pointer',opacity:deduping?0.7:1,whiteSpace:'nowrap'}}>
+          {deduping ? '⏳ Merging...' : '🧹 Run Deduplication'}
+        </button>
       </div>
 
       {/* KPI Cards */}

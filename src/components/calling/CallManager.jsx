@@ -92,6 +92,17 @@ export default function CallManager({ user }) {
     socket.on('call:incoming', ({ callId, fromUserId, fromName, callType }) => {
       setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType });
       setCallState('incoming');
+      // Browser notification for background tab
+      try {
+        if (Notification.permission === 'granted') {
+          new Notification(`Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`, {
+            body: `${fromName} is calling you on TalentNest`,
+            icon: '/logo.svg',
+          });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission();
+        }
+      } catch {}
     });
 
     socket.on('call:accepted', ({ callId }) => {

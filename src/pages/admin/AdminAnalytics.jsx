@@ -146,7 +146,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [jobCounts, setJobCounts] = useState({ active: 0, total: 0 });
   const [localAppStats, setLocalAppStats] = useState({ total: 0, pipeline: {} });
   const [loading,       setLoading]       = useState(true);
-  const [platformWide,  setPlatformWide]  = useState(false); // super_admin: false = own org, true = all orgs
+  const [platformWide,  setPlatformWide]  = useState(isSuperAdmin); // super_admin defaults to all-orgs view
   const [period,        setPeriod]        = useState(1); // default 30 days
   const [drillDown,     setDrillDown]     = useState(null);
   const [drillDownSearch, setDrillDownSearch] = useState('');
