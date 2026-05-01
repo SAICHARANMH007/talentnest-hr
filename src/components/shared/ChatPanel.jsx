@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { api } from '../../api/api.js';
-import { API_BASE_URL } from '../../api/config.js';
+import { SOCKET_BASE_URL } from '../../api/config.js';
 
-const CHAT_SOCKET_URL = API_BASE_URL.replace('/api', '');
+const CHAT_SOCKET_URL = SOCKET_BASE_URL;
 
 const ROLE_COLOR = { candidate: '#0176D3', recruiter: '#7c3aed', admin: '#d97706', super_admin: '#059669' };
 const ROLE_LABEL = { candidate: 'Candidate', recruiter: 'Recruiter', admin: 'Admin', super_admin: 'Super Admin' };

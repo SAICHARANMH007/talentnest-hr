@@ -56,7 +56,9 @@ async function deduplicateJobs(tenantId) {
       // Safe migration: check for each application if winner already has one from same candidate
       const loserApps = await Application.find({ jobId: loser._id, deletedAt: null }).select('candidateId _id').lean();
       for (const app of loserApps) {
-        const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId, deletedAt: null }).lean();
+        // Check ALL docs (including soft-deleted) — the unique index {jobId,candidateId}
+        // enforces uniqueness regardless of deletedAt, so we must check without deletedAt filter
+        const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId }).lean();
         if (conflict) {
           // Winner already has this candidate — just soft-delete the loser copy, DON'T change jobId
           await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date() } });
@@ -514,19 +516,21 @@ async function seed() {
     console.log(`✅  Recruiter Vamsee created → ${VAMSEE_EMAIL}`);
   }
 
-  // ── 2.2 Cleanup Duplicates BEFORE syncing real jobs (all tenants) ────────────
-  // Run deduplication for all tenants — wrapped so a failure never crashes startup
-  try {
-    const allTenantIds = await Organization.find({}).select('_id').lean();
-    for (const o of allTenantIds) {
-      await deduplicateJobs(o._id).catch(e => console.warn(`⚠️  deduplicateJobs skipped for ${o._id}: ${e.message}`));
-    }
-  } catch (e) {
-    console.warn('⚠️  Job deduplication failed (non-critical):', e.message);
-  }
-
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
+
+  // ── 2.2 Cleanup Duplicates — runs AFTER seed returns, fully non-blocking ──────
+  // Wrapped in setImmediate so it never delays or crashes the startup chain
+  setImmediate(async () => {
+    try {
+      const allTenantIds = await Organization.find({}).select('_id').lean();
+      for (const o of allTenantIds) {
+        await deduplicateJobs(o._id).catch(e => console.warn(`⚠️  deduplicateJobs skipped for ${o._id}: ${e.message}`));
+      }
+    } catch (e) {
+      console.warn('⚠️  Job deduplication failed (non-critical):', e.message);
+    }
+  });
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {

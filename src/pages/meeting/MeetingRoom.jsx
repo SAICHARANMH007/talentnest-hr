@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import GuestJoin from './GuestJoin.jsx';
-import { API_BASE_URL } from '../../api/config.js';
+import { SOCKET_BASE_URL } from '../../api/config.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const SOCKET_URL = API_BASE_URL.replace('/api', '');
+const SOCKET_URL = SOCKET_BASE_URL;
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },

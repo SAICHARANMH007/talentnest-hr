@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import useWebRTC from '../../hooks/useWebRTC.js';
-import { API_BASE_URL } from '../../api/config.js';
+import { SOCKET_BASE_URL } from '../../api/config.js';
 
-const SOCKET_URL = API_BASE_URL.replace('/api', '');
+const SOCKET_URL = SOCKET_BASE_URL;
 const RING_DURATION = 30000;
 
 // ── Video tile ────────────────────────────────────────────────────────────────
