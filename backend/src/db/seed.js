@@ -58,10 +58,10 @@ async function deduplicateJobs(tenantId) {
       for (const app of loserApps) {
         const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId, deletedAt: null }).lean();
         if (conflict) {
-          // Duplicate application — soft-delete the loser's copy
-          await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date(), jobId: winner._id } });
+          // Winner already has this candidate — just soft-delete the loser copy, DON'T change jobId
+          await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date() } });
         } else {
-          // Safe to re-point
+          // No conflict — safe to re-point to winner job
           await Application.findByIdAndUpdate(app._id, { $set: { jobId: winner._id } });
         }
       }
@@ -515,8 +515,15 @@ async function seed() {
   }
 
   // ── 2.2 Cleanup Duplicates BEFORE syncing real jobs (all tenants) ────────────
-  const allTenantIds = await Organization.find({}).select('_id').lean();
-  await Promise.all(allTenantIds.map(o => deduplicateJobs(o._id)));
+  // Run deduplication for all tenants — wrapped so a failure never crashes startup
+  try {
+    const allTenantIds = await Organization.find({}).select('_id').lean();
+    for (const o of allTenantIds) {
+      await deduplicateJobs(o._id).catch(e => console.warn(`⚠️  deduplicateJobs skipped for ${o._id}: ${e.message}`));
+    }
+  } catch (e) {
+    console.warn('⚠️  Job deduplication failed (non-critical):', e.message);
+  }
 
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
