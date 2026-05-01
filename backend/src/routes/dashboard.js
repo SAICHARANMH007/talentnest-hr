@@ -631,7 +631,8 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   const limit = (rawLimit === 0) ? 1000 : Math.min(rawLimit || 50, 500);
   const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim();
-  const appliedOnly = req.query.appliedOnly === 'true';
+  const appliedOnly    = req.query.appliedOnly === 'true';
+  const registeredOnly = req.query.registeredOnly === 'true'; // only candidates with a linked platform account
 
   // For appliedOnly, pre-fetch candidate IDs that have at least one application
   let appliedCandidateIds = null;
@@ -639,10 +640,9 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
     appliedCandidateIds = await Application.distinct('candidateId', { deletedAt: null, ...tf });
   }
 
-  // Unified Aggregation Pipeline for "The Human" (Candidate)
-  // This offloads deduplication to MongoDB and supports pagination at the DB level.
   const baseMatch = { ...tf, deletedAt: null };
   if (appliedCandidateIds) baseMatch._id = { $in: appliedCandidateIds };
+  if (registeredOnly) baseMatch.userId = { $exists: true, $ne: null }; // has a platform account link
 
   const pipeline = [
     { $match: baseMatch },

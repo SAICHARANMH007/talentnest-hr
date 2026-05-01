@@ -35,34 +35,33 @@ export default function SuperAdminCandidates() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let res;
-      if (tab === 'platform') {
-        res = await api.getUsersList({ role: 'candidate', page, limit, search });
-      } else {
-        res = await api.getCandidateRecords({ page, limit, search, platform: true, appliedOnly: tab === 'applied' });
-      }
+      // ALL tabs use getCandidateRecords so every row always has applicationCount + allApplications
+      const params = { page, limit, search, platform: true };
+      if (tab === 'applied')   params.appliedOnly    = true;
+      if (tab === 'platform')  params.registeredOnly = true; // candidates linked to a platform User account
 
-      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const res = await api.getCandidateRecords(params);
+      const data = Array.isArray(res?.data) ? res.data : [];
       setCandidates(data.map(c => ({
         ...c,
         id: c.id || c._id,
-        isApplied: c.isApplied || c.recordType === 'Application',
-        isPlatformUser: c.isPlatformUser || c.recordType === 'Candidate Account' || !!c.userId,
+        isApplied: (c.applicationCount || 0) > 0,
+        isPlatformUser: !!c.userId,
       })));
 
       if (res?.pagination) setPagination(res.pagination);
       else setPagination({ total: data.length, pages: 1 });
 
-      // Stats counts
+      // Stats: run 3 counts in parallel
       const [allCount, regCount, appCount] = await Promise.all([
         api.getCandidateRecords({ limit: 1, platform: true }),
-        api.getUsersList({ role: 'candidate', limit: 1 }),
+        api.getCandidateRecords({ limit: 1, platform: true, registeredOnly: true }),
         api.getCandidateRecords({ limit: 1, platform: true, appliedOnly: true }),
       ]);
       setStats({
-        total: allCount?.pagination?.total ?? 0,
+        total:    allCount?.pagination?.total ?? 0,
         platform: regCount?.pagination?.total ?? 0,
-        applied: appCount?.pagination?.total ?? 0,
+        applied:  appCount?.pagination?.total ?? 0,
       });
     } catch (err) {
       setToast('Failed to load: ' + err.message);
