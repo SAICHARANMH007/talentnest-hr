@@ -18,9 +18,10 @@ const { cacheRoute }  = require('../middleware/cache');
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const STAGE_DONE    = 'Hired';   // DB value — frontend maps this to 'selected'
-const STAGE_OFFER   = 'offer_extended';
-const STAGE_IV      = 'interview_scheduled';
-const STAGES_ACTIVE = ['invited', 'applied', 'screening', 'shortlisted', 'interview_scheduled', 'interview_completed', 'offer_extended'];
+const STAGE_OFFER   = 'Offer';   // DB value
+const STAGE_IV      = 'Interview Round 1'; // DB value
+// DB stage values used in Application.currentStage (must match applications.js VALID_STAGES)
+const STAGES_ACTIVE = ['Applied', 'Screening', 'Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer'];
 const JOB_APPLICANT_POPULATE = {
   path: 'jobId',
   select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters',
@@ -351,8 +352,12 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     Job.countDocuments({ ...orgF, ...del, status: { $in: ['active', 'closed'] } }),
   ]);
 
-  // Fill rate = jobs with at least one hire / total non-draft jobs
-  const fillRate = totalJobs > 0 ? Math.round((hired / totalJobs) * 100) : 0;
+  // Fill rate = % of active/closed jobs that have at least one hire
+  // Use distinct jobIds from hired apps vs total jobs
+  const hiredJobIds = hired > 0
+    ? await Application.distinct('jobId', { ...orgF, currentStage: 'Hired', ...del })
+    : [];
+  const fillRate = totalJobs > 0 ? Math.round((hiredJobIds.length / totalJobs) * 100) : 0;
 
   const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
 
