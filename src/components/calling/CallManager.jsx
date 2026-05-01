@@ -188,6 +188,7 @@ export default function CallManager({ user }) {
     if (!cid) return;
     const stream = await startLocalMedia();
     if (!stream) return;
+    localStreamRef2.current = stream; // sync ref immediately — offer may arrive before useEffect
     setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
   }, [startLocalMedia]);

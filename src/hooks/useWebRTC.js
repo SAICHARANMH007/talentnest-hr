@@ -107,14 +107,24 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   }, [createPeer]);
 
   // ── Handle incoming answer ────────────────────────────────────────────────
+  // In 1:1 calls the caller creates the peer with key 'peer' but the answer
+  // arrives with from=recipientSocketId — fall back to the only existing peer.
   const handleAnswer = useCallback(async (socketId, answer) => {
-    const pc = peerConnsRef.current[socketId];
+    let pc = peerConnsRef.current[socketId];
+    if (!pc) {
+      const vals = Object.values(peerConnsRef.current);
+      if (vals.length === 1) pc = vals[0]; // 1:1 call fallback
+    }
     if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
   }, []);
 
   // ── Handle ICE candidate ──────────────────────────────────────────────────
   const handleIce = useCallback(async (socketId, candidate) => {
-    const pc = peerConnsRef.current[socketId];
+    let pc = peerConnsRef.current[socketId];
+    if (!pc) {
+      const vals = Object.values(peerConnsRef.current);
+      if (vals.length === 1) pc = vals[0];
+    }
     if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
   }, []);
 
