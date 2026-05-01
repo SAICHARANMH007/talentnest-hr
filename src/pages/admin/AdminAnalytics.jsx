@@ -12,6 +12,11 @@ import TimeAgo from '../../components/misc/TimeAgo.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import ErrorReportBoundary from '../../components/shared/ErrorReportBoundary.jsx';
 import { STAGES as MASTER_STAGES, SM } from '../../constants/stages.js';
+
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 import { card, btnP, btnG } from '../../constants/styles.js';
 
 // ── Design Tokens ────────────────────────────────────────────────────────────
@@ -257,11 +262,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
     [appliedStart, appliedEnd],
   );
 
-  const funnelSection     = useSection(useCallback(() => api.getFunnel(dateParams), [dateParams]));
-  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown(dateParams), [dateParams]));
-  const tthSection        = useSection(useCallback(() => api.getTimeToHire(dateParams), [dateParams]));
-  const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance(dateParams), [dateParams]));
-  const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis(dateParams), [dateParams]));
+  const funnelSection     = useSection(useCallback(() => api.getFunnel({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const tthSection        = useSection(useCallback(() => api.getTimeToHire({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
 
   // ── Apply date filter ─────────────────────────────────────────────────────
   const applyFilter = () => {
@@ -411,7 +416,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const candCount  = serverStats?.candidates ?? allCandidates.length ?? 0;
     const activeJobs = jobCounts.active || serverStats?.openJobs || 0;
     const totalJobs  = jobCounts.total || serverStats?.totalJobs || 0;
-    const last30Hired = serverStats?.placementsLast30 ?? localAppStats.last30Hired ?? 0;
+    const last30Hired = serverStats?.placementsLast30 ?? 0;
 
     if (serverStats) {
       return {
@@ -583,8 +588,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const openPlacementsDrill = () => fetchDrill('Total Placements (Last 30 Days)', 'app', async () => {
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const raw = await api.getApplications({ stage: 'selected', startDate: thirtyDaysAgo.toISOString().split('T')[0], limit: 500 }).then(unwrap).catch(() => []);
-    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · Hired on ${fmtDate(a.updatedAt || a.createdAt)}` }));
+    const raw = await api.getApplications({ stage: 'Hired', startDate: thirtyDaysAgo.toISOString().split('T')[0], limit: 500, platform: platformWide }).then(unwrap).catch(() => []);
+    return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || a.job?.title || 'Unknown Job'} · Hired on ${fmtDate(a.updatedAt || a.createdAt)}` }));
   });
 
   const openStageDrill = (seg) => {

@@ -23,81 +23,96 @@ function VideoTile({ stream, name, muted = false, style = {} }) {
   );
 }
 
-// ── Duration timer ────────────────────────────────────────────────────────────
 function CallTimer({ startedAt }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
     return () => clearInterval(t);
   }, [startedAt]);
-  const m = Math.floor(elapsed / 60);
-  const s = elapsed % 60;
+  const m = Math.floor(elapsed / 60), s = elapsed % 60;
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{`${m}:${s.toString().padStart(2, '0')}`}</span>;
 }
 
-// ── Incoming ring sound ───────────────────────────────────────────────────────
 function useRingSound(ringing) {
-  const audioRef = useRef(null);
   useEffect(() => {
-    if (!ringing) { audioRef.current?.pause(); return; }
+    if (!ringing) return;
+    let ctx, interval;
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const playTone = () => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const play = () => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 440;
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.frequency.value = 440; gain.gain.setValueAtTime(0.1, ctx.currentTime);
         osc.start(); osc.stop(ctx.currentTime + 0.5);
       };
-      playTone();
-      const interval = setInterval(playTone, 2000);
-      return () => { clearInterval(interval); ctx.close(); };
+      play(); interval = setInterval(play, 2000);
     } catch {}
+    return () => { clearInterval(interval); try { ctx?.close(); } catch {} };
   }, [ringing]);
 }
 
 export default function CallManager({ user }) {
   const myId   = user?.id || user?._id;
-  const myName = user?.name || 'You';
 
-  const socketRef = useRef(null);
-  const peerSocketId = useRef(null); // remote socket id for signaling
+  const socketRef    = useRef(null);
+  // ── KEY FIX: use refs for anything accessed inside socket handlers ──────────
+  // State variables read inside socket.on() closures MUST be refs, not state,
+  // because the handlers are registered once and capture the initial (stale) value.
+  const callInfoRef  = useRef(null);   // mirrors callInfo state — always current
+  const localStreamRef2 = useRef(null); // mirrors localStream from useWebRTC
 
-  // Call state machine
-  const [callState, setCallState] = useState('idle'); // idle|outgoing|incoming|active|ended
-  const [callInfo, setCallInfo]   = useState(null);   // { callId, peerId, peerName, callType }
+  const ringTimer  = useRef(null);
+  const endTimer   = useRef(null);
+
+  const [callState, setCallState]     = useState('idle');
+  const [callInfo,  setCallInfo_]     = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [callStartedAt, setCallStartedAt] = useState(null);
-  const [endReason, setEndReason] = useState('');
+  const [endReason, setEndReason]     = useState('');
 
-  const ringTimer = useRef(null);
-  const endTimer  = useRef(null);
+  // Always keep ref in sync with state
+  const setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
+
+  const { localStream, micOn, camOn, startLocalMedia, initiateCall,
+          handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
+    video: callInfoRef.current?.callType === 'video',
+    audio: true,
+    onRemoteStream: (_sid, stream) => setRemoteStream(stream),
+  });
+
+  // Keep localStream ref in sync
+  useEffect(() => { localStreamRef2.current = localStream; }, [localStream]);
 
   useRingSound(callState === 'incoming');
 
-  const { localStream, micOn, camOn, permError, startLocalMedia, initiateCall, handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll, peerConnsRef } = useWebRTC({
-    video: callInfo?.callType === 'video',
-    audio: true,
-    onRemoteStream: (sid, stream) => { peerSocketId.current = sid; setRemoteStream(stream); },
-  });
-
-  // ── Connect socket ────────────────────────────────────────────────────────
+  // ── Socket connection ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!myId) return;
     const token = sessionStorage.getItem('tn_token') || '';
-    const socket = io(`${SOCKET_URL}/call`, { auth: { token }, transports: ['websocket', 'polling'] });
+    const socket = io(`${SOCKET_URL}/call`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 8000,
+    });
     socketRef.current = socket;
 
+    // Helper — always uses callInfoRef for current callId
+    const sigEvts = (callId) => ({
+      sendOffer:  (_s, offer)     => socket.emit('call:offer',  { callId, offer }),
+      sendAnswer: (_s, answer)    => socket.emit('call:answer', { callId, answer }),
+      sendIce:    (_s, candidate) => socket.emit('call:ice',    { callId, candidate }),
+    });
+
+    // ── INCOMING ─────────────────────────────────────────────────────────────
     socket.on('call:incoming', ({ callId, fromUserId, fromName, callType }) => {
       setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType });
       setCallState('incoming');
-      // Browser notification for background tab
       try {
         if (Notification.permission === 'granted') {
           new Notification(`Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`, {
-            body: `${fromName} is calling you on TalentNest`,
-            icon: '/logo.svg',
+            body: `${fromName} is calling you on TalentNest`, icon: '/logo.svg',
           });
         } else if (Notification.permission !== 'denied') {
           Notification.requestPermission();
@@ -105,104 +120,51 @@ export default function CallManager({ user }) {
       } catch {}
     });
 
+    // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
     socket.on('call:accepted', ({ callId }) => {
-      // Recipient accepted — join room then initiate WebRTC offer
+      clearTimeout(ringTimer.current);
       socket.emit('call:join-room', { callId });
       startLocalMedia().then(stream => {
         if (!stream) return;
         setCallState('active');
         setCallStartedAt(Date.now());
-        // Small delay to ensure remote joined
-        setTimeout(() => initiateOffer(callId, stream), 500);
+        setTimeout(async () => {
+          await initiateCall('peer', socket, sigEvts(callId), stream);
+        }, 600);
       });
     });
 
-    socket.on('call:declined', () => { endCall('Declined'); });
-    socket.on('call:cancelled', () => { if (callState === 'incoming') endCall('Caller cancelled'); });
-    socket.on('call:no-answer', () => { endCall('No answer'); });
-    socket.on('call:busy', ({ toName }) => { endCall(`${toName || 'User'} is on another call`); });
-    socket.on('call:ended', ({ duration, reason }) => { endCall(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
-    socket.on('call:error', ({ message }) => { endCall(message); });
-
-    // WebRTC signaling
+    // ── SIGNALING — use refs for callId and stream ────────────────────────────
     socket.on('call:offer', ({ from, offer }) => {
-      peerSocketId.current = from;
-      const sigEvts = makeSignalingEvents(socket, callInfo?.callId);
-      handleOffer(from, offer, sigEvts, localStream || undefined).then(() => {
-        setCallStartedAt(Date.now());
-      });
+      const cid = callInfoRef.current?.callId;
+      if (!cid) return;
+      handleOffer(from, offer, sigEvts(cid), localStreamRef2.current || undefined)
+        .then(() => setCallStartedAt(Date.now()))
+        .catch(() => {});
     });
-    socket.on('call:answer', ({ from, answer }) => handleAnswer(from, answer));
-    socket.on('call:ice',    ({ from, candidate }) => handleIce(from, candidate));
 
-    return () => { socket.disconnect(); };
-  }, [myId]); // eslint-disable-line
+    socket.on('call:answer', ({ from, answer }) => handleAnswer(from, answer).catch(() => {}));
+    socket.on('call:ice',    ({ from, candidate }) => handleIce(from, candidate).catch(() => {}));
 
-  const makeSignalingEvents = (socket, callId) => ({
-    sendOffer:  (sid, offer)     => socket.emit('call:offer',  { callId, offer }),
-    sendAnswer: (sid, answer)    => socket.emit('call:answer', { callId, answer }),
-    sendIce:    (sid, candidate) => socket.emit('call:ice',    { callId, candidate }),
-  });
+    // ── STATE TRANSITIONS ─────────────────────────────────────────────────────
+    socket.on('call:declined',  ()               => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
+    socket.on('call:cancelled', ()               => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
+    socket.on('call:no-answer', ()               => { endCallInternal('No answer'); });
+    socket.on('call:busy',      ({ toName })     => { endCallInternal(`${toName || 'User'} is busy`); });
+    socket.on('call:ended',     ({ reason })     => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
+    socket.on('call:error',     ({ message })    => { endCallInternal(message); });
 
-  const initiateOffer = async (callId, stream) => {
-    // The remote socket ID is not known until they send an offer/answer — use placeholder
-    // Actually we use the call room so signaling goes to the room
-    const socket = socketRef.current;
-    if (!socket) return;
-    const sigEvts = makeSignalingEvents(socket, callId);
-    const fakePeerId = 'peer'; // room-scoped — server routes to the other participant
-    await initiateCall(fakePeerId, socket, sigEvts, stream);
-  };
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [myId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Start outgoing call ───────────────────────────────────────────────────
-  const startCall = useCallback(async (toUserId, toName, callType) => {
-    if (!socketRef.current) return;
-    // Pre-fetch media so UI is smooth
-    await startLocalMedia();
-    setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType });
-    setCallState('outgoing');
-    socketRef.current.emit('call:initiate', { toUserId, callType, toName });
-    // Ring timeout fallback (server handles 30s but also do client-side)
+  // ── endCall (internal — no deps on stale callInfo) ────────────────────────
+  const endCallInternal = (reason = '') => {
     clearTimeout(ringTimer.current);
-    ringTimer.current = setTimeout(() => endCall('No answer'), RING_DURATION + 2000);
-  }, [startLocalMedia]);
-
-  // ── Accept incoming call ──────────────────────────────────────────────────
-  const acceptCall = useCallback(async () => {
-    if (!callInfo) return;
-    await startLocalMedia();
-    socketRef.current?.emit('call:accept', { callId: callInfo.callId });
-    // active state set on 'call:accepted' event
-  }, [callInfo, startLocalMedia]);
-
-  // ── Decline incoming call ─────────────────────────────────────────────────
-  const declineCall = useCallback(() => {
-    if (!callInfo) return;
-    socketRef.current?.emit('call:decline', { callId: callInfo.callId });
-    endCall('');
-  }, [callInfo]);
-
-  // ── Cancel outgoing call ──────────────────────────────────────────────────
-  const cancelCall = useCallback(() => {
-    if (!callInfo) return;
-    socketRef.current?.emit('call:cancel', { callId: callInfo.callId });
-    endCall('');
-  }, [callInfo]);
-
-  // ── Hang up ───────────────────────────────────────────────────────────────
-  const hangUp = useCallback(() => {
-    if (!callInfo) return;
-    socketRef.current?.emit('call:end', { callId: callInfo.callId });
-    endCall('');
-  }, [callInfo]);
-
-  const endCall = (reason = '') => {
-    clearTimeout(ringTimer.current);
+    clearTimeout(endTimer.current);
     stopAll();
     setRemoteStream(null);
     setCallState('ended');
     setEndReason(reason);
-    clearTimeout(endTimer.current);
     endTimer.current = setTimeout(() => {
       setCallState('idle');
       setCallInfo(null);
@@ -211,7 +173,41 @@ export default function CallManager({ user }) {
     }, 2500);
   };
 
-  // Expose startCall globally so ChatPanel can trigger it
+  // ── Public actions ────────────────────────────────────────────────────────
+  const startCall = useCallback(async (toUserId, toName, callType) => {
+    if (!socketRef.current) return;
+    setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType });
+    setCallState('outgoing');
+    socketRef.current.emit('call:initiate', { toUserId, callType, toName });
+    clearTimeout(ringTimer.current);
+    ringTimer.current = setTimeout(() => endCallInternal('No answer'), RING_DURATION + 2000);
+  }, []); // eslint-disable-line
+
+  const acceptCall = useCallback(async () => {
+    const cid = callInfoRef.current?.callId;
+    if (!cid) return;
+    const stream = await startLocalMedia();
+    if (!stream) return;
+    setCallState('active');
+    socketRef.current?.emit('call:accept', { callId: cid });
+  }, [startLocalMedia]);
+
+  const declineCall = useCallback(() => {
+    socketRef.current?.emit('call:decline', { callId: callInfoRef.current?.callId });
+    endCallInternal('');
+  }, []); // eslint-disable-line
+
+  const cancelCall = useCallback(() => {
+    socketRef.current?.emit('call:cancel', { callId: callInfoRef.current?.callId });
+    endCallInternal('');
+  }, []); // eslint-disable-line
+
+  const hangUp = useCallback(() => {
+    socketRef.current?.emit('call:end', { callId: callInfoRef.current?.callId });
+    endCallInternal('');
+  }, []); // eslint-disable-line
+
+  // Expose to ChatPanel via window
   useEffect(() => {
     window.__tnStartCall = startCall;
     return () => { delete window.__tnStartCall; };
@@ -221,30 +217,30 @@ export default function CallManager({ user }) {
 
   const isVideo = callInfo?.callType === 'video';
 
-  // ── Incoming call overlay ─────────────────────────────────────────────────
+  // ── Incoming ──────────────────────────────────────────────────────────────
   if (callState === 'incoming') return (
     <div style={overlay}>
       <div style={card}>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 8 }}>{isVideo ? '📹' : '📞'}</div>
+        <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 4 }}>{isVideo ? '📹' : '📞'}</div>
         <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginBottom: 4 }}>Incoming {isVideo ? 'Video' : 'Audio'} Call</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 32 }}>{callInfo?.peerName}</div>
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 32 }}>{callInfo?.peerName}</div>
+        <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
           <CallBtn icon="📵" label="Decline" color="#DC2626" onClick={declineCall} />
-          <CallBtn icon="📞" label="Accept" color="#16a34a" onClick={acceptCall} />
+          <CallBtn icon="📞" label="Accept"  color="#16a34a" onClick={acceptCall} />
         </div>
       </div>
     </div>
   );
 
-  // ── Outgoing call overlay ─────────────────────────────────────────────────
+  // ── Outgoing ──────────────────────────────────────────────────────────────
   if (callState === 'outgoing') return (
     <div style={overlay}>
       <div style={card}>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 8 }}>{isVideo ? '📹' : '📞'}</div>
+        <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 4 }}>{isVideo ? '📹' : '📞'}</div>
         <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginBottom: 4 }}>Calling…</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 8 }}>{callInfo?.peerName}</div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 32 }}>
-          {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i * 0.4}s infinite` }} />)}
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 12 }}>{callInfo?.peerName}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 32 }}>
+          {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i*0.4}s infinite` }} />)}
         </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <CallBtn icon="📵" label="Cancel" color="#DC2626" onClick={cancelCall} />
@@ -253,58 +249,49 @@ export default function CallManager({ user }) {
     </div>
   );
 
-  // ── Active call ───────────────────────────────────────────────────────────
+  // ── Active ────────────────────────────────────────────────────────────────
   if (callState === 'active') return (
-    <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)' }}>
+    <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)', flexDirection: 'column', gap: 16 }}>
       {isVideo ? (
-        <div style={{ position: 'relative', width: '100%', maxWidth: 700, height: '80vh', maxHeight: 520 }}>
-          {/* Remote video */}
+        <div style={{ position: 'relative', width: '90vw', maxWidth: 700, height: '70vh', maxHeight: 500 }}>
           <VideoTile stream={remoteStream} name={callInfo?.peerName} style={{ width: '100%', height: '100%' }} />
-          {/* Local PiP */}
           {localStream && (
-            <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 16, right: 16, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
+            <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 12, right: 12, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
           )}
-        </div>
-      ) : (
-        <div style={card}>
-          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 12 }}>📞</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{callInfo?.peerName}</div>
-          <div style={{ fontSize: 13, color: '#22c55e', textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.65)', color: '#22c55e', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
             <CallTimer startedAt={callStartedAt} />
           </div>
         </div>
+      ) : (
+        <div style={card}>
+          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 8 }}>📞</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{callInfo?.peerName}</div>
+          <div style={{ fontSize: 13, color: '#22c55e', textAlign: 'center' }}><CallTimer startedAt={callStartedAt} /></div>
+        </div>
       )}
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 24 }}>
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
         <CallBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} color={micOn ? '#334155' : '#DC2626'} onClick={toggleMic} />
         {isVideo && <CallBtn icon={camOn ? '📹' : '📵'} label={camOn ? 'Cam Off' : 'Cam On'} color={camOn ? '#334155' : '#DC2626'} onClick={toggleCam} />}
         <CallBtn icon="📵" label="Hang Up" color="#DC2626" onClick={hangUp} />
       </div>
-      {isVideo && callStartedAt && (
-        <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 14px', borderRadius: 20, fontSize: 13 }}>
-          <CallTimer startedAt={callStartedAt} />
-        </div>
-      )}
     </div>
   );
 
-  // ── Ended screen ──────────────────────────────────────────────────────────
-  if (callState === 'ended') return (
+  // ── Ended ─────────────────────────────────────────────────────────────────
+  return (
     <div style={overlay}>
       <div style={card}>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 12 }}>📵</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{endReason || 'Call Ended'}</div>
+        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 8 }}>📵</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', textAlign: 'center' }}>{endReason || 'Call Ended'}</div>
       </div>
     </div>
   );
-
-  return null;
 }
 
 function CallBtn({ icon, label, color, onClick }) {
   return (
     <button onClick={onClick} style={{ background: color, border: 'none', borderRadius: '50%', width: 64, height: 64, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-      <span style={{ fontSize: 24 }}>{icon}</span>
+      <span style={{ fontSize: 22 }}>{icon}</span>
       <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>{label}</span>
     </button>
   );
@@ -312,11 +299,11 @@ function CallBtn({ icon, label, color, onClick }) {
 
 const overlay = {
   position: 'fixed', inset: 0, zIndex: 9999,
-  background: 'rgba(0,0,0,0.85)',
+  background: 'rgba(0,0,0,0.88)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   backdropFilter: 'blur(8px)',
 };
 const card = {
-  background: '#1E293B', borderRadius: 20, padding: '40px 48px',
-  minWidth: 320, border: '1px solid #334155',
+  background: '#1E293B', borderRadius: 20, padding: '36px 48px',
+  minWidth: 300, border: '1px solid #334155', textAlign: 'center',
 };
