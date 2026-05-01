@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const tenantSchema = new mongoose.Schema({
   // Core
   name  : { type: String, required: true, trim: true },
-  slug  : { type: String, required: true, unique: true, lowercase: true, trim: true },
+  slug  : { type: String, required: true, lowercase: true, trim: true },
   domain: { type: String, trim: true },
   logoUrl: { type: String },
   website: { type: String },
@@ -97,7 +97,7 @@ const tenantSchema = new mongoose.Schema({
 
 tenantSchema.index({ domain: 1 });
 tenantSchema.index({ parentId: 1 });
-tenantSchema.index({ slug: 1 });
+tenantSchema.index({ slug: 1 }, { unique: true });
 
 // Compatibility Virtuals
 tenantSchema.virtual('id').get(function() { return this._id.toHexString(); });

@@ -15,14 +15,19 @@ const slug     = (name) => name.toLowerCase().replace(/\s+/g, '.');
 const careerSlug = (str) => String(str || '').toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
 
 /** 
- * Remove duplicate jobs while preserving application links
+ * Remove duplicate jobs and safely migrate applications to the winner.
+ * Handles the unique index {jobId, candidateId} by soft-deleting conflicting
+ * duplicates instead of violating the constraint.
  */
 async function deduplicateJobs(tenantId) {
-  const jobs = await Job.find({ tenantId }).lean();
+  const jobs = await Job.find({ tenantId, deletedAt: null }).lean();
   const groups = {};
-  
+
   for (const j of jobs) {
-    const key = `${j.title.toLowerCase().trim()}_${j.location?.toLowerCase().trim()}`;
+    // Normalize: lowercase + collapse whitespace for robust matching
+    const titleNorm = j.title.toLowerCase().trim().replace(/\s+/g, ' ');
+    const locNorm   = (j.location || '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/,.*$/, '').trim();
+    const key = `${titleNorm}__${locNorm}`;
     if (!groups[key]) groups[key] = [];
     groups[key].push(j);
   }
@@ -32,23 +37,39 @@ async function deduplicateJobs(tenantId) {
     const list = groups[key];
     if (list.length <= 1) continue;
 
-    // Keep the one with a slug or the oldest one
+    // Keep: slug > active status > most applications > oldest
+    const appCounts = await Promise.all(list.map(j => Application.countDocuments({ jobId: j._id, deletedAt: null })));
+    list.forEach((j, i) => { j._appCount = appCounts[i]; });
     list.sort((a, b) => {
       if (a.careerPageSlug && !b.careerPageSlug) return -1;
       if (!a.careerPageSlug && b.careerPageSlug) return 1;
-      return a.createdAt - b.createdAt;
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      if (b._appCount !== a._appCount) return b._appCount - a._appCount;
+      return new Date(a.createdAt) - new Date(b.createdAt);
     });
 
     const winner = list[0];
     const losers = list.slice(1);
 
     for (const loser of losers) {
-      await Application.updateMany({ jobId: loser._id }, { $set: { jobId: winner._id } });
-      await Job.findByIdAndDelete(loser._id);
+      // Safe migration: check for each application if winner already has one from same candidate
+      const loserApps = await Application.find({ jobId: loser._id, deletedAt: null }).select('candidateId _id').lean();
+      for (const app of loserApps) {
+        const conflict = await Application.findOne({ jobId: winner._id, candidateId: app.candidateId, deletedAt: null }).lean();
+        if (conflict) {
+          // Duplicate application — soft-delete the loser's copy
+          await Application.findByIdAndUpdate(app._id, { $set: { deletedAt: new Date(), jobId: winner._id } });
+        } else {
+          // Safe to re-point
+          await Application.findByIdAndUpdate(app._id, { $set: { jobId: winner._id } });
+        }
+      }
+      await Job.findByIdAndUpdate(loser._id, { $set: { deletedAt: new Date(), status: 'closed' } });
       mergedCount++;
     }
   }
-  if (mergedCount > 0) console.log(`🧹  Deduplicated ${mergedCount} jobs for tenant ${tenantId}`);
+  if (mergedCount > 0) console.log(`🧹  Deduplicated ${mergedCount} duplicate jobs across tenants`);
 }
 
 // Valid canonical stages (must match backend VALID_STAGES in applications.js)
@@ -397,7 +418,10 @@ async function seedTalentNestLinkedInJobs({ tenantId, createdBy }) {
     const existing = await Job.findOne({ tenantId, careerPageSlug }).select('_id').lean();
     await Job.findOneAndUpdate(
       { tenantId, careerPageSlug },
-      { $set: payload, $setOnInsert: { applicationCount: 0, assignedRecruiters: [] } },
+      {
+        $set: { ...payload, assignedRecruiters: createdBy ? [createdBy] : [] },
+        $setOnInsert: { applicationCount: 0 }
+      },
       { upsert: true, new: true }
     );
     if (existing) updated++;
@@ -755,24 +779,24 @@ async function seed() {
         });
       }
 
-      return Application.create({
-        tenantId:     demoTenant,
-        jobId,
-        candidateId,
-        currentStage: stage,
-        createdAt,
-        aiMatchScore: Math.floor(Math.random() * 35) + 55, // 55-90
-        stageHistory,
-        interviewRounds,
-        offerDetails: (isOffer || isHired) ? {
-          salary:      2000000 + (i * 150000),
-          joiningDate: daysFrom(30),
-          status:      isHired ? 'signed' : 'sent',
-          components:  [{ label: 'Fixed Pay', value: 1800000 }, { label: 'Variable', value: 400000 }],
-        } : undefined,
-        notes: isHired ? 'Great fit for the role. Accepted offer.' : '',
-        createdBy: recId,
-      });
+      // Use findOneAndUpdate+upsert to avoid E11000 on unique {jobId,candidateId} index
+      return Application.findOneAndUpdate(
+        { tenantId: demoTenant, jobId, candidateId, deletedAt: null },
+        { $setOnInsert: {
+            tenantId, jobId, candidateId, currentStage: stage, createdAt,
+            aiMatchScore: Math.floor(Math.random() * 35) + 55,
+            stageHistory, interviewRounds,
+            offerDetails: (isOffer || isHired) ? {
+              salary: 2000000 + (i * 150000), joiningDate: daysFrom(30),
+              status: isHired ? 'signed' : 'sent',
+              components: [{ label: 'Fixed Pay', value: 1800000 }, { label: 'Variable', value: 400000 }],
+            } : undefined,
+            notes: isHired ? 'Great fit for the role. Accepted offer.' : '',
+            createdBy: recId,
+          }
+        },
+        { upsert: true, new: true }
+      ).catch(() => null); // silently skip any remaining conflicts
     }));
 
     console.log(`✅  Created 30 demo applications across all pipeline stages`);
