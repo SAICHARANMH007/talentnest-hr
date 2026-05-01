@@ -111,6 +111,8 @@ export default function RecruiterJobs({ user }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [urgencyFilter, setUrgencyFilter] = useState('All');
+  const [editingJob, setEditingJob] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
   const postJobRef = useRef(null);
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
@@ -263,12 +265,14 @@ export default function RecruiterJobs({ user }) {
                   >
                     👥 {j.applicantsCount > 0 ? `${j.applicantsCount} Applicant${j.applicantsCount !== 1 ? 's' : ''}` : 'Applicants'}
                   </button>
+                  <button onClick={e => { e.stopPropagation(); setEditingJob(j); }} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>✏️ Edit</button>
                   {j.status === 'draft' && (
                     <button
                       onClick={async () => {
                         try {
-                          await api.patchJob(j.id, { status: 'active' });
-                          setToast('✅ Job submitted for approval');
+                          // Correct flow: set approvalStatus=pending, keep status=draft
+                          await api.patchJob(j.id, { approvalStatus: 'pending' });
+                          setToast('✅ Submitted for admin approval');
                           load();
                         } catch (e) { setToast(`❌ ${e.message}`); }
                       }}
@@ -343,6 +347,43 @@ export default function RecruiterJobs({ user }) {
               )}
             </div>
           </PostJobForm>
+        </Modal>
+      )}
+
+      {editingJob && (
+        <Modal title={`✏️ Edit Job — ${editingJob.title}`} onClose={() => setEditingJob(null)}>
+          <PostJobForm
+            saving={editSaving}
+            onSave={async (form) => {
+              setEditSaving(true);
+              try {
+                await api.patchJob(editingJob.id, { ...form, externalUrl: (form.externalUrl||'').trim() });
+                setToast('✅ Job updated!');
+                setEditingJob(null);
+                load();
+              } catch (e) { setToast(`❌ ${e.message}`); }
+              setEditSaving(false);
+            }}
+            onCancel={() => setEditingJob(null)}
+            initialData={{
+              title: editingJob.title || '',
+              company: editingJob.company || editingJob.companyName || '',
+              department: editingJob.department || '',
+              location: editingJob.location || '',
+              jobType: editingJob.jobType || 'Full-Time',
+              workMode: editingJob.workMode || 'Onsite',
+              experience: editingJob.experience || '',
+              openings: editingJob.numberOfOpenings || editingJob.openings || '',
+              applicationDeadline: editingJob.applicationDeadline || '',
+              urgency: editingJob.urgency || 'Medium',
+              skills: Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
+              description: editingJob.description || '',
+              requirements: editingJob.requirements || '',
+              benefits: editingJob.benefits || '',
+              externalUrl: editingJob.externalUrl || '',
+              isPublic: editingJob.isPublic !== false,
+            }}
+          />
         </Modal>
       )}
     </div>

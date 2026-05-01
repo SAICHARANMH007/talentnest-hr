@@ -18,8 +18,8 @@ const EMPTY = {
 
 const EMPTY_Q = { question: '', type: 'text', options: '', required: false };
 
-const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, children, hideButtons }, ref) {
-  const [form, setForm] = useState(EMPTY);
+const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, children, hideButtons, initialData }, ref) {
+  const [form, setForm] = useState(initialData ? { ...EMPTY, ...initialData } : EMPTY);
   const [jdFile, setJdFile] = useState('');
   const [parsing, setParsing] = useState(false);
   const [newQ, setNewQ] = useState(EMPTY_Q);
@@ -42,6 +42,8 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   useImperativeHandle(ref, () => ({
     submit: handleSave,
     reset: () => { setForm(EMPTY); setNewQ(EMPTY_Q); setJdFile(''); },
+    setData: (data) => { setForm({ ...EMPTY, ...data }); setJdFile(''); },
+    getData: () => form,
   }));
 
   const handleJD = async (file) => {

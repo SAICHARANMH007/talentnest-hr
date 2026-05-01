@@ -1,6 +1,8 @@
 'use strict';
-const crypto = require('crypto');
-const CallRecord = require('../models/CallRecord');
+const crypto       = require('crypto');
+const CallRecord   = require('../models/CallRecord');
+const User         = require('../models/User');
+const Notification = require('../models/Notification');
 
 // In-memory active calls: callId -> { fromUserId, toUserId, fromSocket, toSocket, type, startedAt, status }
 const activeCalls = new Map();
@@ -20,8 +22,12 @@ function setupCallSocket(io) {
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.data.userId = decoded.userId || decoded.id;
-      socket.data.name = decoded.name || '';
-      socket.data.tenantId = decoded.orgId || '';
+      socket.data.tenantId = decoded.orgId || decoded.tenantId || '';
+      // Fetch name from DB since JWT payload doesn't include it
+      try {
+        const u = await User.findById(socket.data.userId).select('name').lean();
+        socket.data.name = u?.name || decoded.name || 'Unknown';
+      } catch { socket.data.name = decoded.name || 'Unknown'; }
       next();
     } catch { socket.data.userId = null; next(); }
   });
@@ -101,6 +107,18 @@ function setupCallSocket(io) {
 
         try {
           await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'missed' } });
+        } catch {}
+
+        // Create in-app notification so candidate sees missed call even if socket wasn't active
+        try {
+          await Notification.create({
+            userId: toUserId,
+            tenantId: call.tenantId || undefined,
+            type: 'system',
+            title: `📞 Missed ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+            message: `You missed a call from ${call.fromName}. Open TalentNest to call back.`,
+            link: '/app/messages',
+          });
         } catch {}
       }, RING_TIMEOUT_MS);
     });

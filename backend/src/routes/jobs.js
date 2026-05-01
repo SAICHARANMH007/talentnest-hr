@@ -89,7 +89,9 @@ router.get('/pending', ...guard, allowRoles('admin', 'super_admin'), asyncHandle
 }));
 
 router.get('/:id', ...guard, asyncHandler(async (req, res) => {
-  const job = await Job.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+  const filter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const job = await Job.findOne(filter).lean();
   if (!job) throw new AppError('Job not found.', 404);
   res.json({ success: true, data: normalizeJob(job) });
 }));

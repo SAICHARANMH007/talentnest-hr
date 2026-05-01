@@ -46,6 +46,8 @@ export default function AdminJobs({ user }) {
   const [applicantsJob, setApplicantsJob] = useState(null);
   const [assessmentJob, setAssessmentJob] = useState(null);
   const [totalJobs, setTotalJobs] = useState(0);
+  const [editingJob, setEditingJob] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
@@ -84,6 +86,21 @@ export default function AdminJobs({ user }) {
       load();
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSaving(false);
+  };
+
+  const saveEditJob = async (form) => {
+    if (!editingJob) return;
+    if (!form.title || !form.company) { setToast('❌ Title and company are required'); return; }
+    const eu = (form.externalUrl || '').trim();
+    if (eu && !/^https?:\/\//i.test(eu)) { setToast('❌ External URL must start with http:// or https://'); return; }
+    setEditSaving(true);
+    try {
+      await api.patchJob(editingJob.id, { ...form, externalUrl: eu });
+      setToast('✅ Job updated!');
+      setEditingJob(null);
+      load();
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setEditSaving(false);
   };
 
   const del = async (id) => {
@@ -309,6 +326,36 @@ export default function AdminJobs({ user }) {
           />
         </Modal>
       )}
+
+      {editingJob && (
+        <Modal title={`✏️ Edit Job — ${editingJob.title}`} onClose={() => setEditingJob(null)}>
+          <PostJobForm
+            saving={editSaving}
+            onSave={saveEditJob}
+            onCancel={() => setEditingJob(null)}
+            initialData={{
+              title: editingJob.title || '',
+              company: editingJob.company || editingJob.companyName || '',
+              department: editingJob.department || '',
+              location: editingJob.location || '',
+              jobType: editingJob.jobType || 'Full-Time',
+              workMode: editingJob.workMode || 'Onsite',
+              experience: editingJob.experience || '',
+              openings: editingJob.numberOfOpenings || editingJob.openings || '',
+              applicationDeadline: editingJob.applicationDeadline || '',
+              urgency: editingJob.urgency || 'Medium',
+              skills: Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
+              description: editingJob.description || '',
+              requirements: editingJob.requirements || '',
+              benefits: editingJob.benefits || '',
+              externalUrl: editingJob.externalUrl || '',
+              salaryMin: editingJob.salaryMin || '',
+              salaryMax: editingJob.salaryMax || '',
+              isPublic: editingJob.isPublic !== false,
+            }}
+          />
+        </Modal>
+      )}
       {selectedJob && (
         <JobDetailDrawer
           job={selectedJob}
@@ -406,6 +453,7 @@ export default function AdminJobs({ user }) {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                   <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '7px 12px', fontSize: 11 }}>View Details</button>
+                  <button onClick={e => { e.stopPropagation(); setEditingJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>✏️ Edit</button>
                   <button onClick={async e => {
                     e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
                     try {
