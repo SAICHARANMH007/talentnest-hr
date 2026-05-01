@@ -519,18 +519,7 @@ async function seed() {
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
 
-  // ── 2.2 Cleanup Duplicates — runs AFTER seed returns, fully non-blocking ──────
-  // Wrapped in setImmediate so it never delays or crashes the startup chain
-  setImmediate(async () => {
-    try {
-      const allTenantIds = await Organization.find({}).select('_id').lean();
-      for (const o of allTenantIds) {
-        await deduplicateJobs(o._id).catch(e => console.warn(`⚠️  deduplicateJobs skipped for ${o._id}: ${e.message}`));
-      }
-    } catch (e) {
-      console.warn('⚠️  Job deduplication failed (non-critical):', e.message);
-    }
-  });
+  // Deduplication disabled — run manually via /api/admin/deduplicate-jobs if needed
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {
