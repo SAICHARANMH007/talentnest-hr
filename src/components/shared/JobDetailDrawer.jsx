@@ -360,12 +360,10 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ color:'#181818', fontWeight:700, fontSize:14 }}>{candName}</div>
-                            <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{c.email || 'No email provided'}</div>
-                            {c.phone ? (
-                              <div style={{ fontSize:10, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {c.phone}</div>
-                            ) : (
-                              <div style={{ fontSize:10, color:'#BE123C', background:'#FFF1F2', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4, fontWeight:800 }}>⚠️ Missing Mobile</div>
-                            )}
+                            <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{c.email || app.candidateEmail || 'No email provided'}</div>
+                            {(c.phone || app.candidatePhone || app.phone) ? (
+                              <div style={{ fontSize:10, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {c.phone || app.candidatePhone || app.phone}</div>
+                            ) : null}
                           </div>
                           <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
                             {isAdminOrSuper ? (
@@ -388,6 +386,23 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                               <span style={{ background:`${stage.color}15`, color:stage.color, border:`1px solid ${stage.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
                                 {stage.icon} {stage.label}
                               </span>
+                            )}
+                            {/* Pre-boarding button for Hired candidates (admin/recruiter only) */}
+                            {(app.stage === 'selected' || app.currentStage === 'Hired') && isAdminOrSuper && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.startPreBoarding(app.id || app._id);
+                                    setToast('✅ Pre-boarding started for this candidate');
+                                  } catch (e) {
+                                    if (e.message?.includes('already')) setToast('ℹ️ Pre-boarding already exists');
+                                    else setToast('❌ ' + e.message);
+                                  }
+                                }}
+                                style={{ fontSize:10, background:'#0176D3', color:'#fff', border:'none', borderRadius:6, padding:'3px 8px', cursor:'pointer', fontWeight:700, whiteSpace:'nowrap' }}
+                              >
+                                🚀 Pre-boarding
+                              </button>
                             )}
                           </div>
                         </div>

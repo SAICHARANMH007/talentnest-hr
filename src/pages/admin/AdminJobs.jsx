@@ -291,12 +291,10 @@ export default function AdminJobs({ user }) {
                           {/* Info */}
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontWeight:700, fontSize:14, color:'#181818', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
-                            <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || 'No email provided'}</div>
-                            {cand?.phone ? (
-                              <div style={{ fontSize:11, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {cand.phone}</div>
-                            ) : (
-                              <div style={{ fontSize:10, color:'#BE123C', background:'#FFF1F2', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4, fontWeight:800 }}>⚠️ Missing Mobile</div>
-                            )}
+                            <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || a.candidateEmail || 'No email provided'}</div>
+                            {(cand?.phone || a.candidatePhone || a.phone) ? (
+                              <div style={{ fontSize:11, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {cand?.phone || a.candidatePhone || a.phone}</div>
+                            ) : null}
                           </div>
                           {/* Stage badge */}
                           <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>

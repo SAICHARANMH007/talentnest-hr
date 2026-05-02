@@ -570,6 +570,13 @@ router.patch('/:id/stage', ...guard,
 
     if (stage === 'Hired') {
       await Job.findByIdAndUpdate(app.jobId, { $inc: { hiredCount: 1 } });
+      // Auto-create pre-boarding checklist for the hired candidate
+      try {
+        const { createPreBoardingForApplication } = require('./preboarding');
+        await createPreBoardingForApplication(app._id, app.tenantId, req.user._id || req.user.id);
+      } catch (pbErr) {
+        console.warn('[PreBoarding] auto-create on Hired stage failed:', pbErr.message);
+      }
     }
 
     // When moved to Offer stage, create a blank OfferLetter if one doesn't exist

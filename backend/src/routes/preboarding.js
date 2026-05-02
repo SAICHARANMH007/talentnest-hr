@@ -4,11 +4,47 @@ const router         = express.Router();
 const PreBoarding    = require('../models/PreBoarding');
 const OfferLetter    = require('../models/OfferLetter');
 const Candidate      = require('../models/Candidate');
+const Application    = require('../models/Application');
 const { authenticate }   = require('../middleware/auth');
 const { allowRoles }     = require('../middleware/rbac');
 const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const { sendEmailWithRetry } = require('../utils/email');
+
+/**
+ * Create a pre-boarding record for any application (hired candidate).
+ * Called manually by HR/recruiter OR automatically when stage moves to Hired.
+ * Safe to call multiple times — returns existing record if already created.
+ */
+async function createPreBoardingForApplication(applicationId, tenantId, createdByUserId) {
+  const app = await Application.findOne({ _id: applicationId, tenantId, deletedAt: null })
+    .populate('candidateId', 'name email phone')
+    .populate('jobId', 'title department')
+    .lean();
+  if (!app) return null;
+
+  const existing = await PreBoarding.findOne({ applicationId });
+  if (existing) return existing;
+
+  const candidate = app.candidateId || {};
+  const job       = app.jobId       || {};
+  const mockOfferId = require('crypto').createHash('md5').update(String(applicationId)).digest('hex');
+
+  return PreBoarding.create({
+    tenantId,
+    candidateId  : candidate._id || app.candidateId,
+    applicationId: applicationId,
+    offerId      : `manual_${mockOfferId}`, // synthetic offerId for manual triggers
+    candidateName : candidate.name  || app.candidateName  || 'Candidate',
+    candidateEmail: candidate.email || app.candidateEmail || '',
+    designation   : job.title || 'New Hire',
+    department    : job.department || '',
+    status        : 'pending',
+    tasks         : DEFAULT_TASKS.map(t => ({ ...t })),
+  });
+}
+
+// (helper exported at bottom alongside router)
 
 const DEFAULT_TASKS = [
   { title: 'Submit Aadhaar Card',          category: 'document',    isRequired: true },
@@ -263,4 +299,14 @@ router.post('/:id/send-welcome-kit', authenticate, tenantGuard, allowRoles('admi
   res.json({ success: true, message: 'Welcome kit sent.' });
 }));
 
+// POST /api/preboarding/start — manually start pre-boarding for any hired candidate (HR/admin/recruiter)
+router.post('/start', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { applicationId } = req.body;
+  if (!applicationId) throw new AppError('applicationId required', 400);
+  const pb = await createPreBoardingForApplication(applicationId, req.user.tenantId, req.user._id || req.user.id);
+  if (!pb) throw new AppError('Application not found or not in your organisation.', 404);
+  res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
+}));
+
 module.exports = router;
+module.exports.createPreBoardingForApplication = createPreBoardingForApplication;

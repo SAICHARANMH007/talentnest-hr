@@ -852,11 +852,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.name || 'Candidate'}</td>
                     <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || 'No email'}</td>
                     <td style={{ padding: '10px 12px' }}>
-                      {r.phone ? (
-                        <span style={{ color: '#166534', background: '#F0FDF4', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>📞 {r.phone}</span>
-                      ) : (
-                        <span style={{ color: '#BE123C', background: '#FFF1F2', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800 }}>⚠️ Missing Mobile</span>
-                      )}
+                      {(r.phone || r.candidatePhone) ? (
+                        <span style={{ color: '#166534', background: '#F0FDF4', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>📞 {r.phone || r.candidatePhone}</span>
+                      ) : <span style={{ color: '#94A3B8', fontSize: 11 }}>—</span>}
                     </td>
                     <td style={{ padding: '10px 12px', color: '#334155' }}>{r.organisationName || '-'}</td>
                     <td style={{ padding: '10px 12px', color: '#706E6B' }}>{r.title || '-'}</td>
@@ -1360,15 +1358,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
                           {(item.email || item.phone || item.organisation || item.source || item.currentCompany || item.skills) && (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                               {item.email && <span style={{ background: '#EFF6FF', color: '#1d4ed8', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.email}</span>}
-                                {item.phone ? (
+                                {(item.phone || item.candidatePhone) ? (
                                   <span style={{ background: '#F0FDF4', color: '#166534', fontSize: 11, padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(22,101,52,0.2)', fontWeight: 600 }}>
-                                    📞 {item.phone}
+                                    📞 {item.phone || item.candidatePhone}
                                   </span>
-                                ) : (
-                                  <span style={{ background: '#FFF1F2', color: '#BE123C', fontSize: 10, padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(190,18,60,0.2)', fontWeight: 800 }}>
-                                    ⚠️ Missing Mobile
-                                  </span>
-                                )}
+                                ) : null}
                               {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
                               {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
                               {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
