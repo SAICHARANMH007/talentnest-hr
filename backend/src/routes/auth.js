@@ -144,15 +144,20 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       // 3. Auto-create Candidate profile for self-registered job seekers so the
       //    recruiter pipeline (Application.candidateId → Candidate) works immediately.
       if (role === 'candidate') {
-        const existing = await Candidate.findOne({ email: email.toLowerCase().trim(), tenantId: tenant._id }).session(session);
+        const uid = user?._id; // 'user' is the const [user] destructured above
+        const emailLower = email.toLowerCase().trim();
+        const existing = await Candidate.findOne({ email: emailLower, tenantId: tenant._id }).session(session);
         if (!existing) {
           await Candidate.create([{
             tenantId: tenant._id,
             name: name.trim(),
-            email: email.toLowerCase().trim(),
+            email: emailLower,
             phone: req.body.phone || '',
             source: 'platform',
+            userId: uid || null, // ← link Candidate → User so registeredOnly filter works
           }], { session });
+        } else if (!existing.userId && uid) {
+          await Candidate.findByIdAndUpdate(existing._id, { $set: { userId: uid } }).session(session);
         }
       }
 

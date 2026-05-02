@@ -570,7 +570,25 @@ async function seed() {
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
   await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
 
-  // ── 2.2 Cleanup Duplicates ──────────────────────────────────────────────────
+  // ── 2.2 Backfill: link existing Candidate docs to their User accounts by email ──
+  // Fixes the "Registered Users" tab showing 0 for candidates who registered before
+  // the userId field was added to the Candidate auto-creation in auth.js
+  try {
+    const candidateUsers = await User.find({ role: 'candidate' }).select('_id email').lean();
+    let linked = 0;
+    for (const u of candidateUsers) {
+      const result = await Candidate.updateMany(
+        { email: u.email.toLowerCase(), userId: null },
+        { $set: { userId: u._id } }
+      );
+      linked += result.modifiedCount || 0;
+    }
+    if (linked > 0) console.log(`✅  Linked ${linked} Candidate docs → User accounts`);
+  } catch (e) {
+    console.warn('⚠️  Candidate-User backfill failed (non-critical):', e.message);
+  }
+
+  // ── 2.3 Cleanup Duplicates ──────────────────────────────────────────────────
   await deduplicateJobs(tenantId);
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────

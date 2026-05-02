@@ -642,7 +642,22 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
 
   const baseMatch = { ...tf, deletedAt: null };
   if (appliedCandidateIds) baseMatch._id = { $in: appliedCandidateIds };
-  if (registeredOnly) baseMatch.userId = { $exists: true, $ne: null }; // has a platform account link
+  if (registeredOnly) {
+    // Match candidates that are linked to a platform User — either via userId field
+    // OR via email match (for existing candidates created before userId backfill was added).
+    const candidateUserEmails = await User.find({ role: 'candidate', ...tf })
+      .select('email _id').lean();
+    const registeredEmails = candidateUserEmails.map(u => u.email.toLowerCase());
+    const registeredUserIds = candidateUserEmails.map(u => u._id);
+    if (registeredEmails.length === 0) {
+      baseMatch._id = { $in: [] }; // no registered candidates
+    } else {
+      baseMatch.$or = [
+        { userId: { $in: registeredUserIds } },
+        { email: { $in: registeredEmails } },
+      ];
+    }
+  }
 
   const pipeline = [
     { $match: baseMatch },
