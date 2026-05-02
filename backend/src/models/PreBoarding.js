@@ -9,10 +9,15 @@ const taskSchema = new mongoose.Schema({
   isRequired:  { type: Boolean, default: true },
   completedAt: { type: Date, default: null },
   completedBy: { type: String, enum: ['candidate', 'hr', 'system'], default: null },
-  fileUrl:     { type: String, default: null },
-  fileName:    { type: String, default: null },
-  fileSize:    { type: Number, default: 0 }, // in bytes
-  notes:       { type: String },
+  fileUrl:              { type: String, default: null }, // base64 data URI
+  fileName:             { type: String, default: null },
+  fileSize:             { type: Number, default: 0 },
+  fileUploadedAt:       { type: Date, default: null },
+  verifyStatus:         { type: String, enum: ['not_uploaded', 'pending_review', 'verified', 'rejected', 'resubmission_required'], default: 'not_uploaded' },
+  verifyNotes:          { type: String, default: null }, // HR feedback on rejection
+  verifiedBy:           { type: String, default: null },
+  verifiedAt:           { type: Date, default: null },
+  notes:                { type: String },
 }, { _id: true });
 
 const preBoardingSchema = new mongoose.Schema({

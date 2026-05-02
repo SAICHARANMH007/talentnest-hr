@@ -147,34 +147,81 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const Tenant = require('../models/Tenant');
 const checkPlanLimits = require('../middleware/checkPlanLimits');
 
-router.post('/:id/tasks/:taskId/upload', authenticate, checkPlanLimits('storage'), upload.single('file'), asyncHandler(async (req, res) => {
+router.post('/:id/tasks/:taskId/upload', authenticate, upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('No file uploaded.', 400);
+  if (req.file.size > 8 * 1024 * 1024) throw new AppError('File too large. Max 8 MB.', 400);
 
   const pb = await PreBoarding.findOne({ _id: req.params.id, 'tasks._id': req.params.taskId });
   if (!pb) throw new AppError('Pre-boarding record or task not found.', 404);
 
-  // In a real app, you would upload to S3/Cloudinary here.
-  // We'll simulate by creating a local link if it were a real file system, 
-  // or just use a data URI / placeholder for this demo.
-  const fileUrl = `https://storage.talentnesthr.com/preboarding/${pb.tenantId}/${req.params.id}/${req.file.originalname}`;
-  
-  // Update task with file info
+  // Store as base64 data URI — same approach as chat attachments.
+  // No external storage needed; files are embedded in the DB document.
+  const mime = req.file.mimetype || 'application/octet-stream';
+  const fileUrl = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+
   const record = await PreBoarding.findOneAndUpdate(
     { _id: req.params.id, 'tasks._id': req.params.taskId },
-    { 
-      $set: { 
-        'tasks.$.fileUrl': fileUrl,
-        'tasks.$.fileName': req.file.originalname,
-        'tasks.$.fileSize': req.file.size,
-        'tasks.$.completedAt': new Date(),
-        'tasks.$.completedBy': 'candidate'
-      } 
+    {
+      $set: {
+        'tasks.$.fileUrl'      : fileUrl,
+        'tasks.$.fileName'     : req.file.originalname,
+        'tasks.$.fileSize'     : req.file.size,
+        'tasks.$.fileUploadedAt': new Date(),
+        'tasks.$.verifyStatus' : 'pending_review', // HR needs to verify
+        // Do NOT auto-complete — completion only after HR verifies
+      }
     },
     { new: true }
   ).lean();
 
-  // Update storage usage in Tenant record
-  await Tenant.findByIdAndUpdate(pb.tenantId, { $inc: { 'stats.storageUsed': req.file.size } });
+  // Auto-move record to in_progress if still pending
+  if (record.status === 'pending') {
+    await PreBoarding.findByIdAndUpdate(record._id, { status: 'in_progress' });
+    record.status = 'in_progress';
+  }
+
+  try { await Tenant.findByIdAndUpdate(pb.tenantId, { $inc: { 'stats.storageUsed': req.file.size } }); } catch {}
+
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
+// ── HR verifies / rejects a document ─────────────────────────────────────────
+router.patch('/:id/tasks/:taskId/verify', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { action, notes } = req.body; // action: 'approve' | 'reject' | 'request_resubmission'
+  if (!['approve', 'reject', 'request_resubmission'].includes(action)) throw new AppError('action must be approve, reject, or request_resubmission.', 400);
+
+  const pb = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId, 'tasks._id': req.params.taskId });
+  if (!pb) throw new AppError('Pre-boarding record or task not found.', 404);
+
+  const verifyStatus = action === 'approve' ? 'verified' : action === 'reject' ? 'rejected' : 'resubmission_required';
+  const update = {
+    'tasks.$.verifyStatus' : verifyStatus,
+    'tasks.$.verifyNotes'  : notes || '',
+    'tasks.$.verifiedBy'   : req.user.name || req.user.id,
+    'tasks.$.verifiedAt'   : new Date(),
+  };
+
+  // Only mark complete when HR approves
+  if (action === 'approve') {
+    update['tasks.$.completedAt'] = new Date();
+    update['tasks.$.completedBy'] = 'hr';
+  } else {
+    // Reset completion if rejected or needs resubmission
+    update['tasks.$.completedAt'] = null;
+    update['tasks.$.completedBy'] = null;
+  }
+
+  const record = await PreBoarding.findOneAndUpdate(
+    { _id: req.params.id, 'tasks._id': req.params.taskId },
+    { $set: update },
+    { new: true }
+  ).lean();
+
+  // Recalculate overall status
+  const allDone = record.tasks.every(t => t.completedAt || !t.isRequired);
+  const anyDone = record.tasks.some(t => t.completedAt);
+  const newStatus = allDone ? 'completed' : anyDone ? 'in_progress' : 'pending';
+  if (record.status !== newStatus) await PreBoarding.findByIdAndUpdate(record._id, { status: newStatus });
 
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));

@@ -15,23 +15,74 @@ const CATEGORY_ICONS = { document: '📄', training: '📚', it_setup: '💻', p
 
 const card = { background: '#fff', border: '1px solid rgba(1,118,211,0.12)', borderRadius: 16, padding: 24 };
 
-function TaskRow({ task, onToggle }) {
-  const done = !!task.completedAt;
+const VERIFY_COLOR = { not_uploaded:'#94A3B8', pending_review:'#F59E0B', verified:'#10B981', rejected:'#EF4444', resubmission_required:'#F97316' };
+const VERIFY_LABEL = { not_uploaded:'Not Uploaded', pending_review:'Pending Review', verified:'Verified ✅', rejected:'Rejected ❌', resubmission_required:'Resubmit 🔄' };
+
+function TaskRow({ task, pbId, onToggle, onVerify }) {
+  const done    = !!task.completedAt;
+  const isDoc   = task.category === 'document';
+  const vs      = task.verifyStatus || 'not_uploaded';
+  const hasFile = !!task.fileUrl;
+  const [verifying, setVerifying] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+  const [showReject, setShowReject] = useState(false);
+
+  const verify = async (action, notes) => {
+    setVerifying(true);
+    try { await onVerify(task._id, action, notes); } catch {}
+    setVerifying(false); setShowReject(false); setRejectNote('');
+  };
+
+  const downloadFile = () => {
+    const a = document.createElement('a');
+    a.href = task.fileUrl; a.download = task.fileName || 'document'; a.click();
+  };
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #F3F2F2' }}>
-      <button
-        onClick={() => onToggle(task._id, !done)}
-        style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${done ? '#10b981' : '#DDDBDA'}`, background: done ? '#10b981' : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}
-      >
-        {done && '✓'}
-      </button>
-      <span style={{ fontSize: 12, flex: 1, color: done ? '#9E9D9B' : '#181818', textDecoration: done ? 'line-through' : 'none' }}>
-        {CATEGORY_ICONS[task.category] || '📌'} {task.title}
-        {task.isRequired && !done && <span style={{ color: '#ef4444', fontSize: 10, marginLeft: 4 }}>*</span>}
-      </span>
-      {done && <span style={{ fontSize: 10, color: '#10b981' }}>
-        {task.completedBy === 'hr' ? 'HR' : 'Candidate'} · {new Date(task.completedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-      </span>}
+    <div style={{ borderBottom:'1px solid #F3F2F2' }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0' }}>
+        <button onClick={() => onToggle(task._id, !done)}
+          style={{ width:20, height:20, borderRadius:4, border:`2px solid ${done?'#10b981':'#DDDBDA'}`, background:done?'#10b981':'#fff', cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, marginTop:1 }}>
+          {done && '✓'}
+        </button>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span style={{ fontSize:12, color:done?'#9E9D9B':'#181818', textDecoration:done?'line-through':'none' }}>
+              {CATEGORY_ICONS[task.category]||'📌'} {task.title}
+              {task.isRequired && !done && <span style={{ color:'#ef4444', fontSize:10, marginLeft:4 }}>*</span>}
+            </span>
+            {isDoc && <span style={{ fontSize:10, fontWeight:700, color:VERIFY_COLOR[vs]||'#94A3B8', background:`${VERIFY_COLOR[vs]}18`, padding:'1px 7px', borderRadius:10 }}>{VERIFY_LABEL[vs]||vs}</span>}
+          </div>
+          {/* File info */}
+          {hasFile && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, flexWrap:'wrap' }}>
+              <button onClick={downloadFile} style={{ fontSize:11, color:'#0176D3', background:'none', border:'1px solid #0176D3', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>
+                ⬇️ {task.fileName||'Download'} {task.fileSize?`(${(task.fileSize/1024).toFixed(0)}KB)`:''}
+              </button>
+              {task.fileUploadedAt && <span style={{ fontSize:10, color:'#94A3B8' }}>Uploaded {new Date(task.fileUploadedAt).toLocaleDateString('en-IN')}</span>}
+              {/* Verify/Reject buttons for HR */}
+              {isDoc && vs==='pending_review' && !verifying && (
+                <>
+                  <button onClick={()=>verify('approve','')} style={{ fontSize:11, background:'#10B981', color:'#fff', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer', fontWeight:700 }}>✅ Approve</button>
+                  <button onClick={()=>setShowReject(p=>!p)} style={{ fontSize:11, background:'#EF4444', color:'#fff', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer', fontWeight:700 }}>❌ Reject</button>
+                  <button onClick={()=>verify('request_resubmission','')} style={{ fontSize:11, background:'#F97316', color:'#fff', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer', fontWeight:700 }}>🔄 Resubmit</button>
+                </>
+              )}
+              {verifying && <span style={{ fontSize:11, color:'#94A3B8' }}>⏳ Updating…</span>}
+              {isDoc && vs==='verified' && <span style={{ fontSize:11, color:'#10B981', fontWeight:700 }}>✅ Verified {task.verifiedAt?`on ${new Date(task.verifiedAt).toLocaleDateString('en-IN')}`:''}</span>}
+            </div>
+          )}
+          {/* Rejection note input */}
+          {showReject && (
+            <div style={{ display:'flex', gap:6, marginTop:6 }}>
+              <input value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Reason for rejection…"
+                style={{ flex:1, padding:'5px 10px', borderRadius:6, border:'1px solid #E2E8F0', fontSize:12, outline:'none' }} />
+              <button onClick={()=>verify('reject',rejectNote)} style={{ background:'#EF4444', color:'#fff', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontSize:12, fontWeight:700 }}>Send</button>
+            </div>
+          )}
+        </div>
+        {done && !isDoc && <span style={{ fontSize:10, color:'#10b981', flexShrink:0 }}>{task.completedBy==='hr'?'HR':'Cand.'} · {new Date(task.completedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>}
+      </div>
     </div>
   );
 }
@@ -52,6 +103,14 @@ function DetailModal({ record, onClose, onUpdate }) {
     try {
       const r = await api.updatePreBoardingTask(record._id || record.id, taskId, { completed });
       onUpdate(r?.data || r);
+    } catch (e) { setToast('❌ ' + e.message); }
+  };
+
+  const verifyDocument = async (taskId, action, notes) => {
+    try {
+      const r = await api.verifyPreBoardingDocument(record._id || record.id, taskId, action, notes);
+      onUpdate(r?.data || r);
+      setToast(action === 'approve' ? '✅ Document approved' : action === 'reject' ? '❌ Document rejected' : '🔄 Resubmission requested');
     } catch (e) { setToast('❌ ' + e.message); }
   };
 
@@ -132,7 +191,7 @@ function DetailModal({ record, onClose, onUpdate }) {
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#032D60', marginBottom: 8 }}>📋 Checklist ({record.tasks?.filter(t => t.completedAt).length || 0}/{record.tasks?.length || 0})</div>
             {(record.tasks || []).map(task => (
-              <TaskRow key={task._id} task={task} onToggle={toggleTask} />
+              <TaskRow key={task._id} task={task} pbId={record._id || record.id} onToggle={toggleTask} onVerify={verifyDocument} />
             ))}
           </div>
 

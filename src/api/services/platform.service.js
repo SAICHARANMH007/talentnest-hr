@@ -203,6 +203,34 @@ export const platformService = {
   async addPreBoardingTask(id, data)         { return req('POST',   `/preboarding/${id}/tasks`, data); },
   async updatePreBoardingTask(id, taskId, data) { return req('PATCH', `/preboarding/${id}/tasks/${taskId}`, data); },
   async sendPreBoardingWelcomeKit(id)        { return req('POST',   `/preboarding/${id}/send-welcome-kit`, {}); },
+  async uploadPreBoardingDocument(id, taskId, file) {
+    // Convert file to base64 FormData approach — use FileReader to get base64
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          // Send as multipart form via fetch directly (req() doesn't support FormData)
+          const { getToken } = await import('../client.js');
+          const { API_BASE_URL } = await import('../config.js');
+          const form = new FormData();
+          form.append('file', file, file.name);
+          const res = await fetch(`${API_BASE_URL}/preboarding/${id}/tasks/${taskId}/upload`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${getToken()}`, 'X-Requested-With': 'TalentNest' },
+            body: form,
+          });
+          const json = await res.json();
+          if (!res.ok) reject(new Error(json.error || 'Upload failed'));
+          else resolve(json);
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsArrayBuffer(file);
+    });
+  },
+  async verifyPreBoardingDocument(id, taskId, action, notes) {
+    return req('PATCH', `/preboarding/${id}/tasks/${taskId}/verify`, { action, notes });
+  },
 
   // Job Alerts
   async getJobAlerts()                       { return req('GET',    '/job-alerts'); },
