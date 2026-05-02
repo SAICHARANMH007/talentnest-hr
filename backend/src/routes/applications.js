@@ -133,7 +133,8 @@ router.get('/invite/:token/open', asyncHandler(async (req, res) => {
 
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
-  const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers } = req.body;
+  const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
+          title, currentCompany, experience, availability } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
@@ -151,11 +152,21 @@ router.post('/public', asyncHandler(async (req, res) => {
       email: emailLower,
       phone: phoneTrimmed,
       source: 'career_page',
+      ...(title          ? { title: title.trim() }               : {}),
+      ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
+      ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+      ...(availability   ? { availability }                        : {}),
     });
-  } else if (!candidate.phone && phoneTrimmed) {
-    // Backfill phone if candidate exists but had no phone
-    candidate.phone = phoneTrimmed;
-    await candidate.save();
+  } else {
+    // Update fields that are newly provided or missing on existing candidate
+    const updates = {};
+    if (!candidate.phone && phoneTrimmed)               updates.phone          = phoneTrimmed;
+    if (!candidate.title && title?.trim())               updates.title          = title.trim();
+    if (!candidate.currentCompany && currentCompany?.trim()) updates.currentCompany = currentCompany.trim();
+    if ((candidate.experience == null) && experience !== '' && experience !== undefined) updates.experience = Number(experience);
+    if (!candidate.availability && availability)         updates.availability   = availability;
+    if (Object.keys(updates).length > 0) await Candidate.findByIdAndUpdate(candidate._id, { $set: updates });
+    candidate = { ...candidate.toObject?.() || candidate, ...updates };
   }
 
   const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });

@@ -19,7 +19,7 @@ function ApplyModal({ job, onClose }) {
   })();
 
   const questions = job.screeningQuestions || [];
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: '', coverLetter: '' });
+  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: '', title: '', currentCompany: '', experience: '', availability: '', coverLetter: '' });
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -116,7 +116,39 @@ function ApplyModal({ job, onClose }) {
         <Field label="Full Name *" value={form.name} onChange={v => sf('name', v)} placeholder="Jane Smith" />
         <Field label="Email *" value={form.email} onChange={v => sf('email', v)} type="email" placeholder="jane@example.com" />
         <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" />
-        <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={4} placeholder="Tell us why you're a great fit…" />
+
+        {/* Professional details — same fields as registered profile so no re-entry needed */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <Field label="Current Title" value={form.title} onChange={v => sf('title', v)} placeholder="e.g. Senior Developer" />
+          <Field label="Current Company" value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="e.g. Infosys" />
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Total Experience (years)</label>
+            <select value={form.experience} onChange={e => sf('experience', e.target.value)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:13, background:'#fff', color: form.experience ? '#181818' : '#94A3B8' }}>
+              <option value="">Select…</option>
+              {['0','1','2','3','4','5','6','7','8','9','10','11','12','15','18','20','25'].map(y => (
+                <option key={y} value={y}>{y === '0' ? 'Fresher (0 yrs)' : `${y} year${y === '1' ? '' : 's'}`}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Availability</label>
+            <select value={form.availability} onChange={e => sf('availability', e.target.value)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:13, background:'#fff', color: form.availability ? '#181818' : '#94A3B8' }}>
+              <option value="">Select…</option>
+              <option value="immediate">Immediate</option>
+              <option value="15 days">15 Days Notice</option>
+              <option value="30 days">30 Days Notice</option>
+              <option value="45 days">45 Days Notice</option>
+              <option value="60 days">60 Days Notice</option>
+              <option value="90 days">90 Days Notice</option>
+            </select>
+          </div>
+        </div>
+
+        <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} placeholder="Tell us why you're a great fit…" />
         {questions.length > 0 && (
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
             <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>📋 Screening Questions</p>
