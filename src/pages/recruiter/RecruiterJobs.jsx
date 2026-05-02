@@ -357,7 +357,14 @@ export default function RecruiterJobs({ user }) {
             onSave={async (form) => {
               setEditSaving(true);
               try {
-                await api.patchJob(editingJob.id, { ...form, externalUrl: (form.externalUrl||'').trim() });
+                const eu = (form.externalUrl || '').trim();
+                const payload = {
+                  ...form,
+                  externalUrl: eu,
+                  numberOfOpenings: form.openings ? Number(form.openings) : undefined,
+                };
+                delete payload.openings;
+                await api.patchJob(editingJob.id, payload);
                 setToast('✅ Job updated!');
                 setEditingJob(null);
                 load();
@@ -366,22 +373,27 @@ export default function RecruiterJobs({ user }) {
             }}
             onCancel={() => setEditingJob(null)}
             initialData={{
-              title: editingJob.title || '',
-              company: editingJob.company || editingJob.companyName || '',
-              department: editingJob.department || '',
-              location: editingJob.location || '',
-              jobType: editingJob.jobType || 'Full-Time',
-              workMode: editingJob.workMode || 'Onsite',
-              experience: editingJob.experience || '',
-              openings: editingJob.numberOfOpenings || editingJob.openings || '',
+              title:               editingJob.title || '',
+              company:             editingJob.company || editingJob.companyName || '',
+              department:          editingJob.department || '',
+              location:            editingJob.location || '',
+              jobType:             editingJob.jobType || 'Full-Time',
+              workMode:            editingJob.workMode || 'Onsite',
+              experience:          editingJob.experience || '',
+              openings:            String(editingJob.numberOfOpenings || editingJob.openings || ''),
               applicationDeadline: editingJob.applicationDeadline || '',
-              urgency: editingJob.urgency || 'Medium',
-              skills: Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
-              description: editingJob.description || '',
-              requirements: editingJob.requirements || '',
-              benefits: editingJob.benefits || '',
-              externalUrl: editingJob.externalUrl || '',
-              isPublic: editingJob.isPublic !== false,
+              urgency:             editingJob.urgency || 'Medium',
+              skills:              Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
+              description:         editingJob.description || '',
+              requirements:        editingJob.requirements || '',
+              benefits:            editingJob.benefits || '',
+              education:           editingJob.education || '',
+              externalUrl:         editingJob.externalUrl || '',
+              salaryMin:           editingJob.salaryMin || '',
+              salaryMax:           editingJob.salaryMax || '',
+              salaryCurrency:      editingJob.salaryCurrency || 'INR',
+              isPublic:            editingJob.isPublic !== false,
+              screeningQuestions:  Array.isArray(editingJob.screeningQuestions) ? editingJob.screeningQuestions : [],
             }}
           />
         </Modal>

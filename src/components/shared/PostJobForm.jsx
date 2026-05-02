@@ -9,7 +9,8 @@ import { parseJD } from '../../api/matching.js';
 
 const EMPTY = {
   title: '', company: '', department: '', location: '',
-  jobType: 'Full-Time', workMode: 'Onsite', experience: '', salary: '',
+  jobType: 'Full-Time', workMode: 'Onsite', experience: '',
+  salaryMin: '', salaryMax: '', salaryType: 'CTC', salaryCurrency: 'INR',
   openings: '', applicationDeadline: '', urgency: 'Medium',
   skills: '', description: '', requirements: '', benefits: '',
   education: '', externalUrl: '', isPublic: true,
@@ -74,7 +75,19 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const handleSave = () => {
     const eu = (form.externalUrl || '').trim();
     const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
-    onSave({ ...form, externalUrl: eu, skills, screeningQuestions: form.screeningQuestions || [] });
+    const payload = {
+      ...form,
+      externalUrl: eu,
+      skills,
+      screeningQuestions: form.screeningQuestions || [],
+      // Map openings → numberOfOpenings for the backend
+      numberOfOpenings: form.openings ? Number(form.openings) : undefined,
+      // Ensure salary fields are numbers or undefined
+      salaryMin: form.salaryMin !== '' && form.salaryMin !== undefined ? Number(form.salaryMin) : undefined,
+      salaryMax: form.salaryMax !== '' && form.salaryMax !== undefined ? Number(form.salaryMax) : undefined,
+    };
+    delete payload.openings; // remove the form alias
+    onSave(payload);
   };
 
   return (
@@ -114,8 +127,11 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
             options={['Full-Time', 'Part-Time', 'Contract', 'C2H', 'C2C', 'Internship', 'Freelance']} />
           <Dropdown label="Work Mode"   value={form.workMode}   onChange={v => sf('workMode', v)}
             options={['Onsite', 'Remote', 'Hybrid']} />
-          <Field label="Experience"     value={form.experience} onChange={v => sf('experience', v)} placeholder="3-6 years" />
-          <Field label="Salary / CTC"   value={form.salary}     onChange={v => sf('salary', v)}     placeholder="12-18 LPA" />
+          <Field label="Experience"      value={form.experience} onChange={v => sf('experience', v)} placeholder="3-6 years" />
+          <Field label="Salary Min (₹)"  value={form.salaryMin !== undefined ? String(form.salaryMin) : ''} onChange={v => sf('salaryMin', v === '' ? '' : Number(v))} type="number" placeholder="800000" />
+          <Field label="Salary Max (₹)"  value={form.salaryMax !== undefined ? String(form.salaryMax) : ''} onChange={v => sf('salaryMax', v === '' ? '' : Number(v))} type="number" placeholder="1500000" />
+          <Dropdown label="Salary Type"  value={form.salaryType || 'CTC'} onChange={v => sf('salaryType', v)}
+            options={['CTC', 'Gross', 'Net', 'Monthly', 'Hourly']} />
           <Field label="No. of Openings" value={form.openings}  onChange={v => sf('openings', v)}   placeholder="2" />
           <Field label="Apply Before"   value={form.applicationDeadline} onChange={v => sf('applicationDeadline', v)} type="date" />
           <Dropdown label="Urgency"     value={form.urgency}    onChange={v => sf('urgency', v)}

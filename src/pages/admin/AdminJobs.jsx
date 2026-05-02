@@ -95,7 +95,16 @@ export default function AdminJobs({ user }) {
     if (eu && !/^https?:\/\//i.test(eu)) { setToast('❌ External URL must start with http:// or https://'); return; }
     setEditSaving(true);
     try {
-      await api.patchJob(editingJob.id, { ...form, externalUrl: eu });
+      // Map form field names to Job model field names
+      const payload = {
+        ...form,
+        externalUrl: eu,
+        numberOfOpenings: form.openings ? Number(form.openings) : undefined,
+        // skills comes back from PostJobForm as array (handleSave converts it)
+      };
+      // Clean up mismatched keys
+      delete payload.openings;
+      await api.patchJob(editingJob.id, payload);
       setToast('✅ Job updated!');
       setEditingJob(null);
       load();
@@ -332,24 +341,28 @@ export default function AdminJobs({ user }) {
             onSave={saveEditJob}
             onCancel={() => setEditingJob(null)}
             initialData={{
-              title: editingJob.title || '',
-              company: editingJob.company || editingJob.companyName || '',
-              department: editingJob.department || '',
-              location: editingJob.location || '',
-              jobType: editingJob.jobType || 'Full-Time',
-              workMode: editingJob.workMode || 'Onsite',
-              experience: editingJob.experience || '',
-              openings: editingJob.numberOfOpenings || editingJob.openings || '',
+              title:               editingJob.title || '',
+              company:             editingJob.company || editingJob.companyName || '',
+              department:          editingJob.department || '',
+              location:            editingJob.location || '',
+              jobType:             editingJob.jobType || 'Full-Time',
+              workMode:            editingJob.workMode || 'Onsite',
+              experience:          editingJob.experience || '',
+              openings:            String(editingJob.numberOfOpenings || editingJob.openings || ''),
               applicationDeadline: editingJob.applicationDeadline || '',
-              urgency: editingJob.urgency || 'Medium',
-              skills: Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
-              description: editingJob.description || '',
-              requirements: editingJob.requirements || '',
-              benefits: editingJob.benefits || '',
-              externalUrl: editingJob.externalUrl || '',
-              salaryMin: editingJob.salaryMin || '',
-              salaryMax: editingJob.salaryMax || '',
-              isPublic: editingJob.isPublic !== false,
+              urgency:             editingJob.urgency || 'Medium',
+              skills:              Array.isArray(editingJob.skills) ? editingJob.skills.join(', ') : (editingJob.skills || ''),
+              description:         editingJob.description || '',
+              requirements:        editingJob.requirements || '',
+              benefits:            editingJob.benefits || '',
+              education:           editingJob.education || '',
+              externalUrl:         editingJob.externalUrl || '',
+              salaryMin:           editingJob.salaryMin || '',
+              salaryMax:           editingJob.salaryMax || '',
+              salaryCurrency:      editingJob.salaryCurrency || 'INR',
+              salaryType:          editingJob.salaryType || 'CTC',
+              isPublic:            editingJob.isPublic !== false,
+              screeningQuestions:  Array.isArray(editingJob.screeningQuestions) ? editingJob.screeningQuestions : [],
             }}
           />
         </Modal>
