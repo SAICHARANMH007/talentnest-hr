@@ -112,9 +112,16 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   if (!u) return null;
 
   const saveProfile = async () => {
-    if (!form.name || !form.email || !form.phone) { 
-      setToast('❌ Name, Email, and Phone Number are required'); 
-      return; 
+    if (!form.name || !form.email) {
+      setToast('❌ Name and Email are required');
+      return;
+    }
+    // Phone is strongly recommended but not a hard blocker for profile edits —
+    // it is required for WhatsApp/calling but not for stage moves or note updates.
+    // We warn but allow save so HR isn't blocked editing other fields.
+    if (!form.phone?.trim()) {
+      setToast('⚠️ No mobile number — WhatsApp/calls won\'t work for this candidate. Saving anyway…');
+      // don't return — continue to save
     }
     setSaving(true);
     try {
@@ -235,7 +242,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <div className="form-grid-2" style={{ gap: 14 }}>
                   <Field label="Full Name *"  value={form.name}     onChange={v => sf('name', v)} />
                   <Field label="Email Address *" value={form.email} onChange={v => sf('email', v)} type="email" />
-                  <Field label="Phone Number *"  value={form.phone}    onChange={v => sf('phone', v)} type="tel" />
+                  <Field label={`Phone Number${form.phone ? '' : ' ⚠️ Missing'}`} value={form.phone} onChange={v => sf('phone', v)} type="tel" placeholder="Required for calls & WhatsApp" />
                   <Field label="Location"     value={form.location} onChange={v => sf('location', v)} />
                   <Field label="Current Title" value={form.title}    onChange={v => sf('title', v)} />
                   <Field label="Exp. (Years)" value={form.experience} onChange={v => sf('experience', v)} type="number" min="0" max="60" />

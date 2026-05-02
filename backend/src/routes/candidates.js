@@ -199,7 +199,14 @@ router.patch('/:id', ...guard,
     }
 
     // Sanitize phone (remove spaces that break SMS/validation)
-    if (typeof updates.phone === 'string') updates.phone = updates.phone.replace(/\s+/g, '');
+    if (typeof updates.phone === 'string') {
+      updates.phone = updates.phone.replace(/\s+/g, '');
+      // Never clear an existing phone number with an empty string — skip the update if blank
+      if (updates.phone === '') {
+        const existing = await Candidate.findOne({ _id: req.params.id, deletedAt: null }).select('phone').lean();
+        if (existing?.phone) delete updates.phone; // keep existing phone
+      }
+    }
 
     // Enforce linkedin.com/in/ prefix
     if (updates.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(updates.linkedinUrl)) {

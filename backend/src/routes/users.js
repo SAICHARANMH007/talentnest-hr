@@ -108,8 +108,14 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
 router.patch('/me', authenticate, asyncHandler(async (req, res) => {
   const forbidden = ['password','role','orgId','email'];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
-  // Sanitize phone if provided
-  if (typeof update.phone === 'string') update.phone = update.phone.replace(/\s+/g, '');
+  if (typeof update.phone === 'string') {
+    update.phone = update.phone.replace(/\s+/g, '');
+    // Never wipe an existing phone with empty string
+    if (update.phone === '') {
+      const me = await User.findById(req.user._id || req.user.id).select('phone').lean();
+      if (me?.phone) delete update.phone;
+    }
+  }
   const updated = await User.findByIdAndUpdate(req.user._id || req.user.id, { $set: update }, { new: true }).select('-password');
   if (!updated) throw new AppError('User not found.', 404);
   res.json({ success: true, data: userService.normalize(updated) });
@@ -197,8 +203,13 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter
     throw new AppError('Forbidden: Different Organization.', 403);
   }
 
-  // Sanitize phone (remove spaces/dashes that break SMS validation)
-  if (typeof update.phone === 'string') update.phone = update.phone.replace(/\s+/g, '');
+  if (typeof update.phone === 'string') {
+    update.phone = update.phone.replace(/\s+/g, '');
+    if (update.phone === '') {
+      const existing = await User.findById(req.params.id).select('phone').lean();
+      if (existing?.phone) delete update.phone;
+    }
+  }
 
   // Enforce linkedin.com/in/ prefix if a LinkedIn URL is provided
   if (update.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(update.linkedinUrl)) {
