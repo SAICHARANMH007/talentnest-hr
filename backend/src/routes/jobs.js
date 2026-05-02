@@ -133,8 +133,22 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
 
     const patchFilter = { _id: req.params.id, deletedAt: null };
     if (req.user.role !== 'super_admin') patchFilter.tenantId = req.user.tenantId;
+    const prevJob = await Job.findOne(patchFilter).select('status').lean();
     const job = await Job.findOneAndUpdate(patchFilter, { $set: updates }, { new: true });
     if (!job) throw new AppError('Job not found.', 404);
+
+    // Distribution hooks on status change
+    try {
+      if (updates.status === 'active' && prevJob?.status !== 'active') {
+        require('./distribution').logJobPublished(job);
+        require('./feed').invalidateFeedCache();
+      } else if (updates.status === 'closed' && prevJob?.status === 'active') {
+        require('./distribution').logJobClosed(job._id);
+        require('./feed').invalidateFeedCache();
+      } else if (updates.status === 'active') {
+        require('./feed').invalidateFeedCache(); // keep feed fresh on any active job update
+      }
+    } catch {}
 
     logger.audit('Job updated', req.user.id, req.user.tenantId, { jobId: job._id });
     res.json({ success: true, data: normalizeJob(job) });
@@ -154,6 +168,12 @@ router.patch('/:id/approve', ...guard,
       { new: true }
     );
     if (!job) throw new AppError('Job not found.', 404);
+
+    // Trigger distribution when job goes live
+    if (action === 'approve') {
+      try { require('./distribution').logJobPublished(job); } catch {}
+      try { require('./feed').invalidateFeedCache(); } catch {}
+    }
 
     logger.audit(`Job ${action}d`, req.user.id, req.user.tenantId, { jobId: job._id, reason });
     res.json({ success: true, data: normalizeJob(job) });
@@ -241,6 +261,8 @@ router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
     { $set: { deletedAt: new Date(), status: 'closed' } }, { new: true }
   );
   if (!job) throw new AppError('Job not found.', 404);
+  try { require('./distribution').logJobClosed(job._id); } catch {}
+  try { require('./feed').invalidateFeedCache(); } catch {}
   res.json({ success: true, message: 'Job archived.' });
 }));
 

@@ -659,6 +659,11 @@ if (HAS_DIST) {
 
 // ── Video rooms REST
 app.use('/api/video-rooms', require('./src/routes/videoRooms'));
+app.use('/api/feed',         require('./src/routes/feed'));
+app.use('/api/distribution', require('./src/routes/distribution'));
+// Sitemap + robots at root level
+app.get('/sitemap.xml', (req, res) => res.redirect('/api/feed/sitemap.xml'));
+app.get('/robots.txt',  (req, res) => res.redirect('/api/feed/robots.txt'));
 
 // ── Calls REST
 app.use('/api/calls', require('./src/routes/calls'));
@@ -721,6 +726,7 @@ const { startSlaMonitorJob } = require('./src/jobs/slaMonitor');
 const { startNpsSchedulerJob } = require('./src/jobs/npsScheduler');
 const { startPreBoardingJobs } = require('./src/jobs/preboardingCron');
 const { startJobAlertJobs } = require('./src/jobs/jobAlertCron');
+const { startDistributionRetryJob } = require('./src/jobs/distributionRetry');
 
 connectDB()
   .then(() => seed())
@@ -739,6 +745,7 @@ connectDB()
     startNpsSchedulerJob();
     startPreBoardingJobs();
     startJobAlertJobs();
+    startDistributionRetryJob();
 
     // ── Keep-alive self-ping (prevents Render free tier from sleeping) ──
     // Pings own health endpoint every 10 minutes.

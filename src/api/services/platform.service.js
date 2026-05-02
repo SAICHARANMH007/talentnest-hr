@@ -255,4 +255,11 @@ export const platformService = {
   async getUnreadMessageCount()                { return req('GET',    '/messages/unread-count'); },
   async getMessageContacts()                   { return req('GET',    '/messages/contacts'); },
   async getMessageThread(userId)               { return req('GET',    `/messages/thread/${userId}`); },
+
+  // Distribution tracking
+  async getJobDistribution(jobId)       { return req('GET',   `/distribution/job/${jobId}`); },
+  async getDistributionSummary()        { return req('GET',   '/distribution/summary'); },
+  async retryDistribution(jobId, plat)  { return req('POST',  `/distribution/retry/${jobId}/${plat}`, {}); },
+  async getEmployerSettings(tid)        { return req('GET',   `/distribution/employer-settings/${tid}`); },
+  async saveEmployerSettings(tid, data) { return req('PATCH', `/distribution/employer-settings/${tid}`, data); },
 };

@@ -465,6 +465,7 @@ export default function AdminJobs({ user }) {
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                   <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '7px 12px', fontSize: 11 }}>View Details</button>
                   <button onClick={e => { e.stopPropagation(); setEditingJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>✏️ Edit</button>
+                  <button onClick={e => { e.stopPropagation(); navigate(`/app/jobs/${j.id}/distribution`); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }} title="Job Distribution Status">📡 Distribute</button>
                   <button onClick={async e => {
                     e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
                     try {

@@ -5,7 +5,8 @@ import { usePushNotifications } from './hooks/usePushNotifications.js';
 import { API_BASE_URL } from './api/config.js';
 
 // ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────────────────
-const MeetingRoom = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
+const MeetingRoom      = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
+const JobDistribution  = lazy(() => import('./pages/admin/JobDistribution.jsx'));
 const AuthScreen = lazy(() => import('./pages/auth/AuthScreen.jsx'));
 const SetPasswordPage = lazy(() => import('./pages/auth/SetPasswordPage.jsx'));
 const CareersPage = lazy(() => import('./pages/careers/CareersPage.jsx'));
@@ -520,6 +521,7 @@ export default function App() {
         {(rk === 'admin' || rk === 'superadmin') && (
           <>
             <Route path="analytics" element={<AdminAnalytics user={user} onNavigate={(p) => navigate(`/app/${p}`)} />} />
+            <Route path="jobs/:jobId/distribution" element={<Suspense fallback={<PageLoader />}><JobDistribution user={user} /></Suspense>} />
             <Route path="dashboard" element={<Navigate to="/app/analytics" replace />} />
             <Route path="job-approvals" element={<AdminJobApproval user={user} />} />
             <Route path="org-settings" element={<OrgSettings user={user} />} />

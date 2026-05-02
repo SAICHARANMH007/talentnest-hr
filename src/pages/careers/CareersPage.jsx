@@ -232,8 +232,40 @@ export default function CareersPage() {
   const [applying, setApplying] = useState(null);
   const [totalJobs, setTotalJobs] = useState(0);
   const [toast, setToast] = useState('');
+  const [viewingJob, setViewingJob] = useState(null); // job whose JSON-LD is injected
   const initialCompanyFilter = searchParams.get('company') || '';
   const initialSearch = searchParams.get('search') || '';
+
+  // Phase 3 — Google for Jobs JSON-LD: inject/remove on active job view
+  useEffect(() => {
+    const id = 'tn-job-schema';
+    let el = document.getElementById(id);
+    if (viewingJob && viewingJob.status === 'active') {
+      if (!el) { el = document.createElement('script'); el.id = id; el.type = 'application/ld+json'; document.head.appendChild(el); }
+      const company  = viewingJob.companyName || viewingJob.company || 'TalentNest Partner';
+      const parts    = (viewingJob.location || '').split(',').map(s => s.trim());
+      const siteUrl  = 'https://www.talentnesthr.com';
+      const slug     = viewingJob.careerPageSlug || viewingJob._id || viewingJob.id;
+      const mapType  = t => { const s=(t||'').toLowerCase(); if(s.includes('part')) return 'PART_TIME'; if(s.includes('contract')||s.includes('c2c')) return 'CONTRACTOR'; if(s.includes('intern')) return 'INTERN'; return 'FULL_TIME'; };
+      const schema   = {
+        '@context': 'https://schema.org/', '@type': 'JobPosting',
+        title: viewingJob.title, datePosted: new Date(viewingJob.createdAt).toISOString(),
+        description: (viewingJob.description||'') + (viewingJob.requirements ? '\n\nRequirements:\n'+viewingJob.requirements : ''),
+        employmentType: mapType(viewingJob.jobType),
+        hiringOrganization: { '@type': 'Organization', name: company },
+        jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: parts[0]||'', addressRegion: parts[1]||'', addressCountry: 'IN' } },
+        identifier: { '@type': 'PropertyValue', name: company, value: String(viewingJob._id||viewingJob.id||'') },
+        url: `${siteUrl}/careers/job/${slug}`,
+        ...(viewingJob.salaryMin ? { baseSalary: { '@type':'MonetaryAmount', currency:'INR', value: { '@type':'QuantitativeValue', minValue: viewingJob.salaryMin, ...(viewingJob.salaryMax ? {maxValue: viewingJob.salaryMax} : {}), unitText:'YEAR' } } } : {}),
+        ...(viewingJob.skills?.length ? { skills: Array.isArray(viewingJob.skills) ? viewingJob.skills.join(', ') : viewingJob.skills } : {}),
+        ...(viewingJob.experience ? { experienceRequirements: viewingJob.experience } : {}),
+      };
+      el.textContent = JSON.stringify(schema);
+    } else if (el) {
+      el.remove();
+    }
+    return () => { const s = document.getElementById(id); if (s) s.remove(); };
+  }, [viewingJob]);
 
   useEffect(() => {
     if (!document.getElementById('marketing-css')) {
@@ -541,7 +573,7 @@ export default function CareersPage() {
 
                       {/* CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4 }}>
-                        <button onClick={() => setApplying({ ...j, id: j._id || j.id })} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
+                        <button onClick={() => { const jj = { ...j, id: j._id || j.id }; setApplying(jj); setViewingJob(jj); }} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
                           {j.externalUrl ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
                         {j.externalUrl && (
