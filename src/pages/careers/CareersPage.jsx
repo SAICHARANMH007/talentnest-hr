@@ -29,6 +29,9 @@ function ApplyModal({ job, onClose }) {
 
   const submit = async () => {
     if (!form.name || !form.email) { setError('Name and email are required.'); return; }
+    if (!form.phone?.trim()) { setError('Mobile number is required to apply.'); return; }
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 7) { setError('Please enter a valid mobile number.'); return; }
     // Validate required screening questions
     for (let i = 0; i < questions.length; i++) {
       if (questions[i].required && !answers[i]?.trim()) {
@@ -81,10 +84,18 @@ function ApplyModal({ job, onClose }) {
             The recruiting team will be in touch within 48 hours.
           </p>
         )}
-        <p style={{ color: '#64748b', fontSize: 12, marginTop: 12, lineHeight: 1.6, background: '#f1f5f9', borderRadius: 8, padding: '10px 14px' }}>
-          💡 <b>Sign up or log in</b> with <b>{form.email}</b> to track your application status.
-        </p>
-        <button onClick={onClose} className="btn btn-primary" style={{ marginTop: 20 }}>Close</button>
+        <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.03))', border:'1px solid rgba(1,118,211,0.2)', borderRadius:10, padding:'14px 18px', marginTop:14, textAlign:'left' }}>
+          <p style={{ color:'#032D60', fontSize:13, fontWeight:700, margin:'0 0 6px' }}>📬 Check your inbox!</p>
+          <p style={{ color:'#374151', fontSize:12, margin:'0 0 12px', lineHeight:1.6 }}>
+            We've sent a confirmation to <b>{form.email}</b>. Create a free account to track your application live.
+          </p>
+          <a href={`/login?email=${encodeURIComponent(form.email)}&name=${encodeURIComponent(form.name)}&ref=career_apply`}
+            style={{ display:'inline-block', background:'linear-gradient(135deg,#0176D3,#014486)', color:'#fff', borderRadius:8, padding:'9px 18px', fontSize:13, fontWeight:700, textDecoration:'none' }}>
+            🚀 Create Account & Track Application →
+          </a>
+          <p style={{ color:'#94A3B8', fontSize:11, margin:'8px 0 0' }}>Your application data will be linked automatically using your email.</p>
+        </div>
+        <button onClick={onClose} className="btn btn-secondary" style={{ marginTop: 14, width:'100%' }}>Close</button>
       </div>
     </Modal>
   );
@@ -104,7 +115,7 @@ function ApplyModal({ job, onClose }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Field label="Full Name *" value={form.name} onChange={v => sf('name', v)} placeholder="Jane Smith" />
         <Field label="Email *" value={form.email} onChange={v => sf('email', v)} type="email" placeholder="jane@example.com" />
-        <Field label="Phone" value={form.phone} onChange={v => sf('phone', v)} placeholder="+1 234 567 8900" />
+        <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" />
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={4} placeholder="Tell us why you're a great fit…" />
         {questions.length > 0 && (
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>

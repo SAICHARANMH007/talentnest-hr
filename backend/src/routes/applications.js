@@ -135,19 +135,27 @@ router.get('/invite/:token/open', asyncHandler(async (req, res) => {
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
+  if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
   const job = await Job.findOne({ _id: jobId, status: 'active', deletedAt: null }).lean();
   if (!job) throw new AppError('Job not found.', 404);
 
-  let candidate = await Candidate.findOne({ email: candidateEmail.toLowerCase().trim(), tenantId: job.tenantId, deletedAt: null });
+  const emailLower = candidateEmail.toLowerCase().trim();
+  const phoneTrimmed = phone.trim();
+
+  let candidate = await Candidate.findOne({ email: emailLower, tenantId: job.tenantId, deletedAt: null });
   if (!candidate) {
     candidate = await Candidate.create({
       tenantId: job.tenantId,
       name: name.trim(),
-      email: candidateEmail.toLowerCase().trim(),
-      phone: phone || '',
+      email: emailLower,
+      phone: phoneTrimmed,
       source: 'career_page',
     });
+  } else if (!candidate.phone && phoneTrimmed) {
+    // Backfill phone if candidate exists but had no phone
+    candidate.phone = phoneTrimmed;
+    await candidate.save();
   }
 
   const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });
@@ -170,27 +178,71 @@ router.post('/public', asyncHandler(async (req, res) => {
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
 
-  // ── Send candidate an invite to create an account and track their application ──
-  // Only send if they don't already have a User account
+  // ── "Thanks for applying" + one-time "create account" invite ─────────────────
+  // Rules:
+  //  1. Only send if candidate has NO existing User account (deduped by email)
+  //  2. Only send ONCE per candidate (tracked via candidate.accountInviteSentAt)
+  //  3. Registration link pre-fills email + name so they can match existing data
   const User = require('../models/User');
-  const existingUser = await User.findOne({ email: candidateEmail.toLowerCase().trim() }).lean();
-  if (!existingUser) {
+  const existingUser = await User.findOne({ email: emailLower }).lean();
+  const alreadySent  = !!candidate.accountInviteSentAt;
+
+  if (!existingUser && !alreadySent) {
     const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
-    const trackLink = `${FRONTEND_URL}/login?prefill=${encodeURIComponent(candidateEmail.toLowerCase().trim())}&ref=career_apply`;
-    email.sendEmailWithRetry?.(candidateEmail,
-      `✅ Application received — ${job.title} | Create your account to track it`,
+    // /register with email + name prefilled so account auto-links to their applications
+    const registerLink = `${FRONTEND_URL}/login?email=${encodeURIComponent(emailLower)}&name=${encodeURIComponent(name.trim())}&ref=career_apply`;
+    const orgName = job.companyName || job.company || 'TalentNest HR';
+
+    email.sendEmailWithRetry?.(emailLower,
+      `🎉 Application received for ${job.title} — Create your free account`,
+      `<div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff">
+        <div style="background:linear-gradient(135deg,#032D60,#0176D3);padding:36px 32px;border-radius:12px 12px 0 0;text-align:center">
+          <div style="font-size:48px;margin-bottom:12px">🎉</div>
+          <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">Application Received!</h1>
+          <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px">${job.title} · ${orgName}</p>
+        </div>
+        <div style="padding:32px;background:#F8FAFC;border-radius:0 0 12px 12px">
+          <p style="color:#0A1628;font-size:15px;font-weight:700;margin:0 0 8px">Hi ${name.trim()},</p>
+          <p style="color:#374151;font-size:14px;margin:0 0 20px;line-height:1.7">
+            Thanks for applying to <strong>${job.title}</strong> via the TalentNest HR career portal.
+            We've saved your application and the team will review it shortly.
+          </p>
+          <div style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:24px;border:1px solid #E2E8F0">
+            <p style="color:#0176D3;font-size:13px;font-weight:800;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📊 Track your application</p>
+            <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
+              Create a free TalentNest account to see your application status in real time,
+              get interview notifications, and manage all your job applications in one place.
+            </p>
+            <div style="text-align:center">
+              <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;letter-spacing:0.3px">
+                🚀 Create Free Account →
+              </a>
+            </div>
+            <p style="color:#94A3B8;font-size:11px;text-align:center;margin:12px 0 0">
+              Use the email <strong>${emailLower}</strong> — your application will be linked automatically.
+            </p>
+          </div>
+          <p style="color:#94A3B8;font-size:11px;text-align:center;margin:0">
+            This is a one-time email from TalentNest HR. If you did not apply, please ignore it.
+          </p>
+        </div>
+      </div>`
+    ).then(async () => {
+      // Mark invite as sent so we never send this email again to this candidate
+      await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date() } });
+    }).catch(() => {});
+  } else if (existingUser) {
+    // They already have an account — send a simple "thanks" confirmation only
+    email.sendEmailWithRetry?.(emailLower,
+      `✅ Application confirmed — ${job.title}`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
         <h2 style="color:#032D60">Hi ${name.trim()},</h2>
-        <p>We received your application for <strong>${job.title}</strong>. 🎉</p>
-        <p>Create a free account to track your application status in real time, receive interview updates, and manage all your applications in one place.</p>
-        <div style="text-align:center;margin:32px 0">
-          <a href="${trackLink}" style="background:#0176D3;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px">
-            Create Account & Track Application →
+        <p>Your application for <strong>${job.title}</strong> has been received. Log in to your TalentNest account to track it.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/login" style="background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+            Track Application →
           </a>
         </div>
-        <p style="color:#706E6B;font-size:13px">Your email address (<strong>${candidateEmail}</strong>) will be automatically linked to this application.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-        <p style="color:#9E9D9B;font-size:12px">This email was sent by TalentNest HR on behalf of the hiring team. If you did not apply for this role, please ignore this email.</p>
       </div>`
     ).catch(() => {});
   }

@@ -77,8 +77,9 @@ const candidateSchema = new mongoose.Schema({
   contactLog          : [{ note: String, date: Date, by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } }],
 
   // ── Account link ───────────────────────────────────────────────────────────
-  // When a career-page applicant creates an account, this links to their User doc
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  userId              : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // Track whether we've sent the "create account" invite email — sent ONCE only
+  accountInviteSentAt : { type: Date, default: null },
 
   // ── Soft delete ─────────────────────────────────────────────────────────────
   // Attribution (VMS Support)

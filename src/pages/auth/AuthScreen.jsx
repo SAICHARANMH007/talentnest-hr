@@ -186,10 +186,10 @@ function EntryScreen({ onSelect, navigate }) {
 // ── Candidate Auth Form ───────────────────────────────────────────────────────
 function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const googleBtnRef = useRef(null);
-  const [mode, setMode]         = useState('login');
+  const [mode, setMode]         = useState(prefill?.mode === 'register' ? 'register' : 'login');
   const [email, setEmail]       = useState(prefill?.email || '');
   const [pw, setPw]             = useState(prefill?.password || '');
-  const [name, setName]         = useState('');
+  const [name, setName]         = useState(prefill?.name || '');
   const [phone, setPhone]       = useState('');
   const [resumeName, setRN]     = useState('');
   const [extracting, setEx]     = useState(false);
@@ -1007,15 +1007,21 @@ export default function AuthScreen({ onAuth }) {
   const [prefill, setPrefill] = useState(null);
   const [resetParams, setResetParams] = useState({ token: '', email: '' });
 
-  // Check URL for password reset params on mount
+  // Check URL params on mount — handles password reset AND career apply prefill
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token  = params.get('token');
     const email  = params.get('email');
+    const ref    = params.get('ref');
+    const pName  = params.get('name');
     if (token && email) {
       setResetParams({ token, email });
       setScreen('reset');
-      // Clean URL without reloading
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (ref === 'career_apply' && email) {
+      // Career page applicant → go to candidate registration with email + name prefilled
+      setPrefill({ email, name: pName || '', mode: 'register' });
+      setScreen('candidate');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
