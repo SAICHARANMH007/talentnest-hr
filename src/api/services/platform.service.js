@@ -262,4 +262,5 @@ export const platformService = {
   async retryDistribution(jobId, plat)  { return req('POST',  `/distribution/retry/${jobId}/${plat}`, {}); },
   async getEmployerSettings(tid)        { return req('GET',   `/distribution/employer-settings/${tid}`); },
   async saveEmployerSettings(tid, data) { return req('PATCH', `/distribution/employer-settings/${tid}`, data); },
+  async runDeduplication()               { return req('POST',  '/admin/deduplicate-jobs', {}); },
 };

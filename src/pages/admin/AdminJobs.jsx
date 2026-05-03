@@ -166,39 +166,42 @@ export default function AdminJobs({ user }) {
     setMergeReview(groupList);
   };
 
+  const [mergeProgress, setMergeProgress] = useState(0); // 0-100
+  const [mergeStatus,   setMergeStatus]   = useState('');
+
   const executeMerge = async () => {
     if (!mergeReview) return;
     setMerging(true);
-    setToast('🧹 Starting migration...');
-    let totalMerged = 0;
-    let totalMoved = 0;
-    
+    setMergeProgress(5);
+    setMergeStatus('Starting deduplication…');
+
+    // Animate progress bar while waiting for backend
+    const tick = setInterval(() => {
+      setMergeProgress(p => p < 85 ? p + Math.random() * 8 : p);
+    }, 600);
+
     try {
-      for (const group of mergeReview) {
-        const primary = group.primary;
-        const primaryId = String(primary.id);
-        
-        for (const dupe of group.duplicates) {
-          const dupeId = String(dupe.id);
-          // 1. Fetch Candidates
-          const res = await api.getApplications({ jobId: dupeId, limit: 1000 }).catch(() => []);
-          const apps = Array.isArray(res) ? res : (res?.data || []);
-          const candIds = apps.map(a => String(a.candidateId || a.candidate?._id)).filter(id => id && id !== 'undefined');
-          
-          if (candIds.length > 0) {
-            await api.assignCandidatesToJob(primaryId, candIds);
-            totalMoved += candIds.length;
-          }
-          // 2. Close duplicate
-          await api.patchJob(dupeId, { status: 'closed' });
-          totalMerged++;
-        }
-      }
-      setToast(`🎉 Success! Closed ${totalMerged} duplicates and migrated ${totalMoved} candidates to original jobs.`);
-      setMergeReview(null);
-      load();
+      setMergeStatus('Migrating applicants to primary jobs…');
+      // Use the safe backend endpoint — it handles E11000, soft-deletes conflicts,
+      // and moves all applicants correctly without creating duplicate applications
+      const res = await api.runDeduplication();
+      clearInterval(tick);
+      setMergeProgress(100);
+      const msg = res?.message || res?.data?.message || 'Deduplication complete';
+      const appsConsolidated = res?.totalMergedApps || res?.data?.totalMergedApps || 0;
+      setMergeStatus(`✅ Done — ${msg}${appsConsolidated ? ` · ${appsConsolidated} applications consolidated` : ''}`);
+      setTimeout(() => {
+        setMergeReview(null);
+        setMergeProgress(0);
+        setMergeStatus('');
+        load();
+        setToast(`🎉 ${msg}`);
+      }, 2000);
     } catch (e) {
-      setToast(`❌ Error: ${e.message}`);
+      clearInterval(tick);
+      setMergeProgress(0);
+      setMergeStatus('');
+      setToast(`❌ ${e.message}`);
     }
     setMerging(false);
   };
@@ -687,11 +690,23 @@ export default function AdminJobs({ user }) {
               </div>
             </div>
 
+            {/* Progress bar — only visible while merging */}
+            {merging && (
+              <div style={{ padding:'0 24px 16px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#0176D3' }}>{mergeStatus}</span>
+                  <span style={{ fontSize:12, color:'#64748B' }}>{Math.round(mergeProgress)}%</span>
+                </div>
+                <div style={{ height:8, background:'#E2E8F0', borderRadius:8, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${mergeProgress}%`, background:'linear-gradient(90deg,#0176D3,#10b981)', borderRadius:8, transition:'width 0.5s ease' }} />
+                </div>
+              </div>
+            )}
             <div style={{ padding:24, borderTop:'1px solid #E2E8F0', display:'flex', gap:12 }}>
-              <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:15, justifyContent:'center' }}>
-                {merging ? '⚙️ Migrating Candidates...' : '✓ Confirm & Merge All'}
+              <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:15, justifyContent:'center', opacity: merging ? 0.8 : 1 }}>
+                {merging ? '⚙️ Migrating — please wait…' : '✓ Confirm & Merge All'}
               </button>
-              <button onClick={() => setMergeReview(null)} style={{ ...btnG, flex:1, height:48, fontSize:15, justifyContent:'center' }}>Cancel</button>
+              <button onClick={() => setMergeReview(null)} disabled={merging} style={{ ...btnG, flex:1, height:48, fontSize:15, justifyContent:'center', opacity: merging ? 0.5 : 1 }}>Cancel</button>
             </div>
           </div>
         </div>
