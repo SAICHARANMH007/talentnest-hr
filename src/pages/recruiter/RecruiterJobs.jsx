@@ -265,7 +265,7 @@ export default function RecruiterJobs({ user }) {
                   >
                     👥 {j.applicantsCount > 0 ? `${j.applicantsCount} Applicant${j.applicantsCount !== 1 ? 's' : ''}` : 'Applicants'}
                   </button>
-                  <button onClick={e => { e.stopPropagation(); setEditingJob(j); }} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>✏️ Edit</button>
+                  <button onClick={e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); }} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>✏️ Edit</button>
                   {j.status === 'draft' && (
                     <button
                       onClick={async () => {

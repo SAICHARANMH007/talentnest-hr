@@ -302,6 +302,7 @@ export default function SuperAdminCandidates() {
                         id: c.candidateId || c.id || c._id,
                         _id: c.candidateId || c._id,
                         role: 'candidate',
+                        _partial: true, // force UserDetailDrawer to fetch full record
                       })} style={{ ...btnG, padding:'4px 12px', fontSize:11 }}>
                         Deep Dive
                       </button>

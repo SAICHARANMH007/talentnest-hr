@@ -26,6 +26,16 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const [newQ, setNewQ] = useState(EMPTY_Q);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // Reset form when initialData changes (e.g. editing a different job)
+  const prevInitRef = React.useRef(initialData);
+  React.useEffect(() => {
+    if (initialData && initialData !== prevInitRef.current) {
+      prevInitRef.current = initialData;
+      setForm({ ...EMPTY, ...initialData });
+      setJdFile('');
+    }
+  }, [initialData]);
+
   const addQuestion = () => {
     if (!newQ.question.trim()) return;
     const q = {

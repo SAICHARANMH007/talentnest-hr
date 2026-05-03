@@ -64,9 +64,14 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     if (!uid) return;
     const isCandidate = (u?.role || 'candidate') === 'candidate';
     if (!isCandidate) return;
-    // Detect partial object — application populate only returns a handful of fields
-    const hasFullData = u?.currentCTC !== undefined || u?.expectedCTC !== undefined || u?.workHistory !== undefined;
-    if (hasFullData) return;
+    // Detect partial object — profileRow/application populate returns empty strings,
+    // not undefined. A truly full record has workHistory array OR non-empty CTC values
+    // OR explicitly marked as already full via _fullRecord flag.
+    const hasFullData = u?._fullRecord === true
+      || (Array.isArray(u?.workHistory))
+      || (typeof u?.currentCTC === 'number')
+      || (typeof u?.currentCTC === 'string' && u.currentCTC.length > 0 && !u._partial);
+    if (hasFullData && !u?._partial) return;
     // Fetch the full Candidate model record
     api.getCandidate(uid).then(full => {
       if (!full) return;
