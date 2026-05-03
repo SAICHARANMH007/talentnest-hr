@@ -609,6 +609,25 @@ export default function AdminAnalytics({ user, onNavigate }) {
     });
   };
 
+  // ── Candidate Source drill-down ───────────────────────────────────────────
+  const openSourceDrill = (seg) => {
+    if (!seg?.label || seg.value === 0) return;
+    const sourceLabel = seg.label;
+    fetchDrill(`Source: ${sourceLabel} (${seg.value} applications)`, 'app', async () => {
+      // Fetch applicants and filter by source client-side (backend /applicants supports source via search)
+      const raw = await api.getApplicants({ limit: 1000, platform: platformWide }).catch(() => ({ data: [] }));
+      const rows = Array.isArray(raw?.data) ? raw.data : [];
+      return rows
+        .filter(r => (r.source || 'platform').toLowerCase() === sourceLabel.toLowerCase())
+        .map(r => ({
+          ...r,
+          id: r.applicationId || r.id,
+          name: r.candidateName || r.email || 'Candidate',
+          sub: `${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || ''}${r.phone ? ` · ${r.phone}` : ''}`,
+        }));
+    });
+  };
+
   // ── Export handler ────────────────────────────────────────────────────────
   const handleExport = async (key, url, filename) => {
     setExporting(p => ({ ...p, [key]: true }));
@@ -1044,12 +1063,33 @@ export default function AdminAnalytics({ user, onNavigate }) {
           {!sourceSection.loading && !sourceSection.error && (() => {
             const rows = Array.isArray(sourceSection.data?.data) ? sourceSection.data.data : [];
             if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No source data available</div>;
+            const total = rows.reduce((s, r) => s + (r.count || 0), 0);
             const segments = rows.map(r => ({
               label: r.source || 'direct',
               value: r.count,
               color: SOURCE_COLORS[r.source] || '#94a3b8',
+              stageKey: r.source || 'direct',
             }));
-            return <DonutChart segments={segments} size={160} title="" />;
+            return (
+              <div>
+                <DonutChart segments={segments} size={160} title="" onItemClick={openSourceDrill} />
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {segments.map(s => (
+                    <div key={s.label}
+                      onClick={() => openSourceDrill(s)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', background: '#F8FAFC', border: '1px solid #E2E8F0', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>{s.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: s.color }}>{s.value}</span>
+                      <span style={{ fontSize: 11, color: '#94A3B8' }}>{total > 0 ? `${Math.round((s.value / total) * 100)}%` : '0%'}</span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 10 }}>Click a source to drill into its candidates</p>
+              </div>
+            );
           })()}
         </div>
       </div>

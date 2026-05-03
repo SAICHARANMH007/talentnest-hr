@@ -156,6 +156,11 @@ export default function CallManager({ user }) {
     socket.on('call:ended',     ({ reason })     => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
     socket.on('call:error',     ({ message })    => { endCallInternal(message); });
 
+    // ── CONNECTION HEALTH ────────────────────────────────────────────────────
+    socket.on('connect', () => { console.log('[Call] Socket connected:', socket.id); });
+    socket.on('connect_error', (err) => { console.warn('[Call] Socket connect error:', err.message); });
+    socket.on('disconnect', (reason) => { console.warn('[Call] Socket disconnected:', reason); });
+
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [myId]); // eslint-disable-line react-hooks/exhaustive-deps
 

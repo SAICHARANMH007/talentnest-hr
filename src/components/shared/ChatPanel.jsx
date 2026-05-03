@@ -311,6 +311,10 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
       if (cur) { loadThread(cur.userId); socket.emit('join-conv', { withUserId: cur.userId }); }
     });
 
+    socket.on('connect_error', (err) => {
+      console.warn('[Chat] Socket connect error:', err.message);
+    });
+
     return () => { socket.disconnect(); chatSocket.current = null; };
   }, [open, myId]); // eslint-disable-line
 
@@ -545,13 +549,19 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                     {activeIsOnline ? '● Online now' : ROLE_LABEL[active.role] || active.role}
                   </div>
                 </div>
-                {/* Call buttons — only when recipient is online */}
-                {activeIsOnline && (
-                  <>
-                    <button title="Audio Call" onClick={() => window.__tnStartCall?.(active.userId, active.name, 'audio')} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#0176D3', padding: '4px 6px', borderRadius: 6 }}>📞</button>
-                    <button title="Video Call" onClick={() => window.__tnStartCall?.(active.userId, active.name, 'video')} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#0176D3', padding: '4px 6px', borderRadius: 6 }}>📹</button>
-                  </>
-                )}
+                {/* Call buttons — always visible; show warning if recipient appears offline */}
+                <button title={activeIsOnline ? 'Audio Call' : 'Audio Call (user may be offline)'}
+                  onClick={() => {
+                    if (!window.__tnStartCall) { alert('Calling is loading, please try again in a moment.'); return; }
+                    window.__tnStartCall(active.userId, active.name, 'audio');
+                  }}
+                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6 }}>📞</button>
+                <button title={activeIsOnline ? 'Video Call' : 'Video Call (user may be offline)'}
+                  onClick={() => {
+                    if (!window.__tnStartCall) { alert('Calling is loading, please try again in a moment.'); return; }
+                    window.__tnStartCall(active.userId, active.name, 'video');
+                  }}
+                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6 }}>📹</button>
                 {!isMobile && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>}
               </div>
 

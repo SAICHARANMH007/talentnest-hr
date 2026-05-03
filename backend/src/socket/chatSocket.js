@@ -13,15 +13,16 @@ function setupChatSocket(io) {
   ns.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      if (!token) { socket.data.userId = null; return next(); }
+      if (!token) return next(new Error('AUTH_REQUIRED'));
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.data.userId = decoded.userId || decoded.id;
-      socket.data.name = decoded.name || '';
-      socket.data.role = decoded.role || '';
-      socket.data.tenantId = decoded.orgId || '';
+      socket.data.userId   = decoded.userId || decoded.id;
+      socket.data.name     = decoded.name   || '';
+      socket.data.role     = decoded.role   || '';
+      socket.data.tenantId = decoded.orgId  || '';
+      if (!socket.data.userId) return next(new Error('INVALID_TOKEN'));
       next();
-    } catch { socket.data.userId = null; next(); }
+    } catch (e) { next(new Error('AUTH_FAILED: ' + e.message)); }
   });
 
   ns.on('connection', (socket) => {

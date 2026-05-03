@@ -18,18 +18,22 @@ function setupCallSocket(io) {
   ns.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      if (!token) { socket.data.userId = null; return next(); }
+      if (!token) return next(new Error('AUTH_REQUIRED'));
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.data.userId = decoded.userId || decoded.id;
-      socket.data.tenantId = decoded.orgId || decoded.tenantId || '';
-      // Fetch name from DB since JWT payload doesn't include it
+      socket.data.userId   = decoded.userId || decoded.id;
+      socket.data.tenantId = decoded.orgId  || decoded.tenantId || '';
+      if (!socket.data.userId) return next(new Error('INVALID_TOKEN'));
+      // Fetch name from DB (non-blocking — fallback to 'Unknown' on failure)
       try {
         const u = await User.findById(socket.data.userId).select('name').lean();
         socket.data.name = u?.name || decoded.name || 'Unknown';
       } catch { socket.data.name = decoded.name || 'Unknown'; }
       next();
-    } catch { socket.data.userId = null; next(); }
+    } catch (e) {
+      // Send error to client so it knows auth failed (not silent disconnect)
+      next(new Error('AUTH_FAILED: ' + e.message));
+    }
   });
 
   ns.on('connection', (socket) => {
