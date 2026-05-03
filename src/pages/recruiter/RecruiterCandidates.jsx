@@ -8,6 +8,7 @@ import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
 import InviteModal from '../../components/shared/InviteModal.jsx';
 import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
@@ -86,7 +87,7 @@ function matchCandidate(c, filters) {
 }
 
 // ── CandidateCard ─────────────────────────────────────────────────────────────
-function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, isOnline }) {
+function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, onEditProfile, isOnline }) {
   const isMobile  = useIsMobile();
   const [selJobs, setSelJobs]   = useState([]);
   const [dropOpen, setDropOpen] = useState(false);
@@ -161,13 +162,18 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
           )}
         </div>
 
-        {/* Resume button — top-right, always visible */}
-        <button
-          onClick={() => onViewResume(c)}
-          style={{ ...btnG, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0, minHeight: 36 }}
-        >
-          {isMobile ? '📋' : '📋 Resume'}
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {onEditProfile && (
+            <button onClick={() => onEditProfile(c)}
+              style={{ ...btnP, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, flexShrink: 0, minHeight: 36 }}>
+              {isMobile ? '✏️' : '✏️ Edit Profile'}
+            </button>
+          )}
+          <button onClick={() => onViewResume(c)}
+            style={{ ...btnG, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0, minHeight: 36 }}>
+            {isMobile ? '📋' : '📋 Resume'}
+          </button>
+        </div>
       </div>
 
       {/* ── Skills ── */}
@@ -302,6 +308,7 @@ export default function RecruiterCandidates({ user }) {
   const [waTemplate, setWaTemplate] = useState('Hi {candidateName}, we have an exciting opportunity for {jobTitle} at {companyName}. Please reply to express your interest. Regards, {recruiterName}');
   const [waSending, setWaSending] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [drawerCandidate, setDrawerCandidate] = useState(null);
   const { onlineUsers } = usePresence();
   const onlineIds = new Set(onlineUsers.map(u => String(u.id)));
 
@@ -556,6 +563,7 @@ export default function RecruiterCandidates({ user }) {
                           onReachOut={handleReachOut}
                           onToast={setToast}
                           onInvite={setInviteCandidate}
+                          onEditProfile={(cand) => setDrawerCandidate({ role: 'candidate', ...cand, id: cand.id || cand._id?.toString(), _partial: true })}
                           isOnline={onlineIds.has(c.id || c._id?.toString())}
                         />
                       </div>
@@ -582,6 +590,13 @@ export default function RecruiterCandidates({ user }) {
             </>
           )}
         </>
+      )}
+      {drawerCandidate && (
+        <UserDetailDrawer
+          user={drawerCandidate}
+          onClose={() => setDrawerCandidate(null)}
+          onUpdated={() => setDrawerCandidate(null)}
+        />
       )}
     </div>
   );

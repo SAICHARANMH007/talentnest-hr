@@ -354,28 +354,55 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                               </div>
                             )}
 
-                            {/* Other Applications */}
-                            {allApps.filter(a => (a.id || a._id) !== (app?.id || app?._id)).map(a => (
-                              <div key={a.id || a._id} style={{ padding: '12px 14px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle}</div>
-                                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Applied {new Date(a.appliedAt).toLocaleDateString()}</div>
+                            {/* Other Applications — each with own stage change */}
+                            {allApps.filter(a => (a.id || a._id) !== (app?.id || app?._id)).map(a => {
+                              const appId = a.id || a._id;
+                              const appStage = a.stage || a.currentStage || 'applied';
+                              return (
+                                <div key={appId} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                                    <div>
+                                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle || 'Job'}</div>
+                                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                        Applied {a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
+                                      </div>
+                                    </div>
+                                    <Badge label={SM[appStage]?.label || appStage} color={SM[appStage]?.color || '#64748B'} />
+                                  </div>
+                                  {/* Stage change for this application */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Move to:</span>
+                                    <select
+                                      value={appStage}
+                                      disabled={changingStage}
+                                      onChange={async (e) => {
+                                        const newStage = e.target.value;
+                                        setChangingStage(true);
+                                        try {
+                                          await api.updateStage(appId, newStage);
+                                          // Update in allApplications list
+                                          setFullUser(prev => prev ? {
+                                            ...prev,
+                                            allApplications: (prev.allApplications || []).map(x =>
+                                              (x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
+                                            )
+                                          } : prev);
+                                          setToast(`✅ Stage updated to ${SM[newStage]?.label || newStage}`);
+                                        } catch (err) { setToast(`❌ ${err.message}`); }
+                                        setChangingStage(false);
+                                      }}
+                                      style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${STAGE_DROPDOWN_COLORS[appStage] || '#DDDBDA'}`, background: '#fff', fontSize: 11, fontWeight: 700, color: STAGE_DROPDOWN_COLORS[appStage] || '#374151', cursor: 'pointer', outline: 'none' }}>
+                                      {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                                    </select>
+                                    <button
+                                      onClick={() => { setApp(a); setCurrentStage(appStage); }}
+                                      style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                      History →
+                                    </button>
+                                  </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <Badge label={SM[a.stage]?.label || a.stage} color={SM[a.stage]?.color} />
-                                  <button 
-                                    onClick={() => {
-                                      // Toggle this app as the "main" one to see history
-                                      setApp(a);
-                                      setCurrentStage(a.stage);
-                                    }}
-                                    style={{ display: 'block', background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}
-                                  >
-                                    View Details →
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
 
