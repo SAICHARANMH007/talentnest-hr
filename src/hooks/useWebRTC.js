@@ -48,9 +48,12 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   const reconnectCount   = useRef({});   // socketId -> attempts
 
   // ── Get user media ────────────────────────────────────────────────────────
-  const startLocalMedia = useCallback(async () => {
+  // wantVideo overrides the hook-level `video` flag so call type is respected
+  // even though the hook was initialized with video:false (callInfoRef was null)
+  const startLocalMedia = useCallback(async (wantVideo) => {
+    const useVideo = wantVideo !== undefined ? wantVideo : video;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video, audio });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: useVideo, audio });
       localStreamRef.current = stream;
       setLocalStream(stream);
       setPermError('');

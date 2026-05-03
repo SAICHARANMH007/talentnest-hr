@@ -262,9 +262,8 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   // ── Socket.IO real-time chat ────────────────────────────────────────────
   useEffect(() => {
     if (!open || !myId) return;
-    const token = sessionStorage.getItem('tn_token') || '';
     const socket = io(`${CHAT_SOCKET_URL}/chat`, {
-      auth: { token },
+      auth: (cb) => cb({ token: sessionStorage.getItem('tn_token') || '' }),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

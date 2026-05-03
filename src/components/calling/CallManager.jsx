@@ -89,13 +89,14 @@ export default function CallManager({ user }) {
   // ── Socket connection ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!myId) return;
-    const token = sessionStorage.getItem('tn_token') || '';
     const socket = io(`${SOCKET_URL}/call`, {
-      auth: { token },
+      // Use function form so Socket.IO re-reads token on EVERY reconnect.
+      // Static { token } would reuse an expired JWT after the 15-min TTL.
+      auth: (cb) => cb({ token: sessionStorage.getItem('tn_token') || '' }),
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 500,       // fast reconnect — 500ms first attempt
-      reconnectionDelayMax: 4000,   // cap at 4s — don't wait too long
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 4000,
       reconnectionAttempts: Infinity,
       timeout: 10000,
     });
@@ -127,8 +128,10 @@ export default function CallManager({ user }) {
     socket.on('call:accepted', ({ callId }) => {
       clearTimeout(ringTimer.current);
       socket.emit('call:join-room', { callId });
-      startLocalMedia().then(stream => {
+      const isVideo = callInfoRef.current?.callType === 'video';
+      startLocalMedia(isVideo).then(stream => {
         if (!stream) return;
+        localStreamRef2.current = stream;
         setCallState('active');
         setCallStartedAt(Date.now());
         setTimeout(async () => {
@@ -150,12 +153,14 @@ export default function CallManager({ user }) {
     socket.on('call:ice',    ({ from, candidate }) => handleIce(from, candidate).catch(() => {}));
 
     // ── STATE TRANSITIONS ─────────────────────────────────────────────────────
-    socket.on('call:declined',   ()                => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
-    socket.on('call:cancelled',  ()                => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
-    socket.on('call:no-answer',  ()                => { endCallInternal('No answer'); });
-    socket.on('call:busy',       ({ toName })      => { endCallInternal(`${toName || 'User'} is on another call`); });
-    socket.on('call:ended',      ({ reason })      => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
-    socket.on('call:error',      ({ message })     => { endCallInternal(message); });
+    socket.on('call:declined',          ()           => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
+    socket.on('call:cancelled',         ()           => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
+    socket.on('call:no-answer',         ()           => { endCallInternal('No answer'); });
+    socket.on('call:busy',       ({ toName })        => { endCallInternal(`${toName || 'User'} is on another call`); });
+    socket.on('call:ended',      ({ reason })        => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
+    socket.on('call:error',      ({ message })       => { endCallInternal(message); });
+    // Multi-tab: another tab of mine answered this call — silently dismiss here
+    socket.on('call:answered-elsewhere', ()          => { endCallInternal(''); });
     // Receiver is not online — instant feedback instead of waiting 30s
     socket.on('call:unavailable', ({ message })   => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
@@ -196,9 +201,10 @@ export default function CallManager({ user }) {
   const acceptCall = useCallback(async () => {
     const cid = callInfoRef.current?.callId;
     if (!cid) return;
-    const stream = await startLocalMedia();
+    const isVideo = callInfoRef.current?.callType === 'video';
+    const stream = await startLocalMedia(isVideo); // pass actual call type
     if (!stream) return;
-    localStreamRef2.current = stream; // sync ref immediately — offer may arrive before useEffect
+    localStreamRef2.current = stream;
     setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
   }, [startLocalMedia]);
