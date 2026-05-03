@@ -135,6 +135,7 @@ export default function SuperAdminCandidates() {
         if (sortCol === 'apps')  return (b.applicationCount||0) - (a.applicationCount||0);
         if (sortCol === 'stage') return (a.latestStage||'').localeCompare(b.latestStage||'');
         if (sortCol === 'date')  return (b.latestApplied||0) > (a.latestApplied||0) ? 1 : -1;
+        if (sortCol === 'exp')   return (b.experience||0) - (a.experience||0);
         return 0;
       })
     : candidates;
@@ -193,11 +194,14 @@ export default function SuperAdminCandidates() {
       ) : (
         <>
           <div style={{ ...card, overflow:'auto', marginBottom:16 }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth:900 }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', minWidth:1200 }}>
               <thead>
                 <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #E2E8F0' }}>
                   <Th col="name"  label="Candidate" />
                   <th style={thS}>Contact</th>
+                  <th style={thS}>Current Role</th>
+                  <Th col="exp"   label="Experience" />
+                  <th style={thS}>Availability</th>
                   <th style={thS}>Type / Source</th>
                   <Th col="apps"  label="Applications" />
                   <Th col="stage" label="Latest Stage" />
@@ -208,7 +212,7 @@ export default function SuperAdminCandidates() {
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign:'center', padding:60, color:'#94A3B8' }}>No candidates found.</td></tr>
+                  <tr><td colSpan={11} style={{ textAlign:'center', padding:60, color:'#94A3B8' }}>No candidates found.</td></tr>
                 ) : sorted.map(c => (
                   <tr key={c.id || c.candidateId} style={{ borderBottom:'1px solid #F1F5F9', transition:'background 0.1s' }}
                     onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
@@ -217,13 +221,41 @@ export default function SuperAdminCandidates() {
                     {/* Candidate */}
                     <td style={tdS}>
                       <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{c.name || c.candidateName || 'Anonymous'}</div>
-                      <div style={{ fontSize:11, color:'#706E6B', marginTop:1 }}>{c.title || c.currentCompany || '—'}</div>
+                      <div style={{ fontSize:11, color:'#94A3B8', marginTop:1 }}>
+                        {c.location || c.preferredLocation ? `📍 ${c.location || c.preferredLocation}` : ''}
+                      </div>
                     </td>
 
                     {/* Contact */}
                     <td style={tdS}>
                       <div style={{ fontSize:12, color:'#374151' }}>{c.email || '—'}</div>
-                      <div style={{ fontSize:11, color:'#64748B', marginTop:1 }}>{c.phone || '—'}</div>
+                      <div style={{ fontSize:11, color: c.phone ? '#10b981' : '#EF4444', marginTop:1, fontWeight: c.phone ? 400 : 600 }}>
+                        {c.phone ? `📞 ${c.phone}` : '⚠️ No phone'}
+                      </div>
+                    </td>
+
+                    {/* Current Role */}
+                    <td style={tdS}>
+                      <div style={{ fontSize:12, color:'#374151', fontWeight:600 }}>{c.title || '—'}</div>
+                      <div style={{ fontSize:11, color:'#64748B', marginTop:1 }}>{c.currentCompany || ''}</div>
+                    </td>
+
+                    {/* Experience */}
+                    <td style={tdS}>
+                      {c.experience !== undefined && c.experience !== null && c.experience !== '' ? (
+                        <span style={{ background:'#EFF6FF', color:'#1D4ED8', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
+                          {c.experience === 0 ? 'Fresher' : `${c.experience} yr${c.experience !== 1 ? 's' : ''}`}
+                        </span>
+                      ) : <span style={{ color:'#94A3B8', fontSize:11 }}>—</span>}
+                    </td>
+
+                    {/* Availability */}
+                    <td style={tdS}>
+                      {c.availability ? (
+                        <span style={{ background:'#F0FDF4', color:'#166534', padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
+                          {c.availability}
+                        </span>
+                      ) : <span style={{ color:'#94A3B8', fontSize:11 }}>—</span>}
                     </td>
 
                     {/* Type */}

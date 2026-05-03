@@ -28,10 +28,15 @@ function ApplyModal({ job, onClose }) {
   const isPreFilled = !!(prefill.name || prefill.email);
 
   const submit = async () => {
-    if (!form.name || !form.email) { setError('Name and email are required.'); return; }
+    if (!form.name?.trim())  { setError('Full name is required.'); return; }
+    if (!form.email?.trim()) { setError('Email address is required.'); return; }
     if (!form.phone?.trim()) { setError('Mobile number is required to apply.'); return; }
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 7) { setError('Please enter a valid mobile number.'); return; }
+    if (!form.title?.trim())          { setError('Current title is required.'); return; }
+    if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
+    if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
+    if (!form.availability)           { setError('Please select your availability.'); return; }
     // Validate required screening questions
     for (let i = 0; i < questions.length; i++) {
       if (questions[i].required && !answers[i]?.trim()) {
@@ -119,12 +124,12 @@ function ApplyModal({ job, onClose }) {
 
         {/* Professional details — same fields as registered profile so no re-entry needed */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          <Field label="Current Title" value={form.title} onChange={v => sf('title', v)} placeholder="e.g. Senior Developer" />
-          <Field label="Current Company" value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="e.g. Infosys" />
+          <Field label="Current Title *" value={form.title} onChange={v => sf('title', v)} placeholder="e.g. Senior Developer" />
+          <Field label="Current Company *" value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="e.g. Infosys" />
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Total Experience (years)</label>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Total Experience (years) *</label>
             <select value={form.experience} onChange={e => sf('experience', e.target.value)}
               style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:13, background:'#fff', color: form.experience ? '#181818' : '#94A3B8' }}>
               <option value="">Select…</option>
@@ -134,7 +139,7 @@ function ApplyModal({ job, onClose }) {
             </select>
           </div>
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Availability</label>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Availability *</label>
             <select value={form.availability} onChange={e => sf('availability', e.target.value)}
               style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:13, background:'#fff', color: form.availability ? '#181818' : '#94A3B8' }}>
               <option value="">Select…</option>
