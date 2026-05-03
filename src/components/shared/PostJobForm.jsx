@@ -1,4 +1,4 @@
-import { useState, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import Field from '../ui/Field.jsx';
 import Dropdown from '../ui/Dropdown.jsx';
 import Badge from '../ui/Badge.jsx';
@@ -27,8 +27,8 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   // Reset form when initialData changes (e.g. editing a different job)
-  const prevInitRef = React.useRef(initialData);
-  React.useEffect(() => {
+  const prevInitRef = useRef(initialData);
+  useEffect(() => {
     if (initialData && initialData !== prevInitRef.current) {
       prevInitRef.current = initialData;
       setForm({ ...EMPTY, ...initialData });
