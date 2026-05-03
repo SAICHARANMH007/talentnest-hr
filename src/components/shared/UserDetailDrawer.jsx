@@ -355,8 +355,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                             )}
 
                             {/* Other Applications — each with own stage change */}
-                            {allApps.filter(a => (a.id || a._id) !== (app?.id || app?._id)).map(a => {
-                              const appId = a.id || a._id;
+                            {allApps.filter(a => String(a.id || a._id) !== String(app?.id || app?._id)).map(a => {
+                              const appId = String(a.id || a._id);
                               const appStage = a.stage || a.currentStage || 'applied';
                               return (
                                 <div key={appId} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12 }}>
@@ -384,7 +384,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                           setFullUser(prev => prev ? {
                                             ...prev,
                                             allApplications: (prev.allApplications || []).map(x =>
-                                              (x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
+                                              String(x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
                                             )
                                           } : prev);
                                           setToast(`✅ Stage updated to ${SM[newStage]?.label || newStage}`);

@@ -444,28 +444,37 @@ export default function AdminAnalytics({ user, onNavigate }) {
   
   // ── Name & User Resolver ──────────────────────────────────────────────────
   const getCandidateData = useCallback((app) => {
-    if (!app) return { name: 'Candidate', user: null };
-    
-    // 1. Try populated candidateId/candidate
-    const u = app.candidateId || app.candidate;
-    if (u && typeof u === 'object' && (u.name || u.email)) {
-      return { name: u.name || u.email || 'Candidate', user: { ...u, id: u.id || u._id } };
-    }
-    
-    // 2. Try explicit candidateName
-    if (app.candidateName) return { name: app.candidateName, user: null };
+    if (!app) return { name: 'Unknown', user: null };
 
-    // 3. Search in allCandidates cache
+    // 1. Try populated candidateId or candidate (from .populate())
+    const u = (app.candidateId && typeof app.candidateId === 'object') ? app.candidateId
+            : (app.candidate   && typeof app.candidate   === 'object') ? app.candidate
+            : null;
+    if (u && (u.name || u.email)) {
+      return { name: u.name || u.email.split('@')[0], user: { ...u, id: String(u.id || u._id) } };
+    }
+
+    // 2. Top-level candidateName (set by normalizeApp / applicants endpoint)
+    if (app.candidateName && app.candidateName !== 'candidate') return { name: app.candidateName, user: null };
+
+    // 3. Search in allCandidates / allApps cache by ID
     const cid = extractId(app.candidateId || app.candidate);
     if (cid) {
-      const found = allCandidates.find(c => String(c.id || c._id) === cid);
-      if (found) return { name: found.name || found.email || 'Candidate', user: { ...found, id: found.id || found._id } };
+      const found = allCandidates.find(c => String(c.id || c._id) === cid)
+                 || allApps?.find?.(a => {
+                      const ac = a.candidateId && typeof a.candidateId === 'object' ? a.candidateId : null;
+                      return ac && String(ac.id || ac._id) === cid;
+                    });
+      if (found) {
+        const nm = found.name || (found.candidateId && typeof found.candidateId === 'object' ? found.candidateId.name : null) || found.email;
+        if (nm) return { name: nm, user: { ...found, id: String(found.id || found._id) } };
+      }
     }
 
-    // 4. Fallback: use email or generic label
-    const email = app.candidateEmail || app.email;
-    return { name: email ? email.split('@')[0] : 'Candidate', user: null };
-  }, [allCandidates]);
+    // 4. Fallback: email prefix or "Unknown"
+    const email = app.candidateEmail || app.email || u?.email;
+    return { name: email ? email.split('@')[0] : 'Unknown', user: null };
+  }, [allCandidates, allApps]);
 
   const stageBreakdown = useMemo(() => {
     // Priority: use local calculated stats for 100% real-time accuracy

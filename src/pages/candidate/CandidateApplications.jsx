@@ -368,8 +368,44 @@ export default function CandidateApplications({ user }) {
                 const asmt = assessments[jobId];
                 const sub  = asmt ? (mySubmissions[asmt.id] || mySubmissions[asmt._id]) : null;
 
+                // Stage context message shown to candidate
+                const stageMsg = {
+                  applied:             '📬 Your application is under review.',
+                  screening:           '🔍 A recruiter is screening your profile.',
+                  shortlisted:         '⭐ Great news — you\'ve been shortlisted!',
+                  interview_scheduled: '📅 Interview scheduled. Prepare well!',
+                  interview_completed: '✅ Interview completed. Decision pending.',
+                  offer_extended:      '🎉 An offer has been extended to you!',
+                  selected:            '🏆 Congratulations — you\'ve been hired!',
+                  rejected:            '📩 This application did not progress further.',
+                  withdrawn:           '↩️ You withdrew this application.',
+                }[a.stage] || '';
+
                 return (
-                  <div key={appId} style={{ ...card, border: `1px solid ${s.color}22` }}>
+                  <div key={appId} style={{ ...card, borderLeft: `4px solid ${s.color}`, overflow: 'hidden' }}>
+                    {/* Coloured stage header strip */}
+                    <div style={{ background: `${s.color}0d`, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>{s.icon}</span>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: s.color }}>{s.label}</div>
+                          {stageMsg && <div style={{ fontSize: 11, color: '#374151' }}>{stageMsg}</div>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {canWithdraw(a.stage) && (
+                          <button
+                            onClick={() => setConfirm(appId)}
+                            disabled={!!withdrawing[appId]}
+                            style={{ background: 'none', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 8, color: '#FE5C4C', fontSize: 10, fontWeight: 600, padding: '4px 10px', cursor: 'pointer', opacity: withdrawing[appId] ? 0.5 : 1 }}
+                          >
+                            {withdrawing[appId] ? 'Withdrawing…' : '✕ Withdraw'}
+                          </button>
+                        )}
+                        <span style={{ fontSize: 11, color: '#94A3B8' }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : ''}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '0 4px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{jobTitle}</div>
@@ -388,18 +424,6 @@ export default function CandidateApplications({ user }) {
                             <span style={{ background:'rgba(245,158,11,0.08)', color:'#A07E00', border:'1px solid rgba(245,158,11,0.25)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>👥 Referral</span>
                           )}
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        <Badge label={`${s.icon} ${s.label}`} color={s.color} />
-                        {canWithdraw(a.stage) && (
-                          <button
-                            onClick={() => setConfirm(appId)}
-                            disabled={!!withdrawing[appId]}
-                            style={{ background: 'none', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 8, color: '#FE5C4C', fontSize: 10, fontWeight: 600, padding: '3px 10px', cursor: 'pointer', opacity: withdrawing[appId] ? 0.5 : 1 }}
-                          >
-                            {withdrawing[appId] ? 'Withdrawing…' : '✕ Withdraw'}
-                          </button>
-                        )}
                       </div>
                     </div>
 
@@ -509,6 +533,7 @@ export default function CandidateApplications({ user }) {
                         </div>
                       );
                     })()}
+                    </div>{/* end padding wrapper */}
                   </div>
                 );
               })}
