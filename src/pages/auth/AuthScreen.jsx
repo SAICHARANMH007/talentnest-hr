@@ -189,8 +189,12 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [mode, setMode]         = useState(prefill?.mode === 'register' ? 'register' : 'login');
   const [email, setEmail]       = useState(prefill?.email || '');
   const [pw, setPw]             = useState(prefill?.password || '');
-  const [name, setName]         = useState(prefill?.name || '');
-  const [phone, setPhone]       = useState('');
+  const [name, setName]               = useState(prefill?.name || '');
+  const [phone, setPhone]             = useState('');
+  const [title, setTitle]             = useState('');
+  const [currentCompany, setCompany]  = useState('');
+  const [experience, setExperience]   = useState('');
+  const [availability, setAvailability] = useState('');
   const [resumeName, setRN]     = useState('');
   const [extracting, setEx]     = useState(false);
   const [extracted, setEx2]     = useState(null);
@@ -270,7 +274,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           return;
         }
       } else {
-        d = await api.register({ name, email, password: pw, role: 'candidate', phone, ...(extracted || {}), skills: extracted?.skills || '' });
+        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability, ...(extracted || {}), skills: extracted?.skills || '' });
       }
       onAuth(d.user, d.token);
       navigate('/app');
@@ -337,6 +341,40 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               <div>
                 <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER *</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
+              </div>
+              {/* Professional details — same fields as career page apply form so no re-entry needed */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT TITLE</label>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Software Engineer" style={INP} />
+                </div>
+                <div>
+                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT COMPANY</label>
+                  <input value={currentCompany} onChange={e => setCompany(e.target.value)} placeholder="e.g. Infosys" style={INP} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
+                  <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#181818' : '#9CA3AF' }}>
+                    <option value="">Select…</option>
+                    {['0','1','2','3','4','5','6','7','8','9','10','12','15','18','20','25'].map(y => (
+                      <option key={y} value={y}>{y === '0' ? 'Fresher' : `${y} yr${y !== '1' ? 's' : ''}`}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>AVAILABILITY</label>
+                  <select value={availability} onChange={e => setAvailability(e.target.value)} style={{ ...INP, cursor: 'pointer', color: availability ? '#181818' : '#9CA3AF' }}>
+                    <option value="">Select…</option>
+                    <option value="immediate">Immediate</option>
+                    <option value="15 days">15 Days Notice</option>
+                    <option value="30 days">30 Days Notice</option>
+                    <option value="45 days">45 Days Notice</option>
+                    <option value="60 days">60 Days Notice</option>
+                    <option value="90 days">90 Days Notice</option>
+                  </select>
+                </div>
               </div>
             </>
           )}

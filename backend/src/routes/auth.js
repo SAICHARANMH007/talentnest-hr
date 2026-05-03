@@ -129,6 +129,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       }
 
       // 2. Create user
+      const { title, currentCompany, experience, availability } = req.body;
       const [user] = await User.create([{
         tenantId: tenant._id,
         name: name.trim(),
@@ -139,6 +140,11 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         isActive: true,
         orgName: req.body.orgName || req.body.organisation || tenant.name || 'TalentNest HR',
         organisation: req.body.organisation || req.body.orgName || tenant.name || 'TalentNest HR',
+        // Professional fields collected on career page apply — pre-fill so no re-entry
+        ...(title          ? { title: title.trim() }                : {}),
+        ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
+        ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+        ...(availability   ? { availability }                        : {}),
       }], { session });
 
       // 3. Auto-create Candidate profile for self-registered job seekers so the
@@ -154,7 +160,12 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             email: emailLower,
             phone: req.body.phone || '',
             source: 'platform',
-            userId: uid || null, // ← link Candidate → User so registeredOnly filter works
+            userId: uid || null,
+            // Carry over professional fields so they're searchable immediately
+            ...(title          ? { title: title?.trim() }                     : {}),
+            ...(currentCompany ? { currentCompany: currentCompany?.trim() }   : {}),
+            ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+            ...(availability   ? { availability }                              : {}),
           }], { session });
         } else if (!existing.userId && uid) {
           await Candidate.findByIdAndUpdate(existing._id, { $set: { userId: uid } }).session(session);
