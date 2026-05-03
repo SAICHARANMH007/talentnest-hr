@@ -269,6 +269,7 @@ export default function App() {
     set401Handler(() => {
       setUser(null);
       sessionStorage.removeItem('tn_user');
+      sessionStorage.removeItem('tn_token');
       navigate('/login', { replace: true });
     });
 
@@ -379,8 +380,10 @@ export default function App() {
 
   const ROLE_DEFAULT = { super_admin: 'analytics', admin: 'analytics', recruiter: 'dashboard', candidate: 'dashboard', client: 'dashboard', hiring_manager: 'dashboard' };
 
-  const auth = (u) => {
+  const auth = (u, token) => {
     sessionStorage.setItem('tn_user', JSON.stringify(u));
+    // Persist access token so page refresh doesn't log the user out
+    if (token) setApiToken(token);
     setUser(u);
     // Pending assessment deep-link (from invite email)
     const pendingJobId = sessionStorage.getItem('tn_pending_assessment_job');
@@ -398,6 +401,7 @@ export default function App() {
 
   const logout = () => {
     sessionStorage.removeItem('tn_user');
+    sessionStorage.removeItem('tn_token'); // clear persisted token
     setUser(null);
     api.logout().catch(() => {});   // clears HTTP-only refresh cookie on server
     navigate('/login', { replace: true });
