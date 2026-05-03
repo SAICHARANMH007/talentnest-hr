@@ -914,22 +914,30 @@ export default function AdminAnalytics({ user, onNavigate }) {
                 </div>
                 <button
                   onClick={async () => {
-                    const rid = String(r.recruiterId);
+                    const rid = r.recruiterId ? String(r.recruiterId) : null;
+                    if (!rid) { setDrillDown({ title: `${r.name}'s Pipeline`, type: 'app', items: [] }); return; }
                     setDrillDown({ title: `${r.name}'s Pipeline — Loading…`, type: 'app', items: [] });
                     try {
-                      const raw = await api.getApplications({ recruiterId: rid, limit: 500, platform: platformWide }).then(unwrap).catch(() => []);
-                      const items = raw.map(a => ({
-                        ...a,
-                        id: a.id || a._id,
-                        name: getCandidateData(a).name,
-                        sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[a.stage || a.currentStage] || a.stage || a.currentStage}`,
-                      }));
-                      setDrillDown({ title: `${r.name}'s Pipeline (${items.length})`, type: 'app', items });
+                      const raw = await api.getApplications({ recruiterId: rid, limit: 500 }).then(unwrap).catch(() => []);
+                      const items = raw.map(a => {
+                        const cand = getCandidateData(a);
+                        const jobTitle = (typeof a.jobId === 'object' ? a.jobId?.title : null) || a.job?.title || 'Unknown Job';
+                        const stage = STAGE_LABELS[a.stage] || STAGE_LABELS[a.currentStage] || a.currentStage || a.stage || 'Applied';
+                        const email = cand.user?.email || a.candidateEmail || a.email || '';
+                        const phone = cand.user?.phone || a.candidatePhone || a.phone || '';
+                        return {
+                          ...a,
+                          id: a.id || a._id,
+                          name: cand.name,
+                          sub: `${jobTitle} · ${stage}${email ? ` · ${email}` : ''}${phone ? ` · ${phone}` : ''}`,
+                        };
+                      });
+                      setDrillDown({ title: `${r.name}'s Pipeline (${items.length} applications)`, type: 'app', items });
                     } catch {
                       setDrillDown({ title: `${r.name}'s Pipeline`, type: 'app', items: [] });
                     }
                   }}
-                  style={{ padding: '6px 12px', borderRadius: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ padding: '6px 12px', borderRadius: 8, background: '#0176D3', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                   ANALYZE
                 </button>
               </div>

@@ -442,17 +442,18 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
 
   // Single aggregation: group applications by (jobId, stage) then join jobs to get assignedRecruiters
   const [jobStats, appStats] = await Promise.all([
-    // Per-recruiter: how many active/closed jobs they're assigned to
+    // Per-recruiter: how many active/closed jobs they're assigned to (excludes deleted)
     Job.aggregate([
-      { $match: { ...orgF, status: { $in: ['active', 'closed'] } } },
+      { $match: { ...orgF, status: { $in: ['active', 'closed'] }, deletedAt: null } },
       { $unwind: '$assignedRecruiters' },
       { $group: { _id: '$assignedRecruiters', jobs: { $sum: 1 } } },
     ]),
-    // Per-recruiter: total candidates and hires via their job assignments
+    // Per-recruiter: total candidates and hires (excludes soft-deleted applications)
     Application.aggregate([
-      { $match: orgF },
+      { $match: { ...orgF, deletedAt: null } },
       { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
       { $unwind: '$job' },
+      { $match: { 'job.deletedAt': null } },
       { $unwind: '$job.assignedRecruiters' },
       { $group: {
           _id: '$job.assignedRecruiters',
