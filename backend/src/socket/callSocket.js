@@ -3,14 +3,40 @@ const crypto       = require('crypto');
 const CallRecord   = require('../models/CallRecord');
 const User         = require('../models/User');
 const Notification = require('../models/Notification');
+const mongoose     = require('mongoose');
 
-// In-memory active calls: callId -> { fromUserId, toUserId, fromSocket, toSocket, type, startedAt, status }
+// Active calls: callId → call object
 const activeCalls = new Map();
-
-// Per-user "in call" status for busy detection
-const userCallStatus = new Map(); // userId -> callId | null
+// Per-user in-call status: userId → callId
+const userCallStatus = new Map();
+// Connected users: userId → Set of socketIds (multiple tabs/devices)
+const connectedUsers = new Map();
 
 const RING_TIMEOUT_MS = 30_000;
+
+function addConnected(userId, socketId) {
+  if (!connectedUsers.has(userId)) connectedUsers.set(userId, new Set());
+  connectedUsers.get(userId).add(socketId);
+}
+function removeConnected(userId, socketId) {
+  const s = connectedUsers.get(userId);
+  if (s) { s.delete(socketId); if (!s.size) connectedUsers.delete(userId); }
+}
+function isOnline(userId) {
+  const s = connectedUsers.get(String(userId));
+  return !!(s && s.size > 0);
+}
+// Deliver to ALL sockets of a user (handles multiple tabs/devices)
+function deliverToUser(ns, userId, event, data) {
+  const sids = connectedUsers.get(String(userId));
+  if (sids && sids.size > 0) {
+    sids.forEach(sid => ns.to(sid).emit(event, data));
+    return true;
+  }
+  // Fallback to room-based delivery
+  ns.to(`user:${userId}`).emit(event, data);
+  return false;
+}
 
 function setupCallSocket(io) {
   const ns = io.of('/call');
@@ -21,17 +47,17 @@ function setupCallSocket(io) {
       if (!token) return next(new Error('AUTH_REQUIRED'));
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.data.userId   = decoded.userId || decoded.id;
-      socket.data.tenantId = decoded.orgId  || decoded.tenantId || '';
-      if (!socket.data.userId) return next(new Error('INVALID_TOKEN'));
-      // Fetch name from DB (non-blocking — fallback to 'Unknown' on failure)
+      const rawId = decoded.userId || decoded.id;
+      if (!rawId) return next(new Error('INVALID_TOKEN'));
+      // Normalise to string regardless of ObjectId or string input
+      socket.data.userId   = String(rawId);
+      socket.data.tenantId = decoded.orgId || decoded.tenantId || '';
       try {
         const u = await User.findById(socket.data.userId).select('name').lean();
-        socket.data.name = u?.name || decoded.name || 'Unknown';
-      } catch { socket.data.name = decoded.name || 'Unknown'; }
+        socket.data.name = u?.name || decoded.name || 'User';
+      } catch { socket.data.name = decoded.name || 'User'; }
       next();
     } catch (e) {
-      // Send error to client so it knows auth failed (not silent disconnect)
       next(new Error('AUTH_FAILED: ' + e.message));
     }
   });
@@ -39,109 +65,119 @@ function setupCallSocket(io) {
   ns.on('connection', (socket) => {
     const userId = socket.data.userId;
     if (!userId) { socket.disconnect(); return; }
+
+    // Register this socket in the connected-users map AND join the room
     socket.join(`user:${userId}`);
+    addConnected(userId, socket.id);
+    console.log(`[CallSocket] ${socket.data.name} (${userId}) connected — ${socket.id}`);
 
     // ── INITIATE CALL ──────────────────────────────────────────────────────
     socket.on('call:initiate', async ({ toUserId, callType, toName }) => {
       if (!toUserId || !callType) return;
+      const toId = String(toUserId);
 
-      // Busy check
-      if (userCallStatus.get(String(toUserId))) {
-        socket.emit('call:busy', { toUserId, toName });
+      // Check if receiver is actually connected before even trying
+      if (!isOnline(toId)) {
+        socket.emit('call:unavailable', {
+          toUserId: toId,
+          message: `${toName || 'User'} is not currently online.`,
+        });
         return;
       }
-      if (userCallStatus.get(String(userId))) {
-        socket.emit('call:error', { message: 'You are already on a call.' });
-        return;
+
+      // Busy check
+      if (userCallStatus.get(toId)) {
+        socket.emit('call:busy', { toUserId: toId, toName }); return;
+      }
+      if (userCallStatus.get(userId)) {
+        socket.emit('call:error', { message: 'You are already on a call.' }); return;
       }
 
       const callId = crypto.randomBytes(12).toString('hex');
       const call = {
         callId,
-        fromUserId: String(userId),
-        toUserId: String(toUserId),
+        fromUserId: userId,
+        toUserId:   toId,
         fromSocket: socket.id,
-        toSocket: null,
-        fromName: socket.data.name,
-        toName: toName || '',
+        toSocket:   null,
+        fromName:   socket.data.name,
+        toName:     toName || '',
         callType,
-        startedAt: Date.now(),
-        status: 'ringing',
-        tenantId: socket.data.tenantId,
+        startedAt:  Date.now(),
+        status:     'ringing',
+        tenantId:   socket.data.tenantId,
       };
       activeCalls.set(callId, call);
-      userCallStatus.set(String(userId), callId);
+      userCallStatus.set(userId, callId);
 
-      // Save initial record to DB
       try {
         await CallRecord.create({
           callId,
-          tenantId: call.tenantId || undefined,
-          fromUserId: call.fromUserId,
-          toUserId: call.toUserId,
-          fromName: call.fromName,
-          toName: call.toName,
+          tenantId:    call.tenantId || undefined,
+          fromUserId:  call.fromUserId,
+          toUserId:    call.toUserId,
+          fromName:    call.fromName,
+          toName:      call.toName,
           callType,
-          outcome: 'missed',
+          outcome:     'missed',
         });
-      } catch (e) { console.error('[callSocket] DB create error:', e.message); }
+      } catch (e) { console.error('[callSocket] CallRecord create error:', e.message); }
 
       // Confirm to caller
-      socket.emit('call:initiated', { callId, toUserId, callType });
+      socket.emit('call:initiated', { callId, toUserId: toId, callType });
 
-      // Ring the recipient (only to their personal room — no broadcast)
-      ns.to(`user:${toUserId}`).emit('call:incoming', {
+      // Deliver to ALL receiver sockets (multi-device support)
+      deliverToUser(ns, toId, 'call:incoming', {
         callId,
-        fromUserId: String(userId),
-        fromName: socket.data.name,
+        fromUserId: userId,
+        fromName:   socket.data.name,
         callType,
       });
+      console.log(`[CallSocket] Calling ${call.fromName} → ${toName} (${toId}), callId=${callId}`);
 
-      // Auto-cancel after 30s if no answer
+      // 30s ring timeout
       call._ringTimer = setTimeout(async () => {
         const c = activeCalls.get(callId);
         if (!c || c.status !== 'ringing') return;
         c.status = 'missed';
         activeCalls.delete(callId);
-        userCallStatus.delete(String(userId));
-        userCallStatus.delete(String(toUserId));
+        userCallStatus.delete(userId);
+        userCallStatus.delete(toId);
 
         socket.emit('call:no-answer', { callId });
-        ns.to(`user:${toUserId}`).emit('call:missed', { callId, fromName: socket.data.name, callType });
+        deliverToUser(ns, toId, 'call:missed', { callId, fromName: socket.data.name, callType });
 
-        try {
-          await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'missed' } });
-        } catch {}
+        try { await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'missed' } }); } catch {}
 
-        // Create in-app notification so candidate sees missed call even if socket wasn't active
+        // In-app notification for missed call (always created, visible on next login)
         try {
           await Notification.create({
-            userId: toUserId,
+            userId:   mongoose.Types.ObjectId.isValid(toId) ? new mongoose.Types.ObjectId(toId) : toId,
             tenantId: call.tenantId || undefined,
-            type: 'system',
-            title: `📞 Missed ${callType === 'video' ? 'Video' : 'Audio'} Call`,
-            message: `You missed a call from ${call.fromName}. Open TalentNest to call back.`,
-            link: '/app/messages',
+            type:     'system',
+            title:    `📞 Missed ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+            message:  `You missed a call from ${call.fromName}. Open TalentNest to call back.`,
+            link:     '/app/messages',
           });
-        } catch {}
+        } catch (e) { console.error('[callSocket] Notification create error:', e.message); }
       }, RING_TIMEOUT_MS);
     });
 
-    // ── ACCEPT CALL ────────────────────────────────────────────────────────
+    // ── ACCEPT ────────────────────────────────────────────────────────────
     socket.on('call:accept', ({ callId }) => {
       const call = activeCalls.get(callId);
-      if (!call || call.status !== 'ringing') { socket.emit('call:error', { message: 'Call no longer available.' }); return; }
-
+      if (!call || call.status !== 'ringing') {
+        socket.emit('call:error', { message: 'Call no longer available.' }); return;
+      }
       clearTimeout(call._ringTimer);
-      call.status = 'active';
+      call.status   = 'active';
       call.toSocket = socket.id;
       call.answeredAt = Date.now();
-      userCallStatus.set(String(call.toUserId), callId);
+      userCallStatus.set(call.toUserId, callId);
 
-      // Join both to call room for signaling
       socket.join(`call:${callId}`);
+      // Tell caller the call was accepted
       ns.to(call.fromSocket).emit('call:accepted', { callId });
-      // The caller socket needs to join call room too — tell them
       socket.emit('call:join-room', { callId, peerSocketId: call.fromSocket });
 
       CallRecord.updateOne({ callId }, { $set: { answeredAt: new Date(), outcome: 'answered' } }).catch(() => {});
@@ -151,82 +187,66 @@ function setupCallSocket(io) {
       socket.join(`call:${callId}`);
     });
 
-    // ── DECLINE ────────────────────────────────────────────────────────────
+    // ── DECLINE ──────────────────────────────────────────────────────────
     socket.on('call:decline', async ({ callId }) => {
       const call = activeCalls.get(callId);
       if (!call) return;
       clearTimeout(call._ringTimer);
       activeCalls.delete(callId);
-      userCallStatus.delete(String(call.fromUserId));
-      userCallStatus.delete(String(call.toUserId));
-
-      ns.to(`user:${call.fromUserId}`).emit('call:declined', { callId });
-      try {
-        await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'declined' } });
-      } catch {}
+      userCallStatus.delete(call.fromUserId);
+      userCallStatus.delete(call.toUserId);
+      ns.to(call.fromSocket).emit('call:declined', { callId });
+      try { await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'declined' } }); } catch {}
     });
 
-    // ── CANCEL (caller cancels before answer) ──────────────────────────────
+    // ── CANCEL ────────────────────────────────────────────────────────────
     socket.on('call:cancel', async ({ callId }) => {
       const call = activeCalls.get(callId);
       if (!call) return;
       clearTimeout(call._ringTimer);
       activeCalls.delete(callId);
-      userCallStatus.delete(String(call.fromUserId));
-      userCallStatus.delete(String(call.toUserId));
-
-      ns.to(`user:${call.toUserId}`).emit('call:cancelled', { callId });
-      try {
-        await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'cancelled' } });
-      } catch {}
+      userCallStatus.delete(call.fromUserId);
+      userCallStatus.delete(call.toUserId);
+      deliverToUser(ns, call.toUserId, 'call:cancelled', { callId });
+      try { await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), outcome: 'cancelled' } }); } catch {}
     });
 
-    // ── END CALL ───────────────────────────────────────────────────────────
+    // ── END ───────────────────────────────────────────────────────────────
     socket.on('call:end', async ({ callId }) => {
       const call = activeCalls.get(callId);
       if (!call) return;
       clearTimeout(call._ringTimer);
       const duration = call.answeredAt ? Math.round((Date.now() - call.answeredAt) / 1000) : 0;
       activeCalls.delete(callId);
-      userCallStatus.delete(String(call.fromUserId));
-      userCallStatus.delete(String(call.toUserId));
-
-      // Notify both participants
+      userCallStatus.delete(call.fromUserId);
+      userCallStatus.delete(call.toUserId);
       ns.to(`call:${callId}`).emit('call:ended', { callId, duration });
-
-      try {
-        await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), duration, outcome: 'answered' } });
-      } catch {}
+      try { await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), duration, outcome: 'answered' } }); } catch {}
     });
 
-    // ── WebRTC SIGNALING (peer-to-peer, only between call participants) ────
-    socket.on('call:offer', ({ callId, offer }) => {
-      socket.to(`call:${callId}`).emit('call:offer', { from: socket.id, offer });
-    });
+    // ── WebRTC SIGNALING ─────────────────────────────────────────────────
+    socket.on('call:offer',  ({ callId, offer })     => socket.to(`call:${callId}`).emit('call:offer',  { from: socket.id, offer }));
+    socket.on('call:answer', ({ callId, answer })    => socket.to(`call:${callId}`).emit('call:answer', { from: socket.id, answer }));
+    socket.on('call:ice',    ({ callId, candidate }) => socket.to(`call:${callId}`).emit('call:ice',    { from: socket.id, candidate }));
 
-    socket.on('call:answer', ({ callId, answer }) => {
-      socket.to(`call:${callId}`).emit('call:answer', { from: socket.id, answer });
-    });
+    // ── DISCONNECT ────────────────────────────────────────────────────────
+    socket.on('disconnect', async (reason) => {
+      removeConnected(userId, socket.id);
+      console.log(`[CallSocket] ${socket.data.name} (${userId}) disconnected — ${reason}`);
 
-    socket.on('call:ice', ({ callId, candidate }) => {
-      socket.to(`call:${callId}`).emit('call:ice', { from: socket.id, candidate });
-    });
-
-    // ── DISCONNECT cleanup ─────────────────────────────────────────────────
-    socket.on('disconnect', async () => {
-      const callId = userCallStatus.get(String(userId));
+      const callId = userCallStatus.get(userId);
       if (!callId) return;
       const call = activeCalls.get(callId);
-      if (!call) { userCallStatus.delete(String(userId)); return; }
+      if (!call) { userCallStatus.delete(userId); return; }
 
       clearTimeout(call._ringTimer);
       const duration = call.answeredAt ? Math.round((Date.now() - call.answeredAt) / 1000) : 0;
       activeCalls.delete(callId);
-      userCallStatus.delete(String(call.fromUserId));
-      userCallStatus.delete(String(call.toUserId));
+      userCallStatus.delete(call.fromUserId);
+      userCallStatus.delete(call.toUserId);
 
-      const otherId = call.fromUserId === String(userId) ? call.toUserId : call.fromUserId;
-      ns.to(`user:${otherId}`).emit('call:ended', { callId, duration, reason: 'disconnected' });
+      const otherId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+      deliverToUser(ns, otherId, 'call:ended', { callId, duration, reason: 'disconnected' });
 
       try {
         await CallRecord.updateOne(

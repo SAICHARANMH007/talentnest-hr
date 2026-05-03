@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, lazy, Component } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { api } from '../api/api.js';
 import ChangePasswordModal from '../components/shared/ChangePasswordModal.jsx';
@@ -10,16 +10,10 @@ import { useLogo } from '../context/LogoContext.jsx';
 import useHeartbeat from '../hooks/useHeartbeat.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
 import ChatPanel from '../components/shared/ChatPanel.jsx';
-
-// Lazy + isolated so any crash in calling never affects the rest of the app
-const CallManager = lazy(() => import('../components/calling/CallManager.jsx'));
-
-class CallErrorBoundary extends Component {
-  state = { err: false };
-  static getDerivedStateFromError() { return { err: true }; }
-  componentDidCatch(e) { console.warn('[CallManager] non-critical error:', e.message); }
-  render() { return this.state.err ? null : this.props.children; }
-}
+// Direct import (not lazy) so socket connects immediately on app load.
+// Previously lazy + ErrorBoundary was silently swallowing errors and preventing
+// the call socket from ever connecting for some users.
+import CallManager from '../components/calling/CallManager.jsx';
 
 function AppIcon({ name, size = 18, color = 'currentColor' }) {
   const common = {
@@ -678,11 +672,7 @@ export default function Layout({ user, onLogout }) {
       </div>
 
       <QuickActionMenu user={user} />
-      <CallErrorBoundary>
-        <Suspense fallback={null}>
-          <CallManager user={user} />
-        </Suspense>
-      </CallErrorBoundary>
+      <CallManager user={user} />
     </div>
   );
 }

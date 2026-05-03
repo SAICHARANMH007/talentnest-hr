@@ -52,7 +52,8 @@ function useRingSound(ringing) {
 }
 
 export default function CallManager({ user }) {
-  const myId   = user?.id || user?._id;
+  // Always convert to string — handles ObjectId objects and plain strings
+  const myId = String(user?.id || user?._id || '').trim() || null;
 
   const socketRef    = useRef(null);
   // ── KEY FIX: use refs for anything accessed inside socket handlers ──────────
@@ -149,12 +150,14 @@ export default function CallManager({ user }) {
     socket.on('call:ice',    ({ from, candidate }) => handleIce(from, candidate).catch(() => {}));
 
     // ── STATE TRANSITIONS ─────────────────────────────────────────────────────
-    socket.on('call:declined',  ()               => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
-    socket.on('call:cancelled', ()               => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
-    socket.on('call:no-answer', ()               => { endCallInternal('No answer'); });
-    socket.on('call:busy',      ({ toName })     => { endCallInternal(`${toName || 'User'} is busy`); });
-    socket.on('call:ended',     ({ reason })     => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
-    socket.on('call:error',     ({ message })    => { endCallInternal(message); });
+    socket.on('call:declined',   ()                => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
+    socket.on('call:cancelled',  ()                => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
+    socket.on('call:no-answer',  ()                => { endCallInternal('No answer'); });
+    socket.on('call:busy',       ({ toName })      => { endCallInternal(`${toName || 'User'} is on another call`); });
+    socket.on('call:ended',      ({ reason })      => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
+    socket.on('call:error',      ({ message })     => { endCallInternal(message); });
+    // Receiver is not online — instant feedback instead of waiting 30s
+    socket.on('call:unavailable', ({ message })   => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
     // ── CONNECTION HEALTH ────────────────────────────────────────────────────
     socket.on('connect', () => { console.log('[Call] Socket connected:', socket.id); });
