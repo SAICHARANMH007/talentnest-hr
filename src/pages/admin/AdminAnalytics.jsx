@@ -1436,7 +1436,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
                               <option value="draft">Draft</option>
                             </select>
                           )}
-                            <button 
+                            {/* Only show Applicants button on job rows, not on candidate/app rows */}
+                            {drillDown.type === 'job' && (
+                            <button
                               onClick={() => {
                                 fetchDrill(item.name || item.title || 'Applicants', 'app', async () => {
                                   const raw = await api.getApplications({ jobId: itemId, limit: 500 }).then(unwrap).catch(() => []);
@@ -1449,6 +1451,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                             >
                               👥 Applicants
                             </button>
+                            )}
                             <button 
                               onClick={() => {
                               const id = extractId(item.candidateId || item.candidate) || item.id || item._id;
