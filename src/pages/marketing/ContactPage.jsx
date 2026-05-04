@@ -197,7 +197,7 @@ export default function ContactPage() {
                 </div>
               ))}
 
-              <div style={{ borderTop: `1px solid rgba(255,255,255,0.1)`, paddingTop: 28, marginTop: 12 }}>
+              <div style={{ borderTop: `1px solid rgba(255,255,255,0.1)`, paddingTop: 28, marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <a
                   href="https://www.linkedin.com/company/talent-nest-hr/?viewAsMember=true"
                   target="_blank"
@@ -207,6 +207,16 @@ export default function ContactPage() {
                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--mkt-accent)'; }}
                 >
                   🔗 LinkedIn Company Page
+                </a>
+                <a
+                  href="https://www.facebook.com/profile.php?id=61576949728635"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--mkt-accent)', fontSize: '0.95rem', fontWeight: 800, textDecoration: 'none' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--mkt-accent)'; }}
+                >
+                  👤 Facebook Page
                 </a>
               </div>
             </div>

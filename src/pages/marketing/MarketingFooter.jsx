@@ -31,8 +31,9 @@ const CONTACT_ITEMS = [
 ];
 
 const SOCIALS = [
-  { label: 'LinkedIn', icon: '🔗', href: 'https://www.linkedin.com/company/talent-nest-hr/' },
+  { label: 'LinkedIn',  icon: '🔗', href: 'https://www.linkedin.com/company/talent-nest-hr/' },
   { label: 'Instagram', icon: '📸', href: 'https://www.instagram.com/talentnesthr/' },
+  { label: 'Facebook',  icon: '👤', href: 'https://www.facebook.com/profile.php?id=61576949728635' },
 ];
 
 export default function MarketingFooter() {
