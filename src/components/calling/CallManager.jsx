@@ -65,6 +65,7 @@ export default function CallManager({ user }) {
   const ringTimer  = useRef(null);
   const endTimer   = useRef(null);
   const endingRef  = useRef(false); // prevents re-entrant endCallInternal calls
+  const audioCtxRef = useRef(null);  // AudioContext used to unlock mobile audio
 
   const [callState, setCallState]     = useState('idle');
   const [callInfo,  setCallInfo_]     = useState(null);
@@ -76,6 +77,36 @@ export default function CallManager({ user }) {
   const setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
 
   const remoteAudioRef = useRef(null); // hidden <audio> element — plays remote audio for ALL call types
+
+  // ── Unlock audio pipeline on mobile ────────────────────────────────────────
+  // Mobile browsers (iOS Safari, Chrome Android) block audio playback unless
+  // initiated during a user gesture. This MUST be called inside onClick handlers.
+  const unlockAudio = useCallback(() => {
+    // 1. Resume / create AudioContext — unlocks Web Audio API output
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      // Play a silent buffer to fully activate the audio output path
+      const buf = audioCtxRef.current.createBuffer(1, 1, 22050);
+      const src = audioCtxRef.current.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtxRef.current.destination);
+      src.start(0);
+    } catch {}
+
+    // 2. Pre-play the <audio> element — unlocks HTMLMediaElement for future srcObject
+    const el = remoteAudioRef.current;
+    if (el) {
+      el.muted = false;
+      el.play().catch(() => {});
+    }
+  }, []);
+
+  // ── Attach remote audio with retry ─────────────────────────────────────────
   const attachRemoteAudio = useCallback((stream) => {
     const el = remoteAudioRef.current;
     if (!el || !stream) return;
@@ -83,11 +114,41 @@ export default function CallManager({ user }) {
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
-    el.play().catch(() => {});
 
+    const tryPlay = () => {
+      const p = el.play();
+      if (p && p.catch) {
+        p.catch((err) => {
+          console.warn('[Call] audio.play() blocked:', err.name);
+          // Retry after short delay — covers race conditions on slower mobile
+          setTimeout(() => {
+            if (el.srcObject) el.play().catch(() => {});
+          }, 800);
+        });
+      }
+    };
+
+    tryPlay();
+
+    // Also retry when tracks unmute (some browsers fire ontrack before media flows)
     stream.getAudioTracks().forEach(track => {
-      track.onunmute = () => el.play().catch(() => {});
+      track.onunmute = () => tryPlay();
     });
+
+    // Fallback: pipe through AudioContext (works even when <audio>.play() is blocked)
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      // Only create one source node per stream
+      if (!stream._acSrc) {
+        const source = ctx.createMediaStreamSource(stream);
+        source.connect(ctx.destination);
+        stream._acSrc = source;
+      }
+    } catch {}
   }, []);
 
   const { localStream, micOn, camOn, startLocalMedia, initiateCall,
@@ -235,6 +296,7 @@ export default function CallManager({ user }) {
   }, []); // eslint-disable-line
 
   const acceptCall = useCallback(async () => {
+    unlockAudio(); // MUST run during user gesture — unlocks mobile audio output
     const cid = callInfoRef.current?.callId;
     if (!cid) return;
     const isVideo = callInfoRef.current?.callType === 'video';
@@ -243,7 +305,7 @@ export default function CallManager({ user }) {
     localStreamRef2.current = stream;
     setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
-  }, [startLocalMedia]);
+  }, [startLocalMedia, unlockAudio]);
 
   const declineCall = useCallback(() => {
     socketRef.current?.emit('call:decline', { callId: callInfoRef.current?.callId });
@@ -267,18 +329,19 @@ export default function CallManager({ user }) {
     return () => { delete window.__tnStartCall; };
   }, [startCall]);
 
-  // Hidden audio element always present when not idle — plays remote audio
-  // This is the primary audio output for audio calls AND audio track of video calls
+  // Hidden audio element — ALWAYS rendered (even when idle) so the ref is available
+  // when unlockAudio() is called during startCall/acceptCall before React re-renders.
   const audioEl = (
     <audio
       ref={remoteAudioRef}
       autoPlay
       playsInline
-      style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+      style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', zIndex: -1 }}
     />
   );
 
-  if (callState === 'idle') return null;
+  // When idle, render ONLY the audio element (keeps ref alive for unlockAudio)
+  if (callState === 'idle') return audioEl;
 
   const isVideo = callInfo?.callType === 'video';
   const callMsg = callInfo?.callMessage || '';
