@@ -63,7 +63,7 @@ function setupCallSocket(io) {
     console.log(`[CallSocket] ${socket.data.name} (${userId}) connected — ${socket.id}`);
 
     // ── INITIATE CALL ──────────────────────────────────────────────────────
-    socket.on('call:initiate', async ({ toUserId, callType, toName }) => {
+    socket.on('call:initiate', async ({ toUserId, callType, toName, callMessage }) => {
       if (!toUserId || !callType) return;
       const toId = String(toUserId);
 
@@ -94,6 +94,7 @@ function setupCallSocket(io) {
         fromName:   socket.data.name,
         toName:     toName || '',
         callType,
+        callMessage: callMessage || '',
         startedAt:  Date.now(),
         status:     'ringing',
         tenantId:   socket.data.tenantId,
@@ -106,7 +107,8 @@ function setupCallSocket(io) {
           callId, tenantId: call.tenantId || undefined,
           fromUserId: call.fromUserId, toUserId: call.toUserId,
           fromName: call.fromName, toName: call.toName,
-          callType, outcome: 'missed',
+          callType, callMessage: call.callMessage || undefined,
+          outcome: 'missed',
         });
       } catch (e) { console.error('[callSocket] CallRecord create:', e.message); }
 
@@ -114,6 +116,7 @@ function setupCallSocket(io) {
 
       deliverToUser(ns, toId, 'call:incoming', {
         callId, fromUserId: userId, fromName: socket.data.name, callType,
+        callMessage: call.callMessage || '',
       });
       console.log(`[CallSocket] ${call.fromName} → ${toName} (${toId}) callId=${callId}`);
 
@@ -186,18 +189,24 @@ function setupCallSocket(io) {
     });
 
     socket.on('call:end', async ({ callId }) => {
-      // Always broadcast call:ended to the room — even if activeCalls was wiped
-      // by a server restart. This ensures both users always hear the hang-up.
-      ns.to(`call:${callId}`).emit('call:ended', { callId, duration: 0 });
-
+      if (!callId) return;
       const call = activeCalls.get(callId);
+      const duration = call?.answeredAt ? Math.round((Date.now() - call.answeredAt) / 1000) : 0;
+
+      // Notify everyone ELSE in the call room (not the sender — they already hung up locally)
+      socket.to(`call:${callId}`).emit('call:ended', { callId, duration });
+
       if (!call) return;
       clearTimeout(call._ringTimer);
-      const duration = call.answeredAt ? Math.round((Date.now() - call.answeredAt) / 1000) : 0;
       activeCalls.delete(callId);
       userCallStatus.delete(call.fromUserId);
       userCallStatus.delete(call.toUserId);
-      ns.to(`call:${callId}`).emit('call:ended', { callId, duration });
+
+      // Also deliver directly to the other user's personal room as a safety net
+      // (covers edge cases where they lost call-room membership due to reconnect)
+      const otherId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+      deliverToUser(ns, otherId, 'call:ended', { callId, duration });
+
       try { await CallRecord.updateOne({ callId }, { $set: { endedAt: new Date(), duration, outcome: 'answered' } }); } catch {}
     });
 
@@ -218,7 +227,12 @@ function setupCallSocket(io) {
       userCallStatus.delete(call.fromUserId);
       userCallStatus.delete(call.toUserId);
       const otherId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+
+      // Deliver via BOTH the call room AND user room — covers all edge cases
+      // (socket.to won't work here because the sender's socket is already gone)
+      ns.to(`call:${callId}`).emit('call:ended', { callId, duration, reason: 'disconnected' });
       deliverToUser(ns, otherId, 'call:ended', { callId, duration, reason: 'disconnected' });
+
       try {
         await CallRecord.updateOne(
           { callId },

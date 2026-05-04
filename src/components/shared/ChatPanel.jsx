@@ -197,6 +197,8 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const [activeLastSeen, setActiveLastSeen] = useState(null);
   const [replyTo, setReplyTo]           = useState(null);
   const [typingUser, setTypingUser] = useState(null); // name of person typing
+  const [callPrompt, setCallPrompt]     = useState(null);   // { type: 'audio'|'video' } or null
+  const [callMessage, setCallMessage]   = useState('');      // optional caller intent
   const bottomRef   = useRef(null);
   const fileRef     = useRef(null);
   const pollRef     = useRef(null);
@@ -339,6 +341,7 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
     setActive(c);
     setMobileShowThread(true);
     setReplyTo(null);
+    setCallPrompt(null);
     loadThread(c.userId);
     // mark as read immediately in contacts list
     setContacts(prev => prev.map(x => x.userId === c.userId ? { ...x, unread: 0 } : x));
@@ -552,17 +555,93 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                 <button title={activeIsOnline ? 'Audio Call' : 'Audio Call (user may be offline)'}
                   onClick={() => {
                     if (!window.__tnStartCall) { alert('Calling is loading, please try again in a moment.'); return; }
-                    window.__tnStartCall(active.userId, active.name, 'audio');
+                    setCallPrompt({ type: 'audio' }); setCallMessage('');
                   }}
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6 }}>📞</button>
+                  style={{ background: callPrompt?.type === 'audio' ? 'rgba(1,118,211,0.12)' : 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6, transition: 'background 0.15s' }}>📞</button>
                 <button title={activeIsOnline ? 'Video Call' : 'Video Call (user may be offline)'}
                   onClick={() => {
                     if (!window.__tnStartCall) { alert('Calling is loading, please try again in a moment.'); return; }
-                    window.__tnStartCall(active.userId, active.name, 'video');
+                    setCallPrompt({ type: 'video' }); setCallMessage('');
                   }}
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6 }}>📹</button>
+                  style={{ background: callPrompt?.type === 'video' ? 'rgba(1,118,211,0.12)' : 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: activeIsOnline ? '#0176D3' : '#94A3B8', padding: '4px 6px', borderRadius: 6, transition: 'background 0.15s' }}>📹</button>
                 {!isMobile && <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>}
               </div>
+
+              {/* ── Call prompt — slides in when user clicks call button ─── */}
+              {callPrompt && (
+                <div style={{
+                  padding: '12px 16px', borderBottom: '1px solid #D8E9FF',
+                  background: 'linear-gradient(135deg, #EEF4FF 0%, #F0F7FF 100%)',
+                  animation: 'slideDown 0.2s ease-out',
+                }}>
+                  <style>{`@keyframes slideDown { from { opacity:0; max-height:0; padding:0 16px; } to { opacity:1; max-height:200px; } }`}</style>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 20 }}>{callPrompt.type === 'video' ? '📹' : '📞'}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#032D60' }}>
+                        {callPrompt.type === 'video' ? 'Video' : 'Audio'} Call to {active?.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#706E6B', marginTop: 1 }}>
+                        Add a message to let them know why you're calling (optional)
+                      </div>
+                    </div>
+                    <button onClick={() => setCallPrompt(null)} style={{ background: 'none', border: 'none', color: '#9E9D9B', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                    <input
+                      value={callMessage}
+                      onChange={e => setCallMessage(e.target.value.slice(0, 200))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          window.__tnStartCall(active.userId, active.name, callPrompt.type, callMessage.trim() || '');
+                          setCallPrompt(null); setCallMessage('');
+                        }
+                        if (e.key === 'Escape') setCallPrompt(null);
+                      }}
+                      placeholder={`e.g. "Quick question about the interview schedule"`}
+                      maxLength={200}
+                      autoFocus
+                      style={{
+                        flex: 1, padding: '9px 14px', borderRadius: 10,
+                        border: '1px solid rgba(1,118,211,0.25)', background: '#fff',
+                        fontSize: 13, color: '#181818', outline: 'none',
+                        fontFamily: 'inherit', lineHeight: 1.4,
+                        transition: 'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#0176D3'}
+                      onBlur={e => e.target.style.borderColor = 'rgba(1,118,211,0.25)'}
+                    />
+                    <button
+                      onClick={() => {
+                        window.__tnStartCall(active.userId, active.name, callPrompt.type, callMessage.trim() || '');
+                        setCallPrompt(null); setCallMessage('');
+                      }}
+                      style={{
+                        background: callPrompt.type === 'video'
+                          ? 'linear-gradient(135deg, #0176D3, #0ea5e9)'
+                          : 'linear-gradient(135deg, #16a34a, #22c55e)',
+                        border: 'none', borderRadius: 10, color: '#fff',
+                        fontWeight: 700, padding: '9px 20px', cursor: 'pointer',
+                        fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0,
+                        boxShadow: '0 2px 8px rgba(1,118,211,0.25)',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        transition: 'transform 0.1s, box-shadow 0.15s',
+                      }}
+                      onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+                      onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      <span style={{ fontSize: 15 }}>{callPrompt.type === 'video' ? '📹' : '📞'}</span>
+                      Call{callMessage.trim() ? ' with message' : ''}
+                    </button>
+                  </div>
+                  {callMessage.length > 0 && (
+                    <div style={{ fontSize: 10, color: '#9E9D9B', textAlign: 'right', marginTop: 4 }}>
+                      {callMessage.length}/200
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Messages */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px' }}>

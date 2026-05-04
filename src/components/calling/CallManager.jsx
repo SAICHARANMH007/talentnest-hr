@@ -64,6 +64,7 @@ export default function CallManager({ user }) {
 
   const ringTimer  = useRef(null);
   const endTimer   = useRef(null);
+  const endingRef  = useRef(false); // prevents re-entrant endCallInternal calls
 
   const [callState, setCallState]     = useState('idle');
   const [callInfo,  setCallInfo_]     = useState(null);
@@ -74,15 +75,38 @@ export default function CallManager({ user }) {
   // Always keep ref in sync with state
   const setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
 
+  const remoteAudioRef = useRef(null); // hidden <audio> element — plays remote audio for ALL call types
+  const attachRemoteAudio = useCallback((stream) => {
+    const el = remoteAudioRef.current;
+    if (!el || !stream) return;
+
+    if (el.srcObject !== stream) el.srcObject = stream;
+    el.muted = false;
+    el.volume = 1;
+    el.play().catch(() => {});
+
+    stream.getAudioTracks().forEach(track => {
+      track.onunmute = () => el.play().catch(() => {});
+    });
+  }, []);
+
   const { localStream, micOn, camOn, startLocalMedia, initiateCall,
           handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
     video: callInfoRef.current?.callType === 'video',
     audio: true,
-    onRemoteStream: (_sid, stream) => setRemoteStream(stream),
+    onRemoteStream: (_sid, stream) => {
+      setRemoteStream(stream);
+      attachRemoteAudio(stream);
+    },
   });
 
   // Keep localStream ref in sync
   useEffect(() => { localStreamRef2.current = localStream; }, [localStream]);
+
+  // Re-attach audio if remoteStream changes (e.g. ICE reconnect adds track late)
+  useEffect(() => {
+    attachRemoteAudio(remoteStream);
+  }, [attachRemoteAudio, remoteStream]);
 
   useRingSound(callState === 'incoming');
 
@@ -109,9 +133,13 @@ export default function CallManager({ user }) {
       sendIce:    (_s, candidate) => socket.emit('call:ice',    { callId, candidate }),
     });
 
+    socket.on('call:initiated', ({ callId }) => {
+      setCallInfo({ ...(callInfoRef.current || {}), callId });
+    });
+
     // ── INCOMING ─────────────────────────────────────────────────────────────
-    socket.on('call:incoming', ({ callId, fromUserId, fromName, callType }) => {
-      setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType });
+    socket.on('call:incoming', ({ callId, fromUserId, fromName, callType, callMessage }) => {
+      setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType, callMessage: callMessage || '' });
       setCallState('incoming');
       try {
         if (Notification.permission === 'granted') {
@@ -127,6 +155,7 @@ export default function CallManager({ user }) {
     // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
     socket.on('call:accepted', ({ callId }) => {
       clearTimeout(ringTimer.current);
+      setCallInfo({ ...(callInfoRef.current || {}), callId });
       socket.emit('call:join-room', { callId });
       const isVideo = callInfoRef.current?.callType === 'video';
       startLocalMedia(isVideo).then(stream => {
@@ -172,8 +201,11 @@ export default function CallManager({ user }) {
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [myId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── endCall (internal — no deps on stale callInfo) ────────────────────────
+  // ── endCall (internal — idempotent, guards against duplicate call:ended events) ──
   const endCallInternal = (reason = '') => {
+    // Skip if we're already in the ending/ended flow — prevents duplicate timeouts
+    if (endingRef.current) return;
+    endingRef.current = true;
     clearTimeout(ringTimer.current);
     clearTimeout(endTimer.current);
     stopAll();
@@ -185,15 +217,19 @@ export default function CallManager({ user }) {
       setCallInfo(null);
       setEndReason('');
       setCallStartedAt(null);
+      endingRef.current = false; // ready for next call
     }, 2500);
   };
 
   // ── Public actions ────────────────────────────────────────────────────────
-  const startCall = useCallback(async (toUserId, toName, callType) => {
+  const startCall = useCallback(async (toUserId, toName, callType, callMessage) => {
     if (!socketRef.current) return;
-    setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType });
+    // Reset ending guard in case previous call's endTimer hasn't fired yet
+    endingRef.current = false;
+    clearTimeout(endTimer.current);
+    setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType, callMessage: callMessage || '' });
     setCallState('outgoing');
-    socketRef.current.emit('call:initiate', { toUserId, callType, toName });
+    socketRef.current.emit('call:initiate', { toUserId, callType, toName, callMessage: callMessage || '' });
     clearTimeout(ringTimer.current);
     ringTimer.current = setTimeout(() => endCallInternal('No answer'), RING_DURATION + 2000);
   }, []); // eslint-disable-line
@@ -220,7 +256,8 @@ export default function CallManager({ user }) {
   }, []); // eslint-disable-line
 
   const hangUp = useCallback(() => {
-    socketRef.current?.emit('call:end', { callId: callInfoRef.current?.callId });
+    const cid = callInfoRef.current?.callId;
+    if (cid) socketRef.current?.emit('call:end', { callId: cid });
     endCallInternal('');
   }, []); // eslint-disable-line
 
@@ -230,9 +267,37 @@ export default function CallManager({ user }) {
     return () => { delete window.__tnStartCall; };
   }, [startCall]);
 
+  // Hidden audio element always present when not idle — plays remote audio
+  // This is the primary audio output for audio calls AND audio track of video calls
+  const audioEl = (
+    <audio
+      ref={remoteAudioRef}
+      autoPlay
+      playsInline
+      style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+    />
+  );
+
   if (callState === 'idle') return null;
 
   const isVideo = callInfo?.callType === 'video';
+  const callMsg = callInfo?.callMessage || '';
+
+  // Reusable call-message bubble (shown across all screens when message exists)
+  const MessageBubble = callMsg ? (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+      background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+      border: '1px solid rgba(255,255,255,0.15)',
+      borderRadius: 14, padding: '10px 16px',
+      maxWidth: 380, width: '100%', marginTop: 8,
+    }}>
+      <span style={{ fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>💬</span>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.92)', lineHeight: 1.5, fontStyle: 'italic', wordBreak: 'break-word' }}>
+        "{callMsg}"
+      </div>
+    </div>
+  ) : null;
 
   // ── Incoming — top banner + full overlay (impossible to miss) ────────────
   if (callState === 'incoming') return (
@@ -243,21 +308,35 @@ export default function CallManager({ user }) {
         background: 'linear-gradient(135deg, #0176D3, #0ea5e9)',
         padding: '12px 24px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 10,
         boxShadow: '0 4px 24px rgba(1,118,211,0.5)',
         animation: 'ring-pulse 1s ease-in-out infinite',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 28, animation: 'ring-shake 0.5s ease-in-out infinite' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 28, animation: 'ring-shake 0.5s ease-in-out infinite', flexShrink: 0 }}>
             {isVideo ? '📹' : '📞'}
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>{callInfo?.peerName}</div>
             <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
               Incoming {isVideo ? 'Video' : 'Audio'} Call
             </div>
+            {callMsg && (
+              <div style={{
+                marginTop: 6, display: 'flex', alignItems: 'flex-start', gap: 6,
+                background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 10, padding: '6px 12px', maxWidth: 340,
+              }}>
+                <span style={{ fontSize: 13, lineHeight: 1.3, flexShrink: 0 }}>💬</span>
+                <span style={{ fontSize: 12, color: '#fff', fontStyle: 'italic', lineHeight: 1.45, wordBreak: 'break-word' }}>
+                  "{callMsg}"
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
           <button onClick={declineCall} style={{ background: '#DC2626', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
             📵 Decline
           </button>
@@ -272,62 +351,98 @@ export default function CallManager({ user }) {
         @keyframes ring-pulse { 0%,100%{opacity:1} 50%{opacity:0.9} }
         @keyframes ring-shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-15deg)} 75%{transform:rotate(15deg)} }
       `}</style>
+      {audioEl}
     </>
   );
 
   // ── Outgoing ──────────────────────────────────────────────────────────────
   if (callState === 'outgoing') return (
-    <div style={overlay}>
-      <div style={card}>
-        <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 4 }}>{isVideo ? '📹' : '📞'}</div>
-        <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginBottom: 4 }}>Calling…</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 12 }}>{callInfo?.peerName}</div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 32 }}>
-          {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i*0.4}s infinite` }} />)}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CallBtn icon="📵" label="Cancel" color="#DC2626" onClick={cancelCall} />
+    <>
+      {audioEl}
+      <div style={overlay}>
+        <div style={card}>
+          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 4 }}>{isVideo ? '📹' : '📞'}</div>
+          <div style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center', marginBottom: 4 }}>Calling…</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{callInfo?.peerName}</div>
+          {/* Show the message you're sending */}
+          {MessageBubble && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              {MessageBubble}
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 32 }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i*0.4}s infinite` }} />)}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <CallBtn icon="📵" label="Cancel" color="#DC2626" onClick={cancelCall} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 
   // ── Active ────────────────────────────────────────────────────────────────
   if (callState === 'active') return (
-    <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)', flexDirection: 'column', gap: 16 }}>
-      {isVideo ? (
-        <div style={{ position: 'relative', width: '90vw', maxWidth: 700, height: '70vh', maxHeight: 500 }}>
-          <VideoTile stream={remoteStream} name={callInfo?.peerName} style={{ width: '100%', height: '100%' }} />
-          {localStream && (
-            <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 12, right: 12, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
-          )}
-          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.65)', color: '#22c55e', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
-            <CallTimer startedAt={callStartedAt} />
+    <>
+      {audioEl}
+      <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)', flexDirection: 'column', gap: 16 }}>
+        {isVideo ? (
+          <div style={{ position: 'relative', width: '90vw', maxWidth: 700, height: '70vh', maxHeight: 500 }}>
+            <VideoTile stream={remoteStream} name={callInfo?.peerName} style={{ width: '100%', height: '100%' }} />
+            {localStream && (
+              <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 12, right: 12, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
+            )}
+            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.65)', color: '#22c55e', padding: '4px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
+              <CallTimer startedAt={callStartedAt} />
+            </div>
+            {/* Call message — bottom left of video */}
+            {callMsg && (
+              <div style={{
+                position: 'absolute', bottom: 12, left: 12,
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+                borderRadius: 10, padding: '6px 12px', maxWidth: 280,
+              }}>
+                <span style={{ fontSize: 12, flexShrink: 0 }}>💬</span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  "{callMsg}"
+                </span>
+              </div>
+            )}
           </div>
+        ) : (
+          <div style={card}>
+            <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 8 }}>📞</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{callInfo?.peerName}</div>
+            <div style={{ fontSize: 13, color: '#22c55e', textAlign: 'center' }}><CallTimer startedAt={callStartedAt} /></div>
+            {/* Call message — in audio card */}
+            {MessageBubble && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                {MessageBubble}
+              </div>
+            )}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+          <CallBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} color={micOn ? '#334155' : '#DC2626'} onClick={toggleMic} />
+          {isVideo && <CallBtn icon={camOn ? '📹' : '📵'} label={camOn ? 'Cam Off' : 'Cam On'} color={camOn ? '#334155' : '#DC2626'} onClick={toggleCam} />}
+          <CallBtn icon="📵" label="Hang Up" color="#DC2626" onClick={hangUp} />
         </div>
-      ) : (
-        <div style={card}>
-          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 8 }}>📞</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 4 }}>{callInfo?.peerName}</div>
-          <div style={{ fontSize: 13, color: '#22c55e', textAlign: 'center' }}><CallTimer startedAt={callStartedAt} /></div>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-        <CallBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} color={micOn ? '#334155' : '#DC2626'} onClick={toggleMic} />
-        {isVideo && <CallBtn icon={camOn ? '📹' : '📵'} label={camOn ? 'Cam Off' : 'Cam On'} color={camOn ? '#334155' : '#DC2626'} onClick={toggleCam} />}
-        <CallBtn icon="📵" label="Hang Up" color="#DC2626" onClick={hangUp} />
       </div>
-    </div>
+    </>
   );
 
   // ── Ended ─────────────────────────────────────────────────────────────────
   return (
-    <div style={overlay}>
-      <div style={card}>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 8 }}>📵</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', textAlign: 'center' }}>{endReason || 'Call Ended'}</div>
+    <>
+      {audioEl}
+      <div style={overlay}>
+        <div style={card}>
+          <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 8 }}>📵</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', textAlign: 'center' }}>{endReason || 'Call Ended'}</div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

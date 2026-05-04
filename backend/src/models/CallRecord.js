@@ -9,6 +9,7 @@ const callRecordSchema = new mongoose.Schema({
   fromName:    String,
   toName:      String,
   callType:    { type: String, enum: ['audio', 'video'], default: 'audio' },
+  callMessage: { type: String, maxlength: 200 }, // optional caller intent message
   startedAt:   { type: Date, default: Date.now },
   answeredAt:  Date,
   endedAt:     Date,

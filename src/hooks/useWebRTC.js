@@ -43,9 +43,32 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   const [camOn, setCamOn]               = useState(video);
   const [permError, setPermError]       = useState('');
 
+  // Refs that mirror state — used inside toggleMic/toggleCam to avoid stale closures
+  const micOnRef = useRef(true);
+  const camOnRef = useRef(video);
+
   const localStreamRef   = useRef(null);
   const peerConnsRef     = useRef({});   // socketId -> RTCPeerConnection
   const reconnectCount   = useRef({});   // socketId -> attempts
+  const pendingIceRef    = useRef({});   // socketId -> RTCIceCandidateInit[]
+
+  const getPeerKey = useCallback((socketId) => {
+    if (peerConnsRef.current[socketId]) return socketId;
+    const keys = Object.keys(peerConnsRef.current);
+    return keys.length === 1 ? keys[0] : socketId;
+  }, []);
+
+  const flushPendingIce = useCallback(async (socketId) => {
+    const key = getPeerKey(socketId);
+    const pc = peerConnsRef.current[key];
+    const queued = pendingIceRef.current[key];
+    if (!pc || !pc.remoteDescription || !queued?.length) return;
+
+    pendingIceRef.current[key] = [];
+    for (const item of queued) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(item)); } catch {}
+    }
+  }, [getPeerKey]);
 
   // ── Get user media ────────────────────────────────────────────────────────
   // wantVideo overrides the hook-level `video` flag so call type is respected
@@ -57,6 +80,9 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
       localStreamRef.current = stream;
       setLocalStream(stream);
       setPermError('');
+      // Reset mic/cam state to match actual track state (all enabled by default)
+      setMicOn(true);  micOnRef.current = true;
+      setCamOn(useVideo); camOnRef.current = useVideo;
       return stream;
     } catch (e) {
       if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
@@ -67,6 +93,9 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
           const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
           localStreamRef.current = stream;
           setLocalStream(stream);
+          // Audio-only fallback — mic on, cam off
+          setMicOn(true);  micOnRef.current = true;
+          setCamOn(false); camOnRef.current = false;
           return stream;
         } catch {
           setPermError('Could not access microphone. Please check permissions.');
@@ -97,8 +126,21 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
       if (candidate) signalingEvents.sendIce(socketId, candidate);
     };
 
+    // Build or reuse a remote MediaStream for this peer
+    // e.streams[0] can be undefined if the remote side's tracks haven't
+    // been associated with a stream yet — use e.track directly as fallback.
+    let remoteStream = null;
     pc.ontrack = (e) => {
-      if (e.streams?.[0]) onRemoteStream?.(socketId, e.streams[0]);
+      if (!remoteStream) {
+        remoteStream = e.streams?.[0] || new MediaStream();
+      }
+      // Add the track if not already in the stream (prevents duplicates)
+      if (!remoteStream.getTracks().find(t => t.id === e.track.id)) {
+        remoteStream.addTrack(e.track);
+      }
+      // Always fire — caller will play audio/video from this stream
+      onRemoteStream?.(socketId, remoteStream);
+      e.track.onunmute = () => onRemoteStream?.(socketId, remoteStream);
     };
 
     pc.onconnectionstatechange = () => {
@@ -132,32 +174,39 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   const handleOffer = useCallback(async (socketId, offer, signalingEvents, stream) => {
     const pc = createPeer(socketId, null, signalingEvents, stream);
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await flushPendingIce(socketId);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     signalingEvents.sendAnswer(socketId, answer);
-  }, [createPeer]);
+  }, [createPeer, flushPendingIce]);
 
   // ── Handle incoming answer ────────────────────────────────────────────────
   // In 1:1 calls the caller creates the peer with key 'peer' but the answer
   // arrives with from=recipientSocketId — fall back to the only existing peer.
   const handleAnswer = useCallback(async (socketId, answer) => {
-    let pc = peerConnsRef.current[socketId];
-    if (!pc) {
-      const vals = Object.values(peerConnsRef.current);
-      if (vals.length === 1) pc = vals[0]; // 1:1 call fallback
+    const key = getPeerKey(socketId);
+    const pc = peerConnsRef.current[key];
+    if (pc) {
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      await flushPendingIce(key);
     }
-    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  }, []);
+  }, [flushPendingIce, getPeerKey]);
 
   // ── Handle ICE candidate ──────────────────────────────────────────────────
   const handleIce = useCallback(async (socketId, candidate) => {
-    let pc = peerConnsRef.current[socketId];
-    if (!pc) {
-      const vals = Object.values(peerConnsRef.current);
-      if (vals.length === 1) pc = vals[0];
+    if (!candidate) return;
+    const key = getPeerKey(socketId);
+    const pc = peerConnsRef.current[key];
+
+    if (!pc || !pc.remoteDescription) {
+      pendingIceRef.current[key] = [...(pendingIceRef.current[key] || []), candidate];
+      return;
     }
-    if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-  }, []);
+
+    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {
+      pendingIceRef.current[key] = [...(pendingIceRef.current[key] || []), candidate];
+    });
+  }, [getPeerKey]);
 
   // ── Replace video track (screen share or camera swap) ────────────────────
   const replaceVideoTrack = useCallback((newTrack) => {
@@ -168,22 +217,25 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   }, []);
 
   // ── Toggle mic ───────────────────────────────────────────────────────────
+  // Uses ref instead of state dependency to avoid stale closures
   const toggleMic = useCallback(() => {
     const stream = localStreamRef.current;
     if (!stream) return;
-    const newState = !micOn;
+    const newState = !micOnRef.current;
     stream.getAudioTracks().forEach(t => { t.enabled = newState; });
+    micOnRef.current = newState;
     setMicOn(newState);
-  }, [micOn]);
+  }, []);
 
   // ── Toggle camera ─────────────────────────────────────────────────────────
   const toggleCam = useCallback(() => {
     const stream = localStreamRef.current;
     if (!stream) return;
-    const newState = !camOn;
+    const newState = !camOnRef.current;
     stream.getVideoTracks().forEach(t => { t.enabled = newState; });
+    camOnRef.current = newState;
     setCamOn(newState);
-  }, [camOn]);
+  }, []);
 
   // ── Close a specific peer ─────────────────────────────────────────────────
   const closePeer = useCallback((socketId) => {
@@ -199,6 +251,10 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
     Object.values(peerConnsRef.current).forEach(pc => { try { pc.close(); } catch {} });
     peerConnsRef.current = {};
     reconnectCount.current = {};
+    pendingIceRef.current = {};
+    // Reset mic/cam state so next call starts fresh (mic on, cam off until decided)
+    setMicOn(true);  micOnRef.current = true;
+    setCamOn(false); camOnRef.current = false;
   }, []);
 
   useEffect(() => () => stopAll(), []);
