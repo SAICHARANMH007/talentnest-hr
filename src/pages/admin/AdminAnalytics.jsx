@@ -442,6 +442,51 @@ export default function AdminAnalytics({ user, onNavigate }) {
     };
   }, [serverStats, allCandidates, jobCounts, localAppStats]);
   
+  const stageBreakdown = useMemo(() => {
+    // 1. Priority: Backend Aggregates (Covers ALL data for the selected period)
+    if (analyticsData?.byStage) {
+      const countMap = {};
+      analyticsData.byStage.forEach(x => {
+        const fId = DB_TO_FRONTEND_STAGE[x.stage] || x.stage?.toLowerCase().replace(/\s+/g, '_');
+        if (fId) countMap[fId] = (countMap[fId] || 0) + x.count;
+      });
+      return STAGES.map((s, i) => ({
+        label: STAGE_LABELS[s] || s,
+        value: countMap[s] || 0,
+        color: STAGE_COLORS[i],
+        stageKey: s,
+      }));
+    }
+    // 2. Fallback: Local calculated stats (only before analyticsData loads)
+    if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
+      return STAGES.map((s, i) => ({
+        label: STAGE_LABELS[s] || s,
+        value: localAppStats.pipeline[s] || 0,
+        color: STAGE_COLORS[i],
+        stageKey: s,
+      }));
+    }
+    return STAGES.map((s, i) => ({ label: STAGE_LABELS[s], value: 0, color: STAGE_COLORS[i], stageKey: s }));
+  }, [localAppStats, analyticsData]);
+
+  const sourceBreakdown = useMemo(() => {
+    if (!analyticsData?.bySource) return [];
+    // Consolidate any duplicate sources (safety fallback)
+    const map = {};
+    analyticsData.bySource.forEach(r => {
+      const src = (r.source || 'direct').toLowerCase();
+      map[src] = (map[src] || 0) + r.count;
+    });
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, e) => s + e[1], 0);
+    return entries.map(([source, count], i) => ({
+      label: source,
+      value: count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      color: SOURCE_COLORS[source] || STAGE_COLORS[i % STAGE_COLORS.length],
+    }));
+  }, [analyticsData]);
+  
   // ── Name & User Resolver ──────────────────────────────────────────────────
   const getCandidateData = useCallback((app) => {
     if (!app) return { name: 'Unknown', user: null };
@@ -475,33 +520,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const email = app.candidateEmail || app.email || u?.email;
     return { name: email ? email.split('@')[0] : 'Unknown', user: null };
   }, [allCandidates, allApps]);
-
-  const stageBreakdown = useMemo(() => {
-    // Priority 1: Backend Aggregates (Covers 100% of data)
-    if (analyticsData?.byStage) {
-      const countMap = {};
-      analyticsData.byStage.forEach(x => {
-        const fId = DB_TO_FRONTEND_STAGE[x.stage] || x.stage?.toLowerCase().replace(/\s+/g, '_');
-        if (fId) countMap[fId] = (countMap[fId] || 0) + x.count;
-      });
-      return STAGES.map((s, i) => ({
-        label: STAGE_LABELS[s] || s,
-        value: countMap[s] || 0,
-        color: STAGE_COLORS[i],
-        stageKey: s,
-      }));
-    }
-    // Priority 2: Local calculated stats (Useful for real-time updates before refresh)
-    if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
-      return STAGES.map((s, i) => ({
-        label: STAGE_LABELS[s] || s,
-        value: localAppStats.pipeline[s] || 0,
-        color: STAGE_COLORS[i],
-        stageKey: s,
-      }));
-    }
-    return STAGES.map((s, i) => ({ label: STAGE_LABELS[s], value: 0, color: STAGE_COLORS[i], stageKey: s }));
-  }, [localAppStats, analyticsData]);
 
   const topJobs = useMemo(() => {
     if (analyticsData?.topJobs) {
@@ -751,7 +769,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             <div style={{ padding:32 }}>
               <div style={{ textAlign:'center', marginBottom:24 }}>
                 <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
-                <div style={{ fontSize:24, fontWeight:800, color:'#181818' }}>{mergeSummary.totalMoved} Candidates Moved</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#181818' }}>{mergeSummary.totalMoved} Candidates Moved</div>
                 <div style={{ color:'#706E6B', fontSize:14, marginTop:4 }}>{mergeSummary.totalMerged} duplicate jobs closed successfully</div>
               </div>
               
@@ -817,7 +835,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       {/* ── KPI Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
-        <TrendCard label="Total Candidates" value={stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
+        <TrendCard label="Total Candidates" value={analyticsData?.total ?? stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
         <TrendCard label="Active Job Postings" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
         <TrendCard label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
           sub={stats.appsLast30 ? `${stats.appsLast30} in last 30 days` : undefined}
@@ -841,7 +859,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
         <div style={{ ...glassPanel, cursor: 'pointer' }}>
           <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
-            centerValue={stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
+            centerValue={analyticsData?.total ?? stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
           <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
         </div>
       </div>

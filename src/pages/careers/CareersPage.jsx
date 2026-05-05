@@ -238,7 +238,7 @@ function ApplyModal({ job, onClose }) {
                 <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
                   style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer', flexShrink: 0 }} />
                 <span style={{ fontSize: 11, color: '#374151', lineHeight: 1.5 }}>
-                  I agree to the <a href="/terms" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>. <span style={{ color: '#e53e3e' }}>*</span>
+                  I agree to the <Link to="/terms" target="_blank" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Terms & Conditions</Link> and <Link to="/privacy" target="_blank" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</Link>. <span style={{ color: '#e53e3e' }}>*</span>
                 </span>
               </label>
 

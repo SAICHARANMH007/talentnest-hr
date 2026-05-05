@@ -13,6 +13,7 @@ const asyncHandler   = require('../utils/asyncHandler');
 const AppError       = require('../utils/AppError');
 const logger         = require('../middleware/logger');
 const { parseResume: parseResumeUtil } = require('../utils/resumeParser');
+const { syncProfile } = require('../utils/syncProfile');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -182,6 +183,12 @@ router.post('/', ...guard,
     });
 
     logger.audit('Candidate created', req.user.id, req.user.tenantId, { candidateId: candidate._id });
+
+    // Sync to User collection if account exists
+    if (candidate.email) {
+      await syncProfile(candidate.email, req.body, candidate.tenantId);
+    }
+
     res.status(201).json({ success: true, data: { ...candidate.toObject(), id: candidate._id.toString() } });
   })
 );
@@ -222,6 +229,11 @@ router.patch('/:id', ...guard,
       { new: true }
     );
     if (!candidate) throw new AppError('Candidate not found.', 404);
+
+    // Sync changes to User collection if a linked account exists
+    if (candidate.email) {
+      await syncProfile(candidate.email, updates, candidate.tenantId);
+    }
 
     res.json({ success: true, data: { ...candidate.toObject(), id: candidate._id.toString() } });
   })

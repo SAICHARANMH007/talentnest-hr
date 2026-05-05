@@ -15,6 +15,75 @@ import ChangePasswordModal from '../../components/shared/ChangePasswordModal.jsx
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import InviteModal from '../../components/shared/InviteModal.jsx';
 
+// ── Candidate pipeline panel ────────────────────────────────────────────────
+function CandidatePipelinePanel({ candidateEmail, candidateId, onToast }) {
+  const [state, setState] = useState({ loading: true, apps: [], error: false });
+
+  const load = useCallback(async () => {
+    setState(p => ({ ...p, loading: true }));
+    try {
+      // Use email-based fetching for candidates to get all applications
+      const res = await api.getApplications({ email: candidateEmail, limit: 100 });
+      const apps = Array.isArray(res) ? res : (res?.data || []);
+      setState({ loading: false, apps, error: false });
+    } catch {
+      setState({ loading: false, apps: [], error: true });
+    }
+  }, [candidateEmail]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const changeStage = async (appId, newStage) => {
+    try {
+      await api.updateStage(appId, newStage);
+      onToast?.(`✅ Moved to ${SM[newStage]?.label || newStage}`);
+      setState(p => ({
+        ...p,
+        apps: p.apps.map(a => (a.id || a._id) === appId ? { ...a, stage: newStage } : a)
+      }));
+    } catch (e) {
+      onToast?.(`❌ ${e.message}`);
+    }
+  };
+
+  if (state.loading) return <p style={{ color: "#706E6B", fontSize: 12, margin: "10px 0 0" }}><Spinner /> Loading pipeline…</p>;
+  if (state.error) return <p style={{ color: "#BA0517", fontSize: 12, margin: "10px 0 0" }}>⚠️ Could not load pipeline data.</p>;
+  if (!state.apps.length) return <p style={{ color: "#9E9D9B", fontSize: 12, margin: "10px 0 0" }}>No applications found for this candidate.</p>;
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #F3F2F2" }}>
+      <div style={{ color: "#0176D3", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>📊 ACTIVE APPLICATIONS ({state.apps.length})</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {state.apps.map(a => {
+          const st = SM[a.stage] || { color: "#0176D3", label: a.stage || 'Applied', icon: "•" };
+          const jobTitle = a.jobId?.title || a.job?.title || 'Unknown Job';
+          return (
+            <div key={a.id || a._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: 10, background: "rgba(1,118,211,0.03)", border: "1px solid rgba(1,118,211,0.08)" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#181818", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{jobTitle}</div>
+                <div style={{ fontSize: 11, color: "#706E6B" }}>Applied {new Date(a.createdAt).toLocaleDateString()}</div>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <select
+                  value={a.stage || 'applied'}
+                  onChange={e => changeStage(a.id || a._id, e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    background: `${st.color}15`, color: st.color, border: `1px solid ${st.color}33`,
+                    borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer", outline: "none"
+                  }}
+                >
+                  {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Recruiter activity panel ────────────────────────────────────────────────
 function RecruiterActivityPanel({ recruiterId }) {
   const [state, setState] = useState({ loading: true, jobs: [], apps: [], error: false });
@@ -362,6 +431,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [form, setForm]           = useState({ name: '', email: '', role: filterRole || 'candidate', domain: '' });
   const [toast, setToast]         = useState('');
   const [expandedRec, setExpandedRec] = useState(null);
+  const [expandedCand, setExpandedCand] = useState(null);
   const [detailUser, setDetailUser]   = useState(null);
   const [resetPwdUser, setResetPwdUser] = useState(null);
   const [drawerUser, setDrawerUser]   = useState(null);
@@ -463,7 +533,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     } catch (e) { setToast(`❌ Failed to load users: ${e.message}`); setUsers([]); }
     setLoad(false);
   };
-  useEffect(() => { load(); setExpandedRec(null); setSelectedIds(new Set()); setActiveTab('users'); }, [filterRole, recruiterId]);
+  useEffect(() => { load(); setExpandedRec(null); setExpandedCand(null); setSelectedIds(new Set()); setActiveTab('users'); }, [filterRole, recruiterId]);
 
   // Auto-open detail drawer if coming from notification deep-link
   useEffect(() => {
@@ -994,7 +1064,12 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 {/* ── Action strip — all buttons in one wrapping row ── */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid #F3F2F2', alignItems: 'center' }}>
                   {filterRole === 'candidate' && (
-                    <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3', whiteSpace: 'nowrap' }}>📋 Resume</button>
+                    <>
+                      <button onClick={() => setDetailUser(u)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, borderColor: 'rgba(1,118,211,0.35)', color: '#0176D3', whiteSpace: 'nowrap' }}>📋 Resume</button>
+                      <button onClick={() => setExpandedCand(expandedCand === u.id ? null : u.id)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, whiteSpace: 'nowrap', ...(expandedCand === u.id ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
+                        {expandedCand === u.id ? '▲ Hide' : '👁 Pipeline'}
+                      </button>
+                    </>
                   )}
                   {filterRole === 'recruiter' && (
                     <button onClick={() => setExpandedRec(isExpanded ? null : u.id)} style={{ ...btnG, padding: '7px 12px', fontSize: 11, whiteSpace: 'nowrap', ...(isExpanded ? { borderColor: '#0176D3', color: '#0176D3' } : {}) }}>
@@ -1014,6 +1089,9 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 </div>
 
                 {isExpanded && <RecruiterActivityPanel recruiterId={u.id} />}
+                {filterRole === 'candidate' && expandedCand === u.id && (
+                  <CandidatePipelinePanel candidateEmail={u.email} candidateId={u.id} onToast={setToast} />
+                )}
               </div>
             );
           })}

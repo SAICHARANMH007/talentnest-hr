@@ -1405,7 +1405,12 @@ router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin')
 
   const raw = await Application.aggregate([
     { $match: { ...tf, createdAt: dateRange } },
-    { $group: { _id: '$source', count: { $sum: 1 } } },
+    { $group: {
+        _id: {
+          $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] }
+        },
+        count: { $sum: 1 }
+    }},
     { $sort: { count: -1 } },
   ]);
 

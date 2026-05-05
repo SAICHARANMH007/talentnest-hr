@@ -168,7 +168,8 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
       _refreshing = null;
 
       if (refreshRes.token) {
-        _accessToken = refreshRes.token; // store in memory only
+        _accessToken = refreshRes.token;
+        sessionStorage.setItem(TOKEN_KEY, refreshRes.token); // Persist refreshed token
         if (refreshRes.user) sessionStorage.setItem('tn_user', JSON.stringify(refreshRes.user));
         // Retry original request with new token
         return _doReq(method, path, body, auth, true);

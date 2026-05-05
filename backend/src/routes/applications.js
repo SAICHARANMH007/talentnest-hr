@@ -480,13 +480,20 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
       filter.jobId = { $in: myJobIds };
     }
   }
+  if (req.query.email) {
+    const matched = await Candidate.find({ email: req.query.email.toLowerCase().trim(), deletedAt: null }).select('_id').lean();
+    filter.candidateId = { $in: matched.map(m => m._id) };
+  } else if (req.query.candidateId) {
+    filter.candidateId = req.query.candidateId;
+  }
+
+  if (req.query.jobId && req.user.role !== 'recruiter') filter.jobId = req.query.jobId;
+
   // Filter by a specific recruiter's assigned jobs (used by analytics drill-down)
   if (req.query.recruiterId && ['admin', 'super_admin'].includes(req.user.role)) {
     const recJobs = await Job.find({ assignedRecruiters: req.query.recruiterId }).select('_id').lean();
     filter.jobId = { $in: recJobs.map(j => j._id) };
   }
-  if (req.query.jobId && req.user.role !== 'recruiter') filter.jobId = req.query.jobId;
-  if (req.query.candidateId) filter.candidateId = req.query.candidateId;
   if (req.query.stage)       filter.currentStage = req.query.stage;
   if (req.query.status)      filter.status       = req.query.status;
   if (req.query.startDate || req.query.endDate) {

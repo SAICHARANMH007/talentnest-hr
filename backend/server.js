@@ -91,12 +91,12 @@ app.use(morgan(IS_PROD ? 'combined' : 'dev'));
 // ── Rate limiting
 // Global: 5000 requests per 15 min per IP (Supports high-traffic office proxies and 100+ active users)
 app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000, max: 5000,
+  windowMs: 15 * 60 * 1000, max: 20000,
   message: { success: false, error: 'Too many requests. Try again later.' }
 }));
 // Auth endpoints — Scaled for growth
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { success: false, error: 'Too many login attempts.' } }));
-app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { success: false, error: 'Too many registration attempts.' } }));
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { success: false, error: 'Too many login attempts.' } }));
+app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { success: false, error: 'Too many registration attempts.' } }));
 // Email / invite sending — prevent email spam and Resend bill abuse
 // 200 invite/email sends per hour per IP (Allows bulk onboarding)
 app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));

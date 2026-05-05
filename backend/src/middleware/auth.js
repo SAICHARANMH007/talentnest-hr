@@ -13,7 +13,7 @@ const JWT_SECRET = (() => {
 const userCache = new Map();
 const USER_CACHE_TTL = 1 * 60 * 1000;
 
-const JWT_EXPIRES = process.env.JWT_EXPIRES || '15m';
+const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 
 // Sign a new access token — embeds userId, tenantId, and role
 const signToken = (userId, tenantId, role) =>

@@ -19,6 +19,7 @@ const asyncHandler        = require('../utils/asyncHandler');
 const AppError            = require('../utils/AppError');
 const checkPlanLimits     = require('../middleware/checkPlanLimits');
 const userService = require('../services/user.service');
+const { syncProfile } = require('../utils/syncProfile');
 const logger       = require('../middleware/logger');
 const bcrypt       = require('bcryptjs');
 const crypto       = require('crypto');
@@ -118,6 +119,12 @@ router.patch('/me', authenticate, asyncHandler(async (req, res) => {
   }
   const updated = await User.findByIdAndUpdate(req.user._id || req.user.id, { $set: update }, { new: true }).select('-password');
   if (!updated) throw new AppError('User not found.', 404);
+
+  // Sync changes to Candidate collection if this user is a candidate
+  if (updated.role === 'candidate' && updated.email) {
+    await syncProfile(updated.email, update, updated.tenantId);
+  }
+
   res.json({ success: true, data: userService.normalize(updated) });
 }));
 
@@ -217,6 +224,12 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter
   }
 
   const updated = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true }).select('-password');
+  
+  // Sync changes to Candidate collection if this user is a candidate
+  if (updated && updated.role === 'candidate' && updated.email) {
+    await syncProfile(updated.email, update, updated.tenantId);
+  }
+
   logger.audit('User updated', req.user._id, req.user.orgId, { targetUserId: req.params.id, updates: Object.keys(update) });
   res.json({ success: true, data: userService.normalize(updated) });
 }));
@@ -418,42 +431,47 @@ async function syncCandidateProfileToRecruiter(candidate, recruiterId, actor) {
 // PATCH /api/users/:id/assign — Assign recruiter to candidate
 router.patch('/:id/assign', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
   const { recruiterId } = req.body;
-  const target = await User.findOne({ _id: req.params.id, role: 'candidate', deletedAt: null }).lean();
-  if (target && req.user.role !== 'super_admin' && String(target.tenantId) !== String(req.user.tenantId)) {
-    throw new AppError('Candidate must belong to your organization.', 403);
-  }
 
-  if (target) {
-    const sync = recruiterId
-      ? await syncCandidateApplicationsToRecruiter(target, recruiterId, req.user)
+  // Try Candidate collection first (external candidates added by recruiters)
+  const candidate = await Candidate.findOne({ _id: req.params.id, deletedAt: null }).lean();
+  if (candidate) {
+    if (req.user.role !== 'super_admin' && String(candidate.tenantId) !== String(req.user.tenantId)) {
+      throw new AppError('Candidate must belong to your organization.', 403);
+    }
+    const syncResult = recruiterId
+      ? await syncCandidateProfileToRecruiter(candidate, recruiterId, req.user)
       : { jobCount: 0, applicationCount: 0 };
-
-    const user = await User.findByIdAndUpdate(
+    const updated = await Candidate.findByIdAndUpdate(
       req.params.id,
       { $set: { assignedRecruiterId: recruiterId || null } },
       { new: true }
-    ).select('-passwordHash').lean();
-    if (!user) throw new AppError('User not found.', 404);
-    logger.audit('Recruiter assigned to candidate', req.user._id, req.user.tenantId, { targetUserId: req.params.id, recruiterId, ...sync });
-    return res.json({ success: true, data: { ...userService.normalize(user), assignmentSync: sync } });
+    ).lean();
+    if (updated?.email) {
+      await syncProfile(updated.email, { assignedRecruiterId: recruiterId || null }, updated.tenantId);
+    }
+    logger.audit('Recruiter assigned to candidate', req.user._id, req.user.tenantId, { candidateId: req.params.id, recruiterId });
+    return res.json({ success: true, data: { ...updated, id: updated._id.toString(), role: 'candidate', assignmentSync: syncResult } });
   }
 
-  const candidateFilter = { _id: req.params.id, deletedAt: null };
-  if (req.user.role !== 'super_admin') candidateFilter.tenantId = req.user.tenantId;
-  const candidate = await Candidate.findOne(candidateFilter).lean();
-  if (!candidate) throw new AppError('Candidate not found.', 404);
-
-  const sync = recruiterId
-    ? await syncCandidateProfileToRecruiter(candidate, recruiterId, req.user)
+  // Fall back to User collection (self-registered candidates)
+  const target = await User.findOne({ _id: req.params.id, role: 'candidate', deletedAt: null }).lean();
+  if (!target) throw new AppError('Candidate not found.', 404);
+  if (req.user.role !== 'super_admin' && String(target.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Candidate must belong to your organization.', 403);
+  }
+  const syncResult = recruiterId
+    ? await syncCandidateApplicationsToRecruiter(target, recruiterId, req.user)
     : { jobCount: 0, applicationCount: 0 };
-  const updated = await Candidate.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.params.id,
     { $set: { assignedRecruiterId: recruiterId || null } },
     { new: true }
-  ).lean();
-
-  logger.audit('Recruiter assigned to candidate profile', req.user._id, req.user.tenantId, { candidateId: req.params.id, recruiterId, ...sync });
-  res.json({ success: true, data: { ...updated, id: updated._id.toString(), role: 'candidate', assignmentSync: sync } });
+  ).select('-passwordHash').lean();
+  if (user?.email) {
+    await syncProfile(user.email, { assignedRecruiterId: recruiterId || null }, user.tenantId);
+  }
+  logger.audit('Recruiter assigned to candidate user', req.user._id, req.user.tenantId, { targetUserId: req.params.id, recruiterId });
+  res.json({ success: true, data: { ...userService.normalize(user), assignmentSync: syncResult } });
 }));
 
 // POST /api/users/bulk-whatsapp — send personalised WhatsApp to multiple candidates
