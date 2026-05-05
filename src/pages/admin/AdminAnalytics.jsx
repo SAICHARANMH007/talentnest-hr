@@ -424,7 +424,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         totalCandidates: candCount,
         activeJobs:      totalJobs > 0 ? `${activeJobs} / ${totalJobs}` : activeJobs,
         totalApps:       totalApps,
-        appsLast30:      localAppStats.last30 || serverStats.appsLast30 || 0,
+        appsLast30:      serverStats.appsLast30 || localAppStats.last30 || 0,
         placements:      hiredCount,
         placementsLast30: last30Hired,
         fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : (serverStats.fillRate || 0),
@@ -477,16 +477,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allCandidates, allApps]);
 
   const stageBreakdown = useMemo(() => {
-    // Priority: use local calculated stats for 100% real-time accuracy
-    if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
-      return STAGES.map((s, i) => ({
-        label: STAGE_LABELS[s] || s,
-        value: localAppStats.pipeline[s] || 0,
-        color: STAGE_COLORS[i],
-        stageKey: s,
-      }));
-    }
-    // Fallback: server data
+    // Priority 1: Backend Aggregates (Covers 100% of data)
     if (analyticsData?.byStage) {
       const countMap = {};
       analyticsData.byStage.forEach(x => {
@@ -496,6 +487,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
       return STAGES.map((s, i) => ({
         label: STAGE_LABELS[s] || s,
         value: countMap[s] || 0,
+        color: STAGE_COLORS[i],
+        stageKey: s,
+      }));
+    }
+    // Priority 2: Local calculated stats (Useful for real-time updates before refresh)
+    if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
+      return STAGES.map((s, i) => ({
+        label: STAGE_LABELS[s] || s,
+        value: localAppStats.pipeline[s] || 0,
         color: STAGE_COLORS[i],
         stageKey: s,
       }));
@@ -1093,7 +1093,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             }));
             return (
               <div>
-                <DonutChart segments={segments} size={160} title="" centerValue={total} centerLabel="TOTAL" onItemClick={openSourceDrill} />
+                <DonutChart segments={segments} size={160} title="" centerValue={total} centerLabel="TOTAL" onItemClick={openSourceDrill} hideLegend={true} />
                 <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {segments.map(s => (
                     <div key={s.label}

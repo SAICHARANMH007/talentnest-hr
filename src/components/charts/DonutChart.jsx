@@ -58,16 +58,18 @@ export default function DonutChart({ segments = [], size = 130, title, centerLab
             </g>
           )}
         </svg>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {segments.filter(s => s.value > 0).map((s, i) => (
-            <div key={i} onClick={() => onItemClick && onItemClick(s, i)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: onItemClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 4 }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, color: '#444', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
-              <div style={{ color: '#181818', fontSize: 11, fontWeight: 700, marginLeft: 4 }}>{s.value}</div>
-              <div style={{ color: '#9E9D9B', fontSize: 10, minWidth: 28, textAlign: 'right' }}>{Math.round((s.value / total) * 100)}%</div>
-            </div>
-          ))}
-        </div>
+        {!hideLegend && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {segments.filter(s => s.value > 0).map((s, i) => (
+              <div key={i} onClick={() => onItemClick && onItemClick(s, i)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: onItemClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 4 }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, color: '#444', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
+                <div style={{ color: '#181818', fontSize: 11, fontWeight: 700, marginLeft: 4 }}>{s.value}</div>
+                <div style={{ color: '#9E9D9B', fontSize: 10, minWidth: 28, textAlign: 'right' }}>{Math.round((s.value / total) * 100)}%</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
