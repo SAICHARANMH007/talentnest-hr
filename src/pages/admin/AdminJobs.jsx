@@ -209,7 +209,15 @@ export default function AdminJobs({ user }) {
   const locations   = [...new Set(jobs.map(j => j.location).filter(Boolean))];
   const recruiters  = [...new Set(jobs.map(j => j.recruiterName).filter(Boolean))];
   const filtered = jobs.filter(j => {
-    if (search) { const q=search.toLowerCase(); if (!j.title?.toLowerCase().includes(q) && !j.company?.toLowerCase().includes(q) && !(j.skills||'').toLowerCase().includes(q)) return false; }
+    if (search) {
+      const q = search.toLowerCase();
+      const skillsStr = Array.isArray(j.skills) ? j.skills.join(', ') : (j.skills || '');
+      if (
+        !j.title?.toLowerCase().includes(q) &&
+        !j.company?.toLowerCase().includes(q) &&
+        !skillsStr.toLowerCase().includes(q)
+      ) return false;
+    }
     // Handle both backend 'active' and frontend 'Open' labels
     const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');
     if (statusFilter !== 'All' && mappedStatus !== statusFilter) return false;
