@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
+import Spinner from '../ui/Spinner.jsx';
 import StageHistory from '../pipeline/StageHistory.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
@@ -342,12 +343,12 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <>
                   {/* Activity List: Show all applications */}
                   {(() => {
-                    // Prefer dashboard allApplications (from candidate-records API) which
-                    // includes job titles. Fall back to individually-fetched apps.
-                    const allApps = (u.allApplications && u.allApplications.length > 0)
-                      ? u.allApplications
-                      : allFetchedApps.map(a => ({
+                    // Always use allFetchedApps (has real Application._id for stage changes).
+                    // Fall back to u.allApplications only for display when fetch hasn't returned yet.
+                    const allApps = allFetchedApps.length > 0
+                      ? allFetchedApps.map(a => ({
                           id: a.id || a._id?.toString(),
+                          _id: a._id,
                           jobId: a.jobId?._id?.toString() || a.jobId?.toString(),
                           jobTitle: (a.jobId && typeof a.jobId === 'object' ? a.jobId.title : null) || a.job?.title || 'Unknown Job',
                           stage: a.stage || a.currentStage,
@@ -356,7 +357,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                           updatedAt: a.updatedAt,
                           rejectionReason: a.rejectionReason,
                           stageHistory: a.stageHistory,
-                        }));
+                        }))
+                      : (u.allApplications || []);
                     // If we only have one app or it's the active one, show details.
                     // But if there are multiple, show a summary list first.
                     if (allApps.length === 0 && !app) {

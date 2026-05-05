@@ -147,6 +147,10 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
           <Dropdown label="Urgency"     value={form.urgency}    onChange={v => sf('urgency', v)}
             options={['High', 'Medium', 'Low']} />
           <Field label="Education Requirement" value={form.education} onChange={v => sf('education', v)} placeholder="B.Tech / MBA / Any Graduate" />
+          <Field label="🔗 External Careers URL" value={form.externalUrl} onChange={v => sf('externalUrl', v)}
+            placeholder="https://careers.company.com/jobs/senior-developer"
+            hint="Redirect candidates to this URL instead of applying here"
+            type="url" />
         </div>
       </div>
 
@@ -175,14 +179,6 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
       <div style={{ ...card, padding: 16 }}>
         <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: '1px', margin: '0 0 12px' }}>⚙️ SETTINGS</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Field
-            label="🔗 External Careers URL"
-            value={form.externalUrl}
-            onChange={v => sf('externalUrl', v)}
-            placeholder="https://careers.company.com/jobs/senior-developer"
-            hint="Optional — candidates are redirected here after applying"
-            type="url"
-          />
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 12px', background: '#F3F2F2', borderRadius: 6, border: '1px solid #DDDBDA' }}>
             <input type="checkbox" checked={form.isPublic} onChange={e => sf('isPublic', e.target.checked)}
               style={{ width: 15, height: 15, accentColor: '#0176D3' }} />
