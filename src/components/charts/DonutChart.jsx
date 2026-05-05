@@ -2,7 +2,7 @@ import React from 'react';
 
 // Pure SVG multi-segment donut chart — no external dependency
 // Props: segments=[{label, value, color}], size, title, centerLabel, centerValue, onItemClick
-export default function DonutChart({ segments = [], size = 130, title, centerLabel, centerValue, onItemClick }) {
+export default function DonutChart({ segments = [], size = 130, title, centerLabel, centerValue, onItemClick, hideLegend }) {
   const total = segments.reduce((s, d) => s + (d.value || 0), 0);
   if (!total) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
