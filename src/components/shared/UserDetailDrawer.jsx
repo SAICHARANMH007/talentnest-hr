@@ -91,21 +91,23 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   }, [u?.id, u?._id]); // eslint-disable-line
 
   // If we have a candidate but no app context, try to find the last application for context
+  // Always fetch ALL applications for this candidate so the pipeline shows complete history
+  const [allFetchedApps, setAllFetchedApps] = useState([]);
   useEffect(() => {
     const isCandidate = (u?.role || 'candidate') === 'candidate';
-    if (isCandidate && !app) {
-      const uid = u?.id || u?._id?.toString();
-      if (!uid) return;
-      setLoadingApp(true);
-      api.getApplications({ candidateId: uid }).then(apps => {
-        const list = Array.isArray(apps) ? apps : (apps?.data || []);
-        if (list.length > 0) {
-          setApp(list[0]);
-          setCurrentStage(list[0].stage);
-        }
-      }).catch(() => {}).finally(() => setLoadingApp(false));
-    }
-  }, [u?.id, u?._id, u?.role, app]); // eslint-disable-line
+    if (!isCandidate) return;
+    const uid = u?.id || u?._id?.toString();
+    if (!uid) return;
+    setLoadingApp(true);
+    api.getApplications({ candidateId: uid, limit: 200 }).then(res => {
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setAllFetchedApps(list);
+      if (!app && list.length > 0) {
+        setApp(list[0]);
+        setCurrentStage(list[0].stage);
+      }
+    }).catch(() => setAllFetchedApps([])).finally(() => setLoadingApp(false));
+  }, [u?.id, u?._id, u?.role]); // eslint-disable-line
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -330,7 +332,21 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <>
                   {/* Activity List: Show all applications */}
                   {(() => {
-                    const allApps = u.allApplications || [];
+                    // Prefer dashboard allApplications (from candidate-records API) which
+                    // includes job titles. Fall back to individually-fetched apps.
+                    const allApps = (u.allApplications && u.allApplications.length > 0)
+                      ? u.allApplications
+                      : allFetchedApps.map(a => ({
+                          id: a.id || a._id?.toString(),
+                          jobId: a.jobId?._id?.toString() || a.jobId?.toString(),
+                          jobTitle: (a.jobId && typeof a.jobId === 'object' ? a.jobId.title : null) || a.job?.title || 'Unknown Job',
+                          stage: a.stage || a.currentStage,
+                          status: a.status,
+                          appliedAt: a.createdAt,
+                          updatedAt: a.updatedAt,
+                          rejectionReason: a.rejectionReason,
+                          stageHistory: a.stageHistory,
+                        }));
                     // If we only have one app or it's the active one, show details.
                     // But if there are multiple, show a summary list first.
                     if (allApps.length === 0 && !app) {
@@ -379,13 +395,17 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                         setChangingStage(true);
                                         try {
                                           await api.updateStage(appId, newStage);
-                                          // Update in allApplications list
+                                          // Update both sources so UI reflects change immediately
                                           setFullUser(prev => prev ? {
                                             ...prev,
                                             allApplications: (prev.allApplications || []).map(x =>
                                               String(x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
                                             )
                                           } : prev);
+                                          setAllFetchedApps(prev => prev.map(x =>
+                                            String(x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
+                                          ));
+                                          if (app && String(app.id || app._id) === appId) setCurrentStage(newStage);
                                           setToast(`✅ Stage updated to ${SM[newStage]?.label || newStage}`);
                                         } catch (err) { setToast(`❌ ${err.message}`); }
                                         setChangingStage(false);

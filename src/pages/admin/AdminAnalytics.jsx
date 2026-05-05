@@ -934,10 +934,14 @@ export default function AdminAnalytics({ user, onNavigate }) {
                         const stage = STAGE_LABELS[a.stage] || STAGE_LABELS[a.currentStage] || a.currentStage || a.stage || 'Applied';
                         const email = cand.user?.email || a.candidateEmail || a.email || '';
                         const phone = cand.user?.phone || a.candidatePhone || a.phone || '';
+                        // Use candidateName field directly when getCandidateData couldn't resolve
+                        const displayName = (cand.name && cand.name !== 'Unknown')
+                          ? cand.name
+                          : (a.candidateName || email.split('@')[0] || 'Candidate');
                         return {
                           ...a,
                           id: a.id || a._id,
-                          name: cand.name,
+                          name: displayName,
                           sub: `${jobTitle} · ${stage}${email ? ` · ${email}` : ''}${phone ? ` · ${phone}` : ''}`,
                         };
                       });
