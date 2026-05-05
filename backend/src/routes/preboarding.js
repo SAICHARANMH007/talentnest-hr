@@ -67,9 +67,10 @@ const tenantGuard = (req, res, next) => {
 };
 
 // ── HR/Admin: list all pre-boarding records ───────────────────────────────────
-router.get('/', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+// super_admin sees ALL orgs; admin/recruiter see their org only
+router.get('/', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { status, search, page = 1, limit = 20 } = req.query;
-  const q = { tenantId: req.user.tenantId };
+  const q = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
   if (status) q.status = status;
   if (search) q.candidateName = { $regex: search, $options: 'i' };
 
@@ -305,6 +306,68 @@ router.post('/start', authenticate, tenantGuard, allowRoles('admin', 'super_admi
   if (!applicationId) throw new AppError('applicationId required', 400);
   const pb = await createPreBoardingForApplication(applicationId, req.user.tenantId, req.user._id || req.user.id);
   if (!pb) throw new AppError('Application not found or not in your organisation.', 404);
+  res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
+}));
+
+// ── GET /api/preboarding/hired-pending — hired candidates without preboarding yet ──
+// Used by admin dashboard to see who needs BVD request sent
+router.get('/hired-pending', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+  // All applications with stage = Hired
+  const hiredApps = await Application.find({ ...tenantFilter, currentStage: 'Hired', deletedAt: null })
+    .populate('candidateId', 'name email phone')
+    .populate('jobId', 'title company companyName department')
+    .sort({ updatedAt: -1 })
+    .limit(200)
+    .lean();
+
+  // Existing preboarding records
+  const existingAppIds = new Set(
+    (await PreBoarding.find(tenantFilter).select('applicationId').lean())
+      .map(p => String(p.applicationId))
+  );
+
+  // Filter out candidates who already have preboarding
+  const pending = hiredApps
+    .filter(a => !existingAppIds.has(String(a._id)))
+    .map(a => ({
+      applicationId: a._id?.toString(),
+      candidateName: a.candidateId?.name || a.candidateName || 'Candidate',
+      candidateEmail: a.candidateId?.email || a.candidateEmail || '',
+      candidatePhone: a.candidateId?.phone || a.candidatePhone || '',
+      jobTitle: a.jobId?.title || a.jobTitle || 'Unknown Job',
+      jobCompany: a.jobId?.companyName || a.jobId?.company || '',
+      hiredAt: a.updatedAt,
+      tenantId: a.tenantId,
+    }));
+
+  res.json({ success: true, data: pending });
+}));
+
+// ── POST /api/preboarding/start-with-hired — start preboarding + update stage to Hired ──
+// Creates preboarding for any candidate+job, moves application to Hired stage
+router.post('/start-with-hired', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { applicationId } = req.body;
+  if (!applicationId) throw new AppError('applicationId required', 400);
+
+  const app = await Application.findOne({ _id: applicationId, deletedAt: null });
+  if (!app) throw new AppError('Application not found', 404);
+
+  // Move to Hired stage if not already
+  if (app.currentStage !== 'Hired') {
+    app.currentStage = 'Hired';
+    app.status = 'hired';
+    app.stageHistory.push({ stage: 'Hired', movedBy: req.user._id || req.user.id, movedAt: new Date(), notes: 'Marked Hired from Pre-boarding' });
+    await app.save();
+    const Job = require('../models/Job');
+    await Job.findByIdAndUpdate(app.jobId, { $inc: { hiredCount: 1 } }).catch(() => {});
+  }
+
+  const tenantId = app.tenantId || req.user.tenantId;
+  const pb = await createPreBoardingForApplication(applicationId, tenantId, req.user._id || req.user.id);
+  if (!pb) throw new AppError('Could not create pre-boarding. Application not found.', 404);
+
   res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
 }));
 

@@ -22,7 +22,29 @@ export default function CandidateOnboarding({ user }) {
     setLoading(true);
     try {
       const r = await api.getMyPreBoarding();
-      setPb(r?.data || r || null);
+      let pbData = r?.data || r || null;
+
+      // No preboarding yet — check if there's a Hired application and auto-trigger
+      if (!pbData) {
+        try {
+          const appsRes = await api.getApplications({ stage: 'selected', limit: 10 }); // selected = Hired in frontend
+          const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+          // Also check currentStage = 'Hired' directly
+          const appsHired = await api.getApplications({ limit: 20 });
+          const allApps = [...apps, ...(Array.isArray(appsHired) ? appsHired : (appsHired?.data || []))];
+          const hiredApp = allApps.find(a =>
+            a.stage === 'selected' || a.currentStage === 'Hired' ||
+            a.stage === 'hired' || a.status === 'hired'
+          );
+          if (hiredApp) {
+            // Auto-start preboarding for this hired application
+            const started = await api.startPreBoarding(hiredApp.id || hiredApp._id).catch(() => null);
+            if (started?.data) pbData = started.data;
+          }
+        } catch {}
+      }
+
+      setPb(pbData);
     } catch { setPb(null); }
     setLoading(false);
   };
