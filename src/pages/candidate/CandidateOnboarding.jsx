@@ -24,23 +24,12 @@ export default function CandidateOnboarding({ user }) {
       const r = await api.getMyPreBoarding();
       let pbData = r?.data || r || null;
 
-      // No preboarding yet — check if there's a Hired application and auto-trigger
+      // No preboarding yet — use the self-start endpoint (candidate-accessible)
+      // which finds their Hired application by email and creates the checklist
       if (!pbData) {
         try {
-          const appsRes = await api.getApplications({ stage: 'selected', limit: 10 }); // selected = Hired in frontend
-          const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
-          // Also check currentStage = 'Hired' directly
-          const appsHired = await api.getApplications({ limit: 20 });
-          const allApps = [...apps, ...(Array.isArray(appsHired) ? appsHired : (appsHired?.data || []))];
-          const hiredApp = allApps.find(a =>
-            a.stage === 'selected' || a.currentStage === 'Hired' ||
-            a.stage === 'hired' || a.status === 'hired'
-          );
-          if (hiredApp) {
-            // Auto-start preboarding for this hired application
-            const started = await api.startPreBoarding(hiredApp.id || hiredApp._id).catch(() => null);
-            if (started?.data) pbData = started.data;
-          }
+          const started = await api.selfStartPreBoarding();
+          if (started?.data || started?.success) pbData = started.data || null;
         } catch {}
       }
 

@@ -480,11 +480,16 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
       filter.jobId = { $in: myJobIds };
     }
   }
-  if (req.query.email) {
-    const matched = await Candidate.find({ email: req.query.email.toLowerCase().trim(), deletedAt: null }).select('_id').lean();
-    filter.candidateId = { $in: matched.map(m => m._id) };
-  } else if (req.query.candidateId) {
-    filter.candidateId = req.query.candidateId;
+  if (req.query.email || req.query.candidateId) {
+    const ids = new Set();
+    // By direct candidateId
+    if (req.query.candidateId) ids.add(req.query.candidateId);
+    // By email — finds linked Candidate docs (handles User._id ≠ Candidate._id)
+    if (req.query.email) {
+      const byEmail = await Candidate.find({ email: req.query.email.toLowerCase().trim(), deletedAt: null }).select('_id').lean();
+      byEmail.forEach(c => ids.add(String(c._id)));
+    }
+    filter.candidateId = ids.size === 1 ? [...ids][0] : { $in: [...ids] };
   }
 
   if (req.query.jobId && req.user.role !== 'recruiter') filter.jobId = req.query.jobId;

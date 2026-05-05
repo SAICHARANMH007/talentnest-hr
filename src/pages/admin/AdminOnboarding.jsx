@@ -263,6 +263,61 @@ export default function AdminOnboarding({ user }) {
     setStarting(p => ({ ...p, [appId]: false }));
   };
 
+  // ── Add Candidate to Pre-boarding Modal ────────────────────────────────────
+  const [addModal, setAddModal]       = useState(false);
+  const [addSearch, setAddSearch]     = useState('');
+  const [addCandidates, setAddCandidates] = useState([]);
+  const [addJobs, setAddJobs]         = useState([]);
+  const [addSelCand, setAddSelCand]   = useState(null);
+  const [addSelJob, setAddSelJob]     = useState(null);
+  const [addSaving, setAddSaving]     = useState(false);
+
+  const searchCandidates = async (q) => {
+    if (!q || q.length < 2) { setAddCandidates([]); return; }
+    try {
+      const r = await api.getCandidateRecords({ search: q, limit: 20 });
+      setAddCandidates(Array.isArray(r?.data) ? r.data : []);
+    } catch { setAddCandidates([]); }
+  };
+
+  const loadJobs = async () => {
+    try {
+      const r = await api.getJobs({ limit: 200, status: 'active' });
+      const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+      setAddJobs(list);
+    } catch { setAddJobs([]); }
+  };
+
+  const submitAddPreboarding = async () => {
+    if (!addSelCand) { setToast('❌ Please select a candidate'); return; }
+    setAddSaving(true);
+    try {
+      // Find or create an application for this candidate+job, then start preboarding
+      let appId = null;
+      if (addSelJob) {
+        // Check for existing application
+        const appsRes = await api.getApplications({ candidateId: addSelCand.candidateId || addSelCand.id, limit: 50 });
+        const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+        const existing = apps.find(a => String(a.jobId?._id || a.jobId) === String(addSelJob.id));
+        appId = existing?.id || existing?._id;
+      }
+      if (appId) {
+        await api.startPreBoardingWithHired(appId);
+      } else {
+        // Start pre-boarding without a specific application — use startPreBoarding via candidate search
+        setToast('ℹ️ Select a candidate who has applied to a job, or use the Hired-Pending tab');
+        setAddSaving(false);
+        return;
+      }
+      setToast('✅ Pre-boarding started for ' + addSelCand.name);
+      setAddModal(false);
+      setAddSelCand(null); setAddSelJob(null); setAddSearch('');
+      load();
+      setActiveTab('active');
+    } catch (e) { setToast('❌ ' + e.message); }
+    setAddSaving(false);
+  };
+
   const handleUpdate = (updated) => {
     const id = updated._id?.toString() || updated.id;
     setRecords(prev => prev.map(r => (r._id?.toString() === id || r.id === id) ? { ...r, ...updated } : r));
@@ -283,11 +338,66 @@ export default function AdminOnboarding({ user }) {
       {selected && <DetailModal record={selected} onClose={() => setSelected(null)} onUpdate={handleUpdate} />}
       <Toast msg={toast} onClose={() => setToast('')} />
 
+      {/* Add Candidate Modal */}
+      {addModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:10002, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:18, padding:28, width:'100%', maxWidth:520, maxHeight:'85vh', overflow:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <h3 style={{ margin:0, fontSize:17, fontWeight:800, color:'#032D60' }}>➕ Add Candidate to Pre-boarding</h3>
+              <button onClick={() => setAddModal(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#94A3B8' }}>✕</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <div>
+                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Search Candidate *</label>
+                <input value={addSearch} onChange={e => { setAddSearch(e.target.value); searchCandidates(e.target.value); }}
+                  placeholder="Type name or email…"
+                  style={{ width:'100%', padding:'9px 14px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                {addCandidates.length > 0 && (
+                  <div style={{ border:'1px solid #E2E8F0', borderRadius:8, marginTop:4, maxHeight:180, overflowY:'auto' }}>
+                    {addCandidates.map(c => (
+                      <div key={c.candidateId||c.id} onClick={() => { setAddSelCand(c); setAddSearch(c.name||c.email||''); setAddCandidates([]); }}
+                        style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid #F1F5F9', background: addSelCand?.candidateId === (c.candidateId||c.id) ? '#EFF6FF' : '#fff' }}>
+                        <div style={{ fontWeight:700, fontSize:13 }}>{c.name || 'Unknown'}</div>
+                        <div style={{ fontSize:11, color:'#94A3B8' }}>{c.email} · {c.latestStage || 'No stage'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addSelCand && <div style={{ marginTop:6, fontSize:11, color:'#10b981', fontWeight:700 }}>✅ Selected: {addSelCand.name}</div>}
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Select Job (optional)</label>
+                <select value={addSelJob?.id || ''} onChange={e => setAddSelJob(addJobs.find(j => j.id === e.target.value) || null)}
+                  onFocus={loadJobs}
+                  style={{ width:'100%', padding:'9px 14px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', boxSizing:'border-box', background:'#fff' }}>
+                  <option value="">— Select job —</option>
+                  {addJobs.map(j => <option key={j.id} value={j.id}>{j.title} · {j.location || '—'}</option>)}
+                </select>
+              </div>
+              <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#92400E' }}>
+                ⚡ This will mark the candidate as <strong>Hired</strong> for the selected job and start their background verification checklist.
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button onClick={submitAddPreboarding} disabled={addSaving || !addSelCand}
+                style={{ flex:1, background:'linear-gradient(135deg,#0176D3,#014486)', border:'none', borderRadius:10, color:'#fff', fontWeight:700, fontSize:13, padding:'12px', cursor:'pointer', opacity: (!addSelCand||addSaving)?0.7:1 }}>
+                {addSaving ? '⏳ Starting…' : '🚀 Start Pre-boarding'}
+              </button>
+              <button onClick={() => setAddModal(false)} style={{ flex:1, background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:10, color:'#374151', fontWeight:600, fontSize:13, padding:'12px', cursor:'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ color: '#181818', fontSize: 24, fontWeight: 800, margin: 0 }}>🎯 Pre-boarding & BVD</h1>
           <p style={{ color: '#706E6B', fontSize: 14, margin: '4px 0 0' }}>Background verification, joining checklists and welcome kits for hired candidates</p>
         </div>
+        <button onClick={() => { setAddModal(true); setAddSelCand(null); setAddSelJob(null); setAddSearch(''); }}
+          style={{ background:'linear-gradient(135deg,#0176D3,#014486)', border:'none', borderRadius:10, color:'#fff', fontWeight:700, fontSize:13, padding:'10px 20px', cursor:'pointer', whiteSpace:'nowrap' }}>
+          ➕ Add Candidate
+        </button>
       </div>
 
       {/* Tabs */}

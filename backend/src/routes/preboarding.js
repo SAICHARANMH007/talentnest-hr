@@ -412,5 +412,39 @@ router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recr
   res.json({ success: true, data: summary });
 }));
 
+// ── POST /api/preboarding/self-start — candidate triggers own pre-boarding ────
+// Called from CandidateOnboarding when no record exists but candidate is Hired.
+// Secure: only creates pre-boarding for the logged-in candidate's own applications.
+router.post('/self-start', authenticate, asyncHandler(async (req, res) => {
+  if (!req.user?.email) throw new AppError('No email on account.', 400);
+
+  // Find any Hired application belonging to this candidate (by email match)
+  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).lean();
+  const candidateId = candidate?._id || null;
+
+  // Build query — match by candidateId (Candidate doc) OR candidateEmail (direct field)
+  const query = { currentStage: 'Hired', deletedAt: null };
+  if (candidateId) {
+    query.$or = [{ candidateId }, { candidateEmail: req.user.email }];
+  } else {
+    query.candidateEmail = req.user.email;
+  }
+
+  const hiredApp = await Application.findOne(query).sort({ updatedAt: -1 }).lean();
+  if (!hiredApp) return res.json({ success: false, message: 'No hired application found.' });
+
+  // Check if pre-boarding already exists
+  const existing = await PreBoarding.findOne({
+    $or: [{ applicationId: hiredApp._id }, { candidateEmail: req.user.email }]
+  }).lean();
+  if (existing) return res.json({ success: true, data: { ...existing, id: existing._id?.toString() } });
+
+  // Create new pre-boarding
+  const pb = await createPreBoardingForApplication(hiredApp._id, hiredApp.tenantId, hiredApp.candidateId);
+  if (!pb) return res.json({ success: false, message: 'Could not create pre-boarding.' });
+
+  res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
+}));
+
 module.exports = router;
 module.exports.createPreBoardingForApplication = createPreBoardingForApplication;
