@@ -34,7 +34,7 @@ async function createPreBoardingForApplication(applicationId, tenantId, createdB
     tenantId,
     candidateId  : candidate._id || app.candidateId,
     applicationId: applicationId,
-    offerId      : `manual_${mockOfferId}`, // synthetic offerId for manual triggers
+    offerId      : mockOfferId.substring(0, 24), // synthetic offerId for manual triggers
     candidateName : candidate.name  || app.candidateName  || 'Candidate',
     candidateEmail: candidate.email || app.candidateEmail || '',
     designation   : job.title || 'New Hire',
