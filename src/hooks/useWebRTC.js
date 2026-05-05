@@ -75,25 +75,42 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   // even though the hook was initialized with video:false (callInfoRef was null)
   const startLocalMedia = useCallback(async (wantVideo) => {
     const useVideo = wantVideo !== undefined ? wantVideo : video;
+    const constraints = {
+      video: useVideo ? {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      } : false,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        // Legacy flags for older Chrome/Windows driver compatibility
+        googEchoCancellation: true,
+        googAutoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true,
+      }
+    };
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: useVideo, audio });
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStreamRef.current = stream;
       setLocalStream(stream);
       setPermError('');
-      // Reset mic/cam state to match actual track state (all enabled by default)
       setMicOn(true);  micOnRef.current = true;
       setCamOn(useVideo); camOnRef.current = useVideo;
       return stream;
     } catch (e) {
+      console.warn('[WebRTC] getUserMedia error:', e.name);
       if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
         setPermError('Camera/microphone access denied. Please allow access in browser settings.');
       } else {
-        // Try audio-only fallback
         try {
+          // Fallback to basic audio if video or high-res audio fails
           const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
           localStreamRef.current = stream;
           setLocalStream(stream);
-          // Audio-only fallback — mic on, cam off
           setMicOn(true);  micOnRef.current = true;
           setCamOn(false); camOnRef.current = false;
           return stream;
@@ -111,15 +128,43 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
 
     const pc = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
-      iceTransportPolicy: 'all',       // try direct first, relay as fallback
-      bundlePolicy: 'max-bundle',      // reduces port usage — important at scale
-      rtcpMuxPolicy: 'require',        // single port for RTP+RTCP
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceCandidatePoolSize: 10, // Pre-gather candidates to speed up connection
     });
     peerConnsRef.current[socketId] = pc;
     reconnectCount.current[socketId] = 0;
 
     const src = stream || localStreamRef.current;
-    if (src) src.getTracks().forEach(t => pc.addTrack(t, src));
+    
+    // Modern Transceiver-based approach — critical for Mac/Safari compatibility
+    // This ensures directions are correctly negotiated before the offer is even created.
+    if (pc.addTransceiver) {
+      // Audio is always required for calls
+      pc.addTransceiver('audio', { direction: 'sendrecv', streams: src ? [src] : [] });
+      // Only add video transceiver if this is a video call
+      if (video || (src && src.getVideoTracks().length > 0)) {
+        pc.addTransceiver('video', { direction: 'sendrecv', streams: src ? [src] : [] });
+      }
+    }
+
+    // Still add tracks for older browser compatibility
+    if (src) {
+      src.getTracks().forEach(t => {
+        try {
+          // If we already added a transceiver for this kind, use the sender instead of addTrack
+          const sender = pc.getSenders().find(s => s.track?.kind === t.kind || (!s.track && s.dtlsTransport));
+          if (sender && !sender.track) {
+            sender.replaceTrack(t).catch(() => {});
+          } else {
+            pc.addTrack(t, src);
+          }
+        } catch (err) {
+          console.warn('[WebRTC] addTrack fallback:', err.message);
+        }
+      });
+    }
 
     // Trickle ICE — send candidates as they arrive for faster connection
     pc.onicecandidate = ({ candidate }) => {
@@ -165,10 +210,17 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   // ── Initiate call (create offer) ──────────────────────────────────────────
   const initiateCall = useCallback(async (socketId, socket, signalingEvents, stream) => {
     const pc = createPeer(socketId, socket, signalingEvents, stream);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    signalingEvents.sendOffer(socketId, offer);
-  }, [createPeer]);
+    try {
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: video || (stream && stream.getVideoTracks().length > 0)
+      });
+      await pc.setLocalDescription(offer);
+      signalingEvents.sendOffer(socketId, offer);
+    } catch (err) {
+      console.error('[WebRTC] createOffer failed:', err);
+    }
+  }, [createPeer, video]);
 
   // ── Handle incoming offer ─────────────────────────────────────────────────
   const handleOffer = useCallback(async (socketId, offer, signalingEvents, stream) => {
