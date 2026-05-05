@@ -418,6 +418,486 @@ Interested candidates can share profiles at mhsaicharan@talentnesthr.com.`,
     contactEmail: 'hr@talentnesthr.com',
     description: 'Join our mobile team to build cross-platform applications for our HRMS suite.'
   },
+
+  // ── 20 Trending Jobs (External Apply — candidate data saved, then redirected) ──
+
+  {
+    title: 'AI / Machine Learning Engineer',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Artificial Intelligence',
+    urgency: 'High',
+    numberOfOpenings: 25,
+    experience: '3-7 years',
+    salaryMin: 2000000, salaryMax: 4500000, salaryType: 'CTC',
+    skills: ['Python', 'TensorFlow', 'PyTorch', 'LLMs', 'MLOps', 'NLP', 'Deep Learning'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.tcs.com',
+    description: `TCS is actively hiring AI/ML Engineers for its Gen-AI and Digital Transformation practice.
+
+Key Responsibilities:
+- Design and deploy machine learning models at scale
+- Work on Large Language Models (LLMs) and GenAI applications
+- Build and maintain MLOps pipelines
+- Collaborate with product and data engineering teams
+
+Requirements:
+- Strong Python skills with hands-on experience in TensorFlow/PyTorch
+- Experience with LLMs (GPT, LLaMA, Gemini), RAG pipelines
+- Knowledge of cloud platforms (AWS/Azure/GCP)
+- Prior experience in production ML deployment
+
+📩 Apply now — your profile will be saved and forwarded to TCS Talent Team.`,
+  },
+  {
+    title: 'Data Engineer (Azure / Databricks)',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Data Engineering',
+    urgency: 'High',
+    numberOfOpenings: 30,
+    experience: '2-6 years',
+    salaryMin: 1200000, salaryMax: 2800000, salaryType: 'CTC',
+    skills: ['Apache Spark', 'Azure Data Factory', 'Databricks', 'SQL', 'Python', 'Delta Lake'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.infosys.com/careers',
+    description: `Infosys is hiring Data Engineers for cloud-native data platform projects.
+
+Role Overview:
+Build and optimize large-scale data pipelines using Azure and Databricks.
+
+Key Skills Required:
+- Azure Data Factory, Azure Synapse, Databricks
+- Apache Spark (PySpark), Delta Lake architecture
+- Strong SQL and Python skills
+- Experience with streaming data (Kafka / Event Hubs)
+- ETL/ELT pipeline design and optimization
+
+📩 Submit your profile — we will connect you directly with the Infosys talent team.`,
+  },
+  {
+    title: 'Cloud Solutions Architect (AWS)',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Cloud Infrastructure',
+    urgency: 'High',
+    numberOfOpenings: 15,
+    experience: '6-12 years',
+    salaryMin: 3000000, salaryMax: 5500000, salaryType: 'CTC',
+    skills: ['AWS', 'Terraform', 'Kubernetes', 'Microservices', 'DevSecOps', 'CloudFormation'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://wipro.com/careers',
+    description: `Wipro is looking for senior Cloud Solutions Architects to lead digital transformation for global clients.
+
+Responsibilities:
+- Design scalable, secure, cost-optimised AWS cloud architectures
+- Lead cloud migration projects (on-prem to cloud)
+- Define DevSecOps practices and CI/CD pipelines
+- Mentor cloud engineers and guide client stakeholders
+
+Requirements:
+- AWS Certified Solutions Architect (Professional preferred)
+- Hands-on with Terraform, EKS, Lambda, RDS
+- 6+ years of cloud architecture experience`,
+  },
+  {
+    title: 'GenAI / Prompt Engineer',
+    location: 'Remote',
+    jobType: 'Full-Time',
+    department: 'AI Products',
+    urgency: 'High',
+    numberOfOpenings: 20,
+    experience: '1-4 years',
+    salaryMin: 1000000, salaryMax: 2500000, salaryType: 'CTC',
+    skills: ['Prompt Engineering', 'LangChain', 'OpenAI API', 'Python', 'RAG', 'Vector Databases'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.hcltech.com',
+    description: `HCLTech is hiring GenAI Engineers across AI labs and innovation centres.
+
+What You'll Do:
+- Design and optimise prompts for GPT-4, Claude, Gemini models
+- Build Retrieval-Augmented Generation (RAG) pipelines
+- Develop AI agents using LangChain / LlamaIndex
+- Integrate GenAI into enterprise workflows
+
+Tech Stack: OpenAI API, LangChain, Pinecone/Weaviate, Python, FastAPI
+
+This is one of the most in-demand skills globally in 2026 — apply now!`,
+  },
+  {
+    title: 'Python Backend Developer (Django / FastAPI)',
+    location: 'Pune',
+    jobType: 'Full-Time',
+    department: 'Engineering',
+    urgency: 'High',
+    numberOfOpenings: 40,
+    experience: '2-5 years',
+    salaryMin: 1000000, salaryMax: 2200000, salaryType: 'CTC',
+    skills: ['Python', 'Django', 'FastAPI', 'PostgreSQL', 'Redis', 'Celery', 'REST APIs'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.accenture.com/in-en/careers',
+    description: `Accenture India is hiring Python Backend Developers for digital product teams.
+
+Role:
+Build scalable backend services for enterprise and consumer applications.
+
+Required Skills:
+- Python (Django or FastAPI) with REST API development
+- PostgreSQL / MySQL database design
+- Redis caching, Celery for async tasks
+- Docker containerisation and basic CI/CD
+- Understanding of clean code and SOLID principles
+
+Experience: 2-5 years | CTC: ₹10-22 LPA | Location: Pune / Remote`,
+  },
+  {
+    title: 'Business Analyst — Banking & Fintech',
+    location: 'Mumbai',
+    jobType: 'Full-Time',
+    department: 'Business Analysis',
+    urgency: 'High',
+    numberOfOpenings: 18,
+    experience: '2-5 years',
+    salaryMin: 800000, salaryMax: 1800000, salaryType: 'CTC',
+    skills: ['Business Analysis', 'BFSI Domain', 'JIRA', 'SQL', 'Process Mapping', 'Stakeholder Management'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.hdfcbank.com/content/bbp/repositories/723fb80a-2dde-42a3-9793-7ae1be57c87f/?folderPath=/footer/Careers',
+    description: `HDFC Bank is hiring Business Analysts for its Digital Banking and Fintech division.
+
+You Will:
+- Gather and document business requirements from banking stakeholders
+- Create functional specifications, user stories, and process flows
+- Work closely with IT and product teams on digital banking features
+- Analyse banking data using SQL to support decision-making
+
+Requirements:
+- 2-5 years BA experience in BFSI / Fintech
+- Strong SQL skills, process modelling (BPMN)
+- Knowledge of core banking systems preferred`,
+  },
+  {
+    title: 'iOS Developer (Swift / SwiftUI)',
+    location: 'Chennai',
+    jobType: 'Full-Time',
+    department: 'Mobile Engineering',
+    urgency: 'High',
+    numberOfOpenings: 12,
+    experience: '2-5 years',
+    salaryMin: 1200000, salaryMax: 2500000, salaryType: 'CTC',
+    skills: ['Swift', 'SwiftUI', 'UIKit', 'Core Data', 'REST APIs', 'Xcode', 'App Store'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.zoho.com',
+    description: `Zoho Corp is hiring iOS Developers for its flagship suite of business applications.
+
+What You'll Build:
+- Consumer and enterprise iOS apps for millions of users worldwide
+- Native iOS features using SwiftUI and UIKit
+- Offline-first experiences with Core Data / Realm
+- Integrations with Zoho's REST APIs
+
+Requirements:
+- Strong Swift fundamentals and SwiftUI experience
+- App Store deployment experience
+- Performance optimisation and memory management
+- Chennai-based (relocation assistance available)`,
+  },
+  {
+    title: 'Java / Spring Boot Microservices Developer',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Backend Engineering',
+    urgency: 'High',
+    numberOfOpenings: 50,
+    experience: '3-7 years',
+    salaryMin: 1200000, salaryMax: 2800000, salaryType: 'CTC',
+    skills: ['Java 17+', 'Spring Boot', 'Microservices', 'Kafka', 'Docker', 'Kubernetes', 'PostgreSQL'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.cognizant.com',
+    description: `Cognizant is hiring Java Microservices Developers for banking, insurance and retail clients.
+
+Tech Stack:
+- Java 17+ with Spring Boot 3.x
+- Microservices design patterns (CQRS, Saga, Event-Driven)
+- Apache Kafka for messaging
+- Containerisation with Docker + Kubernetes
+- PostgreSQL / Oracle databases
+
+This role offers international project exposure and fast-track career growth.`,
+  },
+  {
+    title: 'Salesforce Developer (LWC / Apex)',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'CRM Engineering',
+    urgency: 'Medium',
+    numberOfOpenings: 20,
+    experience: '2-5 years',
+    salaryMin: 1000000, salaryMax: 2200000, salaryType: 'CTC',
+    skills: ['Salesforce', 'Apex', 'LWC', 'SOQL', 'Flow', 'REST APIs', 'Sales Cloud'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.capgemini.com/in-en/careers/',
+    description: `Capgemini is hiring Salesforce Developers for CRM transformation projects across BFSI, retail and manufacturing.
+
+Key Responsibilities:
+- Develop custom Apex classes, triggers and LWC components
+- Build and optimise Salesforce Flows and Process Builders
+- Integrate Salesforce with external systems via REST/SOAP
+- Conduct code reviews and mentor junior developers
+
+Requirements:
+- Salesforce Certified Platform Developer I (mandatory)
+- 2-5 years hands-on Salesforce development experience`,
+  },
+  {
+    title: 'Digital Marketing Manager (Performance / Growth)',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Marketing',
+    urgency: 'High',
+    numberOfOpenings: 8,
+    experience: '3-6 years',
+    salaryMin: 1000000, salaryMax: 2000000, salaryType: 'CTC',
+    skills: ['Google Ads', 'Meta Ads', 'SEO', 'SEM', 'Analytics', 'CRO', 'Email Marketing'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.swiggy.com',
+    description: `Swiggy is looking for a performance-driven Digital Marketing Manager to lead growth campaigns.
+
+What You'll Own:
+- Plan and execute Google Ads, Meta Ads, programmatic campaigns
+- Drive user acquisition and retention through digital channels
+- Lead SEO strategy and content marketing initiatives
+- Use data analytics to optimise CAC, ROAS and LTV
+- Manage marketing automation and email campaigns
+
+This is a high-visibility role with direct impact on Swiggy's growth metrics.`,
+  },
+  {
+    title: 'Financial Analyst — FP&A',
+    location: 'Mumbai',
+    jobType: 'Full-Time',
+    department: 'Finance',
+    urgency: 'Medium',
+    numberOfOpenings: 10,
+    experience: '2-5 years',
+    salaryMin: 900000, salaryMax: 1800000, salaryType: 'CTC',
+    skills: ['Financial Modelling', 'Excel', 'Power BI', 'FP&A', 'Budgeting', 'Forecasting'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://jobs.deloitte.com/in/en',
+    description: `Deloitte India is hiring Financial Analysts for its FP&A and Advisory teams.
+
+Responsibilities:
+- Build and maintain financial models for budgeting and forecasting
+- Prepare MIS reports and management dashboards
+- Analyse variances and present insights to leadership
+- Support M&A due diligence and valuations
+- Work with Power BI / Tableau for financial dashboards
+
+Ideal Candidate: CA / MBA Finance with strong Excel and modelling skills`,
+  },
+  {
+    title: 'QA Automation Engineer (Selenium / Playwright)',
+    location: 'Noida',
+    jobType: 'Full-Time',
+    department: 'Quality Engineering',
+    urgency: 'Medium',
+    numberOfOpenings: 22,
+    experience: '2-5 years',
+    salaryMin: 800000, salaryMax: 1800000, salaryType: 'CTC',
+    skills: ['Selenium', 'Playwright', 'Java / Python', 'TestNG', 'CI/CD', 'API Testing', 'JIRA'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.flipkartcareers.com',
+    description: `Flipkart is hiring QA Automation Engineers to ensure product quality at scale.
+
+You Will:
+- Design and implement automated test suites using Selenium/Playwright
+- Build API test frameworks (RestAssured / Postman)
+- Integrate tests into CI/CD pipelines (Jenkins / GitHub Actions)
+- Perform performance testing using JMeter/k6
+- Collaborate with developers on shift-left testing practices
+
+Tech: Java/Python + Selenium/Playwright + Jenkins + JIRA`,
+  },
+  {
+    title: 'Site Reliability Engineer (SRE)',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Platform Engineering',
+    urgency: 'High',
+    numberOfOpenings: 15,
+    experience: '3-7 years',
+    salaryMin: 2000000, salaryMax: 4000000, salaryType: 'CTC',
+    skills: ['Kubernetes', 'Prometheus', 'Grafana', 'Linux', 'Python', 'Incident Management', 'SLO/SLI'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.microsoft.com/v2/global/en/india.html',
+    description: `Microsoft India is hiring SREs for its Azure Platform Reliability team.
+
+Core Responsibilities:
+- Own reliability, availability and performance of production services
+- Build observability tooling (Prometheus, Grafana, distributed tracing)
+- Define and track SLOs/SLIs for critical services
+- Lead incident response and post-mortem culture
+- Automate toil and reduce operational overhead
+
+Requirements: Strong Linux fundamentals, Kubernetes, scripting (Python/Go), on-call experience`,
+  },
+  {
+    title: 'Frontend Developer (React.js / Next.js)',
+    location: 'Gurgaon',
+    jobType: 'Full-Time',
+    department: 'Product Engineering',
+    urgency: 'High',
+    numberOfOpenings: 35,
+    experience: '2-5 years',
+    salaryMin: 1000000, salaryMax: 2200000, salaryType: 'CTC',
+    skills: ['React.js', 'Next.js', 'TypeScript', 'Tailwind CSS', 'GraphQL', 'Performance Optimisation'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://paytm.com/careers',
+    description: `Paytm is hiring Frontend Developers to build the future of financial services for 300M+ users.
+
+You'll Work On:
+- High-traffic React/Next.js applications serving millions of daily users
+- Payment flows, checkout experiences and financial dashboards
+- Performance optimisation (Core Web Vitals, lazy loading, code splitting)
+- Design system components and micro-frontend architecture
+
+Stack: React 18, Next.js 14, TypeScript, GraphQL, Tailwind CSS`,
+  },
+  {
+    title: 'Network Security Engineer (CCNP / CCIE)',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Cybersecurity',
+    urgency: 'High',
+    numberOfOpenings: 12,
+    experience: '4-8 years',
+    salaryMin: 1500000, salaryMax: 3000000, salaryType: 'CTC',
+    skills: ['Cisco', 'Palo Alto', 'Firewall', 'CCNP', 'SD-WAN', 'Zero Trust', 'VPN'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://jobs.cisco.com',
+    description: `Cisco India is hiring Network Security Engineers for its internal security and product teams.
+
+Key Responsibilities:
+- Design and implement enterprise network security architectures
+- Configure and manage Cisco Firepower, Palo Alto, Fortinet firewalls
+- Implement Zero Trust Network Access (ZTNA) solutions
+- Monitor network traffic and respond to security incidents
+- Lead SD-WAN deployments and VPN configurations
+
+Certifications Preferred: CCNP Security / CCIE Security`,
+  },
+  {
+    title: 'SAP FICO / SAP S/4HANA Consultant',
+    location: 'Pune',
+    jobType: 'Full-Time',
+    department: 'ERP Consulting',
+    urgency: 'Medium',
+    numberOfOpenings: 20,
+    experience: '3-8 years',
+    salaryMin: 1500000, salaryMax: 3000000, salaryType: 'CTC',
+    skills: ['SAP FICO', 'SAP S/4HANA', 'GL', 'AP', 'AR', 'Asset Accounting', 'ABAP Basics'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.ibm.com/in-en/employment/',
+    description: `IBM India is hiring SAP FICO Consultants for S/4HANA implementation and migration projects.
+
+You'll Lead:
+- End-to-end SAP FICO module implementations (GL, AP, AR, AA, CO)
+- S/4HANA migration and greenfield projects for global clients
+- Blueprint preparation, gap analysis and go-live support
+- Training and knowledge transfer to client teams
+
+Requirements: 3-8 years SAP FICO experience, at least 2 full-cycle implementations`,
+  },
+  {
+    title: 'Customer Success Manager (B2B SaaS)',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Customer Success',
+    urgency: 'High',
+    numberOfOpenings: 15,
+    experience: '2-5 years',
+    salaryMin: 1200000, salaryMax: 2200000, salaryType: 'CTC',
+    skills: ['Customer Success', 'SaaS', 'Churn Reduction', 'Onboarding', 'CRM', 'Executive Communication'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://careers.salesforce.com/en/jobs/?country=India',
+    description: `Salesforce India is hiring Customer Success Managers to ensure enterprise clients get maximum value.
+
+Role Overview:
+- Own a portfolio of enterprise accounts post-sale
+- Drive adoption, engagement and renewal
+- Conduct executive business reviews (EBRs)
+- Identify expansion opportunities and reduce churn
+- Collaborate with sales, product and support teams
+
+Requirements: 2-5 years in CSM/Account Management for B2B SaaS, strong executive communication`,
+  },
+  {
+    title: 'Embedded Systems / Firmware Engineer',
+    location: 'Bangalore',
+    jobType: 'Full-Time',
+    department: 'Hardware Engineering',
+    urgency: 'Medium',
+    numberOfOpenings: 10,
+    experience: '3-6 years',
+    salaryMin: 1200000, salaryMax: 2500000, salaryType: 'CTC',
+    skills: ['C / C++', 'RTOS', 'Embedded Linux', 'CAN', 'UART', 'SPI', 'I2C', 'ARM Cortex'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.bosch.in/careers/',
+    description: `Bosch India is hiring Embedded Systems Engineers for its connected mobility and IoT divisions.
+
+What You'll Build:
+- Firmware for automotive ECUs and industrial IoT devices
+- Real-time systems using FreeRTOS / Zephyr OS
+- Communication protocol stacks (CAN, LIN, UART, SPI, I2C)
+- Bootloaders and OTA (over-the-air) update mechanisms
+- Hardware-software co-design with VLSI teams
+
+Requirements: C/C++, RTOS experience, ARM Cortex-M/A series, strong debugging skills`,
+  },
+  {
+    title: 'Technical Content Writer (Developer Docs)',
+    location: 'Remote',
+    jobType: 'Full-Time',
+    department: 'Developer Relations',
+    urgency: 'Medium',
+    numberOfOpenings: 8,
+    experience: '1-4 years',
+    salaryMin: 600000, salaryMax: 1400000, salaryType: 'CTC',
+    skills: ['Technical Writing', 'API Documentation', 'Markdown', 'Git', 'Developer Experience', 'Swagger'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.google.com/intl/en/about/careers/applications/jobs/results?location=India',
+    description: `Google India is hiring Technical Content Writers for developer documentation and learning content.
+
+You'll Create:
+- API reference docs, SDK guides and tutorials for developers
+- Code samples, quickstart guides and how-to articles
+- Content for Google Cloud, Android and Chrome developer portals
+- Internal engineering wiki and runbooks
+
+Requirements: Technical background (CS/IT preferred), strong writing skills, experience with API docs or developer content`,
+  },
+  {
+    title: 'Operations Manager — E-Commerce Fulfilment',
+    location: 'Hyderabad',
+    jobType: 'Full-Time',
+    department: 'Operations',
+    urgency: 'High',
+    numberOfOpenings: 6,
+    experience: '4-8 years',
+    salaryMin: 1200000, salaryMax: 2200000, salaryType: 'CTC',
+    skills: ['Warehouse Management', 'Supply Chain', 'P&L Ownership', 'Team Leadership', 'Six Sigma', 'SLA Management'],
+    contactEmail: 'hr@talentnesthr.com',
+    externalUrl: 'https://www.amazon.jobs/en/locations/india',
+    description: `Amazon India is hiring Operations Managers for its fulfilment and delivery network.
+
+Key Responsibilities:
+- Lead a team of 100+ associates in a fulfilment centre
+- Own productivity, quality and safety metrics for your shift
+- Implement process improvements using Lean/Six Sigma methodologies
+- Manage vendor relationships and SLA compliance
+- Drive cost reduction initiatives
+
+Requirements: 4-8 years in warehouse/logistics operations, MBA preferred, Six Sigma Green Belt a plus`,
+  },
 ];
 
 
