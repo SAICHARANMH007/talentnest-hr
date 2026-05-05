@@ -49,7 +49,7 @@ function ApplyModal({ job, onClose }) {
         return;
       }
     }
-    if (!agreedTerms) { setError('Please accept the Terms & Conditions to apply.'); return; }
+    if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions to create your account.'); return; }
     if (createAccount) {
       if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
       if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
@@ -201,19 +201,6 @@ function ApplyModal({ job, onClose }) {
 
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} placeholder="Tell us why you're a great fit…" />
 
-        {/* Terms & Conditions — required for all applications */}
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: `1.5px solid ${agreedTerms ? '#10b981' : '#E2E8F0'}`, transition: 'border-color 0.2s' }}>
-          <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
-            style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
-            I agree to the{' '}
-            <a href="/terms" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Terms & Conditions</a>
-            {' '}and{' '}
-            <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>
-            . I consent to TalentNest HR processing my personal data for recruitment purposes. <span style={{ color: '#e53e3e' }}>*</span>
-          </span>
-        </label>
-
         {/* Inline account creation — optional, reveals password fields */}
         <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,118,211,0.02))', border: `1px solid ${createAccount ? 'rgba(1,118,211,0.4)' : 'rgba(1,118,211,0.2)'}`, borderRadius: 12, padding: '14px 16px', transition: 'border-color 0.2s' }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
@@ -245,6 +232,16 @@ function ApplyModal({ job, onClose }) {
                   <p style={{ color: '#e53e3e', fontSize: 11, margin: '4px 0 0' }}>Passwords do not match</p>
                 )}
               </div>
+
+              {/* Legal agreement — only shown during account creation as requested */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 14px', background: '#fff', borderRadius: 10, border: `1.5px solid ${agreedTerms ? '#10b981' : 'rgba(1,118,211,0.2)'}`, transition: 'border-color 0.2s', marginTop: 4 }}>
+                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+                  style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: '#374151', lineHeight: 1.5 }}>
+                  I agree to the <a href="/terms" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Terms & Conditions</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>. <span style={{ color: '#e53e3e' }}>*</span>
+                </span>
+              </label>
+
               <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>
                 Your account uses the name, email and mobile you entered above. You'll be logged in immediately after applying.
               </p>
