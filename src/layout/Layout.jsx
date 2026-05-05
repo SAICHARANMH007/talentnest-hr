@@ -129,9 +129,15 @@ function NotificationBell({ userRole, compact = false }) {
   const openPanel = async () => {
     if (btnRef.current) {
       const rect   = btnRef.current.getBoundingClientRect();
-      const panelW = Math.min(380, window.innerWidth - 24);
+      const panelW = Math.min(380, window.innerWidth - 16);
       const left   = Math.max(8, Math.min(rect.left, window.innerWidth - panelW - 8));
-      setPos({ top: rect.bottom + 8, left });
+      // On mobile, if panel would go off the bottom, show it above the button
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const maxH  = Math.min(520, window.innerHeight - 120);
+      const top   = spaceBelow >= Math.min(300, maxH)
+        ? rect.bottom + 8                        // enough space below
+        : Math.max(8, rect.top - Math.min(480, maxH) - 8); // show above
+      setPos({ top, left });
     }
     setOpen(true);
 

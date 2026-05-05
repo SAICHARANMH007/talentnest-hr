@@ -26,6 +26,8 @@ function ApplyModal({ job, onClose }) {
   const [error, setError] = useState('');
   const [createAccount, setCreateAccount] = useState(false); // inline account creation
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const isPreFilled = !!(prefill.name || prefill.email);
@@ -47,8 +49,10 @@ function ApplyModal({ job, onClose }) {
         return;
       }
     }
+    if (!agreedTerms) { setError('Please accept the Terms & Conditions to apply.'); return; }
     if (createAccount) {
       if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     }
     const screeningAnswers = questions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }));
     setSubmitting(true);
@@ -58,7 +62,7 @@ function ApplyModal({ job, onClose }) {
       // If user wants an account, register them now (same data, no re-entry)
       if (createAccount && password) {
         try {
-          await api.register({
+          const regResult = await api.register({
             name: form.name, email: form.email, password,
             phone: form.phone, role: 'candidate',
             title: form.title, currentCompany: form.currentCompany,
@@ -66,10 +70,16 @@ function ApplyModal({ job, onClose }) {
             availability: form.availability,
             companyName: 'TalentNest HR',
           });
+          // Store session so user is immediately logged in — application already
+          // linked to their Candidate doc by email, so it shows in their pipeline
+          if (regResult?.token && regResult?.user) {
+            sessionStorage.setItem('tn_token', regResult.token);
+            sessionStorage.setItem('tn_user', JSON.stringify(regResult.user));
+          }
           setAccountCreated(true);
         } catch (regErr) {
-          // If registration fails (e.g., email already exists), still show success for application
-          console.warn('[Apply] Account creation failed:', regErr.message);
+          // If email already exists, still show success for the application
+          console.warn('[Apply] Account creation skipped:', regErr.message);
         }
       }
       setDone(true);
@@ -91,10 +101,14 @@ function ApplyModal({ job, onClose }) {
           {accountCreated ? `Account created & application submitted!` : `Thank you, ${form.name}!`}
         </p>
         {accountCreated && (
-          <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,118,211,0.04))', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 12, textAlign: 'left' }}>
-            <p style={{ color: '#032D60', fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>✅ Your TalentNest account is ready!</p>
-            <p style={{ color: '#374151', fontSize: 12, margin: 0 }}>Login with <b>{form.email}</b> to track your application live.</p>
-            <a href="/login" style={{ display: 'inline-block', marginTop: 8, background: '#0176D3', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>Login Now →</a>
+          <div style={{ background: 'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
+            <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account created! You are now logged in.</p>
+            <p style={{ color: '#374151', fontSize: 12, margin: '0 0 10px' }}>
+              Your application for <b>{job.title}</b> is already in your pipeline.
+            </p>
+            <a href="/app/applications" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              📋 Track My Application →
+            </a>
           </div>
         )}
         {job.externalUrl ? (
@@ -187,31 +201,53 @@ function ApplyModal({ job, onClose }) {
 
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} placeholder="Tell us why you're a great fit…" />
 
-        {/* Inline account creation — one checkbox, password reveals, no extra registration needed */}
-        <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,118,211,0.02))', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+        {/* Terms & Conditions — required for all applications */}
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 14px', background: '#F8FAFC', borderRadius: 10, border: `1.5px solid ${agreedTerms ? '#10b981' : '#E2E8F0'}`, transition: 'border-color 0.2s' }}>
+          <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+            style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+            I agree to the{' '}
+            <a href="/terms" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Terms & Conditions</a>
+            {' '}and{' '}
+            <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>
+            . I consent to TalentNest HR processing my personal data for recruitment purposes. <span style={{ color: '#e53e3e' }}>*</span>
+          </span>
+        </label>
+
+        {/* Inline account creation — optional, reveals password fields */}
+        <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,118,211,0.02))', border: `1px solid ${createAccount ? 'rgba(1,118,211,0.4)' : 'rgba(1,118,211,0.2)'}`, borderRadius: 12, padding: '14px 16px', transition: 'border-color 0.2s' }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
             <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)}
               style={{ marginTop: 2, width: 16, height: 16, accentColor: '#0176D3', cursor: 'pointer', flexShrink: 0 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#032D60' }}>
-                🚀 Create a TalentNest account to track this application
+                🚀 Create a free account to track this application
               </div>
               <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                See your application status, get interview updates, and apply to more jobs — all in one place.
+                See status updates, get interview notifications, and manage all your applications in one place.
               </div>
             </div>
           </label>
           {createAccount && (
-            <div style={{ marginTop: 12 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Choose a Password *</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Min 8 characters"
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1.5px solid rgba(1,118,211,0.35)', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#fff' }}
-              />
-              <p style={{ fontSize: 11, color: '#94A3B8', margin: '5px 0 0' }}>Your account will be created with the same name, email and mobile you entered above.</p>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Create Password *</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1.5px solid rgba(1,118,211,0.35)', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Confirm Password *</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${confirmPassword && password !== confirmPassword ? '#e53e3e' : 'rgba(1,118,211,0.35)'}`, fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#fff' }} />
+                {confirmPassword && password !== confirmPassword && (
+                  <p style={{ color: '#e53e3e', fontSize: 11, margin: '4px 0 0' }}>Passwords do not match</p>
+                )}
+              </div>
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>
+                Your account uses the name, email and mobile you entered above. You'll be logged in immediately after applying.
+              </p>
             </div>
           )}
         </div>
