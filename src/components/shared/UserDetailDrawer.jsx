@@ -67,26 +67,36 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     if (!uid) return;
     const isCandidate = (u?.role || 'candidate') === 'candidate';
     if (!isCandidate) return;
+
     const hasFullData = u?._fullRecord === true
       || (Array.isArray(u?.workHistory))
       || (typeof u?.currentCTC === 'number')
       || (typeof u?.currentCTC === 'string' && u.currentCTC.length > 0 && !u._partial);
+    
     if (hasFullData && !u?._partial) return;
-    // Fetch full record
+
+    // Fetch full record. If candidate fetch fails or returns empty, try user fetch.
     api.getCandidate(uid).then(full => {
-      if (!full || userEditedRef.current) return; // don't overwrite if user already typed
-      const enriched = { role: 'candidate', ...full, id: full.id || full._id?.toString() };
-      setFullUser(enriched);
-      setForm(buildForm(enriched));
-      setIsCandidateModel(true);
+      // Check if we got a valid record (must have at least name or email)
+      if (full && (full.name || full.email)) {
+        if (userEditedRef.current) return;
+        const enriched = { ...u, ...full, role: 'candidate', id: full.id || full._id?.toString() };
+        setFullUser(enriched);
+        setForm(buildForm(enriched));
+        setIsCandidateModel(true);
+      } else {
+        throw new Error('Not found in candidates');
+      }
     }).catch(() => {
       api.getUser(uid).then(full => {
-        if (!full || userEditedRef.current) return; // don't overwrite if user already typed
-        const enriched = { ...full, id: full.id || full._id?.toString() };
+        if (!full || userEditedRef.current) return;
+        const enriched = { ...u, ...full, id: full.id || full._id?.toString() };
         setFullUser(enriched);
         setForm(buildForm(enriched));
         setIsCandidateModel(false);
-      }).catch(() => {});
+      }).catch(() => {
+        // If both fail, keep the initial prop data in the form
+      });
     });
   }, [u?.id, u?._id]); // eslint-disable-line
 
