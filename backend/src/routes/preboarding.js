@@ -50,15 +50,20 @@ const DEFAULT_TASKS = [
   { title: 'Submit Aadhaar Card',          category: 'document',    isRequired: true },
   { title: 'Submit PAN Card',              category: 'document',    isRequired: true },
   { title: 'Submit Salary Slips (3)',      category: 'document',    isRequired: true },
-  { title: 'Submit Experience Letter',     category: 'document',    isRequired: false },
-  { title: 'Submit Relieving Letter',      category: 'document',    isRequired: false },
-  { title: 'Submit Educational Documents', category: 'document',    isRequired: true },
-  { title: 'Bank Account Details',         category: 'document',    isRequired: true },
-  { title: 'IT Asset Request Submitted',   category: 'it_setup',    isRequired: true },
-  { title: 'Work Email Created',           category: 'it_setup',    isRequired: true },
-  { title: 'Review Employee Handbook',     category: 'policy',      isRequired: true },
-  { title: 'Complete Compliance Training', category: 'training',    isRequired: true },
-  { title: 'Orientation Scheduled',        category: 'orientation', isRequired: true },
+  { title: 'Submit Experience Letter',          category: 'document',    isRequired: false },
+  { title: 'Submit Relieving Letter',           category: 'document',    isRequired: false },
+  { title: 'Submit Educational Documents',      category: 'document',    isRequired: true },
+  { title: 'Bank Account Details & Cancelled Cheque', category: 'document', isRequired: true },
+  // ── 3 Additional BVD Documents ────────────────────────────────────────────
+  { title: 'Background Verification Consent Form', category: 'document', isRequired: true },
+  { title: 'Address Proof (Utility Bill / Passport)', category: 'document', isRequired: true },
+  { title: 'Previous Employer Reference Contact',  category: 'document', isRequired: false },
+  // ── IT & Onboarding ────────────────────────────────────────────────────────
+  { title: 'IT Asset Request Submitted',        category: 'it_setup',    isRequired: true },
+  { title: 'Work Email Created',                category: 'it_setup',    isRequired: true },
+  { title: 'Review Employee Handbook',          category: 'policy',      isRequired: true },
+  { title: 'Complete Compliance Training',      category: 'training',    isRequired: true },
+  { title: 'Orientation Scheduled',             category: 'orientation', isRequired: true },
 ];
 
 const tenantGuard = (req, res, next) => {
@@ -369,6 +374,42 @@ router.post('/start-with-hired', authenticate, allowRoles('admin', 'super_admin'
   if (!pb) throw new AppError('Could not create pre-boarding. Application not found.', 404);
 
   res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
+}));
+
+// ── GET /api/preboarding/doc-status — document submission overview for all candidates ──
+// Shows aggregate: how many docs submitted, pending, verified per candidate
+router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const records = await PreBoarding.find(tenantFilter).lean();
+
+  const summary = records.map(r => {
+    const docTasks = (r.tasks || []).filter(t => t.category === 'document');
+    const submitted  = docTasks.filter(t => t.fileUrl).length;
+    const verified   = docTasks.filter(t => t.verifyStatus === 'verified').length;
+    const pending    = docTasks.filter(t => !t.fileUrl).length;
+    const needsReview= docTasks.filter(t => t.verifyStatus === 'pending_review').length;
+    const rejected   = docTasks.filter(t => t.verifyStatus === 'rejected' || t.verifyStatus === 'resubmission_required').length;
+    const allVerified = docTasks.length > 0 && verified === docTasks.length;
+    const overallStatus = allVerified ? 'all_verified'
+      : submitted === docTasks.length ? 'all_submitted'
+      : pending > 0 ? 'pending_submission'
+      : 'partial';
+
+    return {
+      preBoardingId: r._id?.toString(),
+      candidateName: r.candidateName,
+      candidateEmail: r.candidateEmail,
+      designation: r.designation,
+      tenantId: r.tenantId,
+      joiningDate: r.joiningDate,
+      totalDocs: docTasks.length,
+      submitted, verified, pending, needsReview, rejected,
+      overallStatus,
+      overallPct: r.tasks?.length > 0 ? Math.round(((r.tasks || []).filter(t => t.completedAt).length / r.tasks.length) * 100) : 0,
+    };
+  });
+
+  res.json({ success: true, data: summary });
 }));
 
 module.exports = router;

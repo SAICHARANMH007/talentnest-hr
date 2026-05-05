@@ -84,6 +84,12 @@ export const platformService = {
     return true;
   },
 
+  // Offer letter extended methods
+  async downloadOfferPreview(id)            { return downloadBlob(`/offers/${id}/pdf/preview`); },
+  async generateOfferShareLink(id)          { return req('POST',  `/offers/${id}/generate-share-link`, {}); },
+  async createStandaloneOffer(data)         { return req('POST',  '/offers/standalone', data); },
+  async getPreBoardingDocStatus()           { return req('GET',   '/preboarding/doc-status'); },
+
   // Interview scorecard
   async submitScorecard(appId, roundIndex, data) {
     return req('POST', `/applications/${appId}/interview/${roundIndex}/scorecard`, data);

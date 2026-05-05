@@ -295,11 +295,12 @@ async function mergeApplications(winnerId, loserId) {
   await Application.findByIdAndUpdate(loserId, { $set: { deletedAt: new Date() } });
 }
 
-// POST /api/admin/deduplicate-jobs — safe merge that NEVER loses candidate data
+// POST /api/admin/deduplicate-jobs — safe FAST merge using bulkWrite (no N+1 queries)
 router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const orgs = await Organization.find({}).select('_id name').lean();
   const summary = [];
   let totalMergedApps = 0;
+  const now = new Date();
 
   for (const org of orgs) {
     const jobs = await Job.find({ tenantId: org._id, deletedAt: null }).lean();
@@ -311,11 +312,15 @@ router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncH
       groups[key].push(j);
     }
 
+    // Collect all loser job IDs across this org for bulk close
+    const loserJobIds = [];
     let merged = 0;
+
     for (const key in groups) {
       const list = groups[key];
       if (list.length <= 1) continue;
 
+      // Pick winner: careerPageSlug > active > most apps > oldest
       const counts = await Promise.all(list.map(j => Application.countDocuments({ jobId: j._id, deletedAt: null })));
       list.forEach((j, i) => { j._c = counts[i]; });
       list.sort((a, b) => {
@@ -326,33 +331,65 @@ router.post('/deduplicate-jobs', authenticate, allowRoles('super_admin'), asyncH
         return b._c - a._c || new Date(a.createdAt) - new Date(b.createdAt);
       });
 
-      const winner = list[0];
-      for (const loser of list.slice(1)) {
-        // Fetch ALL loser apps (full docs for data preservation)
-        const loserApps = await Application.find({ jobId: loser._id, deletedAt: null }).lean();
+      const winner  = list[0];
+      const losers  = list.slice(1);
+      const loserIds = losers.map(l => l._id);
+      loserJobIds.push(...loserIds);
 
-        for (const loserApp of loserApps) {
-          // Check if winner job already has an application from this same candidate
-          const winnerApp = await Application.findOne({
-            jobId: winner._id,
-            candidateId: loserApp.candidateId,
-          });
+      // BATCH: get ALL applications for all loser jobs in one query
+      const loserApps = await Application.find({ jobId: { $in: loserIds }, deletedAt: null })
+        .select('_id candidateId jobId currentStage stageHistory interviewRounds offerDetails notes aiMatchScore rejectionReason').lean();
 
-          if (winnerApp) {
-            // CONFLICT: merge data into winner app, then soft-delete loser
-            await mergeApplications(winnerApp._id, loserApp._id);
-          } else {
-            // NO CONFLICT: simply re-point the application to the winner job
-            await Application.findByIdAndUpdate(loserApp._id, { $set: { jobId: winner._id } });
-          }
-          totalMergedApps++;
+      if (loserApps.length === 0) { merged += losers.length; continue; }
+
+      // BATCH: get ALL existing winner applications in one query
+      const loserCandidateIds = [...new Set(loserApps.map(a => String(a.candidateId)))];
+      const existingWinnerApps = await Application.find({
+        jobId: winner._id,
+        candidateId: { $in: loserCandidateIds },
+      }).select('_id candidateId currentStage stageHistory interviewRounds').lean();
+
+      const winnerByCandidateId = new Map(existingWinnerApps.map(a => [String(a.candidateId), a]));
+
+      // Separate conflicts from clean re-points
+      const rePointOps    = [];  // no conflict — just change jobId
+      const softDeleteIds = [];  // conflicts — soft-delete loser
+
+      for (const loserApp of loserApps) {
+        const cidStr = String(loserApp.candidateId);
+        const winnerApp = winnerByCandidateId.get(cidStr);
+
+        if (winnerApp) {
+          // Conflict — merge data, soft-delete loser (no jobId change)
+          const winStage = STAGE_PRIORITY[winnerApp.currentStage] ?? 0;
+          const losStage = STAGE_PRIORITY[loserApp.currentStage]  ?? 0;
+          const mergedHistory = [...(winnerApp.stageHistory||[]), ...(loserApp.stageHistory||[])]
+            .sort((a,b) => new Date(a.movedAt) - new Date(b.movedAt))
+            .filter((h, idx, arr) => idx === arr.findIndex(x => x.stage === h.stage && String(x.movedAt) === String(h.movedAt)));
+          rePointOps.push({ updateOne: { filter: { _id: winnerApp._id }, update: { $set: {
+            currentStage: losStage > winStage ? loserApp.currentStage : winnerApp.currentStage,
+            stageHistory: mergedHistory,
+          }}}});
+          softDeleteIds.push(loserApp._id);
+        } else {
+          // No conflict — re-point to winner job
+          rePointOps.push({ updateOne: { filter: { _id: loserApp._id }, update: { $set: { jobId: winner._id }}}});
         }
-
-        // Soft-delete the duplicate job (never hard delete — audit trail preserved)
-        await Job.findByIdAndUpdate(loser._id, { $set: { deletedAt: new Date(), status: 'closed' } });
-        merged++;
+        totalMergedApps++;
       }
+
+      // Execute all app updates in one bulkWrite (fast!)
+      if (rePointOps.length > 0) await Application.bulkWrite(rePointOps, { ordered: false });
+      if (softDeleteIds.length > 0) await Application.updateMany({ _id: { $in: softDeleteIds } }, { $set: { deletedAt: now }});
+
+      merged += losers.length;
     }
+
+    // Bulk close all loser jobs at once
+    if (loserJobIds.length > 0) {
+      await Job.updateMany({ _id: { $in: loserJobIds } }, { $set: { deletedAt: now, status: 'closed' }});
+    }
+
     if (merged > 0) summary.push(`${org.name}: ${merged} duplicate jobs merged, ${totalMergedApps} applications consolidated`);
   }
 

@@ -224,6 +224,8 @@ export default function AdminOnboarding({ user }) {
   const [toast, setToast]             = useState('');
   const [activeTab, setActiveTab]     = useState('active'); // 'active' | 'pending'
   const [starting, setStarting]       = useState({});       // appId → loading
+  const [docStatus, setDocStatus]     = useState([]);
+  const [docLoading, setDocLoading]   = useState(false);
 
   useEffect(() => { load(); }, [statusFilter]);
 
@@ -239,6 +241,15 @@ export default function AdminOnboarding({ user }) {
       setHiredPending(Array.isArray(hp?.data) ? hp.data : []);
     } catch { setRecords([]); }
     setLoading(false);
+  };
+
+  const loadDocStatus = async () => {
+    setDocLoading(true);
+    try {
+      const r = await api.getPreBoardingDocStatus();
+      setDocStatus(Array.isArray(r?.data) ? r.data : []);
+    } catch { setDocStatus([]); }
+    setDocLoading(false);
   };
 
   const startBVD = async (appId) => {
@@ -284,8 +295,9 @@ export default function AdminOnboarding({ user }) {
         {[
           { key: 'active', label: '📋 Active Pre-boarding', count: records.length },
           { key: 'pending', label: '🔔 Hired — BVD Not Started', count: hiredPending.length, alert: hiredPending.length > 0 },
+          { key: 'docs', label: '📄 Document Status', count: docStatus.length, onClick: loadDocStatus },
         ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
+          <button key={t.key} onClick={() => { setActiveTab(t.key); if (t.onClick) t.onClick(); }}
             style={{ padding: '10px 18px', border: 'none', borderBottom: `2px solid ${activeTab === t.key ? '#0176D3' : 'transparent'}`, background: 'none', color: activeTab === t.key ? '#0176D3' : '#706E6B', fontWeight: activeTab === t.key ? 800 : 500, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: -2 }}>
             {t.label}
             <span style={{ background: t.alert ? '#EF4444' : (activeTab === t.key ? '#0176D3' : '#E2E8F0'), color: t.alert ? '#fff' : (activeTab === t.key ? '#fff' : '#706E6B'), borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{t.count}</span>
@@ -356,6 +368,64 @@ export default function AdminOnboarding({ user }) {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Document Status Deep-Dive */}
+      {activeTab === 'docs' && (
+        <div>
+          {docLoading ? <div style={{ textAlign:'center', padding:60 }}><Spinner /></div> : docStatus.length === 0 ? (
+            <div style={{ ...card, textAlign:'center', padding:'48px 24px', color:'#9E9D9B' }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>📄</div>
+              <div style={{ fontWeight:600 }}>No document records yet — click the tab to load</div>
+            </div>
+          ) : (
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', background:'#fff', borderRadius:16, overflow:'hidden', border:'1px solid #E2E8F0' }}>
+                <thead>
+                  <tr style={{ background:'#F8FAFC', borderBottom:'2px solid #E2E8F0' }}>
+                    {['Candidate','Designation','Joining Date','Total Docs','Submitted','Verified','Pending','Needs Review','Rejected','Status'].map(h => (
+                      <th key={h} style={{ padding:'12px 14px', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, textAlign:'left', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {docStatus.map((d, i) => {
+                    const statusInfo = {
+                      all_verified:    { label:'All Verified ✅', color:'#10b981', bg:'#f0fdf4' },
+                      all_submitted:   { label:'All Submitted ⏳', color:'#0176D3', bg:'#eff6ff' },
+                      pending_submission:{ label:'Docs Pending 🔴', color:'#ef4444', bg:'#fef2f2' },
+                      partial:         { label:'Partial 🟡', color:'#f59e0b', bg:'#fefce8' },
+                    }[d.overallStatus] || { label:d.overallStatus, color:'#94A3B8', bg:'#F8FAFC' };
+                    return (
+                      <tr key={d.preBoardingId} style={{ borderBottom:'1px solid #F1F5F9' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background=''}>
+                        <td style={{ padding:'12px 14px' }}>
+                          <div style={{ fontWeight:700, fontSize:13 }}>{d.candidateName}</div>
+                          <div style={{ fontSize:11, color:'#94A3B8' }}>{d.candidateEmail}</div>
+                        </td>
+                        <td style={{ padding:'12px 14px', fontSize:12, color:'#374151' }}>{d.designation || '—'}</td>
+                        <td style={{ padding:'12px 14px', fontSize:12, color:'#374151' }}>{d.joiningDate ? new Date(d.joiningDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', fontWeight:800 }}>{d.totalDocs}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', color:'#0176D3', fontWeight:700 }}>{d.submitted}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', color:'#10b981', fontWeight:700 }}>{d.verified}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', color:'#ef4444', fontWeight:700 }}>{d.pending}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', color:'#f59e0b', fontWeight:700 }}>{d.needsReview}</td>
+                        <td style={{ padding:'12px 14px', textAlign:'center', color:'#dc2626', fontWeight:700 }}>{d.rejected}</td>
+                        <td style={{ padding:'12px 14px' }}>
+                          <span style={{ background:statusInfo.bg, color:statusInfo.color, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>
+                            {statusInfo.label}
+                          </span>
+                          <div style={{ fontSize:10, color:'#94A3B8', marginTop:3 }}>{d.overallPct}% complete</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

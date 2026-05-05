@@ -394,4 +394,85 @@ router.get('/:id/pdf', authMiddleware, asyncHandler(async (req, res) => {
   res.send(pdfBuffer);
 }));
 
+// ── GET /api/offers/:id/pdf/preview — download/preview PDF for any offer (draft or signed) ──
+router.get('/:id/pdf/preview', ...guard, asyncHandler(async (req, res) => {
+  const offer = await OfferLetter.findById(req.params.id);
+  if (!offer) throw new AppError('Offer not found.', 404);
+
+  // Tenant check for non-super-admin
+  if (req.user.role !== 'super_admin' && String(offer.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Access denied.', 403);
+  }
+
+  const [candidate, job] = await Promise.all([
+    Candidate.findById(offer.candidateId).select('name').lean(),
+    offer.applicationId
+      ? Application.findById(offer.applicationId).then(a => a ? Job.findById(a.jobId).select('title').lean() : null)
+      : null,
+  ]);
+
+  const pdfBuffer = await generateOfferPDF(offer, candidate, job);
+  const fname = `offer-${(offer.templateData?.candidateName || 'candidate').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${fname}"`, 'Content-Length': pdfBuffer.length });
+  res.send(pdfBuffer);
+}));
+
+// ── GET /api/offers/share/:shareToken — public shareable link (no auth required) ──
+router.get('/share/:shareToken', asyncHandler(async (req, res) => {
+  const offer = await OfferLetter.findOne({ shareToken: req.params.shareToken });
+  if (!offer) throw new AppError('Offer link not found or expired.', 404);
+
+  const [candidate, job] = await Promise.all([
+    Candidate.findById(offer.candidateId).select('name email').lean(),
+    offer.applicationId
+      ? Application.findById(offer.applicationId).then(a => a ? Job.findById(a.jobId).select('title').lean() : null)
+      : null,
+  ]);
+
+  res.json({ success: true, data: { ...require('./offers.js').normalizeOffer?.(offer) || offer.toObject(), candidateName: candidate?.name, jobTitle: job?.title } });
+}));
+
+// ── POST /api/offers/:id/generate-share-link — create shareable token ────────
+router.post('/:id/generate-share-link', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const offer = await OfferLetter.findById(req.params.id);
+  if (!offer) throw new AppError('Offer not found.', 404);
+
+  // Generate or reuse share token
+  if (!offer.shareToken) {
+    const crypto = require('crypto');
+    offer.shareToken = crypto.randomBytes(24).toString('hex');
+    await offer.save();
+  }
+
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  res.json({ success: true, shareLink: `${FRONTEND_URL}/offer/${offer.shareToken}` });
+}));
+
+// ── POST /api/offers/standalone — create offer for any candidate (no application required) ──
+router.post('/standalone', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { candidateId, designation, joiningDate, salary, companyName, signatoryName, signatoryDesignation } = req.body;
+  if (!candidateId) throw new AppError('candidateId required', 400);
+
+  const candidate = await Candidate.findOne({ _id: candidateId, deletedAt: null }).lean();
+  if (!candidate) throw new AppError('Candidate not found', 404);
+
+  const offer = await OfferLetter.create({
+    tenantId: req.user.tenantId,
+    candidateId,
+    applicationId: req.body.applicationId || null,
+    status: 'draft',
+    templateData: {
+      candidateName: candidate.name || '',
+      designation: designation || '',
+      joiningDate: joiningDate || '',
+      salary: salary || '',
+      companyName: companyName || req.tenant?.name || 'TalentNest HR',
+      signatoryName: signatoryName || req.user.name || 'HR Manager',
+      signatoryDesignation: signatoryDesignation || 'Human Resources',
+    },
+  });
+
+  res.json({ success: true, data: normalizeOffer(offer) });
+}));
+
 module.exports = router;

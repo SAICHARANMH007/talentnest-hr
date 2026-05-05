@@ -47,11 +47,13 @@ const offerLetterSchema = new mongoose.Schema({
     enum   : ['draft', 'sent', 'signed', 'declined'],
     default: 'draft',
   },
+  shareToken: { type: String, default: null }, // for public shareable link
 }, { timestamps: true });
 
 offerLetterSchema.index({ tenantId: 1 });
 offerLetterSchema.index({ applicationId: 1 });
 offerLetterSchema.index({ candidateId: 1 });
+offerLetterSchema.index({ shareToken: 1 }, { sparse: true });
 
 offerLetterSchema.set('toJSON', { virtuals: true });
 offerLetterSchema.set('toObject', { virtuals: true });
