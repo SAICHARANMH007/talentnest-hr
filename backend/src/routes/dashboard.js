@@ -195,6 +195,17 @@ async function buildApplicationFilters(req) {
       filter.jobId = { $in: recruiterJobIds };
     }
   }
+
+  // Exact ID or Email tracking for unified candidate pipeline
+  const { candidateId, email } = req.query;
+  if (email) {
+    const matchedCands = await Candidate.find({ email: email.toLowerCase().trim(), deletedAt: null }).select('_id').lean();
+    const cIds = matchedCands.map(c => c._id);
+    filter.candidateId = { $in: cIds };
+  } else if (candidateId) {
+    filter.candidateId = candidateId;
+  }
+
   return filter;
 }
 
@@ -680,10 +691,31 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
           {
             $lookup: {
               from: 'applications',
-              localField: '_id',
-              foreignField: 'candidateId',
+              let: { candEmail: '$email', candId: '$_id' },
               pipeline: [
-                { $match: { deletedAt: null } },
+                {
+                  $lookup: {
+                    from: 'candidates',
+                    localField: 'candidateId',
+                    foreignField: '_id',
+                    as: 'candInfo'
+                  }
+                },
+                { $unwind: { path: '$candInfo', preserveNullAndEmptyArrays: true } },
+                {
+                  $match: {
+                    $expr: {
+                      $or: [
+                        { $eq: ['$candidateId', '$$candId'] },
+                        { $and: [
+                          { $ne: ['$$candEmail', null] },
+                          { $eq: ['$candInfo.email', '$$candEmail'] }
+                        ]}
+                      ]
+                    },
+                    deletedAt: null
+                  }
+                },
                 { $sort: { createdAt: -1 } },
                 { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
                 { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } }

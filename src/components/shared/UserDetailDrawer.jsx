@@ -109,7 +109,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     const uid = u?.id || u?._id?.toString();
     if (!uid) return;
     setLoadingApp(true);
-    api.getApplications({ candidateId: uid, limit: 200 }).then(res => {
+    api.getApplications({ candidateId: uid, email: u?.email, limit: 200 }).then(res => {
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setAllFetchedApps(list);
       if (!app && list.length > 0) {
