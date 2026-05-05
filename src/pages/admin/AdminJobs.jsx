@@ -419,20 +419,38 @@ export default function AdminJobs({ user }) {
         />
       )}
 
-      <PageHeader title="All Job Postings" subtitle={hasFilters ? `${filtered.length} of ${jobs.length} jobs` : `${jobs.filter(j => j.status === 'active' || j.status === 'Open').length} open jobs out of ${jobs.length} total across all recruiters`}
-        action={
-          <div style={{ display: 'flex', gap: 10 }}>
-            {user?.role === 'super_admin' && (
-              <>
-                <button onClick={findDuplicates} style={{ ...btnG, color: '#0176D3', borderColor: '#0176D3' }}>🪄 Merge Duplicates</button>
-                {selectedJobIds.length > 0 && (
-                  <button onClick={handleBulkClose} style={{ ...btnD, background: '#BA0517', color: '#fff' }}>🚫 Close ({selectedJobIds.length})</button>
-                )}
-              </>
-            )}
-            <button onClick={() => setShowModal(true)} style={btnP}>+ Post Job</button>
+      {/* ── Jobs Header ── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12 }}>
+          <div>
+            <h1 style={{ color:'#181818', fontSize:22, fontWeight:800, margin:0 }}>All Job Postings</h1>
+            <div style={{ display:'flex', gap:16, marginTop:6, flexWrap:'wrap' }}>
+              {[
+                { label:'Open', value: jobs.filter(j=>j.status==='active'||j.status==='Open').length, color:'#2E844A', bg:'rgba(46,132,74,0.08)' },
+                { label:'Closed', value: jobs.filter(j=>j.status==='closed'||j.status==='Closed').length, color:'#BA0517', bg:'rgba(186,5,23,0.08)' },
+                { label:'Draft', value: jobs.filter(j=>j.status==='draft').length, color:'#A07E00', bg:'rgba(160,126,0,0.08)' },
+                { label:'Total', value: jobs.length, color:'#0176D3', bg:'rgba(1,118,211,0.08)' },
+              ].map(s => (
+                <span key={s.label} style={{ background:s.bg, color:s.color, fontWeight:700, fontSize:12, padding:'3px 10px', borderRadius:20 }}>
+                  {s.label}: {s.value}
+                </span>
+              ))}
+              {hasFilters && <span style={{ color:'#706E6B', fontSize:12, fontWeight:600 }}>Showing {filtered.length} filtered</span>}
+            </div>
           </div>
-        } />
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            {user?.role === 'super_admin' && (
+              <button onClick={findDuplicates} style={{ ...btnG, color:'#0176D3', borderColor:'#0176D3', fontSize:12 }}>🪄 Merge Duplicates</button>
+            )}
+            {selectedJobIds.length > 0 && (
+              <button onClick={handleBulkClose} style={{ ...btnD, background:'#BA0517', color:'#fff', fontSize:12 }}>
+                🚫 Close {selectedJobIds.length} Selected
+              </button>
+            )}
+            <button onClick={() => setShowModal(true)} style={{ ...btnP, fontSize:12 }}>+ Post Job</button>
+          </div>
+        </div>
+      </div>
 
       {!loading && jobs.length > 0 && (
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, padding:'12px 16px', background:'#fff', borderRadius:12, border:'1px solid #F3F2F2', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
