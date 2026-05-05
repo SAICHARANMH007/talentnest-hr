@@ -89,20 +89,20 @@ app.use(cors({
 app.use(morgan(IS_PROD ? 'combined' : 'dev'));
 
 // ── Rate limiting
-// Global: 200 requests per 15 min per IP
+// Global: 5000 requests per 15 min per IP (Supports high-traffic office proxies and 100+ active users)
 app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000, max: 200,
+  windowMs: 15 * 60 * 1000, max: 5000,
   message: { success: false, error: 'Too many requests. Try again later.' }
 }));
-// Auth endpoints — tighter limits
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { success: false, error: 'Too many login attempts.' } }));
-app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { success: false, error: 'Too many registration attempts.' } }));
+// Auth endpoints — Scaled for growth
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { success: false, error: 'Too many login attempts.' } }));
+app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { success: false, error: 'Too many registration attempts.' } }));
 // Email / invite sending — prevent email spam and Resend bill abuse
-// 20 invite/email sends per hour per IP (invite routes only — not the whole admin router)
-app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/admin/invite-recruiter', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/admin/resend-invite',  rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/email', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, message: { success: false, error: 'Email rate limit reached. Please try again later.' } }));
+// 200 invite/email sends per hour per IP (Allows bulk onboarding)
+app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/invite-recruiter', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/resend-invite',  rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/email', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Email rate limit reached. Please try again later.' } }));
 
 // ── Body parsing
 app.use('/api/users/bulk-import', express.json({ limit: '25mb' }));
