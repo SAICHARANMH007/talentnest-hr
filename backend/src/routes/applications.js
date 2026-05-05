@@ -431,7 +431,7 @@ router.post('/invite', ...guard,
         message,
       });
       if (tpl) {
-        email.sendEmailWithRetry(candidate.email, tpl.subject, tpl.html).catch(() => {});
+        email.sendEmailWithRetry(candidate.email, tpl.subject, tpl.html).catch(e => console.warn("[Email] stage-change:", e.message));
       }
     }
 
@@ -627,7 +627,7 @@ router.patch('/:id/stage', ...guard,
             <p style="color:#9ca3af;font-size:12px;margin-top:24px;">You are receiving this email because you applied through TalentNest HR.</p>
           </div>
         </div>`;
-        email.sendEmailWithRetry?.(candidate.email, tpl.subject, html).catch(() => {});
+        email.sendEmailWithRetry?.(candidate.email, tpl.subject, html).catch(e => console.warn("[Email] candidate:", e.message));
       }
     }
 
@@ -916,11 +916,11 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
 
   // Send calendar invite to candidate
   if (candidate?.email) {
-    email.sendEmailWithRetry?.(candidate.email, `Interview Scheduled — ${job?.title || 'Position'} | ${orgName}`, inviteHtml, icalAttachment).catch(() => {});
+    email.sendEmailWithRetry?.(candidate.email, `Interview Scheduled — ${job?.title || 'Position'} | ${orgName}`, inviteHtml, icalAttachment).catch(e => console.warn("[Email] candidate:", e.message));
   }
   // Send calendar invite to interviewer
   if (interviewerEmail) {
-    email.sendEmailWithRetry?.(interviewerEmail, `Interview Scheduled — ${candidate?.name || 'Candidate'} | ${job?.title || 'Position'}`, inviteHtml, icalAttachment).catch(() => {});
+    email.sendEmailWithRetry?.(interviewerEmail, `Interview Scheduled — ${candidate?.name || 'Candidate'} | ${job?.title || 'Position'}`, inviteHtml, icalAttachment).catch(e => console.warn("[Email] interviewer:", e.message));
   }
 
   // Backfill job/candidate names into the video room if we just created it

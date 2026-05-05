@@ -692,8 +692,16 @@ async function seed() {
       requirements: j.skills.map(s => `Proficiency in ${s}`).join('\n'),
     }));
 
-    jobs = await Promise.all(jobData.map(j => Job.create({ ...j, tenantId: demoTenant })));
-    console.log(`✅  Created ${jobs.length} demo jobs`);
+    // Use upsert — prevents duplicate jobs on every deploy
+    jobs = await Promise.all(jobData.map(j => {
+      const slug = `demo-${j.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${(j.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      return Job.findOneAndUpdate(
+        { tenantId: demoTenant, careerPageSlug: slug },
+        { $set: { ...j, tenantId: demoTenant, careerPageSlug: slug } },
+        { upsert: true, new: true }
+      );
+    }));
+    console.log(`✅  Synced ${jobs.length} demo jobs (upsert — no duplicates)`);
   } else {
     jobs = await Job.find({ tenantId: demoTenant }).lean();
     console.log(`ℹ️   Demo jobs already exist (${jobs.length})`);

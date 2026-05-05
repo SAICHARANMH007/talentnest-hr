@@ -214,8 +214,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
           setJobCounts({ active, total: list.length });
         }).catch(() => setAllJobs([]));
         
-        // High-Capacity Global Application & Pipeline Tracking (10,000 Limit)
-        api.getApplications({ limit: 10000, platform: platformWide }).then(unwrap).then(list => {
+        // Cap at 2000 — sufficient for pipeline charts, prevents UI freeze on large datasets
+        api.getApplications({ limit: 2000, platform: platformWide }).then(unwrap).then(list => {
           setAllApps(list);
           const pipe = {};
           MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
@@ -247,7 +247,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Global Candidate Scan
-        api.getUsers({ role: 'candidate', limit: 10000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getUsers({ role: 'candidate', limit: 2000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
         api.getApplicants({ limit: 1000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
         api.getCandidateRecords({ limit: 1000, platform: platformWide }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
       }, 300);

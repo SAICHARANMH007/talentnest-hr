@@ -59,17 +59,16 @@ async function seedDemo() {
   const jobs = [];
   for (let i = 0; i < jobDefs.length; i++) {
     const jd = jobDefs[i];
-    let job = await Job.findOne({ title: jd.title, orgId });
-    if (!job) {
-      job = await Job.create({
-        ...jd, tenantId: orgId, orgId, createdBy,
-        approvalStatus: 'approved',
-        assignedRecruiters: [recruiters[i % recruiters.length]._id],
-      });
-      console.log(`✅  Job created → ${jd.title}`);
-    }
+    // Use careerPageSlug as the unique key — prevents duplicate creation on every deploy
+    const slug = `demo-tn-${jd.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const job = await Job.findOneAndUpdate(
+      { tenantId: orgId, careerPageSlug: slug },
+      { $set: { ...jd, tenantId: orgId, orgId, createdBy, careerPageSlug: slug, approvalStatus: 'approved', assignedRecruiters: [recruiters[i % recruiters.length]._id] } },
+      { upsert: true, new: true }
+    );
     jobs.push(job);
   }
+  console.log(`✅  Demo jobs synced (${jobs.length}) — upserted, no duplicates`);
 
   // ── 15 Demo Candidates ────────────────────────────────────────────────────
   const candidateData = [
