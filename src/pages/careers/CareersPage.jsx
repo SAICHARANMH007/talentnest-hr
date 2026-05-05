@@ -24,6 +24,9 @@ function ApplyModal({ job, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [createAccount, setCreateAccount] = useState(false); // inline account creation
+  const [password, setPassword] = useState('');
+  const [accountCreated, setAccountCreated] = useState(false);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const isPreFilled = !!(prefill.name || prefill.email);
 
@@ -44,11 +47,31 @@ function ApplyModal({ job, onClose }) {
         return;
       }
     }
+    if (createAccount) {
+      if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    }
     const screeningAnswers = questions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }));
     setSubmitting(true);
     setError('');
     try {
       await api.applyPublic(job.id, { ...form, screeningAnswers });
+      // If user wants an account, register them now (same data, no re-entry)
+      if (createAccount && password) {
+        try {
+          await api.register({
+            name: form.name, email: form.email, password,
+            phone: form.phone, role: 'candidate',
+            title: form.title, currentCompany: form.currentCompany,
+            experience: form.experience ? Number(form.experience) : undefined,
+            availability: form.availability,
+            companyName: 'TalentNest HR',
+          });
+          setAccountCreated(true);
+        } catch (regErr) {
+          // If registration fails (e.g., email already exists), still show success for application
+          console.warn('[Apply] Account creation failed:', regErr.message);
+        }
+      }
       setDone(true);
       // External job: redirect to company's careers page after saving candidate data
       if (job.externalUrl) {
@@ -63,8 +86,17 @@ function ApplyModal({ job, onClose }) {
   if (done) return (
     <Modal title={job.externalUrl ? '✅ Profile Saved!' : 'Application Submitted!'} onClose={onClose}>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>{job.externalUrl ? '🚀' : '🎉'}</div>
-        <p style={{ color: '#0f172a', fontSize: 17, fontWeight: 700 }}>Thank you, {form.name}!</p>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>{accountCreated ? '🎊' : job.externalUrl ? '🚀' : '🎉'}</div>
+        <p style={{ color: '#0f172a', fontSize: 17, fontWeight: 700 }}>
+          {accountCreated ? `Account created & application submitted!` : `Thank you, ${form.name}!`}
+        </p>
+        {accountCreated && (
+          <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,118,211,0.04))', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 12, textAlign: 'left' }}>
+            <p style={{ color: '#032D60', fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>✅ Your TalentNest account is ready!</p>
+            <p style={{ color: '#374151', fontSize: 12, margin: 0 }}>Login with <b>{form.email}</b> to track your application live.</p>
+            <a href="/login" style={{ display: 'inline-block', marginTop: 8, background: '#0176D3', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>Login Now →</a>
+          </div>
+        )}
         {job.externalUrl ? (
           <>
             <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
@@ -154,6 +186,36 @@ function ApplyModal({ job, onClose }) {
         </div>
 
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} placeholder="Tell us why you're a great fit…" />
+
+        {/* Inline account creation — one checkbox, password reveals, no extra registration needed */}
+        <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,118,211,0.02))', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)}
+              style={{ marginTop: 2, width: 16, height: 16, accentColor: '#0176D3', cursor: 'pointer', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#032D60' }}>
+                🚀 Create a TalentNest account to track this application
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                See your application status, get interview updates, and apply to more jobs — all in one place.
+              </div>
+            </div>
+          </label>
+          {createAccount && (
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Choose a Password *</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Min 8 characters"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1.5px solid rgba(1,118,211,0.35)', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+              />
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '5px 0 0' }}>Your account will be created with the same name, email and mobile you entered above.</p>
+            </div>
+          )}
+        </div>
+
         {questions.length > 0 && (
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
             <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>📋 Screening Questions</p>

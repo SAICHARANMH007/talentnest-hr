@@ -55,38 +55,37 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [toast, setToast] = useState('');
   const [isCandidateModel, setIsCandidateModel] = useState(false);
 
-  const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  // Track whether user has started editing — if they have, don't overwrite with fetch
+  const userEditedRef = useRef(false);
+  const sf = (k, v) => { userEditedRef.current = true; setForm(p => ({ ...p, [k]: v })); };
 
-  // When a partial candidate object is passed (populated from application.candidateId),
-  // fetch the full Candidate profile so all fields are available for editing.
+  // When a partial candidate object is passed, fetch full profile for editing.
+  // Guard: never overwrite form once user has started typing.
   useEffect(() => {
+    userEditedRef.current = false; // reset on new candidate
     const uid = u?.id || u?._id?.toString();
     if (!uid) return;
     const isCandidate = (u?.role || 'candidate') === 'candidate';
     if (!isCandidate) return;
-    // Detect partial object — profileRow/application populate returns empty strings,
-    // not undefined. A truly full record has workHistory array OR non-empty CTC values
-    // OR explicitly marked as already full via _fullRecord flag.
     const hasFullData = u?._fullRecord === true
       || (Array.isArray(u?.workHistory))
       || (typeof u?.currentCTC === 'number')
       || (typeof u?.currentCTC === 'string' && u.currentCTC.length > 0 && !u._partial);
     if (hasFullData && !u?._partial) return;
-    // Fetch the full Candidate model record
+    // Fetch full record
     api.getCandidate(uid).then(full => {
-      if (!full) return;
+      if (!full || userEditedRef.current) return; // don't overwrite if user already typed
       const enriched = { role: 'candidate', ...full, id: full.id || full._id?.toString() };
       setFullUser(enriched);
       setForm(buildForm(enriched));
-      setIsCandidateModel(true); // record lives in the Candidate collection
+      setIsCandidateModel(true);
     }).catch(() => {
-      // Fallback: try the Users endpoint (for self-registered candidates)
       api.getUser(uid).then(full => {
-        if (!full) return;
+        if (!full || userEditedRef.current) return; // don't overwrite if user already typed
         const enriched = { ...full, id: full.id || full._id?.toString() };
         setFullUser(enriched);
         setForm(buildForm(enriched));
-        setIsCandidateModel(false); // record lives in the User collection
+        setIsCandidateModel(false);
       }).catch(() => {});
     });
   }, [u?.id, u?._id]); // eslint-disable-line

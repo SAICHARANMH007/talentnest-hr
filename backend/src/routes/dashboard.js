@@ -758,7 +758,7 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
 */
 router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 1000); // increased from 200 → 1000
   const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim().toLowerCase();
   

@@ -1089,7 +1089,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             }));
             return (
               <div>
-                <DonutChart segments={segments} size={160} title="" onItemClick={openSourceDrill} />
+                <DonutChart segments={segments} size={160} title="" centerValue={total} centerLabel="TOTAL" onItemClick={openSourceDrill} />
                 <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {segments.map(s => (
                     <div key={s.label}
