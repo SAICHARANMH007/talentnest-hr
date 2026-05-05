@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
