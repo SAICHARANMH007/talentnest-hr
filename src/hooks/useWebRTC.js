@@ -85,6 +85,7 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
+        channelCount: 1, // Force mono for maximum cross-platform compatibility (prevents silent stereo tracks)
         // Legacy flags for older Chrome/Windows driver compatibility
         googEchoCancellation: true,
         googAutoGainControl: true,
@@ -131,7 +132,7 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
       iceTransportPolicy: 'all',
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
-      iceCandidatePoolSize: 10, // Pre-gather candidates to speed up connection
+      iceCandidatePoolSize: 2, // Reduced from 10 to prevent signaling congestion/timeouts
     });
     peerConnsRef.current[socketId] = pc;
     reconnectCount.current[socketId] = 0;

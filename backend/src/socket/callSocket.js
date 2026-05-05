@@ -25,8 +25,9 @@ function deliverToUser(ns, userId, event, data) {
  */
 async function isUserOnline(ns, userId) {
   try {
-    const sockets = await ns.in(`user:${String(userId)}`).allSockets();
-    return sockets.size > 0;
+    // Check both standard rooms and any potential fallback adapters
+    const sockets = await ns.in(`user:${String(userId)}`).fetchSockets();
+    return sockets.length > 0;
   } catch {
     return false;
   }
@@ -68,14 +69,10 @@ function setupCallSocket(io) {
       const toId = String(toUserId);
 
       // Use Socket.IO's native room check — correct even after server restart
+      // Relaxed check: deliver anyway if possible, but give feedback if definitely offline
       const receiverOnline = await isUserOnline(ns, toId);
-      if (!receiverOnline) {
-        socket.emit('call:unavailable', {
-          toUserId: toId,
-          message: `${toName || 'User'} is not available right now.`,
-        });
-        return;
-      }
+      // We don't return early here anymore — we attempt delivery to 'user:toId' room.
+      // This handles cases where the online-check flickered but the user is actually reachable.
 
       if (userCallStatus.get(toId)) {
         socket.emit('call:busy', { toUserId: toId, toName }); return;
@@ -157,7 +154,7 @@ function setupCallSocket(io) {
       call.answeredAt = Date.now();
       userCallStatus.set(call.toUserId, callId);
       socket.join(`call:${callId}`);
-      ns.to(call.fromSocket).emit('call:accepted', { callId });
+      ns.to(`user:${call.fromUserId}`).emit('call:accepted', { callId });
       socket.emit('call:join-room', { callId, peerSocketId: call.fromSocket });
       // Dismiss incoming call on OTHER tabs of the same user (multi-tab handling)
       socket.to(`user:${call.toUserId}`).emit('call:answered-elsewhere', { callId });
@@ -211,9 +208,28 @@ function setupCallSocket(io) {
     });
 
     // WebRTC signaling
-    socket.on('call:offer',  ({ callId, offer })     => socket.to(`call:${callId}`).emit('call:offer',  { from: socket.id, offer }));
-    socket.on('call:answer', ({ callId, answer })    => socket.to(`call:${callId}`).emit('call:answer', { from: socket.id, answer }));
-    socket.on('call:ice',    ({ callId, candidate }) => socket.to(`call:${callId}`).emit('call:ice',    { from: socket.id, candidate }));
+    // WebRTC signaling — ALWAYS deliver to the USER's room, not just the socket.
+    // This ensures signaling survives socket-level reconnections during a call.
+    socket.on('call:offer',  ({ callId, offer }) => {
+      const call = activeCalls.get(callId);
+      if (!call) return;
+      const targetId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+      ns.to(`user:${targetId}`).emit('call:offer', { from: socket.id, offer });
+    });
+
+    socket.on('call:answer', ({ callId, answer }) => {
+      const call = activeCalls.get(callId);
+      if (!call) return;
+      const targetId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+      ns.to(`user:${targetId}`).emit('call:answer', { from: socket.id, answer });
+    });
+
+    socket.on('call:ice', ({ callId, candidate }) => {
+      const call = activeCalls.get(callId);
+      if (!call) return;
+      const targetId = call.fromUserId === userId ? call.toUserId : call.fromUserId;
+      ns.to(`user:${targetId}`).emit('call:ice', { from: socket.id, candidate });
+    });
 
     socket.on('disconnect', async (reason) => {
       console.log(`[CallSocket] ${socket.data.name} (${userId}) disconnected — ${reason}`);

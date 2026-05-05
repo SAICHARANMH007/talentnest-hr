@@ -82,7 +82,6 @@ export default function CallManager({ user }) {
   // Mobile browsers (iOS Safari, Chrome Android) block audio playback unless
   // initiated during a user gesture. This MUST be called inside onClick handlers.
   const unlockAudio = useCallback(() => {
-    // 1. Resume / create AudioContext — unlocks Web Audio API output
     try {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -90,27 +89,37 @@ export default function CallManager({ user }) {
       if (audioCtxRef.current.state === 'suspended') {
         audioCtxRef.current.resume().catch(() => {});
       }
-      // Play a silent buffer to fully activate the audio output path
-      const buf = audioCtxRef.current.createBuffer(1, 1, 22050);
-      const src = audioCtxRef.current.createBufferSource();
-      src.buffer = buf;
-      src.connect(audioCtxRef.current.destination);
-      src.start(0);
-    } catch {}
-
-    // 2. Pre-play the <audio> element — unlocks HTMLMediaElement for future srcObject
-    const el = remoteAudioRef.current;
-    if (el) {
-      el.muted = false;
-      el.play().catch(() => {});
+      // Also try to resume any existing remote audio element
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.play().catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[WebRTC] Audio unlock failed:', err);
     }
   }, []);
 
-  // ── Attach remote audio with retry ─────────────────────────────────────────
+  // ── Global click failsafe ──────────────────────────────────────────────────
+  // Any click on the page during a call will attempt to resume the audio context.
+  // This is a foolproof way to bypass aggressive browser autoplay blocks.
+  useEffect(() => {
+    if (callState === 'active') {
+      window.addEventListener('click', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+      return () => {
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+      };
+    }
+  }, [callState, unlockAudio]);
+
+  // ── Attach remote audio with watchdog ──────────────────────────────────────
   const attachRemoteAudio = useCallback((stream) => {
     const el = remoteAudioRef.current;
-    if (!el || !stream) return;
-
+    if (!el) {
+      console.warn('[WebRTC] Audio element not found during attachment — will retry via watchdog');
+      return;
+    }
+    
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
@@ -120,7 +129,6 @@ export default function CallManager({ user }) {
       if (p && p.catch) {
         p.catch((err) => {
           console.warn('[Call] audio.play() blocked:', err.name);
-          // Retry after short delay — covers race conditions on slower mobile
           setTimeout(() => {
             if (el.srcObject) el.play().catch(() => {});
           }, 800);
@@ -130,20 +138,17 @@ export default function CallManager({ user }) {
 
     tryPlay();
 
-    // Also retry when tracks unmute (some browsers fire ontrack before media flows)
-    stream.getAudioTracks().forEach(track => {
+    stream?.getAudioTracks().forEach(track => {
       track.onunmute = () => tryPlay();
     });
 
-    // Fallback: pipe through AudioContext (works even when <audio>.play() is blocked)
     try {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      // Only create one source node per stream
-      if (!stream._acSrc) {
+      if (stream && !stream._acSrc) {
         const source = ctx.createMediaStreamSource(stream);
         source.connect(ctx.destination);
         stream._acSrc = source;
@@ -151,23 +156,32 @@ export default function CallManager({ user }) {
     } catch {}
   }, []);
 
+  // ── Reactive Watchdog ──────────────────────────────────────────────────────
+  // If remoteStream is available but the audio element wasn't ready earlier,
+  // this useEffect will ensure the stream is attached as soon as the ref is populated.
+  useEffect(() => {
+    if (remoteStream && remoteAudioRef.current && callState === 'active') {
+      attachRemoteAudio(remoteStream);
+    }
+  }, [remoteStream, callState, attachRemoteAudio]);
+
   const { localStream, micOn, camOn, startLocalMedia, initiateCall,
           handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
     video: callInfoRef.current?.callType === 'video',
     audio: true,
-    onRemoteStream: (_sid, stream) => {
+    onRemoteStream: (sid, stream) => {
+      console.log(`[WebRTC] Received remote stream from ${sid}`);
       setRemoteStream(stream);
       attachRemoteAudio(stream);
+    },
+    onConnectionChange: (sid, state) => {
+      console.log(`[WebRTC] Connection state with ${sid}: ${state}`);
+      setConnectionState(state);
     },
   });
 
   // Keep localStream ref in sync
   useEffect(() => { localStreamRef2.current = localStream; }, [localStream]);
-
-  // Re-attach audio if remoteStream changes (e.g. ICE reconnect adds track late)
-  useEffect(() => {
-    attachRemoteAudio(remoteStream);
-  }, [attachRemoteAudio, remoteStream]);
 
   useRingSound(callState === 'incoming');
 
@@ -255,7 +269,15 @@ export default function CallManager({ user }) {
     socket.on('call:unavailable', ({ message })   => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
     // ── CONNECTION HEALTH ────────────────────────────────────────────────────
-    socket.on('connect', () => { console.log('[Call] Socket connected:', socket.id); });
+    socket.on('connect', () => {
+      console.log('[Call] Socket connected:', socket.id);
+      // If we reconnect during an active call, ensure we're back in the call room
+      // so we continue to receive signaling events.
+      const cid = callInfoRef.current?.callId;
+      if (cid && (callState === 'active' || callState === 'outgoing' || callState === 'incoming')) {
+        socket.emit('call:join-room', { callId: cid });
+      }
+    });
     socket.on('connect_error', (err) => { console.warn('[Call] Socket connect error:', err.message); });
     socket.on('disconnect', (reason) => { console.warn('[Call] Socket disconnected:', reason); });
 
