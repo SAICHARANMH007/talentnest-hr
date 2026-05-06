@@ -139,32 +139,22 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
 
     const src = stream || localStreamRef.current;
     
-    // Modern Transceiver-based approach — critical for Mac/Safari compatibility
-    // This ensures directions are correctly negotiated before the offer is even created.
-    if (pc.addTransceiver) {
-      // Audio is always required for calls
-      pc.addTransceiver('audio', { direction: 'sendrecv', streams: src ? [src] : [] });
-      // Only add video transceiver if this is a video call
-      if (video || (src && src.getVideoTracks().length > 0)) {
-        pc.addTransceiver('video', { direction: 'sendrecv', streams: src ? [src] : [] });
-      }
-    }
-
-    // Still add tracks for older browser compatibility
+    // Modern, robust approach to adding tracks:
+    // This physically binds the camera/mic tracks to the peer connection.
     if (src) {
-      src.getTracks().forEach(t => {
+      src.getTracks().forEach(track => {
         try {
-          // If we already added a transceiver for this kind, use the sender instead of addTrack
-          const sender = pc.getSenders().find(s => s.track?.kind === t.kind || (!s.track && s.dtlsTransport));
-          if (sender && !sender.track) {
-            sender.replaceTrack(t).catch(() => {});
-          } else {
-            pc.addTrack(t, src);
-          }
+          pc.addTrack(track, src);
         } catch (err) {
-          console.warn('[WebRTC] addTrack fallback:', err.message);
+          console.warn('[WebRTC] addTrack error:', err.message);
         }
       });
+    } else if (pc.addTransceiver) {
+      // If we have no local media (viewer only), force the offer to request remote media
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+      if (video) {
+        pc.addTransceiver('video', { direction: 'recvonly' });
+      }
     }
 
     // Trickle ICE — send candidates as they arrive for faster connection
