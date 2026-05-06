@@ -185,8 +185,11 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
         remoteStream.addTrack(e.track);
       }
       // Always fire — caller will play audio/video from this stream
-      onRemoteStream?.(socketId, remoteStream);
-      e.track.onunmute = () => onRemoteStream?.(socketId, remoteStream);
+      // We pass a NEW MediaStream instance to force React's state to re-render
+      // and trigger useEffects that depend on the stream reference.
+      const clonedStream = new MediaStream(remoteStream.getTracks());
+      onRemoteStream?.(socketId, clonedStream);
+      e.track.onunmute = () => onRemoteStream?.(socketId, new MediaStream(remoteStream.getTracks()));
     };
 
     pc.onconnectionstatechange = () => {
