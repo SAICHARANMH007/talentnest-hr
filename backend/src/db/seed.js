@@ -1071,6 +1071,560 @@ async function seed() {
   // ── 2.3 Cleanup Duplicates ──────────────────────────────────────────────────
   await deduplicateJobs(tenantId);
 
+  // ── 2.4 NuSummit Org + Admin + Jobs (always synced) ─────────────────────────
+  try {
+    const NS_SLUG     = 'nusummit';
+    const NS_EMAIL    = 'admin@nusummit.com';
+    const NS_PASSWORD = 'NuSummit@2024';
+
+    let nsOrg = await Organization.findOne({ slug: NS_SLUG });
+    if (!nsOrg) {
+      nsOrg = await Organization.create({
+        name: 'NuSummit', slug: NS_SLUG, domain: 'nusummit.com',
+        industry: 'IT Services & Consulting', size: '51-200', plan: 'pro', status: 'active',
+        settings: {
+          maxCandidates: 1000, maxJobs: 100, maxRecruiters: 10, maxAdmins: 3,
+          features: ['jobs','candidates','pipeline','ai_match','assessments'],
+        },
+      });
+      console.log('✅  NuSummit org created → nusummit.com');
+    }
+    const nsOd       = nsOrg.toJSON ? nsOrg.toJSON() : nsOrg;
+    const nsTenantId = nsOd.id;
+
+    // NuSummit admin (upsert + sync password)
+    let nsAdmin = await User.findOne({ email: NS_EMAIL });
+    if (!nsAdmin) {
+      await User.create({
+        name: 'NuSummit Admin', email: NS_EMAIL,
+        passwordHash: bcrypt.hashSync(NS_PASSWORD, 10),
+        role: 'admin', title: 'HR Admin',
+        tenantId: nsTenantId, orgId: nsTenantId, orgName: nsOd.name, isActive: true,
+      });
+      console.log(`✅  NuSummit Admin created → ${NS_EMAIL} / ${NS_PASSWORD}`);
+    } else {
+      await User.findByIdAndUpdate(nsAdmin._id, {
+        $set: { passwordHash: bcrypt.hashSync(NS_PASSWORD, 10), tenantId: nsTenantId, orgId: nsTenantId, orgName: nsOd.name, isActive: true },
+      });
+      console.log(`✅  NuSummit Admin synced → ${NS_EMAIL}`);
+    }
+
+    // 16 NuSummit jobs — upsert by careerPageSlug so re-deploys never create duplicates
+    const nsJobDefs = [
+      {
+        title: 'Kafka Technical Consultant',
+        location: 'Mumbai',
+        department: 'Infrastructure',
+        skills: ['Apache Kafka', 'KSQL', 'Java', 'Schema Registry', 'Confluent', 'Event-Driven Architecture'],
+        experience: '4+ years',
+        description: `NuSummit is hiring a Kafka Technical Consultant to design and implement event-driven architectures for enterprise clients.
+
+Key Responsibilities:
+• Design and implement event-driven architectures using Apache Kafka and Confluent Platform
+• Manage and monitor Confluent Kafka clusters in production environments
+• Develop Kafka Streams and KSQL-based real-time data pipelines
+• Lead performance tuning, capacity planning, and disaster recovery strategies
+• Work with clients to assess, architect, and migrate data pipelines to Kafka
+• Manage Schema Registry, Kafka Connect connectors, and MirrorMaker setups
+• Provide L3 support and resolution for Kafka-related incidents
+
+About NuSummit:
+NuSummit is a technology consulting firm specializing in cloud, data engineering, and enterprise IT solutions. We partner with Fortune 500 companies to deliver scalable, high-performance systems.`,
+        requirements: `Required Skills & Experience:
+• 4+ years hands-on experience with Apache Kafka in production
+• Strong expertise in Confluent Platform, KSQL, and Schema Registry
+• Proficiency in Java for Kafka producer/consumer development
+• Experience with Kafka Connect, MirrorMaker, and stream processing
+• Understanding of distributed systems and messaging architectures
+• Confluent Certified Developer or Administrator certification preferred
+• Strong communication skills for client-facing engagements`,
+        benefits: 'Competitive salary, health insurance, flexible work arrangements, professional certifications sponsored, performance bonuses.',
+        externalUrl: 'https://www.nusummit.com/current-openings/kafka-technical-consultant/',
+      },
+      {
+        title: 'GoLang Developer',
+        location: 'Mumbai',
+        department: 'Engineering',
+        skills: ['GoLang', 'Microservices', 'REST APIs', 'SQL', 'Docker', 'Kubernetes'],
+        experience: '3+ years',
+        description: `NuSummit is looking for a skilled GoLang Developer to build high-performance backend services for enterprise-grade platforms.
+
+Key Responsibilities:
+• Develop and maintain high-concurrency backend services and microservices using Go
+• Design and implement RESTful APIs and gRPC services
+• Manage containerized deployments using Docker and Kubernetes
+• Write clean, testable, and performant Go code following best practices
+• Collaborate with front-end and DevOps teams for end-to-end delivery
+• Optimize services for performance, reliability, and scalability
+• Participate in code reviews and technical design discussions
+
+About NuSummit:
+NuSummit is a technology consulting company delivering cloud-native solutions and digital transformation projects across industries.`,
+        requirements: `Required Skills & Experience:
+• 3+ years of professional Go (GoLang) development experience
+• Strong understanding of microservices architecture and design patterns
+• Experience building RESTful APIs and working with SQL databases (PostgreSQL/MySQL)
+• Hands-on with Docker and Kubernetes for containerization and orchestration
+• Familiarity with CI/CD pipelines and version control (Git)
+• Knowledge of concurrency patterns, goroutines, and channels
+• Good understanding of software testing practices in Go`,
+        benefits: 'Competitive CTC, health & wellness benefits, remote flexibility, learning & development budget.',
+        externalUrl: 'https://www.nusummit.com/current-openings/golang-developer/',
+      },
+      {
+        title: 'AI Product Engineer',
+        location: 'Pan-India',
+        department: 'Engineering',
+        skills: ['Python', 'LLMs', 'GPT', 'Claude', 'RAG', 'PyTorch', 'Prompt Engineering'],
+        experience: '3+ years',
+        description: `NuSummit is seeking an AI Product Engineer to lead GenAI product development initiatives across our portfolio of enterprise clients.
+
+Key Responsibilities:
+• Lead R&D for Generative AI products including LLM integration and prompt engineering
+• Design and implement RAG (Retrieval-Augmented Generation) pipelines for enterprise search and Q&A systems
+• Build and fine-tune AI models using PyTorch and Hugging Face
+• Collaborate with product and engineering teams to take AI features from concept to production
+• Evaluate and integrate leading LLM APIs (OpenAI GPT, Anthropic Claude, etc.)
+• Optimize inference performance and manage AI cost-efficiency
+• Document architectures, conduct experiments, and publish learnings
+
+About NuSummit:
+NuSummit is at the forefront of AI-driven enterprise transformation, working with clients across banking, healthcare, retail, and technology sectors.`,
+        requirements: `Required Skills & Experience:
+• 3+ years of Python development with a focus on AI/ML
+• Hands-on experience with LLMs — GPT-4, Claude, or equivalent models
+• Strong understanding of RAG architectures and vector databases (Pinecone, Weaviate, FAISS)
+• Experience with PyTorch and ML model deployment
+• Prompt engineering skills — both zero-shot and few-shot techniques
+• Familiarity with LangChain, LlamaIndex, or similar frameworks
+• Experience deploying AI applications in cloud environments (AWS/Azure/GCP)`,
+        benefits: 'Top-of-market compensation, stock options, flexible remote work, AI research budget, conference sponsorships.',
+        externalUrl: 'https://www.nusummit.com/current-openings/ai-product-engineer/',
+      },
+      {
+        title: 'Java Developer',
+        location: 'Mumbai',
+        department: 'Engineering',
+        skills: ['Java', 'Spring Boot', 'Hibernate', 'Microservices', 'REST APIs', 'SQL'],
+        experience: '3+ years',
+        description: `NuSummit is hiring a Java Developer to build microservices-based enterprise applications for leading clients across BFSI, telecom, and technology sectors.
+
+Key Responsibilities:
+• Design and develop microservices and RESTful APIs using Java and Spring Boot
+• Implement data persistence layers using Hibernate/JPA with relational databases
+• Collaborate with solution architects to design scalable backend systems
+• Write unit and integration tests and maintain code quality through code reviews
+• Participate in Agile sprints and contribute to technical documentation
+• Optimize application performance and troubleshoot production issues
+• Work across the full SDLC from requirements to deployment
+
+About NuSummit:
+NuSummit delivers enterprise Java solutions to marquee clients, helping them modernize legacy systems and build cloud-native platforms.`,
+        requirements: `Required Skills & Experience:
+• 3+ years experience with Java 8/11+ in enterprise environments
+• Strong knowledge of Spring Boot, Spring MVC, and Spring Security
+• Proficiency with Hibernate/JPA and relational databases (Oracle/MySQL/PostgreSQL)
+• Experience designing RESTful APIs and microservices architecture
+• Understanding of design patterns and SOLID principles
+• Familiarity with Maven/Gradle build tools and Git
+• Experience with Agile/Scrum development methodologies`,
+        benefits: 'Competitive salary, health insurance, annual appraisals, learning & development fund, flexible hours.',
+        externalUrl: 'https://www.nusummit.com/current-openings/java-developer/',
+      },
+      {
+        title: 'DevOps Engineer',
+        location: 'Chennai',
+        department: 'Infrastructure',
+        skills: ['Jenkins', 'Git', 'Kubernetes', 'Docker', 'CI/CD', 'AWS', 'Azure', 'Terraform'],
+        experience: '3+ years',
+        description: `NuSummit is looking for a DevOps Engineer to build and maintain robust CI/CD pipelines and cloud infrastructure for enterprise clients.
+
+Key Responsibilities:
+• Design, build, and maintain CI/CD pipelines using Jenkins, GitHub Actions, or Azure DevOps
+• Manage containerized workloads on Kubernetes (EKS/AKS) and Docker
+• Automate infrastructure provisioning using Terraform and Ansible
+• Monitor application health, respond to incidents, and drive reliability improvements
+• Implement security best practices and compliance controls in the pipeline
+• Collaborate with development teams to streamline deployment processes
+• Manage cloud resources on AWS and/or Azure, including cost optimization
+
+About NuSummit:
+NuSummit's infrastructure practice supports large-scale enterprise deployments across multi-cloud and hybrid environments.`,
+        requirements: `Required Skills & Experience:
+• 3+ years in a DevOps or SRE role
+• Proficiency with CI/CD tools: Jenkins, GitHub Actions, or Azure DevOps
+• Hands-on Kubernetes (EKS/AKS/GKE) and Docker container management
+• Infrastructure-as-code experience with Terraform and/or Ansible
+• Cloud platform experience on AWS or Azure (certifications preferred)
+• Scripting proficiency in Bash, Python, or PowerShell
+• Understanding of monitoring tools: Prometheus, Grafana, Datadog, or similar`,
+        benefits: 'Competitive CTC, remote work flexibility, cloud certifications sponsored, health benefits, performance bonus.',
+        externalUrl: 'https://www.nusummit.com/current-openings/devops-engineer/',
+      },
+      {
+        title: 'C Linux Developer',
+        location: 'Mumbai',
+        department: 'Engineering',
+        skills: ['C', 'Linux', 'Socket Programming', 'Linux Kernel', 'Low-Latency Systems', 'Embedded Systems'],
+        experience: '4+ years',
+        description: `NuSummit is seeking a C Linux Developer to work on system-level software and low-latency performance-critical applications.
+
+Key Responsibilities:
+• Design and develop system-level software, daemons, and kernel modules in C
+• Implement low-latency networking using socket programming (TCP/UDP, raw sockets)
+• Optimize application performance through profiling, tuning, and memory management
+• Debug complex issues at the OS and kernel level using tools like GDB, Valgrind, and perf
+• Collaborate with hardware and embedded teams for driver and firmware development
+• Develop and maintain automated test suites for system components
+• Document system architecture and technical specifications
+
+About NuSummit:
+NuSummit's systems engineering team works on latency-sensitive, mission-critical applications across telecom, defense, and financial services.`,
+        requirements: `Required Skills & Experience:
+• 4+ years of C programming in a Linux environment
+• Deep understanding of Linux kernel internals, process management, and memory model
+• Proficiency in POSIX socket programming (TCP/UDP, IPC mechanisms)
+• Experience with low-latency or real-time Linux system development
+• Debugging skills using GDB, Valgrind, strace, ltrace, and perf
+• Familiarity with embedded systems and cross-compilation toolchains a plus
+• Strong grasp of data structures, algorithms, and multi-threaded programming`,
+        benefits: 'Competitive compensation, technical growth paths, health insurance, flexible work policy.',
+        externalUrl: 'https://www.nusummit.com/current-openings/c-linux/',
+      },
+      {
+        title: 'AWS L3 Professional',
+        location: 'Mumbai',
+        department: 'Cloud Operations',
+        skills: ['AWS', 'EC2', 'S3', 'CloudFormation', 'IAM', 'Terraform', 'Infrastructure Automation'],
+        experience: '4+ years',
+        description: `NuSummit is hiring an AWS L3 Professional to handle complex cloud escalations and infrastructure automation for enterprise clients.
+
+Key Responsibilities:
+• Provide L3 support for critical AWS infrastructure outages and complex technical issues
+• Perform root cause analysis (RCA) and drive long-term remediation strategies
+• Automate infrastructure provisioning and management using CloudFormation and Terraform
+• Design and implement IAM policies, security groups, and compliance controls
+• Manage EC2 fleets, S3 lifecycle policies, VPC configurations, and RDS instances
+• Collaborate with L1/L2 teams to build runbooks and escalation procedures
+• Drive cost optimization through Reserved Instances, Savings Plans, and rightsizing
+
+About NuSummit:
+NuSummit's cloud operations team supports 24x7 enterprise AWS environments with a commitment to high availability and security.`,
+        requirements: `Required Skills & Experience:
+• 4+ years managing complex AWS environments in a production setting
+• Deep expertise in core AWS services: EC2, S3, VPC, RDS, CloudFormation, IAM, ELB
+• Hands-on with Terraform for infrastructure-as-code
+• Strong understanding of AWS security services: GuardDuty, Config, CloudTrail, Security Hub
+• AWS Solutions Architect Associate or Professional certification preferred
+• Experience with incident management, RCA, and post-mortem processes
+• Scripting skills in Python or Bash for automation tasks`,
+        benefits: 'Competitive salary, AWS certification support, health & wellness benefits, shift allowances where applicable.',
+        externalUrl: 'https://www.nusummit.com/current-openings/aws-l3/',
+      },
+      {
+        title: 'Cloud Operations Manager',
+        location: 'Mumbai',
+        department: 'Cloud Operations',
+        skills: ['AWS', 'Azure', 'SRE', 'FinOps', 'Cloud Governance', 'Cost Optimization'],
+        experience: '7+ years',
+        description: `NuSummit is seeking a Cloud Operations Manager to lead cloud governance, FinOps, and SRE team operations across enterprise client environments.
+
+Key Responsibilities:
+• Lead a team of cloud engineers and SREs managing multi-cloud environments (AWS/Azure)
+• Define and drive cloud governance frameworks, policies, and compliance standards
+• Own FinOps initiatives — cloud cost visibility, optimization, and chargeback models
+• Establish SLOs, SLAs, and error budgets aligned to business requirements
+• Drive incident management, blameless post-mortems, and reliability improvements
+• Manage vendor relationships with AWS, Azure, and third-party tooling providers
+• Lead strategic cloud roadmap planning and present to senior stakeholders
+
+About NuSummit:
+NuSummit's cloud practice manages large-scale enterprise cloud infrastructure with a focus on reliability, security, and cost efficiency.`,
+        requirements: `Required Skills & Experience:
+• 7+ years in cloud infrastructure roles with 3+ years in management or leadership
+• Deep expertise in AWS and/or Azure cloud platforms
+• Hands-on SRE experience: SLOs, error budgets, incident management, automation
+• Strong FinOps knowledge — cloud cost governance and optimization frameworks
+• Experience with cloud governance tools and compliance frameworks (CIS, NIST, SOC2)
+• Excellent stakeholder communication and executive-level reporting skills
+• AWS Solutions Architect Professional or Azure Expert-level certification preferred`,
+        benefits: 'Senior leadership compensation, equity participation, relocation assistance, top-tier health benefits.',
+        externalUrl: 'https://www.nusummit.com/current-openings/cloud-operations-manager/',
+      },
+      {
+        title: 'Informatica Admin',
+        location: 'Chennai / Mumbai',
+        department: 'Data Engineering',
+        skills: ['Informatica PowerCenter', 'ETL', 'Unix', 'SQL', 'Data Migration', 'Performance Tuning'],
+        experience: '4+ years',
+        description: `NuSummit is hiring an Informatica Admin to manage and optimize enterprise ETL platforms and large-scale data migration projects.
+
+Key Responsibilities:
+• Administer and maintain Informatica PowerCenter environments (Dev/QA/Prod)
+• Manage ETL workflows, session configurations, and scheduler settings
+• Plan and execute data migration projects with minimal downtime
+• Perform performance tuning of mappings, sessions, and database queries
+• Troubleshoot ETL failures, monitor logs, and respond to production issues
+• Implement best practices for Informatica repository management and version control
+• Coordinate with DBAs and data architects on schema changes and data quality
+
+About NuSummit:
+NuSummit's data engineering team handles end-to-end data platform modernization projects for leading banks, insurers, and telecom companies.`,
+        requirements: `Required Skills & Experience:
+• 4+ years Informatica PowerCenter administration (8.x/9.x/10.x)
+• Strong ETL design and development skills in Informatica
+• Unix/Linux shell scripting for automation and scheduling
+• SQL expertise (Oracle/SQL Server) for complex query writing and optimization
+• Experience with Informatica repository management and deployment procedures
+• Knowledge of data warehousing concepts, dimensional modeling, and CDC
+• Familiarity with Informatica IICS or cloud ETL tools is a plus`,
+        benefits: 'Competitive pay, health insurance, relocation support, data certifications sponsored.',
+        externalUrl: 'https://www.nusummit.com/current-openings/informatica-admin/',
+      },
+      {
+        title: 'Network Engineer',
+        location: 'Mumbai',
+        department: 'Infrastructure',
+        skills: ['Cisco', 'Palo Alto', 'VPN', 'Routing', 'Switching', 'Firewall', 'BGP', 'OSPF'],
+        experience: '4+ years',
+        description: `NuSummit is looking for a Network Engineer to design, deploy, and maintain enterprise network infrastructure for global clients.
+
+Key Responsibilities:
+• Configure, maintain, and troubleshoot L2/L3 Cisco switches and routers
+• Manage Palo Alto next-generation firewalls, security policies, and VPN configurations
+• Design and implement BGP, OSPF, and MPLS routing across WAN environments
+• Monitor network performance using tools like SolarWinds, PRTG, or Zabbix
+• Respond to network incidents, perform root cause analysis, and drive resolution
+• Implement network security best practices, segmentation, and access controls
+• Document network topology, IP addressing schemes, and change records
+
+About NuSummit:
+NuSummit's infrastructure team manages global enterprise network environments across BFSI, manufacturing, and technology sectors.`,
+        requirements: `Required Skills & Experience:
+• 4+ years of enterprise networking experience
+• Strong hands-on skills with Cisco routers, switches, and IOS
+• Experience configuring and managing Palo Alto firewalls and Panorama
+• Proficiency in routing protocols: BGP, OSPF, EIGRP
+• Site-to-site and remote access VPN configuration (IPSec/SSL)
+• CCNA/CCNP certification required; Palo Alto PCNSE a plus
+• Familiarity with SD-WAN technologies (Cisco Viptela, Meraki) preferred`,
+        benefits: 'Competitive salary, Cisco/Palo Alto certification support, health insurance, shift flexibility.',
+        externalUrl: 'https://www.nusummit.com/current-openings/network-engineer/',
+      },
+      {
+        title: 'App/Prod Support (Linux/SQL)',
+        location: 'Gandhinagar',
+        department: 'Operations',
+        skills: ['Linux', 'SQL', 'Shell Scripting', 'ITIL', 'Log Analysis', 'Monitoring'],
+        experience: '2+ years',
+        description: `NuSummit is hiring an Application/Production Support Engineer to maintain and troubleshoot enterprise applications on Linux and SQL environments.
+
+Key Responsibilities:
+• Provide 24/7 L2/L3 application and production support across Linux-based systems
+• Monitor application health, analyze server logs, and identify performance bottlenecks
+• Execute SQL queries for data analysis, issue diagnosis, and reporting
+• Write and maintain shell scripts for automation, scheduling, and health checks
+• Raise, track, and resolve incidents per ITIL processes within SLA timelines
+• Collaborate with development teams to escalate and resolve complex issues
+• Maintain runbooks, SOPs, and knowledge base articles
+
+About NuSummit:
+NuSummit's managed services team provides round-the-clock application support to enterprise clients across BFSI, healthcare, and logistics.`,
+        requirements: `Required Skills & Experience:
+• 2+ years experience in application or production support roles
+• Strong Linux administration skills (RHEL/CentOS/Ubuntu)
+• SQL proficiency for query writing, data extraction, and troubleshooting
+• Shell scripting (Bash) for task automation
+• ITIL Foundation certification or knowledge of ITIL incident management
+• Experience with monitoring tools: Nagios, Splunk, AppDynamics, or similar
+• Good communication skills for client interaction and escalation management`,
+        benefits: 'Shift allowances, health insurance, ITIL certification support, performance bonuses.',
+        externalUrl: 'https://www.nusummit.com/current-opening/application-production-supportlinux-and-sql/',
+      },
+      {
+        title: 'Automation A360 RPA Support',
+        location: 'Mumbai',
+        department: 'Automation',
+        skills: ['RPA', 'Automation Anywhere', 'A360', 'Bot Insight', 'Process Automation'],
+        experience: '2+ years',
+        description: `NuSummit is seeking an Automation A360 RPA Support specialist to deploy, manage, and optimize intelligent RPA bots for enterprise clients.
+
+Key Responsibilities:
+• Deploy and support RPA bots built on Automation Anywhere A360 platform
+• Monitor bot execution queues, resolve failures, and maintain bot availability
+• Work with business analysts and developers to identify automation opportunities
+• Configure and manage Bot Insight dashboards for performance tracking
+• Develop and maintain bot documentation, runbooks, and change requests
+• Perform bot upgrades, migrations, and version management
+• Provide L2 support for RPA infrastructure and bot-related incidents
+
+About NuSummit:
+NuSummit's automation practice delivers intelligent process automation solutions to banking, insurance, and shared services clients.`,
+        requirements: `Required Skills & Experience:
+• 2+ years experience with Automation Anywhere A360 or A2019
+• Hands-on bot development and support using AA A360 platform
+• Experience with Bot Insight reporting and analytics
+• Understanding of Control Room administration and user management
+• Knowledge of process analysis and automation feasibility assessment
+• Automation Anywhere Certified RPA Associate (ACRPA) preferred
+• Basic SQL and API integration knowledge for bot development`,
+        benefits: 'Competitive salary, RPA certifications sponsored, health insurance, performance bonuses.',
+        externalUrl: 'https://www.nusummit.com/current-openings/automation-a360-rpa-support/',
+      },
+      {
+        title: 'Dot Net Developer',
+        location: 'Mumbai',
+        department: 'Engineering',
+        skills: ['C#', '.NET Core', 'ASP.NET', 'SQL Server', 'Entity Framework', 'REST APIs'],
+        experience: '3+ years',
+        description: `NuSummit is hiring a .NET Developer to build scalable enterprise web applications and APIs for BFSI and technology clients.
+
+Key Responsibilities:
+• Design and develop web applications and REST APIs using C# and .NET Core
+• Implement data access layers with Entity Framework Core and SQL Server
+• Participate in the full SDLC: requirements gathering to deployment and maintenance
+• Write clean, well-tested code and conduct peer code reviews
+• Integrate third-party APIs, services, and enterprise platforms
+• Troubleshoot and resolve production defects and performance issues
+• Follow SOLID principles, design patterns, and coding standards
+
+About NuSummit:
+NuSummit builds enterprise .NET solutions for banks, insurance companies, and technology firms across India and globally.`,
+        requirements: `Required Skills & Experience:
+• 3+ years of professional C# and .NET Core development
+• Strong ASP.NET MVC/Web API development skills
+• Proficiency with Entity Framework Core and SQL Server
+• Experience designing and consuming RESTful APIs
+• Familiarity with Dependency Injection, SOLID principles, and design patterns
+• Version control using Git and familiarity with CI/CD pipelines
+• Understanding of Agile/Scrum practices`,
+        benefits: 'Competitive CTC, health insurance, flexible working hours, annual performance bonus.',
+        externalUrl: 'https://www.nusummit.com/current-openings/dot-net-developer/',
+      },
+      {
+        title: 'Database Manager',
+        location: 'Mumbai',
+        department: 'Data Engineering',
+        skills: ['Oracle', 'SQL Server', 'Performance Tuning', 'Backup & Recovery', 'Database Security', 'DBA'],
+        experience: '6+ years',
+        description: `NuSummit is looking for an experienced Database Manager to oversee enterprise database environments for critical financial and technology clients.
+
+Key Responsibilities:
+• Manage and administer Oracle and SQL Server databases across Dev/QA/Prod environments
+• Design and implement database architectures, schemas, and data models
+• Perform performance tuning: query optimization, indexing strategy, execution plan analysis
+• Develop and maintain backup, recovery, and high-availability strategies (RAC, Always On, RMAN)
+• Implement database security: user access control, auditing, encryption, and compliance
+• Plan and execute database migrations, upgrades, and patching
+• Mentor junior DBAs and establish DBA best practices and standards
+
+About NuSummit:
+NuSummit's data management team handles mission-critical database environments for banks, trading firms, and enterprise technology companies.`,
+        requirements: `Required Skills & Experience:
+• 6+ years DBA experience with Oracle (12c/19c) and/or SQL Server (2016/2019)
+• Expert-level performance tuning: query analysis, indexing, partitioning, execution plans
+• Strong HA/DR knowledge: Oracle RAC, Data Guard, SQL Server Always On, Log Shipping
+• Backup and recovery expertise with RMAN and SQL Server backup strategies
+• Database security: TDE, auditing, role-based access control, and compliance (GDPR, SOX)
+• Scripting skills (PL/SQL, T-SQL) for automation and complex data operations
+• OCP or equivalent certification preferred`,
+        benefits: 'Senior-level compensation, Oracle/Microsoft certifications supported, health insurance, leadership track.',
+        externalUrl: 'https://www.nusummit.com/current-openings/database-manager/',
+      },
+      {
+        title: 'Technical Architect',
+        location: 'Gurgaon',
+        department: 'Architecture',
+        skills: ['System Design', 'Distributed Systems', 'Cloud', 'Microservices', 'API Design', 'Technical Leadership'],
+        experience: '8+ years',
+        description: `NuSummit is seeking a Technical Architect to lead platform design, define technical strategy, and mentor engineering teams on enterprise transformation programs.
+
+Key Responsibilities:
+• Own end-to-end solution and application architecture for enterprise client programs
+• Lead technical roadmap creation and present architectural decisions to senior stakeholders
+• Design cloud-native microservices architectures on AWS/Azure/GCP
+• Define API strategies, integration patterns, and data flow designs
+• Conduct architecture reviews, proof-of-concepts, and technology evaluations
+• Mentor and guide development teams on technical best practices and standards
+• Drive adoption of modern engineering practices: TDD, CI/CD, DevOps, IaC
+
+About NuSummit:
+NuSummit's architecture practice advises Fortune 500 clients on cloud-native modernization, platform engineering, and enterprise digital transformation.`,
+        requirements: `Required Skills & Experience:
+• 8+ years total experience with 3+ years in architecture or solution design roles
+• Deep expertise in distributed systems, microservices, and event-driven architectures
+• Hands-on cloud platform experience (AWS/Azure/GCP) with certifications preferred
+• Strong API design skills: REST, GraphQL, gRPC, and API gateway patterns
+• Experience with domain-driven design (DDD) and clean architecture principles
+• Proven ability to lead technical teams and influence without authority
+• Excellent written and verbal communication for executive and client-facing presentations`,
+        benefits: 'Senior compensation package, equity, premium health benefits, leadership development programs.',
+        externalUrl: 'https://www.nusummit.com/current-openings/technical-architect/',
+      },
+      {
+        title: 'Dot Net Lead',
+        location: 'Mumbai',
+        department: 'Engineering',
+        skills: ['C#', '.NET Core', 'ASP.NET', 'SQL Server', 'Team Leadership', 'Code Review', 'Microservices'],
+        experience: '6+ years',
+        description: `NuSummit is hiring a .NET Lead to drive technical delivery, lead a team of developers, and own the architecture of enterprise .NET applications.
+
+Key Responsibilities:
+• Lead a team of 4–8 .NET developers, conducting code reviews and guiding technical decisions
+• Own end-to-end delivery of .NET Core-based enterprise applications and microservices
+• Architect and design scalable .NET solutions aligned to client business requirements
+• Define coding standards, best practices, and technical documentation for the team
+• Collaborate with project managers, business analysts, and client stakeholders
+• Drive technical hiring, onboarding, and mentoring of team members
+• Participate in pre-sales and solution design activities with the NuSummit leadership team
+
+About NuSummit:
+NuSummit builds high-impact .NET solutions for BFSI, healthcare, and logistics clients. The .NET Lead role offers a direct path into solution architecture and delivery management.`,
+        requirements: `Required Skills & Experience:
+• 6+ years professional .NET development with 2+ years in a lead or senior role
+• Expertise in C#, .NET Core, ASP.NET Web API, and microservices patterns
+• Strong SQL Server skills including stored procedures, query tuning, and schema design
+• Experience leading small-to-mid development teams end-to-end
+• Knowledge of Azure DevOps, CI/CD pipelines, and agile delivery practices
+• Architecture knowledge: CQRS, Event Sourcing, DDD, or similar patterns preferred
+• Strong communication and stakeholder management skills`,
+        benefits: 'Leadership compensation, team bonuses, health coverage, fast-track to architect roles, certification sponsorships.',
+        externalUrl: 'https://www.nusummit.com/current-openings/dot-net-lead/',
+      },
+    ];
+
+    let nsJobCount = 0;
+    for (const j of nsJobDefs) {
+      const nsSlug = `nusummit-${j.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      await Job.findOneAndUpdate(
+        { tenantId: nsTenantId, careerPageSlug: nsSlug },
+        {
+          $set: {
+            ...j,
+            company: 'NuSummit',
+            companyName: 'NuSummit',
+            tenantId: nsTenantId,
+            orgId: nsTenantId,
+            careerPageSlug: nsSlug,
+            status: 'active',
+            approvalStatus: 'approved',
+            isPublic: true,
+            jobType: j.jobType || 'Full-Time',
+            workMode: 'Hybrid',
+            location: j.location || 'Mumbai',
+            urgency: 'Medium',
+            createdBy: nsAdmin?._id || (await User.findOne({ email: NS_EMAIL }).select('_id').lean())?._id,
+          },
+        },
+        { upsert: true }
+      );
+      nsJobCount++;
+    }
+    console.log(`✅  NuSummit: ${nsJobCount} jobs synced (upsert — no duplicates)`);
+  } catch (nsErr) {
+    console.error('❌  NuSummit seed failed (non-critical):', nsErr.message);
+  }
+
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {
     console.log('ℹ️   SKIP_DEMO_SEED=true — skipping demo data seed');
