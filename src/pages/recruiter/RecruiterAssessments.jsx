@@ -24,12 +24,19 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-const BLANK_QUESTION = () => ({ id: Date.now() + Math.random(), text: '', type: 'text', marks: 10, options: [] });
+const BLANK_OPTION = () => ({ id: `opt_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, text: '', isCorrect: false });
+const BLANK_QUESTION = () => ({
+  id: `q_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+  text: '', type: 'text', marks: 10, difficulty: 'medium',
+  options: [], placeholder: '', maxChars: 2000,
+});
 const BLANK_FORM = () => ({
   title: '', instructions: '', timeLimitMins: 30, passingScore: 60,
-  autoAdvance: false, isActive: true,
+  autoAdvance: false, isActive: true, randomize: false,
   questions: [BLANK_QUESTION()],
 });
+
+const DIFFICULTY_COLOR = { easy: '#10B981', medium: '#F59E0B', hard: '#EF4444' };
 
 export default function RecruiterAssessments({ user }) {
   const navigate = useNavigate();
@@ -278,7 +285,7 @@ export default function RecruiterAssessments({ user }) {
                 <button onClick={addQuestion} style={{ background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.25)', borderRadius:8, color:'#0176D3', padding:'5px 12px', fontSize:12, fontWeight:600, cursor:'pointer' }}>+ Add Question</button>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {createForm.questions.map((q, idx) => (
+                  {createForm.questions.map((q, idx) => (
                   <div key={q.id} style={{ background:'#f8fafc', borderRadius:10, padding:'14px', border:'1px solid #e2e8f0' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                       <span style={{ fontSize:12, fontWeight:700, color:'#64748b' }}>Q{idx + 1}</span>
@@ -289,13 +296,27 @@ export default function RecruiterAssessments({ user }) {
                     <textarea value={q.text} onChange={e => updateQuestion(q.id, 'text', e.target.value)}
                       rows={2} placeholder="Question text…"
                       style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:13, outline:'none', resize:'vertical', fontFamily:'inherit', boxSizing:'border-box', marginBottom:8 }} />
-                    <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                      <select value={q.type} onChange={e => updateQuestion(q.id, 'type', e.target.value)}
+                    <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:8 }}>
+                      <select value={q.type} onChange={e => {
+                        const t = e.target.value;
+                        updateQuestion(q.id, 'type', t);
+                        // Auto-add 2 blank options for MCQ if none exist
+                        if ((t === 'mcq_single' || t === 'mcq_multi') && (!q.options || q.options.length === 0)) {
+                          setCreateForm(p => ({ ...p, questions: p.questions.map(pq => pq.id === q.id ? { ...pq, type: t, options: [BLANK_OPTION(), BLANK_OPTION()] } : pq) }));
+                        }
+                      }}
                         style={{ padding:'6px 10px', borderRadius:7, border:'1px solid #e2e8f0', fontSize:12, outline:'none', background:'#fff', cursor:'pointer' }}>
                         <option value="text">Text Answer</option>
                         <option value="mcq_single">MCQ (Single)</option>
                         <option value="mcq_multi">MCQ (Multi)</option>
                         <option value="code">Code</option>
+                      </select>
+                      {/* Difficulty */}
+                      <select value={q.difficulty || 'medium'} onChange={e => updateQuestion(q.id, 'difficulty', e.target.value)}
+                        style={{ padding:'6px 10px', borderRadius:7, border:`1px solid ${DIFFICULTY_COLOR[q.difficulty||'medium']}60`, fontSize:12, outline:'none', background:`${DIFFICULTY_COLOR[q.difficulty||'medium']}10`, color: DIFFICULTY_COLOR[q.difficulty||'medium'], fontWeight:700, cursor:'pointer' }}>
+                        <option value="easy">🟢 Easy</option>
+                        <option value="medium">🟡 Medium</option>
+                        <option value="hard">🔴 Hard</option>
                       </select>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <label style={{ fontSize:12, color:'#64748b', fontWeight:600 }}>Marks:</label>
@@ -303,6 +324,57 @@ export default function RecruiterAssessments({ user }) {
                           min="1" style={{ width:60, padding:'6px 8px', borderRadius:7, border:'1px solid #e2e8f0', fontSize:12, outline:'none', textAlign:'center' }} />
                       </div>
                     </div>
+
+                    {/* MCQ Options Editor */}
+                    {(q.type === 'mcq_single' || q.type === 'mcq_multi') && (
+                      <div style={{ borderTop:'1px solid #e2e8f0', paddingTop:8, marginTop:4 }}>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:6 }}>
+                          Options — check ✓ to mark correct answer{q.type === 'mcq_multi' ? 's' : ''}:
+                        </div>
+                        {(q.options || []).map((opt, oi) => (
+                          <div key={opt.id} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                            <input type={q.type === 'mcq_single' ? 'radio' : 'checkbox'}
+                              checked={!!opt.isCorrect}
+                              onChange={e => {
+                                setCreateForm(p => ({
+                                  ...p,
+                                  questions: p.questions.map(pq => {
+                                    if (pq.id !== q.id) return pq;
+                                    const opts = pq.options.map((o, i) =>
+                                      q.type === 'mcq_single'
+                                        ? { ...o, isCorrect: i === oi }
+                                        : i === oi ? { ...o, isCorrect: e.target.checked } : o
+                                    );
+                                    return { ...pq, options: opts };
+                                  })
+                                }));
+                              }}
+                              style={{ accentColor:'#10B981', width:15, height:15, flexShrink:0 }} />
+                            <input value={opt.text}
+                              onChange={e => setCreateForm(p => ({
+                                ...p,
+                                questions: p.questions.map(pq => pq.id !== q.id ? pq : {
+                                  ...pq, options: pq.options.map((o, i) => i === oi ? { ...o, text: e.target.value } : o)
+                                })
+                              }))}
+                              placeholder={`Option ${oi + 1}`}
+                              style={{ flex:1, padding:'6px 10px', borderRadius:7, border:`1.5px solid ${opt.isCorrect ? '#10B981' : '#e2e8f0'}`, fontSize:13, outline:'none', background: opt.isCorrect ? '#f0fdf4' : '#fff' }} />
+                            {(q.options || []).length > 2 && (
+                              <button onClick={() => setCreateForm(p => ({
+                                ...p,
+                                questions: p.questions.map(pq => pq.id !== q.id ? pq : { ...pq, options: pq.options.filter((_, i) => i !== oi) })
+                              }))} style={{ background:'none', border:'none', color:'#94A3B8', cursor:'pointer', fontSize:14, padding:'2px 4px' }}>✕</button>
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={() => setCreateForm(p => ({
+                          ...p,
+                          questions: p.questions.map(pq => pq.id !== q.id ? pq : { ...pq, options: [...(pq.options||[]), BLANK_OPTION()] })
+                        }))} style={{ fontSize:12, color:'#0176D3', background:'none', border:'1px dashed #0176D3', borderRadius:7, padding:'4px 12px', cursor:'pointer', marginTop:2 }}>
+                          + Add Option
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

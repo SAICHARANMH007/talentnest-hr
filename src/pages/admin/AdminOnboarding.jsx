@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -226,6 +227,7 @@ export default function AdminOnboarding({ user }) {
   const [starting, setStarting]       = useState({});       // appId → loading
   const [docStatus, setDocStatus]     = useState([]);
   const [docLoading, setDocLoading]   = useState(false);
+  const navigate                      = useNavigate();
 
   useEffect(() => { load(); }, [statusFilter]);
 
@@ -268,9 +270,11 @@ export default function AdminOnboarding({ user }) {
   const [addSearch, setAddSearch]     = useState('');
   const [addCandidates, setAddCandidates] = useState([]);
   const [addJobs, setAddJobs]         = useState([]);
+  const [pipelineJobs, setPipelineJobs] = useState([]); // jobs candidate applied to
   const [addSelCand, setAddSelCand]   = useState(null);
   const [addSelJob, setAddSelJob]     = useState(null);
   const [addSaving, setAddSaving]     = useState(false);
+  const [loadingPipeline, setLoadingPipeline] = useState(false);
 
   const searchCandidates = async (q) => {
     if (!q || q.length < 2) { setAddCandidates([]); return; }
@@ -288,30 +292,64 @@ export default function AdminOnboarding({ user }) {
     } catch { setAddJobs([]); }
   };
 
+  // When candidate selected: load their pipeline applications + all active jobs
+  const selectCandidate = async (c) => {
+    setAddSelCand(c);
+    setAddSearch(c.name || c.email || '');
+    setAddCandidates([]);
+    setAddSelJob(null);
+    setPipelineJobs([]);
+    loadJobs(); // always load all active jobs
+    const candId = c.candidateId || c.id;
+    if (!candId) return;
+    setLoadingPipeline(true);
+    try {
+      const appsRes = await api.getApplications({ candidateId: candId, limit: 100 });
+      const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+      // Build a list of jobs from pipeline applications
+      const seen = new Set();
+      const pjobs = [];
+      for (const a of apps) {
+        const jid = String(a.jobId?._id || a.jobId || '');
+        if (!jid || seen.has(jid)) continue;
+        seen.add(jid);
+        pjobs.push({
+          id: jid,
+          appId: a._id || a.id,
+          title: a.jobId?.title || a.jobTitle || `Job ${jid.slice(-6)}`,
+          location: a.jobId?.location || '',
+          stage: a.currentStage || a.stage || 'Applied',
+          fromPipeline: true,
+        });
+      }
+      setPipelineJobs(pjobs);
+    } catch { setPipelineJobs([]); }
+    setLoadingPipeline(false);
+  };
+
   const submitAddPreboarding = async () => {
     if (!addSelCand) { setToast('❌ Please select a candidate'); return; }
+    if (!addSelJob)  { setToast('❌ Please select a job to start pre-boarding'); return; }
     setAddSaving(true);
     try {
-      // Find or create an application for this candidate+job, then start preboarding
-      let appId = null;
-      if (addSelJob) {
-        // Check for existing application
-        const appsRes = await api.getApplications({ candidateId: addSelCand.candidateId || addSelCand.id, limit: 50 });
+      let appId = addSelJob.appId || null; // pipeline job already has appId
+      if (!appId) {
+        // active job from dropdown: find existing application
+        const candId = addSelCand.candidateId || addSelCand.id;
+        const appsRes = await api.getApplications({ candidateId: candId, limit: 100 });
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
         const existing = apps.find(a => String(a.jobId?._id || a.jobId) === String(addSelJob.id));
         appId = existing?.id || existing?._id;
       }
-      if (appId) {
-        await api.startPreBoardingWithHired(appId);
-      } else {
-        // Start pre-boarding without a specific application — use startPreBoarding via candidate search
-        setToast('ℹ️ Select a candidate who has applied to a job, or use the Hired-Pending tab');
+      if (!appId) {
+        setToast('ℹ️ No application found for this candidate + job. They must apply first.');
         setAddSaving(false);
         return;
       }
+      await api.startPreBoardingWithHired(appId);
       setToast('✅ Pre-boarding started for ' + addSelCand.name);
       setAddModal(false);
-      setAddSelCand(null); setAddSelJob(null); setAddSearch('');
+      setAddSelCand(null); setAddSelJob(null); setAddSearch(''); setPipelineJobs([]);
       load();
       setActiveTab('active');
     } catch (e) { setToast('❌ ' + e.message); }
@@ -333,6 +371,10 @@ export default function AdminOnboarding({ user }) {
     completed:   records.filter(r => r.status === 'completed').length,
   };
 
+  // Merge pipeline jobs (top) + active jobs (deduplicated below)
+  const pipelineIds = new Set(pipelineJobs.map(j => j.id));
+  const activeJobsFiltered = addJobs.filter(j => !pipelineIds.has(String(j.id || j._id)));
+
   return (
     <div>
       {selected && <DetailModal record={selected} onClose={() => setSelected(null)} onUpdate={handleUpdate} />}
@@ -341,21 +383,22 @@ export default function AdminOnboarding({ user }) {
       {/* Add Candidate Modal */}
       {addModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:10002, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:18, padding:28, width:'100%', maxWidth:520, maxHeight:'85vh', overflow:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+          <div style={{ background:'#fff', borderRadius:18, padding:28, width:'100%', maxWidth:540, maxHeight:'88vh', overflow:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
               <h3 style={{ margin:0, fontSize:17, fontWeight:800, color:'#032D60' }}>➕ Add Candidate to Pre-boarding</h3>
               <button onClick={() => setAddModal(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#94A3B8' }}>✕</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {/* Step 1 — Search Candidate */}
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Search Candidate *</label>
+                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>🔍 Step 1 — Search Candidate *</label>
                 <input value={addSearch} onChange={e => { setAddSearch(e.target.value); searchCandidates(e.target.value); }}
                   placeholder="Type name or email…"
                   style={{ width:'100%', padding:'9px 14px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', boxSizing:'border-box' }} />
                 {addCandidates.length > 0 && (
                   <div style={{ border:'1px solid #E2E8F0', borderRadius:8, marginTop:4, maxHeight:180, overflowY:'auto' }}>
                     {addCandidates.map(c => (
-                      <div key={c.candidateId||c.id} onClick={() => { setAddSelCand(c); setAddSearch(c.name||c.email||''); setAddCandidates([]); }}
+                      <div key={c.candidateId||c.id} onClick={() => selectCandidate(c)}
                         style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid #F1F5F9', background: addSelCand?.candidateId === (c.candidateId||c.id) ? '#EFF6FF' : '#fff' }}>
                         <div style={{ fontWeight:700, fontSize:13 }}>{c.name || 'Unknown'}</div>
                         <div style={{ fontSize:11, color:'#94A3B8' }}>{c.email} · {c.latestStage || 'No stage'}</div>
@@ -365,22 +408,73 @@ export default function AdminOnboarding({ user }) {
                 )}
                 {addSelCand && <div style={{ marginTop:6, fontSize:11, color:'#10b981', fontWeight:700 }}>✅ Selected: {addSelCand.name}</div>}
               </div>
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Select Job (optional)</label>
-                <select value={addSelJob?.id || ''} onChange={e => setAddSelJob(addJobs.find(j => j.id === e.target.value) || null)}
-                  onFocus={loadJobs}
-                  style={{ width:'100%', padding:'9px 14px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', boxSizing:'border-box', background:'#fff' }}>
-                  <option value="">— Select job —</option>
-                  {addJobs.map(j => <option key={j.id} value={j.id}>{j.title} · {j.location || '—'}</option>)}
-                </select>
-              </div>
+
+              {/* Step 2 — Select Job */}
+              {addSelCand && (
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>
+                    💼 Step 2 — Select Job *
+                    {loadingPipeline && <span style={{ marginLeft:8, color:'#94A3B8', fontWeight:400 }}>Loading applications…</span>}
+                  </label>
+
+                  {/* Pipeline jobs (candidate already applied) */}
+                  {pipelineJobs.length > 0 && (
+                    <div style={{ marginBottom:10 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#0176D3', marginBottom:6, textTransform:'uppercase', letterSpacing:0.8 }}>
+                        📋 From Pipeline (already applied)
+                      </div>
+                      {pipelineJobs.map(j => (
+                        <label key={j.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${addSelJob?.id === j.id ? '#0176D3' : '#E2E8F0'}`, background: addSelJob?.id === j.id ? '#EFF6FF' : '#F8FAFC', cursor:'pointer', marginBottom:6, transition:'all 0.15s' }}>
+                          <input type="radio" name="addJob" checked={addSelJob?.id === j.id} onChange={() => setAddSelJob(j)} style={{ accentColor:'#0176D3' }} />
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:700, fontSize:13, color:'#032D60' }}>{j.title}</div>
+                            <div style={{ fontSize:11, color:'#64748B' }}>
+                              {j.location && `📍 ${j.location} · `}
+                              <span style={{ color:'#0176D3', fontWeight:600 }}>Stage: {j.stage}</span>
+                            </div>
+                          </div>
+                          <span style={{ fontSize:10, background:'rgba(1,118,211,0.1)', color:'#0176D3', padding:'2px 8px', borderRadius:20, fontWeight:700, whiteSpace:'nowrap' }}>Applied</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Active org jobs */}
+                  {activeJobsFiltered.length > 0 && (
+                    <div>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#64748B', marginBottom:6, textTransform:'uppercase', letterSpacing:0.8 }}>
+                        🟢 Current Open Positions
+                      </div>
+                      <select value={activeJobsFiltered.find(j => addSelJob?.id === String(j.id||j._id)) ? addSelJob.id : ''}
+                        onChange={e => {
+                          if (!e.target.value) { if (!pipelineJobs.find(j => j.id === addSelJob?.id)) setAddSelJob(null); return; }
+                          const found = activeJobsFiltered.find(j => String(j.id||j._id) === e.target.value);
+                          if (found) setAddSelJob({ id: String(found.id||found._id), title: found.title, location: found.location, fromPipeline: false });
+                        }}
+                        style={{ width:'100%', padding:'9px 14px', borderRadius:8, border:`1.5px solid ${(addSelJob && !addSelJob.fromPipeline) ? '#0176D3' : '#E2E8F0'}`, fontSize:13, outline:'none', boxSizing:'border-box', background:'#fff' }}>
+                        <option value="">— Select an open position —</option>
+                        {activeJobsFiltered.map(j => (
+                          <option key={j.id||j._id} value={String(j.id||j._id)}>{j.title} · {j.location || 'No location'}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {addSelJob && (
+                    <div style={{ marginTop:8, fontSize:11, color:'#10b981', fontWeight:700 }}>
+                      ✅ Job Selected: {addSelJob.title} {addSelJob.fromPipeline ? '(from pipeline)' : '(open position)'}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#92400E' }}>
                 ⚡ This will mark the candidate as <strong>Hired</strong> for the selected job and start their background verification checklist.
               </div>
             </div>
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
-              <button onClick={submitAddPreboarding} disabled={addSaving || !addSelCand}
-                style={{ flex:1, background:'linear-gradient(135deg,#0176D3,#014486)', border:'none', borderRadius:10, color:'#fff', fontWeight:700, fontSize:13, padding:'12px', cursor:'pointer', opacity: (!addSelCand||addSaving)?0.7:1 }}>
+              <button onClick={submitAddPreboarding} disabled={addSaving || !addSelCand || !addSelJob}
+                style={{ flex:1, background:'linear-gradient(135deg,#0176D3,#014486)', border:'none', borderRadius:10, color:'#fff', fontWeight:700, fontSize:13, padding:'12px', cursor:'pointer', opacity: (!addSelCand||!addSelJob||addSaving)?0.7:1 }}>
                 {addSaving ? '⏳ Starting…' : '🚀 Start Pre-boarding'}
               </button>
               <button onClick={() => setAddModal(false)} style={{ flex:1, background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:10, color:'#374151', fontWeight:600, fontSize:13, padding:'12px', cursor:'pointer' }}>Cancel</button>
@@ -496,7 +590,7 @@ export default function AdminOnboarding({ user }) {
               <table style={{ width:'100%', borderCollapse:'collapse', background:'#fff', borderRadius:16, overflow:'hidden', border:'1px solid #E2E8F0' }}>
                 <thead>
                   <tr style={{ background:'#F8FAFC', borderBottom:'2px solid #E2E8F0' }}>
-                    {['Candidate','Designation','Joining Date','Total Docs','Submitted','Verified','Pending','Needs Review','Rejected','Status'].map(h => (
+                    {['Candidate','Designation','Joining Date','Total Docs','Submitted','Verified','Pending','Needs Review','Rejected','Status','Action'].map(h => (
                       <th key={h} style={{ padding:'12px 14px', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, textAlign:'left', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -530,6 +624,15 @@ export default function AdminOnboarding({ user }) {
                             {statusInfo.label}
                           </span>
                           <div style={{ fontSize:10, color:'#94A3B8', marginTop:3 }}>{d.overallPct}% complete</div>
+                        </td>
+                        <td style={{ padding:'12px 14px' }}>
+                          {d.overallStatus === 'all_verified' && d.applicationId ? (
+                            <button onClick={() => navigate(`/app/forms/offer?appId=${d.applicationId}`)} style={{ background:'#0176D3', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                              📝 Generate Offer
+                            </button>
+                          ) : (
+                            <span style={{ fontSize:11, color:'#94A3B8' }}>—</span>
+                          )}
                         </td>
                       </tr>
                     );

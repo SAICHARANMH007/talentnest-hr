@@ -11,7 +11,9 @@ const VERIFY_COLOR = { not_uploaded: '#94A3B8', pending_review: '#F59E0B', verif
 const VERIFY_LABEL = { not_uploaded: 'Upload Required', pending_review: '⏳ Under Review', verified: '✅ Verified', rejected: '❌ Rejected', resubmission_required: '🔄 Resubmit' };
 
 export default function CandidateOnboarding({ user }) {
-  const [pb, setPb]           = useState(null);
+  const [pbList, setPbList]   = useState([]);
+  const [pbIndex, setPbIndex] = useState(0);
+  const pb = pbList[pbIndex] || null;
   const [loading, setLoading] = useState(true);
   const [toast, setToast]     = useState('');
   const [uploading, setUploading]   = useState({});
@@ -22,19 +24,17 @@ export default function CandidateOnboarding({ user }) {
     setLoading(true);
     try {
       const r = await api.getMyPreBoarding();
-      let pbData = r?.data || r || null;
+      let dataArr = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : (r?.data ? [r.data] : []));
 
-      // No preboarding yet — use the self-start endpoint (candidate-accessible)
-      // which finds their Hired application by email and creates the checklist
-      if (!pbData) {
+      if (dataArr.length === 0) {
         try {
           const started = await api.selfStartPreBoarding();
-          if (started?.data || started?.success) pbData = started.data || null;
+          dataArr = Array.isArray(started?.data) ? started.data : (Array.isArray(started) ? started : (started?.data ? [started.data] : []));
         } catch {}
       }
 
-      setPb(pbData);
-    } catch { setPb(null); }
+      setPbList(dataArr);
+    } catch { setPbList([]); }
     setLoading(false);
   };
 
@@ -46,7 +46,8 @@ export default function CandidateOnboarding({ user }) {
     setUploading(p => ({ ...p, [taskId]: true }));
     try {
       const r = await api.uploadPreBoardingDocument(pb._id || pb.id, taskId, file);
-      setPb(r?.data || r);
+      const updated = r?.data || r;
+      setPbList(prev => prev.map((item, i) => i === pbIndex ? updated : item));
       setToast('✅ Document uploaded! HR will verify it shortly.');
     } catch (e) { setToast('❌ Upload failed: ' + (e.message || 'Unknown error')); }
     setUploading(p => ({ ...p, [taskId]: false }));
@@ -57,7 +58,8 @@ export default function CandidateOnboarding({ user }) {
     setCompleting(p => ({ ...p, [taskId]: true }));
     try {
       const r = await api.updatePreBoardingTask(pb._id || pb.id, taskId, { completed: !isDone });
-      setPb(r?.data || r);
+      const updated = r?.data || r;
+      setPbList(prev => prev.map((item, i) => i === pbIndex ? updated : item));
     } catch (e) { setToast('❌ ' + e.message); }
     setCompleting(p => ({ ...p, [taskId]: false }));
   };
@@ -66,7 +68,8 @@ export default function CandidateOnboarding({ user }) {
     if (!pb) return;
     try {
       const r = await api.confirmPreBoardingJoining(pb._id || pb.id);
-      setPb(r?.data || r);
+      const updated = r?.data || r;
+      setPbList(prev => prev.map((item, i) => i === pbIndex ? updated : item));
       setToast('✅ Joining confirmed! We look forward to having you on board.');
     } catch (e) { setToast('❌ ' + e.message); }
   };
@@ -105,6 +108,25 @@ export default function CandidateOnboarding({ user }) {
 
   return (
     <div style={{ maxWidth:860, margin:'0 auto', padding:'24px 16px' }}>
+
+      {pbList.length > 1 && (
+        <div style={{ marginBottom: 20, display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8 }}>
+          {pbList.map((item, i) => (
+            <button
+              key={item.id || item._id}
+              onClick={() => setPbIndex(i)}
+              style={{
+                padding: '10px 16px', borderRadius: 10, cursor: 'pointer', flexShrink: 0, fontWeight: 700, fontSize: 13,
+                border: pbIndex === i ? '2px solid #0176D3' : '1px solid #E2E8F0',
+                background: pbIndex === i ? '#F0F9FF' : '#fff',
+                color: pbIndex === i ? '#0176D3' : '#64748B'
+              }}
+            >
+              {item.designation} {item.department ? `· ${item.department}` : ''}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Hero */}
       <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', borderRadius:20, padding:'32px 36px', marginBottom:28, color:'#fff', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:20 }}>

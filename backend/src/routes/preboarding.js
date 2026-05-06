@@ -96,20 +96,18 @@ router.get('/:id', authenticate, tenantGuard, asyncHandler(async (req, res) => {
 
 // ── Candidate: get own pre-boarding (by email — works regardless of Candidate vs User _id) ──
 router.get('/mine', authenticate, asyncHandler(async (req, res) => {
-  if (!req.user?.email) return res.json({ success: true, data: null });
-  const record = await PreBoarding.findOne({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
-  if (!record) return res.json({ success: true, data: null });
-  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+  if (!req.user?.email) return res.json({ success: true, data: [] });
+  const records = await PreBoarding.find({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
+  res.json({ success: true, data: records.map(r => ({ ...r, id: r._id.toString() })) });
 }));
 
 // ── Candidate: get own pre-boarding by candidateId (legacy — keep for compat) ─
 router.get('/mine/:candidateId', authenticate, asyncHandler(async (req, res) => {
-  let record = await PreBoarding.findOne({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
-  if (!record && req.user?.email) {
-    record = await PreBoarding.findOne({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
+  let records = await PreBoarding.find({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
+  if (records.length === 0 && req.user?.email) {
+    records = await PreBoarding.find({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
   }
-  if (!record) return res.json({ success: true, data: null });
-  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+  res.json({ success: true, data: records.map(r => ({ ...r, id: r._id.toString() })) });
 }));
 
 // ── Candidate: confirm joining ─────────────────────────────────────────────────
@@ -397,6 +395,7 @@ router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recr
 
     return {
       preBoardingId: r._id?.toString(),
+      applicationId: r.applicationId?.toString(),
       candidateName: r.candidateName,
       candidateEmail: r.candidateEmail,
       designation: r.designation,
@@ -430,20 +429,23 @@ router.post('/self-start', authenticate, asyncHandler(async (req, res) => {
     query.candidateEmail = req.user.email;
   }
 
-  const hiredApp = await Application.findOne(query).sort({ updatedAt: -1 }).lean();
-  if (!hiredApp) return res.json({ success: false, message: 'No hired application found.' });
+  const hiredApps = await Application.find(query).sort({ updatedAt: -1 }).lean();
+  if (!hiredApps || hiredApps.length === 0) return res.json({ success: false, message: 'No hired applications found.' });
 
-  // Check if pre-boarding already exists
-  const existing = await PreBoarding.findOne({
-    $or: [{ applicationId: hiredApp._id }, { candidateEmail: req.user.email }]
-  }).lean();
-  if (existing) return res.json({ success: true, data: { ...existing, id: existing._id?.toString() } });
+  const pbRecords = [];
+  for (const hiredApp of hiredApps) {
+    // Check if pre-boarding already exists for this app
+    const existing = await PreBoarding.findOne({ applicationId: hiredApp._id }).lean();
+    if (existing) {
+      pbRecords.push({ ...existing, id: existing._id?.toString() });
+    } else {
+      // Create new pre-boarding
+      const pb = await createPreBoardingForApplication(hiredApp._id, hiredApp.tenantId, hiredApp.candidateId);
+      if (pb) pbRecords.push({ ...pb.toObject?.() || pb, id: pb._id?.toString() });
+    }
+  }
 
-  // Create new pre-boarding
-  const pb = await createPreBoardingForApplication(hiredApp._id, hiredApp.tenantId, hiredApp.candidateId);
-  if (!pb) return res.json({ success: false, message: 'Could not create pre-boarding.' });
-
-  res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
+  res.json({ success: true, data: pbRecords });
 }));
 
 module.exports = router;

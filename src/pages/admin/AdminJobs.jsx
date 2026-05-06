@@ -12,6 +12,7 @@ import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM } from '../../constants/stages.js';
+import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
 
 const fInp = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box' };
 const fSel = { ...fInp, cursor:'pointer' };
@@ -48,6 +49,7 @@ export default function AdminJobs({ user }) {
   const [totalJobs, setTotalJobs] = useState(0);
   const [editingJob, setEditingJob] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [listingOrg, setListingOrg] = useState(null);
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
@@ -455,6 +457,12 @@ export default function AdminJobs({ user }) {
                 🚫 Close {selectedJobIds.length} Selected
               </button>
             )}
+            <button
+              onClick={() => setListingOrg(user?.tenantId ? { id: user.tenantId, name: user.orgName || user.organisation || 'My Org', slug: user.orgSlug || '' } : { id: 'super_admin_select', name: 'Select Organisation' })}
+              title="Manage which jobs appear on your public career page"
+              style={{ background:'linear-gradient(135deg,#059669,#047857)', border:'none', borderRadius:8, color:'#fff', fontWeight:700, fontSize:12, padding:'8px 14px', cursor:'pointer' }}>
+              🌐 Listing
+            </button>
             <button onClick={() => setShowModal(true)} style={{ ...btnP, fontSize:12 }}>+ Post Job</button>
           </div>
         </div>
@@ -774,6 +782,8 @@ export default function AdminJobs({ user }) {
           </div>
         </div>
       )}
+      {/* Career Listing Modal */}
+      {listingOrg && <CareerListingModal org={listingOrg} user={user} onClose={() => setListingOrg(null)} />}
     </div>
   );
 }

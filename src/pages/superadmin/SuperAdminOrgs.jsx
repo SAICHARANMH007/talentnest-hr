@@ -4,6 +4,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
+import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
 
 const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 20 };
 const btnP  = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: 'pointer' };
@@ -31,7 +32,7 @@ function OrgAvatar({ org, size = 48 }) {
   );
 }
 
-function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
+function OrgDetailView({ org, onClose, onRefresh, onInvite, onOpenListing }) {
   const [editing, setEditing] = useState(false);
   const buildForm = (o) => ({
     name: o.name || '',
@@ -215,7 +216,10 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
                    <div>
                       <h4 style={{ color: '#032D60', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>🏢</span> Core Information</div>
-                         <button onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = 'rgba(1,118,211,0.08)'} onMouseLeave={e => e.target.style.background = 'none'}>✏️ Edit</button>
+                         <div style={{ display: 'flex', gap: 8 }}>
+                           <button onClick={() => onOpenListing && onOpenListing(org)} style={{ background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'opacity 0.2s' }} onMouseEnter={e => e.target.style.opacity = '0.9'} onMouseLeave={e => e.target.style.opacity = '1'}>🌐 Listing</button>
+                           <button onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' }} onMouseEnter={e => e.target.style.background = 'rgba(1,118,211,0.08)'} onMouseLeave={e => e.target.style.background = 'none'}>✏️ Edit</button>
+                         </div>
                       </h4>
                       <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
                          <div><Lbl>Legal Name</Lbl><div style={{ fontSize: 14, fontWeight: 600 }}>{org.name}</div></div>
@@ -328,7 +332,13 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite }) {
 
                 {/* Footer Actions */}
                 <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 20, display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
-                   <button onClick={() => setEditing(true)} style={btnP}>✏️ Update Profile</button>
+                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <button onClick={() => setEditing(true)} style={btnP}>✏️ Update Profile</button>
+                      <button onClick={() => onOpenListing && onOpenListing(org)}
+                        style={{ background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: 'pointer' }}>
+                        🌐 Career Listing
+                      </button>
+                   </div>
                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <button
                         onClick={() => handleStatus(org.status === 'suspended' ? 'active' : 'suspended')}
@@ -390,6 +400,7 @@ export default function SuperAdminOrgs() {
   const [saving, setSaving]     = useState(false);
   const [search, setSearch]     = useState('');
   const [toast, setToast]       = useState('');
+  const [listingOrg, setListingOrg] = useState(null);
   const sf  = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const sif = (k, v) => setInviteForm(p => ({ ...p, [k]: v }));
 
@@ -442,6 +453,7 @@ export default function SuperAdminOrgs() {
         <OrgDetailView
           org={selectedOrg}
           onClose={() => setSelectedOrg(null)}
+          onOpenListing={(org) => setListingOrg(org)}
           onRefresh={async (keepOpen) => {
             const freshList = await load();
             if (!keepOpen) {
@@ -528,7 +540,13 @@ export default function SuperAdminOrgs() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <span style={{ color: '#9E9D9B', fontSize: 11 }}>{org.createdAt ? new Date(org.createdAt).toLocaleDateString() : '—'}</span>
                 </div>
-                <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>Manage →</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button onClick={e => { e.stopPropagation(); setListingOrg(org); }}
+                    style={{ background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', borderRadius: 8, color: '#059669', fontWeight: 700, fontSize: 11, padding: '4px 10px', cursor: 'pointer' }}>
+                    🌐 Listing
+                  </button>
+                  <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>Manage →</span>
+                </div>
               </div>
             </div>
           ))}
@@ -613,6 +631,9 @@ export default function SuperAdminOrgs() {
           </div>
         </div>
       )}
+
+      {/* Career Listing Modal */}
+      {listingOrg && <CareerListingModal org={listingOrg} user={{ role: 'super_admin' }} onClose={() => setListingOrg(null)} />}
 
     </div>
   );

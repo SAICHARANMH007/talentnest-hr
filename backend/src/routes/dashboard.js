@@ -640,7 +640,8 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   const tf = tenantFilter(req);
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const rawLimit = parseInt(req.query.limit, 10);
-  const limit = (rawLimit === 0) ? 1000 : Math.min(rawLimit || 50, 500);
+  const maxPageSize = req.user.role === 'super_admin' ? 10000 : 200;
+  const limit = Math.min(maxPageSize, Math.max(1, rawLimit || 50));
   const skip = (page - 1) * limit;
   const search = String(req.query.search || '').trim();
   const appliedOnly    = req.query.appliedOnly === 'true';

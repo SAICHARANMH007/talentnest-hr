@@ -98,7 +98,7 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
 
 // GET /api/users/candidates — Candidate listing (recruiter/admin)
 router.get('/candidates', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req, { limit: 500 });
+  const { page, limit, skip } = getPagination(req, { limit: req.user.role === 'super_admin' ? 100 : 50 });
   const filter = req.user.role === 'super_admin'
     ? { role: 'candidate', ...(req.query.tenantId ? { tenantId: req.query.tenantId } : {}) }
     : { role: 'candidate', tenantId: req.user.tenantId };

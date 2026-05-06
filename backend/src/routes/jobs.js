@@ -266,4 +266,50 @@ router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
   res.json({ success: true, message: 'Job archived.' });
 }));
 
+// ── GET /api/jobs/public/org/:orgSlug — embeddable no-auth career listing ───────
+// Returns only isPublic=true, active jobs for the given org. Allows iframe embedding.
+router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
+  const Organization = require('../models/Organization');
+  const org = await Organization.findOne({ slug: req.params.orgSlug }).select('_id name logoUrl settings').lean();
+  if (!org) { return res.status(404).json({ success: false, error: 'Organisation not found.' }); }
+
+  // Allow embedding on any origin (org's own website)
+  res.set('X-Frame-Options', 'ALLOWALL');
+  res.set('Content-Security-Policy', `frame-ancestors *`);
+  res.set('Access-Control-Allow-Origin', '*');
+
+  const jobs = await Job.find({
+    tenantId: org._id,
+    isPublic: true,
+    status: 'active',
+    deletedAt: null,
+  }).select('title company companyName location jobType experience urgency skills description salaryMin salaryMax salaryCurrency careerPageSlug createdAt numberOfOpenings').sort({ createdAt: -1 }).lean();
+
+  res.json({
+    success: true,
+    org: { name: org.name, logoUrl: org.logoUrl, slug: req.params.orgSlug },
+    data: jobs.map(normalizeJob),
+  });
+}));
+
+// ── PATCH /api/jobs/career-listing — bulk toggle isPublic for career listing ───
+// Admin/SuperAdmin sets which jobs appear on their public career page.
+router.patch('/career-listing', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { publish, unpublish } = req.body;
+  // publish: [jobId, ...] to set isPublic=true
+  // unpublish: [jobId, ...] to set isPublic=false
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+  const ops = [];
+  if (Array.isArray(publish) && publish.length > 0) {
+    ops.push(Job.updateMany({ _id: { $in: publish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: true } }));
+  }
+  if (Array.isArray(unpublish) && unpublish.length > 0) {
+    ops.push(Job.updateMany({ _id: { $in: unpublish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: false } }));
+  }
+  await Promise.all(ops);
+  logger.audit('Career listing updated', req.user.id, req.user.tenantId, { published: (publish||[]).length, unpublished: (unpublish||[]).length });
+  res.json({ success: true });
+}));
+
 module.exports = router;

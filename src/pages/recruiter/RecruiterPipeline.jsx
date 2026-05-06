@@ -549,7 +549,22 @@ export default function RecruiterPipeline({ user }) {
   };
 
   const stageCounts = STAGES.reduce((acc, s) => { acc[s.id] = apps.filter(a => a.stage === s.id).length; return acc; }, {});
-  const filtered = stageFilter === 'all' ? apps : apps.filter(a => a.stage === stageFilter);
+  let filtered = stageFilter === 'all' ? apps : apps.filter(a => a.stage === stageFilter);
+  
+  // Sort applicants by assessment score (descending) so top candidates are prioritized
+  if (assessmentData?.submissionsMap) {
+    filtered.sort((a, b) => {
+      const subA = assessmentData.submissionsMap[String(a.candidate?.id || a.candidate?._id || a.candidateId || '')];
+      const subB = assessmentData.submissionsMap[String(b.candidate?.id || b.candidate?._id || b.candidateId || '')];
+      const scoreA = subA?.percentage ?? -1;
+      const scoreB = subB?.percentage ?? -1;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return new Date(b.createdAt) - new Date(a.createdAt); // fallback to newest
+    });
+  } else {
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
   const selectedJob = jobs.find(j => String(j.id) === String(selJob));
 
   return (

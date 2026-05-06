@@ -76,6 +76,7 @@ const jobSchema = new mongoose.Schema({
   }],
 
   careerPageSlug: { type: String },
+  isPublic: { type: Boolean, default: false }, // Opt-in to org career listing page
 
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
@@ -89,6 +90,7 @@ jobSchema.index({ createdAt: -1 });
 jobSchema.index({ tenantId: 1, status: 1, deletedAt: 1 });        // active job lists
 jobSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 });    // tenant paginated lists
 jobSchema.index({ careerPageSlug: 1 });                           // public career page
+jobSchema.index({ tenantId: 1, isPublic: 1, status: 1 });         // org career listing
 jobSchema.index({ assignedRecruiters: 1, status: 1 });            // recruiter job lists
 
 // Keep company and companyName in sync so both field names always work

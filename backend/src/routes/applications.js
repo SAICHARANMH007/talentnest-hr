@@ -652,6 +652,24 @@ router.patch('/:id/stage', ...guard,
       } catch (pbErr) {
         console.warn('[PreBoarding] auto-create on Hired stage failed:', pbErr.message);
       }
+      
+      // In-app Notification for candidate
+      try {
+        const User = require('../models/User');
+        const candidateUser = await User.findOne({ email: candidate.email }).lean();
+        if (candidateUser) {
+          await Notification.create({
+            userId: candidateUser._id,
+            tenantId: app.tenantId,
+            type: 'stage_change',
+            title: `You're Hired for ${jobDoc?.title}!`,
+            message: `Congratulations! Please check your Pre-boarding checklist to proceed with document verification.`,
+            link: '/app/onboarding',
+          });
+        }
+      } catch (err) {
+        console.warn('[Notification] Candidate hired notification failed:', err.message);
+      }
     }
 
     // When moved to Offer stage, create a blank OfferLetter if one doesn't exist

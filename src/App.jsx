@@ -22,6 +22,7 @@ const CompaniesPage = lazy(() => import('./pages/marketing/CompaniesPage.jsx'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
+const OrgCareersPage = lazy(() => import('./pages/careers/OrgCareersPage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
 const CandidateJobMatch = lazy(() => import('./pages/candidate/CandidateJobMatch.jsx'));
@@ -575,6 +576,13 @@ export default function App() {
           </>
         )}
       </Route>
+
+      {/* Org-specific career page — no nav, embeddable */}
+      <Route path="/:orgSlug/careers" element={
+        <Suspense fallback={<PageLoader />}>
+          <OrgCareersPage />
+        </Suspense>
+      } />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />

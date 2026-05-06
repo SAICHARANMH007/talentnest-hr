@@ -27,6 +27,9 @@ export const jobService = {
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
   async approveJob(id, action, reason) { return req('PATCH', `/jobs/${id}/approve`, { action, ...(reason ? { reason } : {}) }); },
+  // Career listing (public org career page)
+  async getOrgPublicJobs(orgSlug)          { return req('GET', `/jobs/public/org/${orgSlug}`, null, false); },
+  async updateCareerListing(publish, unpublish) { return req('PATCH', '/jobs/career-listing', { publish: publish || [], unpublish: unpublish || [] }); },
 
   // AI Matching (computed via Gemini logic - maintained for compatibility)
   async getMatchedJobs(candidateId) {
