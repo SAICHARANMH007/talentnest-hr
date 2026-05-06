@@ -53,24 +53,40 @@ router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), ch
 router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const tid = req.query.tenantId || req.query.orgId;
+  
+  // Base filter: Scope by organization unless super_admin
   const filter = req.user.role === 'super_admin'
     ? (tid ? { $or: [{ tenantId: tid }, { orgId: tid }] } : {})
     : { tenantId: req.user.tenantId };
+  
   if (req.query.role) filter.role = req.query.role;
+  
+  // Advanced Search (Name, Email, Title, Company)
   if (req.query.search) {
     const _s = escRe(req.query.search);
     const searchOr = [
       { name: { $regex: _s, $options: 'i' } },
-      { email: { $regex: _s, $options: 'i' } }
+      { email: { $regex: _s, $options: 'i' } },
+      { title: { $regex: _s, $options: 'i' } },
+      { currentCompany: { $regex: _s, $options: 'i' } },
+      { jobRole: { $regex: _s, $options: 'i' } }
     ];
-    // Combine with existing $or (tenantId/orgId) using $and to avoid overwriting
+    
     if (filter.$or) {
       filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
       delete filter.$or;
+    } else if (filter.$and) {
+      filter.$and.push({ $or: searchOr });
     } else {
       filter.$or = searchOr;
     }
   }
+
+  // Location filter
+  if (req.query.location) filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  
+  // Availability filter
+  if (req.query.availability) filter.availability = req.query.availability;
 
   const [users, total] = await Promise.all([
     User.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -82,12 +98,41 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
 
 // GET /api/users/candidates — Candidate listing (recruiter/admin)
 router.get('/candidates', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req, { limit: 500 });
   const filter = req.user.role === 'super_admin'
     ? { role: 'candidate', ...(req.query.tenantId ? { tenantId: req.query.tenantId } : {}) }
     : { role: 'candidate', tenantId: req.user.tenantId };
-  const limit = Math.min(parseInt(req.query.limit) || 500, 1000); // cap at 1000
-  const candidates = await User.find(filter).select('-password').sort({ createdAt: -1 }).limit(limit).lean();
-  res.json({ success: true, candidates: candidates.map(userService.normalize) });
+
+  if (req.query.search) {
+    const _s = escRe(req.query.search);
+    const searchOr = [
+      { name: { $regex: _s, $options: 'i' } },
+      { email: { $regex: _s, $options: 'i' } },
+      { title: { $regex: _s, $options: 'i' } },
+      { currentCompany: { $regex: _s, $options: 'i' } },
+      { jobRole: { $regex: _s, $options: 'i' } }
+    ];
+    filter.$or = searchOr;
+  }
+
+  // Location filter
+  if (req.query.location) filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  
+  // Availability filter
+  if (req.query.availability) filter.availability = req.query.availability;
+
+  const [candidates, total] = await Promise.all([
+    User.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.countDocuments(filter)
+  ]);
+
+  const normalized = candidates.map(userService.normalize);
+  const response = paginatedResponse(normalized, total, limit, page);
+  
+  res.json({ 
+    ...response,
+    candidates: normalized // Keep for backward compatibility
+  });
 }));
 
 // GET /api/users/count — Statistics helper
@@ -571,7 +616,8 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   if (tid) filter.$or = [{ tenantId: tid }, { orgId: tid }];
   if (req.query.role) filter.role = req.query.role;
 
-  const users = await User.find(filter).select('-password -passwordHash').sort({ createdAt: -1 }).limit(5000).lean();
+  const exportLimit = req.user.role === 'super_admin' ? 50000 : 5000;
+  const users = await User.find(filter).select('-password -passwordHash').sort({ createdAt: -1 }).limit(exportLimit).lean();
   const candidateEmails = [...new Set(users
     .filter(u => u.role === 'candidate' && u.email)
     .map(u => u.email.toLowerCase()))];

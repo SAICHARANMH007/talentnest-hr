@@ -2,7 +2,8 @@
 
 const getPagination = (req, defaults = {}) => {
   const page  = Math.max(1, parseInt(req.query.page)  || 1);
-  const limit = Math.min(2000, Math.max(1, parseInt(req.query.limit) || defaults.limit || 20));
+  const maxLimit = req.user?.role === 'super_admin' ? 10000 : 2000;
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit) || defaults.limit || 20));
   return { page, limit, skip: (page - 1) * limit };
 };
 

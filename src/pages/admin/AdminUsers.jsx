@@ -446,6 +446,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [formErrors, setFormErrors]   = useState({});
   const [orgs, setOrgs]               = useState([]);
   const [saving, setSaving]           = useState(false);
+  const [pagination, setPagination]   = useState({ page: 1, limit: isSuperAdmin ? 500 : 100, total: 0, pages: 1 });
 
   // ── basic filters ──
   const [search, setSearch]       = useState('');
@@ -518,11 +519,19 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     setSelectedIds(new Set());
   };
 
-  const load = async () => {
+  const load = async (p = pagination.page, l = pagination.limit) => {
     setLoad(true);
     try {
-      let all = await api.getUsers(filterRole);
-      const allArr = Array.isArray(all) ? all : (all.data || []);
+      const res = await api.getUsers({ 
+        role: filterRole, 
+        page: p, 
+        limit: l, 
+        fullResponse: true 
+      });
+      
+      const allArr = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.candidates) ? res.candidates : (Array.isArray(res) ? res : []));
+      const pg = res?.pagination || { page: 1, limit: l, total: allArr.length, pages: 1 };
+      
       // Standardize: ensure each user has a string 'id' from either .id or ._id
       const normalized = allArr.map(u => ({
         ...u,
@@ -530,10 +539,28 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
       }));
       const filtered2 = recruiterView && recruiterId ? normalized.filter(u => String(u.addedBy) === String(recruiterId)) : normalized;
       setUsers(filtered2);
+      setPagination(pg);
     } catch (e) { setToast(`❌ Failed to load users: ${e.message}`); setUsers([]); }
     setLoad(false);
   };
-  useEffect(() => { load(); setExpandedRec(null); setExpandedCand(null); setSelectedIds(new Set()); setActiveTab('users'); }, [filterRole, recruiterId]);
+  const prevFilters = useRef({ filterRole, recruiterId });
+
+  useEffect(() => {
+    // If the role or recruiter changed, reset to page 1
+    if (prevFilters.current.filterRole !== filterRole || prevFilters.current.recruiterId !== recruiterId) {
+      prevFilters.current = { filterRole, recruiterId };
+      setPagination(p => ({ ...p, page: 1 }));
+      setExpandedRec(null);
+      setExpandedCand(null);
+      setSelectedIds(new Set());
+      setActiveTab('users');
+      // The page change will trigger the effect again, so we can skip loading now if page is not 1
+      if (pagination.page !== 1) return;
+    }
+    
+    load(pagination.page, pagination.limit);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [filterRole, recruiterId, pagination.page, pagination.limit]);
 
   // Auto-open detail drawer if coming from notification deep-link
   useEffect(() => {
@@ -659,10 +686,10 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const lbl         = recruiterView ? 'Candidate' : filterRole.charAt(0).toUpperCase() + filterRole.slice(1);
   const pageTitle   = recruiterView ? 'My Candidates' : `Manage ${lbl}s`;
   const pageSubtitle = hasFilters
-    ? `${filtered.length} of ${users.length} ${lbl.toLowerCase()}s`
+    ? `${filtered.length} matching of ${pagination.total} ${lbl.toLowerCase()}s`
     : recruiterView
       ? `${users.length} candidates you added`
-      : `${users.length} total`;
+      : `${pagination.total} total`;
 
 
   return (
@@ -1098,6 +1125,70 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         </div>
       ))}
 
+      {/* Pagination Controls */}
+      {activeTab === 'users' && pagination.pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 24, padding: '16px 0', borderTop: '1px solid #e8ecf0' }}>
+          <button 
+            disabled={pagination.page <= 1} 
+            onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+            style={{ ...btnG, padding: '6px 12px', fontSize: 13, opacity: pagination.page <= 1 ? 0.5 : 1 }}
+          >
+            ← Previous
+          </button>
+          
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[...Array(Math.min(5, pagination.pages))].map((_, i) => {
+               // Simple sliding window for page numbers
+               let pageNum = i + 1;
+               if (pagination.pages > 5 && pagination.page > 3) {
+                 pageNum = pagination.page - 2 + i;
+                 if (pageNum + (4 - i) > pagination.pages) pageNum = pagination.pages - 4 + i;
+               }
+               if (pageNum <= 0) return null;
+               if (pageNum > pagination.pages) return null;
+
+               return (
+                 <button 
+                   key={pageNum}
+                   onClick={() => setPagination(p => ({ ...p, page: pageNum }))}
+                   style={{
+                     width: 32, height: 32, borderRadius: 8, border: '1px solid #e8ecf0',
+                     background: pagination.page === pageNum ? '#0176D3' : '#fff',
+                     color: pagination.page === pageNum ? '#fff' : '#181818',
+                     fontWeight: pagination.page === pageNum ? 700 : 500,
+                     fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                   }}
+                 >
+                   {pageNum}
+                 </button>
+               );
+            })}
+          </div>
+
+          <button 
+            disabled={pagination.page >= pagination.pages} 
+            onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+            style={{ ...btnG, padding: '6px 12px', fontSize: 13, opacity: pagination.page >= pagination.pages ? 0.5 : 1 }}
+          >
+            Next →
+          </button>
+
+          <div style={{ marginLeft: 12, color: '#6b7280', fontSize: 13, fontWeight: 500 }}>
+            Page {pagination.page} of {pagination.pages}
+          </div>
+
+          <select 
+            value={pagination.limit} 
+            onChange={e => setPagination(p => ({ ...p, limit: Number(e.target.value), page: 1 }))}
+            style={{ marginLeft: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid #e8ecf0', fontSize: 12, color: '#181818', outline: 'none' }}
+          >
+            <option value={100}>100 / page</option>
+            <option value={500}>500 / page</option>
+            {isSuperAdmin && <option value={1000}>1000 / page</option>}
+            {isSuperAdmin && <option value={5000}>5000 / page</option>}
+          </select>
+        </div>
+      )}
       {/* Add user modal */}
       {showModal && (
         <Modal title={`Add ${lbl}`} onClose={() => { setShow(false); setUseTempPwd(false); setFormErrors({}); }}

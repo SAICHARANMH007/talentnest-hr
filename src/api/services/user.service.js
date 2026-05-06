@@ -34,19 +34,24 @@ export const userService = {
   async getUsers(params)          {
     const toArr = r => Array.isArray(r) ? r : (Array.isArray(r?.candidates) ? r.candidates : (Array.isArray(r?.data) ? r.data : []));
     if (typeof params === 'string') {
-      // /users/candidates has a built-in 500 default; other roles default to 20 so we bump them
       const url = params === 'candidate'
-        ? '/users/candidates?limit=500'
-        : `/users?role=${params}&limit=200`;
+        ? '/users/candidates?limit=10000'
+        : `/users?role=${params}&limit=10000`;
       return toArr(await req('GET', url));
     }
-    const { role, orgId, limit, platform } = params || {};
+    const { role, orgId, limit, page, platform, fullResponse } = params || {};
     const q = new URLSearchParams();
     if (role) q.set('role', role);
     if (orgId) q.set('orgId', orgId);
     if (platform) q.set('platform', 'true');
+    if (page) q.set('page', String(page));
+    
+    // Use provided limit or default based on role, but don't hardcap if limit is explicitly passed
     q.set('limit', String(limit || (role === 'candidate' ? 500 : 200)));
-    return toArr(await req('GET', `/users?${q.toString()}`));
+    
+    const res = await req('GET', (role === 'candidate' ? '/users/candidates?' : '/users?') + q.toString());
+    if (fullResponse) return res;
+    return toArr(res);
   },
   async getUsersList(params = {}) {
     const q = new URLSearchParams();
