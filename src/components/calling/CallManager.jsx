@@ -68,6 +68,7 @@ export default function CallManager({ user }) {
   const audioCtxRef = useRef(null);  // AudioContext used to unlock mobile audio
 
   const [callState, setCallState] = useState('idle');
+  const [connectionState, setConnectionState] = useState('new');
   const [callInfo, setCallInfo_] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [callStartedAt, setCallStartedAt] = useState(null);
@@ -120,6 +121,14 @@ export default function CallManager({ user }) {
       return;
     }
 
+    const isVideo = callInfoRef.current?.callType === 'video';
+    if (isVideo) {
+      // For video calls, <VideoTile> handles playing the stream (both video & audio).
+      // If we attach it here too, the browser will try to play it twice, causing echo/silence.
+      if (el.srcObject) el.srcObject = null;
+      return;
+    }
+
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
@@ -141,19 +150,6 @@ export default function CallManager({ user }) {
     stream?.getAudioTracks().forEach(track => {
       track.onunmute = () => tryPlay();
     });
-
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume().catch(() => { });
-      if (stream && !stream._acSrc) {
-        const source = ctx.createMediaStreamSource(stream);
-        source.connect(ctx.destination);
-        stream._acSrc = source;
-      }
-    } catch { }
   }, []);
 
   // ── Reactive Watchdog ──────────────────────────────────────────────────────
