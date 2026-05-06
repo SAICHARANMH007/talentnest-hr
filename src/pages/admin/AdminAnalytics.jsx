@@ -801,7 +801,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {onNavigate && (
             <button
-              onClick={() => onNavigate(isSuperAdmin ? 'candidate-requests' : 'candidate-request')}
+              onClick={() => onNavigate('candidate-requests')}
               style={{ background: isSuperAdmin ? 'linear-gradient(135deg,#0176D3,#015AA1)' : 'linear-gradient(135deg,#BA0517,#e02d3c)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {isSuperAdmin ? '📋 Track Agency Requests' : '🚨 Request Candidates from TalentNest'}
             </button>
