@@ -2,7 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "nodeVersion": "20.x",
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://talentnest-hr.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }

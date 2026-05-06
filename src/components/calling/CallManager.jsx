@@ -46,8 +46,8 @@ function useRingSound(ringing) {
         osc.start(); osc.stop(ctx.currentTime + 0.5);
       };
       play(); interval = setInterval(play, 2000);
-    } catch {}
-    return () => { clearInterval(interval); try { ctx?.close(); } catch {} };
+    } catch { }
+    return () => { clearInterval(interval); try { ctx?.close(); } catch { } };
   }, [ringing]);
 }
 
@@ -55,23 +55,23 @@ export default function CallManager({ user }) {
   // Always convert to string — handles ObjectId objects and plain strings
   const myId = String(user?.id || user?._id || '').trim() || null;
 
-  const socketRef    = useRef(null);
+  const socketRef = useRef(null);
   // ── KEY FIX: use refs for anything accessed inside socket handlers ──────────
   // State variables read inside socket.on() closures MUST be refs, not state,
   // because the handlers are registered once and capture the initial (stale) value.
-  const callInfoRef  = useRef(null);   // mirrors callInfo state — always current
+  const callInfoRef = useRef(null);   // mirrors callInfo state — always current
   const localStreamRef2 = useRef(null); // mirrors localStream from useWebRTC
 
-  const ringTimer  = useRef(null);
-  const endTimer   = useRef(null);
-  const endingRef  = useRef(false); // prevents re-entrant endCallInternal calls
+  const ringTimer = useRef(null);
+  const endTimer = useRef(null);
+  const endingRef = useRef(false); // prevents re-entrant endCallInternal calls
   const audioCtxRef = useRef(null);  // AudioContext used to unlock mobile audio
 
-  const [callState, setCallState]     = useState('idle');
-  const [callInfo,  setCallInfo_]     = useState(null);
+  const [callState, setCallState] = useState('idle');
+  const [callInfo, setCallInfo_] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [callStartedAt, setCallStartedAt] = useState(null);
-  const [endReason, setEndReason]     = useState('');
+  const [endReason, setEndReason] = useState('');
 
   // Always keep ref in sync with state
   const setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
@@ -87,11 +87,11 @@ export default function CallManager({ user }) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => {});
+        audioCtxRef.current.resume().catch(() => { });
       }
       // Also try to resume any existing remote audio element
       if (remoteAudioRef.current) {
-        remoteAudioRef.current.play().catch(() => {});
+        remoteAudioRef.current.play().catch(() => { });
       }
     } catch (err) {
       console.warn('[WebRTC] Audio unlock failed:', err);
@@ -119,7 +119,7 @@ export default function CallManager({ user }) {
       console.warn('[WebRTC] Audio element not found during attachment — will retry via watchdog');
       return;
     }
-    
+
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
@@ -130,7 +130,7 @@ export default function CallManager({ user }) {
         p.catch((err) => {
           console.warn('[Call] audio.play() blocked:', err.name);
           setTimeout(() => {
-            if (el.srcObject) el.play().catch(() => {});
+            if (el.srcObject) el.play().catch(() => { });
           }, 800);
         });
       }
@@ -147,13 +147,13 @@ export default function CallManager({ user }) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      if (ctx.state === 'suspended') ctx.resume().catch(() => { });
       if (stream && !stream._acSrc) {
         const source = ctx.createMediaStreamSource(stream);
         source.connect(ctx.destination);
         stream._acSrc = source;
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // ── Reactive Watchdog ──────────────────────────────────────────────────────
@@ -166,19 +166,19 @@ export default function CallManager({ user }) {
   }, [remoteStream, callState, attachRemoteAudio]);
 
   const { localStream, micOn, camOn, startLocalMedia, initiateCall,
-          handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
-    video: callInfoRef.current?.callType === 'video',
-    audio: true,
-    onRemoteStream: (sid, stream) => {
-      console.log(`[WebRTC] Received remote stream from ${sid}`);
-      setRemoteStream(stream);
-      attachRemoteAudio(stream);
-    },
-    onConnectionChange: (sid, state) => {
-      console.log(`[WebRTC] Connection state with ${sid}: ${state}`);
-      setConnectionState(state);
-    },
-  });
+    handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
+      video: callInfoRef.current?.callType === 'video',
+      audio: true,
+      onRemoteStream: (sid, stream) => {
+        console.log(`[WebRTC] Received remote stream from ${sid}`);
+        setRemoteStream(stream);
+        attachRemoteAudio(stream);
+      },
+      onConnectionChange: (sid, state) => {
+        console.log(`[WebRTC] Connection state with ${sid}: ${state}`);
+        setConnectionState(state);
+      },
+    });
 
   // Keep localStream ref in sync
   useEffect(() => { localStreamRef2.current = localStream; }, [localStream]);
@@ -203,9 +203,9 @@ export default function CallManager({ user }) {
 
     // Helper — always uses callInfoRef for current callId
     const sigEvts = (callId) => ({
-      sendOffer:  (_s, offer)     => socket.emit('call:offer',  { callId, offer }),
-      sendAnswer: (_s, answer)    => socket.emit('call:answer', { callId, answer }),
-      sendIce:    (_s, candidate) => socket.emit('call:ice',    { callId, candidate }),
+      sendOffer: (_s, offer) => socket.emit('call:offer', { callId, offer }),
+      sendAnswer: (_s, answer) => socket.emit('call:answer', { callId, answer }),
+      sendIce: (_s, candidate) => socket.emit('call:ice', { callId, candidate }),
     });
 
     socket.on('call:initiated', ({ callId }) => {
@@ -224,7 +224,7 @@ export default function CallManager({ user }) {
         } else if (Notification.permission !== 'denied') {
           Notification.requestPermission();
         }
-      } catch {}
+      } catch { }
     });
 
     // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
@@ -250,23 +250,23 @@ export default function CallManager({ user }) {
       if (!cid) return;
       handleOffer(from, offer, sigEvts(cid), localStreamRef2.current || undefined)
         .then(() => setCallStartedAt(Date.now()))
-        .catch(() => {});
+        .catch(() => { });
     });
 
-    socket.on('call:answer', ({ from, answer }) => handleAnswer(from, answer).catch(() => {}));
-    socket.on('call:ice',    ({ from, candidate }) => handleIce(from, candidate).catch(() => {}));
+    socket.on('call:answer', ({ from, answer }) => handleAnswer(from, answer).catch(() => { }));
+    socket.on('call:ice', ({ from, candidate }) => handleIce(from, candidate).catch(() => { }));
 
     // ── STATE TRANSITIONS ─────────────────────────────────────────────────────
-    socket.on('call:declined',          ()           => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
-    socket.on('call:cancelled',         ()           => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
-    socket.on('call:no-answer',         ()           => { endCallInternal('No answer'); });
-    socket.on('call:busy',       ({ toName })        => { endCallInternal(`${toName || 'User'} is on another call`); });
-    socket.on('call:ended',      ({ reason })        => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
-    socket.on('call:error',      ({ message })       => { endCallInternal(message); });
+    socket.on('call:declined', () => { clearTimeout(ringTimer.current); endCallInternal('Declined'); });
+    socket.on('call:cancelled', () => { clearTimeout(ringTimer.current); endCallInternal('Caller cancelled'); });
+    socket.on('call:no-answer', () => { endCallInternal('No answer'); });
+    socket.on('call:busy', ({ toName }) => { endCallInternal(`${toName || 'User'} is on another call`); });
+    socket.on('call:ended', ({ reason }) => { endCallInternal(reason === 'disconnected' ? 'Connection lost' : 'Call ended'); });
+    socket.on('call:error', ({ message }) => { endCallInternal(message); });
     // Multi-tab: another tab of mine answered this call — silently dismiss here
-    socket.on('call:answered-elsewhere', ()          => { endCallInternal(''); });
+    socket.on('call:answered-elsewhere', () => { endCallInternal(''); });
     // Receiver is not online — instant feedback instead of waiting 30s
-    socket.on('call:unavailable', ({ message })   => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
+    socket.on('call:unavailable', ({ message }) => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
     // ── CONNECTION HEALTH ────────────────────────────────────────────────────
     socket.on('connect', () => {
@@ -456,7 +456,7 @@ export default function CallManager({ user }) {
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 32 }}>
-            {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i*0.4}s infinite` }} />)}
+            {[0, 1, 2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', animation: `pulse-dot 1.2s ${i * 0.4}s infinite` }} />)}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <CallBtn icon="📵" label="Cancel" color="#DC2626" onClick={cancelCall} />
