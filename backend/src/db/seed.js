@@ -1048,7 +1048,7 @@ async function seed() {
   }
 
   const superAdmin = await User.findOne({ email: ADMIN_EMAIL }).select('_id').lean();
-  await seedTalentNestLinkedInJobs({ tenantId, createdBy: vamsee?._id || superAdmin?._id });
+  // Job seeding disabled — do not re-add seed jobs on every deploy
 
   // ── 2.2 Backfill: link existing Candidate docs to their User accounts by email ──
   // Fixes the "Registered Users" tab showing 0 for candidates who registered before
