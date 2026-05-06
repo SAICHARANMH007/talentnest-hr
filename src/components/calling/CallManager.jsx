@@ -121,14 +121,38 @@ export default function CallManager({ user }) {
       return;
     }
 
-    // We play audio through this hidden element for ALL calls (audio & video).
-    // This provides a single, robust path for audio unlocking.
-    el.srcObject = stream;
+    const isVideo = callInfoRef.current?.callType === 'video';
+    if (isVideo) {
+      // For video calls, <VideoTile> handles playing the stream (both video & audio).
+      // If we attach it here too, the browser will try to play it twice, causing echo/silence.
+      if (el.srcObject) el.srcObject = null;
+      return;
+    }
+
+    if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
 
 
     el.volume = 1;
+
+    // Restore the AudioContext routing that was working previously!
+    // This forcibly routes the WebRTC audio track to the system's default audio destination,
+    // bypassing strict HTML5 <audio> autoplay restrictions on some browsers.
+    try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      
+      // Connect the stream directly to the speakers
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(ctx.destination);
+      console.log('[WebRTC] Successfully routed audio via AudioContext');
+    } catch (err) {
+      console.warn('[WebRTC] AudioContext routing failed:', err);
+    }
 
     const tryPlay = () => {
       const p = el.play();
@@ -466,8 +490,7 @@ export default function CallManager({ user }) {
       <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)', flexDirection: 'column', gap: 16 }}>
         {isVideo ? (
           <div style={{ position: 'relative', width: '90vw', maxWidth: 700, height: '70vh', maxHeight: 500 }}>
-            {/* We MUTE the remote VideoTile because the audio is being played robustly by the hidden <audio> element */}
-            <VideoTile stream={remoteStream} name={callInfo?.peerName} muted style={{ width: '100%', height: '100%' }} />
+            <VideoTile stream={remoteStream} name={callInfo?.peerName} style={{ width: '100%', height: '100%' }} />
             {localStream && (
               <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 12, right: 12, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
             )}

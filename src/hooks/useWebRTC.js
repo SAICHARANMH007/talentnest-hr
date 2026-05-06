@@ -139,22 +139,32 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
 
     const src = stream || localStreamRef.current;
     
-    // Modern, robust approach to adding tracks:
-    // This physically binds the camera/mic tracks to the peer connection.
+    // Modern Transceiver-based approach — critical for Mac/Safari compatibility
+    // This ensures directions are correctly negotiated before the offer is even created.
+    if (pc.addTransceiver) {
+      // Audio is always required for calls
+      pc.addTransceiver('audio', { direction: 'sendrecv', streams: src ? [src] : [] });
+      // Only add video transceiver if this is a video call
+      if (video || (src && src.getVideoTracks().length > 0)) {
+        pc.addTransceiver('video', { direction: 'sendrecv', streams: src ? [src] : [] });
+      }
+    }
+
+    // Still add tracks for older browser compatibility
     if (src) {
-      src.getTracks().forEach(track => {
+      src.getTracks().forEach(t => {
         try {
-          pc.addTrack(track, src);
+          // If we already added a transceiver for this kind, use the sender instead of addTrack
+          const sender = pc.getSenders().find(s => s.track?.kind === t.kind || (!s.track && s.dtlsTransport));
+          if (sender && !sender.track) {
+            sender.replaceTrack(t).catch(() => {});
+          } else {
+            pc.addTrack(t, src);
+          }
         } catch (err) {
-          console.warn('[WebRTC] addTrack error:', err.message);
+          console.warn('[WebRTC] addTrack fallback:', err.message);
         }
       });
-    } else if (pc.addTransceiver) {
-      // If we have no local media (viewer only), force the offer to request remote media
-      pc.addTransceiver('audio', { direction: 'recvonly' });
-      if (video) {
-        pc.addTransceiver('video', { direction: 'recvonly' });
-      }
     }
 
     // Trickle ICE — send candidates as they arrive for faster connection
@@ -175,11 +185,8 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
         remoteStream.addTrack(e.track);
       }
       // Always fire — caller will play audio/video from this stream
-      // We pass a NEW MediaStream instance to force React's state to re-render
-      // and trigger useEffects that depend on the stream reference.
-      const clonedStream = new MediaStream(remoteStream.getTracks());
-      onRemoteStream?.(socketId, clonedStream);
-      e.track.onunmute = () => onRemoteStream?.(socketId, new MediaStream(remoteStream.getTracks()));
+      onRemoteStream?.(socketId, remoteStream);
+      e.track.onunmute = () => onRemoteStream?.(socketId, remoteStream);
     };
 
     pc.onconnectionstatechange = () => {
