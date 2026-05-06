@@ -121,6 +121,23 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
   res.status(201).json({ success: true, data: normalizeJob(job) });
 }));
 
+// ── PATCH /api/jobs/career-listing — bulk toggle isPublic for career listing ───
+// Admin/SuperAdmin sets which jobs appear on their public career page.
+router.patch('/career-listing', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { publish, unpublish } = req.body;
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const ops = [];
+  if (Array.isArray(publish) && publish.length > 0) {
+    ops.push(Job.updateMany({ _id: { $in: publish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: true } }));
+  }
+  if (Array.isArray(unpublish) && unpublish.length > 0) {
+    ops.push(Job.updateMany({ _id: { $in: unpublish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: false } }));
+  }
+  await Promise.all(ops);
+  logger.audit('Career listing updated', req.user.id, req.user.tenantId, { published: (publish||[]).length, unpublished: (unpublish||[]).length });
+  res.json({ success: true });
+}));
+
 router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
     const forbidden = ['tenantId', 'createdBy', 'careerPageSlug'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
@@ -292,24 +309,6 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
   });
 }));
 
-// ── PATCH /api/jobs/career-listing — bulk toggle isPublic for career listing ───
-// Admin/SuperAdmin sets which jobs appear on their public career page.
-router.patch('/career-listing', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const { publish, unpublish } = req.body;
-  // publish: [jobId, ...] to set isPublic=true
-  // unpublish: [jobId, ...] to set isPublic=false
-  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
 
-  const ops = [];
-  if (Array.isArray(publish) && publish.length > 0) {
-    ops.push(Job.updateMany({ _id: { $in: publish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: true } }));
-  }
-  if (Array.isArray(unpublish) && unpublish.length > 0) {
-    ops.push(Job.updateMany({ _id: { $in: unpublish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: false } }));
-  }
-  await Promise.all(ops);
-  logger.audit('Career listing updated', req.user.id, req.user.tenantId, { published: (publish||[]).length, unpublished: (unpublish||[]).length });
-  res.json({ success: true });
-}));
 
 module.exports = router;
