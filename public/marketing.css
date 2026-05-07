@@ -2756,3 +2756,43 @@ textarea.form-control {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
   border-color: var(--mkt-accent);
 }
+
+/* ── Product pages — mobile responsive grids ────────────────────────────────── */
+.tn-prod-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+/* Product hub cards */
+.tn-prod-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+@media (max-width: 768px) {
+  .tn-prod-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+  .tn-prod-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Stack all inline 2-col grids on mobile */
+  [style*="gridTemplateColumns: '1fr 1fr'"],
+  [style*='gridTemplateColumns: "1fr 1fr"'] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Product hero text size */
+  .tn-prod-grid h1 {
+    font-size: clamp(28px, 8vw, 48px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tn-prod-grid {
+    gap: 20px !important;
+  }
+}

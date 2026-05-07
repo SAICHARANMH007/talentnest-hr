@@ -100,7 +100,7 @@ export default function ProductsPage() {
       <section style={{ padding:'clamp(64px,8vw,100px) clamp(16px,5vw,80px)', background:'var(--mkt-section-bg)' }}>
         <div style={{ maxWidth:1100,margin:'0 auto',display:'flex',flexDirection:'column',gap:32 }}>
           {PRODUCTS.map((p,i) => (
-            <div key={p.name} className="mkt-reveal" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0,background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:24,overflow:'hidden',animationDelay:`${i*0.1}s` }}>
+            <div key={p.name} className="mkt-reveal tn-prod-card-grid" style={{ background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:24,overflow:'hidden',animationDelay:`${i*0.1}s` }}>
               {/* Left: info */}
               <div style={{ padding:'clamp(28px,4vw,48px)', borderRight:'1px solid var(--mkt-card-border)' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:14,marginBottom:20 }}>
