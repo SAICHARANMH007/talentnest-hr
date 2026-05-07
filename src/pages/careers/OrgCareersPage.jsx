@@ -18,24 +18,21 @@ function ApplyModal({ job, orgName, onClose }) {
   const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  // Ask for location permission as soon as the modal opens
+  // Silently ask for location — never block submission if denied
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGeoStatus('denied');
-      return;
-    }
+    if (!navigator.geolocation) { setGeoStatus('denied'); return; }
     setGeoStatus('asking');
     requestGeolocation().then(pos => {
       if (pos) { setGeo(pos); setGeoStatus('granted'); }
       else       setGeoStatus('denied');
-    });
+    }).catch(() => setGeoStatus('denied'));
   }, []);
 
   const submit = async () => {
     if (!form.name.trim())  { setError('Full name is required.'); return; }
     if (!form.email.trim()) { setError('Email is required.'); return; }
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
-    if (geoStatus !== 'granted' || !geo) { setError('Location permission is required to send job alerts near you. Please allow location access in your browser and try again.'); return; }
+    // Location is OPTIONAL — never block submission if denied
     setSubmitting(true); setError('');
     try {
       const payload = { ...form };
@@ -74,38 +71,41 @@ function ApplyModal({ job, orgName, onClose }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Location permission status chip */}
-              {geoStatus === 'granted' && geo && (
-                <div style={{ background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>📍</span>
-                  <span style={{ fontSize: 12, color: '#065f46', flex: 1 }}>
-                    Location detected{geo.city ? ` — ${geo.city}${geo.country ? `, ${geo.country}` : ''}` : ''} · Used to send you nearby jobs
-                  </span>
+
+              {/* Why we ask for location — always shown, honest explanation */}
+              <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.18)', borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
+                <div style={{ fontSize: 12, color: '#0176D3', lineHeight: 1.55 }}>
+                  {geoStatus === 'granted' && geo
+                    ? <><strong>Location detected{geo.city ? ` — ${geo.city}` : ''}.</strong> We use this to show your application on our hiring map and send you job alerts for roles near you.</>
+                    : geoStatus === 'asking'
+                    ? <>Checking your location… We use this to send you nearby job alerts. You can allow or skip — it's optional.</>
+                    : <><strong>Location not shared — that's okay.</strong> We use location to send you relevant job alerts near you. You can still apply without it.</>
+                  }
                 </div>
-              )}
-              {geoStatus === 'denied' && (
-                <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
-                  📍 Location not shared — enable it in your browser to get nearby job recommendations
-                </div>
-              )}
+              </div>
+
               {error && <div style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 8, padding: '10px 14px', color: '#BA0517', fontSize: 13 }}>{error}</div>}
+
               {[['Full Name *', 'name', 'text', 'Jane Smith'], ['Email *', 'email', 'email', 'jane@example.com'], ['Mobile Number *', 'phone', 'tel', '+91 99999 99999']].map(([label, key, type, ph]) => (
                 <div key={key}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>{label}</label>
                   <input type={type} value={form[key]} onChange={e => sf(key, e.target.value)} placeholder={ph}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }} />
                 </div>
               ))}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+              {/* Title and Availability — stacked on mobile, side by side on wider screens */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Current Title</label>
                   <input value={form.title} onChange={e => sf('title', e.target.value)} placeholder="e.g. Developer"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Availability</label>
                   <select value={form.availability} onChange={e => sf('availability', e.target.value)}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, background: '#fff', boxSizing: 'border-box', outline: 'none' }}>
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, background: '#fff', boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }}>
                     <option value="">Select…</option>
                     <option value="immediate">Immediate</option>
                     <option value="15 days">15 Days Notice</option>
@@ -120,12 +120,14 @@ function ApplyModal({ job, orgName, onClose }) {
                 <textarea value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} rows={3} placeholder="Tell us why you're a great fit…"
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
               </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                 <button onClick={submit} disabled={submitting}
-                  style={{ flex: 1, background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 800, fontSize: 14, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+                  style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontWeight: 800, fontSize: 16, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, letterSpacing: 0.3 }}>
                   {submitting ? '⏳ Submitting…' : '🚀 Submit Application'}
                 </button>
-                <button onClick={onClose} style={{ padding: '12px 20px', borderRadius: 10, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={onClose} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                  Cancel
+                </button>
               </div>
             </div>
           )}

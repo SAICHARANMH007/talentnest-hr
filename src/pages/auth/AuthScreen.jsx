@@ -102,7 +102,7 @@ function OtpScreen({ email, onVerified, onBack }) {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const BG = { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #060d1a 0%, #0d1e3d 55%, #0a2a52 100%)', padding: 20, fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", overflowY: 'auto' };
 const CARD = { background: '#ffffff', boxShadow: '0 24px 64px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: 460, boxSizing: 'border-box' };
-const INP = { width: '100%', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, color: '#0f172a', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.2s' };
+const INP = { width: '100%', padding: '13px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, color: '#0f172a', fontSize: 16, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.2s', WebkitAppearance: 'none' };
 const BTN_P = { background: 'linear-gradient(135deg, #0176D3, #014486)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, padding: '13px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' };
 const BTN_G = { background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 12, color: '#374151', fontSize: 13, fontWeight: 500, padding: '11px 20px', cursor: 'pointer', transition: 'all 0.2s' };
 
@@ -342,8 +342,8 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER *</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
               </div>
-              {/* Professional details — same fields as career page apply form so no re-entry needed */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Professional details — auto stacks to single column on mobile */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT TITLE</label>
                   <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Software Engineer" style={INP} />
@@ -353,7 +353,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   <input value={currentCompany} onChange={e => setCompany(e.target.value)} placeholder="e.g. Infosys" style={INP} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
                   <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#181818' : '#9CA3AF' }}>
@@ -408,12 +408,43 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   </div>
                 )}
               </div>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ marginTop: 2, accentColor: '#0176D3', flexShrink: 0 }} />
-                <span style={{ color: '#706E6B', fontSize: 12, lineHeight: 1.5 }}>
-                  I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', textDecoration: 'underline' }}>Privacy Policy</a>
+              {/* Mobile-friendly T&C tap card — large touch target, clear visual state */}
+              <div
+                role="checkbox"
+                aria-checked={agreed}
+                onClick={() => setAgreed(a => !a)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+                  padding: '13px 16px', borderRadius: 12,
+                  border: `2px solid ${agreed ? '#0176D3' : '#E2E8F0'}`,
+                  background: agreed ? 'rgba(1,118,211,0.06)' : '#FAFAFA',
+                  transition: 'all 0.2s', userSelect: 'none',
+                }}>
+                {/* Custom checkbox box */}
+                <div style={{
+                  width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  border: `2px solid ${agreed ? '#0176D3' : '#CBD5E1'}`,
+                  background: agreed ? '#0176D3' : '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}>
+                  {agreed && <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                </div>
+                <span style={{ color: '#374151', fontSize: 13, lineHeight: 1.5, flex: 1 }}>
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none', borderBottom: '1px solid rgba(1,118,211,0.3)' }}>
+                    Terms of Service
+                  </a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none', borderBottom: '1px solid rgba(1,118,211,0.3)' }}>
+                    Privacy Policy
+                  </a>
                 </span>
-              </label>
+              </div>
             </>
           )}
 
