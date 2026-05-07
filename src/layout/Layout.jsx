@@ -106,7 +106,12 @@ function NotificationBell({ userRole, compact = false }) {
   const [pos,      setPos]      = React.useState({ top: 0, left: 0 });
   const navigate                = useNavigate();
   const summaryFetched          = React.useRef(false);
-  const isMobile                = window.innerWidth < 480;
+  const [isMobile, setIsMobile]  = React.useState(() => window.innerWidth < 768);
+  React.useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h, { passive: true });
+    return () => window.removeEventListener('resize', h);
+  }, []);
 
   const load = React.useCallback(async () => {
     try {
@@ -239,7 +244,7 @@ function NotificationBell({ userRole, compact = false }) {
       {/* Detail drill-down modal */}
       {detail && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', zIndex: 10002, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
           onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
         >
           <div style={{ background: '#fff', borderRadius: isMobile ? '20px 20px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden', animation: isMobile ? 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'env(safe-area-inset-bottom,0px)' : 0 }}>
@@ -325,35 +330,63 @@ function NotificationBell({ userRole, compact = false }) {
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
-      {/* Notification panel — bottom-sheet on mobile, floating panel on desktop */}
+      {/* Notification panel */}
       {open && (
         <>
-          {/* Mobile backdrop */}
+          {/* Backdrop — always shown on mobile, blocks interaction outside panel */}
           {isMobile && (
-            <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.4)', backdropFilter: 'blur(2px)', zIndex: 9998 }} />
+            <div
+              data-notif-panel="true"
+              onClick={() => setOpen(false)}
+              style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(5,13,26,0.5)',
+                backdropFilter: 'blur(2px)',
+                zIndex: 99998,
+                WebkitBackdropFilter: 'blur(2px)',
+              }}
+            />
           )}
-          <div data-notif-panel="true" style={
-            isMobile ? {
-              // Bottom-sheet on mobile
-              position: 'fixed', bottom: 0, left: 0, right: 0, width: '100%',
-              maxHeight: '85vh',
+
+          {/* Panel container */}
+          <div
+            data-notif-panel="true"
+            style={isMobile ? {
+              /* ── MOBILE: bottom-sheet ── */
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              width: '100vw',
+              maxHeight: '88vh',
               background: '#fff',
               borderRadius: '20px 20px 0 0',
-              zIndex: 9999,
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-              display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              animation: 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both',
+              zIndex: 99999,
+              boxShadow: '0 -8px 48px rgba(0,0,0,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              animation: 'notifSlideUp 0.22s cubic-bezier(0.32,0.72,0,1) both',
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+              /* Force escape any stacking context */
+              transform: 'translateZ(0)',
             } : {
-              // Floating panel on desktop
-              position: 'fixed', top: pos.top, left: pos.left, width: panelW,
+              /* ── DESKTOP: floating dropdown ── */
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              width: panelW,
               maxHeight: 'min(520px, calc(100vh - 120px))',
-              background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
-              borderRadius: 16, zIndex: 9999,
+              background: '#fff',
+              border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: 16,
+              zIndex: 99999,
               boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-              display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            }
-          }>
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
           {/* Drag handle — mobile only */}
           {isMobile && (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
