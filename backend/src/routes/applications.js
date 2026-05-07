@@ -363,7 +363,12 @@ router.post('/public', asyncHandler(async (req, res) => {
     jobTitle       : job.title,
   }).catch(() => {});
 
-  res.status(201).json({ success: true, data: normalizeApp(app) });
+  res.status(201).json({
+    success: true,
+    data: normalizeApp(app),
+    hasAccount: !!existingUser,
+    candidateName: candidate.name,
+  });
 }));
 
 // ── PRIVATE ───────────────────────────────────────────────────────────────────

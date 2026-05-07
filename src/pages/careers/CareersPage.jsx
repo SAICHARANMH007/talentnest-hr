@@ -117,7 +117,10 @@ function ApplyModal({ job, onClose }) {
         // Record that location was explicitly declined or unavailable
         payload.geoDeclined = geoStatus === 'denied';
       }
-      await api.applyPublic(job.id, payload);
+      const applyResult = await api.applyPublic(job.id, payload);
+      // Store whether they had an account so the success screen shows the right message
+      const appliedHasAccount = applyResult?.hasAccount === true;
+      if (appliedHasAccount !== undefined) setAccountCreated(prev => prev || appliedHasAccount);
       // If user wants an account, register them now (same data, no re-entry)
       if (createAccount && password) {
         try {
@@ -170,7 +173,22 @@ function ApplyModal({ job, onClose }) {
         <p style={{ color: '#0f172a', fontSize: 17, fontWeight: 700 }}>
           {accountCreated ? `Account created & application submitted!` : `Thank you, ${form.name}!`}
         </p>
-        {accountCreated && (
+
+        {/* Account identified — existing registered user */}
+        {!createAccount && accountCreated && (
+          <div style={{ background: 'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
+            <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account identified! Job added to your pipeline.</p>
+            <p style={{ color: '#374151', fontSize: 12, margin: '0 0 10px', lineHeight:1.6 }}>
+              We found your TalentNest account. <b>{job.title}</b> has been added to your pipeline automatically.
+            </p>
+            <a href="/app/applications" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              📋 Track My Application →
+            </a>
+          </div>
+        )}
+
+        {/* New account created */}
+        {createAccount && accountCreated && (
           <div style={{ background: 'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
             <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account created! You are now logged in.</p>
             <p style={{ color: '#374151', fontSize: 12, margin: '0 0 10px' }}>

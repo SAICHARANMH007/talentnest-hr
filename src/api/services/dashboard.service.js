@@ -97,4 +97,7 @@ export const dashboardService = {
   async getSlaCompliance(params = {}) {
     return req('GET', `/dashboard/sla-compliance${qs(params)}`);
   },
+  async getUnregisteredCandidates(params = {}) {
+    return req('GET', `/dashboard/unregistered-candidates${qs(params)}`);
+  },
 };

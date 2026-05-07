@@ -295,7 +295,16 @@ router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
 // Returns only isPublic=true, active jobs for the given org. Allows iframe embedding.
 router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
   const Organization = require('../models/Organization');
-  const org = await Organization.findOne({ slug: req.params.orgSlug }).select('_id name logoUrl settings').lean();
+  const rawSlug = req.params.orgSlug;
+  // Try exact match first, then case-insensitive, then partial name match
+  let org = await Organization.findOne({ slug: rawSlug }).select('_id name logoUrl settings').lean();
+  if (!org) {
+    org = await Organization.findOne({ slug: { $regex: `^${rawSlug}$`, $options: 'i' } }).select('_id name logoUrl settings').lean();
+  }
+  if (!org) {
+    // Last resort: match org name as a slug (spaces → dashes, lowercase)
+    org = await Organization.findOne({ name: { $regex: rawSlug.replace(/-/g, '[ -]'), $options: 'i' } }).select('_id name logoUrl settings').lean();
+  }
   if (!org) { return res.status(404).json({ success: false, error: 'Organisation not found.' }); }
 
   // Allow embedding on any origin (org's own website)

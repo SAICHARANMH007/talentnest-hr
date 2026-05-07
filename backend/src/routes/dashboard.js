@@ -1837,4 +1837,119 @@ router.get('/sla-compliance', authenticate, allowRoles('admin', 'super_admin'), 
   res.json({ success: true, data: { compliantMoves, breachedMoves, complianceRate, byStage: stageList } });
 }));
 
+// ── GET /api/dashboard/unregistered-candidates (super_admin only) ─────────────
+// Returns all guest applicants (no User account) deduplicated by email.
+// Each entry shows the merged candidate profile + all their applications grouped.
+router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const page   = Math.max(1, parseInt(req.query.page, 10)  || 1);
+  const limit  = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+  const skip   = (page - 1) * limit;
+  const search = String(req.query.search || '').trim().toLowerCase();
+
+  // 1. Get all registered candidate emails so we can exclude them
+  const registeredEmails = await User.find({ role: 'candidate', deletedAt: null })
+    .select('email').lean().then(us => new Set(us.map(u => u.email.toLowerCase())));
+
+  // 2. Find all unique emails in Candidate collection that are NOT registered
+  const matchStage = { deletedAt: null, $or: [{ userId: null }, { userId: { $exists: false } }] };
+  if (search) {
+    matchStage.$and = [
+      { $or: [
+        { name:  { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
+      ]},
+    ];
+  }
+
+  // Get unique emails from unregistered candidates
+  const emailGroups = await Candidate.aggregate([
+    { $match: matchStage },
+    { $group: {
+      _id:   { $toLower: '$email' },
+      name:  { $first: '$name' },
+      email: { $first: '$email' },
+      phone: { $first: '$phone' },
+      title: { $first: '$title' },
+      currentCompany: { $first: '$currentCompany' },
+      experience:     { $first: '$experience' },
+      availability:   { $first: '$availability' },
+      skills:         { $first: '$skills' },
+      location:       { $first: '$location' },
+      source:         { $first: '$source' },
+      createdAt:      { $min: '$createdAt' },
+      candidateIds:   { $push: '$_id' },
+    }},
+    { $sort: { createdAt: -1 } },
+  ]);
+
+  // Filter out any email that now has a registered account (safety check)
+  const unregistered = emailGroups.filter(g => !registeredEmails.has(g._id));
+  const total = unregistered.length;
+
+  // Paginate
+  const pageSlice = unregistered.slice(skip, skip + limit);
+
+  // 3. For each unique email, fetch all their applications
+  const allCandidateIds = pageSlice.flatMap(g => g.candidateIds);
+  const applications = await Application.find({
+    candidateId: { $in: allCandidateIds },
+    deletedAt: null,
+  })
+    .populate('jobId', 'title company companyName location jobType')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Group applications by email (via candidateId lookup)
+  const candidateIdToEmail = {};
+  for (const g of pageSlice) {
+    for (const cid of g.candidateIds) {
+      candidateIdToEmail[String(cid)] = g._id;
+    }
+  }
+
+  const appsByEmail = {};
+  for (const app of applications) {
+    const email = candidateIdToEmail[String(app.candidateId)];
+    if (!email) continue;
+    if (!appsByEmail[email]) appsByEmail[email] = [];
+    appsByEmail[email].push({
+      id:        app._id.toString(),
+      jobId:     app.jobId?._id?.toString() || String(app.jobId),
+      jobTitle:  app.jobId?.title || 'Unknown Job',
+      jobCompany:app.jobId?.companyName || app.jobId?.company || '',
+      location:  app.jobId?.location   || '',
+      jobType:   app.jobId?.jobType    || '',
+      stage:     app.currentStage      || app.stage || 'Applied',
+      appliedAt: app.createdAt,
+      appliedFrom: app.appliedFrom,
+    });
+  }
+
+  // 4. Build final rows
+  const rows = pageSlice.map(g => ({
+    email:          g._id,
+    name:           g.name           || '',
+    phone:          g.phone          || '',
+    title:          g.title          || '',
+    currentCompany: g.currentCompany || '',
+    experience:     g.experience     ?? '',
+    availability:   g.availability   || '',
+    skills:         Array.isArray(g.skills) ? g.skills : [],
+    location:       g.location       || '',
+    source:         g.source         || 'career_page',
+    firstAppliedAt: g.createdAt,
+    jobCount:       (appsByEmail[g._id] || []).length,
+    applications:   appsByEmail[g._id]  || [],
+    candidateIds:   g.candidateIds.map(String),
+  }));
+
+  res.json({
+    success: true,
+    data: rows,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  });
+}));
+
 module.exports = router;

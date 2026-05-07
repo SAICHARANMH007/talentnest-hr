@@ -62,6 +62,7 @@ const SuperAdminAuditLogs = lazy(() => import('./pages/superadmin/SuperAdminAudi
 const SuperAdminBlogs     = lazy(() => import('./pages/superadmin/SuperAdminBlogs.jsx'));
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
+const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
 
 const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
@@ -581,6 +582,7 @@ export default function App() {
             <Route path="blogs" element={<SuperAdminBlogs />} />
             <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="all-candidates" element={<SuperAdminCandidates />} />
+            <Route path="unregistered-candidates" element={<Suspense fallback={<PageLoader />}><SuperAdminUnregisteredCandidates /></Suspense>} />
             <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />
           </>
         )}
