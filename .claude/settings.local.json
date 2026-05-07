@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: SEO title reflects staffing agency + recruitment platform accurately *)",
+      "Bash(git push *)"
+    ]
+  }
+}

@@ -7,6 +7,7 @@ import MarketingFooter from '../marketing/MarketingFooter.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import MarketingNav from '../marketing/MarketingNav.jsx';
+import { requestGeolocation } from '../../utils/geolocation.js';
 
 function ApplyModal({ job, onClose }) {
   // Pre-fill from sessionStorage if user is logged in
@@ -29,8 +30,22 @@ function ApplyModal({ job, onClose }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
+  const [geoStatus, setGeoStatus] = useState('idle'); // idle | asking | granted | denied
+  const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const isPreFilled = !!(prefill.name || prefill.email);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGeoStatus('denied');
+      return;
+    }
+    setGeoStatus('asking');
+    requestGeolocation().then(pos => {
+      if (pos) { setGeo(pos); setGeoStatus('granted'); }
+      else       setGeoStatus('denied');
+    });
+  }, []);
 
   const submit = async () => {
     if (!form.name?.trim())  { setError('Full name is required.'); return; }
@@ -42,6 +57,7 @@ function ApplyModal({ job, onClose }) {
     if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
     if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
     if (!form.availability)           { setError('Please select your availability.'); return; }
+    if (geoStatus !== 'granted' || !geo) { setError('Location permission is required to send job alerts near you. Please allow location access in your browser and try again.'); return; }
     // Validate required screening questions
     for (let i = 0; i < questions.length; i++) {
       if (questions[i].required && !answers[i]?.trim()) {
@@ -58,7 +74,15 @@ function ApplyModal({ job, onClose }) {
     setSubmitting(true);
     setError('');
     try {
-      await api.applyPublic(job.id, { ...form, screeningAnswers });
+      const payload = { ...form, screeningAnswers };
+      if (geo) {
+        payload.geoLat      = geo.lat;
+        payload.geoLng      = geo.lng;
+        payload.geoAccuracy = geo.accuracy;
+        payload.geoCity     = geo.city;
+        payload.geoCountry  = geo.country;
+      }
+      await api.applyPublic(job.id, payload);
       // If user wants an account, register them now (same data, no re-entry)
       if (createAccount && password) {
         try {
@@ -161,6 +185,19 @@ function ApplyModal({ job, onClose }) {
       {error && (
         <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(186,5,23,0.08)', borderRadius: 8, border: '1px solid rgba(186,5,23,0.2)' }}>
           <p style={{ color: '#BA0517', margin: 0, fontSize: 13 }}>{error}</p>
+        </div>
+      )}
+      {geoStatus === 'granted' && geo && (
+        <div style={{ marginBottom: 12, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14 }}>📍</span>
+          <span style={{ fontSize: 12, color: '#065f46', flex: 1 }}>
+            Location detected{geo.city ? ` — ${geo.city}${geo.country ? `, ${geo.country}` : ''}` : ''} · Used to send you nearby jobs
+          </span>
+        </div>
+      )}
+      {geoStatus === 'denied' && (
+        <div style={{ marginBottom: 12, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
+          📍 Location not shared — enable it in your browser to get nearby job recommendations
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -5,6 +5,7 @@ import LogoManager from '../../components/LogoManager.jsx';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
+import WorldMap from '../../components/charts/WorldMap.jsx';
 
 const glass = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24 };
 const PLAN_COLORS = { free: '#64748b', trial: '#F59E0B', starter: '#0176D3', growth: '#014486', enterprise: '#7c3aed' };
@@ -258,6 +259,12 @@ export default function SuperAdminPlatform({ onNavigate }) {
             })}
           </div>
         </div>
+      </div>
+
+      {/* World Map Section */}
+      <div style={{ ...glass, marginBottom: 24 }}>
+        <h3 style={{ color: '#181818', fontSize: 15, fontWeight: 700, margin: '0 0 20px' }}>Global Candidate Activity</h3>
+        <WorldMap height={400} />
       </div>
 
       {/* Recent Organisations */}

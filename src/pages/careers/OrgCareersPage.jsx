@@ -20,7 +20,10 @@ function ApplyModal({ job, orgName, onClose }) {
 
   // Ask for location permission as soon as the modal opens
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setGeoStatus('denied');
+      return;
+    }
     setGeoStatus('asking');
     requestGeolocation().then(pos => {
       if (pos) { setGeo(pos); setGeoStatus('granted'); }
@@ -32,6 +35,7 @@ function ApplyModal({ job, orgName, onClose }) {
     if (!form.name.trim())  { setError('Full name is required.'); return; }
     if (!form.email.trim()) { setError('Email is required.'); return; }
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
+    if (geoStatus !== 'granted' || !geo) { setError('Location permission is required to send job alerts near you. Please allow location access in your browser and try again.'); return; }
     setSubmitting(true); setError('');
     try {
       const payload = { ...form };

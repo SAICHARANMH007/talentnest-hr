@@ -1625,6 +1625,612 @@ NuSummit builds high-impact .NET solutions for BFSI, healthcare, and logistics c
     console.error('❌  NuSummit seed failed (non-critical):', nsErr.message);
   }
 
+  // ── 2.5 SelfCrops Org + Admin Kavya + 22 Agriculture/AgriTech Jobs ──────────
+  try {
+    const SC_SLUG     = 'selfcrops';
+    const SC_EMAIL    = 'kavya@selfcrops.com';
+    const SC_PASSWORD = 'SelfCrops@2024';
+
+    let scOrg = await Organization.findOne({ slug: SC_SLUG });
+    if (!scOrg) {
+      scOrg = await Organization.create({
+        name: 'SelfCrops', slug: SC_SLUG, domain: 'selfcrops.com',
+        industry: 'Agriculture & AgriTech', size: '51-200', plan: 'pro', status: 'active',
+        settings: {
+          maxCandidates: 1000, maxJobs: 100, maxRecruiters: 10, maxAdmins: 3,
+          features: ['jobs','candidates','pipeline','ai_match','assessments'],
+        },
+      });
+      console.log('✅  SelfCrops org created → selfcrops.com');
+    }
+    const scOd       = scOrg.toJSON ? scOrg.toJSON() : scOrg;
+    const scTenantId = scOd.id;
+
+    // Admin: Kavya
+    let kavya = await User.findOne({ email: SC_EMAIL });
+    if (!kavya) {
+      await User.create({
+        name: 'Kavya', email: SC_EMAIL,
+        passwordHash: bcrypt.hashSync(SC_PASSWORD, 10),
+        role: 'admin', title: 'HR Admin — Agriculture',
+        tenantId: scTenantId, orgId: scTenantId, orgName: scOd.name, isActive: true,
+      });
+      console.log(`✅  SelfCrops Admin Kavya created → ${SC_EMAIL} / ${SC_PASSWORD}`);
+    } else {
+      await User.findByIdAndUpdate(kavya._id, {
+        $set: { passwordHash: bcrypt.hashSync(SC_PASSWORD, 10), tenantId: scTenantId, orgId: scTenantId, orgName: scOd.name, isActive: true },
+      });
+      console.log(`✅  SelfCrops Admin Kavya synced → ${SC_EMAIL}`);
+    }
+
+    const scAdminId = kavya ? (kavya._id) : (await User.findOne({ email: SC_EMAIL }).select('_id').lean())?._id;
+
+    // 22 Agriculture & AgriTech jobs — upsert by slug, no duplicates
+    const scJobDefs = [
+      {
+        title: 'Agronomist — Field Crops',
+        department: 'Agriculture Science',
+        skills: ['Agronomy', 'Crop Management', 'Soil Science', 'Pest Management', 'Field Research', 'Data Recording'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is hiring an experienced Agronomist to support farmers across Andhra Pradesh with crop advisory, soil health management, and yield improvement strategies.
+
+Key Responsibilities:
+• Conduct field visits to assess crop health, soil conditions, and irrigation practices
+• Advise farmers on crop variety selection, fertilizer application, and pest management
+• Collect and record field data for precision agriculture models
+• Coordinate with agri-input suppliers and government extension officers
+• Prepare agronomy reports and crop performance summaries
+• Train field agents on best agricultural practices`,
+        requirements: `• B.Sc or M.Sc in Agronomy, Agriculture Science, or related field
+• 2–5 years field experience in crop advisory
+• Strong knowledge of Kharif and Rabi crop cycles in South India
+• Experience with soil testing and fertilizer recommendation
+• Two-wheeler license (field travel required)
+• Telugu and English communication skills`,
+        benefits: 'Competitive salary, field allowance, health insurance, two-wheeler fuel reimbursement, annual performance bonus.',
+        externalUrl: 'https://www.naukri.com/agronomy-jobs-in-tirupati',
+      },
+      {
+        title: 'Agri Sales Executive',
+        department: 'Sales',
+        skills: ['Agri Sales', 'Dealer Network', 'Crop Advisory', 'Target Achievement', 'B2B Sales', 'CRM'],
+        experience: '1–3 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is looking for an Agri Sales Executive to drive on-ground sales of agricultural inputs — seeds, fertilizers, crop protection — to dealers, retailers, and farmers in the Tirupati region.
+
+Key Responsibilities:
+• Build and maintain a network of agri dealers and retailers across assigned territory
+• Achieve monthly sales targets for seeds, fertilizers, and agri-chemicals
+• Conduct farmer meetings and product demonstrations in villages
+• Collect market intelligence on competitor products and pricing
+• Handle order processing, collections, and customer grievances
+• Report daily field activities via CRM`,
+        requirements: `• B.Sc Agriculture or any graduate with agri sales experience
+• 1–3 years in agri input sales (seeds, fertilizers, crop protection)
+• Strong dealer relationship management skills
+• Target-driven with willingness to travel extensively in rural areas
+• Telugu proficiency essential; basic English for reporting`,
+        benefits: 'Fixed salary + performance incentives + field allowance + health insurance.',
+        externalUrl: 'https://www.naukri.com/agri-sales-jobs-in-tirupati',
+      },
+      {
+        title: 'Agricultural Marketing Manager',
+        department: 'Marketing',
+        skills: ['Agri Marketing', 'Brand Management', 'Digital Marketing', 'Market Research', 'Campaign Management', 'Content Strategy'],
+        experience: '4–7 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is seeking an Agricultural Marketing Manager to lead brand campaigns, farmer outreach programmes, and digital marketing for agri products across Andhra Pradesh and Telangana.
+
+Key Responsibilities:
+• Design and execute go-to-market strategies for new agri product launches
+• Manage digital marketing — social media, WhatsApp campaigns, YouTube for farmers
+• Plan and execute melas, kisan sammelans, and field day events
+• Coordinate with agronomists for technical content creation
+• Analyse market trends, competitor positioning, and farmer feedback
+• Manage marketing budget and measure ROI per campaign`,
+        requirements: `• MBA Marketing or B.Sc Agriculture + Marketing experience
+• 4–7 years in agri marketing, agri-input brands, or agritech companies
+• Strong understanding of farmer purchase behaviour in South India
+• Experience with digital marketing tools and rural outreach programmes
+• Excellent communication in Telugu and English`,
+        benefits: 'Senior compensation, travel allowance, health coverage, learning budget, performance bonus.',
+        externalUrl: 'https://www.linkedin.com/jobs/agri-marketing-jobs-tirupati',
+      },
+      {
+        title: 'IoT Engineer — Smart Farming',
+        department: 'Engineering',
+        skills: ['IoT', 'Embedded Systems', 'Arduino', 'Raspberry Pi', 'MQTT', 'Python', 'Sensor Networks', 'Edge Computing'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is building smart irrigation and crop monitoring systems. We need an IoT Engineer to design, deploy, and maintain sensor networks and automated control systems for precision farming.
+
+Key Responsibilities:
+• Design IoT sensor networks for soil moisture, temperature, humidity, and pest detection
+• Program microcontrollers (Arduino, ESP32, Raspberry Pi) for farm automation
+• Develop MQTT-based data pipelines from field sensors to the cloud
+• Integrate IoT data with our precision agriculture dashboard
+• Conduct field installations and farmer training on smart devices
+• Troubleshoot hardware failures and software issues remotely and on-site`,
+        requirements: `• B.E/B.Tech in Electronics, ECE, Computer Science, or related
+• 2–4 years in IoT product development
+• Proficiency in C/C++, Python, and MQTT protocols
+• Hands-on with ESP32, Arduino, Raspberry Pi, and LoRa modules
+• Experience with cloud platforms (AWS IoT, Azure IoT Hub) preferred
+• Willingness to travel to rural farm sites for installation`,
+        benefits: 'Competitive CTC, project bonus, health insurance, relocation support.',
+        externalUrl: 'https://www.naukri.com/iot-engineer-agriculture-jobs',
+      },
+      {
+        title: 'Data Scientist — Crop Analytics',
+        department: 'Data Science',
+        skills: ['Python', 'Machine Learning', 'Remote Sensing', 'GIS', 'Crop Yield Prediction', 'Data Visualization', 'SQL'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is hiring a Data Scientist to build predictive models for crop yield forecasting, disease detection, and precision input recommendations using satellite imagery and field sensor data.
+
+Key Responsibilities:
+• Build and validate crop yield prediction models using ML/DL techniques
+• Process and analyse multi-spectral satellite imagery for crop health assessment
+• Develop disease and pest risk models integrated with weather data
+• Create data pipelines for field sensor and drone data ingestion
+• Build interactive dashboards for agronomists and farm managers
+• Collaborate with agronomy teams to validate model recommendations`,
+        requirements: `• B.Tech/M.Tech in Computer Science, Statistics, Data Science, or Agriculture Engineering
+• 2–4 years in agricultural data science or geospatial analytics
+• Proficiency in Python (pandas, scikit-learn, TensorFlow/PyTorch)
+• Experience with GIS tools (QGIS, Google Earth Engine) and remote sensing
+• Knowledge of agriculture domain — crop cycles, soil science — a strong plus`,
+        benefits: 'Competitive salary, remote flexibility, research publication support, health insurance.',
+        externalUrl: 'https://www.linkedin.com/jobs/data-scientist-agritech',
+      },
+      {
+        title: 'Field Agricultural Officer',
+        department: 'Field Operations',
+        skills: ['Crop Advisory', 'Farmer Relations', 'Field Data Collection', 'Extension Services', 'Telugu', 'Documentation'],
+        experience: '1–3 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is hiring Field Agricultural Officers to be the direct link between farmers and our platform — conducting field visits, collecting crop data, providing crop advisory, and onboarding farmers onto the SelfCrops digital system.
+
+Key Responsibilities:
+• Conduct daily village visits to enrolled and prospective farmer households
+• Assess crop conditions and provide on-field advisory for pest, disease, and nutrition
+• Onboard farmers to the SelfCrops mobile app and digital platform
+• Collect geo-tagged field photos, crop data, and soil samples
+• Coordinate input delivery and collection of crop produce
+• Attend weekly team meetings and submit daily field reports`,
+        requirements: `• B.Sc Agriculture or Diploma in Agriculture
+• 1–3 years in any farm-related advisory or extension role
+• Strong communication skills in Telugu
+• Two-wheeler licence and own vehicle preferred
+• Basic smartphone proficiency for field data entry
+• Willingness to travel to remote villages in Tirupati district`,
+        benefits: 'Fixed salary + field incentives + two-wheeler fuel + health insurance + training support.',
+        externalUrl: 'https://www.naukri.com/field-agricultural-officer-jobs',
+      },
+      {
+        title: 'Supply Chain Manager — Agriculture',
+        department: 'Supply Chain & Logistics',
+        skills: ['Agricultural Supply Chain', 'Cold Chain Management', 'Logistics', 'Vendor Management', 'Procurement', 'ERP'],
+        experience: '5–8 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is hiring a Supply Chain Manager to oversee farm-to-market logistics, manage procurement from farmer-producer organisations (FPOs), and ensure quality control across the supply chain.
+
+Key Responsibilities:
+• Plan and manage end-to-end supply chain from farm procurement to retail/export delivery
+• Build and maintain relationships with FPOs, mandis, cold storage facilities, and transporters
+• Negotiate procurement prices with farmer groups and aggregators
+• Implement quality control processes at procurement and packing centres
+• Manage inventory, demand forecasting, and seasonal stock planning
+• Coordinate with agro-processing units for value-added products`,
+        requirements: `• MBA or B.E with 5–8 years in agri supply chain, food processing, or FMCG logistics
+• Experience managing cold chain and perishable produce supply chains
+• Strong vendor negotiation and relationship management skills
+• Familiarity with ERP systems (SAP/Oracle/custom)
+• Knowledge of export quality standards (APEDA, FSSAI) preferred`,
+        benefits: 'Senior leadership compensation, health coverage, relocation assistance, performance bonus.',
+        externalUrl: 'https://www.naukri.com/agri-supply-chain-jobs-tirupati',
+      },
+      {
+        title: 'Precision Agriculture Specialist',
+        department: 'Agriculture Technology',
+        skills: ['Precision Agriculture', 'Variable Rate Technology', 'GPS/GNSS', 'Remote Sensing', 'Drone Operations', 'GIS', 'Soil Mapping'],
+        experience: '3–6 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is seeking a Precision Agriculture Specialist to develop and implement site-specific crop management strategies using technology — drones, soil maps, variable rate application, and GPS-guided machinery.
+
+Key Responsibilities:
+• Design variable rate fertilizer and pesticide application programmes based on soil maps
+• Operate and analyse drone imagery for canopy health, stress mapping, and weed detection
+• Implement GPS-guided field operations and automate planting/harvesting guidance
+• Create prescription maps for seed rate, fertilizer, and irrigation zones
+• Train farmers and field agents on precision agriculture tools
+• Analyse cost vs benefit of technology adoption and prepare ROI reports`,
+        requirements: `• B.Sc/M.Sc Agriculture Engineering or Agronomy with precision ag certification
+• 3–6 years in precision agriculture, farm management, or agri-tech
+• Hands-on drone piloting certification (DGCA approved preferred)
+• Proficiency in ArcGIS, QGIS, or similar GIS platforms
+• Experience with Trimble, John Deere, or similar precision ag systems`,
+        benefits: 'Competitive salary, drone operations allowance, training certifications, health insurance.',
+        externalUrl: 'https://www.linkedin.com/jobs/precision-agriculture-india',
+      },
+      {
+        title: 'Agri Business Development Executive',
+        department: 'Business Development',
+        skills: ['Business Development', 'FPO Partnerships', 'Institutional Sales', 'Agri Finance', 'Government Liaison', 'Negotiation'],
+        experience: '3–5 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is hiring an Agri Business Development Executive to expand partnerships with FPOs (Farmer Producer Organisations), NABARD, government schemes, agri-banks, and institutional buyers for our platform.
+
+Key Responsibilities:
+• Identify and onboard new FPOs, cooperatives, and agri institutions as platform partners
+• Develop relationships with NABARD, APEDA, and state agriculture department officials
+• Negotiate tie-ups with institutional commodity buyers (processors, exporters, retailers)
+• Lead presentations and proposals for government-funded agri programmes
+• Coordinate with the product team to customise the platform for institutional clients
+• Track business metrics: new partners added, revenue per partnership, renewal rate`,
+        requirements: `• MBA or graduate with strong agri-business background
+• 3–5 years in agri business development, FPO management, or institutional sales
+• Understanding of NABARD schemes, PM-KISAN, and Andhra Pradesh agriculture programmes
+• Strong network in the Tirupati/Rayalaseema agri ecosystem preferred
+• Fluency in Telugu and English; willingness to travel`,
+        benefits: 'Competitive salary + partnership bonus + health insurance + leadership track.',
+        externalUrl: 'https://www.naukri.com/agri-business-development-jobs',
+      },
+      {
+        title: 'Soil Health Specialist',
+        department: 'Agriculture Science',
+        skills: ['Soil Science', 'Soil Testing', 'Nutrient Management', 'Biofertilizers', 'Soil Carbon', 'Lab Analysis', 'Field Research'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is looking for a Soil Health Specialist to lead soil testing operations, develop nutrient management plans, and promote sustainable soil health practices across our farmer network in Tirupati district.
+
+Key Responsibilities:
+• Conduct soil sampling, field testing, and laboratory analysis across enrolled farms
+• Develop farm-specific nutrient management plans and fertilizer recommendations
+• Promote biofertilizers, organic amendments, and soil health improvement practices
+• Build and maintain a soil health database across the farmer network
+• Collaborate with agronomists to integrate soil data into crop advisory
+• Prepare reports on soil organic carbon, soil moisture, and macronutrient trends`,
+        requirements: `• M.Sc Soil Science, Agriculture Chemistry, or related field
+• 2–5 years in soil health management, soil testing laboratory, or agronomy
+• Proficiency in laboratory soil analysis techniques (pH, EC, NPK, micronutrients)
+• Strong understanding of Andhra Pradesh soil types and crop-soil interactions
+• Experience with soil health card schemes (GOI) preferred`,
+        benefits: 'Competitive salary, lab equipment support, research publications, health insurance.',
+        externalUrl: 'https://www.naukri.com/soil-scientist-jobs-india',
+      },
+      {
+        title: 'Drone Operations Engineer',
+        department: 'AgriTech Operations',
+        skills: ['Drone Operations', 'DGCA Certification', 'Multispectral Imaging', 'UAV Maintenance', 'Data Processing', 'GIS', 'GPS'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops operates a fleet of agricultural drones for crop monitoring, spraying, and precision mapping. We need a Drone Operations Engineer to fly, maintain, and process imagery from our UAV fleet across farms in Tirupati region.
+
+Key Responsibilities:
+• Operate fixed-wing and multi-rotor drones for crop monitoring and aerial spraying missions
+• Plan and execute drone flights using AeroGCS, DJI Terra, or similar ground control software
+• Process multispectral imagery to generate NDVI maps, field health indices, and prescription maps
+• Perform routine drone maintenance, battery management, and pre-flight checks
+• Train farmers on interpreting drone-generated reports
+• Maintain flight logs, airspace compliance records, and DGCA documentation`,
+        requirements: `• DGCA-approved Remote Pilot Certificate (Type 1 or Type 2)
+• 2–4 years of commercial drone operations in agriculture or survey
+• Experience with multispectral cameras (Micasense, Sentera, Parrot) a strong plus
+• Proficiency in Pix4D, Agisoft Metashape, or DJI Terra for image processing
+• Willingness to travel to field sites across Tirupati district and Rayalaseema`,
+        benefits: 'Competitive salary + field allowance + DGCA renewal support + health insurance.',
+        externalUrl: 'https://www.naukri.com/drone-pilot-agriculture-jobs',
+      },
+      {
+        title: 'Agri Product Manager',
+        department: 'Product',
+        skills: ['Product Management', 'Agritech', 'User Research', 'Product Roadmap', 'Agile', 'Farmer UX', 'Data Analysis'],
+        experience: '4–7 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is building the next generation of digital tools for farmers and agri-businesses. We need a Product Manager who understands the agriculture domain deeply and can translate farmer pain points into product features.
+
+Key Responsibilities:
+• Own the product roadmap for SelfCrops farmer app and web platform
+• Conduct farmer interviews, field visits, and usability studies to drive product decisions
+• Write detailed product requirement documents (PRDs) and user stories
+• Collaborate with engineering, design, and agronomy teams on feature delivery
+• Define success metrics and monitor product KPIs post-launch
+• Prioritise the backlog based on farmer impact, business value, and technical feasibility`,
+        requirements: `• MBA or B.Tech with 4–7 years in product management, preferably in agritech or rural tech
+• Deep understanding of Indian farmer challenges, rural mobile usage patterns
+• Experience with Agile/Scrum methodologies and product tools (Jira, Figma, Mixpanel)
+• Strong analytical skills — ability to use data to make product decisions
+• Telugu proficiency a strong advantage for farmer-facing product understanding`,
+        benefits: 'Senior compensation, equity consideration, remote flexibility, health insurance.',
+        externalUrl: 'https://www.linkedin.com/jobs/agritech-product-manager-india',
+      },
+      {
+        title: 'Agricultural Software Developer',
+        department: 'Engineering',
+        skills: ['Python', 'Django', 'REST APIs', 'PostgreSQL', 'React', 'Agriculture Domain', 'GIS APIs', 'Mobile APIs'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is building an end-to-end digital platform connecting farmers, agri-advisors, input suppliers, and buyers. We need a Software Developer to build and maintain the backend services and APIs that power our agricultural intelligence.
+
+Key Responsibilities:
+• Build and maintain REST APIs for farmer onboarding, crop advisory, and marketplace features
+• Integrate with external data sources — weather APIs, satellite imagery, soil databases, price feeds
+• Develop mobile-first web interfaces for farmer-facing features
+• Build admin dashboards for agronomists and supply chain managers
+• Implement geospatial features — farm boundary mapping, field analysis, route optimisation
+• Write unit tests and maintain code quality through code reviews`,
+        requirements: `• B.Tech in Computer Science, IT, or related field
+• 2–4 years professional backend development in Python/Django or Node.js
+• Experience with PostgreSQL/PostGIS and REST API design
+• Basic GIS knowledge or willingness to learn geospatial programming
+• Agriculture domain knowledge is a strong differentiator`,
+        benefits: 'Competitive CTC, hybrid work, health insurance, learning budget, annual appraisal.',
+        externalUrl: 'https://www.naukri.com/agritech-developer-jobs-india',
+      },
+      {
+        title: 'Crop Disease & Pest Diagnostician',
+        department: 'Agriculture Science',
+        skills: ['Plant Pathology', 'Entomology', 'Crop Disease Diagnosis', 'Integrated Pest Management', 'Field Microscopy', 'Report Writing'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops provides real-time crop disease and pest advisory to farmers. We need a Crop Disease & Pest Diagnostician to identify, diagnose, and recommend solutions for crop health issues reported by our farmer network.
+
+Key Responsibilities:
+• Diagnose crop diseases and pest infestations from field photos, samples, and description reports
+• Develop and maintain a digital crop disease library for AI-assisted diagnosis
+• Provide timely, actionable advisory to farmers via the platform
+• Conduct field validation visits for complex or repeated crop health issues
+• Collaborate with the data science team to train AI disease detection models
+• Prepare pest and disease alert bulletins for farmer communication`,
+        requirements: `• M.Sc Plant Pathology, Entomology, or Agriculture with specialisation in crop protection
+• 2–5 years field experience in crop disease diagnosis and IPM
+• Strong knowledge of major crops in Andhra Pradesh — paddy, groundnut, chilli, tomato
+• Experience with microscopy, disease identification keys, and field diagnostic kits
+• Ability to write clear advisory content in Telugu and English`,
+        benefits: 'Competitive salary, field research support, publication opportunities, health insurance.',
+        externalUrl: 'https://www.naukri.com/plant-pathologist-jobs-india',
+      },
+      {
+        title: 'Agri E-Commerce & Marketplace Executive',
+        department: 'E-Commerce',
+        skills: ['Agri E-Commerce', 'Marketplace Operations', 'Vendor Onboarding', 'Catalogue Management', 'Pricing Strategy', 'Digital Marketing'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops runs an online agri-input marketplace for farmers to purchase seeds, fertilizers, crop protection, and farm equipment at fair prices. We need an E-Commerce Executive to manage product listings, vendor partnerships, and marketplace operations.
+
+Key Responsibilities:
+• Onboard and manage agri-input suppliers and manufacturers on the SelfCrops marketplace
+• Maintain accurate product catalogues — descriptions, pricing, stock levels, images
+• Monitor competitive pricing and recommend pricing adjustments
+• Coordinate with logistics teams for last-mile delivery to farmers
+• Handle customer disputes, returns, and quality complaints
+• Run promotional campaigns — seasonal discounts, bundle offers, flash sales`,
+        requirements: `• Graduate with 2–4 years in e-commerce operations, agri retail, or marketplace management
+• Understanding of agri-input products — seeds, fertilizers, agrochemicals, equipment
+• Experience with marketplace tools (Unicommerce, Browntape, Fynd) preferred
+• Strong vendor relationship and negotiation skills
+• Proficiency in Telugu for farmer-facing communication`,
+        benefits: 'Competitive salary, health insurance, performance bonus, annual increment.',
+        externalUrl: 'https://www.naukri.com/agri-ecommerce-jobs',
+      },
+      {
+        title: 'Agri Content Creator & Digital Marketer',
+        department: 'Marketing',
+        skills: ['Agriculture Content', 'Vernacular Content', 'Video Production', 'Social Media', 'YouTube', 'WhatsApp Marketing', 'Telugu Content'],
+        experience: '1–3 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops reaches farmers through digital content — YouTube videos, WhatsApp tips, social media posts, and vernacular infographics. We need an Agri Content Creator who understands farming and can create content farmers trust.
+
+Key Responsibilities:
+• Create Telugu-language videos, reels, and short-form content on crop tips, market prices, and scheme updates
+• Write weekly agri advisory blogs, WhatsApp messages, and push notifications for the SelfCrops app
+• Design infographics and visual explainers for farmers on soil health, pest management, and weather
+• Manage SelfCrops YouTube channel, Instagram, and Facebook pages
+• Coordinate with agronomists to translate technical content into farmer-friendly formats
+• Track content performance — views, reach, engagement, app downloads from campaigns`,
+        requirements: `• Graduate with 1–3 years in content creation, journalism, or agri communication
+• Strong writing and video scripting skills in Telugu
+• Basic video editing skills (CapCut, InShot, Adobe Premiere)
+• Passion for agriculture and rural India
+• Experience with farming community audiences on YouTube/WhatsApp a strong plus`,
+        benefits: 'Competitive salary, content creation allowance, health insurance, creative freedom.',
+        externalUrl: 'https://www.naukri.com/agri-content-creator-jobs',
+      },
+      {
+        title: 'Farm Operations Manager',
+        department: 'Operations',
+        skills: ['Farm Management', 'Operations Planning', 'Labour Management', 'Harvest Planning', 'Cold Storage', 'Logistics', 'Quality Control'],
+        experience: '4–7 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops operates managed farms and farmer support centres in the Tirupati region. We need a Farm Operations Manager to oversee day-to-day farming operations, labour management, and farm-to-collection centre logistics.
+
+Key Responsibilities:
+• Plan and supervise all farm operations — land preparation, sowing, irrigation, fertilisation, harvest
+• Manage labour teams including hiring, scheduling, productivity, and compliance
+• Coordinate with input suppliers for timely delivery of seeds, fertilizers, and equipment
+• Implement quality control at harvest — grading, packaging, and cold storage management
+• Monitor crop progress against targets and flag risks to leadership
+• Maintain farm records, production logs, and compliance documentation`,
+        requirements: `• B.Sc Agriculture or B.Tech Agriculture Engineering with 4–7 years in farm management
+• Hands-on experience managing large-scale farm operations (50+ acres)
+• Knowledge of drip/sprinkler irrigation systems and mechanised farming
+• Strong labour management skills — experience managing 50+ seasonal workers
+• Proficiency in Telugu; experience in Andhra Pradesh farming ecosystem`,
+        benefits: 'Senior compensation, on-site accommodation option, health insurance, annual bonus.',
+        externalUrl: 'https://www.naukri.com/farm-operations-manager-jobs',
+      },
+      {
+        title: 'Agri Finance & Credit Analyst',
+        department: 'Finance',
+        skills: ['Agricultural Finance', 'Credit Assessment', 'KCC Loans', 'NABARD Schemes', 'Financial Analysis', 'Risk Assessment', 'Excel'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops facilitates agricultural credit access for farmers through partnerships with banks, NBFCs, and NABARD. We need an Agri Finance Analyst to assess farmer credit profiles, connect them to schemes, and manage our agri-loan partnership operations.
+
+Key Responsibilities:
+• Assess farmer income, land holdings, crop history, and credit worthiness for input credit and loans
+• Guide farmers through Kisan Credit Card (KCC), PM-KISAN, and crop insurance scheme enrollment
+• Coordinate with bank partners and NBFCs for disbursement and collection
+• Build and maintain a farmer credit database with repayment tracking
+• Prepare credit risk reports and portfolio performance dashboards
+• Identify farmers eligible for government subsidy programmes and facilitate applications`,
+        requirements: `• MBA Finance, B.Com, or B.Sc Agriculture with banking/agri-finance experience
+• 2–5 years in agricultural lending, microfinance, or rural banking (SFB/NBFC/cooperative bank)
+• Knowledge of KCC, NABARD refinance products, PM-KISAN, and crop insurance schemes
+• Strong Excel/data analysis skills for portfolio tracking
+• Telugu proficiency for farmer-facing communication`,
+        benefits: 'Competitive salary, performance incentives, health insurance, NABARD training support.',
+        externalUrl: 'https://www.naukri.com/agri-finance-jobs-andhra-pradesh',
+      },
+      {
+        title: 'Rural Sales Manager',
+        department: 'Sales',
+        skills: ['Rural Sales', 'Channel Management', 'Team Leadership', 'Agri Inputs', 'Route Planning', 'Performance Tracking', 'Territory Management'],
+        experience: '5–8 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is expanding its rural distribution network across Tirupati, Chittoor, Kadapa, and Kurnool districts. We need a Rural Sales Manager to lead a team of field sales executives and build a market-leading distribution network.
+
+Key Responsibilities:
+• Recruit, train, and manage a team of 10–15 Agri Sales Executives across the territory
+• Set and track monthly sales targets per executive and per product category
+• Build and expand distributor, dealer, and retailer network in assigned geography
+• Conduct regular market visits, beat plans, and competitor analysis
+• Implement trade promotions, dealer incentive programmes, and farmer schemes
+• Report weekly sales data, market feedback, and team performance to leadership`,
+        requirements: `• B.Sc Agriculture or any graduate with 5–8 years in agri sales, seeds, or FMCG
+• 2+ years in a team leadership or territory management role
+• Strong dealer and distributor network in Tirupati/Chittoor/Kadapa region preferred
+• Result-oriented with proven track record of achieving sales targets
+• Own vehicle and Telugu language proficiency essential`,
+        benefits: 'Fixed + variable compensation, vehicle allowance, health insurance, leadership development.',
+        externalUrl: 'https://www.naukri.com/rural-sales-manager-agri-jobs',
+      },
+      {
+        title: 'Vegetable & Horticulture Specialist',
+        department: 'Agriculture Science',
+        skills: ['Horticulture', 'Vegetable Cultivation', 'Protected Cultivation', 'Greenhouse', 'Post-Harvest Management', 'Quality Grading'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops works with vegetable growers across Tirupati's peri-urban and rural areas. We need a Horticulture Specialist to provide crop advisory, quality management, and market linkage for our vegetable farmer network.
+
+Key Responsibilities:
+• Provide crop-specific advisory for tomato, brinjal, leafy greens, gourds, and capsicum
+• Guide farmers on protected cultivation — polyhouses, shade nets, and drip irrigation
+• Implement post-harvest management practices — grading, packaging, cold chain handling
+• Coordinate with buyers (mandis, retail chains, restaurant aggregators) on quality specifications
+• Conduct crop health monitoring and respond to quality complaints from buyers
+• Develop cropping calendars aligned with market demand and price seasonality`,
+        requirements: `• B.Sc/M.Sc Horticulture or Agriculture with vegetable specialisation
+• 2–5 years in vegetable extension services, agri-supply chain, or buyer-facing quality roles
+• Understanding of Andhra Pradesh vegetable market — APMC, direct procurement, export
+• Hands-on with protected cultivation and post-harvest technology
+• Strong Telugu communication and ability to build farmer trust`,
+        benefits: 'Competitive salary, field allowance, health insurance, performance bonus.',
+        externalUrl: 'https://www.naukri.com/horticulture-specialist-jobs-india',
+      },
+      {
+        title: 'Livestock & Dairy Farm Advisor',
+        department: 'Animal Husbandry',
+        skills: ['Livestock Management', 'Dairy Farming', 'Animal Nutrition', 'Veterinary Coordination', 'Breed Selection', 'Disease Prevention'],
+        experience: '2–5 years',
+        jobType: 'Full-Time',
+        urgency: 'Medium',
+        description: `SelfCrops is expanding into integrated farming with livestock and dairy as key components. We need a Livestock & Dairy Farm Advisor to support farmers managing cattle, goats, and poultry alongside crop farming in the Tirupati region.
+
+Key Responsibilities:
+• Advise farmers on breed selection, feeding management, and housing for dairy cattle and goats
+• Implement vaccination schedules and disease prevention programmes in coordination with veterinarians
+• Guide farmers on milk production optimisation, fodder crop cultivation, and feed formulation
+• Coordinate with dairy procurement partners for farmer-direct milk collection routes
+• Conduct training programmes on animal husbandry best practices
+• Maintain livestock farm records — health logs, production data, and income tracking`,
+        requirements: `• B.V.Sc, B.Sc Animal Husbandry, or B.Sc Agriculture (livestock specialisation)
+• 2–5 years in livestock extension services, dairy advisory, or integrated farming
+• Strong knowledge of HF/Jersey cattle breeds and goat farming in South India
+• Telugu proficiency essential for farmer communication
+• Willingness to travel to remote farms including early morning dairy routes`,
+        benefits: 'Competitive salary, field allowance, veterinary support, health insurance.',
+        externalUrl: 'https://www.naukri.com/livestock-dairy-advisor-jobs-india',
+      },
+      {
+        title: 'Agri Logistics & Last-Mile Delivery Coordinator',
+        department: 'Logistics',
+        skills: ['Agri Logistics', 'Last-Mile Delivery', 'Route Optimisation', 'Cold Chain', 'Fleet Management', 'Vendor Coordination'],
+        experience: '2–4 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops delivers agri-inputs to farmers' doorsteps and collects produce from farm gates. We need a Logistics Coordinator to manage our last-mile delivery fleet, route planning, and village-level collection operations across Tirupati.
+
+Key Responsibilities:
+• Plan daily delivery and collection routes for efficient last-mile operations across assigned mandals
+• Coordinate with 10–20 delivery partners, auto-rickshaws, and mini-trucks for daily operations
+• Track delivery success rates, return rate, and damage-in-transit metrics
+• Manage relationships with village-level entrepreneurs (VLEs) acting as collection points
+• Handle input delivery escalations — delays, wrong deliveries, and damage claims
+• Monitor cold chain integrity for perishable agri-input delivery (bio-pesticides, bio-fertilizers)`,
+        requirements: `• Graduate with 2–4 years in logistics, delivery operations, or agri supply chain
+• Experience managing field delivery teams in rural/semi-urban geographies
+• Familiarity with route planning tools and delivery tracking apps
+• Telugu language proficiency essential for village-level coordination
+• Two-wheeler licence and willingness to do regular field visits`,
+        benefits: 'Competitive salary, vehicle allowance, health insurance, performance-based incentives.',
+        externalUrl: 'https://www.naukri.com/agri-logistics-coordinator-jobs',
+      },
+    ];
+
+    let scJobCount = 0;
+    for (const j of scJobDefs) {
+      const scSlug = `selfcrops-${j.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g,'-').replace(/^-|-$/g,'')}`;
+      await Job.findOneAndUpdate(
+        { tenantId: scTenantId, careerPageSlug: scSlug },
+        {
+          $set: {
+            ...j,
+            company:       'SelfCrops',
+            companyName:   'SelfCrops',
+            tenantId:      scTenantId,
+            orgId:         scTenantId,
+            careerPageSlug: scSlug,
+            location:      'Tirupati',
+            status:        'active',
+            approvalStatus: 'approved',
+            isPublic:      true,
+            workMode:      'Onsite',
+            salaryCurrency: 'INR',
+            createdBy:     scAdminId,
+          },
+        },
+        { upsert: true }
+      );
+      scJobCount++;
+    }
+    console.log(`✅  SelfCrops: ${scJobCount} agri/agritech jobs synced (Tirupati)`);
+  } catch (scErr) {
+    console.error('❌  SelfCrops seed failed (non-critical):', scErr.message);
+  }
+
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
   if (process.env.SKIP_DEMO_SEED === 'true') {
     console.log('ℹ️   SKIP_DEMO_SEED=true — skipping demo data seed');
