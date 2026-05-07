@@ -10,20 +10,25 @@ import MarketingNav from '../marketing/MarketingNav.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
 
 function ApplyModal({ job, onClose }) {
-  // Pre-fill from sessionStorage if user is logged in
+  // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
     try {
       const u = sessionStorage.getItem('tn_user');
-      if (u) { const parsed = JSON.parse(u); return { name: parsed.name || '', email: parsed.email || '' }; }
+      if (u) {
+        const p = JSON.parse(u);
+        return { name: p.name || '', email: p.email || '', phone: p.phone || '', title: p.title || '', currentCompany: p.currentCompany || '', experience: p.experience != null ? String(p.experience) : '', availability: p.availability || '' };
+      }
     } catch {}
     return { name: '', email: '' };
   })();
 
   const questions = job.screeningQuestions || [];
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: '', title: '', currentCompany: '', experience: '', availability: '', coverLetter: '' });
+  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', coverLetter: '' });
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailFoundMsg, setEmailFoundMsg] = useState(''); // shown when existing profile is auto-filled
   const [error, setError] = useState('');
   const [createAccount, setCreateAccount] = useState(false); // inline account creation
   const [password, setPassword] = useState('');
@@ -46,6 +51,33 @@ function ApplyModal({ job, onClose }) {
       else       setGeoStatus('denied');
     });
   }, []);
+
+  // When candidate enters their email and blurs out, check if they're registered
+  // If yes, auto-fill all their profile fields so they don't re-enter anything
+  const handleEmailBlur = async () => {
+    const email = form.email?.trim();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return;
+    if (prefill.email && email === prefill.email) return; // already logged in, already filled
+    setEmailChecking(true);
+    setEmailFoundMsg('');
+    try {
+      const r = await api.prefillByEmail(email);
+      if (r?.exists && r?.profile) {
+        const p = r.profile;
+        setForm(prev => ({
+          ...prev,
+          name:           p.name           || prev.name,
+          phone:          p.phone          || prev.phone,
+          title:          p.title          || prev.title,
+          currentCompany: p.currentCompany || prev.currentCompany,
+          experience:     p.experience     || prev.experience,
+          availability:   p.availability   || prev.availability,
+        }));
+        setEmailFoundMsg('✅ Your profile has been auto-filled from your existing account. Just verify the details and submit.');
+      }
+    } catch { /* silent */ }
+    setEmailChecking(false);
+  };
 
   const submit = async () => {
     if (!form.name?.trim())  { setError('Full name is required.'); return; }
@@ -97,15 +129,26 @@ function ApplyModal({ job, onClose }) {
             availability: form.availability,
             companyName: 'TalentNest HR',
           });
-          // Store session so user is immediately logged in — application already
-          // linked to their Candidate doc by email, so it shows in their pipeline
           if (regResult?.token && regResult?.user) {
+            // Store in sessionStorage for page reload persistence
             sessionStorage.setItem('tn_token', regResult.token);
             sessionStorage.setItem('tn_user', JSON.stringify(regResult.user));
+            // Also update in-memory API token for current page session
+            try {
+              const { setToken } = await import('../../api/client.js');
+              setToken(regResult.token);
+            } catch { /* non-critical */ }
+            // Notify App.jsx user state if it's mounted (e.g. layout wrapper)
+            if (typeof window.tn_refreshUser === 'function') {
+              window.tn_refreshUser(regResult.user);
+            }
           }
           setAccountCreated(true);
         } catch (regErr) {
-          // If email already exists, still show success for the application
+          // If email already exists (already registered), still show success for the application
+          if (regErr.message?.toLowerCase().includes('already registered')) {
+            setEmailFoundMsg('ℹ️ This email is already registered. Your application has been saved — log in to track it.');
+          }
           console.warn('[Apply] Account creation skipped:', regErr.message);
         }
       }
@@ -205,15 +248,23 @@ function ApplyModal({ job, onClose }) {
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Field label="Full Name *" value={form.name} onChange={v => sf('name', v)} placeholder="Jane Smith" />
-        <Field label="Email *" value={form.email} onChange={v => sf('email', v)} type="email" placeholder="jane@example.com" />
+        <div>
+          <Field label="Email *" value={form.email} onChange={v => { sf('email', v); setEmailFoundMsg(''); }} onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
+          {emailChecking && <p style={{ color:'#64748B', fontSize:12, margin:'4px 0 0' }}>⏳ Checking for existing profile…</p>}
+          {emailFoundMsg && (
+            <div style={{ background:'rgba(1,118,211,0.07)', border:'1px solid rgba(1,118,211,0.25)', borderRadius:8, padding:'8px 12px', marginTop:6, fontSize:12, color:'#0176D3', lineHeight:1.5 }}>
+              {emailFoundMsg}
+            </div>
+          )}
+        </div>
         <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" />
 
         {/* Professional details — same fields as registered profile so no re-entry needed */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
           <Field label="Current Title *" value={form.title} onChange={v => sf('title', v)} placeholder="e.g. Senior Developer" />
           <Field label="Current Company *" value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="e.g. Infosys" />
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>Total Experience (years) *</label>
             <select value={form.experience} onChange={e => sf('experience', e.target.value)}

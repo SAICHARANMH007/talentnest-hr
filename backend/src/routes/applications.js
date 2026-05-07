@@ -131,6 +131,61 @@ router.get('/invite/:token/open', asyncHandler(async (req, res) => {
   res.send(pixel);
 }));
 
+// POST /api/applications/prefill — safe email lookup for public apply form
+// Returns non-sensitive profile data if a registered candidate account exists.
+// Used to auto-fill the apply form so returning candidates don't re-enter details.
+router.post('/prefill', asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email?.trim()) throw new AppError('Email is required.', 400);
+  const emailLower = email.toLowerCase().trim();
+
+  // Check User collection first (registered candidates)
+  const user = await User.findOne({ email: emailLower, role: 'candidate', deletedAt: null })
+    .select('name email phone title currentCompany experience availability skills location linkedinUrl summary').lean();
+
+  if (user) {
+    return res.json({
+      success: true,
+      exists: true,
+      profile: {
+        name:           user.name           || '',
+        email:          user.email          || '',
+        phone:          user.phone          || '',
+        title:          user.title          || '',
+        currentCompany: user.currentCompany || '',
+        experience:     user.experience     != null ? String(user.experience) : '',
+        availability:   user.availability   || '',
+        skills:         Array.isArray(user.skills) ? user.skills.join(', ') : (user.skills || ''),
+        location:       user.location       || '',
+      },
+    });
+  }
+
+  // Fallback: check Candidate collection (added by recruiter, no account yet)
+  const candidate = await Candidate.findOne({ email: emailLower, deletedAt: null })
+    .select('name email phone title currentCompany experience availability skills location').lean();
+
+  if (candidate) {
+    return res.json({
+      success: true,
+      exists: true,
+      profile: {
+        name:           candidate.name           || '',
+        email:          candidate.email          || '',
+        phone:          candidate.phone          || '',
+        title:          candidate.title          || '',
+        currentCompany: candidate.currentCompany || '',
+        experience:     candidate.experience     != null ? String(candidate.experience) : '',
+        availability:   candidate.availability   || '',
+        skills:         Array.isArray(candidate.skills) ? candidate.skills.join(', ') : (candidate.skills || ''),
+        location:       candidate.location       || '',
+      },
+    });
+  }
+
+  return res.json({ success: true, exists: false });
+}));
+
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,

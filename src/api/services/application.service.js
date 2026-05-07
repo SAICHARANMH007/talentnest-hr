@@ -31,6 +31,9 @@ export const applicationService = {
   async applyPublic(jobId, form) {
     return req('POST', '/applications/public', { jobId, ...form }, false);
   },
+  async prefillByEmail(email) {
+    return req('POST', '/applications/prefill', { email }, false);
+  },
   async updateStage(appId, stage, notes = '', extra = {}) {
     return req('PATCH', `/applications/${appId}/stage`, { stage, notes, ...extra });
   },
