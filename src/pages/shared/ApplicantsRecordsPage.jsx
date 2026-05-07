@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
 
 const DB_STAGES = [
   'Applied',
@@ -666,6 +667,7 @@ export default function ApplicantsRecordsPage({ user }) {
           }}
         />
       )}
+      <CapLimitBanner total={total} fetched={rows.length} entity="applicant records" role={user?.role} />
       <Toast msg={toast} onClose={() => setToast('')} />
     </div>
   );

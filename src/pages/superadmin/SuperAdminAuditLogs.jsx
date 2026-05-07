@@ -4,6 +4,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import { btnG, btnP, card, inp } from '../../constants/styles.js';
+import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
 import { api } from '../../api/api.js';
 
 const S = {
@@ -103,6 +104,7 @@ export default function SuperAdminAuditLogs() {
         )}
       </form>
 
+      <CapLimitBanner total={pagination.total} fetched={logs.length} entity="audit logs" role="super_admin" />
       {error && (
         <div style={{ ...card, background:'rgba(186,5,23,0.06)', border:'1px solid rgba(186,5,23,0.2)', color:'#BA0517', marginBottom:16 }}>
           ❌ {error} <button onClick={load} style={{ ...btnG, marginLeft:12 }}>Retry</button>

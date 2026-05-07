@@ -3,6 +3,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
+import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api, downloadBlob } from '../../api/api.js';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
@@ -414,6 +415,7 @@ export default function SuperAdminCandidates() {
           onUpdated={() => { setDrawerUser(null); load(); }} />
       )}
 
+      <CapLimitBanner total={pagination.total} fetched={candidates.length} entity="candidates" role="super_admin" />
       <Toast msg={toast} onClose={() => setToast('')} />
     </div>
   );

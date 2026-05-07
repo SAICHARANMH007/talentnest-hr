@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
+import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Modal from '../../components/ui/Modal.jsx';
@@ -261,6 +262,7 @@ export default function AdminJobs({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
+      <CapLimitBanner total={totalJobs} fetched={jobs.length} entity="jobs" role={user?.role} />
       {shareJob && <ShareJobModal job={shareJob} onClose={() => setShareJob(null)} user={user} />}
       {drawerCandidate && <UserDetailDrawer user={drawerCandidate} onClose={() => setDrawerCandidate(null)} onUpdated={() => setDrawerCandidate(null)} />}
 
