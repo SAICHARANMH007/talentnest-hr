@@ -389,96 +389,266 @@ export default function ApplicantsRecordsPage({ user }) {
 
           <div style={{ color: '#64748B', fontSize: 12 }}>Status changes are saved immediately</div>
         </div>
+        <style>{`
+          /* Action icon buttons — compact, no text, always single row */
+          .appr-act { display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid #E2E8F0;background:#F8FAFC;cursor:pointer;font-size:15px;transition:all 0.15s;text-decoration:none;flex-shrink:0; }
+          .appr-act:hover { background:#EFF6FF;border-color:#0176D3; }
+          .appr-act-green:hover { background:#F0FDF4;border-color:#059669; }
+          .appr-acts { display:flex;gap:4px;align-items:center;flex-wrap:nowrap; }
+          /* Stage pill in table */
+          .appr-stage { display:inline-block;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;white-space:nowrap; }
+          /* Mobile card view */
+          @media (max-width: 768px) {
+            .appr-table-wrap { display:none !important; }
+            .appr-cards { display:flex !important; }
+          }
+          @media (min-width: 769px) {
+            .appr-cards { display:none !important; }
+          }
+        `}</style>
+
         {loading ? (
           <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>
-        ) : (
-          <div className="tn-table-scroll" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1320, fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC' }}>
-                  {['Applicant', 'Contact', 'Organisation', 'Job', 'Assigned Recruiter', 'Stage', 'Source', 'Applied', 'AI', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '11px 14px', textAlign: 'left', color: '#334155', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleRows.map((r, i) => (
-                  <tr key={rowKey(r, i)}
-                    style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
-                    onClick={() => setEditRow(r)}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 800, color: '#0A1628' }}>{r.candidateName || 'Candidate'}</div>
-                      <div style={{ color: '#64748B', fontSize: 12 }}>{r.title || r.currentCompany || 'Profile pending'}</div>
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#334155' }}>
-                      <div>{r.email || '-'}</div>
-                      <div style={{ fontSize: 12, color: '#64748B' }}>{r.phone || '-'}</div>
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#334155' }}>{r.organisation || '-'}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 700 }}>{r.jobTitle || '-'}</div>
-                      <div style={{ fontSize: 12, color: '#64748B' }}>{r.jobCompany || r.jobLocation || ''}</div>
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#334155', minWidth: 190 }} onClick={e => e.stopPropagation()}>
-                      {canManage ? (
-                        <select
-                          value={r.assignedRecruiterId || ''}
-                          onChange={e => assignRecruiter(r, e.target.value)}
-                          disabled={assigning === rowKey(r)}
-                          style={{ width: '100%', minHeight: 36, border: '1px solid #E2E8F0', borderRadius: 8, padding: '6px 10px', fontWeight: 700, color: r.assignedRecruiterId ? '#0176D3' : '#64748B', background: '#fff' }}
-                        >
-                          <option value="">Unassigned</option>
-                          {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
-                        </select>
-                      ) : (
-                        r.assignedRecruiters || '-'
-                      )}
-                      {r.assignedRecruiters && <div style={{ marginTop: 4, fontSize: 11, color: '#64748B' }}>Job: {r.assignedRecruiters}</div>}
-                    </td>
-                    <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
-                      <select value={r.stage || 'Applied'} onChange={e => changeStage(r, e.target.value)} style={{ minHeight: 36, border: '1px solid #E2E8F0', borderRadius: 8, padding: '6px 10px', fontWeight: 700, color: stageColor(r.stage), background: '#fff' }}>
-                        {DB_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}><Badge label={r.source || 'platform'} color="#64748B" /></td>
-                    <td style={{ padding: '12px 14px', color: '#334155', whiteSpace: 'nowrap' }}>{fmtDate(r.appliedAt)}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0176D3' }}>{r.aiMatchScore ?? '-'}</td>
-                    <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button onClick={() => setEditRow(r)} style={{ ...btnP, padding: '6px 12px', fontSize: 12 }}>
-                          👤 Profile
-                        </button>
-                        {(r.resumeUrl || r.candidateId || r.userId) && (
-                          <button
-                            onClick={() => {
-                              const cid = r.candidateId || r.userId;
-                              if (cid) window.open(`/app/resume/${cid}`, '_blank');
-                              else if (r.resumeUrl) window.open(r.resumeUrl, '_blank');
-                            }}
-                            style={{ ...btnG, padding: '6px 12px', fontSize: 12 }}>
-                            📋 Resume
-                          </button>
-                        )}
-                        {r.appliedFromLat && r.appliedFromLng && (
-                          <a
-                            href={`https://www.google.com/maps?q=${r.appliedFromLat},${r.appliedFromLng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`Applied from: ${r.appliedFromCity || r.appliedFromLat + ',' + r.appliedFromLng}`}
-                            style={{ ...btnG, padding: '6px 12px', fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#059669', borderColor: '#059669' }}>
-                            📍 Location
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!visibleRows.length && (
-                  <tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>No applicant records match these filters.</td></tr>
-                )}
-              </tbody>
-            </table>
+        ) : visibleRows.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748B', background: '#F8FAFC', borderRadius: 12 }}>
+            No applicant records match these filters.
           </div>
+        ) : (
+          <>
+            {/* ── DESKTOP TABLE ──────────────────────────────────────────── */}
+            <div className="appr-table-wrap" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100, fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', position: 'sticky', top: 0, zIndex: 2 }}>
+                    {[
+                      { h: 'Candidate', w: '14%' },
+                      { h: 'Contact', w: '13%' },
+                      { h: 'Profile', w: '14%' },
+                      { h: 'Job Applied', w: '14%' },
+                      { h: 'Stage', w: '10%' },
+                      { h: 'Recruiter', w: '11%' },
+                      { h: 'Applied', w: '8%' },
+                      { h: 'Score', w: '5%' },
+                      { h: 'Actions', w: '7%' },
+                    ].map(col => (
+                      <th key={col.h} style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.7, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap', width: col.w }}>
+                        {col.h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map((r, i) => (
+                    <tr key={rowKey(r, i)}
+                      style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer', transition: 'background 0.1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                      onClick={() => setEditRow(r)}>
+
+                      {/* Candidate — name + title/company */}
+                      <td style={{ padding: '11px 12px' }}>
+                        <div style={{ fontWeight: 800, color: '#0A1628', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.candidateName || 'Candidate'}</div>
+                        <div style={{ color: '#64748B', fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>
+                          {[r.title, r.currentCompany].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                        {r.location && <div style={{ color: '#94A3B8', fontSize: 10, marginTop: 1 }}>📍 {r.location}</div>}
+                      </td>
+
+                      {/* Contact — email + phone */}
+                      <td style={{ padding: '11px 12px' }}>
+                        <div style={{ fontSize: 12, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.email || '—'}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{r.phone || '—'}</div>
+                        {r.organisation && <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 1 }}>🏢 {r.organisation}</div>}
+                      </td>
+
+                      {/* Profile — experience + skills + CTC */}
+                      <td style={{ padding: '11px 12px' }}>
+                        <div style={{ fontSize: 12, color: '#374151' }}>
+                          {r.experience != null && r.experience !== '' ? `${r.experience} yr${Number(r.experience) === 1 ? '' : 's'} exp` : '—'}
+                          {r.availability ? ` · ${r.availability}` : ''}
+                        </div>
+                        {(r.currentCTC || r.expectedCTC) && (
+                          <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                            {r.currentCTC ? `CTC: ${r.currentCTC}` : ''}{r.currentCTC && r.expectedCTC ? ' / ' : ''}{r.expectedCTC ? `Exp: ${r.expectedCTC}` : ''}
+                          </div>
+                        )}
+                        {r.skills && (
+                          <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                            {(Array.isArray(r.skills) ? r.skills : String(r.skills).split(',')).slice(0, 3).map(s => s?.trim()).filter(Boolean).map(sk => (
+                              <span key={sk} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', fontSize: 10, padding: '1px 6px', borderRadius: 50, fontWeight: 600 }}>{sk}</span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Job applied */}
+                      <td style={{ padding: '11px 12px' }}>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>{r.jobTitle || '—'}</div>
+                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                          {[r.jobCompany, r.jobLocation].filter(Boolean).join(' · ') || ''}
+                        </div>
+                        {r.jobType && <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 1 }}>{r.jobType}</div>}
+                      </td>
+
+                      {/* Stage — pill + inline dropdown on click */}
+                      <td style={{ padding: '11px 12px' }} onClick={e => e.stopPropagation()}>
+                        <select
+                          value={r.stage || 'Applied'}
+                          onChange={e => changeStage(r, e.target.value)}
+                          style={{ padding: '4px 8px', borderRadius: 20, border: `1.5px solid ${stageColor(r.stage)}40`, background: `${stageColor(r.stage)}12`, color: stageColor(r.stage), fontSize: 11, fontWeight: 700, cursor: 'pointer', outline: 'none', maxWidth: 130 }}>
+                          {DB_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 3 }}>{r.source || 'platform'}</div>
+                      </td>
+
+                      {/* Recruiter */}
+                      <td style={{ padding: '11px 12px' }} onClick={e => e.stopPropagation()}>
+                        {canManage ? (
+                          <select
+                            value={r.assignedRecruiterId || ''}
+                            onChange={e => assignRecruiter(r, e.target.value)}
+                            disabled={assigning === rowKey(r)}
+                            style={{ width: '100%', fontSize: 12, border: '1px solid #E2E8F0', borderRadius: 8, padding: '5px 8px', color: r.assignedRecruiterId ? '#0176D3' : '#94A3B8', background: '#fff', cursor: 'pointer' }}>
+                            <option value="">Unassigned</option>
+                            {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748B' }}>{r.assignedRecruiters || '—'}</span>
+                        )}
+                      </td>
+
+                      {/* Applied date */}
+                      <td style={{ padding: '11px 12px', fontSize: 12, color: '#64748B', whiteSpace: 'nowrap' }}>
+                        {fmtDate(r.appliedAt)}
+                        {r.noticePeriodDays ? <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>{r.noticePeriodDays}d notice</div> : null}
+                      </td>
+
+                      {/* AI Score */}
+                      <td style={{ padding: '11px 12px', textAlign: 'center' }}>
+                        {r.aiMatchScore != null && r.aiMatchScore !== '' ? (
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: 13, color: r.aiMatchScore >= 80 ? '#059669' : r.aiMatchScore >= 60 ? '#F59E0B' : '#64748B' }}>
+                              {r.aiMatchScore}%
+                            </div>
+                          </div>
+                        ) : <span style={{ color: '#CBD5E1', fontSize: 12 }}>—</span>}
+                      </td>
+
+                      {/* Actions — icon-only, no text, never wrap */}
+                      <td style={{ padding: '11px 12px' }} onClick={e => e.stopPropagation()}>
+                        <div className="appr-acts">
+                          <button className="appr-act" onClick={() => setEditRow(r)} title="Open full profile & edit">👤</button>
+                          {(r.resumeUrl || r.candidateId || r.userId) && (
+                            <button className="appr-act" title="View resume"
+                              onClick={() => {
+                                const cid = r.candidateId || r.userId;
+                                if (cid) window.open(`/app/resume/${cid}`, '_blank');
+                                else if (r.resumeUrl) window.open(r.resumeUrl, '_blank');
+                              }}>📋</button>
+                          )}
+                          {r.appliedFromLat && r.appliedFromLng && (
+                            <a className="appr-act appr-act-green" href={`https://www.google.com/maps?q=${r.appliedFromLat},${r.appliedFromLng}`}
+                              target="_blank" rel="noopener noreferrer"
+                              title={`Applied from: ${r.appliedFromCity || r.appliedFromLat + ',' + r.appliedFromLng}`}
+                              style={{ color: '#059669' }}>📍</a>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── MOBILE CARDS ───────────────────────────────────────────── */}
+            <div className="appr-cards" style={{ flexDirection: 'column', gap: 10, display: 'none' }}>
+              {visibleRows.map((r, i) => (
+                <div key={rowKey(r, i)}
+                  style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  {/* Card header — tappable to open profile */}
+                  <div style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}
+                    onClick={() => setEditRow(r)}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{r.candidateName || 'Candidate'}</div>
+                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                        {[r.title, r.currentCompany].filter(Boolean).join(' · ') || '—'}
+                      </div>
+                      {r.jobTitle && (
+                        <div style={{ fontSize: 12, color: '#0176D3', marginTop: 3, fontWeight: 600 }}>
+                          💼 {r.jobTitle}{r.jobCompany ? ` · ${r.jobCompany}` : ''}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 50, background: `${stageColor(r.stage)}14`, color: stageColor(r.stage), fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        {r.stage || 'Applied'}
+                      </div>
+                      {r.aiMatchScore != null && r.aiMatchScore !== '' && (
+                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>{r.aiMatchScore}% match</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Details grid */}
+                  <div style={{ padding: '0 14px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', borderTop: '1px solid #F1F5F9', paddingTop: 10 }}>
+                    {[
+                      { label: 'Email', value: r.email },
+                      { label: 'Phone', value: r.phone },
+                      { label: 'Experience', value: r.experience != null ? `${r.experience} yrs` : null },
+                      { label: 'Availability', value: r.availability },
+                      { label: 'Current CTC', value: r.currentCTC },
+                      { label: 'Expected CTC', value: r.expectedCTC },
+                      { label: 'Location', value: r.location },
+                      { label: 'Notice', value: r.noticePeriodDays ? `${r.noticePeriodDays} days` : null },
+                      { label: 'Applied', value: fmtDate(r.appliedAt) },
+                      { label: 'Source', value: r.source },
+                    ].filter(f => f.value).map(f => (
+                      <div key={f.label}>
+                        <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</div>
+                        <div style={{ fontSize: 12, color: '#374151', fontWeight: 500, marginTop: 1, wordBreak: 'break-word' }}>{f.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Skills */}
+                  {r.skills && (
+                    <div style={{ padding: '0 14px 10px', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {(Array.isArray(r.skills) ? r.skills : String(r.skills).split(',')).slice(0, 5).map(s => s?.trim()).filter(Boolean).map(sk => (
+                        <span key={sk} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', fontSize: 11, padding: '2px 8px', borderRadius: 50, fontWeight: 600 }}>{sk}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Stage change + actions row */}
+                  <div style={{ padding: '10px 14px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                    <select value={r.stage || 'Applied'} onChange={e => changeStage(r, e.target.value)}
+                      style={{ flex: 1, minWidth: 120, padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${stageColor(r.stage)}40`, background: `${stageColor(r.stage)}10`, color: stageColor(r.stage), fontSize: 12, fontWeight: 700, cursor: 'pointer', outline: 'none' }}>
+                      {DB_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button className="appr-act" onClick={() => setEditRow(r)} title="Open full profile">👤</button>
+                    {(r.resumeUrl || r.candidateId || r.userId) && (
+                      <button className="appr-act" title="View resume"
+                        onClick={() => { const cid = r.candidateId || r.userId; if (cid) window.open(`/app/resume/${cid}`, '_blank'); else if (r.resumeUrl) window.open(r.resumeUrl, '_blank'); }}>📋</button>
+                    )}
+                    {r.appliedFromLat && r.appliedFromLng && (
+                      <a className="appr-act appr-act-green"
+                        href={`https://www.google.com/maps?q=${r.appliedFromLat},${r.appliedFromLng}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color: '#059669' }} title="View location">📍</a>
+                    )}
+                    {canManage && (
+                      <select value={r.assignedRecruiterId || ''} onChange={e => assignRecruiter(r, e.target.value)}
+                        disabled={assigning === rowKey(r)}
+                        style={{ flex: 1, minWidth: 110, fontSize: 12, border: '1px solid #E2E8F0', borderRadius: 8, padding: '7px 8px', color: r.assignedRecruiterId ? '#0176D3' : '#94A3B8', background: '#fff' }}>
+                        <option value="">Assign recruiter</option>
+                        {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
