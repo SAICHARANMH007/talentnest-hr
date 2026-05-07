@@ -134,7 +134,8 @@ router.get('/invite/:token/open', asyncHandler(async (req, res) => {
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
-          title, currentCompany, experience, availability } = req.body;
+          title, currentCompany, experience, availability,
+          geoLat, geoLng, geoAccuracy, geoCity, geoCountry } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
@@ -174,6 +175,21 @@ router.post('/public', asyncHandler(async (req, res) => {
 
   const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
+  // Build location object — use browser geolocation if provided, fall back to IP
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+  const appliedFrom = {
+    ip: clientIp,
+    method: 'none',
+  };
+  if (geoLat != null && geoLng != null) {
+    appliedFrom.lat      = Number(geoLat);
+    appliedFrom.lng      = Number(geoLng);
+    appliedFrom.accuracy = geoAccuracy ? Number(geoAccuracy) : null;
+    appliedFrom.city     = geoCity    || '';
+    appliedFrom.country  = geoCountry || '';
+    appliedFrom.method   = 'browser';
+  }
+
   const app = await Application.create({
     tenantId: job.tenantId,
     jobId,
@@ -185,6 +201,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     currentStage: 'Applied',
     stageHistory: [{ stage: 'Applied', movedAt: new Date(), notes: 'Applied via career page' }],
     screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
+    appliedFrom,
   });
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
@@ -298,7 +315,8 @@ router.post('/public', asyncHandler(async (req, res) => {
 
 // POST /api/applications — internal apply
 router.post('/', ...guard, asyncHandler(async (req, res) => {
-  let { jobId, candidateId, coverLetter, screeningAnswers } = req.body;
+  let { jobId, candidateId, coverLetter, screeningAnswers,
+        geoLat, geoLng, geoAccuracy, geoCity, geoCountry } = req.body;
   if (!jobId) throw new AppError('jobId is required.', 400);
 
   // Self-apply: candidate users have a User record but may not have a Candidate record.
@@ -348,6 +366,19 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   // Use job's tenantId for the application so it appears in the recruiter's pipeline.
   const appTenantId = isCandidate ? job.tenantId : req.user.tenantId;
 
+  const platformAppliedFrom = {
+    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '',
+    method: 'none',
+  };
+  if (geoLat != null && geoLng != null) {
+    platformAppliedFrom.lat      = Number(geoLat);
+    platformAppliedFrom.lng      = Number(geoLng);
+    platformAppliedFrom.accuracy = geoAccuracy ? Number(geoAccuracy) : null;
+    platformAppliedFrom.city     = geoCity    || '';
+    platformAppliedFrom.country  = geoCountry || '';
+    platformAppliedFrom.method   = 'browser';
+  }
+
   const app = await Application.create({
     tenantId: appTenantId,
     jobId,
@@ -359,6 +390,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
     currentStage: 'Applied',
     stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date() }],
     screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
+    appliedFrom: platformAppliedFrom,
   });
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
@@ -437,6 +469,49 @@ router.post('/invite', ...guard,
 
     logger.audit('Invite sent', req.user.id, req.user.tenantId, { appId: app._id, candidateId });
     res.status(201).json({ success: true, message: 'Invitation sent.', data: normalizeApp(app) });
+  })
+);
+
+// GET /api/applications/locations — aggregated application pins for world map
+// Returns location data with lat/lng + counts. Super admin sees all, admin sees own tenant.
+router.get('/locations', ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter'),
+  asyncHandler(async (req, res) => {
+    const filter = { 'appliedFrom.lat': { $ne: null }, 'appliedFrom.lng': { $ne: null }, deletedAt: null };
+    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
+    const apps = await Application.find(filter)
+      .select('appliedFrom candidateId createdAt')
+      .populate('candidateId', 'name')
+      .lean();
+
+    // Group nearby points (within ~0.5° = ~55km) to avoid overlapping dots
+    const CLUSTER_RADIUS = 0.5;
+    const clusters = [];
+
+    for (const app of apps) {
+      const { lat, lng, city, country } = app.appliedFrom;
+      const candidate = app.candidateId;
+
+      // Find existing cluster within radius
+      const existing = clusters.find(c =>
+        Math.abs(c.lat - lat) < CLUSTER_RADIUS && Math.abs(c.lng - lng) < CLUSTER_RADIUS
+      );
+      if (existing) {
+        existing.count++;
+        existing.candidates.push({ name: candidate?.name || 'Candidate', date: app.createdAt });
+        if (city && !existing.city) existing.city = city;
+        if (country && !existing.country) existing.country = country;
+      } else {
+        clusters.push({
+          lat, lng, count: 1,
+          city: city || '', country: country || '',
+          candidates: [{ name: candidate?.name || 'Candidate', date: app.createdAt }],
+        });
+      }
+    }
+
+    res.json({ success: true, data: clusters, total: apps.length });
   })
 );
 

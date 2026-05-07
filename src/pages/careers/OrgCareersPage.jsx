@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
+import { requestGeolocation } from '../../utils/geolocation.js';
 
 // ── Urgency config ────────────────────────────────────────────────────────────
 const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
@@ -13,7 +14,19 @@ function ApplyModal({ job, orgName, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [geoStatus, setGeoStatus] = useState('idle'); // idle | asking | granted | denied
+  const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  // Ask for location permission as soon as the modal opens
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setGeoStatus('asking');
+    requestGeolocation().then(pos => {
+      if (pos) { setGeo(pos); setGeoStatus('granted'); }
+      else       setGeoStatus('denied');
+    });
+  }, []);
 
   const submit = async () => {
     if (!form.name.trim())  { setError('Full name is required.'); return; }
@@ -21,7 +34,15 @@ function ApplyModal({ job, orgName, onClose }) {
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
     setSubmitting(true); setError('');
     try {
-      await api.applyPublic(job.id || job._id, { ...form });
+      const payload = { ...form };
+      if (geo) {
+        payload.geoLat      = geo.lat;
+        payload.geoLng      = geo.lng;
+        payload.geoAccuracy = geo.accuracy;
+        payload.geoCity     = geo.city;
+        payload.geoCountry  = geo.country;
+      }
+      await api.applyPublic(job.id || job._id, payload);
       setDone(true);
     } catch (e) { setError(e.message || 'Submission failed. Please try again.'); }
     setSubmitting(false);
@@ -49,6 +70,20 @@ function ApplyModal({ job, orgName, onClose }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Location permission status chip */}
+              {geoStatus === 'granted' && geo && (
+                <div style={{ background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14 }}>📍</span>
+                  <span style={{ fontSize: 12, color: '#065f46', flex: 1 }}>
+                    Location detected{geo.city ? ` — ${geo.city}${geo.country ? `, ${geo.country}` : ''}` : ''} · Used to send you nearby jobs
+                  </span>
+                </div>
+              )}
+              {geoStatus === 'denied' && (
+                <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
+                  📍 Location not shared — enable it in your browser to get nearby job recommendations
+                </div>
+              )}
               {error && <div style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 8, padding: '10px 14px', color: '#BA0517', fontSize: 13 }}>{error}</div>}
               {[['Full Name *', 'name', 'text', 'Jane Smith'], ['Email *', 'email', 'email', 'jane@example.com'], ['Mobile Number *', 'phone', 'tel', '+91 99999 99999']].map(([label, key, type, ph]) => (
                 <div key={key}>

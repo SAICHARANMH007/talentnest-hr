@@ -24,8 +24,9 @@ export const applicationService = {
     const qs = params.toString();
     return req('GET', `/applications${qs ? `?${qs}` : ''}`);
   },
-  async applyToJob(jobId, candidateId, screeningAnswers) {
-    return req('POST', '/applications', { jobId, candidateId, ...(screeningAnswers ? { screeningAnswers } : {}) });
+  async applyToJob(jobId, candidateId, screeningAnswers, geo) {
+    const geoFields = geo ? { geoLat: geo.lat, geoLng: geo.lng, geoAccuracy: geo.accuracy, geoCity: geo.city, geoCountry: geo.country } : {};
+    return req('POST', '/applications', { jobId, candidateId, ...(screeningAnswers ? { screeningAnswers } : {}), ...geoFields });
   },
   async applyPublic(jobId, form) {
     return req('POST', '/applications/public', { jobId, ...form }, false);
@@ -43,6 +44,7 @@ export const applicationService = {
   async updateAppTags(appId, tags) { return req('PATCH', `/applications/${appId}/tags`, { tags }); },
   async addFeedback(appId, feedback) { return req('PATCH', `/applications/${appId}/feedback`, feedback); },
   async withdrawApplication(appId) { return req('DELETE', `/applications/${appId}`); },
+  async getApplicationLocations() { return req('GET', '/applications/locations'); },
   async parseResume(file) {
     const fd = new FormData();
     fd.append('file', file);

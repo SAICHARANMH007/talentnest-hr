@@ -6,6 +6,7 @@ import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
 import DonutChart from '../../components/charts/DonutChart.jsx';
+import WorldMap from '../../components/charts/WorldMap.jsx';
 import TrendCard from '../../components/shared/TrendCard.jsx';
 import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
@@ -976,6 +977,17 @@ export default function AdminAnalytics({ user, onNavigate }) {
             {leaderboard.length === 0 && <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 13 }}>No recruiter data available yet.</div>}
           </div>
         </div>
+      </div>
+
+      {/* ── Application Location Map ── */}
+      <div style={{ ...glassPanel, marginBottom: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0A1628' }}>🌍 Applications World Map</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>Where candidates are applying from — hover a dot to see candidate names</p>
+          </div>
+        </div>
+        <WorldMap height={400} />
       </div>
 
       {/* ── Platform Pulse ── */}

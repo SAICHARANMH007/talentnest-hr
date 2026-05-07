@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
@@ -7,6 +7,7 @@ import { card, btnP } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import JobAlertsManager from '../../components/candidate/JobAlertsManager.jsx';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
+import { requestGeolocation } from '../../utils/geolocation.js';
 
 // ── Job Detail Modal ─────────────────────────────────────────────────────────
 function JobDetailModal({ job, applied, applying, onApply, onClose }) {
@@ -230,11 +231,12 @@ export default function CandidateExploreJobs({ user }) {
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
-  const [assessmentPrompt, setAssessmentPrompt] = useState(null); // { jobId, jobTitle, assessment }
-  const [screeningModal, setScreeningModal] = useState(null); // { jobId, questions }
+  const [assessmentPrompt, setAssessmentPrompt] = useState(null);
+  const [screeningModal, setScreeningModal] = useState(null);
   const [screeningAnswers, setScreeningAnswers] = useState({});
   const [showAlerts, setShowAlerts] = useState(false);
   const [toast, setToast] = useState('');
+  const geoRef = useRef(null); // cache geolocation for this session
   const [saved, setSaved]           = useState(() => {
     try { return JSON.parse(localStorage.getItem('tn_saved_jobs') || '{}'); } catch { return {}; }
   });
@@ -275,8 +277,12 @@ export default function CandidateExploreJobs({ user }) {
     setApplying(p => ({ ...p, [jobId]: true }));
     setError('');
     try {
+      // Silently collect geolocation (non-blocking — doesn't delay apply)
+      if (!geoRef.current) {
+        geoRef.current = await requestGeolocation().catch(() => null);
+      }
       const screeningAnswersList = questions.map((q, i) => ({ question: q.question, answer: (providedAnswers || {})[i] || '' }));
-      await api.applyToJob(jobId, user.id, screeningAnswersList.length > 0 ? screeningAnswersList : undefined);
+      await api.applyToJob(jobId, user.id, screeningAnswersList.length > 0 ? screeningAnswersList : undefined, geoRef.current);
       setApplied(p => ({ ...p, [jobId]: true }));
       setScreeningModal(null);
       setToast('✅ Application submitted!');

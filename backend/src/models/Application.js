@@ -124,6 +124,17 @@ const applicationSchema = new mongoose.Schema({
     answer  : { type: String },
   }],
 
+  // Geolocation — where the candidate was when they submitted the application
+  appliedFrom: {
+    lat      : { type: Number, default: null },
+    lng      : { type: Number, default: null },
+    accuracy : { type: Number, default: null }, // metres (browser geolocation accuracy)
+    city     : { type: String, default: '' },
+    country  : { type: String, default: '' },
+    ip       : { type: String, default: '' },
+    method   : { type: String, enum: ['browser', 'ip', 'none'], default: 'none' },
+  },
+
   // SLA tracking
   lastSlaAlertAt: { type: Date, default: null },
 
