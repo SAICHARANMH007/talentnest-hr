@@ -87,27 +87,95 @@ router.get('/', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), a
   res.json({ success: true, data: records.map(r => ({ ...r, id: r._id.toString() })), pagination: { total, page: Number(page), pages: Math.ceil(total / limit) } });
 }));
 
-// ── HR/Admin: get single record ───────────────────────────────────────────────
-router.get('/:id', authenticate, tenantGuard, asyncHandler(async (req, res) => {
-  const record = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
-  if (!record) throw new AppError('Pre-boarding record not found.', 404);
-  res.json({ success: true, data: { ...record, id: record._id.toString() } });
-}));
+// ── IMPORTANT: Named routes MUST come before /:id to avoid Express treating them as IDs ──
 
-// ── Candidate: get own pre-boarding (by email — works regardless of Candidate vs User _id) ──
+// ── Candidate: get own pre-boarding (by email) ────────────────────────────────
 router.get('/mine', authenticate, asyncHandler(async (req, res) => {
   if (!req.user?.email) return res.json({ success: true, data: [] });
   const records = await PreBoarding.find({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
   res.json({ success: true, data: records.map(r => ({ ...r, id: r._id.toString() })) });
 }));
 
-// ── Candidate: get own pre-boarding by candidateId (legacy — keep for compat) ─
+// ── Candidate: get own pre-boarding by candidateId (legacy) ──────────────────
 router.get('/mine/:candidateId', authenticate, asyncHandler(async (req, res) => {
   let records = await PreBoarding.find({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
   if (records.length === 0 && req.user?.email) {
     records = await PreBoarding.find({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
   }
   res.json({ success: true, data: records.map(r => ({ ...r, id: r._id.toString() })) });
+}));
+
+// ── GET /api/preboarding/hired-pending — hired candidates without preboarding ──
+router.get('/hired-pending', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+  const hiredApps = await Application.find({ ...tenantFilter, currentStage: 'Hired', deletedAt: null })
+    .populate('candidateId', 'name email phone')
+    .populate('jobId', 'title company companyName department')
+    .sort({ updatedAt: -1 })
+    .limit(200)
+    .lean();
+
+  const existingAppIds = new Set(
+    (await PreBoarding.find(tenantFilter).select('applicationId').lean())
+      .map(p => String(p.applicationId))
+  );
+
+  const pending = hiredApps
+    .filter(a => !existingAppIds.has(String(a._id)))
+    .map(a => ({
+      applicationId: a._id?.toString(),
+      candidateName: a.candidateId?.name || a.candidateName || 'Candidate',
+      candidateEmail: a.candidateId?.email || a.candidateEmail || '',
+      candidatePhone: a.candidateId?.phone || a.candidatePhone || '',
+      jobTitle: a.jobId?.title || a.jobTitle || 'Unknown Job',
+      jobCompany: a.jobId?.companyName || a.jobId?.company || '',
+      hiredAt: a.updatedAt,
+      tenantId: a.tenantId,
+    }));
+
+  res.json({ success: true, data: pending });
+}));
+
+// ── GET /api/preboarding/doc-status — document submission overview ─────────────
+router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const records = await PreBoarding.find(tenantFilter).lean();
+
+  const summary = records.map(r => {
+    const docTasks   = (r.tasks || []).filter(t => t.category === 'document');
+    const submitted  = docTasks.filter(t => t.fileUrl).length;
+    const verified   = docTasks.filter(t => t.verifyStatus === 'verified').length;
+    const pending    = docTasks.filter(t => !t.fileUrl).length;
+    const needsReview= docTasks.filter(t => t.verifyStatus === 'pending_review').length;
+    const rejected   = docTasks.filter(t => t.verifyStatus === 'rejected' || t.verifyStatus === 'resubmission_required').length;
+    const allVerified = docTasks.length > 0 && verified === docTasks.length;
+    const overallStatus = allVerified ? 'all_verified'
+      : needsReview > 0 ? 'needs_review'
+      : rejected > 0 ? 'has_rejections'
+      : submitted > 0 ? 'in_progress'
+      : 'not_started';
+
+    return {
+      id: r._id.toString(),
+      candidateName: r.candidateName,
+      candidateEmail: r.candidateEmail,
+      designation: r.designation,
+      joiningDate: r.joiningDate,
+      totalDocs: docTasks.length,
+      submitted, verified, pending, needsReview, rejected,
+      overallStatus,
+    };
+  });
+
+  res.json({ success: true, data: summary });
+}));
+
+// ── HR/Admin: get single record (CATCH-ALL — must stay AFTER all named GET routes) ──
+router.get('/:id', authenticate, tenantGuard, asyncHandler(async (req, res) => {
+  const record = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
+  if (!record) throw new AppError('Pre-boarding record not found.', 404);
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
 // ── Candidate: confirm joining ─────────────────────────────────────────────────
@@ -336,44 +404,7 @@ router.post('/start', authenticate, tenantGuard, allowRoles('admin', 'super_admi
   res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
 }));
 
-// ── GET /api/preboarding/hired-pending — hired candidates without preboarding yet ──
-// Used by admin dashboard to see who needs BVD request sent
-router.get('/hired-pending', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-
-  // All applications with stage = Hired
-  const hiredApps = await Application.find({ ...tenantFilter, currentStage: 'Hired', deletedAt: null })
-    .populate('candidateId', 'name email phone')
-    .populate('jobId', 'title company companyName department')
-    .sort({ updatedAt: -1 })
-    .limit(200)
-    .lean();
-
-  // Existing preboarding records
-  const existingAppIds = new Set(
-    (await PreBoarding.find(tenantFilter).select('applicationId').lean())
-      .map(p => String(p.applicationId))
-  );
-
-  // Filter out candidates who already have preboarding
-  const pending = hiredApps
-    .filter(a => !existingAppIds.has(String(a._id)))
-    .map(a => ({
-      applicationId: a._id?.toString(),
-      candidateName: a.candidateId?.name || a.candidateName || 'Candidate',
-      candidateEmail: a.candidateId?.email || a.candidateEmail || '',
-      candidatePhone: a.candidateId?.phone || a.candidatePhone || '',
-      jobTitle: a.jobId?.title || a.jobTitle || 'Unknown Job',
-      jobCompany: a.jobId?.companyName || a.jobId?.company || '',
-      hiredAt: a.updatedAt,
-      tenantId: a.tenantId,
-    }));
-
-  res.json({ success: true, data: pending });
-}));
-
 // ── POST /api/preboarding/start-with-hired — start preboarding + update stage to Hired ──
-// Creates preboarding for any candidate+job, moves application to Hired stage
 router.post('/start-with-hired', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { applicationId } = req.body;
   if (!applicationId) throw new AppError('applicationId required', 400);
@@ -381,7 +412,6 @@ router.post('/start-with-hired', authenticate, allowRoles('admin', 'super_admin'
   const app = await Application.findOne({ _id: applicationId, deletedAt: null });
   if (!app) throw new AppError('Application not found', 404);
 
-  // Move to Hired stage if not already
   if (app.currentStage !== 'Hired') {
     app.currentStage = 'Hired';
     app.status = 'hired';
@@ -396,43 +426,6 @@ router.post('/start-with-hired', authenticate, allowRoles('admin', 'super_admin'
   if (!pb) throw new AppError('Could not create pre-boarding. Application not found.', 404);
 
   res.json({ success: true, data: { ...pb.toObject?.() || pb, id: pb._id?.toString() } });
-}));
-
-// ── GET /api/preboarding/doc-status — document submission overview for all candidates ──
-// Shows aggregate: how many docs submitted, pending, verified per candidate
-router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const records = await PreBoarding.find(tenantFilter).lean();
-
-  const summary = records.map(r => {
-    const docTasks = (r.tasks || []).filter(t => t.category === 'document');
-    const submitted  = docTasks.filter(t => t.fileUrl).length;
-    const verified   = docTasks.filter(t => t.verifyStatus === 'verified').length;
-    const pending    = docTasks.filter(t => !t.fileUrl).length;
-    const needsReview= docTasks.filter(t => t.verifyStatus === 'pending_review').length;
-    const rejected   = docTasks.filter(t => t.verifyStatus === 'rejected' || t.verifyStatus === 'resubmission_required').length;
-    const allVerified = docTasks.length > 0 && verified === docTasks.length;
-    const overallStatus = allVerified ? 'all_verified'
-      : submitted === docTasks.length ? 'all_submitted'
-      : pending > 0 ? 'pending_submission'
-      : 'partial';
-
-    return {
-      preBoardingId: r._id?.toString(),
-      applicationId: r.applicationId?.toString(),
-      candidateName: r.candidateName,
-      candidateEmail: r.candidateEmail,
-      designation: r.designation,
-      tenantId: r.tenantId,
-      joiningDate: r.joiningDate,
-      totalDocs: docTasks.length,
-      submitted, verified, pending, needsReview, rejected,
-      overallStatus,
-      overallPct: r.tasks?.length > 0 ? Math.round(((r.tasks || []).filter(t => t.completedAt).length / r.tasks.length) * 100) : 0,
-    };
-  });
-
-  res.json({ success: true, data: summary });
 }));
 
 // ── POST /api/preboarding/self-start — candidate triggers own pre-boarding ────
