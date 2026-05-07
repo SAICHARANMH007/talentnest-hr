@@ -116,7 +116,7 @@ router.post('/invite/:token/respond', asyncHandler(async (req, res) => {
       userId: app.createdBy, tenantId: app.tenantId, type: 'stage_change',
       title: 'Invite Accepted!',
       message: `A candidate accepted the invite for ${job?.title || 'a role'}.`,
-      link: `/recruiter/pipeline?appId=${app._id}`,
+      link: `/app/pipeline?appId=${app._id}`,
     }).catch(() => {});
   }
 
@@ -340,7 +340,7 @@ router.post('/public', asyncHandler(async (req, res) => {
       userId: rid, tenantId: job.tenantId, type: 'application',
       title: 'New Career Page Application',
       message: `${candidate.name} applied for ${job.title} via the career page`,
-      link: `/recruiter/pipeline?jobId=${jobId}`,
+      link: `/app/pipeline?jobId=${jobId}`,
     }).catch(() => {});
     const recruiter = await User.findById(rid).select('name email').lean();
     if (recruiter?.email) {
@@ -465,7 +465,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
       userId: rid, tenantId: appTenantId, type: 'application',
       title: 'New Application',
       message: `${candidate.name} applied for ${job.title}`,
-      link: `/recruiter/pipeline?jobId=${jobId}`,
+      link: `/app/pipeline?jobId=${jobId}`,
     }).catch(() => {});
   }
 

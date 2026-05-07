@@ -54,7 +54,7 @@ router.get('/confirm/:token', asyncHandler(async (req, res) => {
       userId: rid, tenantId, type: 'stage_change',
       title: 'Candidate Confirmed Interest',
       message: `A candidate confirmed interest in ${job?.title || 'a role'}.`,
-      link: `/recruiter/pipeline?appId=${app._id}`,
+      link: `/app/pipeline?appId=${app._id}`,
     }).catch(() => {});
   }
 

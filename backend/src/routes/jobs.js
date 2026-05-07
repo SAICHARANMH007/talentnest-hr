@@ -289,7 +289,7 @@ router.post('/:id/assign', ...guard,
       userId: recruiterId, tenantId: job.tenantId, type: 'system',
       title: 'New Job Assignment',
       message: `You have been assigned to: ${job.title}`,
-      link: '/recruiter/jobs',
+      link: '/app/jobs',
     }).catch(() => {});
 
     res.json({ success: true, data: normalizeJob(job) });

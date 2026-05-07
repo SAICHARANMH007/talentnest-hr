@@ -199,24 +199,36 @@ function NotificationBell({ userRole, compact = false }) {
     setDetail(null);
     setOpen(false);
 
-    // Prefer the stored link (e.g. /app/pipeline?appId=..., /app/candidate-requests)
-    if (n.link) {
-      // Absolute URL → open in new tab; relative path → navigate in-app
-      if (n.link.startsWith('http')) {
-        window.open(n.link, '_blank', 'noopener');
-      } else {
-        navigate(n.link);
+    // Prefer the stored link — normalize legacy route prefixes before navigating.
+    // Backend creates links as /recruiter/pipeline or /admin/jobs but the app router
+    // uses /app/ as the prefix for all authenticated routes. Navigating to /recruiter/*
+    // finds no match → catch-all → /app/analytics (dashboard). Fix: normalize here.
+    if (n.link && n.link.trim()) {
+      const raw = n.link.trim();
+      if (raw.startsWith('http')) {
+        window.open(raw, '_blank', 'noopener');
+        return;
       }
+      // Normalize any legacy prefix so the route always resolves correctly
+      const normalized = raw
+        .replace(/^\/recruiter\//, '/app/')
+        .replace(/^\/admin\//, '/app/')
+        .replace(/^\/hr\//, '/app/')
+        .replace(/^\/candidate\//, '/app/');
+      navigate(normalized);
       return;
     }
 
-    // Legacy fallback: use candidateId metadata or TYPE_MAP
+    // Fallback: use specific candidateId metadata or TYPE_MAP routing
     const candidateId = n.metadata?.candidateId || n.data?.candidateId;
     if (candidateId) {
       sessionStorage.setItem('tn_open_candidate_id', candidateId);
       navigate('/app/candidates');
     } else {
-      navigate(`/app/${TYPE_MAP[n.type] || 'analytics'}`);
+      const dest = TYPE_MAP[n.type];
+      // Only navigate if we have a specific non-generic destination
+      // 'system' type → 'analytics' is the dashboard — valid for super_admin summaries
+      navigate(`/app/${dest || 'analytics'}`);
     }
   };
 
