@@ -374,6 +374,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                           updatedAt: a.updatedAt,
                           rejectionReason: a.rejectionReason,
                           stageHistory: a.stageHistory,
+                          appliedFrom: a.appliedFrom,
                         }))
                       : (u.allApplications || []);
                     // If we only have one app or it's the active one, show details.
@@ -436,6 +437,11 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                           ));
                                           if (app && String(app.id || app._id) === appId) setCurrentStage(newStage);
                                           setToast(`✅ Stage updated to ${SM[newStage]?.label || newStage}`);
+                                          if (newStage === 'selected') {
+                                            const candName = fullUser?.name || u?.name || form.name || 'Candidate';
+                                            const jobTitle = a.jobTitle || '';
+                                            setHiredModal({ appId, candidateName: candName, jobTitle });
+                                          }
                                         } catch (err) { setToast(`❌ ${err.message}`); }
                                         setChangingStage(false);
                                       }}
@@ -447,6 +453,14 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                       style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                       History →
                                     </button>
+                                    {a.appliedFrom?.lat && a.appliedFrom?.lng && (
+                                      <a href={`https://www.google.com/maps?q=${a.appliedFrom.lat},${a.appliedFrom.lng}`}
+                                        target="_blank" rel="noopener noreferrer"
+                                        title={`Applied from: ${a.appliedFrom.city || a.appliedFrom.lat+','+a.appliedFrom.lng}`}
+                                        style={{ background: 'none', border: 'none', color: '#059669', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                                        📍 Location
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
                               );

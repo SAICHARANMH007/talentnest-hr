@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Toast from '../../components/ui/Toast.jsx';
+import HiredDetailsModal from '../../components/modals/HiredDetailsModal.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -452,6 +453,7 @@ export default function RecruiterPipeline({ user }) {
   const [loading, setLoad] = useState(false);
   const [detailApp, setDetApp] = useState(null);
   const [toast, setToast] = useState('');
+  const [hiredModal, setHiredModal] = useState(null);
   const [recruiter, setRecruiter] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
@@ -502,12 +504,19 @@ export default function RecruiterPipeline({ user }) {
 
   const refresh = () => loadApps(selJob);
 
+  const triggerHiredModal = (app, appId, newStage) => {
+    if (newStage === 'selected') {
+      setHiredModal({ appId: String(appId || app?.id), candidateName: app?.candidateName || app?.candidate?.name || 'Candidate', jobTitle: app?.job?.title || app?.jobTitle || '' });
+    }
+  };
+
   const moveStage = async (app, newStage) => {
     if (newStage === 'rejected') { navigate(`/app/forms/reject?appId=${app.id}`); return; }
     if (newStage === 'interview_scheduled') { navigate(`/app/forms/interview?appId=${app.id}`); return; }
     if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
     await api.updateStage(app.id, newStage);
     setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
+    triggerHiredModal(app, app.id, newStage);
     refresh();
   };
 
@@ -518,6 +527,7 @@ export default function RecruiterPipeline({ user }) {
     if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
     await api.updateStage(app.id, newStage);
     setToast(`✅ Funnel updated → ${SM[newStage]?.label || newStage}`);
+    triggerHiredModal(app, app.id, newStage);
     refresh();
   };
 
@@ -571,6 +581,15 @@ export default function RecruiterPipeline({ user }) {
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
       {detailApp && <UserDetailDrawer user={detailApp.candidate} app={detailApp} onClose={() => setDetApp(null)} onUpdated={refresh} />}
+      {hiredModal && (
+        <HiredDetailsModal
+          appId={hiredModal.appId}
+          candidateName={hiredModal.candidateName}
+          jobTitle={hiredModal.jobTitle}
+          onClose={() => setHiredModal(null)}
+          onSaved={() => { setHiredModal(null); refresh(); }}
+        />
+      )}
 
       <PageHeader title="Applicant Pipeline" subtitle="Full hiring funnel management" />
 

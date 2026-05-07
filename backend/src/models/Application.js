@@ -132,7 +132,7 @@ const applicationSchema = new mongoose.Schema({
     city     : { type: String, default: '' },
     country  : { type: String, default: '' },
     ip       : { type: String, default: '' },
-    method   : { type: String, enum: ['browser', 'ip', 'none'], default: 'none' },
+    method   : { type: String, enum: ['browser', 'ip', 'denied', 'none'], default: 'none' },
   },
 
   // SLA tracking

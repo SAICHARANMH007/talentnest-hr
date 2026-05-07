@@ -47,6 +47,8 @@ function ApplyModal({ job, orgName, onClose }) {
         payload.geoAccuracy = geo.accuracy;
         payload.geoCity     = geo.city;
         payload.geoCountry  = geo.country;
+      } else {
+        payload.geoDeclined = geoStatus === 'denied';
       }
       await api.applyPublic(job.id || job._id, payload);
       setDone(true);

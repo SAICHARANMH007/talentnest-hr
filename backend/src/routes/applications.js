@@ -135,7 +135,7 @@ router.get('/invite/:token/open', asyncHandler(async (req, res) => {
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
           title, currentCompany, experience, availability,
-          geoLat, geoLng, geoAccuracy, geoCity, geoCountry } = req.body;
+          geoLat, geoLng, geoAccuracy, geoCity, geoCountry, geoDeclined } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
@@ -175,12 +175,9 @@ router.post('/public', asyncHandler(async (req, res) => {
 
   const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
-  // Build location object — use browser geolocation if provided, fall back to IP
+  // Build location object — use browser geolocation if provided
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
-  const appliedFrom = {
-    ip: clientIp,
-    method: 'none',
-  };
+  const appliedFrom = { ip: clientIp, method: 'none' };
   if (geoLat != null && geoLng != null) {
     appliedFrom.lat      = Number(geoLat);
     appliedFrom.lng      = Number(geoLng);
@@ -188,6 +185,9 @@ router.post('/public', asyncHandler(async (req, res) => {
     appliedFrom.city     = geoCity    || '';
     appliedFrom.country  = geoCountry || '';
     appliedFrom.method   = 'browser';
+  } else if (geoDeclined) {
+    // Candidate explicitly denied location permission — record the fact
+    appliedFrom.method = 'denied';
   }
 
   const app = await Application.create({

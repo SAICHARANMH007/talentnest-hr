@@ -57,7 +57,7 @@ function ApplyModal({ job, onClose }) {
     if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
     if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
     if (!form.availability)           { setError('Please select your availability.'); return; }
-    if (geoStatus !== 'granted' || !geo) { setError('Location permission is required to send job alerts near you. Please allow location access in your browser and try again.'); return; }
+    // Location is optional — never block submission
     // Validate required screening questions
     for (let i = 0; i < questions.length; i++) {
       if (questions[i].required && !answers[i]?.trim()) {
@@ -81,6 +81,9 @@ function ApplyModal({ job, onClose }) {
         payload.geoAccuracy = geo.accuracy;
         payload.geoCity     = geo.city;
         payload.geoCountry  = geo.country;
+      } else {
+        // Record that location was explicitly declined or unavailable
+        payload.geoDeclined = geoStatus === 'denied';
       }
       await api.applyPublic(job.id, payload);
       // If user wants an account, register them now (same data, no re-entry)

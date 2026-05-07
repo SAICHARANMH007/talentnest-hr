@@ -5,6 +5,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Field from '../../components/ui/Field.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import HiredDetailsModal from '../../components/modals/HiredDetailsModal.jsx';
 import { STAGES, SM } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api, downloadBlob } from '../../api/api.js';
@@ -57,6 +58,7 @@ export default function AdminPipeline({ user }) {
   const [stageDialog, setStageDialog] = useState(null); // { appId, newStage }
   const [schedForm,   setSchedForm]   = useState(SCHED_EMPTY);
   const [submitting,  setSubmitting]  = useState(false);
+  const [hiredModal,  setHiredModal]  = useState(null); // { appId, candidateName, jobTitle }
   const dragId = useRef(null);
 
   const load = useCallback(() => {
@@ -99,6 +101,11 @@ export default function AdminPipeline({ user }) {
       setApps(prev => prev.map(a => (a.id || a._id?.toString()) === appId ? { ...a, stage: newStage } : a));
       setToast(`✅ Moved to ${SM[newStage]?.label || newStage}`);
       setStageDialog(null);
+      // Trigger package/CTC collection when candidate is Hired
+      if (newStage === 'selected') {
+        const app = apps.find(a => (a.id || a._id?.toString()) === appId);
+        setHiredModal({ appId, candidateName: app?.candidateName || app?.candidate?.name || 'Candidate', jobTitle: app?.job?.title || app?.jobTitle || '' });
+      }
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
@@ -127,6 +134,15 @@ export default function AdminPipeline({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
+      {hiredModal && (
+        <HiredDetailsModal
+          appId={hiredModal.appId}
+          candidateName={hiredModal.candidateName}
+          jobTitle={hiredModal.jobTitle}
+          onClose={() => setHiredModal(null)}
+          onSaved={() => { setHiredModal(null); refresh(); }}
+        />
+      )}
       <PageHeader title="⚡ Pipeline" subtitle="Kanban view across all jobs" action={
         <button onClick={async () => {
           try {
