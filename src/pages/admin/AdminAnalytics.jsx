@@ -411,19 +411,21 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const stats = useMemo(() => {
     // Priority 1: Use Backend Aggregates (Most Reliable for High Volume)
-    // Priority 2: Use Local Verified Data (Best for Real-time sync)
-    const hiredCount = serverStats?.placements ?? localAppStats.pipeline.selected ?? 0;
-    const totalApps  = serverStats?.applications ?? localAppStats.total ?? 0;
-    const candCount  = serverStats?.candidates ?? allCandidates.length ?? 0;
-    const activeJobs = jobCounts.active || serverStats?.openJobs || 0;
-    const totalJobs  = jobCounts.total || serverStats?.totalJobs || 0;
+    // serverStats.openJobs comes from a real DB countDocuments — no cap.
+    // Never use the frontend job list length, which is limited to 1000.
+    const hiredCount  = serverStats?.placements ?? localAppStats.pipeline.selected ?? 0;
+    const totalApps   = serverStats?.applications ?? localAppStats.total ?? 0;
+    const candCount   = serverStats?.candidates ?? allCandidates.length ?? 0;
+    // Always prefer server aggregate for open jobs count (no limit)
+    const activeJobs  = serverStats?.openJobs || jobCounts.active || 0;
+    const totalJobs   = serverStats?.totalJobs || jobCounts.total || 0;
     const last30Hired = serverStats?.placementsLast30 ?? 0;
 
     if (serverStats) {
       return {
         ...serverStats,
         totalCandidates: candCount,
-        activeJobs:      totalJobs > 0 ? `${activeJobs} / ${totalJobs}` : activeJobs,
+        activeJobs:      activeJobs,   // show clean count, no "X / Y" fraction
         totalApps:       totalApps,
         appsLast30:      serverStats.appsLast30 || localAppStats.last30 || 0,
         placements:      hiredCount,
