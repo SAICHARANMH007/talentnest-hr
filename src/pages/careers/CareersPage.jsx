@@ -56,48 +56,62 @@ function ApplyModal({ job, onClose }) {
 
   // When candidate enters their email and blurs out, check if they're registered
   // If yes, auto-fill all their profile fields so they don't re-enter anything
+  // Track which prefilled fields the user has manually edited
+  const [userEditedFields, setUserEditedFields] = React.useState(new Set());
+
   const handleEmailBlur = async () => {
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;
-    // If user is already logged in and typing their own email, skip — form is already pre-filled
+    // Already logged in with same email — form pre-populated from sessionStorage
     if (prefill.email && email.toLowerCase() === prefill.email.toLowerCase()) return;
     setEmailChecking(true);
     setEmailFoundMsg('');
     setPrefillState(null);
+    setUserEditedFields(new Set());
     try {
       const r = await api.prefillByEmail(email);
       if (r?.exists && r?.profile) {
         const p = r.profile;
-        // Track which fields were auto-filled so we can show visual lock indicators
+        // IMPORTANT: Calculate filled[] BEFORE calling setForm to avoid async callback bug.
+        // setForm's functional updater runs during React's render phase — AFTER setPrefillState —
+        // so filled[] would be empty if populated inside the callback.
+        const currentForm = form; // capture current form state synchronously
         const filled = [];
-        setForm(prev => {
-          const next = { ...prev };
-          // Only update fields that are currently empty OR if we're confident this is the same user
-          if (p.name           && !prev.name)           { next.name           = p.name;           filled.push('name'); }
-          if (p.title          && !prev.title)          { next.title          = p.title;          filled.push('title'); }
-          if (p.currentCompany && !prev.currentCompany) { next.currentCompany = p.currentCompany; filled.push('currentCompany'); }
-          if (p.experience     && !prev.experience)     { next.experience     = p.experience;     filled.push('experience'); }
-          if (p.availability   && !prev.availability)   { next.availability   = p.availability;   filled.push('availability'); }
-          // Phone is NEVER pre-filled from public endpoint — security measure
-          // If the account has a phone on file, we show a hint but don't expose the number
-          return next;
-        });
-        setPrefillState({
-          isRegistered: r.isRegisteredUser,
-          hasPhone:     r.hasPhone,
-          fields:       filled,
-        });
+        const updates = {};
+        if (p.name           && !currentForm.name)           { updates.name           = p.name;           filled.push('name'); }
+        if (p.title          && !currentForm.title)          { updates.title          = p.title;          filled.push('title'); }
+        if (p.currentCompany && !currentForm.currentCompany) { updates.currentCompany = p.currentCompany; filled.push('currentCompany'); }
+        if (p.experience     && !currentForm.experience)     { updates.experience     = p.experience;     filled.push('experience'); }
+        if (p.availability   && !currentForm.availability)   { updates.availability   = p.availability;   filled.push('availability'); }
+        // Phone NEVER pre-filled — security: never expose phone to unauthenticated callers
+
+        // Apply updates and set prefill state synchronously in the same React batch
+        if (Object.keys(updates).length > 0) setForm(prev => ({ ...prev, ...updates }));
+        setPrefillState({ isRegistered: r.isRegisteredUser, hasPhone: r.hasPhone, fields: filled });
         setEmailFoundMsg(
           r.isRegisteredUser
-            ? '✅ Registered account found — professional details pre-filled. Enter your mobile number to continue.'
-            : '✅ Profile found — some details have been pre-filled from our records.'
+            ? 'Registered account found — professional details pre-filled below.'
+            : 'Profile found — details have been pre-filled. Please verify and complete.'
         );
       } else if (r && !r.exists) {
-        setEmailFoundMsg(''); // No account found — clean slate, user fills everything
+        setEmailFoundMsg('');
       }
     } catch { /* silent */ }
     setEmailChecking(false);
   };
+
+  // When user edits a pre-filled field, mark it as user-modified (remove green lock indicator)
+  const handlePrefillFieldChange = (fieldName, value) => {
+    sf(fieldName, value);
+    setUserEditedFields(prev => {
+      const next = new Set(prev);
+      next.add(fieldName);
+      return next;
+    });
+  };
+
+  // A field shows the prefill highlight only if it was prefilled AND not yet edited by the user
+  const isHighlighted = (fieldName) => prefillFields.includes(fieldName) && !userEditedFields.has(fieldName);
 
   const submit = async () => {
     if (!form.name?.trim())  { setError('Full name is required.'); return; }
@@ -308,54 +322,79 @@ function ApplyModal({ job, onClose }) {
           </div>
         )}
 
-        {/* Full Name — shows 🔒 lock if pre-filled */}
-        <div style={{ position: 'relative' }}>
-          <Field label={prefillFields.includes('name') ? 'Full Name * 🔒 Pre-filled' : 'Full Name *'}
-            value={form.name} onChange={v => sf('name', v)} placeholder="Jane Smith"
-            inputStyle={prefillFields.includes('name') ? { background:'rgba(5,150,105,0.04)', borderColor:'rgba(5,150,105,0.3)' } : {}} />
-        </div>
+        {/* Full Name — green highlight when prefilled, fades to normal when user edits */}
+        <Field
+          label={isHighlighted('name') ? '✅ Full Name * (pre-filled from your account)' : 'Full Name *'}
+          value={form.name}
+          onChange={v => handlePrefillFieldChange('name', v)}
+          placeholder="Jane Smith"
+          inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669', boxShadow:'0 0 0 2px rgba(5,150,105,0.1)', color:'#065f46' } : {}}
+        />
 
-        {/* Email + blur trigger */}
+        {/* Email — after account detected, editing shows restriction message */}
         <div>
           <Field label="Email *" value={form.email}
-            onChange={v => { sf('email', v); setEmailFoundMsg(''); setPrefillState(null); }}
+            onChange={v => {
+              if (prefillState) {
+                setEmailFoundMsg('⚠️ To update your email, please log in and change it from Profile Settings. Editing here clears the pre-filled details.');
+              }
+              sf('email', v); setPrefillState(null); setUserEditedFields(new Set());
+            }}
             onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
           {emailChecking && (
             <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5, fontSize:12, color:'#64748B' }}>
               <div style={{ width:12, height:12, borderRadius:'50%', border:'2px solid #E2E8F0', borderTopColor:'#0176D3', animation:'spin 0.8s linear infinite', flexShrink:0 }} />
-              Checking for existing profile…
+              Checking for your profile…
+            </div>
+          )}
+          {emailFoundMsg && (
+            <div style={{ marginTop:6, padding:'9px 12px', borderRadius:8, background: emailFoundMsg.startsWith('⚠️') ? 'rgba(245,158,11,0.07)' : 'rgba(5,150,105,0.07)', border:`1px solid ${emailFoundMsg.startsWith('⚠️') ? 'rgba(245,158,11,0.3)' : 'rgba(5,150,105,0.25)'}`, fontSize:12, color: emailFoundMsg.startsWith('⚠️') ? '#92400e' : '#065f46', lineHeight:1.55 }}>
+              {emailFoundMsg}
             </div>
           )}
         </div>
 
-        {/* Mobile Number — never pre-filled for security, shows "on file" hint if account found */}
+        {/* Mobile Number — NEVER pre-filled for security. Show clear instructions when account found */}
         <div>
-          <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)}
-            placeholder={prefillState?.hasPhone ? 'Enter mobile number to verify your identity' : '+91 99999 99999'}
-            type="tel" />
-          {prefillState?.hasPhone && !form.phone && (
-            <div style={{ marginTop:4, fontSize:11, color:'#F59E0B', display:'flex', alignItems:'center', gap:5 }}>
-              🔒 For security, your saved mobile number is not shown — please enter it to proceed
+          <Field
+            label={prefillState ? '📱 Mobile Number * — Enter to continue' : 'Mobile Number *'}
+            value={form.phone}
+            onChange={v => sf('phone', v)}
+            placeholder={prefillState?.hasPhone ? 'Enter your mobile number to proceed' : '+91 99999 99999'}
+            type="tel"
+            inputStyle={prefillState?.hasPhone ? { borderColor:'#F59E0B', background:'#fffbeb', boxShadow:'0 0 0 2px rgba(245,158,11,0.1)' } : {}}
+          />
+          {prefillState && (
+            <div style={{ marginTop:6, padding:'9px 12px', borderRadius:8, background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.25)', fontSize:12, color:'#92400e', display:'flex', alignItems:'flex-start', gap:8, lineHeight:1.55 }}>
+              <span style={{ flexShrink:0, marginTop:1 }}>📱</span>
+              <span>
+                {prefillState.hasPhone
+                  ? 'Your account has a mobile number on file. Enter it here — your application will be added to your pipeline automatically. You can update your number too.'
+                  : 'Enter your mobile number to complete the application.'}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Professional details — auto-filled fields highlighted */}
+        {/* Professional details — green when prefilled, clears green when user edits that field */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
-          <Field label={prefillFields.includes('title') ? 'Current Title * 🔒' : 'Current Title *'}
-            value={form.title} onChange={v => sf('title', v)} placeholder="e.g. Senior Developer"
-            inputStyle={prefillFields.includes('title') ? { background:'rgba(5,150,105,0.04)', borderColor:'rgba(5,150,105,0.3)' } : {}} />
-          <Field label={prefillFields.includes('currentCompany') ? 'Current Company * 🔒' : 'Current Company *'}
-            value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="e.g. Infosys"
-            inputStyle={prefillFields.includes('currentCompany') ? { background:'rgba(5,150,105,0.04)', borderColor:'rgba(5,150,105,0.3)' } : {}} />
+          <Field
+            label={isHighlighted('title') ? '✅ Current Title * (pre-filled)' : 'Current Title *'}
+            value={form.title} onChange={v => handlePrefillFieldChange('title', v)} placeholder="e.g. Senior Developer"
+            inputStyle={isHighlighted('title') ? { background:'#f0fdf4', borderColor:'#059669', boxShadow:'0 0 0 2px rgba(5,150,105,0.1)', color:'#065f46' } : {}} />
+          <Field
+            label={isHighlighted('currentCompany') ? '✅ Current Company * (pre-filled)' : 'Current Company *'}
+            value={form.currentCompany} onChange={v => handlePrefillFieldChange('currentCompany', v)} placeholder="e.g. Infosys"
+            inputStyle={isHighlighted('currentCompany') ? { background:'#f0fdf4', borderColor:'#059669', boxShadow:'0 0 0 2px rgba(5,150,105,0.1)', color:'#065f46' } : {}} />
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>
-              Total Experience (years) *{prefillFields.includes('experience') ? ' 🔒' : ''}
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color: isHighlighted('experience') ? '#059669' : '#374151', marginBottom:4 }}>
+              {isHighlighted('experience') ? '✅ Experience * (pre-filled)' : 'Total Experience (years) *'}
             </label>
-            <select value={form.experience} onChange={e => sf('experience', e.target.value)}
-              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border: prefillFields.includes('experience') ? '1px solid rgba(5,150,105,0.3)' : '1px solid #DDDBDA', fontSize:13, background: prefillFields.includes('experience') ? 'rgba(5,150,105,0.04)' : '#fff', color: form.experience ? '#181818' : '#94A3B8', WebkitAppearance:'none' }}>
+            <select value={form.experience}
+              onChange={e => handlePrefillFieldChange('experience', e.target.value)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, fontSize:13, WebkitAppearance:'none', cursor:'pointer', outline:'none', border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: isHighlighted('experience') ? '#f0fdf4' : '#fff', color: form.experience ? '#181818' : '#94A3B8', boxShadow: isHighlighted('experience') ? '0 0 0 2px rgba(5,150,105,0.1)' : 'none' }}>
               <option value="">Select…</option>
               {['0','1','2','3','4','5','6','7','8','9','10','11','12','15','18','20','25'].map(y => (
                 <option key={y} value={y}>{y === '0' ? 'Fresher (0 yrs)' : `${y} year${y === '1' ? '' : 's'}`}</option>
@@ -363,11 +402,12 @@ function ApplyModal({ job, onClose }) {
             </select>
           </div>
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:4 }}>
-              Availability *{prefillFields.includes('availability') ? ' 🔒' : ''}
+            <label style={{ display:'block', fontSize:13, fontWeight:600, color: isHighlighted('availability') ? '#059669' : '#374151', marginBottom:4 }}>
+              {isHighlighted('availability') ? '✅ Availability * (pre-filled)' : 'Availability *'}
             </label>
-            <select value={form.availability} onChange={e => sf('availability', e.target.value)}
-              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border: prefillFields.includes('availability') ? '1px solid rgba(5,150,105,0.3)' : '1px solid #DDDBDA', fontSize:13, background: prefillFields.includes('availability') ? 'rgba(5,150,105,0.04)' : '#fff', color: form.availability ? '#181818' : '#94A3B8', WebkitAppearance:'none' }}>
+            <select value={form.availability}
+              onChange={e => handlePrefillFieldChange('availability', e.target.value)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, fontSize:13, WebkitAppearance:'none', cursor:'pointer', outline:'none', border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: isHighlighted('availability') ? '#f0fdf4' : '#fff', color: form.availability ? '#181818' : '#94A3B8', boxShadow: isHighlighted('availability') ? '0 0 0 2px rgba(5,150,105,0.1)' : 'none' }}>
               <option value="">Select…</option>
               <option value="immediate">Immediate</option>
               <option value="15 days">15 Days Notice</option>
