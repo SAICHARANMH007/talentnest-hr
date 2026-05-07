@@ -1142,7 +1142,221 @@ textarea:focus-visible {
 }
 
 @keyframes tn-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes tn-float { 
-  0%, 100% { transform: translateY(0); } 
-  50% { transform: translateY(-10px); } 
+@keyframes tn-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMPREHENSIVE MOBILE-FIRST IMPROVEMENTS
+   Target: 375px–767px (99% of user base)
+   Rules are additive only — no visual changes on desktop (≥768px)
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. All tables: auto horizontal scroll, never overflow screen ── */
+@media (max-width: 767px) {
+  .tn-main-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+  }
+  /* Tables already inside explicit scroll wrappers stay as-is */
+  .tn-table-scroll table,
+  .tn-table-wrap table { display: table; }
+  .tn-table-scroll,
+  .tn-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* ── 2. Touch targets: every button/link/select ≥ 44px tall ── */
+@media (max-width: 767px) {
+  .tn-main-content button,
+  .tn-main-content a[role="button"],
+  .tn-main-content select {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  /* Page header action buttons can stay compact */
+  .tn-app-icon-btn { min-height: 40px; }
+}
+
+/* ── 3. Input font-size ≥ 16px on mobile (prevents iOS auto-zoom) ── */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: max(16px, 1em) !important; }
+}
+
+/* ── 4. Grids: any 2-col grid collapses to 1 col on phones ── */
+@media (max-width: 480px) {
+  .form-grid-2,
+  .tn-grid-2,
+  [class*="grid-2"] { grid-template-columns: 1fr !important; }
+}
+
+/* ── 5. Card padding: tighter on small screens ── */
+@media (max-width: 480px) {
+  .tn-card,
+  .tn-card-sm { padding: 14px !important; }
+  /* Page content padding */
+  .tn-main-content { padding: 12px !important; }
+}
+
+/* ── 6. Horizontal tab bars / stage pill rows: always scrollable ── */
+@media (max-width: 767px) {
+  .tn-tab-bar,
+  .tn-stage-pills,
+  .tn-filter-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+  }
+  .tn-tab-bar::-webkit-scrollbar,
+  .tn-stage-pills::-webkit-scrollbar,
+  .tn-filter-bar::-webkit-scrollbar { display: none; }
+}
+
+/* ── 7. Modals / drawers: full-width on phone ── */
+@media (max-width: 480px) {
+  .tn-modal-inner {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+  }
+  /* Drawers full width */
+  .tn-drawer { width: 100vw !important; }
+}
+
+/* ── 8. Page headers: compact on mobile ── */
+@media (max-width: 767px) {
+  .tn-page-header h1,
+  .tn-page-header .page-title { font-size: clamp(18px, 5vw, 24px) !important; }
+  .tn-page-header .page-subtitle { font-size: 12px !important; }
+}
+
+/* ── 9. Candidate pipeline status stepper: scroll, not wrap ── */
+@media (max-width: 767px) {
+  .tn-app-stepper ol {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+}
+
+/* ── 10. Stage kanban board: horizontal scroll ── */
+@media (max-width: 767px) {
+  .tn-pipeline-board {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
+  .tn-pipeline-col { scroll-snap-align: start; }
+}
+
+/* ── 11. Filter bar wrap → scroll on mobile ── */
+@media (max-width: 767px) {
+  .tn-filters-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tn-filters-row > * { min-width: 0; width: 100%; }
+}
+
+/* ── 12. Stat / KPI card grids: 2 cols on phone ── */
+@media (max-width: 480px) {
+  .tn-kpi-grid,
+  .analytics-kpi-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+/* ── 13. Better tap feedback ── */
+@media (max-width: 767px) {
+  button, a { -webkit-tap-highlight-color: rgba(1,118,211,0.12); }
+  button:active { opacity: 0.75; }
+}
+
+/* ── 14. Text overflow safety on mobile ── */
+@media (max-width: 767px) {
+  .tn-candidate-name,
+  .tn-job-title,
+  .tn-card-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+}
+
+/* ── 15. Charts on mobile: scale down gracefully ── */
+@media (max-width: 767px) {
+  .analytics-chart-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── 16. Form rows: single column on phone ── */
+@media (max-width: 480px) {
+  .tn-form-row,
+  .mkt-form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 17. Notification panel: full screen on phone ── */
+@media (max-width: 480px) {
+  .tn-notif-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    border-radius: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* ── 18. Safe area insets for notch/home bar on iOS ── */
+.tn-main-content {
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+@media (max-width: 767px) {
+  .tn-hamburger {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .tn-sidebar-mobile {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* ── 19. Responsive utility classes ── */
+.tn-hide-mobile { display: block; }
+.tn-show-mobile { display: none; }
+@media (max-width: 767px) {
+  .tn-hide-mobile { display: none !important; }
+  .tn-show-mobile { display: block !important; }
+  .tn-show-mobile-flex { display: flex !important; }
+  .tn-mobile-full { width: 100% !important; }
+  .tn-mobile-stack { flex-direction: column !important; }
+  .tn-mobile-center { text-align: center !important; }
+  .tn-mobile-p0 { padding: 0 !important; }
+  .tn-mobile-gap-sm { gap: 8px !important; }
+}
+
+/* ── 20. Responsive text ── */
+@media (max-width: 767px) {
+  h1 { font-size: clamp(22px, 6vw, 36px) !important; }
+  h2 { font-size: clamp(18px, 5vw, 28px) !important; }
+  h3 { font-size: clamp(15px, 4vw, 22px) !important; }
 }

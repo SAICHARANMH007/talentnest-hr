@@ -12,8 +12,8 @@ import { api, downloadBlob } from '../../api/api.js';
 
 // ── Styles outside component ───────────────────────────────────────────────────
 const S = {
-  board: { display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, minHeight: 200 },
-  col: { minWidth: 220, width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 0, scrollSnapAlign: 'start' },
+  board: { display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 12, minHeight: 200, WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' },
+  col: { minWidth: 'min(220px, 85vw)', width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 0, scrollSnapAlign: 'start' },
   colHead: { padding: '10px 14px', borderRadius: '10px 10px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   colBody: { background: '#F3F2F2', borderRadius: '0 0 10px 10px', padding: 8, display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 100 },
   appCard: { background: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'transform 0.15s, box-shadow 0.15s' },

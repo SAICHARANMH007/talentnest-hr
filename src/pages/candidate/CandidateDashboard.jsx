@@ -256,7 +256,7 @@ export default function CandidateDashboard({ user }) {
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill,minmax(160px,1fr))", gap: isMobile ? 10 : 12, marginBottom:20 }}>
+      <div className="tn-kpi-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap: isMobile ? 8 : 12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/applications")}>
           <KpiCard icon="📋" label="Applications Sent"  value={appliedCount}  color="#0176D3" trend={12} sparkValues={[1,2,2,3,3,appliedCount]} />
         </div>
@@ -336,7 +336,7 @@ export default function CandidateDashboard({ user }) {
       {apps.length > 0 && (
         <div style={{ ...card, marginBottom:20 }}>
           <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:"0 0 14px", letterSpacing:1 }}>MY PIPELINE</p>
-          <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
+          <div className="tn-stage-pills" style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:'touch' }}>
             {STAGES.filter(s=>s.id!=="rejected").map(s => {
               const cnt = stageCounts[s.id] || 0;
               return (
