@@ -28,7 +28,20 @@ const glassPanel = {
   padding       : 32,
   boxShadow     : '0 4px 24px rgba(0, 0, 0, 0.06)',
   transition    : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  minHeight     : 180, // prevent collapse when chart returns null during load
 };
+
+// Placeholder shown inside chart panels when data is loading or unavailable
+function ChartPlaceholder({ loading = false, label = 'Chart', height = 160 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height, gap: 10, color: '#CBD5E1' }}>
+      {loading
+        ? <><div className="tn-skeleton" style={{ width: 180, height: 12, borderRadius: 6, marginBottom: 6 }} /><div className="tn-skeleton" style={{ width: 120, height: 10, borderRadius: 6 }} /></>
+        : <><span style={{ fontSize: 32 }}>📊</span><span style={{ fontSize: 13, fontWeight: 600 }}>No data available yet</span></>
+      }
+    </div>
+  );
+}
 
 const sectionTitle = {
   fontSize  : 18,
@@ -853,17 +866,26 @@ export default function AdminAnalytics({ user, onNavigate }) {
       {/* ── Charts Row ── */}
       <div className="analytics-chart-row">
         <div style={{ ...glassPanel }} title="Click a date to view candidate records behind that point">
-          <AreaChart data={trends} color="#0176D3" height={220} title="Application Velocity"
-            subtitle="Candidates joining the pipeline across all jobs (Last 14 days)" onItemClick={openVelocityDrill} />
+          <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Application Velocity</div>
+          <div style={{ color: '#9E9D9B', fontSize: 10, marginBottom: 8 }}>Candidates joining the pipeline across all jobs (Last 14 days)</div>
+          {trends.length > 0
+            ? <AreaChart data={trends} color="#0176D3" height={220} onItemClick={openVelocityDrill} />
+            : <ChartPlaceholder loading={loading} label="Application Velocity" height={220} />
+          }
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8 }}>
             <p style={{ color: '#94A3B8', fontSize: 11, margin: 0 }}>Click any date on the chart to drill into actual applicant records.</p>
             {onNavigate && <button onClick={() => onNavigate('applicants')} style={{ ...btnG, padding: '6px 12px', fontSize: 11 }}>Open Applicants</button>}
           </div>
         </div>
         <div style={{ ...glassPanel, cursor: 'pointer' }}>
-          <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
-            centerValue={stageBreakdown.reduce((s, x) => s + (x.value || 0), 0) || stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
-          <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
+          {loading
+            ? <ChartPlaceholder loading label="Hiring Pipeline" height={180} />
+            : <>
+                <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
+                  centerValue={stageBreakdown.reduce((s, x) => s + (x.value || 0), 0) || stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
+                <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
+              </>
+          }
         </div>
       </div>
 
@@ -921,8 +943,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       <div className="analytics-chart-row-rev">
         <div style={glassPanel}>
-          <VertBarChart data={topJobs} height={260} title="Top Performance Jobs"
-            subtitle="Click a bar to see applicants" showValues onItemClick={openJobBarDrill} />
+          <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Top Performance Jobs</div>
+          <div style={{ color: '#9E9D9B', fontSize: 10, marginBottom: 8 }}>Click a bar to see applicants</div>
+          {topJobs.length > 0
+            ? <VertBarChart data={topJobs} height={260} showValues onItemClick={openJobBarDrill} />
+            : <ChartPlaceholder loading={loading || !analyticsData} label="Top Performance Jobs" height={260} />
+          }
         </div>
 
         {/* ── Leaderboard ── */}
