@@ -211,8 +211,19 @@ export default function OrgCareersPage() {
   if (error) return (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: embed ? 300 : '100vh', background: '#F7F8FC', fontFamily: "'Plus Jakarta Sans',sans-serif", textAlign: 'center', padding: 40 }}>
       <div style={{ fontSize: 52, marginBottom: 16 }}>😕</div>
-      <h2 style={{ color: '#0A1628', fontWeight: 800 }}>Career Page Not Found</h2>
-      <p style={{ color: '#64748B', maxWidth: 400 }}>{error}</p>
+      <h2 style={{ color: '#0A1628', fontWeight: 800, marginBottom: 10 }}>Career Page Not Found</h2>
+      <p style={{ color: '#64748B', maxWidth: 420, marginBottom: 20, lineHeight: 1.6 }}>
+        {error} This could be a temporary issue — try again in a moment.
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => window.location.reload()}
+          style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+          🔄 Try Again
+        </button>
+        <a href="/careers" style={{ background: '#F1F5F9', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 22px', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
+          Browse All Jobs
+        </a>
+      </div>
     </div>
   );
 

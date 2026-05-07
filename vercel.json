@@ -16,6 +16,9 @@
     { "source": "/careers/job/:slug",  "destination": "https://talentnest-hr.onrender.com/careers/job/:slug" },
     { "source": "/careers/crawl",      "destination": "https://talentnest-hr.onrender.com/careers/crawl" },
 
+    { "source": "/:orgSlug/careers",   "destination": "/index.html" },
+    { "source": "/:orgSlug/careers/",  "destination": "/index.html" },
+
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
