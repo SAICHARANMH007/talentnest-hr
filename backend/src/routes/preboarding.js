@@ -366,6 +366,17 @@ router.patch('/:id/tasks/:taskId/verify', authenticate, tenantGuard, allowRoles(
   const newStatus = allDone ? 'completed' : anyDone ? 'in_progress' : 'pending';
   if (record.status !== newStatus) await PreBoarding.findByIdAndUpdate(record._id, { status: newStatus });
 
+  // If ALL document tasks are now verified → mark the candidate User as BGV verified
+  const docTasks = record.tasks.filter(t => t.category === 'document');
+  const allDocsVerified = docTasks.length > 0 && docTasks.every(t => t.verifyStatus === 'verified');
+  if (allDocsVerified && record.candidateEmail) {
+    const User = require('../models/User');
+    await User.findOneAndUpdate(
+      { email: record.candidateEmail.toLowerCase() },
+      { $set: { bgvVerified: true, bgvVerifiedAt: new Date() } }
+    );
+  }
+
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 

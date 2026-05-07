@@ -38,6 +38,10 @@ const userSchema = new mongoose.Schema({
     recordedAt: { type: Date, default: null },
   },
 
+  // ── BGV (Background Verification) ────────────────────────
+  bgvVerified         : { type: Boolean, default: false },
+  bgvVerifiedAt       : { type: Date,    default: null },
+
   // ── Auth helpers ──────────────────────────────────────────
   googleId            : { type: String },
   twoFactorEnabled    : { type: Boolean, default: false },

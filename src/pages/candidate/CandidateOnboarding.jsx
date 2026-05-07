@@ -124,6 +124,10 @@ export default function CandidateOnboarding({ user }) {
   const joiningDate = pb.joiningDate ? new Date(pb.joiningDate).toLocaleDateString('en-IN',{ weekday:'long', day:'2-digit', month:'long', year:'numeric' }) : '—';
   const daysLeft   = pb.joiningDate ? Math.ceil((new Date(pb.joiningDate) - Date.now()) / 86400000) : null;
 
+  // BGV badge: all document tasks verified by HR
+  const docTasks    = (pb.tasks || []).filter(t => t.category === 'document');
+  const allDocsVerified = docTasks.length > 0 && docTasks.every(t => t.verifyStatus === 'verified');
+
   const grouped = {};
   (pb.tasks || []).forEach(t => {
     const c = t.category || 'other';
@@ -339,6 +343,19 @@ export default function CandidateOnboarding({ user }) {
           })}
         </div>
       ))}
+
+      {/* BGV Verified Badge — shown when HR has verified all document tasks */}
+      {allDocsVerified && (
+        <div style={{ ...card, padding:'20px 24px', marginBottom:16, background:'linear-gradient(135deg,#ecfdf5,#d1fae5)', border:'2px solid #10B981', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+          <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,#10B981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0, boxShadow:'0 4px 16px rgba(16,185,129,0.35)' }}>✓</div>
+          <div style={{ flex:1, minWidth:180 }}>
+            <div style={{ fontWeight:900, fontSize:16, color:'#064E3B', marginBottom:3 }}>✅ Verified & Trusted by TalentNest HR</div>
+            <div style={{ fontSize:13, color:'#065f46', lineHeight:1.5 }}>
+              All your background verification documents have been reviewed and approved. Your profile is now marked as verified across our platform.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Completion banner */}
       {pct===100 && (

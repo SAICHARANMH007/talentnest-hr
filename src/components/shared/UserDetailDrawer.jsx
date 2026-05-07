@@ -228,6 +228,11 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Badge label={(form.role || u.role || 'candidate').replace('_', ' ')} color="#0176D3" />
                 {app && <Badge label={(SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
+                {(fullUser?.bgvVerified || u?.bgvVerified) && (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.35)', borderRadius:100, padding:'2px 10px', fontSize:10, fontWeight:800, color:'#065f46' }}>
+                    ✅ BGV Verified
+                  </span>
+                )}
                 <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {fullUser?.orgName || u.orgName || 'TalentNest HR'}</span>
               </div>
             </div>
