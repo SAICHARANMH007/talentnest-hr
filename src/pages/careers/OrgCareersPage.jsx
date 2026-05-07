@@ -9,6 +9,21 @@ import MarketingFooter from '../marketing/MarketingFooter.jsx';
 // Slug that identifies TalentNest HR's own org — gets full marketing header/footer
 const MAIN_ORG_SLUG = 'talentnesthr';
 
+// Same logic as CareersPage — never redirect to generic job board search pages
+function getCompanyCareerUrl(externalUrl) {
+  if (!externalUrl) return null;
+  const lUrl = externalUrl.toLowerCase();
+  const isJobBoard = (
+    lUrl.includes('naukri.com') ||
+    lUrl.includes('linkedin.com/jobs/search') ||
+    (lUrl.includes('indeed.com') && lUrl.includes('/jobs')) ||
+    lUrl.includes('glassdoor') ||
+    lUrl.includes('shine.com/job-search') ||
+    lUrl.includes('monster.com/jobs')
+  );
+  return isJobBoard ? null : externalUrl;
+}
+
 // ── Urgency config ────────────────────────────────────────────────────────────
 const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
 const URGENCY_LABEL  = { High: '🔥 Emergency', Medium: '⚡ High Priority', Low: '📌 Normal', '': '📋 Open' };
@@ -329,8 +344,8 @@ export default function OrgCareersPage() {
                       </div>
                       {/* CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                        {j.externalUrl ? (
-                          <a href={j.externalUrl} target="_blank" rel="noopener noreferrer"
+                        {getCompanyCareerUrl(j.externalUrl) ? (
+                          <a href={getCompanyCareerUrl(j.externalUrl)} target="_blank" rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
                             style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
                             Apply Now →

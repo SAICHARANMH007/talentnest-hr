@@ -9,6 +9,30 @@ import Modal from '../../components/ui/Modal.jsx';
 import MarketingNav from '../marketing/MarketingNav.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
 
+// Detect generic job board search pages — these should NOT redirect, all applications
+// go through TalentNest HR. Real company career pages (e.g. careers.tcs.com) are kept.
+function isJobBoardSearchUrl(url) {
+  if (!url) return false;
+  const lUrl = url.toLowerCase();
+  return (
+    lUrl.includes('naukri.com') ||
+    lUrl.includes('linkedin.com/jobs/search') ||
+    (lUrl.includes('indeed.com') && lUrl.includes('/jobs')) ||
+    lUrl.includes('glassdoor.co.in/Jobs') ||
+    lUrl.includes('glassdoor.com/Job') ||
+    lUrl.includes('shine.com/job-search') ||
+    lUrl.includes('monster.com/jobs') ||
+    lUrl.includes('simplyhired.co.in') ||
+    lUrl.includes('timesjobs.com')
+  );
+}
+
+// Returns the effective externalUrl — null if it's a generic job board search page
+function getCompanyCareerUrl(externalUrl) {
+  if (!externalUrl || isJobBoardSearchUrl(externalUrl)) return null;
+  return externalUrl;
+}
+
 function ApplyModal({ job, onClose }) {
   // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
@@ -190,9 +214,10 @@ function ApplyModal({ job, onClose }) {
         }
       }
       setDone(true);
-      // External job: redirect to company's careers page after saving candidate data
-      if (job.externalUrl) {
-        setTimeout(() => window.open(job.externalUrl, '_blank', 'noopener,noreferrer'), 1200);
+      // Only redirect to real company career pages — never to generic job boards
+      const companyCareerUrl = getCompanyCareerUrl(job.externalUrl);
+      if (companyCareerUrl) {
+        setTimeout(() => window.open(companyCareerUrl, '_blank', 'noopener,noreferrer'), 1200);
       }
     } catch (e) {
       setError(e.message);
@@ -201,9 +226,9 @@ function ApplyModal({ job, onClose }) {
   };
 
   if (done) return (
-    <Modal title={job.externalUrl ? '✅ Profile Saved!' : 'Application Submitted!'} onClose={onClose}>
+    <Modal title={getCompanyCareerUrl(job.externalUrl) ? '✅ Profile Saved!' : 'Application Submitted!'} onClose={onClose}>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>{accountCreated ? '🎊' : job.externalUrl ? '🚀' : '🎉'}</div>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>{accountCreated ? '🎊' : getCompanyCareerUrl(job.externalUrl) ? '🚀' : '🎉'}</div>
         <p style={{ color: '#0f172a', fontSize: 17, fontWeight: 700 }}>
           {accountCreated ? `Account created & application submitted!` : `Thank you, ${form.name}!`}
         </p>
@@ -233,7 +258,7 @@ function ApplyModal({ job, onClose }) {
             </a>
           </div>
         )}
-        {job.externalUrl ? (
+        {getCompanyCareerUrl(job.externalUrl) ? (
           <>
             <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
               Your profile for <b>{job.title}</b> at <b>{job.company}</b> has been saved with us.
@@ -245,7 +270,7 @@ function ApplyModal({ job, onClose }) {
               <p style={{ color: '#78716c', fontSize: 11, margin: '6px 0 0', lineHeight: 1.5 }}>
                 Complete your application there. A new tab should open automatically.
               </p>
-              <a href={job.externalUrl} target="_blank" rel="noopener noreferrer"
+              <a href={getCompanyCareerUrl(job.externalUrl)} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'inline-block', marginTop: 10, background: 'linear-gradient(135deg,#F59E0B,#d97706)', color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                 Open Careers Page →
               </a>
@@ -935,9 +960,9 @@ export default function CareersPage() {
                       {/* CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4 }}>
                         <button onClick={() => { const jj = { ...j, id: j._id || j.id }; setApplying(jj); setViewingJob(jj); }} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
-                          {j.externalUrl ? '🌐 Apply on Company Site →' : 'Apply Now →'}
+                          {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
-                        {j.externalUrl && (
+                        {getCompanyCareerUrl(j.externalUrl) && (
                           <span style={{ color: '#94a3b8', fontSize: '0.7rem', textAlign: 'right', maxWidth: 160, lineHeight: 1.4 }}>
                             We save your profile, then redirect you
                           </span>

@@ -764,7 +764,9 @@ async function seedMassiveJobs(tnOrg, adminUserId) {
           description,
           requirements:   `${expRange} of experience in ${cat.cat}. Strong proficiency in ${cat.skills.join(', ')}. ${isSnr ? 'Proven track record of delivering results in a leadership or senior individual-contributor role.' : 'Strong fundamentals, eagerness to learn, and ability to work in a team.'}`,
           benefits:       'Competitive salary, health insurance, learning budget, performance bonus, flexible work options.',
-          externalUrl:    extUrl(cat.url, cat.board),
+          // externalUrl intentionally omitted for seeded jobs.
+          // These were pointing to generic job board search pages (Naukri/LinkedIn/Indeed/Glassdoor).
+          // All applications now go through TalentNest HR. Real company career links (NuSummit etc.) are kept separately.
           urgency:        ['High','Medium','Low'][locIndex % 3],
           numberOfOpenings: isSnr ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 5) + 1,
           tenantId,

@@ -2301,14 +2301,36 @@ Key Responsibilities:
   }
 
   // ── 2.6 Massive job seed — all 2000+ Junior+Senior variants across 53 categories ──
-  // Idempotent: skips jobs that already exist (careerPageSlug match).
-  // All jobs are isPublic=true, status=active so NaukriBot/IndeedBot/Google
-  // Jobs can crawl and index them immediately on first deploy.
   try {
     const saUser = await User.findOne({ email: 'admin@talentnesthr.com' }).select('_id').lean();
     await seedMassiveJobs(tnOrg, saUser?._id);
   } catch (mjErr) {
     console.error('❌  Massive job seed failed (non-critical):', mjErr.message);
+  }
+
+  // ── 2.7 Clean up generic job board URLs from existing seeded jobs ─────────────
+  // Jobs seeded before this fix had externalUrl pointing to Naukri/LinkedIn/Indeed/
+  // Glassdoor search pages (not real job listings). Remove them so all applications
+  // go through TalentNest HR. Real company career links (TCS, Infosys, etc.) are kept.
+  try {
+    const JOB_BOARD_PATTERNS = [
+      'naukri.com',
+      'linkedin.com/jobs/search',
+      'in.indeed.com/jobs',
+      'indeed.com/jobs',
+      'glassdoor.co.in/Jobs',
+      'glassdoor.com/Job',
+    ];
+    const orPattern = JOB_BOARD_PATTERNS.map(p => ({ externalUrl: { $regex: p.replace('.', '\\.'), $options: 'i' } }));
+    const result = await Job.updateMany(
+      { $or: orPattern, deletedAt: null },
+      { $set: { externalUrl: '' } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`✅  Cleared ${result.modifiedCount} generic job-board URLs (Naukri/LinkedIn/Indeed/Glassdoor search links removed)`);
+    }
+  } catch (cleanErr) {
+    console.error('❌  Job board URL cleanup failed (non-critical):', cleanErr.message);
   }
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
