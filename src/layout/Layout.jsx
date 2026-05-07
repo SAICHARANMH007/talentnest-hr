@@ -100,12 +100,13 @@ function NotificationBell({ userRole, compact = false }) {
   const [notifs,   setNotifs]   = React.useState([]);
   const [open,     setOpen]     = React.useState(false);
   const [tab,      setTab]      = React.useState('unread');
-  const [detail,   setDetail]   = React.useState(null);   // selected notification for drill-down
+  const [detail,   setDetail]   = React.useState(null);
   const [loading,  setLoading]  = React.useState(false);
   const btnRef                  = React.useRef(null);
   const [pos,      setPos]      = React.useState({ top: 0, left: 0 });
   const navigate                = useNavigate();
   const summaryFetched          = React.useRef(false);
+  const isMobile                = window.innerWidth < 480;
 
   const load = React.useCallback(async () => {
     try {
@@ -219,8 +220,13 @@ function NotificationBell({ userRole, compact = false }) {
     const h = (e) => {
       if (!e.target.closest('[data-notif-panel]') && !e.target.closest('[data-notif-btn]')) setOpen(false);
     };
+    // Support both mouse and touch close-on-outside
     document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    document.addEventListener('touchstart', h, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', h);
+      document.removeEventListener('touchstart', h);
+    };
   }, [open]);
 
   const displayed = tab === 'unread' ? notifs.filter(n => !n.read) : notifs;
@@ -233,10 +239,10 @@ function NotificationBell({ userRole, compact = false }) {
       {/* Detail drill-down modal */}
       {detail && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', zIndex: 10002, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
           onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
         >
-          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: isMobile ? '20px 20px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden', animation: isMobile ? 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'env(safe-area-inset-bottom,0px)' : 0 }}>
             {/* Modal header */}
             <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -287,16 +293,16 @@ function NotificationBell({ userRole, compact = false }) {
               </div>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexDirection: isMobile ? 'column' : 'row' }}>
                 <button
                   onClick={() => goToDetail(detail)}
-                  style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: isMobile ? '15px' : '11px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 700, fontSize: isMobile ? 16 : 14, cursor: 'pointer', minHeight: 48 }}
                 >
                   View Details →
                 </button>
                 <button
                   onClick={() => setDetail(null)}
-                  style={{ padding: '11px 18px', background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                  style={{ padding: isMobile ? '14px' : '11px 18px', background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 12, color: '#374151', fontWeight: 600, fontSize: isMobile ? 15 : 14, cursor: 'pointer', minHeight: 48 }}
                 >
                   Close
                 </button>
@@ -319,24 +325,50 @@ function NotificationBell({ userRole, compact = false }) {
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
-      {/* Notification panel */}
+      {/* Notification panel — bottom-sheet on mobile, floating panel on desktop */}
       {open && (
-        <div data-notif-panel="true" style={{
-          position: 'fixed', top: pos.top, left: pos.left, width: panelW,
-          maxHeight: 'min(520px, calc(100vh - 120px))',
-          background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
-          borderRadius: 16, zIndex: 9999,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}>
+        <>
+          {/* Mobile backdrop */}
+          {isMobile && (
+            <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.4)', backdropFilter: 'blur(2px)', zIndex: 9998 }} />
+          )}
+          <div data-notif-panel="true" style={
+            isMobile ? {
+              // Bottom-sheet on mobile
+              position: 'fixed', bottom: 0, left: 0, right: 0, width: '100%',
+              maxHeight: '85vh',
+              background: '#fff',
+              borderRadius: '20px 20px 0 0',
+              zIndex: 9999,
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              animation: 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            } : {
+              // Floating panel on desktop
+              position: 'fixed', top: pos.top, left: pos.left, width: panelW,
+              maxHeight: 'min(520px, calc(100vh - 120px))',
+              background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: 16, zIndex: 9999,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            }
+          }>
+          {/* Drag handle — mobile only */}
+          {isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} />
+            </div>
+          )}
+
           {/* Panel header */}
-          <div style={{ padding: '13px 16px 0', flexShrink: 0, borderBottom: '1px solid #F3F2F2' }}>
+          <div style={{ padding: isMobile ? '8px 16px 0' : '13px 16px 0', flexShrink: 0, borderBottom: '1px solid #F3F2F2' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ color: '#181818', fontWeight: 800, fontSize: 14 }}>
+              <span style={{ color: '#181818', fontWeight: 800, fontSize: isMobile ? 16 : 14 }}>
                 🔔 Notifications
-                {unread > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, marginLeft: 7, fontWeight: 700 }}>{unread} new</span>}
+                {unread > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 10, padding: '2px 8px', fontSize: 11, marginLeft: 7, fontWeight: 700 }}>{unread} new</span>}
               </span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: isMobile ? 12 : 8, alignItems: 'center' }}>
                 {userRole === 'super_admin' && (
                   <button
                     onClick={async () => {
@@ -344,19 +376,26 @@ function NotificationBell({ userRole, compact = false }) {
                       try { const f = await api.generatePlatformNotifications(); if (Array.isArray(f)) setNotifs(f); } catch {}
                       setLoading(false);
                     }}
-                    title="Refresh platform summary"
-                    style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, cursor: 'pointer', fontWeight: 600, padding: 0 }}
-                  >
-                    🔄 Refresh
+                    style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 12, cursor: 'pointer', fontWeight: 700, padding: '4px 8px', minHeight: 36 }}
+                  >🔄</button>
+                )}
+                {unread > 0 && (
+                  <button onClick={markAll}
+                    style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 12, cursor: 'pointer', fontWeight: 700, padding: '4px 8px', minHeight: 36, whiteSpace: 'nowrap' }}>
+                    ✓ Mark all
                   </button>
                 )}
-                {unread > 0 && <button onClick={markAll} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, cursor: 'pointer', fontWeight: 600, padding: 0 }}>Mark all read</button>}
-                <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>✕</button>
+                <button onClick={() => setOpen(false)}
+                  style={{ background: '#F3F4F6', border: 'none', color: '#374151', fontSize: 16, cursor: 'pointer', padding: 0, lineHeight: 1, width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  ✕
+                </button>
               </div>
             </div>
+            {/* Tab bar */}
             <div style={{ display: 'flex', gap: 0 }}>
               {['unread', 'all'].map(t => (
-                <button key={t} onClick={() => setTab(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: tab === t ? '#0176D3' : '#706E6B', fontWeight: tab === t ? 700 : 400, fontSize: 12, padding: '6px 14px 8px', borderBottom: tab === t ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -1, transition: 'all 0.15s' }}>
+                <button key={t} onClick={() => setTab(t)}
+                  style={{ flex: isMobile ? 1 : 'none', background: 'none', border: 'none', cursor: 'pointer', color: tab === t ? '#0176D3' : '#706E6B', fontWeight: tab === t ? 700 : 500, fontSize: isMobile ? 14 : 12, padding: isMobile ? '10px 0' : '6px 14px 8px', borderBottom: tab === t ? '2.5px solid #0176D3' : '2px solid transparent', marginBottom: -1, transition: 'all 0.15s', textAlign: 'center', minHeight: isMobile ? 44 : 'auto' }}>
                   {t === 'unread' ? `Unread${unread > 0 ? ` (${unread})` : ''}` : `All (${notifs.length})`}
                 </button>
               ))}
@@ -397,27 +436,33 @@ function NotificationBell({ userRole, compact = false }) {
                 <div
                   key={n.id || n._id}
                   onClick={() => openDetail(n)}
-                  style={{ padding: '11px 16px', borderBottom: '1px solid #F3F2F2', background: n.read ? '#FFFFFF' : 'rgba(1,118,211,0.05)', cursor: 'pointer', display: 'flex', gap: 11, alignItems: 'flex-start', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F8F9FA'}
-                  onMouseLeave={e => e.currentTarget.style.background = n.read ? '#FFFFFF' : 'rgba(1,118,211,0.05)'}
+                  style={{
+                    padding: isMobile ? '14px 16px' : '11px 16px',
+                    borderBottom: '1px solid #F3F2F2',
+                    background: n.read ? '#FFFFFF' : 'rgba(1,118,211,0.05)',
+                    cursor: 'pointer',
+                    display: 'flex', gap: 12, alignItems: 'flex-start',
+                    minHeight: isMobile ? 64 : 'auto',
+                    WebkitTapHighlightColor: 'rgba(1,118,211,0.08)',
+                  }}
                 >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: n.read ? '#F3F4F6' : 'rgba(1,118,211,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <div style={{ width: isMobile ? 42 : 36, height: isMobile ? 42 : 36, borderRadius: 12, background: n.read ? '#F3F4F6' : 'rgba(1,118,211,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 20 : 16, flexShrink: 0, marginTop: 1 }}>
                     {TYPE_ICONS[n.type] || '🔔'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
-                      <span style={{ color: n.read ? '#374151' : '#181818', fontSize: 12, fontWeight: n.read ? 500 : 700, lineHeight: 1.4, flex: 1 }}>{n.title}</span>
-                      {!n.read && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0176D3', flexShrink: 0, marginTop: 3 }} />}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>
+                      <span style={{ color: n.read ? '#374151' : '#181818', fontSize: isMobile ? 14 : 12, fontWeight: n.read ? 500 : 700, lineHeight: 1.4, flex: 1 }}>{n.title}</span>
+                      {!n.read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', flexShrink: 0, marginTop: 4 }} />}
                     </div>
                     {(n.body || n.message) && (
-                      <div style={{ color: '#6B7280', fontSize: 11, lineHeight: 1.5, marginBottom: 5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <div style={{ color: '#6B7280', fontSize: isMobile ? 13 : 11, lineHeight: 1.55, marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {n.body || n.message}
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: '#9CA3AF', fontSize: 10 }}>{timeAgo(n.createdAt)}</span>
-                      {n.type && <span style={{ color: '#0176D3', fontSize: 10, background: 'rgba(1,118,211,0.08)', borderRadius: 4, padding: '1px 6px', fontWeight: 600 }}>{TYPE_LABELS[n.type] || n.type}</span>}
-                      <span style={{ color: '#0176D3', fontSize: 10, marginLeft: 'auto' }}>View →</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#9CA3AF', fontSize: isMobile ? 12 : 10 }}>{timeAgo(n.createdAt)}</span>
+                      {n.type && <span style={{ color: '#0176D3', fontSize: isMobile ? 12 : 10, background: 'rgba(1,118,211,0.08)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>{TYPE_LABELS[n.type] || n.type}</span>}
+                      <span style={{ color: '#0176D3', fontSize: isMobile ? 12 : 10, marginLeft: 'auto', fontWeight: 700 }}>View →</span>
                     </div>
                   </div>
                 </div>
@@ -426,12 +471,16 @@ function NotificationBell({ userRole, compact = false }) {
           </div>
 
           {notifs.length > 0 && (
-            <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F2F2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#FAFAFA' }}>
-              <span style={{ color: '#9CA3AF', fontSize: 11 }}>{notifs.length} total · {unread} unread</span>
-              <button onClick={clearAll} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>Clear all</button>
+            <div style={{ padding: isMobile ? '12px 16px' : '10px 16px', borderTop: '1px solid #F3F2F2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#FAFAFA' }}>
+              <span style={{ color: '#9CA3AF', fontSize: isMobile ? 13 : 11 }}>{notifs.length} total · {unread} unread</span>
+              <button onClick={clearAll}
+                style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: isMobile ? 13 : 11, cursor: 'pointer', padding: isMobile ? '8px 12px' : '0', minHeight: isMobile ? 44 : 'auto' }}>
+                Clear all
+              </button>
             </div>
           )}
         </div>
+        </>
       )}
     </>
   );

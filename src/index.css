@@ -1142,6 +1142,7 @@ textarea:focus-visible {
 }
 
 @keyframes tn-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notifSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes tn-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
