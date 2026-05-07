@@ -115,18 +115,12 @@ export default function WorldMap({ height = 420 }) {
       </div>
 
       {loading && (
-        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 14, background: '#F8FAFC', borderRadius: 12 }}>
+        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 14, background: '#EFF6FF', borderRadius: 12, border: '1px solid #E2E8F0' }}>
           ⏳ Loading map data…
         </div>
       )}
 
-      {error && !loading && (
-        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 14, background: '#F8FAFC', borderRadius: 12 }}>
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && (
+      {!loading && (
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E2E8F0', background: '#EFF6FF' }}>
           <svg
             ref={svgRef}
@@ -161,10 +155,24 @@ export default function WorldMap({ height = 420 }) {
             })}
 
             {/* No-data message */}
-            {pins.length === 0 && (
-              <text x={W / 2} y={H / 2 + 4} textAnchor="middle" fontSize={14} fill="#94A3B8">
-                No location data yet — applications will appear here as candidates apply
-              </text>
+            {pins.length === 0 && !error && (
+              <>
+                <rect x={W/2 - 260} y={H/2 - 28} width={520} height={56} rx={10} fill="rgba(255,255,255,0.85)" />
+                <text x={W / 2} y={H / 2 - 6} textAnchor="middle" fontSize={13} fontWeight={700} fill="#0176D3">
+                  📍 Location tracking is active
+                </text>
+                <text x={W / 2} y={H / 2 + 14} textAnchor="middle" fontSize={11} fill="#64748B">
+                  Application pins will appear here as candidates submit with location permission
+                </text>
+              </>
+            )}
+            {error && (
+              <>
+                <rect x={W/2 - 180} y={H/2 - 20} width={360} height={40} rx={8} fill="rgba(255,255,255,0.9)" />
+                <text x={W / 2} y={H / 2 + 5} textAnchor="middle" fontSize={12} fill="#94A3B8">
+                  ⚠️ {error}
+                </text>
+              </>
             )}
 
             {/* Application pins */}
