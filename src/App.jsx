@@ -18,8 +18,11 @@ const HRMSPage = lazy(() => import('./pages/marketing/HRMSPage.jsx'));
 const ServiceDetailPage = lazy(() => import('./pages/marketing/ServiceDetailPage.jsx'));
 const BlogPage = lazy(() => import('./pages/marketing/BlogPage.jsx'));
 const BlogPostPage = lazy(() => import('./pages/marketing/BlogPostPage.jsx'));
-const CompaniesPage = lazy(() => import('./pages/marketing/CompaniesPage.jsx'));
-const ProductsPage  = lazy(() => import('./pages/marketing/ProductsPage.jsx'));
+const CompaniesPage      = lazy(() => import('./pages/marketing/CompaniesPage.jsx'));
+const ProductsPage       = lazy(() => import('./pages/marketing/ProductsPage.jsx'));
+const ProductHireBoard   = lazy(() => import('./pages/marketing/ProductHireBoard.jsx'));
+const ProductPeopleDesk  = lazy(() => import('./pages/marketing/ProductPeopleDesk.jsx'));
+const ProductJobTrack    = lazy(() => import('./pages/marketing/ProductJobTrack.jsx'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
@@ -441,7 +444,10 @@ export default function App() {
       <Route path="/services/:slug" element={<Suspense fallback={<PageLoader />}><ServiceDetailPage /></Suspense>} />
       <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactPage /></Suspense>} />
       <Route path="/hrms" element={<Suspense fallback={<PageLoader />}><HRMSPage /></Suspense>} />
-      <Route path="/products" element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
+      <Route path="/products"           element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
+      <Route path="/products/hireboard"  element={<Suspense fallback={<PageLoader />}><ProductHireBoard /></Suspense>} />
+      <Route path="/products/peopledesk" element={<Suspense fallback={<PageLoader />}><ProductPeopleDesk /></Suspense>} />
+      <Route path="/products/jobtrack"   element={<Suspense fallback={<PageLoader />}><ProductJobTrack /></Suspense>} />
       <Route path="/blog" element={<Suspense fallback={<PageLoader />}><BlogPage /></Suspense>} />
       <Route path="/blog/:slug" element={<Suspense fallback={<PageLoader />}><BlogPostPage /></Suspense>} />
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />

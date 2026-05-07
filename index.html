@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-  <!-- Primary SEO -->
-  <title>TalentNest HR | AI Staffing &amp; HRMS Platform India</title>
-  <meta name="description" content="India's leading AI-powered staffing and HRMS platform. Connect top IT, cybersecurity and executive talent with top companies. Smart hiring, fast delivery." />
-  <meta name="keywords" content="HR software India, staffing agency Hyderabad, recruitment platform, HRMS software, talent acquisition, candidate management, AI recruitment, job portal India" />
+  <!-- Primary SEO — accurate, keyword-rich, no false AI claims -->
+  <title>TalentNest HR | Recruitment Platform, Job Board &amp; HRMS Software — India</title>
+  <meta name="description" content="TalentNest HR is India's recruitment and hiring platform — job board for candidates, ATS pipeline for recruiters, HR management for admins. Find jobs, hire faster, manage teams in one place." />
+  <meta name="keywords" content="recruitment platform India, job board India, ATS software India, HR software Hyderabad, staffing platform, hiring pipeline, candidate tracking software, HRMS software India, IT staffing Hyderabad, job portal India, online recruitment tool, talent management platform, HR management system India" />
   <meta name="author" content="TalentNest HR" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://www.talentnesthr.com/" />
@@ -16,8 +16,8 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://www.talentnesthr.com/" />
-  <meta property="og:title" content="TalentNest HR | AI-Powered Staffing &amp; HRMS Platform" />
-  <meta property="og:description" content="India's leading AI-powered staffing and HRMS platform. Smart recruitment, candidate tracking, and HR management for modern teams in Hyderabad and across India." />
+  <meta property="og:title" content="TalentNest HR | Recruitment Platform, Job Board &amp; HRMS — India" />
+  <meta property="og:description" content="One platform for the entire hiring journey. Recruiters manage pipelines, HR teams run onboarding, and candidates track applications — all in TalentNest HR." />
   <meta property="og:image" content="https://www.talentnesthr.com/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -27,8 +27,8 @@
   <!-- Twitter/X Cards -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://www.talentnesthr.com/" />
-  <meta name="twitter:title" content="TalentNest HR | AI-Powered Staffing &amp; HRMS Platform" />
-  <meta name="twitter:description" content="India's leading AI-powered staffing and HRMS platform. Smart recruitment and HR management for modern teams." />
+  <meta name="twitter:title" content="TalentNest HR | Recruitment Platform &amp; Job Board India" />
+  <meta name="twitter:description" content="Recruitment pipeline for talent teams. HR management for admins. Job tracking for candidates. One platform, three products." />
   <meta name="twitter:image" content="https://www.talentnesthr.com/og-image.png" />
 
   <!-- Schema.org Organization Structured Data -->
@@ -39,7 +39,7 @@
     "name": "TalentNest HR",
     "url": "https://www.talentnesthr.com",
     "logo": "https://www.talentnesthr.com/favicon.svg",
-    "description": "India's leading AI-powered staffing and HRMS platform for modern recruitment teams.",
+    "description": "TalentNest HR is a recruitment and HR management platform for Indian companies — job board, ATS pipeline, HRMS, and candidate tracking in one place.",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Ganesh Nagar, Ameenpur",
@@ -62,7 +62,38 @@
     ],
     "foundingDate": "2024",
     "areaServed": "IN",
-    "serviceType": ["Staffing", "Recruitment", "HR Software", "HRMS"]
+    "serviceType": ["Recruitment Platform", "Job Board", "ATS Software", "HRMS", "IT Staffing", "HR Software"]
+  }
+  </script>
+
+  <!-- Schema.org SoftwareApplication — helps rank for SaaS/software queries -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TalentNest HR",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web, iOS, Android",
+    "url": "https://www.talentnesthr.com",
+    "description": "Recruitment pipeline management, job board, candidate tracking, offer letter generation, pre-boarding, and HRMS — all in one platform for Indian hiring teams.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "INR",
+      "description": "Free to get started"
+    },
+    "featureList": [
+      "Recruitment pipeline board (ATS)",
+      "Job board for candidates",
+      "Video interview rooms",
+      "Digital offer letter and e-signature",
+      "Pre-boarding document management",
+      "Background verification tracking",
+      "HR analytics dashboard",
+      "WhatsApp candidate notifications",
+      "HRMS — attendance and workforce management"
+    ],
+    "screenshot": "https://www.talentnesthr.com/og-image.png"
   }
   </script>
 
@@ -94,8 +125,7 @@
       "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
       "opens": "09:00",
       "closes": "18:00"
-    },
-    "priceRange": "$$"
+    }
   }
   </script>
 
@@ -135,7 +165,6 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { background: #F3F2F2; color: #181818; font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
     #root { min-height: 100vh; }
-    /* Loading screen shown until React hydrates */
     #tn-loading {
       position: fixed; inset: 0; background: #032D60; display: flex;
       flex-direction: column; align-items: center; justify-content: center;
@@ -163,30 +192,29 @@
       <div class="bar-wrap"><div class="bar"></div></div>
     </div>
     <div id="root"></div>
-    <!-- Static content for search engine and LLM crawlers — visually hidden, semantically present -->
+
+    <!-- Static content for search engine crawlers — visually hidden, semantically present -->
     <div id="tn-static-content" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
-      <h1>TalentNest HR — India's AI-Powered Staffing and HRMS Platform</h1>
-      <p>TalentNest HR connects the top 1% of IT, cybersecurity and executive talent with innovative organizations across India. AI-powered recruitment, candidate tracking, and HRMS platform — delivering pre-vetted talent in 48 hours.</p>
-      <h2>Our Staffing and Hiring Services</h2>
+      <h1>TalentNest HR — Recruitment Platform, Job Board &amp; HRMS Software India</h1>
+      <p>TalentNest HR is India's end-to-end hiring and HR management platform. Recruiters manage their pipeline from first application to signed offer. HR admins run analytics, pre-boarding, and document verification. Candidates browse jobs, track every application live, and sign offer letters digitally — all in one place.</p>
+      <h2>Three Products. One Platform.</h2>
       <ul>
-        <li>IT Staffing — Full-Stack, Cloud, DevOps, Data and ML Engineers</li>
-        <li>Cybersecurity Staffing — SOC Analysts, Penetration Testers, GRC Specialists, CISO Placement</li>
-        <li>Non-IT Staffing — Finance, HR, Sales and Executive Search</li>
-        <li>Contract to Hire (C2H) — Flexible trial periods with full payroll administration</li>
-        <li>Corp to Corp (C2C) — Contractor-based engagements for project staffing</li>
-        <li>Permanent Staffing — Direct full-time placement with 90-day replacement guarantee</li>
-        <li>HRMS Platform — AI attendance, access control, real-time HR dashboard</li>
+        <li>HireBoard — Recruitment pipeline for talent teams. Manage candidates, schedule interviews, extend offers, and track every stage from Applied to Hired.</li>
+        <li>PeopleDesk — HR management for admins and org managers. Analytics, job posting, pre-boarding, background verification, offer letters, and team management.</li>
+        <li>JobTrack — Job search and application tracking for candidates. Browse jobs, see your AI match score, track every application live, join video interviews, and sign your offer from your phone.</li>
       </ul>
-      <h2>How TalentNest HR Works</h2>
-      <ol>
-        <li>Discovery Call — We understand your hiring requirements in depth</li>
-        <li>Talent Sourcing — Our AI identifies pre-vetted candidates from our network</li>
-        <li>Shortlist Delivery — You receive a curated shortlist within 48 hours</li>
-        <li>Interview Coordination — We manage scheduling and candidate communication</li>
-        <li>Placement and Guarantee — Successful hire with a 90-day replacement guarantee</li>
-      </ol>
-      <h2>Why Choose TalentNest HR for Staffing</h2>
-      <p>We specialise in IT, cybersecurity and executive hiring across Hyderabad, Bangalore and major Indian cities. Our HRMS platform streamlines recruitment, candidate tracking and HR management for modern teams.</p>
+      <h2>Staffing Services</h2>
+      <ul>
+        <li>IT Staffing — Software engineers, cloud architects, DevOps, data scientists</li>
+        <li>Cybersecurity Staffing — SOC analysts, penetration testers, GRC specialists</li>
+        <li>Non-IT Staffing — Finance, HR, sales, and executive search</li>
+        <li>Contract to Hire (C2H) — Trial periods with full payroll administration</li>
+        <li>Corp to Corp (C2C) — B2B contractor placements</li>
+        <li>Permanent Staffing — Direct placement with 90-day replacement guarantee</li>
+        <li>HRMS Platform — Smart attendance, shift management, payroll inputs, compliance</li>
+      </ul>
+      <h2>Why TalentNest HR</h2>
+      <p>Unlike traditional job boards, TalentNest HR connects the entire hiring chain — the recruiter managing the pipeline, the HR admin running the org, and the candidate tracking their application — in one platform. Built for Indian companies. Based in Hyderabad, Telangana.</p>
       <address>
         TalentNest HR, Ganesh Nagar, Ameenpur, Hyderabad, Telangana 500049, India.
         Phone: +91 79955 35539. Email: hr@talentnesthr.com
@@ -194,7 +222,6 @@
     </div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Hide loading screen once React has rendered
       (function() {
         var done = false;
         function hide() {
@@ -202,13 +229,11 @@
           var el = document.getElementById('tn-loading');
           if (el) { el.style.opacity = '0'; setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 300); }
         }
-        // Use MutationObserver to detect when #root has content
         var root = document.getElementById('root');
         var observer = new MutationObserver(function() {
           if (root.children.length > 0) { hide(); observer.disconnect(); }
         });
         observer.observe(root, { childList: true });
-        // Failsafe: hide after 5 seconds regardless
         setTimeout(hide, 5000);
       })();
     </script>

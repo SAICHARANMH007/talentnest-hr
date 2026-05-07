@@ -520,11 +520,11 @@ export default function LandingPage() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20, marginBottom: 40 }}>
             {[
-              { emoji: '🎯', name: 'Scout', role: 'For Recruiters', desc: 'Pipeline, sourcing, interviews, and offers — one flow that moves fast.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)' },
-              { emoji: '🏢', name: 'Command', role: 'For HR Leaders', desc: 'Org-wide analytics, pre-boarding, digital offer letters — HR runs itself.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)' },
-              { emoji: '🚀', name: 'Launchpad', role: 'For Job Seekers', desc: 'Browse jobs, track applications in real time, sign offers from your phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)' },
+              { emoji: '🎯', name: 'HireBoard',  role: 'For Recruiters', desc: 'Pipeline board, AI match scores, video interviews, offer letters — one screen.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)', to: '/products/hireboard' },
+              { emoji: '🏢', name: 'PeopleDesk', role: 'For HR Admins',  desc: 'Analytics, pre-boarding, background verification, org career page — total control.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)', to: '/products/peopledesk' },
+              { emoji: '🚀', name: 'JobTrack',   role: 'For Job Seekers', desc: 'Browse jobs, track every application live, join interviews, sign offer from phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)', to: '/products/jobtrack' },
             ].map(p => (
-              <Link key={p.name} to="/products" className="mkt-reveal" style={{
+              <Link key={p.name} to={p.to} className="mkt-reveal" style={{
                 display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px',
                 background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)',
                 borderRadius: 16, textDecoration: 'none', transition: 'all 0.2s',

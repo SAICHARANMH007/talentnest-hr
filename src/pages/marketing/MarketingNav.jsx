@@ -15,11 +15,11 @@ const SERVICE_ITEMS = [
 ];
 
 const PRODUCT_ITEMS = [
-  { to: '/products', hash: '#scout',     icon: '🎯', title: 'Scout',     desc: 'For recruiters & talent teams' },
-  { to: '/products', hash: '#command',   icon: '🏢', title: 'Command',   desc: 'For HR leaders & org admins' },
-  { to: '/products', hash: '#launchpad', icon: '🚀', title: 'Launchpad', desc: 'For job seekers & candidates' },
-  { to: '/products', hash: '#job-board', icon: '📋', title: 'Job Board',  desc: 'Browse 100+ companies\' roles' },
-  { to: '/hrms',     hash: '',           icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce' },
+  { to: '/products/hireboard',  hash: '', icon: '🎯', title: 'HireBoard',  desc: 'Recruitment pipeline for talent teams' },
+  { to: '/products/peopledesk', hash: '', icon: '🏢', title: 'PeopleDesk', desc: 'HR control for admins & org managers' },
+  { to: '/products/jobtrack',   hash: '', icon: '🚀', title: 'JobTrack',   desc: 'Apply, track & sign offers — candidates' },
+  { to: '/careers',             hash: '', icon: '📋', title: 'Job Board',  desc: 'Browse jobs from all companies' },
+  { to: '/hrms',                hash: '', icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce management' },
 ];
 
 const NAV_LINKS = [
