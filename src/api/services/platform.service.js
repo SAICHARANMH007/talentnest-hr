@@ -143,7 +143,7 @@ export const platformService = {
   async sendBulkWhatsApp(recipients, messageTemplate) {
     return req('POST', '/whatsapp/bulk-send', { recipients, messageTemplate });
   },
-  async getWhatsAppLogs(page = 1, limit = 50) {
+  async getWhatsAppLogs(page = 1, limit = 200) {
     return req('GET', `/whatsapp/logs?page=${page}&limit=${limit}`);
   },
   async createWhatsAppSession(data)     { return req('POST', '/whatsapp/create-session', data); },

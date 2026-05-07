@@ -113,7 +113,7 @@ router.get('/hired-pending', authenticate, allowRoles('admin', 'super_admin', 'r
     .populate('candidateId', 'name email phone')
     .populate('jobId', 'title company companyName department')
     .sort({ updatedAt: -1 })
-    .limit(200)
+    .limit(10000)
     .lean();
 
   const existingAppIds = new Set(

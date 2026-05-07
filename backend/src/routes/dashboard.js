@@ -1842,7 +1842,7 @@ router.get('/sla-compliance', authenticate, allowRoles('admin', 'super_admin'), 
 // Each entry shows the merged candidate profile + all their applications grouped.
 router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const page   = Math.max(1, parseInt(req.query.page, 10)  || 1);
-  const limit  = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+  const limit  = Math.min(parseInt(req.query.limit, 10) || 100, 10000);
   const skip   = (page - 1) * limit;
   const search = String(req.query.search || '').trim().toLowerCase();
 

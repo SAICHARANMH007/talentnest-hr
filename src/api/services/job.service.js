@@ -5,12 +5,12 @@ export const jobService = {
     // Accepts either a plain recruiterId string (legacy) or an options object
     if (!recruiterIdOrOpts || typeof recruiterIdOrOpts === 'string') {
       const rid = recruiterIdOrOpts;
-      return req('GET', `/jobs?limit=50${rid ? `&recruiterId=${rid}` : ''}`);
+      return req('GET', `/jobs?limit=500${rid ? `&recruiterId=${rid}` : ''}`);
     }
     const { recruiterId, limit, page, status, search, platform } = recruiterIdOrOpts;
     const p = new URLSearchParams();
     if (recruiterId) p.set('recruiterId', recruiterId);
-    p.set('limit', String(limit || 50));
+    p.set('limit', String(limit || 500));
     if (page)        p.set('page',   String(page));
     if (status)      p.set('status', status);
     if (search)      p.set('search', search);

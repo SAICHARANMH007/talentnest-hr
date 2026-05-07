@@ -342,7 +342,7 @@ router.post('/create-session', auth, allowRoles('recruiter', 'admin', 'super_adm
 // ── GET /api/whatsapp/logs — WhatsApp message history for tenant ──────────────
 router.get('/logs', auth, allowRoles('recruiter', 'admin', 'super_admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 200 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const filter = { tenantId: req.user.tenantId };
 

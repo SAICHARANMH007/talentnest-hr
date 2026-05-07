@@ -99,7 +99,7 @@ router.get('/backup', auth, allowRoles('super_admin'), asyncHandler(async (req, 
 router.get('/audit-logs', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const AuditLog = require('../models/AuditLog');
   const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
-  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const limit = Math.min(50000, Math.max(1, parseInt(req.query.limit, 10) || 200));
   const skip  = (page - 1) * limit;
   const filter = {};
   if (req.query.action) filter.action   = { $regex: req.query.action, $options: 'i' };

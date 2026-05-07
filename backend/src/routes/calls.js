@@ -14,7 +14,7 @@ router.get('/thread/:userId', authenticate, asyncHandler(async (req, res) => {
       { fromUserId: myId,    toUserId: otherId },
       { fromUserId: otherId, toUserId: myId    },
     ],
-  }).sort({ startedAt: -1 }).limit(50).lean();
+  }).sort({ startedAt: -1 }).limit(500).lean();
   res.json({ success: true, data: records });
 }));
 
