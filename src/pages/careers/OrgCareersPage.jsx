@@ -196,41 +196,21 @@ export default function OrgCareersPage() {
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100vh', background: '#F7F8FC' }}>
       {applying && <ApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
 
-      {/* Header — hidden when embedded */}
-      {!embed && (
-        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '32px 24px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '24px 24px', pointerEvents: 'none' }} />
-          {org?.logoUrl && (
-            <img src={org.logoUrl} alt={org.name} style={{ height: 48, objectFit: 'contain', borderRadius: 10, background: '#fff', padding: '4px 10px', marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
-          )}
-          <h1 style={{ color: '#fff', fontSize: 'clamp(1.6rem,4vw,2.4rem)', fontWeight: 900, margin: '0 0 10px' }}>
-            {org?.name} — Open Positions
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: '0 0 28px' }}>
-            {jobs.length} role{jobs.length !== 1 ? 's' : ''} available • Apply directly below
-          </p>
-          {/* Search */}
-          <div style={{ maxWidth: 520, margin: '0 auto', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 16 }}>🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles, skills…"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '14px 18px 14px 44px', borderRadius: 12, border: 'none', fontSize: 14, outline: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }} />
-          </div>
+      {/* Minimal top bar — same layout in both standalone and embed mode */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: embed ? '12px 16px' : '14px 20px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+        {org?.logoUrl && (
+          <img src={org.logoUrl} alt={org.name} style={{ height: 32, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }} />
+        )}
+        <div style={{ flexShrink: 0 }}>
+          <span style={{ fontWeight: 800, color: '#032D60', fontSize: 15 }}>{org?.name}</span>
+          <span style={{ color: '#94A3B8', fontSize: 12, marginLeft: 8 }}>{jobs.length} open role{jobs.length !== 1 ? 's' : ''}</span>
         </div>
-      )}
-
-      {/* Compact search header for embedded mode */}
-      {embed && (
-        <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '14px 20px', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {org?.logoUrl && <img src={org.logoUrl} alt={org.name} style={{ height: 28, borderRadius: 6, objectFit: 'contain' }} />}
-          <span style={{ fontWeight: 800, color: '#032D60', fontSize: 14 }}>{org?.name}</span>
-          <span style={{ color: '#64748B', fontSize: 12, marginLeft: 4 }}>({jobs.length} roles)</span>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>🔍</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles…"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px 8px 28px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 12, outline: 'none' }} />
-          </div>
+        <div style={{ flex: 1, minWidth: 140, position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#94A3B8' }}>🔍</span>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles, skills…"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none', background: '#F8FAFC', WebkitAppearance: 'none' }} />
         </div>
-      )}
+      </div>
 
       {/* Filter pills */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 20px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', overflowX: 'auto' }}>
@@ -351,12 +331,7 @@ export default function OrgCareersPage() {
         )}
       </div>
 
-      {/* Footer credit (only in standalone mode) */}
-      {!embed && (
-        <div style={{ textAlign: 'center', padding: '24px', color: '#94A3B8', fontSize: 12 }}>
-          Powered by <a href="https://www.talentnesthr.com" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'none' }}>TalentNest HR</a>
-        </div>
-      )}
+      {/* No footer — clean white-label page for companies */}
     </div>
   );
 }

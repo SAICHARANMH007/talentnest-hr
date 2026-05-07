@@ -456,7 +456,13 @@ export default function AdminJobs({ user }) {
               </button>
             )}
             <button
-              onClick={() => setListingOrg(user?.tenantId ? { id: user.tenantId, name: user.orgName || user.organisation || 'My Org', slug: user.orgSlug || '' } : { id: 'super_admin_select', name: 'Select Organisation' })}
+              onClick={() => setListingOrg(
+                user?.role === 'super_admin'
+                  ? { id: 'super_admin_select', name: 'Select Organisation' }
+                  : user?.tenantId
+                    ? { id: user.tenantId, name: user.orgName || user.organisation || 'My Org', slug: user.orgSlug || '' }
+                    : { id: 'super_admin_select', name: 'Select Organisation' }
+              )}
               title="Manage which jobs appear on your public career page"
               style={{ background:'linear-gradient(135deg,#059669,#047857)', border:'none', borderRadius:8, color:'#fff', fontWeight:700, fontSize:12, padding:'8px 14px', cursor:'pointer' }}>
               🌐 Listing
