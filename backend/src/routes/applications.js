@@ -139,46 +139,49 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   if (!email?.trim()) throw new AppError('Email is required.', 400);
   const emailLower = email.toLowerCase().trim();
 
-  // Check User collection first (registered candidates)
+  // SECURITY: never return phone/email/sensitive data to unauthenticated callers.
+  // A random visitor entering someone else's email must not get their private details.
+  // Only non-sensitive professional fields are returned.
+  // hasPhone = boolean tells the UI "this account has a phone on file" without revealing it.
+
+  const User = require('../models/User');
   const user = await User.findOne({ email: emailLower, role: 'candidate', deletedAt: null })
-    .select('name email phone title currentCompany experience availability skills location linkedinUrl summary').lean();
+    .select('name phone title currentCompany experience availability').lean();
 
   if (user) {
     return res.json({
       success: true,
       exists: true,
+      isRegisteredUser: true,
+      hasPhone: !!(user.phone && user.phone.trim()),
       profile: {
+        // Only safe, non-sensitive professional fields
         name:           user.name           || '',
-        email:          user.email          || '',
-        phone:          user.phone          || '',
         title:          user.title          || '',
         currentCompany: user.currentCompany || '',
         experience:     user.experience     != null ? String(user.experience) : '',
         availability:   user.availability   || '',
-        skills:         Array.isArray(user.skills) ? user.skills.join(', ') : (user.skills || ''),
-        location:       user.location       || '',
+        // phone intentionally omitted — never expose to unauthenticated callers
       },
     });
   }
 
-  // Fallback: check Candidate collection (added by recruiter, no account yet)
+  // Fallback: check Candidate collection (recruiter-added, no account yet)
   const candidate = await Candidate.findOne({ email: emailLower, deletedAt: null })
-    .select('name email phone title currentCompany experience availability skills location').lean();
+    .select('name phone title currentCompany experience availability').lean();
 
   if (candidate) {
     return res.json({
       success: true,
       exists: true,
+      isRegisteredUser: false,
+      hasPhone: !!(candidate.phone && candidate.phone.trim()),
       profile: {
         name:           candidate.name           || '',
-        email:          candidate.email          || '',
-        phone:          candidate.phone          || '',
         title:          candidate.title          || '',
         currentCompany: candidate.currentCompany || '',
         experience:     candidate.experience     != null ? String(candidate.experience) : '',
         availability:   candidate.availability   || '',
-        skills:         Array.isArray(candidate.skills) ? candidate.skills.join(', ') : (candidate.skills || ''),
-        location:       candidate.location       || '',
       },
     });
   }
