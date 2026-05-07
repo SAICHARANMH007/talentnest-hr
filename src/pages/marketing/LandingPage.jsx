@@ -348,8 +348,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Live Jobs Panel */}
-          <div className="mkt-reveal-delayed" style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480, width: '100%', margin: '0 auto' }}>
+          {/* Right — Live Jobs Panel — min-height reserves space to prevent CLS when jobs load */}
+          <div className="mkt-reveal-delayed" style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480, width: '100%', margin: '0 auto', minHeight: 320 }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
