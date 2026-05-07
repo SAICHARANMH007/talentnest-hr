@@ -31,7 +31,7 @@ export default function AdminJobs({ user }) {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [assigningJob, setAssigningJob] = useState(null);
-  const [assignTab, setAssignTab]       = useState('recruiter'); // 'recruiter' | 'candidates'
+  const [assignTab, setAssignTab]       = useState('recruiter');
   const [recruiterUsers, setRecruiterUsers] = useState([]);
   const [candidateUsers, setCandidateUsers] = useState([]);
   const [assigningLoading, setAssigningLoading] = useState(false);
@@ -42,39 +42,67 @@ export default function AdminJobs({ user }) {
   const [appSearch, setAppSearch] = useState('');
   const [drawerCandidate, setDrawerCandidate] = useState(null);
   const [selectedJobIds, setSelectedJobIds] = useState([]);
-  const [mergeReview, setMergeReview] = useState(null); // { groups: { primary, dupes, candCount }[] }
+  const [mergeReview, setMergeReview] = useState(null);
   const [merging, setMerging] = useState(false);
   const [applicantsJob, setApplicantsJob] = useState(null);
   const [assessmentJob, setAssessmentJob] = useState(null);
+  // True counts from backend (not limited by page size)
   const [totalJobs, setTotalJobs] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({ open: 0, closed: 0, draft: 0, total: 0 });
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [editingJob, setEditingJob] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [listingOrg, setListingOrg] = useState(null);
   const navigate = useNavigate();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
-  const load = () => {
+
+  const load = (pg = page) => {
     setLoad(true);
-    // Super Admin sees everything across the platform
-    api.getJobs({ limit: 1000, platform: user?.role === 'super_admin' })
+    const params = {
+      limit: PAGE_SIZE,
+      page: pg,
+      platform: user?.role === 'super_admin',
+    };
+    if (statusFilter !== 'All') params.status = statusFilter === 'Open' ? 'active' : statusFilter.toLowerCase();
+    if (search) params.search = search;
+
+    api.getJobs(params)
       .then(r => {
         const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+        const pagination = r?.pagination || {};
         const map = new Map();
-        raw.forEach(item => {
-          const job = normalizeJob(item);
-          if (job.id) map.set(job.id, job);
-        });
+        raw.forEach(item => { const job = normalizeJob(item); if (job.id) map.set(job.id, job); });
         setJobs(Array.from(map.values()));
-        setTotalJobs(raw.length);
+        setTotalJobs(pagination.total || raw.length);
       })
       .catch(() => setJobs([]))
       .finally(() => setLoad(false));
+
+    // Fetch accurate status counts in parallel (no limit — just countDocuments)
+    const isSA = user?.role === 'super_admin';
+    Promise.all([
+      api.getJobs({ limit: 1, page: 1, platform: isSA, status: 'active' }),
+      api.getJobs({ limit: 1, page: 1, platform: isSA, status: 'closed' }),
+      api.getJobs({ limit: 1, page: 1, platform: isSA, status: 'draft' }),
+      api.getJobs({ limit: 1, page: 1, platform: isSA }),
+    ]).then(([open, closed, draft, all]) => {
+      setStatusCounts({
+        open:   open?.pagination?.total  || 0,
+        closed: closed?.pagination?.total || 0,
+        draft:  draft?.pagination?.total  || 0,
+        total:  all?.pagination?.total    || 0,
+      });
+    }).catch(() => {});
   };
+
   useEffect(() => {
-    load();
+    setPage(1);
+    load(1);
     api.getUsers('recruiter').then(u => setRecruiterUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setRecruiterUsers([]));
     api.getUsers('candidate').then(u => setCandidateUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setCandidateUsers([]));
-  }, []);
+  }, [statusFilter, search]);
 
   const saveJob = async (form) => {
     if (!form.title || !form.company) { setToast('❌ Title and company are required'); return; }
@@ -443,16 +471,16 @@ export default function AdminJobs({ user }) {
             <h1 style={{ color:'#181818', fontSize:22, fontWeight:800, margin:0 }}>All Job Postings</h1>
             <div style={{ display:'flex', gap:16, marginTop:6, flexWrap:'wrap' }}>
               {[
-                { label:'Open', value: jobs.filter(j=>j.status==='active'||j.status==='Open').length, color:'#2E844A', bg:'rgba(46,132,74,0.08)' },
-                { label:'Closed', value: jobs.filter(j=>j.status==='closed'||j.status==='Closed').length, color:'#BA0517', bg:'rgba(186,5,23,0.08)' },
-                { label:'Draft', value: jobs.filter(j=>j.status==='draft').length, color:'#A07E00', bg:'rgba(160,126,0,0.08)' },
-                { label:'Total', value: jobs.length, color:'#0176D3', bg:'rgba(1,118,211,0.08)' },
+                { label:'Open',   value: statusCounts.open,   color:'#2E844A', bg:'rgba(46,132,74,0.08)' },
+                { label:'Closed', value: statusCounts.closed, color:'#BA0517', bg:'rgba(186,5,23,0.08)' },
+                { label:'Draft',  value: statusCounts.draft,  color:'#A07E00', bg:'rgba(160,126,0,0.08)' },
+                { label:'Total',  value: statusCounts.total,  color:'#0176D3', bg:'rgba(1,118,211,0.08)' },
               ].map(s => (
                 <span key={s.label} style={{ background:s.bg, color:s.color, fontWeight:700, fontSize:12, padding:'3px 10px', borderRadius:20 }}>
                   {s.label}: {s.value}
                 </span>
               ))}
-              {hasFilters && <span style={{ color:'#706E6B', fontSize:12, fontWeight:600 }}>Showing {filtered.length} filtered</span>}
+              {hasFilters && <span style={{ color:'#706E6B', fontSize:12, fontWeight:600 }}>Showing {totalJobs} matched</span>}
             </div>
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -574,11 +602,29 @@ export default function AdminJobs({ user }) {
               </div>
             </div>
           ))}
-          {jobs.length === 0 && (
+          {jobs.length === 0 && !loading && (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#706E6B' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>💼</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#3E3E3C' }}>No jobs posted yet</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>Recruiters can post jobs from their dashboard</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#3E3E3C' }}>No jobs found</div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>Try adjusting your filters or search term</div>
+            </div>
+          )}
+          {/* ── Pagination Controls ── */}
+          {totalJobs > PAGE_SIZE && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, marginTop:20, padding:'16px 0' }}>
+              <button
+                disabled={page <= 1}
+                onClick={() => { const p = page - 1; setPage(p); load(p); }}
+                style={{ padding:'8px 20px', borderRadius:8, border:'1.5px solid #E2E8F0', background: page <= 1 ? '#F3F2F2' : '#fff', color: page <= 1 ? '#9E9D9B' : '#0176D3', fontWeight:700, fontSize:13, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+              >← Prev</button>
+              <span style={{ fontSize:13, color:'#706E6B', fontWeight:600 }}>
+                Page {page} of {Math.ceil(totalJobs / PAGE_SIZE)} &nbsp;·&nbsp; {totalJobs} total jobs
+              </span>
+              <button
+                disabled={page >= Math.ceil(totalJobs / PAGE_SIZE)}
+                onClick={() => { const p = page + 1; setPage(p); load(p); }}
+                style={{ padding:'8px 20px', borderRadius:8, border:'1.5px solid #E2E8F0', background: page >= Math.ceil(totalJobs / PAGE_SIZE) ? '#F3F2F2' : '#fff', color: page >= Math.ceil(totalJobs / PAGE_SIZE) ? '#9E9D9B' : '#0176D3', fontWeight:700, fontSize:13, cursor: page >= Math.ceil(totalJobs / PAGE_SIZE) ? 'not-allowed' : 'pointer' }}
+              >Next →</button>
             </div>
           )}
         </div>
