@@ -9,7 +9,12 @@ const RING_DURATION = 30000;
 // ── Video tile ────────────────────────────────────────────────────────────────
 function VideoTile({ stream, name, muted = false, style = {} }) {
   const ref = useRef(null);
-  useEffect(() => { if (ref.current && stream) ref.current.srcObject = stream; }, [stream]);
+  useEffect(() => {
+    if (!ref.current || !stream) return;
+    ref.current.srcObject = stream;
+    // Explicit play() call to bypass autoplay policy blocks
+    ref.current.play().catch(() => {});
+  }, [stream]);
   const initials = (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   return (
     <div style={{ position: 'relative', background: '#0F172A', borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', ...style }}>
@@ -113,64 +118,46 @@ export default function CallManager({ user }) {
     }
   }, [callState, unlockAudio]);
 
-  // ── Attach remote audio with watchdog ──────────────────────────────────────
+  // ── Attach remote audio ────────────────────────────────────────────────────
+  // Uses only the HTML5 <audio> element — do NOT also route via AudioContext as
+  // that causes duplicate audio sources (both playing simultaneously) which results
+  // in the browser silencing both or causing distortion/echo.
   const attachRemoteAudio = useCallback((stream) => {
     const el = remoteAudioRef.current;
-    if (!el) {
-      console.warn('[WebRTC] Audio element not found during attachment — will retry via watchdog');
-      return;
-    }
+    if (!el) return;
 
     const isVideo = callInfoRef.current?.callType === 'video';
     if (isVideo) {
-      // For video calls, <VideoTile> handles playing the stream (both video & audio).
-      // If we attach it here too, the browser will try to play it twice, causing echo/silence.
-      if (el.srcObject) el.srcObject = null;
+      // VideoTile's <video> element handles both video AND audio for video calls.
+      // Clear the audio element to avoid playing audio twice (echo/silence).
+      if (el.srcObject) { el.srcObject = null; }
       return;
     }
 
+    // Audio-only call: route through the hidden <audio> element
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
 
-
-    el.volume = 1;
-
-    // Restore the AudioContext routing that was working previously!
-    // This forcibly routes the WebRTC audio track to the system's default audio destination,
-    // bypassing strict HTML5 <audio> autoplay restrictions on some browsers.
-    try {
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      
-      // Connect the stream directly to the speakers
-      const source = ctx.createMediaStreamSource(stream);
-      source.connect(ctx.destination);
-      console.log('[WebRTC] Successfully routed audio via AudioContext');
-    } catch (err) {
-      console.warn('[WebRTC] AudioContext routing failed:', err);
-    }
-
     const tryPlay = () => {
       const p = el.play();
-      if (p && p.catch) {
+      if (p?.catch) {
         p.catch((err) => {
-          console.warn('[Call] audio.play() blocked:', err.name);
-          setTimeout(() => {
-            if (el.srcObject) el.play().catch(() => { });
-          }, 800);
+          console.warn('[Call] audio.play() blocked:', err.name, '— retrying after AudioContext resume');
+          // Resume AudioContext (if suspended by autoplay policy) then retry
+          const ctx = audioCtxRef.current;
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().then(() => el.play().catch(() => {})).catch(() => {});
+          } else {
+            setTimeout(() => { if (el.srcObject) el.play().catch(() => {}); }, 600);
+          }
         });
       }
     };
 
     tryPlay();
-
-    stream?.getAudioTracks().forEach(track => {
-      track.onunmute = () => tryPlay();
-    });
+    // Re-try whenever an audio track unmutes (e.g. after network recovery)
+    stream?.getAudioTracks().forEach(track => { track.onunmute = tryPlay; });
   }, []);
 
   // ── Reactive Watchdog ──────────────────────────────────────────────────────

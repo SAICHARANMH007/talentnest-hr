@@ -107,28 +107,66 @@ export default function AdminCandidateRequest({ user }) {
             <button onClick={() => setShowForm(true)} style={btnP}>+ Submit First Request</button>
           </div>
         ) : (
-          <table style={S.table}>
-            <thead><tr>{['Role','Urgency','Budget','Status','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-            <tbody>
-              {requests.map(r => (
-                <tr key={r.id || r._id}>
-                  <td style={S.td}>
-                    <div style={{ fontWeight: 600 }}>{r.roleTitle}</div>
-                    {r.requirements && <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>{r.requirements.slice(0,80)}{r.requirements.length > 80 ? '…' : ''}</div>}
-                    {r.adminNotes && <div style={{ fontSize: 11, color: '#0176D3', marginTop: 4 }}>📝 {r.adminNotes}</div>}
-                  </td>
-                  <td style={S.td}><Badge label={r.urgency} color={S.urgencyColors[r.urgency] || '#706E6B'} /></td>
-                  <td style={S.td}>{r.budget || '—'}</td>
-                  <td style={S.td}><Badge label={(r.status || 'pending').replace('_', ' ')} color={S.statusColors[r.status] || '#706E6B'} /></td>
-                  <td style={S.td}>
-                    {r.status === 'pending' && (
-                      <button onClick={() => handleCancel(r.id || r._id)} style={btnD}>Cancel</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {requests.map(r => {
+              const hasCandidates = Array.isArray(r.submittedCandidates) && r.submittedCandidates.length > 0;
+              return (
+                <div key={r.id || r._id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+                  {/* Request header */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 20px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#0A1628' }}>{r.roleTitle}</div>
+                      {r.requirements && <div style={{ fontSize: 12, color: '#706E6B', marginTop: 3, lineHeight: 1.5 }}>{r.requirements.slice(0,120)}{r.requirements.length > 120 ? '…' : ''}</div>}
+                      {r.adminNotes && <div style={{ fontSize: 12, color: '#0176D3', marginTop: 6, background: 'rgba(1,118,211,0.07)', borderRadius: 6, padding: '4px 10px', display: 'inline-block' }}>📝 {r.adminNotes}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+                      <Badge label={r.urgency} color={S.urgencyColors[r.urgency] || '#706E6B'} />
+                      <Badge label={(r.status || 'pending').replace('_', ' ')} color={S.statusColors[r.status] || '#706E6B'} />
+                      {r.budget && <span style={{ fontSize: 12, color: '#64748B' }}>💰 {r.budget}</span>}
+                      {r.status === 'pending' && (
+                        <button onClick={() => handleCancel(r.id || r._id)} style={{ ...btnD, padding: '5px 12px', fontSize: 12 }}>Cancel</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Submitted candidates section — shown when TalentNest has assigned candidates */}
+                  {hasCandidates && (
+                    <div style={{ borderTop: '1px solid #F1F5F9', background: '#F8FAFF', padding: '14px 20px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#059669', marginBottom: 10, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                        👥 {r.submittedCandidates.length} Candidate{r.submittedCandidates.length !== 1 ? 's' : ''} Submitted by TalentNest
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {r.submittedCandidates.map(c => {
+                          const cid = c.id || c._id?.toString();
+                          return (
+                            <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderRadius: 10, padding: '10px 14px', border: '1px solid #E2E8F0' }}>
+                              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                                {(c.name || '?')[0].toUpperCase()}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{c.name}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>
+                                  {c.title && `${c.title} · `}{c.email || ''}{c.phone ? ` · 📞 ${c.phone}` : ''}
+                                  {c.experience ? ` · ${c.experience}y exp` : ''}
+                                </div>
+                                {c.skills?.length > 0 && (
+                                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                                    {c.skills.slice(0, 4).map(s => (
+                                      <span key={s} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20 }}>{s}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

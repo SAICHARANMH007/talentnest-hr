@@ -302,24 +302,35 @@ export default function AdminJobs({ user }) {
                   <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                     {filtApps.map(a => {
                       const cand = a.candidateId || a.candidate;
+                      const candId = cand?.id || cand?._id?.toString() || String(a.candidateId || '');
                       const candName = cand?.name || a.candidateName || 'Candidate';
                       const s = SM[a.stage] || { color:'#706E6B', label: a.stage || 'Applied' };
+                      // Build a full candidate object the drawer can use (fetches rest internally)
+                      const openDrawer = () => {
+                        if (!candId) return;
+                        const c = { role:'candidate', ...(cand || {}), id: candId, _partial: true };
+                        setDrawerCandidate(c);
+                      };
                       return (
-                        <div key={a.id||a._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#F8FAFF', border:'1px solid rgba(1,118,211,0.12)', borderRadius:14 }}>
+                        <div key={a.id||a._id}
+                          onClick={openDrawer}
+                          style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'#F8FAFF', border:'1px solid rgba(1,118,211,0.12)', borderRadius:14, cursor: candId ? 'pointer' : 'default', transition:'box-shadow 0.15s' }}
+                          onMouseEnter={e => { if(candId) e.currentTarget.style.boxShadow='0 4px 16px rgba(1,118,211,0.12)'; }}
+                          onMouseLeave={e => e.currentTarget.style.boxShadow='none'}>
                           {/* Avatar */}
                           <div style={{ width:44, height:44, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:17, flexShrink:0 }}>
                             {(candName[0] || '?').toUpperCase()}
                           </div>
                           {/* Info */}
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:700, fontSize:14, color:'#181818', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
+                            <div style={{ fontWeight:700, fontSize:14, color:'#0176D3', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{candName}</div>
                             <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{cand?.email || a.candidateEmail || 'No email provided'}</div>
                             {(cand?.phone || a.candidatePhone || a.phone) ? (
                               <div style={{ fontSize:11, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {cand?.phone || a.candidatePhone || a.phone}</div>
                             ) : null}
                           </div>
                           {/* Stage badge/selector */}
-                          <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
+                          <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }} onClick={e => e.stopPropagation()}>
                             <select
                               value={a.stage || 'Applied'}
                               onChange={async (e) => {
@@ -327,40 +338,27 @@ export default function AdminJobs({ user }) {
                                 try {
                                   await api.updateStage(a.id || a._id, newStage);
                                   setToast('✅ Stage updated successfully');
-                                  // Update local state
                                   setApplicantsJob(prev => ({
                                     ...prev,
                                     apps: prev.apps.map(ap => (ap.id || ap._id) === (a.id || a._id) ? { ...ap, stage: newStage } : ap)
                                   }));
-                                  // Also update main jobs list counts if necessary, though a reload might be better
-                                  load(); 
+                                  load();
                                 } catch (err) {
                                   setToast(`❌ Failed to update stage: ${err.message}`);
                                 }
                               }}
-                              style={{
-                                background: `${s.color}12`,
-                                color: s.color,
-                                border: `1px solid ${s.color}40`,
-                                borderRadius: 10,
-                                padding: '4px 10px',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                outline: 'none'
-                              }}
-                            >
+                              style={{ background:`${s.color}12`, color:s.color, border:`1px solid ${s.color}40`, borderRadius:10, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', outline:'none' }}>
                               {SM ? Object.values(SM).map(st => (
                                 <option key={st.id} value={st.id}>{st.label}</option>
                               )) : (
-                                ['applied', 'screening', 'shortlisted', 'interview_scheduled', 'interview_completed', 'offer_extended', 'selected', 'rejected'].map(st => (
-                                  <option key={st} value={st}>{st.replace('_', ' ').charAt(0).toUpperCase() + st.replace('_', ' ').slice(1)}</option>
+                                ['applied','screening','shortlisted','interview_scheduled','interview_completed','offer_extended','selected','rejected'].map(st => (
+                                  <option key={st} value={st}>{st.replace('_',' ').charAt(0).toUpperCase()+st.replace('_',' ').slice(1)}</option>
                                 ))
                               )}
                             </select>
                             <div style={{ display:'flex', gap:6 }}>
-                              <button onClick={() => { const c = cand ? { role:'candidate', ...cand, id: cand.id||cand._id?.toString() } : null; if(c) setDrawerCandidate(c); }} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>✏️ Edit</button>
-                              <button onClick={() => { const cid = cand?.id||cand?._id?.toString(); if(cid) navigate(`/app/resume/${cid}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
+                              <button onClick={openDrawer} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>👤 Profile</button>
+                              <button onClick={() => { if(candId) navigate(`/app/resume/${candId}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
                             </div>
                           </div>
                         </div>
