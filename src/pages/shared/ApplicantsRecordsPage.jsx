@@ -452,12 +452,22 @@ export default function ApplicantsRecordsPage({ user }) {
                           <button
                             onClick={() => {
                               const cid = r.candidateId || r.userId;
-                              if (cid) { import('react-router-dom').then(m => m.useNavigate); window.open(`/app/resume/${cid}`, '_blank'); }
+                              if (cid) window.open(`/app/resume/${cid}`, '_blank');
                               else if (r.resumeUrl) window.open(r.resumeUrl, '_blank');
                             }}
                             style={{ ...btnG, padding: '6px 12px', fontSize: 12 }}>
                             📋 Resume
                           </button>
+                        )}
+                        {r.appliedFromLat && r.appliedFromLng && (
+                          <a
+                            href={`https://www.google.com/maps?q=${r.appliedFromLat},${r.appliedFromLng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Applied from: ${r.appliedFromCity || r.appliedFromLat + ',' + r.appliedFromLng}`}
+                            style={{ ...btnG, padding: '6px 12px', fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#059669', borderColor: '#059669' }}>
+                            📍 Location
+                          </a>
                         )}
                       </div>
                     </td>

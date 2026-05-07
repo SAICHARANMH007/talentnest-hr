@@ -3,6 +3,11 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
+import MarketingNav from '../marketing/MarketingNav.jsx';
+import MarketingFooter from '../marketing/MarketingFooter.jsx';
+
+// Slug that identifies TalentNest HR's own org — gets full marketing header/footer
+const MAIN_ORG_SLUG = 'talentnesthr';
 
 // ── Urgency config ────────────────────────────────────────────────────────────
 const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
@@ -142,6 +147,8 @@ export default function OrgCareersPage() {
   const { orgSlug } = useParams();
   const [searchParams] = useSearchParams();
   const embed = searchParams.get('embed') === '1'; // when embedded as iframe
+  // TalentNest HR's own career page gets full Marketing nav + footer
+  const isMainOrg = orgSlug === MAIN_ORG_SLUG;
 
   const [org, setOrg]         = useState(null);
   const [jobs, setJobs]       = useState([]);
@@ -196,8 +203,32 @@ export default function OrgCareersPage() {
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100vh', background: '#F7F8FC' }}>
       {applying && <ApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
 
-      {/* Minimal top bar — same layout in both standalone and embed mode */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: embed ? '12px 16px' : '14px 20px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+      {/* Full Marketing nav — only for TalentNest HR's own career page */}
+      {isMainOrg && !embed && <MarketingNav active="careers" />}
+
+      {/* TalentNest HR hero header — full-width branded section */}
+      {isMainOrg && !embed && (
+        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: 'clamp(64px,8vw,100px) clamp(16px,5vw,60px) 48px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px', pointerEvents: 'none' }} />
+          {org?.logoUrl && (
+            <img src={org.logoUrl} alt={org.name} style={{ height: 52, objectFit: 'contain', borderRadius: 12, background: '#fff', padding: '6px 14px', display: 'block', margin: '0 auto 20px' }} />
+          )}
+          <h1 style={{ color: '#fff', fontSize: 'clamp(1.8rem,4.5vw,2.8rem)', fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.03em' }}>
+            {org?.name} — Open Positions
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15, margin: '0 0 28px' }}>
+            {jobs.length} open role{jobs.length !== 1 ? 's' : ''} · Apply directly below
+          </p>
+          <div style={{ maxWidth: 520, margin: '0 auto', position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 16 }}>🔍</span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles, skills…"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '14px 18px 14px 44px', borderRadius: 14, border: 'none', fontSize: 15, outline: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', WebkitAppearance: 'none' }} />
+          </div>
+        </div>
+      )}
+
+      {/* Minimal top bar — shown for external orgs; hidden for TalentNest HR (uses MarketingNav) and for embedded mode */}
+      {!(isMainOrg && !embed) && <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: embed ? '12px 16px' : '14px 20px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
         {org?.logoUrl && (
           <img src={org.logoUrl} alt={org.name} style={{ height: 32, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }} />
         )}
@@ -210,7 +241,7 @@ export default function OrgCareersPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles, skills…"
             style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none', background: '#F8FAFC', WebkitAppearance: 'none' }} />
         </div>
-      </div>
+      </div>}
 
       {/* Filter pills */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 20px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', overflowX: 'auto' }}>
@@ -331,7 +362,8 @@ export default function OrgCareersPage() {
         )}
       </div>
 
-      {/* No footer — clean white-label page for companies */}
+      {/* Full Marketing footer — only for TalentNest HR's own career page */}
+      {isMainOrg && !embed && <MarketingFooter />}
     </div>
   );
 }

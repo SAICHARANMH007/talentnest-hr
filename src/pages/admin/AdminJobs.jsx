@@ -356,9 +356,18 @@ export default function AdminJobs({ user }) {
                                 ))
                               )}
                             </select>
-                            <div style={{ display:'flex', gap:6 }}>
+                            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                               <button onClick={openDrawer} style={{ ...btnP, padding:'5px 10px', fontSize:11 }}>👤 Profile</button>
                               <button onClick={() => { if(candId) navigate(`/app/resume/${candId}`); }} style={{ ...btnG, padding:'5px 10px', fontSize:11 }}>📋 Resume</button>
+                              {a.appliedFrom?.lat && a.appliedFrom?.lng && (
+                                <a href={`https://www.google.com/maps?q=${a.appliedFrom.lat},${a.appliedFrom.lng}`}
+                                  target="_blank" rel="noopener noreferrer"
+                                  title={`Applied from: ${a.appliedFrom.city || a.appliedFrom.lat+','+a.appliedFrom.lng}`}
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ ...btnG, padding:'5px 10px', fontSize:11, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:3, color:'#059669', borderColor:'#059669' }}>
+                                  📍
+                                </a>
+                              )}
                             </div>
                           </div>
                         </div>
