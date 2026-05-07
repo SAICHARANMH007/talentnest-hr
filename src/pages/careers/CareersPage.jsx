@@ -435,15 +435,35 @@ export default function CareersPage() {
   const [brand, setBrand] = useState(null); // { name, logoUrl, brandColor }
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [urgencyFilter, setUrgencyFilter] = useState('All');
-  const [locationFilter, setLocationFilter] = useState('All');
-  const [applying, setApplying] = useState(null);
-  const [totalJobs, setTotalJobs] = useState(0);
-  const [toast, setToast] = useState('');
-  const [viewingJob, setViewingJob] = useState(null); // job whose JSON-LD is injected
   const initialCompanyFilter = searchParams.get('company') || '';
   const initialSearch = searchParams.get('search') || '';
+  
+  const [search, setSearch] = useState(initialCompanyFilter || initialSearch || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(initialCompanyFilter || initialSearch || '');
+  const [urgencyFilter, setUrgencyFilter] = useState('All');
+  const [locationFilter, setLocationFilter] = useState('All');
+  
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const [applying, setApplying] = useState(null);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [stats, setStats] = useState({ urgent: 0, companies: 0 });
+  const [toast, setToast] = useState('');
+  const [viewingJob, setViewingJob] = useState(null); // job whose JSON-LD is injected
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [urgencyFilter, locationFilter]);
 
   // Phase 3 — Google for Jobs JSON-LD: inject/remove on active job view
   useEffect(() => {
@@ -492,69 +512,82 @@ export default function CareersPage() {
         .then(r => { if (r.success) setBrand(r.data); })
         .catch(() => {});
     }
-    const qs = companySlug ? `?slug=${companySlug}` : '';
-    api.getPublicJobs(qs)
+  }, [companySlug]);
+
+  useEffect(() => {
+    let active = true;
+    if (page === 1) setLoading(true);
+    else setLoadingMore(true);
+
+    const params = new URLSearchParams();
+    if (companySlug) params.append('slug', companySlug);
+    if (debouncedSearch) params.append('search', debouncedSearch);
+    if (urgencyFilter !== 'All') params.append('urgency', urgencyFilter);
+    if (locationFilter !== 'All') params.append('location', locationFilter);
+    params.append('page', page);
+    params.append('limit', 20);
+
+    api.getPublicJobs('?' + params.toString())
       .then(res => {
+        if (!active) return;
         const arr = Array.isArray(res) ? res : (res?.data || []);
-        setJobs(arr);
-        setTotalJobs(res?.pagination?.total || arr.length);
+        
+        setJobs(prev => page === 1 ? arr : [...prev, ...arr]);
+        setTotalJobs(res?.pagination?.total || (page === 1 ? arr.length : totalJobs));
+        if (res?.stats) setStats(res.stats);
+        setHasMore(res?.pagination?.hasNext || arr.length === 20);
 
         // ── Inject JSON-LD for Googlebot's JS indexer ──────────────────────
-        // Remove any previously injected job JSON-LD tags first
-        document.querySelectorAll('script[data-tn-job-ld]').forEach(el => el.remove());
-        const BASE = window.location.origin;
-        arr.slice(0, 50).forEach(j => {
-          const company = j.companyName || j.company || 'TalentNest HR';
-          const remote  = (j.location || '').toLowerCase().includes('remote');
-          const ld = {
-            '@context': 'https://schema.org',
-            '@type':    'JobPosting',
-            title:       j.title,
-            description: j.description || `${j.title} opening at ${company}.`,
-            datePosted:  j.createdAt || new Date().toISOString(),
-            validThrough: new Date(Date.now() + 60 * 864e5).toISOString(),
-            hiringOrganization: { '@type': 'Organization', name: company, sameAs: BASE },
-            employmentType: 'FULL_TIME',
-            jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: j.location || 'India', addressCountry: 'IN' } },
-            url: j.canonicalUrl || `${BASE}/careers/job/${j.seoSlug || j._id || j.id}`,
-            directApply: true,
-            ...(remote ? { jobLocationType: 'TELECOMMUTE' } : {}),
-            ...(j.skills?.length ? { skills: j.skills.join(', ') } : {}),
-            ...(j.salaryMin || j.salaryMax ? { baseSalary: { '@type': 'MonetaryAmount', currency: j.salaryCurrency || 'INR', value: { '@type': 'QuantitativeValue', unitText: 'YEAR', ...(j.salaryMin ? { minValue: j.salaryMin } : {}), ...(j.salaryMax ? { maxValue: j.salaryMax } : {}) } } } : {}),
-          };
-          const tag = document.createElement('script');
-          tag.type = 'application/ld+json';
-          tag.setAttribute('data-tn-job-ld', j._id || j.id);
-          tag.textContent = JSON.stringify(ld);
-          document.head.appendChild(tag);
-        });
+        if (page === 1) {
+          document.querySelectorAll('script[data-tn-job-ld]').forEach(el => el.remove());
+          const BASE = window.location.origin;
+          arr.slice(0, 50).forEach(j => {
+            const company = j.companyName || j.company || 'TalentNest HR';
+            const remote  = (j.location || '').toLowerCase().includes('remote');
+            const ld = {
+              '@context': 'https://schema.org',
+              '@type':    'JobPosting',
+              title:       j.title,
+              description: j.description || `${j.title} opening at ${company}.`,
+              datePosted:  j.createdAt || new Date().toISOString(),
+              validThrough: new Date(Date.now() + 60 * 864e5).toISOString(),
+              hiringOrganization: { '@type': 'Organization', name: company, sameAs: BASE },
+              employmentType: 'FULL_TIME',
+              jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: j.location || 'India', addressCountry: 'IN' } },
+              url: j.canonicalUrl || `${BASE}/careers/job/${j.seoSlug || j._id || j.id}`,
+              directApply: true,
+              ...(remote ? { jobLocationType: 'TELECOMMUTE' } : {}),
+              ...(j.skills?.length ? { skills: j.skills.join(', ') } : {}),
+              ...(j.salaryMin || j.salaryMax ? { baseSalary: { '@type': 'MonetaryAmount', currency: j.salaryCurrency || 'INR', value: { '@type': 'QuantitativeValue', unitText: 'YEAR', ...(j.salaryMin ? { minValue: j.salaryMin } : {}), ...(j.salaryMax ? { maxValue: j.salaryMax } : {}) } } } : {}),
+            };
+            const tag = document.createElement('script');
+            tag.type = 'application/ld+json';
+            tag.setAttribute('data-tn-job-ld', j._id || j.id);
+            tag.textContent = JSON.stringify(ld);
+            document.head.appendChild(tag);
+          });
 
-        // Auto-open job from invite link (?job=<id>)
-        const jobParam = searchParams.get('job');
-        if (jobParam) {
-          const found = arr.find(j => String(j._id || j.id) === jobParam);
-          if (found) setApplying(found);
-        }
-        if (!jobParam && initialCompanyFilter) {
-          setSearch(initialCompanyFilter);
-        } else if (initialSearch) {
-          setSearch(initialSearch);
+          // Auto-open job from invite link (?job=<id>)
+          const jobParam = searchParams.get('job');
+          if (jobParam) {
+            const found = arr.find(j => String(j._id || j.id) === jobParam);
+            if (found) setApplying(found);
+          }
         }
       })
-      .catch(() => setToast('❌ Could not load jobs.'))
-      .finally(() => setLoading(false));
-  }, [companySlug, initialCompanyFilter, initialSearch, searchParams]);
+      .catch(() => {
+        if (active) setToast('❌ Could not load jobs.');
+      })
+      .finally(() => {
+        if (active) { setLoading(false); setLoadingMore(false); }
+      });
+  }, [companySlug, debouncedSearch, urgencyFilter, locationFilter, page, searchParams]);
 
-  const locations = ['All', ...new Set(jobs.map(j => j.location).filter(Boolean))];
+  const baseLocs = ['Delhi NCR', 'Bangalore', 'Mumbai', 'Kolkata', 'Hyderabad', 'Pune', 'Chennai', 'Noida', 'Gurgaon', 'Ahmedabad', 'Bhubaneswar', 'Kochi', 'Remote', 'Hybrid'];
+  const fetchedLocs = jobs.map(j => j.location).filter(Boolean);
+  const locations = ['All', ...new Set([...baseLocs, ...fetchedLocs])];
 
-  const filtered = jobs.filter(j => {
-    const q = search.toLowerCase();
-    const skillsStr = Array.isArray(j.skills) ? j.skills.join(',') : (j.skills || '');
-    const matchSearch = !q || (j.title||'').toLowerCase().includes(q) || (j.company||'').toLowerCase().includes(q) || skillsStr.toLowerCase().includes(q);
-    const matchUrgency = urgencyFilter === 'All' || j.urgency === urgencyFilter;
-    const matchLocation = locationFilter === 'All' || j.location === locationFilter;
-    return matchSearch && matchUrgency && matchLocation;
-  });
+  const filtered = jobs;
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100vh', background: '#F7F8FC' }}>
@@ -612,8 +645,8 @@ export default function CareersPage() {
               <div className="tn-mobile-center-flex" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
                 {[
                   { icon: '💼', num: totalJobs, label: 'Open Roles' },
-                  { icon: '⚡', num: (Array.isArray(jobs) ? jobs : []).filter(j => j.urgency === 'High').length, label: 'Urgent Hiring' },
-                  { icon: '🏢', num: new Set((Array.isArray(jobs) ? jobs : []).map(j => j.company)).size, label: 'Companies' },
+                  { icon: '⚡', num: stats.urgent || (Array.isArray(jobs) ? jobs : []).filter(j => j.urgency === 'High').length, label: 'Urgent Hiring' },
+                  { icon: '🏢', num: stats.companies || new Set((Array.isArray(jobs) ? jobs : []).map(j => j.company)).size, label: 'Companies' },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#00C2CB' }}>{s.num}</div>
@@ -797,6 +830,18 @@ export default function CareersPage() {
                     </div>
                   </div>
                 ))}
+
+                {hasMore && (
+                  <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 24 }}>
+                    <button 
+                      onClick={() => setPage(p => p + 1)} 
+                      disabled={loadingMore}
+                      style={{ background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 50, padding: '12px 32px', color: '#0176D3', fontWeight: 700, fontSize: 14, cursor: loadingMore ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: loadingMore ? 0.7 : 1, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                    >
+                      {loadingMore ? 'Loading...' : 'Load More Jobs ↓'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

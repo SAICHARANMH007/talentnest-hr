@@ -46,7 +46,7 @@ const guard = [authMiddleware, tenantGuard];
 
 // ── PUBLIC ────────────────────────────────────────────────────────────────────
 router.get('/public', asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req, { limit: 200 });
+  const { page, limit, skip } = getPagination(req, { limit: parseInt(req.query.limit) || 20 });
   const filter = { status: 'active', deletedAt: null };
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;
@@ -55,11 +55,25 @@ router.get('/public', asyncHandler(async (req, res) => {
     const org = await Organization.findOne({ slug: req.query.orgSlug }).select('_id').lean();
     if (org) filter.tenantId = org._id;
   }
-  const [jobs, total] = await Promise.all([
+  if (req.query.search) {
+    const sr = { $regex: escRe(req.query.search), $options: 'i' };
+    filter.$or = [{ title: sr }, { company: sr }, { companyName: sr }, { skills: sr }];
+  }
+  if (req.query.urgency && req.query.urgency !== 'All') {
+    filter.urgency = req.query.urgency;
+  }
+  if (req.query.location && req.query.location !== 'All') {
+    filter.location = req.query.location;
+  }
+  const [jobs, total, urgentCount, uniqueCompanies] = await Promise.all([
     Job.find(filter).populate('assignedRecruiters', 'name id _id').select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Job.countDocuments(filter),
+    Job.countDocuments({ ...filter, urgency: 'High' }),
+    Job.distinct('company', filter),
   ]);
-  res.json(paginatedResponse(jobs.map(normalizeJob), total, limit, page));
+  const resp = paginatedResponse(jobs.map(normalizeJob), total, limit, page);
+  resp.stats = { urgent: urgentCount, companies: uniqueCompanies.length };
+  res.json(resp);
 }));
 
 // ── PRIVATE ───────────────────────────────────────────────────────────────────
