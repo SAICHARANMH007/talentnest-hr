@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- TalentNest HR — Jobs Sitemap -->
-<!-- This file is auto-referenced from sitemap.xml -->
-<!-- Individual job pages are at /careers/job/{slug} -->
-<!-- This static file covers the main careers page; individual job URLs are injected dynamically by CareersPage -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+<!-- Individual job URLs: /careers/job/{careerPageSlug} -->
+<!-- All 2100+ jobs have isPublic=true and their own canonical URL -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <!-- Main Job Board -->
   <url>
@@ -17,7 +15,7 @@
   <url>
     <loc>https://www.talentnesthr.com/talentnesthr/careers</loc>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <priority>0.95</priority>
   </url>
   <url>
     <loc>https://www.talentnesthr.com/nusummit/careers</loc>
@@ -30,4 +28,33 @@
     <priority>0.9</priority>
   </url>
 
+  <!--
+    Individual job detail pages use the canonical URL pattern:
+    https://www.talentnesthr.com/careers/job/{careerPageSlug}
+
+    Example slugs from seeded jobs:
+    tn-senior-full-stack-developer-bangalore
+    tn-junior-data-scientist-delhi-ncr
+    tn-senior-cardiologist-mumbai
+    tn-junior-investment-banker-hyderabad
+
+    These are dynamically indexed by Google for Jobs, NaukriBot,
+    IndeedBot, and LinkedInBot via JSON-LD JobPosting schema
+    injected by JobDetailPage.jsx on each page load.
+
+    To generate a static sitemap of all individual job URLs,
+    run: GET /api/jobs/public?limit=5000 and extract canonicalUrl values.
+  -->
+
+  <!-- Representative sample of job detail URLs for crawler discovery -->
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-senior-full-stack-developer-delhi-ncr</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-junior-full-stack-developer-bangalore</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-senior-data-scientist-mumbai</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-junior-ai-research-engineer-kolkata</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-senior-devops-engineer-hyderabad</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-junior-cybersecurity-ethical-hacker-pune</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-senior-investment-banker-chennai</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-junior-registered-nurse-noida</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-senior-mechanical-engineer-gurgaon</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://www.talentnesthr.com/careers/job/tn-junior-marketing-seo-sem-specialist-ahmedabad</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
 </urlset>

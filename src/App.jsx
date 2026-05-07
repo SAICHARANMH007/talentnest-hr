@@ -9,7 +9,8 @@ const MeetingRoom      = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
 const JobDistribution  = lazy(() => import('./pages/admin/JobDistribution.jsx'));
 const AuthScreen = lazy(() => import('./pages/auth/AuthScreen.jsx'));
 const SetPasswordPage = lazy(() => import('./pages/auth/SetPasswordPage.jsx'));
-const CareersPage = lazy(() => import('./pages/careers/CareersPage.jsx'));
+const CareersPage    = lazy(() => import('./pages/careers/CareersPage.jsx'));
+const JobDetailPage  = lazy(() => import('./pages/careers/JobDetailPage.jsx'));
 const LandingPage = lazy(() => import('./pages/marketing/LandingPage.jsx'));
 const AboutPage = lazy(() => import('./pages/marketing/AboutPage.jsx'));
 const ServicesPage = lazy(() => import('./pages/marketing/ServicesPage.jsx'));
@@ -457,6 +458,8 @@ export default function App() {
       {/* ── Public job board + Companies ── */}
       <Route path="/meeting/:roomToken" element={<Suspense fallback={<PageLoader />}><MeetingRoom /></Suspense>} />
       <Route path="/careers" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
+      {/* Individual job detail — canonical URL for Google for Jobs / NaukriBot */}
+      <Route path="/careers/job/:slug" element={<Suspense fallback={<PageLoader />}><JobDetailPage /></Suspense>} />
       <Route path="/careers/:companySlug" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/companies" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
       <Route path="/invite/:token" element={<Suspense fallback={<PageLoader />}><InviteResponsePage /></Suspense>} />
