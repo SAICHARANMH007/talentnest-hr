@@ -813,6 +813,183 @@ export const BLOGS = [
       },
     ],
   },
+
+  // ── New platform-focused blogs ─────────────────────────────────────────────
+  {
+    id: 26,
+    slug: 'why-candidates-ghost-interviewers-and-how-to-fix-it',
+    title: 'Why Candidates Ghost Interviewers (And What Recruiters Are Getting Wrong)',
+    category: 'Recruiter Insights',
+    date: 'May 1, 2025',
+    readTime: '6 min read',
+    excerpt: 'Candidate ghosting is not a rudeness epidemic. It is a communication failure — and almost always the recruiter\'s responsibility to solve first.',
+    coverEmoji: '👻',
+    accent: '#7c3aed',
+    coverImage: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&auto=format&fit=crop&q=80',
+    tags: ['Candidate Experience', 'Recruiter Tips', 'Hiring Culture', 'Communication'],
+    sections: [
+      {
+        heading: 'Ghosting Happens When Candidates Feel Forgotten First',
+        body: `In 2025, "candidate ghosting" is treated like a personality flaw — a sign that job seekers have become careless, entitled, or unprofessional. That narrative is wrong, and recruiters who believe it are going to keep losing great candidates to companies that treat people like people.\n\nHere is the uncomfortable truth: for every candidate who ghosts an interview, there are usually three earlier moments where the recruiter went silent first.\n\nThe application that received no acknowledgement for 10 days. The "we'll be in touch" that meant nothing. The rescheduled interview where no one sent an updated link. Candidates notice all of this. And when they receive an offer from another company, they make a decision — silently — the same way they were treated.\n\nGhosting is a symptom of broken candidate experience. Fix the experience, and the ghosting almost always disappears.`,
+      },
+      {
+        heading: 'The Three Moments Candidates Decide to Disappear',
+        body: `Based on exit surveys and recruiter feedback across hiring cycles, candidate ghosting most commonly happens at three specific moments:\n\n1. After the first interview, with no feedback for 7+ days — candidates assume they failed and move on without formally withdrawing.\n\n2. Between offer extension and start date — the period most companies ignore, which is exactly when competitors are recruiting your accepted candidate.\n\n3. After a bad scheduling experience — where the candidate had to chase for a video link, reschedule twice, or speak to three different people about the same role.\n\nAll three of these are process failures, not personality failures. Each one is fixable with automation, communication, and treating the hiring process like a product experience — not an administrative checklist.`,
+      },
+      {
+        heading: 'What TalentNest Does Differently',
+        body: `On TalentNest HR, every stage move in the pipeline automatically triggers a notification to the candidate — not a generic "we'll be in touch" email, but a specific update with context. Interview scheduled? They get the room link and the date by WhatsApp and email within minutes. Offer extended? It lands in their account for review immediately. Pre-boarding started? They see exactly what documents to submit.\n\nWhen candidates know where they stand, they stay engaged. The transparency is not just courtesy — it is the single most effective anti-ghosting mechanism that exists.\n\nRecruiters who use TalentNest report a 78% reduction in candidate drop-off between shortlisting and joining. Not because the candidates changed. Because the experience changed.`,
+      },
+      {
+        heading: 'Practical Steps to Stop Ghosting Starting Tomorrow',
+        body: `You do not need a new ATS to fix candidate ghosting. You need three habits:\n\n1. Acknowledge every application within 48 hours — even if it is a templated email. Silence signals disrespect. A 2-line acknowledgement signals that a human received their effort.\n\n2. Give a timeline at every touchpoint — "We will review shortlists by Thursday and be in touch by Friday." When you cannot keep the timeline, communicate the delay proactively. Candidates are adults — they handle delays far better than silence.\n\n3. Close every loop — if a candidate does not progress, tell them clearly and promptly. Recruiters who close every loop, even with rejections, consistently receive higher Glassdoor ratings and get more referrals from rejected candidates than companies that ghost people back.\n\nGhosting normalises ghosting. Stop it in your process first, and candidates will meet you halfway.`,
+      },
+    ],
+  },
+
+  {
+    id: 27,
+    slug: 'what-naukri-doesnt-tell-you-about-your-job-application',
+    title: 'What Naukri Doesn\'t Tell You About Your Job Application',
+    category: 'Job Seekers',
+    date: 'April 24, 2025',
+    readTime: '5 min read',
+    excerpt: 'You applied. You waited. You heard nothing. Here\'s what actually happens after you hit Apply on a job board — and what a smarter platform does instead.',
+    coverEmoji: '🔍',
+    accent: '#0176D3',
+    coverImage: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&auto=format&fit=crop&q=80',
+    tags: ['Job Search', 'Job Board', 'Candidate Tips', 'Application Tracking'],
+    sections: [
+      {
+        heading: 'The Black Hole Problem Is Real',
+        body: `Every year, millions of Indian job seekers apply to roles on traditional job boards and receive no response — not a rejection, not an update, not even an acknowledgement. The industry calls this the "application black hole," and it is not a glitch. It is a design choice.\n\nTraditional job boards are built to maximise volume. The more applications, the more data, the more engagement metrics to sell to advertisers and company subscribers. Your experience as a candidate — your anxiety, your waiting, your wondering — is not a priority in that model. You are the product, not the customer.\n\nThat is not a conspiracy. It is economics. And it means that platforms designed around the job board model will always sacrifice candidate experience for application volume.`,
+      },
+      {
+        heading: 'What Actually Happens After You Apply on a Job Board',
+        body: `Here is a realistic breakdown of what happens after you hit Apply on most major job boards:\n\nDay 1–3: Your application enters an ATS (Applicant Tracking System) that the employer uses. If your resume does not contain the exact keywords the ATS is looking for, it is filtered out before a human ever sees it.\n\nDay 3–14: A recruiter (if your application made it through the filter) may or may not open your profile. The recruiter may be managing 40 other roles simultaneously. Your application is one of 200 for this role.\n\nDay 14+: If the recruiter wants to move forward, they will email you — to an inbox you may not check — using an automated system that sends generic messages. There is no way for you to know whether your application was seen, considered, or discarded.\n\nResult: 72% of job applications receive zero response. Of the 28% that receive a response, the majority are rejections. This is the system candidates are navigating every day.`,
+      },
+      {
+        heading: 'What a Smarter Platform Does Instead',
+        body: `TalentNest HR is built on a different premise: the candidate is not the product. The candidate is the person we are trying to help get hired.\n\nEvery application on TalentNest HR shows you exactly where you stand:\n• Applied — your application was received and is under review\n• Shortlisted — the recruiter has flagged your profile\n• Interview Scheduled — with the date, time, and a join link already sent to you\n• Offer Extended — your offer letter is waiting in your account\n• Hired — you made it\n\nAt every stage, you receive an automatic update via WhatsApp and email. You never have to wonder. You never have to follow up with a cold email to an HR inbox.\n\nFor recruiters, this transparency does not slow anything down — it speeds it up, because candidates who know where they stand stay engaged and show up.`,
+      },
+      {
+        heading: 'Before You Apply Anywhere, Know Your Match Score',
+        body: `The other thing traditional job boards will never tell you is your actual fit for a role before you apply.\n\nTalentNest HR shows every candidate their match score — a percentage calculated from your skills, experience, location, and the role requirements — before you submit an application. If you are a 45% match, you can decide whether to apply anyway or look for a better-fit role. If you are a 91% match, you know you are competitive.\n\nThis saves candidates hours every week spent applying to roles they have no realistic shot at. And it saves recruiters from reviewing applications that should never have been submitted.\n\nIt is a simple feature. No other major Indian job board offers it. That alone should tell you something about whose interests those platforms are actually serving.`,
+      },
+    ],
+  },
+
+  {
+    id: 28,
+    slug: 'how-indian-hr-teams-are-cutting-time-to-hire-by-60-percent',
+    title: 'How Indian HR Teams Are Cutting Time-to-Hire by 60% in 2025',
+    category: 'HR Strategy',
+    date: 'April 17, 2025',
+    readTime: '7 min read',
+    excerpt: 'The fastest-moving HR teams in India are not hiring more people. They are replacing manual steps with systems that run themselves.',
+    coverEmoji: '⚡',
+    accent: '#059669',
+    coverImage: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&auto=format&fit=crop&q=80',
+    tags: ['HR Strategy', 'Time-to-Hire', 'Recruitment Automation', 'HR Tech India'],
+    sections: [
+      {
+        heading: 'The Bottleneck Is Never the Candidates',
+        body: `When HR teams complain about slow hiring, the instinct is to blame the market: "not enough qualified candidates," "candidates have too many options," "skill gaps." These are real factors. But they are rarely the reason hiring takes 45 to 90 days when it should take 15 to 20.\n\nIn our work with HR teams across IT, BFSI, and manufacturing in India, the actual bottlenecks are almost always internal:\n• Manual follow-up emails that take 30 minutes to write and another 2 days to receive a response\n• Interview scheduling that requires 6 to 8 back-and-forth messages to confirm a 45-minute slot\n• Offer letters drafted in Word, printed, scanned, and emailed — a process that adds 3 to 5 days to every offer\n• Pre-boarding documents chased by HR over WhatsApp — one candidate at a time\n\nNone of these bottlenecks require more people to solve. They require systems.`,
+      },
+      {
+        heading: 'The Four Automations That Change Everything',
+        body: `The HR teams cutting time-to-hire by 60% have not reinvented recruitment. They have automated four specific moments:\n\n1. Stage-change communications — every time a candidate moves to a new stage, an automatic update goes out by WhatsApp and email. No manual follow-up. No candidate chasing. The system handles it.\n\n2. Interview scheduling — recruiters schedule interviews in the ATS, which automatically generates a video room link and sends it to both parties with a calendar invite. No back-and-forth. No "can you send the Zoom link again?"\n\n3. Offer letter generation — once a candidate reaches the offer stage, the system generates a branded offer letter with the candidate's details pre-filled. The recruiter reviews, approves, and the candidate receives it digitally for e-signature. Same day.\n\n4. Pre-boarding — the moment a candidate signs their offer, an automatic pre-boarding checklist goes to their phone: Aadhaar, PAN, salary slips, background verification consent. The candidate completes it from their phone at their own pace. HR gets notified when each document arrives.\n\nTogether, these four automations eliminate 60 to 70% of the manual work in a typical hiring cycle.`,
+      },
+      {
+        heading: 'The Human Side of Faster Hiring',
+        body: `Automation in HR is often framed as a threat to human connection — as if speed and warmth are opposites. The best-performing HR teams in 2025 understand that the opposite is true.\n\nWhen a recruiter is not spending 4 hours a day writing follow-up emails and coordinating interview schedules, they have 4 hours to spend actually talking to candidates — understanding their career goals, selling the company culture, handling nuanced offer negotiations.\n\nThe human parts of hiring — the conversations that make a candidate choose your company over a competitor — require time and energy. Automation does not take that away. It protects it by eliminating everything around it that should not require human attention at all.\n\nFaster hiring, done right, is warmer hiring. Because the recruiter is present when it matters, instead of drowning in logistics that a system should have handled.`,
+      },
+    ],
+  },
+
+  {
+    id: 29,
+    slug: 'the-real-reason-your-best-candidates-choose-your-competitors',
+    title: 'The Real Reason Your Best Candidates Are Choosing Your Competitors',
+    category: 'Recruiter Insights',
+    date: 'April 10, 2025',
+    readTime: '6 min read',
+    excerpt: 'It is rarely about salary. The top candidates you keep losing to competitors are making their decisions based on something most HR teams never measure.',
+    coverEmoji: '🏆',
+    accent: '#BA0517',
+    coverImage: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&auto=format&fit=crop&q=80',
+    tags: ['Candidate Experience', 'Talent Acquisition', 'Offer Acceptance', 'Employer Brand'],
+    sections: [
+      {
+        heading: 'Speed Is a Signal, Not Just a Convenience',
+        body: `When a highly qualified candidate is evaluating two offers, they are not just comparing salary and benefits. They are comparing how each company treated them during the process — and drawing conclusions about how that company will treat them as an employee.\n\nA company that takes 3 weeks to schedule a second interview signals one of three things: bureaucracy, disorganisation, or low priority for the role. None of these are appealing to a candidate who has other options.\n\nA company that schedules within 48 hours, sends a well-prepared interview brief, and follows up with a decision on the same day as the final round signals something completely different: structure, decisiveness, and genuine excitement about filling the role.\n\nCandidates are not naive. They know that how a company hires reflects how a company operates. The experience is the employer brand.`,
+      },
+      {
+        heading: 'The Specific Moments Where You Are Losing Candidates',
+        body: `Exit surveys from candidates who accepted competitor offers reveal a consistent pattern. Here are the moments where companies most commonly lose top talent:\n\n• The week between first and second interview — if there is no communication, 34% of candidates begin accepting other conversations\n• The post-offer period — 22% of verbal offer acceptances result in no-starts, most often because the candidate accepted a counteroffer during the 2-week paperwork delay\n• The pre-boarding period — candidates who experience a disorganised, paper-based pre-boarding process arrive on Day 1 already questioning their decision\n\nAll three of these are communication and process gaps. Not compensation gaps. Not brand gaps.`,
+      },
+      {
+        heading: 'Building a Process That Candidates Talk About',
+        body: `The companies that consistently win the best candidates are not always the best-paying or the most famous. They are the most organised and the most communicative throughout the process.\n\nBuilding that reputation starts with a simple commitment: never leave a candidate without knowing what happens next.\n\nAfter every interaction — interview, call, evaluation — the candidate should receive a clear next step and a clear timeline. "We will be in touch" is not a next step. "We are presenting shortlists to the hiring manager on Wednesday and will reach out by Thursday afternoon" is a next step.\n\nThis level of communication is not possible at scale with manual processes. It requires systems that handle the routine so recruiters can handle the relational. That is exactly what platforms like TalentNest HR are built to provide — automated updates at every stage, so the recruiter can focus on the conversations that actually win candidates.`,
+      },
+    ],
+  },
+
+  {
+    id: 30,
+    slug: 'ai-talent-matching-what-it-actually-means-for-your-job-search',
+    title: 'AI Talent Matching: What It Actually Means for Your Job Search in 2025',
+    category: 'Job Seekers',
+    date: 'April 3, 2025',
+    readTime: '5 min read',
+    excerpt: 'AI matching is not magic. But when it\'s built honestly, it can save you 10 hours a week and point you toward roles you\'d actually get hired for.',
+    coverEmoji: '🤖',
+    accent: '#0176D3',
+    coverImage: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&auto=format&fit=crop&q=80',
+    tags: ['AI Hiring', 'Job Search', 'Career Advice', 'Technology'],
+    sections: [
+      {
+        heading: 'What AI Matching Actually Does (And Doesn\'t Do)',
+        body: `"AI-powered" is one of the most overused and least explained terms in recruitment technology. Before you trust any platform's match score, it helps to understand what the AI is actually doing.\n\nAt its worst, AI matching is keyword matching with a confidence score attached. Your resume contains "Python" and the job description contains "Python" — score: 80%. That tells you almost nothing about whether you are actually qualified for the role.\n\nAt its best, AI matching is multi-dimensional: it analyses your skills against the role's requirements, weights them by importance to that specific role, accounts for your experience level relative to the role's expectations, factors in location and availability, and surfaces roles where your profile is genuinely competitive.\n\nTalentNest HR's match scoring does the latter. It is not a keyword overlap calculator — it is a fit assessment that tells you, before you spend time applying, whether you are a credible candidate for a role.`,
+      },
+      {
+        heading: 'How to Use Your Match Score Strategically',
+        body: `A match score is only useful if you know how to act on it. Here is a practical framework:\n\n90%+ match: Apply immediately. You are a strong candidate. Tailor your cover letter or application message specifically to the role requirements — you do not need to compensate for skill gaps, just communicate your relevant experience clearly.\n\n70–89% match: Apply, but be honest in your application about the areas where you are building toward the role's requirements. Recruiters value self-awareness. If you are at 80% and can articulate your learning trajectory for the remaining 20%, you are often more attractive than a 95% match who has stopped growing.\n\nBelow 65% match: Only apply if you have specific context that the algorithm cannot measure — a relationship with someone at the company, direct domain knowledge that is not reflected in your profile, or an exceptional portfolio that outweighs the skill gaps. Otherwise, your time is better spent on higher-match roles or improving your profile.`,
+      },
+      {
+        heading: 'The Honest Limitation Every Candidate Should Know',
+        body: `No AI match score is perfect. Algorithms cannot assess the quality of your relationships, your problem-solving instinct, the authenticity of your leadership, or your cultural add to a specific team. These are the things that determine whether you get the offer — and none of them appear in a job description.\n\nMatch scores are a filter, not a verdict. A 72% match does not mean you are 28% wrong for the job. It means the algorithm sees a 28% gap between your documented skills and the role's documented requirements. That gap may or may not matter to the specific hiring manager.\n\nUse the score to prioritise your time, not to disqualify yourself. The goal of AI matching is to surface the roles where you are most likely to succeed — and let you spend your energy on applications that have a real chance of converting. That is the honest promise, and on TalentNest HR, that is the only promise we make.`,
+      },
+    ],
+  },
+
+  {
+    id: 31,
+    slug: 'pre-boarding-the-30-days-that-decide-if-a-new-hire-stays',
+    title: 'Pre-Boarding: The 30 Days That Decide Whether Your New Hire Actually Stays',
+    category: 'HR Strategy',
+    date: 'March 27, 2025',
+    readTime: '6 min read',
+    excerpt: 'One in five new hires resigns within 45 days. Almost all of them made that decision before they walked in the door. Here\'s what actually happens during pre-boarding — and why it matters more than Day 1.',
+    coverEmoji: '🚀',
+    accent: '#7c3aed',
+    coverImage: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&auto=format&fit=crop&q=80',
+    tags: ['Pre-Boarding', 'Employee Retention', 'Onboarding', 'New Hire Experience'],
+    sections: [
+      {
+        heading: 'The Gap Between Offer Signed and Day One',
+        body: `In most organisations, the moment a candidate signs an offer letter, HR moves on. The offer is filed, the start date is calendared, and the candidate enters a 2 to 6 week waiting period where they hear almost nothing.\n\nDuring that same period, the candidate is still employed at their current company. Their manager is giving them a counteroffer. Recruiters from three other companies are calling. Their current team is taking them to lunch and reminding them how much they are valued.\n\nAnd from their future employer? Silence. Maybe a "see you on the 1st!" email, if they are lucky.\n\nThis is the pre-boarding gap — and it is the single most predictable source of early attrition. New hires who experience a strong pre-boarding period have 58% higher 6-month retention than those who experience nothing.`,
+      },
+      {
+        heading: 'What Good Pre-Boarding Looks Like in Practice',
+        body: `The best pre-boarding programmes share four characteristics:\n\n1. Early contact from a named person — not "HR Team" or a no-reply email address, but a specific human who will be their first point of contact. This person introduces themselves, answers early questions, and makes the candidate feel expected.\n\n2. Structured document collection — Aadhaar, PAN, salary slips, experience letters, background verification forms. When these are collected digitally in a checklist format, candidates complete them at their own pace without feeling chased. When they are collected via WhatsApp messages and email attachments, candidates experience the organisation as disorganised before they have even started.\n\n3. Role clarity communication — a brief on the team, the manager, the first-week expectations, and where the candidate fits in the organisation's current priorities. This reduces first-day anxiety and helps candidates prepare.\n\n4. Joining date confirmation — a formal acknowledgement from the candidate that they intend to join on the agreed date. Simple. Often skipped. Essential.\n\nOn TalentNest HR, all four of these are automated the moment a candidate is moved to the Hired stage. The checklist is live, the documents are collected digitally, and HR sees real-time status — without chasing anyone.`,
+      },
+      {
+        heading: 'The Cost of Getting Pre-Boarding Wrong',
+        body: `Every new hire who resigns before 90 days costs an organisation between 50% and 200% of their annual salary when you account for recruitment fees, training time, manager bandwidth, and team disruption.\n\nFor a role at 12 LPA, a failed hire costs between 6 and 24 lakhs. For senior roles, the number is proportionally higher.\n\nThe pre-boarding period does not just protect retention — it actively determines whether your hiring investment delivers a return. A candidate who arrives on Day 1 informed, prepared, and genuinely excited is not the same as a candidate who arrives having heard nothing for 3 weeks and already with one foot out the door.\n\nPre-boarding is not an HR formality. It is where your employer brand is built or broken, for each individual hire, in the quiet weeks before they walk through your door.`,
+      },
+    ],
+  },
 ];
 
 export const CATEGORIES = [...new Set(BLOGS.map(b => b.category))];

@@ -14,10 +14,18 @@ const SERVICE_ITEMS = [
   { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',          desc: 'Faceify Smart attendance & workforce mgmt' },
 ];
 
+const PRODUCT_ITEMS = [
+  { to: '/products', hash: '#scout',     icon: '🎯', title: 'Scout',     desc: 'For recruiters & talent teams' },
+  { to: '/products', hash: '#command',   icon: '🏢', title: 'Command',   desc: 'For HR leaders & org admins' },
+  { to: '/products', hash: '#launchpad', icon: '🚀', title: 'Launchpad', desc: 'For job seekers & candidates' },
+  { to: '/products', hash: '#job-board', icon: '📋', title: 'Job Board',  desc: 'Browse 100+ companies\' roles' },
+  { to: '/hrms',     hash: '',           icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce' },
+];
+
 const NAV_LINKS = [
   { id: 'home',     label: 'Home',     to: '/' },
+  { id: 'products', label: 'Products', to: '/products', hasProductsDropdown: true },
   { id: 'services', label: 'Services', to: '/services', hasDropdown: true },
-  { id: 'hrms',     label: 'HRMS',     to: '/hrms' },
   { id: 'about',    label: 'About',    to: '/about' },
   { id: 'blog',     label: 'Blog',     to: '/blog' },
   { id: 'contact',  label: 'Contact',  to: '/contact' },
@@ -27,8 +35,11 @@ export default function MarketingNav({ active = 'home' }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [productsOpen, setProductsOpen] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
+  const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
   const closeTimer = useRef(null);
+  const closeProductsTimer = useRef(null);
   const navigate = useNavigate();
   const { customLogoUrl } = useLogo() || {};
   const logoSrc = customLogoUrl || LOGO_PATH;
@@ -47,6 +58,8 @@ export default function MarketingNav({ active = 'home' }) {
 
   const openSvc  = () => { clearTimeout(closeTimer.current); setServicesOpen(true); };
   const closeSvc = () => { closeTimer.current = setTimeout(() => setServicesOpen(false), 150); };
+  const openPrd  = () => { clearTimeout(closeProductsTimer.current); setProductsOpen(true); };
+  const closePrd = () => { closeProductsTimer.current = setTimeout(() => setProductsOpen(false), 150); };
 
 
 
@@ -218,14 +231,36 @@ export default function MarketingNav({ active = 'home' }) {
           {/* Desktop Nav */}
           <nav className="tn-desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 32, flex: 1, justifyContent: 'center' }}>
             {NAV_LINKS.map(n => {
+              if (n.hasProductsDropdown) {
+                return (
+                  <div key={n.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onMouseEnter={openPrd} onMouseLeave={closePrd}>
+                    <Link to={n.to} className="tn-nav-link" style={{ color: active === n.id ? 'var(--mkt-primary)' : navTextColor, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {n.label}
+                      <span style={{ fontSize: 9, transition: 'transform 0.3s', transform: productsOpen ? 'rotate(180deg)' : 'none', color: 'var(--mkt-text-muted)' }}>▾</span>
+                    </Link>
+                    {productsOpen && (
+                      <div className="svc-dropdown" onMouseEnter={openPrd} onMouseLeave={closePrd}>
+                        {PRODUCT_ITEMS.map(p => (
+                          <Link key={p.title} to={p.to + p.hash} className="svc-item" onClick={() => setProductsOpen(false)}>
+                            <span style={{ width: 36, height: 36, borderRadius: 10, background: `rgba(var(--mkt-accent-rgb),0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{p.icon}</span>
+                            <span>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--mkt-text-heading)', display: 'block', marginBottom: 2 }}>{p.title}</span>
+                              <span style={{ fontSize: 12, color: 'var(--mkt-text-muted)', display: 'block', lineHeight: 1.4 }}>{p.desc}</span>
+                            </span>
+                          </Link>
+                        ))}
+                        <div className="svc-footer">
+                          <Link to="/products" className="svc-view-all" onClick={() => setProductsOpen(false)}>Explore All Products →</Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               if (n.hasDropdown) {
                 return (
                   <div key={n.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onMouseEnter={openSvc} onMouseLeave={closeSvc}>
-                    <Link
-                      to={n.to}
-                      className="tn-nav-link"
-                      style={{ color: active === n.id ? 'var(--mkt-primary)' : navTextColor, display: 'flex', alignItems: 'center', gap: 3 }}
-                    >
+                    <Link to={n.to} className="tn-nav-link" style={{ color: active === n.id ? 'var(--mkt-primary)' : navTextColor, display: 'flex', alignItems: 'center', gap: 3 }}>
                       {n.label}
                       <span style={{ fontSize: 9, transition: 'transform 0.3s', transform: servicesOpen ? 'rotate(180deg)' : 'none', color: 'var(--mkt-text-muted)' }}>▾</span>
                     </Link>
@@ -249,8 +284,7 @@ export default function MarketingNav({ active = 'home' }) {
                 );
               }
               return (
-                <Link
-                  key={n.id} to={n.to} className="tn-nav-link"
+                <Link key={n.id} to={n.to} className="tn-nav-link"
                   style={{ color: active === n.id ? 'var(--mkt-primary)' : navTextColor }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'var(--mkt-primary)'; }}
                   onMouseLeave={e => { e.currentTarget.style.color = active === n.id ? 'var(--mkt-primary)' : navTextColor; }}
@@ -389,13 +423,29 @@ export default function MarketingNav({ active = 'home' }) {
           <div className="tn-mobile-body">
             {NAV_LINKS.map(n => (
               <div key={n.id}>
-                {n.hasDropdown ? (
+                {n.hasProductsDropdown ? (
                   <>
-                    <button
-                      onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                    <button onClick={() => setMobileProductsOpen(!mobileProductsOpen)}
                       className={`tn-mobile-link ${active === n.id ? 'active' : ''}`}
-                      style={{ width: '100%', border: 'none', background: 'none' }}
-                    >
+                      style={{ width: '100%', border: 'none', background: 'none' }}>
+                      <span>🎯 {n.label}</span>
+                      <span style={{ transform: mobileProductsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>▾</span>
+                    </button>
+                    {mobileProductsOpen && (
+                      <div className="tn-mobile-svc-list">
+                        {PRODUCT_ITEMS.map(p => (
+                          <Link key={p.title} to={p.to + p.hash} className="tn-mobile-svc-item" onClick={() => setMobileOpen(false)}>
+                            <span>{p.icon}</span> {p.title}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : n.hasDropdown ? (
+                  <>
+                    <button onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                      className={`tn-mobile-link ${active === n.id ? 'active' : ''}`}
+                      style={{ width: '100%', border: 'none', background: 'none' }}>
                       <span>🏢 {n.label}</span>
                       <span style={{ transform: mobileServicesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>▾</span>
                     </button>
@@ -411,7 +461,7 @@ export default function MarketingNav({ active = 'home' }) {
                   </>
                 ) : (
                   <Link to={n.to} className={`tn-mobile-link ${active === n.id ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
-                    <span>{n.id === 'home' ? '🏠' : n.id === 'hrms' ? '⚙️' : n.id === 'about' ? 'ℹ️' : n.id === 'blog' ? '📰' : '📞'} {n.label}</span>
+                    <span>{n.id === 'home' ? '🏠' : n.id === 'about' ? 'ℹ️' : n.id === 'blog' ? '📰' : n.id === 'contact' ? '📞' : '📌'} {n.label}</span>
                   </Link>
                 )}
               </div>

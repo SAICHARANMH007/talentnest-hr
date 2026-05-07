@@ -509,6 +509,52 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── PRODUCTS STRIP ─────────────────────────────────────────── */}
+      <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(48px,6vw,72px) clamp(16px,5vw,80px)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
+          <p className="mkt-reveal" style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--mkt-accent)', marginBottom: 12 }}>
+            Three products. One platform.
+          </p>
+          <h2 className="mkt-reveal" style={{ fontSize: 'clamp(24px,3.5vw,40px)', fontWeight: 900, color: 'var(--mkt-text-heading)', margin: '0 0 40px', letterSpacing: '-0.03em' }}>
+            Built for every person in the hiring journey
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20, marginBottom: 40 }}>
+            {[
+              { emoji: '🎯', name: 'Scout', role: 'For Recruiters', desc: 'Pipeline, sourcing, interviews, and offers — one flow that moves fast.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)' },
+              { emoji: '🏢', name: 'Command', role: 'For HR Leaders', desc: 'Org-wide analytics, pre-boarding, digital offer letters — HR runs itself.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)' },
+              { emoji: '🚀', name: 'Launchpad', role: 'For Job Seekers', desc: 'Browse jobs, track applications in real time, sign offers from your phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)' },
+            ].map(p => (
+              <Link key={p.name} to="/products" className="mkt-reveal" style={{
+                display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px',
+                background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)',
+                borderRadius: 16, textDecoration: 'none', transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = p.color + '50'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'var(--mkt-card-border)'; }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: p.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0, boxShadow: `0 6px 18px ${p.color}30` }}>
+                  {p.emoji}
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--mkt-text-heading)', marginBottom: 2 }}>{p.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: p.color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{p.role}</div>
+                  <div style={{ fontSize: 13, color: 'var(--mkt-text-muted)', lineHeight: 1.5 }}>{p.desc}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Link to="/products" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff',
+            padding: '12px 28px', borderRadius: 12, fontWeight: 800, fontSize: 14,
+            textDecoration: 'none', transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            Explore All Products →
+          </Link>
+        </div>
+      </section>
+
       {/* ══════════════════════════════════════════════════════════════
           SERVICES
       ══════════════════════════════════════════════════════════════ */}
