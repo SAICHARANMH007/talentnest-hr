@@ -129,6 +129,21 @@ async function generateOfferPDF(offer, candidate, job) {
   });
 }
 
+// ── GET /api/offers/mine — candidate gets own offer letters (across tenants) ──
+router.get('/mine', authMiddleware, asyncHandler(async (req, res) => {
+  // Find candidate doc(s) matching the logged-in user's email
+  const candidateDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+  if (!candidateDocs.length) return res.json({ success: true, data: [] });
+
+  const candidateIds = candidateDocs.map(c => c._id);
+  const offers = await OfferLetter.find({
+    candidateId: { $in: candidateIds },
+    status: { $in: ['sent', 'signed'] }, // only show offers that have been sent or signed
+  }).sort({ createdAt: -1 }).lean();
+
+  res.json({ success: true, data: offers.map(normalizeOffer) });
+}));
+
 // ── GET /api/offers/application/:appId — get or auto-create offer ──────────
 router.get('/application/:appId', ...guard, asyncHandler(async (req, res) => {
   const app = await Application.findOne({ _id: req.params.appId, tenantId: req.user.tenantId, deletedAt: null });
@@ -351,6 +366,52 @@ router.post('/:id/sign', authMiddleware, asyncHandler(async (req, res) => {
     }
   } catch (pbErr) {
     console.error('[PreBoarding] auto-create failed:', pbErr.message);
+  }
+
+  // ── Update candidate's work history + current company after signing ──────────
+  try {
+    const fullCandidate = await Candidate.findById(offer.candidateId).lean();
+    const fullJob = job || (app ? await Job.findById(app.jobId).select('title company companyName').lean() : null);
+
+    if (fullCandidate && fullJob) {
+      const companyName = fullJob.companyName || fullJob.company || offer.templateData?.companyName || '';
+      // Use candidate's current title, fall back to job title
+      const roleTitle = fullCandidate.title || offer.templateData?.designation || fullJob.title || '';
+
+      // Get joining date from preboarding or offer template
+      const PreBoarding = require('../models/PreBoarding');
+      const pb = await PreBoarding.findOne({ applicationId: offer.applicationId }).lean();
+      const joinDate = pb?.joiningDate || (offer.templateData?.joiningDate ? new Date(offer.templateData.joiningDate) : new Date());
+
+      // Parse existing work history (stored as JSON string)
+      let history = [];
+      try { history = fullCandidate.workHistory ? JSON.parse(fullCandidate.workHistory) : []; } catch {}
+      if (!Array.isArray(history)) history = [];
+
+      // Add new entry (only if not already present for this company+role)
+      const alreadyExists = history.some(h => h.company === companyName && h.title === roleTitle);
+      if (!alreadyExists && companyName) {
+        history.unshift({
+          title: roleTitle,
+          company: companyName,
+          startDate: joinDate instanceof Date ? joinDate.toISOString().split('T')[0] : String(joinDate).split('T')[0],
+          endDate: '',
+          current: true,
+          description: `Hired via TalentNest HR — offer signed ${new Date().toLocaleDateString('en-IN')}`,
+        });
+      }
+
+      // Update candidate: new work history + current company/title
+      const candidateUpdate = { workHistory: JSON.stringify(history) };
+      if (companyName) candidateUpdate.currentCompany = companyName;
+      // Only update title if candidate didn't have one
+      if (!fullCandidate.title && roleTitle) candidateUpdate.title = roleTitle;
+
+      await Candidate.findByIdAndUpdate(offer.candidateId, { $set: candidateUpdate });
+      console.log(`[Offer] Updated candidate ${fullCandidate.name} work history → ${roleTitle} @ ${companyName}`);
+    }
+  } catch (expErr) {
+    console.warn('[Offer] Work history update failed (non-critical):', expErr.message);
   }
 
   logger.audit('Offer signed', req.user.id, null, { offerId: offer._id, typedName: typedName.trim() });

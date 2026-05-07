@@ -188,10 +188,23 @@ function NotificationBell({ userRole, compact = false }) {
     setDetail(n);
   };
 
-  // Navigate after viewing detail
+  // Navigate after viewing detail — use n.link first (most specific), fall back to TYPE_MAP
   const goToDetail = (n) => {
     setDetail(null);
     setOpen(false);
+
+    // Prefer the stored link (e.g. /app/pipeline?appId=..., /app/candidate-requests)
+    if (n.link) {
+      // Absolute URL → open in new tab; relative path → navigate in-app
+      if (n.link.startsWith('http')) {
+        window.open(n.link, '_blank', 'noopener');
+      } else {
+        navigate(n.link);
+      }
+      return;
+    }
+
+    // Legacy fallback: use candidateId metadata or TYPE_MAP
     const candidateId = n.metadata?.candidateId || n.data?.candidateId;
     if (candidateId) {
       sessionStorage.setItem('tn_open_candidate_id', candidateId);

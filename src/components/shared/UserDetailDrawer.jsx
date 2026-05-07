@@ -6,6 +6,7 @@ import Toast from '../ui/Toast.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import StageHistory from '../pipeline/StageHistory.jsx';
 import ResumeCard from './ResumeCard.jsx';
+import HiredDetailsModal from '../modals/HiredDetailsModal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM, STAGES } from '../../constants/stages.js';
@@ -55,6 +56,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [loadingApp, setLoadingApp] = useState(false);
   const [toast, setToast] = useState('');
   const [isCandidateModel, setIsCandidateModel] = useState(false);
+  const [hiredModal, setHiredModal] = useState(null); // { appId, candidateName, jobTitle }
 
   // Track whether user has started editing — if they have, don't overwrite with fetch
   const userEditedRef = useRef(false);
@@ -170,7 +172,13 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       setCurrentStage(newStage);
       setApp(prev => ({ ...prev, stage: newStage }));
       setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
-      onUpdated?.(); // Notify parent of change
+      onUpdated?.();
+      // When moved to Hired: prompt HR for CTC + joining date
+      if (newStage === 'selected') {
+        const candName = fullUser?.name || u?.name || form.name || 'Candidate';
+        const jobTitle = app?.job?.title || app?.jobTitle || '';
+        setHiredModal({ appId: String(appId), candidateName: candName, jobTitle });
+      }
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
@@ -196,6 +204,15 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
+      {hiredModal && (
+        <HiredDetailsModal
+          appId={hiredModal.appId}
+          candidateName={hiredModal.candidateName}
+          jobTitle={hiredModal.jobTitle}
+          onClose={() => setHiredModal(null)}
+          onSaved={() => { setHiredModal(null); onUpdated?.(); }}
+        />
+      )}
       <div onClick={onClose} style={{ flex: 1, background: 'rgba(5, 13, 26, 0.4)', backdropFilter: 'blur(4px)' }} />
 
       <div className="tn-drawer" style={{ background: '#F8FAFF', borderLeft: '1px solid #E2E8F0', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 42px rgba(0,0,0,0.15)', overflow: 'hidden' }}>

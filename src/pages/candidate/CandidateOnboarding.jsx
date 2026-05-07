@@ -18,6 +18,10 @@ export default function CandidateOnboarding({ user }) {
   const [toast, setToast]     = useState('');
   const [uploading, setUploading]   = useState({});
   const [completing, setCompleting] = useState({});
+  const [offers, setOffers]         = useState([]);
+  const [signingOffer, setSigningOffer] = useState(null); // offer being signed
+  const [typedName, setTypedName]   = useState('');
+  const [signingSaving, setSigningSaving] = useState(false);
   const fileRefs = useRef({});
 
   const load = async () => {
@@ -39,6 +43,29 @@ export default function CandidateOnboarding({ user }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Load candidate's own offer letters
+  useEffect(() => {
+    api.getMyOffers().then(r => {
+      const list = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+      setOffers(list);
+    }).catch(() => {});
+  }, []);
+
+  const handleSignOffer = async (offerId) => {
+    if (!typedName.trim()) { setToast('❌ Please type your full name to sign.'); return; }
+    setSigningSaving(true);
+    try {
+      await api.signOffer(offerId, typedName.trim());
+      setOffers(prev => prev.map(o => (o.id || o._id) === offerId ? { ...o, status: 'signed', signedAt: new Date().toISOString() } : o));
+      setSigningOffer(null);
+      setTypedName('');
+      setToast('✅ Offer letter signed! Your onboarding records will be updated shortly.');
+      // Refresh preboarding to reflect updated details
+      setTimeout(load, 2000);
+    } catch (e) { setToast('❌ ' + (e.message || 'Signing failed. Please try again.')); }
+    setSigningSaving(false);
+  };
 
   const handleUpload = async (taskId, file) => {
     if (!file || !pb) return;
@@ -163,6 +190,74 @@ export default function CandidateOnboarding({ user }) {
           <div style={{ fontSize:12, opacity:0.8, marginTop:4 }}>{doneTasks}/{totalTasks} Complete</div>
         </div>
       </div>
+
+      {/* ── Offer Letter Section ── */}
+      {offers.length > 0 && (
+        <div style={{ ...card, marginBottom:20, overflow:'hidden' }}>
+          <div style={{ padding:'14px 20px', background:'linear-gradient(135deg,#f0fdf4,#dcfce7)', borderBottom:'1px solid #86efac', display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:20 }}>📜</span>
+            <span style={{ fontWeight:800, fontSize:14, color:'#166534' }}>Offer Letter</span>
+            <span style={{ marginLeft:'auto', fontSize:12, color:'#15803D' }}>{offers.filter(o=>o.status==='signed').length}/{offers.length} signed</span>
+          </div>
+          {offers.map(offer => {
+            const oid = offer.id || offer._id;
+            const isSigned = offer.status === 'signed';
+            return (
+              <div key={oid} style={{ padding:'16px 20px', borderBottom:'1px solid #F1F5F9' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:14, color:'#0A1628' }}>
+                      {offer.templateData?.designation || 'Offer Letter'}
+                    </div>
+                    <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>
+                      {offer.templateData?.companyName || ''}
+                      {offer.templateData?.ctc ? ` · CTC: ${offer.templateData.ctc}` : ''}
+                      {offer.templateData?.joiningDate ? ` · Joining: ${new Date(offer.templateData.joiningDate).toLocaleDateString('en-IN')}` : ''}
+                    </div>
+                    {isSigned && offer.signedAt && (
+                      <div style={{ fontSize:11, color:'#059669', marginTop:4, fontWeight:600 }}>
+                        ✅ Signed on {new Date(offer.signedAt).toLocaleDateString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display:'flex', gap:8, flexShrink:0, flexWrap:'wrap' }}>
+                    {!isSigned && (
+                      signingOffer === oid ? (
+                        <div style={{ display:'flex', flexDirection:'column', gap:8, minWidth:220 }}>
+                          <input
+                            value={typedName}
+                            onChange={e => setTypedName(e.target.value)}
+                            placeholder="Type your full name to sign"
+                            style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #0176D3', fontSize:13, outline:'none' }}
+                          />
+                          <div style={{ display:'flex', gap:8 }}>
+                            <button onClick={() => handleSignOffer(oid)} disabled={signingSaving}
+                              style={{ ...btnP, flex:1, padding:'8px', fontSize:12, background:'linear-gradient(135deg,#059669,#047857)', opacity:signingSaving?0.7:1 }}>
+                              {signingSaving ? '⏳' : '✍️ Confirm Sign'}
+                            </button>
+                            <button onClick={() => { setSigningOffer(null); setTypedName(''); }} style={{ ...btnG, padding:'8px 12px', fontSize:12 }}>Cancel</button>
+                          </div>
+                          <p style={{ fontSize:11, color:'#94A3B8', margin:0 }}>
+                            By typing your name and clicking "Confirm Sign" you agree to the offer terms.
+                          </p>
+                        </div>
+                      ) : (
+                        <button onClick={() => setSigningOffer(oid)}
+                          style={{ ...btnP, padding:'8px 16px', fontSize:12, background:'linear-gradient(135deg,#059669,#047857)' }}>
+                          ✍️ Sign Offer
+                        </button>
+                      )
+                    )}
+                    {isSigned && (
+                      <Badge label="✅ Signed" color="#059669" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Task groups */}
       {Object.entries(grouped).map(([cat, tasks]) => (

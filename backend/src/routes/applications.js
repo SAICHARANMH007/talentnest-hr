@@ -1024,18 +1024,33 @@ router.patch('/:id/park', ...guard, asyncHandler(async (req, res) => {
 }));
 
 
-// DELETE /api/applications/:id — soft delete
+// DELETE /api/applications/:id — soft delete / withdraw
+// Candidates: applications live under the job's tenantId (not the candidate's),
+// so we look them up by candidateId across any tenant.
+// HR/Admin: scoped to their own tenant as usual.
 router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
+  let filter = { _id: req.params.id, deletedAt: null };
+
+  if (req.user.role === 'candidate') {
+    // Find Candidate doc(s) matching this user's email — handles multi-tenant applications
+    const candidateDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+    if (!candidateDocs.length) throw new AppError('Application not found.', 404);
+    filter.candidateId = { $in: candidateDocs.map(c => c._id) };
+    // No tenantId restriction — candidate's application may be under the employer's tenant
+  } else {
+    filter.tenantId = req.user.tenantId;
+  }
+
   const app = await Application.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    filter,
     { $set: { deletedAt: new Date(), status: 'withdrawn' } },
     { new: true }
   );
   if (!app) throw new AppError('Application not found.', 404);
 
   await Job.findByIdAndUpdate(app.jobId, { $inc: { applicationCount: -1 } });
-  logger.audit('Application archived', req.user.id, req.user.tenantId, { appId: app._id });
-  res.json({ success: true, message: 'Application archived.' });
+  logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id });
+  res.json({ success: true, message: 'Application withdrawn.' });
 }));
 
 // GET /api/applications/export — export pipeline to Excel

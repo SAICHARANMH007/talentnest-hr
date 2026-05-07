@@ -123,9 +123,10 @@ router.patch('/:id/candidate-confirm', authenticate, asyncHandler(async (req, re
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
-// ── HR/Admin: update record (notes, assignedTo, status) ──────────────────────
+// ── HR/Admin: update record (notes, assignedTo, status, hired details) ───────
 router.patch('/:id', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const allowed = ['status', 'notes', 'assignedTo', 'joiningDate', 'department', 'reportingTo', 'joiningConfirmed', 'joinedOn'];
+  const allowed = ['status', 'notes', 'assignedTo', 'joiningDate', 'department', 'reportingTo',
+                   'joiningConfirmed', 'joinedOn', 'ctcOffered', 'designation'];
   const update = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
   if (req.body.joiningConfirmed) update.joiningConfirmedAt = new Date();
@@ -136,6 +137,29 @@ router.patch('/:id', authenticate, tenantGuard, allowRoles('admin', 'super_admin
     { new: true }
   ).lean();
   if (!record) throw new AppError('Pre-boarding record not found.', 404);
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
+// ── PATCH /api/preboarding/by-application/:appId — update preboarding by application ID ──
+// Used by HiredDetailsModal to save CTC + joining date immediately after stage → Hired.
+// Must be before /:id to avoid routing conflicts.
+router.patch('/by-application/:appId', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const allowed = ['joiningDate', 'ctcOffered', 'designation', 'department', 'notes', 'reportingTo'];
+  const update = {};
+  allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
+
+  // Find the preboarding for this application (created when stage moved to Hired)
+  const filter = { applicationId: req.params.appId };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
+  // If preboarding doesn't exist yet (race condition), wait briefly and retry once
+  let record = await PreBoarding.findOneAndUpdate(filter, { $set: update }, { new: true }).lean();
+  if (!record) {
+    // Preboarding may not be created yet — try once after a short wait
+    await new Promise(r => setTimeout(r, 1500));
+    record = await PreBoarding.findOneAndUpdate(filter, { $set: update }, { new: true }).lean();
+  }
+  if (!record) return res.json({ success: false, message: 'Pre-boarding not yet created — details will be saved when checklist is generated.' });
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 

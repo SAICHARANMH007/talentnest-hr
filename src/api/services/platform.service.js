@@ -68,6 +68,7 @@ export const platformService = {
   async getMyAssessments()               { return req('GET', '/assessments/candidate/my'); },
   
   // Offers
+  async getMyOffers()                 { return req('GET', '/offers/mine'); },
   async getOfferByApplication(appId)  { return req('GET', `/offers/application/${appId}`); },
   async getOffer(id)                  { return req('GET', `/offers/${id}`); },
   async updateOffer(id, data)         { return req('PATCH', `/offers/${id}`, data); },
@@ -210,6 +211,7 @@ export const platformService = {
   async getMyPreBoarding()                   { return req('GET',    '/preboarding/mine'); },
   async confirmPreBoardingJoining(id)        { return req('PATCH',  `/preboarding/${id}/candidate-confirm`, {}); },
   async updatePreBoarding(id, data)          { return req('PATCH',  `/preboarding/${id}`, data); },
+  async updatePreBoardingByApplication(appId, data) { return req('PATCH', `/preboarding/by-application/${appId}`, data); },
   async addPreBoardingTask(id, data)         { return req('POST',   `/preboarding/${id}/tasks`, data); },
   async updatePreBoardingTask(id, taskId, data) { return req('PATCH', `/preboarding/${id}/tasks/${taskId}`, data); },
   async sendPreBoardingWelcomeKit(id)        { return req('POST',   `/preboarding/${id}/send-welcome-kit`, {}); },

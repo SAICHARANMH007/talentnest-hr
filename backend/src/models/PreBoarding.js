@@ -51,6 +51,7 @@ const preBoardingSchema = new mongoose.Schema({
   joiningDate:    { type: Date },
   department:     { type: String },
   reportingTo:    { type: String },
+  ctcOffered:     { type: String },
 
   // Status
   status: {
