@@ -866,7 +866,21 @@ export default function AdminAnalytics({ user, onNavigate }) {
       {/* ── Charts Row ── */}
       <div className="analytics-chart-row">
         <div style={{ ...glassPanel }} title="Click a date to view candidate records behind that point">
-          <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Application Velocity</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+            <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Application Velocity</div>
+            {trends.length > 0 && (() => {
+              const todayVal = trends[trends.length - 1]?.value ?? 0;
+              const yestVal  = trends[trends.length - 2]?.value ?? 0;
+              return (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#0176D3', lineHeight: 1 }}>{todayVal}</div>
+                  <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
+                    today{yestVal > 0 ? ` · ${yestVal} yesterday` : ''}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
           <div style={{ color: '#9E9D9B', fontSize: 10, marginBottom: 8 }}>Candidates joining the pipeline across all jobs (Last 14 days)</div>
           {trends.length > 0
             ? <AreaChart data={trends} color="#0176D3" height={220} onItemClick={openVelocityDrill} />

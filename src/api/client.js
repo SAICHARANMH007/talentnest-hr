@@ -138,7 +138,10 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
     res = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
-      credentials: 'include', // sends HTTP-only refresh cookie cross-origin (Vercel → Railway)
+      // Only send credentials (HTTP-only refresh cookie) for authenticated requests.
+      // Public endpoints (auth=false) use 'omit' so the server can respond with
+      // Access-Control-Allow-Origin: * without triggering CORS credential conflict.
+      credentials: auth ? 'include' : 'omit',
       body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
     });
   } catch (networkErr) {
