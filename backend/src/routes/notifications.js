@@ -8,21 +8,26 @@ const router       = express.Router();
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
 
-// GET /api/notifications — get my notifications
+// GET /api/notifications — get my notifications (paginated)
 router.get('/', auth, asyncHandler(async (req, res) => {
-  const userId = req.user._id || req.user.id;
-  const all = await Notification.find({ userId })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .lean();
+  const userId  = req.user._id || req.user.id;
+  const page    = Math.max(1, parseInt(req.query.page, 10)  || 1);
+  const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const skip    = (page - 1) * limit;
 
-  const result = all.map(n => ({
-    ...n,
-    id  : n._id.toString(),
-    body: n.body || n.message,
-  }));
+  const [all, total] = await Promise.all([
+    Notification.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Notification.countDocuments({ userId }),
+  ]);
 
-  res.json(result);
+  const result = all.map(n => ({ ...n, id: n._id.toString(), body: n.body || n.message }));
+
+  // Return flat array for backwards-compat (page 1, no params) — paginated object when page > 1
+  if (page === 1 && !req.query.page) {
+    res.json(result);
+  } else {
+    res.json({ success: true, data: result, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  }
 }));
 
 // POST /api/notifications/platform-summary — generate live platform summary for super_admin

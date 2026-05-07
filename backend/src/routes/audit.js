@@ -27,26 +27,32 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: log });
 }));
 
-// GET /api/audit — retrieve last 200 logs (admin / super_admin only)
+// GET /api/audit — paginated audit logs (admin / super_admin)
 router.get('/', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const filter = {};
   if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  if (req.query.action)   filter.action   = { $regex: req.query.action, $options: 'i' };
+  if (req.query.userId)   filter.userId   = req.query.userId;
+  if (req.query.level)    filter['details.level'] = req.query.level;
 
-  const logs = await AuditLog.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(200)
-    .lean();
+  const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const skip  = (page - 1) * limit;
 
-  // Normalize to expected shape
+  const [logs, total] = await Promise.all([
+    AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    AuditLog.countDocuments(filter),
+  ]);
+
   const data = logs.map(l => ({
     ...l,
     id      : l._id?.toString(),
-    resource: l.entity || null,
+    resource: l.entity  || null,
     detail  : l.details?.detail || null,
     level   : l.details?.level  || 'info',
   }));
 
-  res.json({ success: true, data });
+  res.json({ success: true, data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 }));
 
 module.exports = router;

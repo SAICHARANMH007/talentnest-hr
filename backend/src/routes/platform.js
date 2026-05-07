@@ -95,15 +95,26 @@ router.get('/backup', auth, allowRoles('super_admin'), asyncHandler(async (req, 
   res.json(backup);
 }));
 
-// GET /api/platform/audit-logs — recent activity (super_admin only)
+// GET /api/platform/audit-logs — paginated platform-wide audit logs (super_admin only)
 router.get('/audit-logs', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const AuditLog = require('../models/AuditLog');
-  const logs = await AuditLog.find({})
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .populate('userId', 'name email role')
-    .lean();
-  res.json({ success: true, data: logs });
+  const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const skip  = (page - 1) * limit;
+  const filter = {};
+  if (req.query.action) filter.action   = { $regex: req.query.action, $options: 'i' };
+  if (req.query.userId) filter.userId   = req.query.userId;
+  if (req.query.search) {
+    const s = { $regex: req.query.search, $options: 'i' };
+    filter.$or = [{ action: s }, { userName: s }, { 'details.detail': s }];
+  }
+
+  const [logs, total] = await Promise.all([
+    AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit)
+      .populate('userId', 'name email role').lean(),
+    AuditLog.countDocuments(filter),
+  ]);
+  res.json({ success: true, data: logs, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 }));
 
 // GET /api/platform/raw/:model/:id — fetch any document exactly as it is (super_admin only)

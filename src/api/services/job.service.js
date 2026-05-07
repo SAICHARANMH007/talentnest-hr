@@ -2,16 +2,16 @@ import { req } from '../client.js';
 
 export const jobService = {
   async getJobs(recruiterIdOrOpts) {
-    // Accepts either a plain recruiterId string (legacy) or an options object { recruiterId?, limit?, status? }
+    // Accepts either a plain recruiterId string (legacy) or an options object
     if (!recruiterIdOrOpts || typeof recruiterIdOrOpts === 'string') {
       const rid = recruiterIdOrOpts;
-      // Always request a generous limit — default backend limit is 20 which truncates data
-      return req('GET', `/jobs?limit=200${rid ? `&recruiterId=${rid}` : ''}`);
+      return req('GET', `/jobs?limit=50${rid ? `&recruiterId=${rid}` : ''}`);
     }
-    const { recruiterId, limit, status, search, platform } = recruiterIdOrOpts;
+    const { recruiterId, limit, page, status, search, platform } = recruiterIdOrOpts;
     const p = new URLSearchParams();
     if (recruiterId) p.set('recruiterId', recruiterId);
-    p.set('limit', String(limit || 200)); 
+    p.set('limit', String(limit || 50));
+    if (page)        p.set('page',   String(page));
     if (status)      p.set('status', status);
     if (search)      p.set('search', search);
     if (platform)    p.set('platform', 'true');
