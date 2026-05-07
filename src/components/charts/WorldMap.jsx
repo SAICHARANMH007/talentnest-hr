@@ -102,19 +102,34 @@ export default function WorldMap({ height = 440 }) {
               ? `<li style="color:#94A3B8">+${pin.candidates.length - 5} more</li>`
               : '';
 
+            const mapsUrl    = `https://www.google.com/maps?q=${pin.lat},${pin.lng}`;
+            const navUrl     = `https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`;
+            const coordLabel = `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`;
+
             circle.bindPopup(`
-              <div style="font-family:system-ui;min-width:160px">
-                <strong style="font-size:13px;display:block;margin-bottom:4px">
+              <div style="font-family:system-ui;min-width:190px;max-width:240px">
+                <strong style="font-size:13px;display:block;margin-bottom:2px">
                   📍 ${pin.city || 'Unknown City'}${pin.country ? ', ' + pin.country : ''}
                 </strong>
-                <span style="font-size:12px;color:#64748B;display:block;margin-bottom:6px">
+                <span style="font-size:10px;color:#94A3B8;display:block;margin-bottom:4px">${coordLabel}</span>
+                <span style="font-size:12px;color:#64748B;display:block;margin-bottom:8px">
                   ${pin.count} application${pin.count !== 1 ? 's' : ''}
                 </span>
-                <ul style="margin:0;padding-left:16px;font-size:12px;color:#374151">
+                <ul style="margin:0 0 10px;padding-left:16px;font-size:12px;color:#374151">
                   ${names}${extra}
                 </ul>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <a href="${mapsUrl}" target="_blank" rel="noopener"
+                    style="display:inline-flex;align-items:center;gap:4px;background:#0176D3;color:#fff;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none">
+                    🗺️ View on Map
+                  </a>
+                  <a href="${navUrl}" target="_blank" rel="noopener"
+                    style="display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none">
+                    🧭 Navigate Here
+                  </a>
+                </div>
               </div>
-            `);
+            `, { maxWidth: 260 });
 
             circle.addTo(map);
             markersRef.current.push(circle);

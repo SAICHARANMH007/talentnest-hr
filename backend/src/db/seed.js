@@ -2198,6 +2198,65 @@ Key Responsibilities:
         benefits: 'Competitive salary, vehicle allowance, health insurance, performance-based incentives.',
         externalUrl: 'https://www.naukri.com/agri-logistics-coordinator-jobs',
       },
+      // ── Extra: Store Manager & Sales Person (Agriculture) ──────────────────
+      {
+        title: 'Agri Store Manager',
+        department: 'Retail & Store Operations',
+        skills: ['Retail Management', 'Agri Input Sales', 'Inventory Management', 'Team Leadership', 'Customer Service', 'POS Systems', 'Stock Audit'],
+        experience: '3–6 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is opening agri-input retail stores in Tirupati to serve local farmers with seeds, fertilizers, crop protection, farm tools, and advisory services. We need an Agri Store Manager to run daily store operations, manage a team of sales staff, and deliver an outstanding farmer service experience.
+
+Key Responsibilities:
+• Manage daily operations of the SelfCrops agri-input retail store
+• Supervise and train a team of 4–6 store sales executives
+• Maintain optimal stock levels — reorder, receive, verify, and shelve inventory
+• Handle high-value product categories: seeds (paddy, groundnut, chilli), fertilizers, agrochemicals, farm tools
+• Achieve monthly sales targets and upsell value-added products
+• Build relationships with walk-in farmers — provide crop advisory alongside product sales
+• Handle billing, cash management, daily sales reconciliation, and reports to management
+• Coordinate with supply chain team on product availability and delivery timelines
+• Ensure compliance with pesticide licensing and FSSAI norms for fertilizer retail`,
+        requirements: `• B.Sc Agriculture or any graduate with agri retail experience
+• 3–6 years in agri input retail, seeds company, or farm store management
+• Hands-on experience managing store staff and inventory in an agri environment
+• Strong knowledge of seeds, fertilizers, and crop protection products used in Andhra Pradesh
+• Proficiency in Telugu for farmer-facing communication
+• Basic computer skills — billing software, Excel, inventory management systems
+• Pesticide dealer licence or willingness to obtain one`,
+        benefits: 'Fixed salary + sales incentives + health insurance + annual increment + performance bonus.',
+        externalUrl: 'https://www.naukri.com/agri-store-manager-jobs-tirupati',
+      },
+      {
+        title: 'Agricultural Sales Person (Field)',
+        department: 'Sales',
+        skills: ['Agri Sales', 'Farmer Outreach', 'Product Demonstration', 'Lead Generation', 'Target Achievement', 'Rural Communication', 'Telugu'],
+        experience: '0–2 years',
+        jobType: 'Full-Time',
+        urgency: 'High',
+        description: `SelfCrops is hiring energetic and farmer-friendly Agricultural Sales Persons to sell agri-inputs — seeds, fertilizers, bio-pesticides, irrigation kits, and farm advisory services — directly to farmers in villages around Tirupati.
+
+This is a field-first role. You will spend most of your day visiting farmers at their farms and homes — not sitting in an office. If you love agriculture, love talking to farmers, and are motivated by building relationships and meeting targets, this role is for you.
+
+Key Responsibilities:
+• Visit 15–20 farmers per day in assigned village routes (beats)
+• Explain and demonstrate product benefits — seeds varieties, fertilizer schedules, crop protection options
+• Generate leads through word-of-mouth referrals, farmer groups, and village meetings
+• Achieve weekly and monthly sales targets for SelfCrops products
+• Collect payments and coordinate order delivery with logistics team
+• Report daily activities, sales made, and farmer feedback via mobile app
+• Participate in kisan melas, field demonstrations, and crop days organised by SelfCrops
+• Maintain a clean record of customer contacts and purchase history`,
+        requirements: `• Minimum 12th pass; B.Sc Agriculture preferred but not mandatory
+• 0–2 years of experience — freshers from agriculture background welcome
+• Strong communication skills in Telugu — ability to connect naturally with farmers
+• Own a two-wheeler and valid driving licence (mandatory for field travel)
+• Genuine interest in agriculture and farmer welfare
+• Result-oriented and self-motivated to meet targets`,
+        benefits: 'Fixed salary + performance incentives + fuel reimbursement + health insurance + training + career growth path.',
+        externalUrl: 'https://www.naukri.com/agri-sales-fresher-jobs-tirupati',
+      },
     ];
 
     let scJobCount = 0;
