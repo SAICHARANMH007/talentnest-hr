@@ -1625,16 +1625,24 @@ NuSummit builds high-impact .NET solutions for BFSI, healthcare, and logistics c
     console.error('❌  NuSummit seed failed (non-critical):', nsErr.message);
   }
 
-  // ── 2.5 SelfCrops Org + Admin Kavya + 22 Agriculture/AgriTech Jobs ──────────
+  // ── 2.5 SelfCrops Org + Admin Kavya + Agriculture/AgriTech Jobs ─────────────
+  // Finds the EXISTING SelfCrops org by name (case-insensitive) OR slug.
+  // Never creates a duplicate — all jobs upserted by title so existing posts are safe.
   try {
-    const SC_SLUG     = 'selfcrops';
     const SC_EMAIL    = 'kavya@selfcrops.com';
     const SC_PASSWORD = 'SelfCrops@2024';
 
-    let scOrg = await Organization.findOne({ slug: SC_SLUG });
+    // Find existing org first (user may have registered it via the platform)
+    let scOrg = await Organization.findOne({
+      $or: [
+        { name: /^selfcrops$/i },
+        { slug: /^selfcrops$/i },
+        { domain: /selfcrops\.com/i },
+      ],
+    });
     if (!scOrg) {
       scOrg = await Organization.create({
-        name: 'SelfCrops', slug: SC_SLUG, domain: 'selfcrops.com',
+        name: 'SelfCrops', slug: 'selfcrops', domain: 'selfcrops.com',
         industry: 'Agriculture & AgriTech', size: '51-200', plan: 'pro', status: 'active',
         settings: {
           maxCandidates: 1000, maxJobs: 100, maxRecruiters: 10, maxAdmins: 3,
@@ -1642,14 +1650,16 @@ NuSummit builds high-impact .NET solutions for BFSI, healthcare, and logistics c
         },
       });
       console.log('✅  SelfCrops org created → selfcrops.com');
+    } else {
+      console.log(`✅  SelfCrops org found (existing) → ${scOrg.name} / ${scOrg._id}`);
     }
     const scOd       = scOrg.toJSON ? scOrg.toJSON() : scOrg;
-    const scTenantId = scOd.id;
+    const scTenantId = scOd.id || scOd._id?.toString();
 
-    // Admin: Kavya
+    // Admin Kavya — create only if email doesn't exist, always sync to correct org
     let kavya = await User.findOne({ email: SC_EMAIL });
     if (!kavya) {
-      await User.create({
+      kavya = await User.create({
         name: 'Kavya', email: SC_EMAIL,
         passwordHash: bcrypt.hashSync(SC_PASSWORD, 10),
         role: 'admin', title: 'HR Admin — Agriculture',
@@ -1663,9 +1673,9 @@ NuSummit builds high-impact .NET solutions for BFSI, healthcare, and logistics c
       console.log(`✅  SelfCrops Admin Kavya synced → ${SC_EMAIL}`);
     }
 
-    const scAdminId = kavya ? (kavya._id) : (await User.findOne({ email: SC_EMAIL }).select('_id').lean())?._id;
+    const scAdminId = kavya._id;
 
-    // 22 Agriculture & AgriTech jobs — upsert by slug, no duplicates
+    // Jobs — upserted by TITLE (not slug) so existing jobs the user posted are never duplicated
     const scJobDefs = [
       {
         title: 'Agronomist — Field Crops',
@@ -2260,32 +2270,31 @@ Key Responsibilities:
     ];
 
     let scJobCount = 0;
+    let scJobSkipped = 0;
     for (const j of scJobDefs) {
-      const scSlug = `selfcrops-${j.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g,'-').replace(/^-|-$/g,'')}`;
-      await Job.findOneAndUpdate(
-        { tenantId: scTenantId, careerPageSlug: scSlug },
-        {
-          $set: {
-            ...j,
-            company:       'SelfCrops',
-            companyName:   'SelfCrops',
-            tenantId:      scTenantId,
-            orgId:         scTenantId,
-            careerPageSlug: scSlug,
-            location:      'Tirupati',
-            status:        'active',
-            approvalStatus: 'approved',
-            isPublic:      true,
-            workMode:      'Onsite',
-            salaryCurrency: 'INR',
-            createdBy:     scAdminId,
-          },
-        },
-        { upsert: true }
-      );
+      // Check if a job with this exact title already exists under this org (user may have posted it)
+      const existing = await Job.findOne({ tenantId: scTenantId, title: j.title }).select('_id').lean();
+      if (existing) {
+        scJobSkipped++;
+        continue; // skip — don't overwrite the user's own job posting
+      }
+      await Job.create({
+        ...j,
+        company:        'SelfCrops',
+        companyName:    'SelfCrops',
+        tenantId:       scTenantId,
+        orgId:          scTenantId,
+        location:       'Tirupati',
+        status:         'active',
+        approvalStatus: 'approved',
+        isPublic:       true,
+        workMode:       'Onsite',
+        salaryCurrency: 'INR',
+        createdBy:      scAdminId,
+      });
       scJobCount++;
     }
-    console.log(`✅  SelfCrops: ${scJobCount} agri/agritech jobs synced (Tirupati)`);
+    console.log(`✅  SelfCrops: ${scJobCount} new agri jobs added, ${scJobSkipped} already existed (preserved)`);
   } catch (scErr) {
     console.error('❌  SelfCrops seed failed (non-critical):', scErr.message);
   }
