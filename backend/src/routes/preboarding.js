@@ -173,7 +173,9 @@ router.get('/doc-status', authenticate, allowRoles('admin', 'super_admin', 'recr
 
 // ── HR/Admin: get single record (CATCH-ALL — must stay AFTER all named GET routes) ──
 router.get('/:id', authenticate, tenantGuard, asyncHandler(async (req, res) => {
-  const record = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
+  const filter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const record = await PreBoarding.findOne(filter).lean();
   if (!record) throw new AppError('Pre-boarding record not found.', 404);
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
@@ -199,8 +201,11 @@ router.patch('/:id', authenticate, tenantGuard, allowRoles('admin', 'super_admin
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
   if (req.body.joiningConfirmed) update.joiningConfirmedAt = new Date();
 
+  const filter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
   const record = await PreBoarding.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId },
+    filter,
     { $set: update },
     { new: true }
   ).lean();
@@ -236,8 +241,11 @@ router.post('/:id/tasks', authenticate, tenantGuard, allowRoles('admin', 'super_
   const { title, description, category, dueDate, isRequired } = req.body;
   if (!title) throw new AppError('title is required.', 400);
 
+  const filter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
   const record = await PreBoarding.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId },
+    filter,
     { $push: { tasks: { title, description, category: category || 'other', dueDate: dueDate || null, isRequired: isRequired !== false } } },
     { new: true }
   ).lean();
@@ -322,7 +330,10 @@ router.patch('/:id/tasks/:taskId/verify', authenticate, tenantGuard, allowRoles(
   const { action, notes } = req.body; // action: 'approve' | 'reject' | 'request_resubmission'
   if (!['approve', 'reject', 'request_resubmission'].includes(action)) throw new AppError('action must be approve, reject, or request_resubmission.', 400);
 
-  const pb = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId, 'tasks._id': req.params.taskId });
+  const filter = { _id: req.params.id, 'tasks._id': req.params.taskId };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
+  const pb = await PreBoarding.findOne(filter);
   if (!pb) throw new AppError('Pre-boarding record or task not found.', 404);
 
   const verifyStatus = action === 'approve' ? 'verified' : action === 'reject' ? 'rejected' : 'resubmission_required';
@@ -360,7 +371,10 @@ router.patch('/:id/tasks/:taskId/verify', authenticate, tenantGuard, allowRoles(
 
 // ── Send/resend welcome kit email ─────────────────────────────────────────────
 router.post('/:id/send-welcome-kit', authenticate, tenantGuard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const record = await PreBoarding.findOne({ _id: req.params.id, tenantId: req.user.tenantId });
+  const filter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
+  const record = await PreBoarding.findOne(filter);
   if (!record) throw new AppError('Pre-boarding record not found.', 404);
 
   const joiningDateStr = record.joiningDate
