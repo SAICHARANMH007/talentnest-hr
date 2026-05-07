@@ -1,0 +1,3 @@
+Set INDEXNOW_KEY env var on Render and rename this file to {key}.txt
+Example: if INDEXNOW_KEY=abc123def456, rename to abc123def456.txt and put the key as the only content.
+Generate at: https://www.indexnow.org/documentation

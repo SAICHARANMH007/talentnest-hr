@@ -133,7 +133,39 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
   });
   logger.audit('Job created', req.user.id, req.user.tenantId, { jobId: job._id, title });
   res.status(201).json({ success: true, data: normalizeJob(job) });
+
+  // IndexNow ping — fire-and-forget, never block the response
+  if (job.status === 'active' || rest.status === 'active') {
+    pingIndexNow(job).catch(() => {});
+  }
 }));
+
+// ── IndexNow helper — pings Bing/Yandex instantly when a job is created/activated ──
+async function pingIndexNow(job) {
+  const key  = process.env.INDEXNOW_KEY;
+  const base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  if (!key) return;
+  const slug    = job.careerPageSlug || String(job._id);
+  const jobUrl  = `${base}/careers/job/${slug}`;
+  const payload = {
+    host:        new URL(base).host,
+    key,
+    keyLocation: `${base}/${key}.txt`,
+    urlList:     [jobUrl],
+  };
+  try {
+    const https = require('https');
+    const body  = JSON.stringify(payload);
+    const u     = new URL('https://api.indexnow.org/indexnow');
+    await new Promise((resolve) => {
+      const req = https.request({ hostname: u.hostname, path: u.pathname, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
+        res => { res.resume(); resolve(); });
+      req.on('error', resolve);
+      req.write(body); req.end();
+    });
+  } catch { /* non-critical */ }
+}
 
 // ── PATCH /api/jobs/career-listing — bulk toggle isPublic for career listing ───
 // Admin sets which of their org's jobs appear on the public career page.
@@ -181,6 +213,8 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
       if (updates.status === 'active' && prevJob?.status !== 'active') {
         require('./distribution').logJobPublished(job);
         require('./feed').invalidateFeedCache();
+        // Ping IndexNow immediately when job goes live
+        pingIndexNow(job).catch(() => {});
       } else if (updates.status === 'closed' && prevJob?.status === 'active') {
         require('./distribution').logJobClosed(job._id);
         require('./feed').invalidateFeedCache();

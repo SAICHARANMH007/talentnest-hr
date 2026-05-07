@@ -4,6 +4,18 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://talentnest-hr.onrender.com/api/:path*" },
+
+    { "source": "/sitemap.xml",        "destination": "https://talentnest-hr.onrender.com/sitemap.xml" },
+    { "source": "/sitemap-jobs.xml",   "destination": "https://talentnest-hr.onrender.com/sitemap-jobs.xml" },
+    { "source": "/sitemap-pages.xml",  "destination": "https://talentnest-hr.onrender.com/sitemap-pages.xml" },
+    { "source": "/careers/jobs.xml",   "destination": "https://talentnest-hr.onrender.com/careers/jobs.xml" },
+    { "source": "/careers/jobs.json",  "destination": "https://talentnest-hr.onrender.com/careers/jobs.json" },
+    { "source": "/jobs.xml",           "destination": "https://talentnest-hr.onrender.com/jobs.xml" },
+    { "source": "/robots.txt",         "destination": "https://talentnest-hr.onrender.com/robots.txt" },
+
+    { "source": "/careers/job/:slug",  "destination": "https://talentnest-hr.onrender.com/careers/job/:slug" },
+    { "source": "/careers/crawl",      "destination": "https://talentnest-hr.onrender.com/careers/crawl" },
+
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -32,13 +44,16 @@
     {
       "source": "/sitemap(.*)\\.xml",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=86400" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" },
         { "key": "Content-Type",  "value": "application/xml; charset=utf-8" }
       ]
     },
     {
       "source": "/robots.txt",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" },
+        { "key": "Content-Type",  "value": "text/plain; charset=utf-8" }
+      ]
     },
     {
       "source": "/:orgSlug/careers",

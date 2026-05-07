@@ -327,10 +327,10 @@ function jobStructuredData(job, baseUrl) {
   return data;
 }
 
-async function publicJobs(limit = 200) {
+async function publicJobs(limit = 10000) {
   const Job = require('./src/models/Job');
   return Job.find({ status: 'active', deletedAt: null })
-    .select('-__v')
+    .select('_id title company companyName location jobType workMode salaryMin salaryMax salaryCurrency careerPageSlug createdAt updatedAt isPublic')
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
@@ -382,33 +382,163 @@ app.get('/careers/jobs.json', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── robots.txt ──────────────────────────────────────────────────────────────
+// ── robots.txt — comprehensive, all crawlers explicitly allowed ─────────────
 app.get('/robots.txt', (req, res) => {
-  const base = publicBaseUrl(req);
-  res.type('text/plain').send([
-    'User-agent: *',
-    'Allow: /',
-    'Allow: /careers',
-    'Allow: /careers/',
-    'Allow: /careers/job/',
-    'Allow: /careers/jobs.xml',
-    'Allow: /careers/jobs.json',
-    'Allow: /careers/crawl',
-    '',
-    `Sitemap: ${base}/sitemap.xml`,
-    `Sitemap: ${base}/careers/jobs.xml`,
-  ].join('\n'));
+  const base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  res.type('text/plain').send(`# TalentNest HR — robots.txt
+# ${base}
+
+User-agent: *
+Allow: /
+Allow: /careers
+Allow: /careers/
+Allow: /careers/job/
+Allow: /careers/jobs.xml
+Allow: /careers/jobs.json
+Allow: /sitemap.xml
+Allow: /sitemap-jobs.xml
+Allow: /sitemap-pages.xml
+Allow: /products
+Allow: /blog
+Allow: /about
+Allow: /services
+Allow: /hrms
+Allow: /contact
+Disallow: /app/
+Disallow: /api/
+
+# Sitemaps
+Sitemap: ${base}/sitemap.xml
+Sitemap: ${base}/sitemap-jobs.xml
+
+# Google
+User-agent: Googlebot
+Allow: /
+User-agent: Googlebot-News
+Allow: /
+User-agent: Googlebot-Video
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+# AI crawlers
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: YouBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: CCBot
+Allow: /
+
+# Job board crawlers — explicitly allowed
+User-agent: NaukriBot
+Allow: /
+User-agent: IndeedBot
+Allow: /
+User-agent: LinkedInBot
+Allow: /
+User-agent: GlassdoorBot
+Allow: /
+User-agent: ShineBot
+Allow: /
+User-agent: SimplyHiredBot
+Allow: /
+User-agent: CareerBuilderBot
+Allow: /
+User-agent: MonsterBot
+Allow: /
+User-agent: JobisJobBot
+Allow: /
+User-agent: JobsScraper
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: DuckDuckBot
+Allow: /
+User-agent: Slurp
+Allow: /
+User-agent: Twitterbot
+Allow: /
+User-agent: facebot
+Allow: /`);
 });
 
-// ── Sitemap index (points to both sitemaps) ─────────────────────────────────
+// ── Sitemap index — master index pointing to both sub-sitemaps ──────────────
 app.get('/sitemap.xml', (req, res) => {
-  const base = publicBaseUrl(req);
-  const now  = new Date().toISOString();
+  const base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const now  = new Date().toISOString().slice(0, 10);
+  res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
   res.type('application/xml').send(
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
-    `<sitemap><loc>${escHtml(base)}/careers/jobs.xml</loc><lastmod>${now}</lastmod></sitemap>` +
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `  <sitemap><loc>${base}/sitemap-pages.xml</loc><lastmod>${now}</lastmod></sitemap>\n` +
+    `  <sitemap><loc>${base}/sitemap-jobs.xml</loc><lastmod>${now}</lastmod></sitemap>\n` +
     `</sitemapindex>`
+  );
+});
+
+// ── /sitemap-jobs.xml — dynamic, all active jobs from MongoDB ───────────────
+// This is the KEY route. Bots follow sitemap → this file → each job URL.
+// NaukriBot, IndeedBot, Googlebot all read this to discover individual jobs.
+app.get('/sitemap-jobs.xml', async (req, res, next) => {
+  try {
+    const base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+    const jobs = await publicJobs(10000);
+    const today = new Date().toISOString().slice(0, 10);
+    const urls = [
+      // Main job board page
+      `<url><loc>${base}/careers</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      // All individual job pages
+      ...jobs.map(job => {
+        const slug = jobSlug(job);
+        const lastmod = job.updatedAt ? new Date(job.updatedAt).toISOString().slice(0, 10) : today;
+        return `<url><loc>${base}/careers/job/${escHtml(slug)}</loc><lastmod>${lastmod}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`;
+      }),
+    ];
+    res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    res.type('application/xml').send(
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.join('\n') + '\n' +
+      `</urlset>`
+    );
+  } catch (err) { next(err); }
+});
+
+// ── /sitemap-pages.xml — static marketing pages ────────────────────────────
+app.get('/sitemap-pages.xml', (req, res) => {
+  const base = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const today = new Date().toISOString().slice(0, 10);
+  const pages = [
+    ['/', '1.0', 'daily'],
+    ['/careers', '0.95', 'daily'],
+    ['/products', '0.9', 'weekly'],
+    ['/products/hireboard', '0.85', 'weekly'],
+    ['/products/peopledesk', '0.85', 'weekly'],
+    ['/products/jobtrack', '0.85', 'weekly'],
+    ['/services', '0.85', 'weekly'],
+    ['/hrms', '0.8', 'weekly'],
+    ['/about', '0.7', 'monthly'],
+    ['/blog', '0.8', 'weekly'],
+    ['/contact', '0.7', 'monthly'],
+    ['/companies', '0.7', 'weekly'],
+  ];
+  const urls = pages.map(([path, priority, freq]) =>
+    `<url><loc>${base}${path}</loc><lastmod>${today}</lastmod><changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
+  );
+  res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urls.join('\n') + '\n' +
+    `</urlset>`
   );
 });
 

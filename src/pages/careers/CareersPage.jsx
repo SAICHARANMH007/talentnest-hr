@@ -809,7 +809,15 @@ export default function CareersPage() {
                         </div>
 
                         <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                          Posted {j.postedAt ? new Date(j.postedAt).toLocaleDateString() : 'recently'} · {j.applicantsCount || 0} applicants
+                          {(() => {
+                            const d = j.createdAt || j.postedAt;
+                            if (!d) return 'Posted recently';
+                            const days = Math.floor((Date.now() - new Date(d)) / 86400000);
+                            if (days < 1) return 'Posted today';
+                            if (days < 7) return `Posted ${days} day${days > 1 ? 's' : ''} ago`;
+                            if (days < 30) return `Posted ${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''} ago`;
+                            return `Posted on ${new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+                          })()} · {j.applicantsCount || 0} applicants
                         </div>
                       </div>
 
@@ -866,6 +874,40 @@ export default function CareersPage() {
       <MarketingFooter />
 
       {applying && <ApplyModal job={applying} onClose={() => setApplying(null)} />}
+
+      {/* ── Crawler-visible content (noscript + paginated links) ────────────
+           Bots that don't execute JS see this static HTML with real job links.
+           NaukriBot, IndeedBot, Googlebot all follow these <a href> links.
+           Users never see this section (visually hidden). ──────────────── */}
+      <noscript>
+        <section aria-label="Job listings for search engine crawlers" style={{ display: 'block' }}>
+          <h2>Open Job Positions — TalentNest HR</h2>
+          {jobs.slice(0, 100).map(j => (
+            <article key={j.id || j._id}>
+              <h3><a href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}>{j.title}</a></h3>
+              <p>{j.company || j.companyName} · {j.location} · {j.jobType}</p>
+              {(j.createdAt) && <time dateTime={new Date(j.createdAt).toISOString()}>Posted {new Date(j.createdAt).toLocaleDateString('en-IN')}</time>}
+              {j.description && <p>{j.description.slice(0, 200)}</p>}
+            </article>
+          ))}
+        </section>
+      </noscript>
+
+      {/* Bot-followable paginated links — hidden from users, readable by all crawlers */}
+      <div aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+        <nav aria-label="Job listing pages for crawlers">
+          {Array.from({ length: Math.ceil(totalJobs / 20) }, (_, i) => i + 1).slice(0, 100).map(p => (
+            <a key={p} href={`/careers?page=${p}`} rel={p > 1 ? 'next' : undefined}>Page {p}</a>
+          ))}
+        </nav>
+        <div>
+          {jobs.slice(0, 50).map(j => (
+            <a key={j.id || j._id} href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}>
+              {j.title} — {j.company} — {j.location}
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
