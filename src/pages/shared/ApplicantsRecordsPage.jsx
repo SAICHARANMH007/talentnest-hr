@@ -208,7 +208,7 @@ export default function ApplicantsRecordsPage({ user }) {
   const [editRow, setEditRow] = useState(null);
   const [assigning, setAssigning] = useState('');
 
-  const canManage = user?.role === 'admin' || user?.role === 'super_admin';
+  const canManage = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'recruiter';
 
   useEffect(() => {
     let alive = true;
@@ -403,7 +403,9 @@ export default function ApplicantsRecordsPage({ user }) {
               </thead>
               <tbody>
                 {visibleRows.map((r, i) => (
-                  <tr key={rowKey(r, i)} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                  <tr key={rowKey(r, i)}
+                    style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
+                    onClick={() => setEditRow(r)}>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ fontWeight: 800, color: '#0A1628' }}>{r.candidateName || 'Candidate'}</div>
                       <div style={{ color: '#64748B', fontSize: 12 }}>{r.title || r.currentCompany || 'Profile pending'}</div>
@@ -417,7 +419,7 @@ export default function ApplicantsRecordsPage({ user }) {
                       <div style={{ fontWeight: 700 }}>{r.jobTitle || '-'}</div>
                       <div style={{ fontSize: 12, color: '#64748B' }}>{r.jobCompany || r.jobLocation || ''}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', color: '#334155', minWidth: 190 }}>
+                    <td style={{ padding: '12px 14px', color: '#334155', minWidth: 190 }} onClick={e => e.stopPropagation()}>
                       {canManage ? (
                         <select
                           value={r.assignedRecruiterId || ''}
@@ -433,7 +435,7 @@ export default function ApplicantsRecordsPage({ user }) {
                       )}
                       {r.assignedRecruiters && <div style={{ marginTop: 4, fontSize: 11, color: '#64748B' }}>Job: {r.assignedRecruiters}</div>}
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
                       <select value={r.stage || 'Applied'} onChange={e => changeStage(r, e.target.value)} style={{ minHeight: 36, border: '1px solid #E2E8F0', borderRadius: 8, padding: '6px 10px', fontWeight: 700, color: stageColor(r.stage), background: '#fff' }}>
                         {DB_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -441,10 +443,23 @@ export default function ApplicantsRecordsPage({ user }) {
                     <td style={{ padding: '12px 14px' }}><Badge label={r.source || 'platform'} color="#64748B" /></td>
                     <td style={{ padding: '12px 14px', color: '#334155', whiteSpace: 'nowrap' }}>{fmtDate(r.appliedAt)}</td>
                     <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0176D3' }}>{r.aiMatchScore ?? '-'}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <button onClick={() => canManage ? setEditRow(r) : setSelected(r)} style={{ ...(canManage ? btnP : btnG), padding: '7px 12px', fontSize: 12 }}>
-                        {canManage ? 'Edit' : 'View Details'}
-                      </button>
+                    <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button onClick={() => setEditRow(r)} style={{ ...btnP, padding: '6px 12px', fontSize: 12 }}>
+                          👤 Profile
+                        </button>
+                        {(r.resumeUrl || r.candidateId || r.userId) && (
+                          <button
+                            onClick={() => {
+                              const cid = r.candidateId || r.userId;
+                              if (cid) { import('react-router-dom').then(m => m.useNavigate); window.open(`/app/resume/${cid}`, '_blank'); }
+                              else if (r.resumeUrl) window.open(r.resumeUrl, '_blank');
+                            }}
+                            style={{ ...btnG, padding: '6px 12px', fontSize: 12 }}>
+                            📋 Resume
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

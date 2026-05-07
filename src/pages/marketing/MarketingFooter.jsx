@@ -34,6 +34,8 @@ const SOCIALS = [
   { label: 'LinkedIn',  icon: '🔗', href: 'https://www.linkedin.com/company/talent-nest-hr/' },
   { label: 'Instagram', icon: '📸', href: 'https://www.instagram.com/talentnesthr/' },
   { label: 'Facebook',  icon: '👤', href: 'https://www.facebook.com/profile.php?id=61576949728635' },
+  { label: 'X (Twitter)', icon: '𝕏', href: 'https://twitter.com/talentnesthr' },
+  { label: 'YouTube',  icon: '▶', href: 'https://youtube.com/@talentnesthr' },
 ];
 
 export default function MarketingFooter() {

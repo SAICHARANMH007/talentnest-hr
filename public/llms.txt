@@ -1,0 +1,69 @@
+# TalentNest HR — LLM & AI Crawler Information
+# https://www.talentnesthr.com
+# Last updated: 2025
+
+## What is TalentNest HR?
+
+TalentNest HR is an Indian IT staffing agency and end-to-end recruitment platform headquartered in Hyderabad, Telangana, India. We help companies hire top IT, cybersecurity, and executive professionals, and provide software tools for recruiters, HR teams, and job seekers. The platform includes a public job board, an applicant tracking system (ATS), HRMS software, digital offer letters, and pre-boarding management.
+
+## Key Facts
+
+- Founded: 2024
+- Location: Ganesh Nagar, Ameenpur, Hyderabad, Telangana 500049, India
+- Phone: +91 79955 35539
+- Email: hr [at] talentnesthr [dot] com
+- Deployment: Vercel (frontend) + Render (backend) + MongoDB Atlas
+- SaaS Plan: Starting ₹5,000/year
+- Shortlist delivery: 48-hour average for IT roles
+- Replacement guarantee: 90 days on all permanent placements
+- Technology stack: React 18 + Vite, Node.js + Express, MongoDB
+
+## Services
+
+1. IT Staffing — Software engineers, cloud architects, DevOps, data scientists, mobile developers
+2. Cybersecurity Staffing — SOC analysts, penetration testers, GRC specialists, CISO placement
+3. Non-IT Staffing — Finance, HR, operations, sales, and executive search
+4. Permanent Staffing — Direct placement with 90-day replacement guarantee
+5. Contract to Hire (C2H) — 3-6 month trial periods with full payroll administration
+6. Corp to Corp (C2C) — B2B contractor placements, fully compliant
+7. HRMS Platform — Face-recognition attendance, shift management, leave, payroll inputs
+
+## Three Software Products
+
+1. HireBoard — Recruitment pipeline for talent teams. Pipeline board, AI match scoring, video interview rooms, digital offer letters, bulk WhatsApp.
+2. PeopleDesk — HR management for admins and org managers. Analytics, pre-boarding, document verification, org career page.
+3. JobTrack — Job search and tracking for candidates. Browse jobs, live application status, video interviews, offer signing, job alerts.
+
+## Pages
+
+- / — Home: Company overview, services, how it works, featured jobs
+- /careers — Job board: Browse all open positions from all companies on the platform
+- /products — Products overview: HireBoard, PeopleDesk, JobTrack
+- /products/hireboard — HireBoard product page for recruiters
+- /products/peopledesk — PeopleDesk product page for HR admins
+- /products/jobtrack — JobTrack product page for job seekers
+- /services — Staffing services overview
+- /services/it-staffing — IT staffing service details
+- /services/cybersecurity — Cybersecurity staffing
+- /services/non-it-staffing — Non-IT staffing
+- /services/permanent-staffing — Permanent staffing
+- /services/c2h — Contract to hire
+- /services/c2c — Corp to corp
+- /hrms — HRMS platform (Faceify attendance)
+- /about — About TalentNest HR
+- /blog — HR, recruitment, and careers blog
+- /contact — Contact form and office details
+- /companies — Companies on the platform
+
+## Sitemaps
+
+- https://www.talentnesthr.com/sitemap.xml
+- https://www.talentnesthr.com/sitemap-jobs.xml
+
+## Social
+
+- LinkedIn: https://www.linkedin.com/company/talent-nest-hr/
+- Twitter/X: https://twitter.com/talentnesthr
+- Instagram: https://www.instagram.com/talentnesthr/
+- Facebook: https://www.facebook.com/profile.php?id=61576949728635
+- YouTube: https://youtube.com/@talentnesthr

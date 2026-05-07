@@ -1,12 +1,93 @@
+# TalentNest HR — robots.txt
+# https://www.talentnesthr.com
+
 User-agent: *
 Allow: /
 Allow: /careers
-Allow: /careers/crawl
+Allow: /careers/
 Allow: /careers/job/
-Allow: /careers/jobs.xml
-Allow: /careers/jobs.json
-Allow: /jobs.xml
+Allow: /products
+Allow: /products/
+Allow: /blog
+Allow: /about
+Allow: /services
+Allow: /hrms
+Allow: /contact
+Allow: /companies
 Disallow: /app/
 Disallow: /api/
+
+# Sitemaps
 Sitemap: https://www.talentnesthr.com/sitemap.xml
-Sitemap: https://www.talentnesthr.com/careers/jobs.xml
+Sitemap: https://www.talentnesthr.com/sitemap-jobs.xml
+
+# ── AI & LLM Crawlers — Explicitly Allowed ──────────────────────────────
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# ── Job Board Crawlers — Explicitly Allowed ──────────────────────────────
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: facebot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: IndeedBot
+Allow: /
+
+User-agent: NaukriBot
+Allow: /
+
+User-agent: GlassdoorBot
+Allow: /
+
+User-agent: CareerBuilderBot
+Allow: /
+
+User-agent: MonsterBot
+Allow: /
