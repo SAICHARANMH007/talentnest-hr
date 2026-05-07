@@ -3,6 +3,7 @@ const bcrypt       = require('bcryptjs');
 const User         = require('../models/User');
 const Organization = require('../models/Organization');
 const Job          = require('../models/Job');
+const { seedMassiveJobs } = require('./seedJobsMassive');
 const Candidate    = require('../models/Candidate');
 const Application  = require('../models/Application');
 
@@ -2297,6 +2298,17 @@ Key Responsibilities:
     console.log(`✅  SelfCrops: ${scJobCount} new agri jobs added, ${scJobSkipped} already existed (preserved)`);
   } catch (scErr) {
     console.error('❌  SelfCrops seed failed (non-critical):', scErr.message);
+  }
+
+  // ── 2.6 Massive job seed — all 2000+ Junior+Senior variants across 53 categories ──
+  // Idempotent: skips jobs that already exist (careerPageSlug match).
+  // All jobs are isPublic=true, status=active so NaukriBot/IndeedBot/Google
+  // Jobs can crawl and index them immediately on first deploy.
+  try {
+    const saUser = await User.findOne({ email: 'admin@talentnesthr.com' }).select('_id').lean();
+    await seedMassiveJobs(tnOrg, saUser?._id);
+  } catch (mjErr) {
+    console.error('❌  Massive job seed failed (non-critical):', mjErr.message);
   }
 
   // ── 3. Skip demo data if env flag ────────────────────────────────────────────
