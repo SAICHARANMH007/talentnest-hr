@@ -275,18 +275,32 @@ export default function OrgCareersPage() {
                       </div>
                       {/* CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                        <button onClick={e => { e.stopPropagation(); setApplying(j); }}
-                          style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          Apply Now →
-                        </button>
+                        {j.externalUrl ? (
+                          <a href={j.externalUrl} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
+                            Apply Now →
+                          </a>
+                        ) : (
+                          <button onClick={e => { e.stopPropagation(); setApplying(j); }}
+                            style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Apply Now →
+                          </button>
+                        )}
                         <span style={{ color: '#94A3B8', fontSize: 11 }}>{isOpen ? '▲ Hide' : '▼ Details'}</span>
                       </div>
                     </div>
                   </div>
                   {/* Expanded description */}
-                  {isOpen && j.description && (
+                  {isOpen && (j.description || j.requirements) && (
                     <div style={{ padding: '0 22px 18px', borderTop: '1px solid #F1F5F9' }}>
-                      <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: '14px 0 0', whiteSpace: 'pre-wrap' }}>{j.description}</p>
+                      {j.description && <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: '14px 0 0', whiteSpace: 'pre-wrap' }}>{j.description}</p>}
+                      {j.requirements && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
+                          <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

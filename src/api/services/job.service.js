@@ -29,7 +29,7 @@ export const jobService = {
   async approveJob(id, action, reason) { return req('PATCH', `/jobs/${id}/approve`, { action, ...(reason ? { reason } : {}) }); },
   // Career listing (public org career page)
   async getOrgPublicJobs(orgSlug)          { return req('GET', `/jobs/public/org/${orgSlug}`, null, false); },
-  async updateCareerListing(publish, unpublish) { return req('PATCH', '/jobs/career-listing', { publish: publish || [], unpublish: unpublish || [] }); },
+  async updateCareerListing(publish, unpublish, orgId) { return req('PATCH', '/jobs/career-listing', { publish: publish || [], unpublish: unpublish || [], orgId: orgId || undefined }); },
 
   // AI Matching (computed via Gemini logic - maintained for compatibility)
   async getMatchedJobs(candidateId) {

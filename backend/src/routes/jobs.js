@@ -122,10 +122,18 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
 }));
 
 // ── PATCH /api/jobs/career-listing — bulk toggle isPublic for career listing ───
-// Admin/SuperAdmin sets which jobs appear on their public career page.
+// Admin sets which of their org's jobs appear on the public career page.
+// Super_admin can pass orgId to scope the update to a specific org.
 router.patch('/career-listing', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const { publish, unpublish } = req.body;
-  const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const { publish, unpublish, orgId } = req.body;
+  let tenantFilter;
+  if (req.user.role === 'super_admin' && orgId) {
+    tenantFilter = { tenantId: orgId };
+  } else if (req.user.role === 'super_admin') {
+    tenantFilter = {}; // super_admin without orgId — no tenant restriction (use with care)
+  } else {
+    tenantFilter = { tenantId: req.user.tenantId };
+  }
   const ops = [];
   if (Array.isArray(publish) && publish.length > 0) {
     ops.push(Job.updateMany({ _id: { $in: publish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: true } }));
@@ -134,7 +142,7 @@ router.patch('/career-listing', ...guard, allowRoles('admin', 'super_admin', 're
     ops.push(Job.updateMany({ _id: { $in: unpublish }, ...tenantFilter, deletedAt: null }, { $set: { isPublic: false } }));
   }
   await Promise.all(ops);
-  logger.audit('Career listing updated', req.user.id, req.user.tenantId, { published: (publish||[]).length, unpublished: (unpublish||[]).length });
+  logger.audit('Career listing updated', req.user.id, req.user.tenantId, { published: (publish||[]).length, unpublished: (unpublish||[]).length, orgId: orgId || req.user.tenantId });
   res.json({ success: true });
 }));
 
@@ -300,7 +308,7 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
     isPublic: true,
     status: 'active',
     deletedAt: null,
-  }).select('title company companyName location jobType experience urgency skills description salaryMin salaryMax salaryCurrency careerPageSlug createdAt numberOfOpenings').sort({ createdAt: -1 }).lean();
+  }).select('title company companyName location jobType experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency careerPageSlug externalUrl createdAt numberOfOpenings').sort({ createdAt: -1 }).lean();
 
   res.json({
     success: true,
