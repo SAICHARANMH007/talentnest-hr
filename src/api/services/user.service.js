@@ -29,6 +29,7 @@ export const userService = {
   async updateOrgPlan(orgId, payload) { return req('PATCH', `/orgs/${orgId}/plan`, payload); },
   
   // Member Management
+  async updateMyLoginLocation(geo) { return req('PATCH', '/users/me/location', { lat: geo.lat, lng: geo.lng, city: geo.city || '', country: geo.country || '' }); },
   async getUser(id)             { return req('GET', `/users/${id}`); },
   async updateUser(id, d)       { return req('PATCH', `/users/${id}`, d); },
   async getUsers(params)          {

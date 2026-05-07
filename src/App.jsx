@@ -353,6 +353,24 @@ export default function App() {
 
   useEffect(() => scheduleAppPreload(user?.role), [user?.role]);
 
+  // Capture candidate login location once per session (non-blocking)
+  // Super admin can see lastLoginLocation on user records
+  useEffect(() => {
+    if (!user || user.role !== 'candidate') return;
+    const sessionKey = 'tn_loc_sent';
+    if (sessionStorage.getItem(sessionKey)) return; // already sent this session
+    sessionStorage.setItem(sessionKey, '1');
+
+    import('./utils/geolocation.js').then(({ requestGeolocation }) => {
+      requestGeolocation().then(geo => {
+        if (!geo) return;
+        import('./api/api.js').then(({ default: api }) => {
+          api.updateMyLoginLocation(geo).catch(() => {});
+        });
+      }).catch(() => {});
+    }).catch(() => {});
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Heartbeat loop for presence API
   useEffect(() => {
     if (!user) return;

@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema({
 
   lastLogin: { type: Date },
 
+  // Last known login location (captured on candidate login via browser geolocation)
+  lastLoginLocation: {
+    lat      : { type: Number, default: null },
+    lng      : { type: Number, default: null },
+    city     : { type: String, default: '' },
+    country  : { type: String, default: '' },
+    ip       : { type: String, default: '' },
+    recordedAt: { type: Date, default: null },
+  },
+
   // ── Auth helpers ──────────────────────────────────────────
   googleId            : { type: String },
   twoFactorEnabled    : { type: Boolean, default: false },

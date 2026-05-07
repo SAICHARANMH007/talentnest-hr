@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 function useIsMobile() {
   const [m, setM] = React.useState(() => window.innerWidth < 640);
@@ -34,6 +34,19 @@ export default function CandidateDashboard({ user }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoad]  = useState(true);
   const [toast, setToast]   = useState("");
+  const [locBanner, setLocBanner] = useState(false); // show location permission banner
+  const locAsked = useRef(false);
+
+  // Show location permission banner once if not yet granted
+  useEffect(() => {
+    if (locAsked.current) return;
+    locAsked.current = true;
+    if (!navigator.geolocation) return;
+    if (sessionStorage.getItem('tn_loc_sent')) return; // already captured this session
+    navigator.permissions?.query?.({ name: 'geolocation' }).then(r => {
+      if (r.state === 'prompt') setLocBanner(true); // not yet decided — show banner
+    }).catch(() => setLocBanner(true));
+  }, []);
 
   const loadData = () => {
     let cancelled = false;
@@ -118,10 +131,52 @@ export default function CandidateDashboard({ user }) {
   const shortlisted   = apps.filter(a => ["shortlisted","interview_scheduled","interview_completed","offer_extended","selected"].includes(a.stage)).length;
   const successRate   = appliedCount > 0 ? Math.round((shortlisted/appliedCount)*100) : 0;
 
+  const handleAllowLocation = () => {
+    setLocBanner(false);
+    import('../../utils/geolocation.js').then(({ requestGeolocation }) => {
+      requestGeolocation().then(geo => {
+        if (!geo) return;
+        api.updateMyLoginLocation(geo).catch(() => {});
+        sessionStorage.setItem('tn_loc_sent', '1');
+        setToast('✅ Location saved — you\'ll now get nearby job recommendations!');
+      });
+    });
+  };
+
   return (
     <div style={{ animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} />
+
+      {/* Location permission banner — shown once if permission not yet granted */}
+      {locBanner && (
+        <div style={{
+          background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(0,194,203,0.06))',
+          border: '1px solid rgba(1,118,211,0.25)', borderRadius: 14,
+          padding: '14px 18px', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 28, flexShrink: 0 }}>📍</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#0176D3', marginBottom: 3 }}>
+              Allow location for smarter job recommendations
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+              We use your location to surface nearby roles and send you relevant job alerts. We never share your exact location with anyone.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button onClick={handleAllowLocation}
+              style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              📍 Allow Location
+            </button>
+            <button onClick={() => { setLocBanner(false); sessionStorage.setItem('tn_loc_sent', '1'); }}
+              style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: 10, padding: '9px 14px', fontSize: 12, color: '#64748B', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Admin-Assigned Jobs — Detailed Cards ── */}
       {assignedByAdmin.length > 0 && (

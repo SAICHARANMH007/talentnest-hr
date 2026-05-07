@@ -186,6 +186,24 @@ router.patch('/me/settings', authenticate, asyncHandler(async (req, res) => {
   res.json({ success: true, data: userService.normalize(updated) });
 }));
 
+// PATCH /api/users/me/location — Candidate records their login location (browser geolocation)
+router.patch('/me/location', authenticate, asyncHandler(async (req, res) => {
+  const { lat, lng, city, country } = req.body;
+  if (lat == null || lng == null) throw new AppError('lat and lng are required.', 400);
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+  await User.findByIdAndUpdate(req.user._id || req.user.id, {
+    $set: {
+      lastLoginLocation: {
+        lat: Number(lat), lng: Number(lng),
+        city: city || '', country: country || '',
+        ip: clientIp,
+        recordedAt: new Date(),
+      },
+    },
+  });
+  res.json({ success: true });
+}));
+
 // GET /api/users/pending — Unified Pending Invites List (must be BEFORE /:id)
 router.get('/pending', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const filter = { inviteStatus: 'pending', isActive: false };
