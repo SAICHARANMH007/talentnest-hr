@@ -106,6 +106,8 @@ function ApplyModal({ job, onClose }) {
       handleEmailBlur();
     }
   }, []);
+
+  const handleEmailBlur = async () => {
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;
     setEmailChecking(true);
