@@ -100,13 +100,6 @@ function ApplyModal({ job, onClose }) {
   // Track which prefilled fields the user has manually edited
   const [userEditedFields, setUserEditedFields] = React.useState(new Set());
 
-  // Auto-trigger prefill on mount if email is already present (from sessionStorage)
-  useEffect(() => {
-    if (form.email && /\S+@\S+\.\S+/.test(form.email)) {
-      handleEmailBlur();
-    }
-  }, []);
-
   const handleEmailBlur = async () => {
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;
@@ -160,6 +153,13 @@ function ApplyModal({ job, onClose }) {
     } catch { /* silent */ }
     setEmailChecking(false);
   };
+
+  // Auto-trigger prefill on mount if email is already present (from sessionStorage)
+  useEffect(() => {
+    if (form.email && /\S+@\S+\.\S+/.test(form.email)) {
+      handleEmailBlur();
+    }
+  }, []);
 
   // When user edits a pre-filled field, mark it as user-modified (remove green lock indicator)
   const handlePrefillFieldChange = (fieldName, value) => {
@@ -272,7 +272,7 @@ function ApplyModal({ job, onClose }) {
               setAccountCreated(true);
               setDone(true);
               setSubmitting(false);
-              setTimeout(() => { window.location.href = '/app/applications'; }, 2000);
+              setTimeout(() => { navigate('/app/applications'); }, 2000);
               return;
             }
           }
