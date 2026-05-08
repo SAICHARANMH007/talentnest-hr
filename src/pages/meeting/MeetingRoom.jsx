@@ -9,21 +9,44 @@ const SOCKET_URL = SOCKET_BASE_URL;
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  // TURN relay — required for corporate networks, mobile data, and strict firewalls
+  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
 // ── Participant Tile ─────────────────────────────────────────────────────────
 function VideoTile({ stream, name, isMuted, isCamOff, isLocal, isHost, onMute, onRemove, showControls }) {
   const vidRef = useRef(null);
+  const audioRef = useRef(null); // dedicated <audio> for remote participants — avoids React muted-prop bug
+
   useEffect(() => {
-    if (vidRef.current && stream) vidRef.current.srcObject = stream;
-  }, [stream]);
+    if (!stream) return;
+    // Video element: always muted (audio routed separately below for remote peers)
+    if (vidRef.current) {
+      vidRef.current.srcObject = stream;
+      vidRef.current.muted = true; // video element stays muted — audio below handles it
+      vidRef.current.play().catch(() => {});
+    }
+    // Audio element: remote peers only — plays their voice
+    if (!isLocal && audioRef.current) {
+      audioRef.current.srcObject = stream;
+      audioRef.current.muted = false;
+      audioRef.current.volume = 1;
+      audioRef.current.play().catch(() => {});
+    }
+  }, [stream, isLocal]);
 
   const initials = (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <div style={{ position: 'relative', background: '#1E293B', borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Hidden audio element for remote participants — avoids React muted-prop bug on <video> */}
+      {!isLocal && <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }} />}
       {stream && !isCamOff ? (
-        <video ref={vidRef} autoPlay playsInline muted={isLocal} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <video ref={vidRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#fff' }}>
           {initials}

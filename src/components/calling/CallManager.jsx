@@ -12,9 +12,13 @@ function VideoTile({ stream, name, muted = false, style = {} }) {
   useEffect(() => {
     if (!ref.current || !stream) return;
     ref.current.srcObject = stream;
-    // Explicit play() call to bypass autoplay policy blocks
+    // CRITICAL: Set muted imperatively — React's `muted` prop does NOT reliably
+    // unmute <video> elements because the attribute is set at creation time only.
+    // Without this, remote video streams are permanently silent.
+    ref.current.muted = !!muted;
+    ref.current.volume = muted ? 0 : 1;
     ref.current.play().catch(() => {});
-  }, [stream]);
+  }, [stream, muted]);
   const initials = (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   return (
     <div style={{ position: 'relative', background: '#0F172A', borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', ...style }}>
@@ -126,15 +130,11 @@ export default function CallManager({ user }) {
     const el = remoteAudioRef.current;
     if (!el) return;
 
-    const isVideo = callInfoRef.current?.callType === 'video';
-    if (isVideo) {
-      // VideoTile's <video> element handles both video AND audio for video calls.
-      // Clear the audio element to avoid playing audio twice (echo/silence).
-      if (el.srcObject) { el.srcObject = null; }
-      return;
-    }
-
-    // Audio-only call: route through the hidden <audio> element
+    // Route audio through the hidden <audio> element for ALL call types.
+    // Previously video calls relied on VideoTile's <video> for audio, but React's
+    // `muted` prop doesn't reliably unmute <video> elements — causing silence.
+    // Using a dedicated <audio> element is cleaner and more reliable across all browsers.
+    // VideoTile now only renders VIDEO track (muted=true); audio comes from here.
     if (el.srcObject !== stream) el.srcObject = stream;
     el.muted = false;
     el.volume = 1;
@@ -471,13 +471,22 @@ export default function CallManager({ user }) {
   );
 
   // ── Active ────────────────────────────────────────────────────────────────
+  const isPoorNetwork = connectionState === 'disconnected' || connectionState === 'failed' || connectionState === 'checking';
   if (callState === 'active') return (
     <>
       {audioEl}
       <div style={{ ...overlay, background: 'rgba(0,0,0,0.95)', flexDirection: 'column', gap: 16 }}>
+        {/* Network quality warning */}
+        {isPoorNetwork && (
+          <div style={{ position: 'fixed', top: 70, left: '50%', transform: 'translateX(-50%)', background: 'rgba(245,158,11,0.95)', color: '#fff', padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 700, zIndex: 99999, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+            <span>⚠️</span>
+            {connectionState === 'failed' ? 'Connection lost — trying to reconnect…' : 'Weak network — voice may be affected'}
+          </div>
+        )}
         {isVideo ? (
           <div style={{ position: 'relative', width: '90vw', maxWidth: 700, height: '70vh', maxHeight: 500 }}>
-            <VideoTile stream={remoteStream} name={callInfo?.peerName} style={{ width: '100%', height: '100%' }} />
+            {/* Remote video tile: muted=true because audio is played through hidden <audio> element above */}
+            <VideoTile stream={remoteStream} name={callInfo?.peerName} muted style={{ width: '100%', height: '100%' }} />
             {localStream && (
               <VideoTile stream={localStream} name="You" muted style={{ position: 'absolute', bottom: 12, right: 12, width: 140, height: 90, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }} />
             )}
