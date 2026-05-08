@@ -21,10 +21,19 @@ function tokenIsValid(token) {
 let _accessToken = null;
 export const setToken  = (t) => {
   _accessToken = t;
-  if (t) sessionStorage.setItem(TOKEN_KEY, t);
-  else sessionStorage.removeItem(TOKEN_KEY);
+  if (t) {
+    sessionStorage.setItem(TOKEN_KEY, t);
+    localStorage.setItem('tn_logged_in', 'true');
+  } else {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('tn_logged_in');
+  }
 };
-export const clearToken = () => { _accessToken = null; sessionStorage.removeItem(TOKEN_KEY); };
+export const clearToken = () => {
+  _accessToken = null;
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('tn_logged_in');
+};
 export const getToken  = () => _accessToken;
 
 // Global 401 handler — modules can subscribe to force-logout
@@ -71,6 +80,12 @@ export async function initAuth() {
   if (tokenIsValid(stored) && storedUser) {
     _accessToken = stored;
     return { token: stored, user: storedUser };
+  }
+
+  // Optimize: If we have no reason to believe the user is logged in (no hint in localStorage),
+  // skip the silent refresh call to avoid a 401 error in the console for new visitors.
+  if (!localStorage.getItem('tn_logged_in')) {
+    return null;
   }
 
   // Slow path: token missing or expired — ask the server for a new one via cookie.
