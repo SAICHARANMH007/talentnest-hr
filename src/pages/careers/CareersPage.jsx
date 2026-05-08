@@ -1076,10 +1076,11 @@ export default function CareersPage() {
                 {(Array.isArray(filtered) ? filtered : []).map(j => (
                   <div
                     key={j.id}
-                    style={{ background: '#fff', borderRadius: 16, padding: '24px 28px', borderLeft: `4px solid ${TYPE_COLOR[j.urgency] || '#0176D3'}`, boxShadow: '0 4px 24px rgba(0,0,0,0.06)', transition: 'all 0.22s' }}
+                    style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', borderLeft: `4px solid ${TYPE_COLOR[j.urgency] || '#0176D3'}`, boxShadow: '0 4px 24px rgba(0,0,0,0.06)', transition: 'all 0.22s' }}
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.1)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; }}
                   >
+                    <div style={{ padding: '24px 28px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 260 }}>
                         {/* Badges */}
@@ -1145,7 +1146,7 @@ export default function CareersPage() {
                       </div>
 
                       {/* CTA */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4, flexShrink: 0 }}>
                         <button onClick={() => { const jj = { ...j, id: j._id || j.id }; setApplying(jj); setViewingJob(jj); }} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
                           {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
@@ -1154,19 +1155,57 @@ export default function CareersPage() {
                             We save your profile, then redirect you
                           </span>
                         )}
-                        {/* Share button */}
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            onClick={() => shareJob(j)}
-                            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F7F8FC', color: '#374151', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
-                            🔗 Share
-                          </button>
-                        </div>
                         <button onClick={() => navigate('/login')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F7F8FC', color: '#64748B', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           Sign In to Track
                         </button>
                       </div>
                     </div>
+                    </div>
+
+                    {/* ── Share bar — full width, always visible ── */}
+                    {(() => {
+                      const jid = j._id || j.id;
+                      const jobUrl = `${window.location.origin}/careers?job=${jid}`;
+                      const jobTitle = `${j.title}${j.company ? ` @ ${j.company}` : ''}`;
+                      const waText = encodeURIComponent(`🚀 Job Opening: ${jobTitle}${j.location ? ` · ${j.location}` : ''}\n\n${jobUrl}`);
+                      const liUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+                      const twText = encodeURIComponent(`🚀 Hiring: ${jobTitle}\n👉 Apply: ${jobUrl}\n#Hiring #Jobs`);
+                      const twUrl = `https://twitter.com/intent/tweet?text=${twText}`;
+                      return (
+                        <div style={{ borderTop: '1px solid #F1F5F9', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: '#FAFBFC' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.5px', textTransform: 'uppercase', marginRight: 4 }}>Share:</span>
+                          {/* WhatsApp */}
+                          <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#25D366', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            💬 WhatsApp
+                          </a>
+                          {/* LinkedIn */}
+                          <a href={liUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#0A66C2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            💼 LinkedIn
+                          </a>
+                          {/* X / Twitter */}
+                          <a href={twUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#000', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            𝕏 Twitter
+                          </a>
+                          {/* Copy link */}
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(jobUrl).catch(()=>{}); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            🔗 Copy Link
+                          </button>
+                          {/* Native share (mobile) */}
+                          {navigator.share && (
+                            <button
+                              onClick={() => navigator.share({ title: jobTitle, text: `Job Opening: ${jobTitle}`, url: jobUrl }).catch(() => {})}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', whiteSpace: 'nowrap' }}>
+                              ↗ More
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
 
