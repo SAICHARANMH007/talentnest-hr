@@ -461,7 +461,7 @@ function ApplyModal({ job, onClose }) {
               sf('email', v); setPrefillState(null); setUserEditedFields(new Set());
             }}
             onBlur={handleEmailBlur} type="email" placeholder="jane@example.com"
-            hint={!prefillState && !form.email ? 'Enter your email — we'll auto-fill your details if you've applied before' : undefined}
+            hint={!prefillState && !form.email ? "Enter your email — we'll auto-fill your details if you've applied before" : undefined}
           />
           {emailChecking && (
             <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5, fontSize:12, color:'#64748B' }}>
