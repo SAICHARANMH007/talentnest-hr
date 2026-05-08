@@ -101,7 +101,7 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 700 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
 
       {/* ── JD Upload ── */}
       <div style={{ ...card, padding: 16, border: '1px solid rgba(1,118,211,0.3)' }}>

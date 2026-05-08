@@ -19,15 +19,18 @@ export default function Modal({ title, onClose, children, wide, footer }) {
         style={{ ...glass, width:"min(100%, 1000px)", maxWidth:wide?'840px':'620px', display:"flex", flexDirection:"column",
           maxHeight:'min(calc(100dvh - 40px), calc(100vh - 40px))',
           backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
-          position:"relative", overflow:"hidden", borderRadius:18 }}
+          position:"relative", overflow:"hidden", borderRadius:18,
+          // Ensure the flex layout fills height correctly on all browsers
+          height: 'min(calc(100dvh - 40px), calc(100vh - 40px))',
+        }}
       >
         {/* Sticky header */}
         <div className="tn-modal-header" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap: 16, padding:"18px 24px 14px", borderBottom:"1px solid rgba(0,0,0,0.06)", flexShrink:0, background:"#fff", borderRadius:"18px 18px 0 0" }}>
-          <h3 style={{ color:"#181818", fontWeight:800, fontSize:16, margin:0, lineHeight: 1.3 }}>{title}</h3>
-          <button onClick={onClose} aria-label="Close" style={{ background:"none", border:"none", color:"#706E6B", fontSize:22, cursor:"pointer", lineHeight:1, padding:"4px 6px", minHeight:36, minWidth:36, flexShrink: 0 }}>✕</button>
+          <h3 style={{ color:"#181818", fontWeight:800, fontSize:16, margin:0, lineHeight: 1.3, wordBreak:'break-word' }}>{title}</h3>
+          <button onClick={onClose} aria-label="Close" style={{ background:"rgba(0,0,0,0.05)", border:"none", color:"#706E6B", fontSize:20, cursor:"pointer", lineHeight:1, padding:"6px 8px", minHeight:36, minWidth:36, flexShrink: 0, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
-        {/* Scrollable content */}
-        <div className="tn-modal-body" style={{ padding:"22px 24px 24px", overflowY:"auto", flex:1, WebkitOverflowScrolling:"touch" }}>
+        {/* Scrollable content — THIS is the only scroll container */}
+        <div className="tn-modal-body" style={{ padding:"22px 24px 24px", overflowY:"auto", flex:1, minHeight:0, WebkitOverflowScrolling:"touch", overscrollBehavior:'contain' }}>
           {children}
         </div>
         {/* Sticky footer */}

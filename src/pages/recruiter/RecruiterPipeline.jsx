@@ -326,8 +326,11 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
 
       {/* Notes Panel */}
       {showNotes && (
-        <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FAFAFA', border: '1px solid #FAFAF9', borderRadius: 10 }}>
-          <label style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>📝 Recruiter Notes</label>
+        <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <label style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>📝 Recruiter Notes</label>
+            <button onClick={() => setShowNotes(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>✕</button>
+          </div>
           <textarea
             value={notes}
             onChange={e => handleNoteChange(e.target.value)}
@@ -341,8 +344,11 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
 
       {/* Tags Panel */}
       {showTags && (
-        <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FAFAFA', border: '1px solid #FAFAF9', borderRadius: 10 }}>
-          <label style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 8 }}>🏷️ Tags</label>
+        <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <label style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>🏷️ Tags</label>
+            <button onClick={() => setShowTags(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>✕</button>
+          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {PRESET_TAGS.map(tag => {
               const active = tags.includes(tag);

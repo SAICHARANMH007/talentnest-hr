@@ -506,7 +506,7 @@ export default function App() {
         <Route path="settings/password" element={<ChangePasswordPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/email" element={<EmailSettingsPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/security" element={<SecuritySettingsPage user={user} onBack={() => window.history.back()} />} />
-        <Route path="add-candidate" element={<Suspense fallback={<PageLoader />}><AddCandidateForm addedBy={user} onSuccess={() => { }} /></Suspense>} />
+        <Route path="add-candidate" element={<Suspense fallback={<PageLoader />}><AddCandidateForm addedBy={user} onSuccess={() => { window.dispatchEvent(new CustomEvent('tn_nav', { detail: 'candidates' })); }} /></Suspense>} />
         {/* Resume full-page view — accessible by all logged-in roles */}
         <Route path="resume/:candidateId" element={<Suspense fallback={<PageLoader />}><ResumeViewPage user={user} /></Suspense>} />
 
