@@ -6,6 +6,7 @@ const Candidate      = require('../models/Candidate');
 const Job            = require('../models/Job');
 const Notification   = require('../models/Notification');
 const OfferLetter    = require('../models/OfferLetter');
+const User           = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard } = require('../middleware/tenantGuard');
 const { allowRoles } = require('../middleware/rbac');
@@ -144,7 +145,6 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   // Only non-sensitive professional fields are returned.
   // hasPhone = boolean tells the UI "this account has a phone on file" without revealing it.
 
-  const User = require('../models/User');
   const user = await User.findOne({ email: emailLower, role: 'candidate', deletedAt: null })
     .select('name phone title currentCompany experience availability').lean();
 
@@ -168,6 +168,7 @@ router.post('/prefill', asyncHandler(async (req, res) => {
 
   // Fallback: check Candidate collection (recruiter-added, no account yet)
   const candidate = await Candidate.findOne({ email: emailLower, deletedAt: null })
+    .sort({ updatedAt: -1 })
     .select('name phone title currentCompany experience availability').lean();
 
   if (candidate) {

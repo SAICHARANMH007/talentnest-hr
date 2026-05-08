@@ -36,7 +36,66 @@ function ApplyModal({ job, orgName, onClose }) {
   const [error, setError] = useState('');
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | asking | granted | denied
   const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailFoundMsg, setEmailFoundMsg] = useState('');
+  const [prefillState, setPrefillState] = useState(null); // { isRegistered, hasPhone, fields[] }
+  const [userEditedFields, setUserEditedFields] = useState(new Set());
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleEmailBlur = async () => {
+    const email = form.email?.trim();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return;
+    setEmailChecking(true);
+    setEmailFoundMsg('');
+    setPrefillState(null);
+    setUserEditedFields(new Set());
+    try {
+      const r = await api.prefillByEmail(email);
+      if (r?.exists && r?.profile) {
+        const p = r.profile;
+        const updates = {};
+        const filled = [];
+        
+        // Use current form state to decide what to update
+        const fields = [
+          ['name', p.name],
+          ['title', p.title],
+          ['currentCompany', p.currentCompany],
+          ['experience', p.experience],
+          ['availability', p.availability]
+        ];
+
+        for (const [key, val] of fields) {
+          if (val && (!form[key] || form[key] === val)) {
+            if (!form[key]) updates[key] = val;
+            filled.push(key);
+          }
+        }
+
+        if (Object.keys(updates).length > 0) setForm(prev => ({ ...prev, ...updates }));
+        if (filled.length > 0) setPrefillState({ isRegistered: r.isRegisteredUser, hasPhone: r.hasPhone, fields: filled });
+
+        setEmailFoundMsg(
+          r.isRegisteredUser
+            ? 'Registered account found — professional details pre-filled below.'
+            : 'Profile found — details have been pre-filled. Please verify and complete.'
+        );
+      } else {
+        setEmailFoundMsg('');
+      }
+    } catch (err) {
+      console.error('Prefill failed:', err);
+    } finally {
+      setEmailChecking(false);
+    }
+  };
+
+  const handleFieldChange = (key, val) => {
+    sf(key, val);
+    setUserEditedFields(prev => new Set(prev).add(key));
+  };
+
+  const isHighlighted = (key) => prefillState?.fields?.includes(key) && !userEditedFields.has(key);
 
   // Silently ask for location — never block submission if denied
   useEffect(() => {
@@ -111,23 +170,52 @@ function ApplyModal({ job, orgName, onClose }) {
 
               {[['Full Name *', 'name', 'text', 'Jane Smith'], ['Email *', 'email', 'email', 'jane@example.com'], ['Mobile Number *', 'phone', 'tel', '+91 99999 99999']].map(([label, key, type, ph]) => (
                 <div key={key}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>{label}</label>
-                  <input type={type} value={form[key]} onChange={e => sf(key, e.target.value)} placeholder={ph}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted(key) ? '#059669' : '#374151', marginBottom: 4 }}>
+                    {isHighlighted(key) ? `✅ ${label} (auto-filled)` : label}
+                  </label>
+                  <input type={type} value={form[key]} 
+                    onChange={e => key === 'email' ? sf(key, e.target.value) : handleFieldChange(key, e.target.value)} 
+                    onBlur={key === 'email' ? handleEmailBlur : undefined}
+                    placeholder={ph}
+                    style={{ 
+                      width: '100%', padding: '12px 14px', borderRadius: 10, 
+                      border: '1px solid', 
+                      borderColor: isHighlighted(key) ? '#059669' : '#E2E8F0',
+                      background: isHighlighted(key) ? '#f0fdf4' : '#fff',
+                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
+                    }} />
+                  {key === 'email' && emailChecking && <div style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>Looking up profile…</div>}
+                  {key === 'email' && emailFoundMsg && <div style={{ fontSize: 11, color: emailFoundMsg.includes('Registered') ? '#059669' : '#0176D3', marginTop: 4 }}>{emailFoundMsg}</div>}
                 </div>
               ))}
 
               {/* Title and Availability — stacked on mobile, side by side on wider screens */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Current Title</label>
-                  <input value={form.title} onChange={e => sf('title', e.target.value)} placeholder="e.g. Developer"
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('title') ? '#059669' : '#374151', marginBottom: 4 }}>
+                    {isHighlighted('title') ? '✅ Current Title (auto)' : 'Current Title'}
+                  </label>
+                  <input value={form.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="e.g. Developer"
+                    style={{ 
+                      width: '100%', padding: '12px 14px', borderRadius: 10, 
+                      border: '1px solid',
+                      borderColor: isHighlighted('title') ? '#059669' : '#E2E8F0',
+                      background: isHighlighted('title') ? '#f0fdf4' : '#fff',
+                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
+                    }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Availability</label>
-                  <select value={form.availability} onChange={e => sf('availability', e.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, background: '#fff', boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('availability') ? '#059669' : '#374151', marginBottom: 4 }}>
+                    {isHighlighted('availability') ? '✅ Availability (auto)' : 'Availability'}
+                  </label>
+                  <select value={form.availability} onChange={e => handleFieldChange('availability', e.target.value)}
+                    style={{ 
+                      width: '100%', padding: '12px 14px', borderRadius: 10, 
+                      border: '1px solid',
+                      borderColor: isHighlighted('availability') ? '#059669' : '#E2E8F0',
+                      background: isHighlighted('availability') ? '#f0fdf4' : '#fff',
+                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
+                    }}>
                     <option value="">Select…</option>
                     <option value="immediate">Immediate</option>
                     <option value="15 days">15 Days Notice</option>

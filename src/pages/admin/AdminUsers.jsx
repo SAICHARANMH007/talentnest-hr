@@ -1152,7 +1152,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                    key={pageNum}
                    onClick={() => setPagination(p => ({ ...p, page: pageNum }))}
                    style={{
-                     width: 32, height: 32, borderRadius: 8, border: '1px solid #e8ecf0',
+                     minWidth: 44, minHeight: 44, borderRadius: 8, border: '1px solid #e8ecf0',
                      background: pagination.page === pageNum ? '#0176D3' : '#fff',
                      color: pagination.page === pageNum ? '#fff' : '#181818',
                      fontWeight: pagination.page === pageNum ? 700 : 500,

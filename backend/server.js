@@ -118,7 +118,7 @@ const CSRF_EXEMPT_PATHS = new Set([
   '/auth/login', '/auth/register', '/auth/google',
   '/auth/verify-otp', '/auth/forgot-password', '/auth/reset-password',
   '/auth/set-password', '/auth/verify-invite', '/auth/refresh', '/auth/verify-domain',
-  '/applications/public', '/leads', '/health',
+  '/applications/public', '/applications/prefill', '/leads', '/health',
   '/whatsapp/webhook',
   '/presence/heartbeat',
 ]);

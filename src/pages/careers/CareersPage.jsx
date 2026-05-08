@@ -103,8 +103,6 @@ function ApplyModal({ job, onClose }) {
   const handleEmailBlur = async () => {
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;
-    // Already logged in with same email — form pre-populated from sessionStorage
-    if (prefill.email && email.toLowerCase() === prefill.email.toLowerCase()) return;
     setEmailChecking(true);
     setEmailFoundMsg('');
     setPrefillState(null);
@@ -113,22 +111,37 @@ function ApplyModal({ job, onClose }) {
       const r = await api.prefillByEmail(email);
       if (r?.exists && r?.profile) {
         const p = r.profile;
-        // IMPORTANT: Calculate filled[] BEFORE calling setForm to avoid async callback bug.
-        // setForm's functional updater runs during React's render phase — AFTER setPrefillState —
-        // so filled[] would be empty if populated inside the callback.
-        const currentForm = form; // capture current form state synchronously
-        const filled = [];
-        const updates = {};
-        if (p.name           && !currentForm.name)           { updates.name           = p.name;           filled.push('name'); }
-        if (p.title          && !currentForm.title)          { updates.title          = p.title;          filled.push('title'); }
-        if (p.currentCompany && !currentForm.currentCompany) { updates.currentCompany = p.currentCompany; filled.push('currentCompany'); }
-        if (p.experience     && !currentForm.experience)     { updates.experience     = p.experience;     filled.push('experience'); }
-        if (p.availability   && !currentForm.availability)   { updates.availability   = p.availability;   filled.push('availability'); }
-        // Phone NEVER pre-filled — security: never expose phone to unauthenticated callers
+        setForm(prev => {
+          const updates = {};
+          const filled = [];
+          
+          const fields = [
+            ['name', p.name],
+            ['title', p.title],
+            ['currentCompany', p.currentCompany],
+            ['experience', p.experience],
+            ['availability', p.availability]
+          ];
 
-        // Apply updates and set prefill state synchronously in the same React batch
-        if (Object.keys(updates).length > 0) setForm(prev => ({ ...prev, ...updates }));
-        setPrefillState({ isRegistered: r.isRegisteredUser, hasPhone: r.hasPhone, fields: filled });
+          for (const [key, val] of fields) {
+            // Only fill if current field is empty OR exactly matches the prefilled value 
+            // (the latter handles cases where the browser autofilled the same value)
+            if (val && (!prev[key] || prev[key] === val)) {
+              if (!prev[key]) updates[key] = val;
+              filled.push(key);
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            setPrefillState({ isRegistered: r.isRegisteredUser, hasPhone: r.hasPhone, fields: filled });
+            return { ...prev, ...updates };
+          }
+          
+          if (filled.length > 0) {
+            setPrefillState({ isRegistered: r.isRegisteredUser, hasPhone: r.hasPhone, fields: filled });
+          }
+          return prev;
+        });
         setEmailFoundMsg(
           r.isRegisteredUser
             ? 'Registered account found — professional details pre-filled below.'

@@ -1379,3 +1379,221 @@ textarea:focus-visible {
   h2 { font-size: clamp(18px, 5vw, 28px) !important; }
   h3 { font-size: clamp(15px, 4vw, 22px) !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   21. PLATFORM-WIDE MOBILE FIXES  (≤ 767 px)
+   Goal: every record, name, button, and data cell that is visible on
+   desktop must be equally visible and tappable on mobile.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 21a. Touch targets — all interactive elements ≥ 44 px ─────── */
+@media (max-width: 767px) {
+  button,
+  [role="button"],
+  a.tn-btn,
+  .tn-btn,
+  select,
+  .tn-app-icon-btn {
+    min-height: 44px !important;
+    min-width:  44px !important;
+  }
+
+  /* Pill / badge buttons that should stay compact */
+  .tn-badge-btn {
+    min-height: 36px !important;
+    min-width:  36px !important;
+  }
+}
+
+/* ── 21b. Tables inside app main content get horizontal scroll ──── */
+@media (max-width: 767px) {
+  /* Scope to app content only — avoids breaking marketing/modal tables */
+  .tn-main-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+  }
+  /* Preserve internal table layout for rows/cells */
+  .tn-main-content thead,
+  .tn-main-content tbody,
+  .tn-main-content tfoot { display: table-header-group; }
+  .tn-main-content tbody { display: table-row-group; }
+  .tn-main-content tfoot { display: table-footer-group; }
+  .tn-main-content tr    { display: table-row; }
+  .tn-main-content th,
+  .tn-main-content td    {
+    display: table-cell;
+    white-space: nowrap;
+    min-width: 80px;
+  }
+  .tn-main-content td:first-child,
+  .tn-main-content th:first-child { min-width: 120px; }
+}
+
+/* ── 21c. Text overflow — long names, emails, job titles ellipsis ─ */
+@media (max-width: 767px) {
+  .tn-main-content p,
+  .tn-main-content span,
+  .tn-main-content div {
+    /* Allow natural wrapping; clip only when parent enforces nowrap */
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  /* Job / candidate name cells that use ellipsis on desktop */
+  [style*="textOverflow: 'ellipsis'"],
+  [style*="text-overflow: ellipsis"] {
+    max-width: 100% !important;
+  }
+}
+
+/* ── 21d. Card grids — force single column under 480 px ─────────── */
+@media (max-width: 480px) {
+  /* Stats / KPI card rows */
+  .grid-2, .grid-3, .grid-4, .grid-5,
+  .tn-grid-2, .tn-grid-3, .tn-grid-4,
+  [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 21e. Action button rows — stack vertically, full width ──────── */
+@media (max-width: 480px) {
+  /* Rows of action buttons inside cards */
+  .tn-actions-row,
+  [class*="actions"] > button,
+  [class*="actions"] > a {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── 21f. Drawer (UserDetailDrawer) — full screen on small phones ── */
+@media (max-width: 480px) {
+  .tn-drawer {
+    width:     100vw !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* ── 21g. Pipeline Kanban board — horizontal scroll on mobile ────── */
+@media (max-width: 767px) {
+  .tn-kanban-desktop {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 12px;
+  }
+  .tn-kanban-desktop > * {
+    scroll-snap-align: start;
+    min-width: 280px;
+    flex-shrink: 0;
+  }
+}
+
+/* ── 21h. Page headers — title + action stack vertically ─────────── */
+@media (max-width: 600px) {
+  /* PageHeader component renders a flex row that overflows on small screens */
+  .tn-page-header,
+  [class*="PageHeader"],
+  [style*="justifyContent: 'space-between'"] {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+}
+
+/* ── 21i. Overflow-hidden parent fix — show full card content ─────── */
+@media (max-width: 767px) {
+  /* Some cards clip content at screen edge */
+  [style*="overflow: 'hidden'"],
+  [style*="overflow:'hidden'"] {
+    overflow: visible !important;
+  }
+  /* But keep modal/drawer overflow hidden */
+  .tn-modal,
+  .tn-drawer,
+  .tn-sidebar,
+  .tn-sidebar-mobile {
+    overflow: hidden !important;
+  }
+}
+
+/* ── 21j. Input / select fields — full width + comfortable padding ── */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+    box-sizing: border-box !important;
+  }
+}
+
+/* ── 21k. Pagination rows — wrap and center on mobile ─────────────── */
+@media (max-width: 767px) {
+  /* Pagination button rows */
+  [class*="pagination"],
+  [class*="Pagination"] {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+  [class*="pagination"] button,
+  [class*="Pagination"] button {
+    min-height: 44px !important;
+    min-width:  44px !important;
+    padding: 8px 12px !important;
+  }
+}
+
+/* ── 21l. Flex rows with gap — reduce gap and allow wrap ─────────── */
+@media (max-width: 480px) {
+  /* Filter/search bars */
+  [style*="display: 'flex'"][style*="gap"],
+  [style*="display:flex"][style*="gap"] {
+    flex-wrap: wrap !important;
+  }
+}
+
+/* ── 21m. Charts — prevent SVG overflow ──────────────────────────── */
+@media (max-width: 767px) {
+  svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .analytics-chart-row,
+  .analytics-chart-row-rev,
+  .analytics-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── 21n. Modal footer buttons — stack on mobile ─────────────────── */
+@media (max-width: 480px) {
+  .tn-modal-footer,
+  .tn-form-actions {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .tn-modal-footer button,
+  .tn-modal-footer a,
+  .tn-form-actions button,
+  .tn-form-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+}
+
+/* ── 21o. Long email / url strings — break safely ────────────────── */
+@media (max-width: 767px) {
+  a[href^="mailto"],
+  a[href^="http"],
+  [class*="email"],
+  [class*="Email"] {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+}
