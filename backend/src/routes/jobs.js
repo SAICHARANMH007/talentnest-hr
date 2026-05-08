@@ -50,11 +50,11 @@ const guard = [authMiddleware, tenantGuard];
 const PUBLIC_JOB_FIELDS = 'title company companyName department location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
 
 router.get('/public', asyncHandler(async (req, res) => {
-  // HTTP cache: Vercel edge + browser cache for 5 minutes, serve stale for 1 hour while revalidating
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
   const { page, limit, skip } = getPagination(req, { limit: parseInt(req.query.limit) || 20 });
-  const filter = { status: 'active', deletedAt: null };
+  // Career portal: only show APPROVED jobs
+  const filter = { status: 'active', approvalStatus: 'approved', deletedAt: null };
 
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;
@@ -65,10 +65,23 @@ router.get('/public', asyncHandler(async (req, res) => {
   }
   if (req.query.search) {
     const sr = { $regex: escRe(req.query.search), $options: 'i' };
-    filter.$or = [{ title: sr }, { company: sr }, { companyName: sr }, { skills: sr }];
+    filter.$or = [{ title: sr }, { description: sr }, { company: sr }, { companyName: sr }, { skills: sr }];
   }
-  if (req.query.urgency && req.query.urgency !== 'All') filter.urgency = req.query.urgency;
-  if (req.query.location && req.query.location !== 'All') filter.location = req.query.location;
+  if (req.query.urgency   && req.query.urgency   !== 'All') filter.urgency  = req.query.urgency;
+  if (req.query.location  && req.query.location  !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  if (req.query.jobType   && req.query.jobType   !== 'All') filter.jobType  = req.query.jobType;
+  if (req.query.company   && req.query.company   !== 'All') {
+    filter.$or = filter.$or || [];
+    filter.$or.push({ company: { $regex: escRe(req.query.company), $options: 'i' } });
+    filter.$or.push({ companyName: { $regex: escRe(req.query.company), $options: 'i' } });
+  }
+  if (req.query.skills) {
+    const skillList = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (skillList.length > 0) filter.skills = { $in: skillList.map(s => new RegExp(escRe(s), 'i')) };
+  }
+  if (req.query.experienceLevel && req.query.experienceLevel !== 'All') {
+    filter.experience = { $regex: escRe(req.query.experienceLevel), $options: 'i' };
+  }
 
   // Run count and job fetch in parallel; skip expensive uniqueCompanies on paginated requests
   const isFirstPage = page === 1 && !req.query.search;
@@ -132,23 +145,48 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
   const baseSlug  = slugify(title);
   const slugCount = await Job.countDocuments({ tenantId: req.user.tenantId, careerPageSlug: { $regex: `^${baseSlug}` } });
   const careerPageSlug = slugCount === 0 ? baseSlug : `${baseSlug}-${slugCount}`;
+
+  // Recruiters submit for approval; admins/super_admins publish directly
+  const isRecruiter = req.user.role === 'recruiter';
+  const approvalStatus = isRecruiter ? 'pending_approval' : 'approved';
+  const jobStatus      = isRecruiter ? 'draft' : (rest.status || 'active');
+
   const job = await Job.create({
     ...rest,
-    tenantId: req.user.tenantId,
-    createdBy: req.user.id,
-    title: title.trim(),
+    tenantId      : req.user.tenantId,
+    createdBy     : req.user.id,
+    postedBy      : req.user.id,
+    title         : title.trim(),
     description,
-    skills: Array.isArray(skills) ? skills.map(s => String(s).toLowerCase().trim()) : [],
+    skills        : Array.isArray(skills) ? skills.map(s => String(s).toLowerCase().trim()) : [],
     niceToHaveSkills: Array.isArray(niceToHaveSkills) ? niceToHaveSkills.map(s => String(s).toLowerCase().trim()) : [],
     assignedRecruiters,
     careerPageSlug,
-    status: rest.status || 'draft',
+    status        : jobStatus,
+    approvalStatus,
+    ...(isRecruiter ? {} : { approvedBy: req.user.id, approvedAt: new Date() }),
   });
-  logger.audit('Job created', req.user.id, req.user.tenantId, { jobId: job._id, title });
-  res.status(201).json({ success: true, data: normalizeJob(job) });
+  logger.audit('Job created', req.user.id, req.user.tenantId, { jobId: job._id, title, approvalStatus });
+
+  // Notify all admins in the tenant about pending approval
+  if (isRecruiter) {
+    const admins = await User.find({ tenantId: req.user.tenantId, role: 'admin', deletedAt: null }).select('_id').lean();
+    const recruiterName = req.user.name || 'A recruiter';
+    await Promise.all(admins.map(a =>
+      Notification.create({
+        userId: a._id, tenantId: req.user.tenantId, type: 'job_approval_request',
+        title: 'Job Pending Approval',
+        message: `${recruiterName} submitted "${title.trim()}" for your approval.`,
+        link: '/app/admin/job-approvals',
+        metadata: { jobId: job._id },
+      }).catch(() => {})
+    ));
+  }
+
+  res.status(201).json({ success: true, data: normalizeJob(job), requiresApproval: isRecruiter });
 
   // IndexNow ping — fire-and-forget, never block the response
-  if (job.status === 'active' || rest.status === 'active') {
+  if (job.status === 'active') {
     pingIndexNow(job).catch(() => {});
   }
 }));
@@ -240,29 +278,71 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
     res.json({ success: true, data: normalizeJob(job) });
 }));
 
-// PATCH /api/jobs/:id/approve — admin/super_admin approve or reject
-router.patch('/:id/approve', ...guard,
-  allowRoles('admin', 'super_admin'),
-  asyncHandler(async (req, res) => {
-    const { action, reason } = req.body; // action: 'approve' | 'reject'
-    if (!['approve', 'reject'].includes(action)) throw new AppError('action must be approve or reject.', 400);
+// GET /api/jobs/pending-approval — all jobs awaiting admin review
+router.get('/pending-approval', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const filter = { approvalStatus: 'pending_approval', deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const jobs = await Job.find(filter)
+    .populate('postedBy', 'name email')
+    .populate('createdBy', 'name email')
+    .sort({ createdAt: -1 })
+    .lean();
+  const normalized = jobs.map(j => ({ ...normalizeJob(j), id: j._id.toString() }));
+  res.json({ success: true, data: normalized, total: normalized.length });
+}));
 
-    const status = action === 'approve' ? 'active' : 'draft';
-    const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId },
-      { $set: { approvalStatus: action === 'approve' ? 'approved' : 'rejected', status, rejectionReason: reason || '' } },
-      { new: true }
-    );
-    if (!job) throw new AppError('Job not found.', 404);
+// PATCH /api/jobs/:id/approve — admin approves a pending job
+router.patch('/:id/approve', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const job = await Job.findOneAndUpdate(
+    filter,
+    { $set: { approvalStatus: 'approved', status: 'active', approvedBy: req.user.id, approvedAt: new Date() } },
+    { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
 
-    // Trigger distribution when job goes live
-    if (action === 'approve') {
-      try { require('./distribution').logJobPublished(job); } catch {}
-      try { require('./feed').invalidateFeedCache(); } catch {}
-    }
+  // Notify the job creator
+  if (job.postedBy) {
+    await Notification.create({
+      userId: job.postedBy, tenantId: job.tenantId, type: 'job_approved',
+      title: 'Job Approved!',
+      message: `Your job "${job.title}" has been approved and is now live.`,
+      link: '/app/jobs',
+    }).catch(() => {});
+  }
+  try { require('./distribution').logJobPublished(job); } catch {}
+  try { require('./feed').invalidateFeedCache(); } catch {}
+  pingIndexNow(job).catch(() => {});
 
-    logger.audit(`Job ${action}d`, req.user.id, req.user.tenantId, { jobId: job._id, reason });
-    res.json({ success: true, data: normalizeJob(job) });
+  logger.audit('Job approved', req.user.id, req.user.tenantId, { jobId: job._id });
+  res.json({ success: true, data: normalizeJob(job) });
+}));
+
+// PATCH /api/jobs/:id/reject — admin rejects a pending job
+router.patch('/:id/reject', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const { note } = req.body;
+  const filter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const job = await Job.findOneAndUpdate(
+    filter,
+    { $set: { approvalStatus: 'rejected', status: 'draft', approvalNote: note || '', rejectionReason: note || '' } },
+    { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
+
+  // Notify the job creator
+  if (job.postedBy) {
+    await Notification.create({
+      userId: job.postedBy, tenantId: job.tenantId, type: 'job_rejected',
+      title: 'Job Needs Revision',
+      message: `Your job "${job.title}" was returned for revision.${note ? ` Reason: ${note}` : ''}`,
+      link: '/app/jobs',
+    }).catch(() => {});
+  }
+
+  logger.audit('Job rejected', req.user.id, req.user.tenantId, { jobId: job._id, note });
+  res.json({ success: true, data: normalizeJob(job) });
 }));
 
 // POST /api/jobs/:id/assign — assign recruiter to job
@@ -389,5 +469,25 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
 }));
 
 
+
+// GET /api/jobs/:id/matching-candidates — candidates best matching this job
+router.get('/:id/matching-candidates', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { findSuggestedCandidates } = require('../utils/candidateMatchingEngine');
+  const jobFilter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') jobFilter.tenantId = req.user.tenantId;
+  const job = await Job.findOne(jobFilter).select('title skills experience location jobType tenantId').lean();
+  if (!job) throw new AppError('Job not found.', 404);
+
+  const jobSnapshot = {
+    title          : job.title || '',
+    skills         : Array.isArray(job.skills) ? job.skills : [],
+    experienceLevel: job.experience || '',
+    location       : job.location || '',
+    jobType        : job.jobType || '',
+  };
+
+  const candidates = await findSuggestedCandidates(jobSnapshot, null); // null = don't exclude any tenant
+  res.json({ success: true, data: candidates });
+}));
 
 module.exports = router;

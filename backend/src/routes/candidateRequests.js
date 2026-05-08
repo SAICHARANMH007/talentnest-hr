@@ -181,6 +181,58 @@ router.patch('/:id', authMiddleware,
   })
 );
 
+// POST /api/candidate-requests/:id/attach-candidates — super_admin attaches candidates
+router.post('/:id/attach-candidates', ...guard, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const Notification = require('../models/Notification');
+  const { candidateIds, note } = req.body;
+  if (!Array.isArray(candidateIds) || candidateIds.length === 0) throw new AppError('candidateIds array required.', 400);
+
+  const cr = await CandidateRequest.findById(req.params.id);
+  if (!cr) throw new AppError('Request not found.', 404);
+
+  // Merge new candidates (avoid duplicates)
+  const existing = new Set(cr.submittedCandidates.map(String));
+  candidateIds.forEach(id => existing.add(String(id)));
+  cr.submittedCandidates = [...existing];
+  cr.status = 'in_progress';
+  if (note) cr.adminNotes = note;
+  await cr.save();
+
+  // Notify requesting admin
+  if (cr.requestedBy) {
+    await Notification.create({
+      userId  : cr.requestedBy,
+      tenantId: cr.tenantId,
+      type    : 'candidate_request',
+      title   : '👥 Candidates Attached to Your Request',
+      message : `TalentNest HR has attached ${candidateIds.length} candidate(s) to your request "${cr.roleTitle}".`,
+      link    : '/app/candidate-requests',
+    }).catch(() => {});
+  }
+
+  const populated = await CandidateRequest.findById(cr._id)
+    .populate('submittedCandidates', 'name email phone title skills location experience').lean();
+  res.json({ success: true, data: { ...populated, id: populated._id?.toString() } });
+}));
+
+// GET /api/candidate-requests/:id/suggested-candidates — matching engine suggestions
+router.get('/:id/suggested-candidates', ...guard, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const { findSuggestedCandidates } = require('../utils/candidateMatchingEngine');
+  const cr = await CandidateRequest.findById(req.params.id).lean();
+  if (!cr) throw new AppError('Request not found.', 404);
+
+  const jobSnapshot = {
+    title          : cr.roleTitle || '',
+    skills         : Array.isArray(cr.skills) ? cr.skills : [],
+    experienceLevel: cr.experienceLevel || '',
+    location       : cr.location || '',
+    jobType        : cr.jobType || '',
+  };
+
+  const candidates = await findSuggestedCandidates(jobSnapshot, cr.tenantId);
+  res.json({ success: true, data: candidates });
+}));
+
 // DELETE /api/candidate-requests/:id — cancel
 router.delete('/:id', ...guard,
   allowRoles('admin', 'super_admin'),

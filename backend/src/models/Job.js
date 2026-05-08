@@ -63,10 +63,14 @@ const jobSchema = new mongoose.Schema({
 
   approvalStatus: {
     type   : String,
-    enum   : ['pending', 'approved', 'rejected'],
-    default: 'pending',
+    enum   : ['pending_approval', 'approved', 'rejected'],
+    default: 'pending_approval',
   },
-  rejectionReason: { type: String, default: '' },
+  approvalNote: { type: String, default: '' },
+  rejectionReason: { type: String, default: '' }, // kept for backward compat
+  approvedBy  : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt  : { type: Date },
+  postedBy    : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   screeningQuestions: [{
     question: { type: String, required: true },

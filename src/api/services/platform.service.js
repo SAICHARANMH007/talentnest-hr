@@ -117,10 +117,15 @@ export const platformService = {
   async getAuditLogs(qs)               { return req('GET', `/platform/audit-logs${qs ? `?${qs}` : ''}`); },
 
   // Candidate requests
-  async getCandidateRequests(qs)        { return req('GET', `/candidate-requests${qs ? `?${qs}` : ''}`); },
-  async createCandidateRequest(data)    { return req('POST', '/candidate-requests', data); },
-  async updateCandidateRequest(id, data){ return req('PATCH', `/candidate-requests/${id}`, data); },
-  async cancelCandidateRequest(id)      { return req('DELETE', `/candidate-requests/${id}`); },
+  async getCandidateRequests(qs)              { return req('GET', `/candidate-requests${qs ? `?${qs}` : ''}`); },
+  async getCandidateRequest(id)               { return req('GET', `/candidate-requests/${id}`); },
+  async createCandidateRequest(data)          { return req('POST', '/candidate-requests', data); },
+  async updateCandidateRequest(id, data)      { return req('PATCH', `/candidate-requests/${id}`, data); },
+  async cancelCandidateRequest(id)            { return req('DELETE', `/candidate-requests/${id}`); },
+  async attachCandidatesToRequest(id, data)   { return req('POST', `/candidate-requests/${id}/attach-candidates`, data); },
+  async getSuggestedCandidatesForRequest(id)  { return req('GET', `/candidate-requests/${id}/suggested-candidates`); },
+  async searchCandidatesAdvanced(qs)          { return req('GET', `/candidates/search${qs ? `?${qs}` : ''}`); },
+  async getJobMatchingCandidates(jobId)       { return req('GET', `/jobs/${jobId}/matching-candidates`); },
 
   // Clients (agency)
   async getClients(qs)                  { return req('GET', `/clients${qs ? `?${qs}` : ''}`); },

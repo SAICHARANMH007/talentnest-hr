@@ -377,7 +377,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
   const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
 
   res.json({ success: true, data: {
-    candidates, recruiters, openJobs, applications,
+    candidates, recruiters, openJobs, totalJobs, applications,
     placements: hired, fillRate, avgPerJob,
     activePipeline: active,
     appsLast30,

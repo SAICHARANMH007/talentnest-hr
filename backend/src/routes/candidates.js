@@ -408,4 +408,42 @@ router.post('/upload-my-resume', authMiddleware, tenantGuard, upload.single('res
   res.json({ success: true, data: { resumeUrl } });
 }));
 
+// GET /api/candidates/search — advanced candidate search (super_admin only)
+router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req, { limit: 50 });
+  const filter = { deletedAt: null };
+
+  if (req.query.skills) {
+    const skills = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (skills.length) filter.skills = { $in: skills.map(s => new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')) };
+  }
+  if (req.query.experienceLevel) filter.experienceLevel = req.query.experienceLevel;
+  if (req.query.minExperience || req.query.maxExperience) {
+    filter.experience = {};
+    if (req.query.minExperience) filter.experience.$gte = Number(req.query.minExperience);
+    if (req.query.maxExperience) filter.experience.$lte = Number(req.query.maxExperience);
+  }
+  if (req.query.location)     filter.location = { $regex: String(req.query.location).trim(), $options: 'i' };
+  if (req.query.jobType)      filter.jobTypePreference = req.query.jobType;
+  if (req.query.noticePeriod) filter.noticePeriod = req.query.noticePeriod;
+  if (req.query.expectedSalaryMin || req.query.expectedSalaryMax) {
+    filter.expectedSalary = {};
+    if (req.query.expectedSalaryMin) filter.expectedSalary.$gte = Number(req.query.expectedSalaryMin);
+    if (req.query.expectedSalaryMax) filter.expectedSalary.$lte = Number(req.query.expectedSalaryMax);
+  }
+  if (req.query.keyword) {
+    const kw = new RegExp(String(req.query.keyword).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    filter.$or = [{ name: kw }, { title: kw }, { currentCompany: kw }, { skills: kw }];
+  }
+
+  const [data, total] = await Promise.all([
+    Candidate.find(filter)
+      .select('_id name email phone title currentCompany skills experience location noticePeriod expectedSalary jobTypePreference resumeUrl photoUrl')
+      .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Candidate.countDocuments(filter),
+  ]);
+  const normalized = data.map(c => ({ ...c, id: c._id?.toString(), skills: Array.isArray(c.skills) ? c.skills : [] }));
+  res.json(paginatedResponse(normalized, total, limit, page));
+}));
+
 module.exports = router;

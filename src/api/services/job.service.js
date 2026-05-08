@@ -26,7 +26,10 @@ export const jobService = {
   async assignRecruiterToJob(jobId, recruiterId) { return req('POST', `/jobs/${jobId}/assign`, { recruiterId }); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
+  async getPendingApprovalJobs()      { return req('GET', '/jobs/pending-approval'); },
   async approveJob(id, action, reason) { return req('PATCH', `/jobs/${id}/approve`, { action, ...(reason ? { reason } : {}) }); },
+  async approveJobNew(id)             { return req('PATCH', `/jobs/${id}/approve`, {}); },
+  async rejectJob(id, note)           { return req('PATCH', `/jobs/${id}/reject`, { note: note || '' }); },
   // Career listing (public org career page)
   async getOrgPublicJobs(orgSlug)          { return req('GET', `/jobs/public/org/${orgSlug}`, null, false); },
   async updateCareerListing(publish, unpublish, orgId) { return req('PATCH', '/jobs/career-listing', { publish: publish || [], unpublish: unpublish || [], orgId: orgId || undefined }); },

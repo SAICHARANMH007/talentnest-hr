@@ -1,207 +1,241 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import { card, btnP } from '../../constants/styles.js';
+import Toast from '../../components/ui/Toast.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
-const STATUS_COLORS = {
-  pending:  { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)', text: '#F59E0B', label: '⏳ Pending' },
-  approved: { bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.3)',   text: '#3BA755', label: '✓ Approved' },
-  rejected: { bg: 'rgba(186,5,23,0.1)',   border: 'rgba(186,5,23,0.3)',   text: '#FE5C4C', label: '✕ Rejected' },
-};
+const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 
 function RejectModal({ job, onConfirm, onClose }) {
-  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 460, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.22)' }}>
-        <div style={{ background: 'linear-gradient(135deg,#7f1d1d,#dc2626)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10001, padding:'24px 16px' }}>
+      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:460, boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden' }}>
+        <div style={{ background:'linear-gradient(135deg,#7f1d1d,#dc2626)', padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Job Approval</div>
-            <h3 style={{ color: '#fff', margin: 0, fontSize: 16, fontWeight: 800 }}>✕ Reject Job Posting</h3>
+            <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:3 }}>Job Approval</div>
+            <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>Return for Revision</h3>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16 }}>✕</button>
         </div>
-        <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 16px', lineHeight: 1.5 }}>Provide a reason so the recruiter can revise and resubmit.</p>
-          <div style={{ background: '#FEF2F2', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
-            <div style={{ color: '#181818', fontSize: 14, fontWeight: 600 }}>{job.title}</div>
-            <div style={{ color: '#dc2626', fontSize: 12 }}>{job.company}</div>
+        <div style={{ padding:'20px 24px' }}>
+          <div style={{ background:'#FEF2F2', border:'1px solid rgba(220,38,38,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
+            <div style={{ color:'#181818', fontSize:14, fontWeight:600 }}>{job.title}</div>
+            <div style={{ color:'#dc2626', fontSize:12 }}>{job.company || job.companyName}</div>
           </div>
+          <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Reason for rejection *</label>
           <textarea
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="e.g. Job description is too vague. Please add requirements, salary range, and benefits."
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Tell the recruiter what to fix before resubmitting…"
             rows={4}
-            style={{ width: '100%', padding: '10px 14px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, color: '#181818', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+            style={{ ...inp, width:'100%', resize:'vertical', boxSizing:'border-box', marginBottom:16 }}
           />
-        </div>
-        <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #F1F5F9', background: '#fff', display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 10, color: '#706E6B', fontSize: 13, fontWeight: 600, padding: '11px 0', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={() => reason.trim() && onConfirm(reason)} disabled={!reason.trim()} style={{ flex: 1, background: reason.trim() ? 'linear-gradient(135deg,#7f1d1d,#dc2626)' : '#F3F2F2', border: 'none', borderRadius: 10, color: reason.trim() ? '#fff' : '#9E9D9B', fontSize: 13, fontWeight: 700, padding: '11px 0', cursor: reason.trim() ? 'pointer' : 'not-allowed', boxShadow: reason.trim() ? '0 4px 12px rgba(220,38,38,0.3)' : 'none' }}>
-            ✕ Reject Job
-          </button>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={onClose} style={{ ...btnG, flex:1 }}>Cancel</button>
+            <button
+              onClick={() => { if (!note.trim()) return; onConfirm(note.trim()); }}
+              disabled={!note.trim()}
+              style={{ ...btnD, flex:1, opacity: note.trim() ? 1 : 0.5, cursor: note.trim() ? 'pointer' : 'not-allowed' }}>
+              Return for Revision
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export default function AdminJobApproval({ user }) {
-  const [jobs, setJobs]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab]         = useState('pending');
-  const [acting, setActing]   = useState({});
+function JobPreviewModal({ job, onClose, onApprove, onReject }) {
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10000, padding:'24px 16px' }}>
+      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden' }}>
+        <div style={{ background:'linear-gradient(135deg,#0F2B6B,#1B4FD8)', padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:4 }}>Job Preview</div>
+            <h2 style={{ color:'#fff', margin:0, fontSize:18, fontWeight:800 }}>{job.title}</h2>
+            <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, marginTop:4 }}>{job.company || job.companyName} · {job.location}</div>
+          </div>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16, flexShrink:0 }}>✕</button>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+            {[['Department',job.department],['Job Type',job.jobType],['Experience',job.experience],['Location',job.location],['Openings',job.numberOfOpenings],['Urgency',job.urgency]]
+              .filter(([,v]) => v)
+              .map(([label, val]) => (
+                <div key={label} style={{ background:'#F8FAFC', borderRadius:8, padding:'10px 14px' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:2 }}>{label}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{val}</div>
+                </div>
+              ))}
+          </div>
+          {Array.isArray(job.skills) && job.skills.length > 0 && (
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Required Skills</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {job.skills.map(s => <span key={s} style={{ background:'rgba(27,79,216,0.1)', color:'#1B4FD8', fontSize:12, fontWeight:600, padding:'3px 10px', borderRadius:20 }}>{s}</span>)}
+              </div>
+            </div>
+          )}
+          {job.description && (
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Description</div>
+              <div style={{ fontSize:13, color:'#374151', lineHeight:1.7, whiteSpace:'pre-wrap' }}>{job.description}</div>
+            </div>
+          )}
+        </div>
+        <div style={{ padding:'16px 24px', borderTop:'1px solid #E2E8F0', display:'flex', gap:10, justifyContent:'flex-end', background:'#FAFAFA' }}>
+          <button onClick={onClose} style={{ ...btnG, padding:'10px 20px' }}>Close</button>
+          <button onClick={onReject} style={{ ...btnD, padding:'10px 20px' }}>✕ Reject</button>
+          <button onClick={onApprove} style={{ padding:'10px 20px', fontWeight:800, fontSize:13, border:'none', borderRadius:10, cursor:'pointer', background:'linear-gradient(135deg,#16a34a,#15803d)', color:'#fff' }}>✓ Approve & Publish</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminJobApproval({ user, onBadgeUpdate }) {
+  const [jobs, setJobs]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [toast, setToast]       = useState('');
+  const [preview, setPreview]   = useState(null);
   const [rejectJob, setRejectJob] = useState(null);
-  const [toast, setToast]     = useState('');
+  const [processing, setProcessing] = useState('');
 
-  useEffect(() => {
-    api.getPendingJobs().then(data => {
-      const raw = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-      setJobs(raw.map(j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') })));
-    }).catch(() => setJobs([])).finally(() => setLoading(false));
-  }, []);
-
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
-
-  const handleApprove = async (job) => {
-    setActing(p => ({ ...p, [job.id]: 'approving' }));
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      await api.approveJob(job.id, 'approved');
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, approvalStatus: 'approved', status: 'Open' } : j));
-      showToast('✅ Job approved and published!');
-    } catch (e) { showToast('❌ ' + e.message); }
-    setActing(p => { const n = { ...p }; delete n[job.id]; return n; });
+      const r = await api.getPendingApprovalJobs();
+      const list = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+      setJobs(list);
+      onBadgeUpdate?.(list.length);
+    } catch { setJobs([]); }
+    setLoading(false);
+  }, [onBadgeUpdate]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleApprove = async (jobId) => {
+    setProcessing(jobId);
+    try {
+      await api.approveJobNew(jobId);
+      const updated = jobs.filter(j => (j.id || j._id?.toString()) !== jobId);
+      setJobs(updated);
+      onBadgeUpdate?.(updated.length);
+      setPreview(null);
+      setToast('✅ Job approved and is now live!');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setProcessing('');
   };
 
-  const handleReject = async (job, reason) => {
-    setRejectJob(null);
-    setActing(p => ({ ...p, [job.id]: 'rejecting' }));
+  const handleReject = async (jobId, note) => {
+    setProcessing(jobId);
     try {
-      await api.approveJob(job.id, 'rejected', reason);
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, approvalStatus: 'rejected', rejectionReason: reason, status: 'Closed' } : j));
-      showToast('Job rejected. Recruiter will be notified.');
-    } catch (e) { showToast('❌ ' + e.message); }
-    setActing(p => { const n = { ...p }; delete n[job.id]; return n; });
+      await api.rejectJob(jobId, note);
+      const updated = jobs.filter(j => (j.id || j._id?.toString()) !== jobId);
+      setJobs(updated);
+      onBadgeUpdate?.(updated.length);
+      setRejectJob(null);
+      setPreview(null);
+      setToast('Job returned to recruiter for revision.');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setProcessing('');
   };
 
-  const TABS = [
-    { id: 'pending',  label: 'Pending', filter: j => !j.approvalStatus || j.approvalStatus === 'pending' },
-    { id: 'approved', label: 'Approved', filter: j => j.approvalStatus === 'approved' },
-    { id: 'rejected', label: 'Rejected', filter: j => j.approvalStatus === 'rejected' },
-    { id: 'all',      label: 'All Jobs', filter: () => true },
-  ];
-
-  const activeTab = TABS.find(t => t.id === tab);
-  const filtered  = activeTab ? jobs.filter(activeTab.filter) : jobs;
-
-  const counts = TABS.reduce((acc, t) => { acc[t.id] = jobs.filter(t.filter).length; return acc; }, {});
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
   return (
-    <div>
-      <PageHeader title="Job Approvals" subtitle="Review and approve job postings before they go live" />
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ background: toast.startsWith('✅') ? 'rgba(34,197,94,0.12)' : 'rgba(186,5,23,0.1)', border: `1px solid ${toast.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(186,5,23,0.3)'}`, borderRadius: 10, padding: '10px 16px', color: toast.startsWith('✅') ? '#3BA755' : '#fca5a5', fontSize: 13, marginBottom: 20 }}>
-          {toast}
-        </div>
+    <div style={{ fontFamily: ff }}>
+      <Toast msg={toast} onClose={() => setToast('')} />
+      {preview && (
+        <JobPreviewModal
+          job={preview}
+          onClose={() => setPreview(null)}
+          onApprove={() => handleApprove(preview.id || preview._id?.toString())}
+          onReject={() => { setRejectJob(preview); setPreview(null); }}
+        />
       )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 24, background: '#FFFFFF', borderRadius: 12, padding: 4, width: 'fit-content' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t.id ? '#0176D3' : 'transparent', color: tab === t.id ? '#fff' : '#706E6B', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {t.label}
-            {counts[t.id] > 0 && <span style={{ background: tab === t.id ? 'rgba(255,255,255,0.25)' : 'rgba(1,118,211,0.2)', color: tab === t.id ? '#fff' : '#0176D3', borderRadius: 20, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, padding: '0 5px' }}>{counts[t.id]}</span>}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div style={{ color: '#706E6B' }}><Spinner /></div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#706E6B' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'pending' ? '🎉' : '📋'}</div>
-          <p style={{ margin: 0, fontSize: 14 }}>{tab === 'pending' ? 'All caught up! No pending approvals.' : `No ${tab} jobs.`}</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {filtered.map(j => {
-            const status = j.approvalStatus || 'pending';
-            const sc     = STATUS_COLORS[status] || STATUS_COLORS.pending;
-            const isActing = !!acting[j.id];
-            const skills = j.skills ? (Array.isArray(j.skills) ? j.skills : j.skills.split(',').map(s => s.trim()).filter(Boolean)) : [];
-
-            return (
-              <div key={j.id} style={{ ...card, border: `1px solid ${sc.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{j.title}</span>
-                      <span style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700 }}>{sc.label}</span>
-                      {j.type && <span style={{ color: '#706E6B', background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 6, padding: '2px 7px', fontSize: 10 }}>{j.type}</span>}
-                    </div>
-                    <div style={{ color: '#0176D3', fontSize: 13 }}>{j.company}{j.location ? ` · ${j.location}` : ''}</div>
-
-                    <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
-                      {j.salary && <span style={{ color: '#706E6B', fontSize: 12 }}>💰 {j.salary}</span>}
-                      {j.experience && <span style={{ color: '#706E6B', fontSize: 12 }}>🎓 {j.experience}</span>}
-                      {j.recruiterName && <span style={{ color: '#706E6B', fontSize: 12 }}>👤 {j.recruiterName}</span>}
-                      <span style={{ color: '#64748b', fontSize: 11 }}>Posted {new Date(j.createdAt || Date.now()).toLocaleDateString()}</span>
-                    </div>
-
-                    {skills.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                        {skills.slice(0, 6).map(s => <span key={s} style={{ fontSize: 10, color: '#0176D3', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 6, padding: '2px 7px' }}>{s}</span>)}
-                      </div>
-                    )}
-
-                    {j.description && (
-                      <p style={{ color: '#64748b', fontSize: 12, marginTop: 8, lineHeight: 1.5, margin: '8px 0 0' }}>
-                        {j.description.slice(0, 160)}{j.description.length > 160 ? '…' : ''}
-                      </p>
-                    )}
-
-                    {j.rejectionReason && (
-                      <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(186,5,23,0.08)', borderRadius: 8, border: '1px solid rgba(186,5,23,0.2)' }}>
-                        <p style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>Rejection reason: {j.rejectionReason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  {status === 'pending' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleApprove(j)}
-                        disabled={isActing}
-                        style={{ ...btnP, fontSize: 12, padding: '8px 18px', opacity: isActing ? 0.6 : 1, background: 'linear-gradient(135deg,#2E844A,#16a34a)' }}
-                      >
-                        {acting[j.id] === 'approving' ? 'Approving…' : '✓ Approve'}
-                      </button>
-                      <button
-                        onClick={() => setRejectJob(j)}
-                        disabled={isActing}
-                        style={{ background: 'rgba(186,5,23,0.12)', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 10, color: '#FE5C4C', fontSize: 12, fontWeight: 700, padding: '8px 18px', cursor: 'pointer', opacity: isActing ? 0.6 : 1 }}
-                      >
-                        {acting[j.id] === 'rejecting' ? 'Rejecting…' : '✕ Reject'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {rejectJob && (
         <RejectModal
           job={rejectJob}
-          onConfirm={(reason) => handleReject(rejectJob, reason)}
           onClose={() => setRejectJob(null)}
+          onConfirm={note => handleReject(rejectJob.id || rejectJob._id?.toString(), note)}
         />
+      )}
+
+      <PageHeader
+        title="Job Approval Queue"
+        subtitle={loading ? 'Loading…' : jobs.length === 0 ? 'All clear — no pending reviews' : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} awaiting your review`}
+      />
+
+      {loading ? (
+        <div style={{ display:'flex', justifyContent:'center', padding:80 }}><Spinner size={36} /></div>
+      ) : jobs.length === 0 ? (
+        <div style={{ ...card, textAlign:'center', padding:'60px 40px' }}>
+          <div style={{ fontSize:52, marginBottom:12 }}>✅</div>
+          <h3 style={{ color:'#0A1628', fontWeight:800, margin:'0 0 8px' }}>All caught up!</h3>
+          <p style={{ color:'#64748B', margin:0 }}>No jobs pending approval at this time.</p>
+        </div>
+      ) : (
+        <div style={{ ...card, padding:0, overflow:'hidden' }}>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', minWidth:700 }}>
+              <thead>
+                <tr style={{ background:'#F8FAFC' }}>
+                  {['Job Title','Department','Posted By','Date Submitted','Skills','Actions'].map(h => (
+                    <th key={h} style={{ padding:'12px 16px', textAlign:'left', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, borderBottom:'2px solid #E2E8F0', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map(job => {
+                  const id = job.id || job._id?.toString();
+                  const poster = job.postedBy || job.createdBy;
+                  const busy = processing === id;
+                  return (
+                    <tr key={id} style={{ borderBottom:'1px solid #F1F5F9' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#FAFAFA'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}>
+                      <td style={{ padding:'14px 16px' }}>
+                        <div style={{ fontWeight:700, color:'#0A1628', fontSize:14 }}>{job.title}</div>
+                        <div style={{ color:'#64748B', fontSize:12, marginTop:2 }}>{job.company || job.companyName || '—'}</div>
+                      </td>
+                      <td style={{ padding:'14px 16px', color:'#374151', fontSize:13 }}>{job.department || '—'}</td>
+                      <td style={{ padding:'14px 16px' }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'#0A1628' }}>{poster?.name || '—'}</div>
+                        <div style={{ fontSize:11, color:'#94A3B8' }}>{poster?.email || ''}</div>
+                      </td>
+                      <td style={{ padding:'14px 16px', color:'#64748B', fontSize:13, whiteSpace:'nowrap' }}>{fmtDate(job.createdAt)}</td>
+                      <td style={{ padding:'14px 16px' }}>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                          {(Array.isArray(job.skills) ? job.skills.slice(0,3) : []).map(s => (
+                            <span key={s} style={{ background:'rgba(27,79,216,0.08)', color:'#1B4FD8', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>{s}</span>
+                          ))}
+                          {Array.isArray(job.skills) && job.skills.length > 3 && <span style={{ color:'#94A3B8', fontSize:10 }}>+{job.skills.length-3}</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding:'14px 16px' }}>
+                        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                          <button onClick={() => setPreview(job)} style={{ ...btnG, padding:'6px 12px', fontSize:12 }} disabled={busy}>👁 Preview</button>
+                          <button onClick={() => handleApprove(id)} disabled={busy}
+                            style={{ padding:'6px 12px', fontSize:12, fontWeight:700, border:'none', borderRadius:8, cursor:'pointer', background:'#16a34a', color:'#fff', opacity:busy?0.6:1 }}>
+                            {busy ? '…' : '✓'}
+                          </button>
+                          <button onClick={() => setRejectJob(job)} disabled={busy}
+                            style={{ padding:'6px 12px', fontSize:12, fontWeight:700, border:'none', borderRadius:8, cursor:'pointer', background:'#dc2626', color:'#fff', opacity:busy?0.6:1 }}>
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
