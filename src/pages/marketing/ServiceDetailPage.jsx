@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
+import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 
 // ─── Service Data ─────────────────────────────────────────────────────────────
 const SERVICES = {
@@ -415,6 +416,7 @@ const SERVICES = {
 // ─── Shared Layout Component ──────────────────────────────────────────────────
 function ServicePage({ data }) {
   const { icon, title, tagline, heroDesc, accent, coverImg, overview, whyUs, process, roles, guarantees, stats, faqs } = data;
+  useMarketingTheme(); // apply theme CSS variables so dark/light/mixed modes work
 
   useEffect(() => {
     if (!document.getElementById('marketing-css')) {
