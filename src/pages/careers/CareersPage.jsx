@@ -62,23 +62,29 @@ function ApplyModal({ job, onClose }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
-  const [geoStatus, setGeoStatus] = useState('idle'); // idle | asking | granted | denied
+  const [geoStatus, setGeoStatus] = useState('idle'); // idle | banner | asking | granted | denied
   const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
   const [assessmentInfo, setAssessmentInfo] = useState(null); // { hasAssessment, assessmentId, title, ... }
+  const [notifStatus, setNotifStatus] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  ); // default | granted | denied
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const isPreFilled = !!(prefill.name || prefill.email);
 
+  // Show the location banner first — don't auto-trigger the browser prompt
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGeoStatus('denied');
-      return;
-    }
+    if (!navigator.geolocation) { setGeoStatus('denied'); return; }
+    // Show our custom banner so the user understands WHY we want location
+    setGeoStatus('banner');
+  }, []);
+
+  const requestLocationPermission = () => {
     setGeoStatus('asking');
     requestGeolocation().then(pos => {
       if (pos) { setGeo(pos); setGeoStatus('granted'); }
       else       setGeoStatus('denied');
     });
-  }, []);
+  };
 
   // Check if job has an assessment (public endpoint, no auth needed)
   useEffect(() => {
@@ -357,17 +363,42 @@ function ApplyModal({ job, onClose }) {
           <p style={{ color: '#BA0517', margin: 0, fontSize: 13 }}>{error}</p>
         </div>
       )}
+      {/* Location permission banner — shown BEFORE browser prompt */}
+      {geoStatus === 'banner' && (
+        <div style={{ marginBottom: 12, background: 'linear-gradient(135deg,rgba(1,118,211,0.07),rgba(1,118,211,0.03))', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>📍</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#0176D3', marginBottom: 3 }}>Allow your location for personalised job alerts</div>
+              <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6, marginBottom: 10 }}>
+                Share your location to receive job alerts for roles near you by email. We never store your exact coordinates — only city-level data is used.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={requestLocationPermission}
+                  style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer' }}>
+                  📍 Allow Location
+                </button>
+                <button onClick={() => setGeoStatus('denied')}
+                  style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 8, color: '#64748B', fontWeight: 600, fontSize: 12, padding: '8px 14px', cursor: 'pointer' }}>
+                  Skip for now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {geoStatus === 'asking' && (
+        <div style={{ marginBottom: 12, background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#0176D3' }}>
+          <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #bfdbfe', borderTopColor: '#0176D3', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+          Requesting location… please allow in your browser
+        </div>
+      )}
       {geoStatus === 'granted' && geo && (
         <div style={{ marginBottom: 12, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📍</span>
           <span style={{ fontSize: 12, color: '#065f46', flex: 1 }}>
-            Location detected{geo.city ? ` — ${geo.city}${geo.country ? `, ${geo.country}` : ''}` : ''} · Used to send you nearby jobs
+            Location detected{geo.city ? ` — ${geo.city}${geo.country ? `, ${geo.country}` : ''}` : ''} · We'll send you job alerts near you
           </span>
-        </div>
-      )}
-      {geoStatus === 'denied' && (
-        <div style={{ marginBottom: 12, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
-          📍 Location not shared — enable it in your browser to get nearby job recommendations
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -394,29 +425,22 @@ function ApplyModal({ job, onClose }) {
           </div>
         )}
 
-        {/* Full Name — green highlight when prefilled, fades to normal when user edits */}
-        <Field
-          label={isHighlighted('name') ? '✅ Full Name * (pre-filled from your account)' : 'Full Name *'}
-          value={form.name}
-          onChange={v => handlePrefillFieldChange('name', v)}
-          placeholder="Jane Smith"
-          inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669', boxShadow:'0 0 0 2px rgba(5,150,105,0.1)', color:'#065f46' } : {}}
-        />
-
-        {/* Email — after account detected, editing shows restriction message */}
+        {/* Email FIRST — entering email triggers auto-fill of all other fields */}
         <div>
-          <Field label="Email *" value={form.email}
+          <Field label="Email Address *" value={form.email}
             onChange={v => {
               if (prefillState) {
                 setEmailFoundMsg('⚠️ To update your email, please log in and change it from Profile Settings. Editing here clears the pre-filled details.');
               }
               sf('email', v); setPrefillState(null); setUserEditedFields(new Set());
             }}
-            onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
+            onBlur={handleEmailBlur} type="email" placeholder="jane@example.com"
+            hint={!prefillState && !form.email ? 'Enter your email — we'll auto-fill your details if you've applied before' : undefined}
+          />
           {emailChecking && (
             <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5, fontSize:12, color:'#64748B' }}>
               <div style={{ width:12, height:12, borderRadius:'50%', border:'2px solid #E2E8F0', borderTopColor:'#0176D3', animation:'spin 0.8s linear infinite', flexShrink:0 }} />
-              Checking for your profile…
+              Looking up your profile…
             </div>
           )}
           {emailFoundMsg && (
@@ -425,6 +449,15 @@ function ApplyModal({ job, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Full Name — shown after email, green when pre-filled */}
+        <Field
+          label={isHighlighted('name') ? '✅ Full Name * (auto-filled)' : 'Full Name *'}
+          value={form.name}
+          onChange={v => handlePrefillFieldChange('name', v)}
+          placeholder="Jane Smith"
+          inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669', boxShadow:'0 0 0 2px rgba(5,150,105,0.1)', color:'#065f46' } : {}}
+        />
 
         {/* Mobile Number — NEVER pre-filled for security. Show clear instructions when account found */}
         <div>
@@ -575,6 +608,37 @@ function ApplyModal({ job, onClose }) {
           </div>
         )}
       </div>
+      {/* Notification permission banner — shown before submitting */}
+      {notifStatus === 'default' && (
+        <div style={{ marginTop: 16, background: 'linear-gradient(135deg,rgba(124,58,237,0.07),rgba(109,40,217,0.03))', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#5b21b6', marginBottom: 3 }}>Get notified about your application</div>
+              <div style={{ fontSize: 12, color: '#374151', marginBottom: 10, lineHeight: 1.6 }}>
+                Allow notifications so we can update you when your application status changes — interview invites, shortlisting, and offers.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={() => {
+                  Notification.requestPermission().then(p => setNotifStatus(p));
+                }} style={{ background: '#7c3aed', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer' }}>
+                  🔔 Allow Notifications
+                </button>
+                <button onClick={() => setNotifStatus('denied')}
+                  style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 8, color: '#64748B', fontWeight: 600, fontSize: 12, padding: '8px 14px', cursor: 'pointer' }}>
+                  Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {notifStatus === 'granted' && (
+        <div style={{ marginTop: 12, padding: '8px 14px', background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 8, fontSize: 12, color: '#5b21b6', fontWeight: 600 }}>
+          🔔 Notifications enabled — you'll be updated on your application status
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
         <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 1, opacity: submitting ? 0.6 : 1, justifyContent: 'center' }}>
           {submitting ? <><Spinner /> Submitting…</> : '🚀 Submit Application'}
@@ -635,6 +699,8 @@ export default function CareersPage() {
   const [stats, setStats] = useState({ urgent: 0, companies: 0 });
   const [toast, setToast] = useState('');
   const [viewingJob, setViewingJob] = useState(null); // job whose JSON-LD is injected
+  const [sharedJob, setSharedJob] = useState(null); // job featured at top when coming from a shared link
+  const [sharePopover, setSharePopover] = useState(null); // job id whose share popover is open
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -750,11 +816,26 @@ export default function CareersPage() {
             document.head.appendChild(tag);
           });
 
-          // Auto-open job from invite link (?job=<id>)
+          // Auto-highlight + open job from shared/invite link (?job=<id>)
           const jobParam = searchParams.get('job');
           if (jobParam) {
-            const found = arr.find(j => String(j._id || j.id) === jobParam);
-            if (found) setApplying(found);
+            const found = arr.find(j => String(j._id || j.id) === jobParam || String(j.id) === jobParam);
+            if (found) {
+              setSharedJob(found);
+              setApplying(found);
+            } else {
+              // Job not in current page — fetch it directly from public API
+              api.getPublicJobById(jobParam)
+                .then(r => {
+                  const sj = r?.data || r;
+                  if (sj && (sj._id || sj.id)) {
+                    const normalized = { ...sj, id: sj.id || sj._id?.toString() };
+                    setSharedJob(normalized);
+                    setApplying(normalized);
+                  }
+                })
+                .catch(() => {});
+            }
           }
         }
       })
@@ -771,6 +852,28 @@ export default function CareersPage() {
   const locations = ['All', ...new Set([...baseLocs, ...fetchedLocs])];
 
   const filtered = jobs;
+
+  // ── Share a job (Web Share API on mobile, fallback to platform links) ────────
+  const shareJob = async (j) => {
+    const jid  = j.id || j._id;
+    const jobUrl = `${window.location.origin}/careers?job=${jid}`;
+    const title = `${j.title}${j.company ? ` @ ${j.company}` : ''}`;
+    const text  = `🚀 Job Opening: ${title}${j.location ? ` · ${j.location}` : ''}`;
+
+    // Use native Web Share API (mobile shows WhatsApp, Instagram, etc. automatically)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url: jobUrl });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user cancelled
+      }
+    }
+
+    // Desktop fallback — open WhatsApp Web
+    const waText = encodeURIComponent(`${text}\n\n${jobUrl}`);
+    window.open(`https://wa.me/?text=${waText}`, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100vh', background: '#F7F8FC' }}>
@@ -933,6 +1036,21 @@ export default function CareersPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Featured shared job — shown at top when arriving from a shared link */}
+                {sharedJob && !filtered.some(j => String(j.id || j._id) === String(sharedJob.id || sharedJob._id)) && (
+                  <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,68,134,0.04))', borderRadius: 16, padding: '20px 24px', border: '2px solid rgba(1,118,211,0.3)', boxShadow: '0 4px 24px rgba(1,118,211,0.12)', marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🔗 Shared Job
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', marginBottom: 4 }}>{sharedJob.title}</div>
+                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>🏢 {sharedJob.company}{sharedJob.location ? ` · 📍 ${sharedJob.location}` : ''}</div>
+                    <button onClick={() => { setApplying(sharedJob); setViewingJob(sharedJob); }}
+                      className="tn-btn tn-btn-primary" style={{ fontSize: 13, padding: '10px 22px' }}>
+                      Apply Now →
+                    </button>
+                  </div>
+                )}
+
                 {(Array.isArray(filtered) ? filtered : []).map(j => (
                   <div
                     key={j.id}
@@ -1014,6 +1132,14 @@ export default function CareersPage() {
                             We save your profile, then redirect you
                           </span>
                         )}
+                        {/* Share button */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            onClick={() => shareJob(j)}
+                            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F7F8FC', color: '#374151', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            🔗 Share
+                          </button>
+                        </div>
                         <button onClick={() => navigate('/login')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F7F8FC', color: '#64748B', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           Sign In to Track
                         </button>

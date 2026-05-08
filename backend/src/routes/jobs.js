@@ -49,6 +49,19 @@ const guard = [authMiddleware, tenantGuard];
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
 const PUBLIC_JOB_FIELDS = 'title company companyName department location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
 
+// ── PUBLIC: fetch one job by ID (for shared links — no auth) ─────────────────
+router.get('/public/single/:id', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+  const job = await Job.findOne({
+    _id: req.params.id,
+    status: 'active',
+    approvalStatus: { $nin: ['pending_approval', 'rejected'] },
+    deletedAt: null,
+  }).select(PUBLIC_JOB_FIELDS).lean();
+  if (!job) return res.status(404).json({ success: false, error: 'Job not found or no longer active' });
+  res.json({ success: true, data: normalizeJob(job) });
+}));
+
 router.get('/public', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 

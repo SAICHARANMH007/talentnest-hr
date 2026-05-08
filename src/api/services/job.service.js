@@ -22,6 +22,7 @@ export const jobService = {
   async deleteJob(id)                 { return req('DELETE', `/jobs/${id}`); },
   async patchJob(id, d)               { return req('PATCH', `/jobs/${id}`, d); },
   async getPublicJobs(qs = '')        { return req('GET', `/jobs/public${qs || ''}`, null, false); },
+  async getPublicJobById(id)          { return req('GET', `/jobs/public/single/${id}`, null, false); },
   async getJobCandidates(jobId)       { return req('GET', `/jobs/${jobId}/candidates`); },
   async assignRecruiterToJob(jobId, recruiterId) { return req('POST', `/jobs/${jobId}/assign`, { recruiterId }); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },

@@ -25,6 +25,8 @@ function buildPost(job, platform) {
   const skills= (Array.isArray(job.skills) ? job.skills : (job.skills || '').split(',').map(s => s.trim()).filter(Boolean)).map(s => `#${s.replace(/\s+/g,'')}`).slice(0, 5).join(' ');
 
   switch (platform) {
+    case 'whatsapp':
+      return `🚀 *Job Opening: ${title}*${co ? ` ${co}` : ''}\n\n${loc ? `${loc}\n` : ''}${sal ? `${sal}\n` : ''}\n${job.description ? job.description.slice(0, 300) + '…' : ''}\n\n🔑 Skills: ${(Array.isArray(job.skills) ? job.skills : (job.skills || '').split(',').map(s=>s.trim()).filter(Boolean)).slice(0,5).join(', ')}\n\n👉 Apply here:`;
     case 'linkedin':
       return `🚀 We're Hiring: ${title} ${co}\n\n${loc}  ${sal}\n\n${job.description ? job.description.slice(0, 500) + (job.description.length > 500 ? '…' : '') : ''}\n\n🔑 Skills: ${(Array.isArray(job.skills) ? job.skills : (job.skills || '').split(',').map(s=>s.trim()).filter(Boolean)).slice(0,6).join(', ')}\n\n👉 Apply now: ${url}\n\n#Hiring #Jobs #TalentNestHR ${skills}`;
     case 'twitter':
@@ -107,6 +109,8 @@ function buildJobEmailHtml(job, candidateName, senderName, interestedUrl) {
 }
 
 const PLATFORMS = [
+  { id: 'whatsapp',  label: 'WhatsApp',  color: '#25D366', icon: '💬', help: 'Share this job instantly via WhatsApp — works on mobile and desktop web.',
+    shareUrl: (job, text) => `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + `${getCareersBaseUrl()}?job=${job.id}`)}` },
   { id: 'email',     label: 'Email',     color: '#0176D3', icon: '📧', help: 'Send this job directly to email addresses using our branded template.' },
   { id: 'linkedin',  label: 'LinkedIn',  color: '#0A66C2', icon: '💼', help: 'Best for professional reach — posts to your company page or profile.',
     shareUrl: (job) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${getCareersBaseUrl()}?job=${job.id}`)}` },
