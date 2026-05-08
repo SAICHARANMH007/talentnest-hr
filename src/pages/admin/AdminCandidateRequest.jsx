@@ -18,7 +18,7 @@ const S = {
 };
 
 const URGENCY_OPTS = ['low', 'medium', 'high', 'critical'];
-const EMPTY_FORM   = { roleTitle: '', requirements: '', urgency: 'medium', budget: '' };
+const EMPTY_FORM   = { roleTitle: '', requirements: '', urgency: 'medium', budget: '', jobId: '' };
 
 function SkeletonRow() {
   return (
@@ -40,7 +40,8 @@ export default function AdminCandidateRequest({ user }) {
   const [showForm, setShowForm] = useState(false);
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [submitting,setSubmitting]= useState(false);
-  const [detail,   setDetail]   = useState(null); // full-page detail view
+  const [detail,   setDetail]   = useState(null);
+  const [jobs,     setJobs]     = useState([]); // active jobs for selector
 
   const load = () => {
     setLoading(true); setError('');
@@ -51,6 +52,13 @@ export default function AdminCandidateRequest({ user }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Load active jobs for the job selector in the form
+  useEffect(() => {
+    api.getJobs({ status: 'active', limit: 500 })
+      .then(r => setJobs(Array.isArray(r) ? r : (r?.data || [])))
+      .catch(() => setJobs([]));
+  }, []);
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -263,8 +271,29 @@ export default function AdminCandidateRequest({ user }) {
           </div>
         }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Job selector — pick from active jobs */}
+            <div>
+              <label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 6 }}>LINKED JOB (optional — pick from your active jobs)</label>
+              <select
+                value={form.jobId}
+                onChange={e => {
+                  const jid = e.target.value;
+                  const job = jobs.find(j => (j._id || j.id) === jid);
+                  sf('jobId', jid);
+                  if (job && !form.roleTitle) sf('roleTitle', job.title || '');
+                }}
+                style={{ ...inp, width: '100%' }}
+              >
+                <option value="">— Select a job (or leave blank to describe manually) —</option>
+                {jobs.map(j => {
+                  const jid = j._id || j.id;
+                  return <option key={jid} value={jid}>{j.title}{j.companyName || j.company ? ` @ ${j.companyName || j.company}` : ''}{j.location ? ` · ${j.location}` : ''}</option>;
+                })}
+              </select>
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>Linking a job helps TalentNest source candidates that exactly match your requirements.</p>
+            </div>
             <Field label="Role / Position Title *" value={form.roleTitle} onChange={v => sf('roleTitle', v)} placeholder="e.g. Senior React Developer" />
-            <Field label="Requirements" value={form.requirements} onChange={v => sf('requirements', v)} type="textarea" placeholder="Skills needed, experience level, team size…" />
+            <Field label="Requirements" value={form.requirements} onChange={v => sf('requirements', v)} type="textarea" placeholder="Skills needed, experience level, team size, key technologies…" />
             <div>
               <label style={{ fontSize: 11, color: '#706E6B', fontWeight: 600, display: 'block', marginBottom: 6 }}>URGENCY</label>
               <div style={{ display: 'flex', gap: 8 }}>

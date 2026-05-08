@@ -89,4 +89,5 @@ export const userService = {
   async uploadBgvDocument(formData)    { return req('POST', '/bgv', formData); },
   async verifyBgvDocument(docId, body) { return req('PATCH', `/bgv/${docId}/verify`, body); },
   async deleteBgvDocument(docId)       { return req('DELETE', `/bgv/${docId}`); },
+  async getAllBgvSubmissions(qs)        { return req('GET', `/bgv/admin/all${qs ? `?${qs}` : ''}`); },
 };

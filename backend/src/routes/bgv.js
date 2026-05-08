@@ -112,6 +112,77 @@ router.patch('/:id/verify', authMiddleware, allowRoles('admin', 'super_admin'),
     res.json({ success: true, data: norm(doc) });
   }));
 
+// ── GET /api/bgv/admin/all — super_admin: all docs grouped by user ────────────
+router.get('/admin/all', authMiddleware, allowRoles('super_admin'),
+  asyncHandler(async (req, res) => {
+    const page  = Math.max(1, parseInt(req.query.page,  10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const skip  = (page - 1) * limit;
+    const statusFilter = req.query.status; // optional: uploaded|under_review|verified|rejected
+
+    const match = { deletedAt: null };
+    if (statusFilter) match.status = statusFilter;
+
+    // Aggregate: group docs by userId, pull user profile
+    const [rows, total] = await Promise.all([
+      BgvDocument.aggregate([
+        { $match: match },
+        { $sort: { createdAt: -1 } },
+        { $group: {
+          _id: '$userId',
+          docs: { $push: {
+            id: { $toString: '$_id' },
+            docType: '$docType', docName: '$docName',
+            status: '$status', mimeType: '$mimeType',
+            fileSize: '$fileSize', rejectNote: '$rejectNote',
+            createdAt: '$createdAt', updatedAt: '$updatedAt',
+          }},
+          totalDocs:   { $sum: 1 },
+          verifiedDocs:{ $sum: { $cond: [{ $eq: ['$status', 'verified'] }, 1, 0] } },
+          pendingDocs: { $sum: { $cond: [{ $in: ['$status', ['uploaded', 'under_review']] }, 1, 0] } },
+          rejectedDocs:{ $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+          latestUpload:{ $max: '$createdAt' },
+        }},
+        { $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user',
+        }},
+        { $unwind: { path: '$user', preserveNullAndEmpty: true } },
+        { $project: {
+          userId:      '$_id',
+          name:        { $ifNull: ['$user.name', 'Unknown'] },
+          email:       { $ifNull: ['$user.email', ''] },
+          phone:       { $ifNull: ['$user.phone', ''] },
+          bgvVerified: { $ifNull: ['$user.bgvVerified', false] },
+          bgvVerifiedAt:'$user.bgvVerifiedAt',
+          totalDocs:   1,
+          verifiedDocs:1,
+          pendingDocs: 1,
+          rejectedDocs:1,
+          latestUpload:1,
+          docs:        1,
+        }},
+        { $sort: { latestUpload: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ]),
+      BgvDocument.aggregate([
+        { $match: match },
+        { $group: { _id: '$userId' } },
+        { $count: 'n' },
+      ]).then(r => r[0]?.n || 0),
+    ]);
+
+    // Add docTypeLabel to each doc
+    rows.forEach(row => {
+      row.docs = row.docs.map(d => ({ ...d, docTypeLabel: DOC_TYPE_LABELS[d.docType] || d.docType }));
+    });
+
+    res.json({ success: true, data: rows, pagination: { total, page, limit, pages: Math.ceil(total / limit) } });
+  }));
+
 // ── DELETE /api/bgv/:id — candidate deletes their own document ────────────────
 router.delete('/:id', authMiddleware, asyncHandler(async (req, res) => {
   const doc = await BgvDocument.findOne({ _id: req.params.id, deletedAt: null });

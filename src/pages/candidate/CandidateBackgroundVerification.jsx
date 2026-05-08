@@ -116,19 +116,30 @@ export default function CandidateBackgroundVerification({ user }) {
 
       {/* Status banner */}
       {bgvVerified ? (
-        <div style={{ ...card, background: 'linear-gradient(135deg,rgba(16,185,129,0.1),rgba(5,150,105,0.05))', border: '1px solid rgba(16,185,129,0.3)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px' }}>
-          <span style={{ fontSize: 36 }}>🏅</span>
+        <div style={{ ...card, background: 'linear-gradient(135deg,rgba(16,185,129,0.1),rgba(5,150,105,0.05))', border: '2px solid rgba(16,185,129,0.4)', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 16, padding: '18px 22px' }}>
+          <span style={{ fontSize: 42, flexShrink: 0 }}>🏅</span>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 15, color: '#065f46' }}>BGV Verified by TalentNest HR</div>
-            <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Your background verification is complete. This badge is visible to recruiters who view your profile.</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: '#065f46', marginBottom: 4 }}>
+              TalentNest Verified — Your Profile is Trusted
+            </div>
+            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
+              Your background verification is <b>complete and approved</b>. The <b>🏅 TalentNest Verified</b> badge is now visible on your profile to all recruiters.
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {['🔍 Higher search visibility', '📞 More recruiter callbacks', '⚡ Faster hiring process', '✅ Pre-cleared for interviews'].map(b => (
+                <span key={b} style={{ fontSize: 12, fontWeight: 700, color: '#065f46', background: 'rgba(16,185,129,0.12)', padding: '4px 12px', borderRadius: 20 }}>{b}</span>
+              ))}
+            </div>
           </div>
         </div>
-      ) : docs.length > 0 && (
-        <div style={{ ...card, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 20, padding: '14px 18px', fontSize: 13 }}>
-          <b>⏳ Verification In Progress</b> — {verifiedCount} of {docs.length} documents verified.
-          {pendingCount > 0 && ` ${pendingCount} under review.`} HR will notify you once completed.
+      ) : docs.length > 0 ? (
+        <div style={{ ...card, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', marginBottom: 20, padding: '14px 18px' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginBottom: 4 }}>⏳ Verification In Progress</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+            {verifiedCount} of {docs.length} documents verified.{pendingCount > 0 ? ` ${pendingCount} under review by our team.` : ''} Once all documents are verified, you'll get the <b>🏅 TalentNest Verified badge</b> automatically.
+          </div>
         </div>
-      )}
+      ) : null}
 
       {/* Info box */}
       <div style={{ ...card, marginBottom: 20, padding: '14px 20px', background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)', display: 'flex', gap: 14, alignItems: 'flex-start' }}>

@@ -76,127 +76,201 @@ function CandCard({ cand, selected, onToggle, matchScore }) {
   );
 }
 
-// ── Full-page detail view (replaces the drawer) ──────────────────────────────
+// ── Full-page detail view ──────────────────────────────────────────────────────
 function DetailPage({ request, onClose, onSaved }) {
-  const [suggested,    setSuggested]    = useState([]);
-  const [searched,     setSearched]     = useState([]);
-  const [loading,      setLoading]      = useState({ suggested:false, search:false, save:false });
-  const [selected,     setSelected]     = useState(new Set((request.submittedCandidates||[]).map(c=>String(c._id||c))));
-  const [attachNote,   setAttachNote]   = useState('');
-  const [newStatus,    setNewStatus]    = useState(request.status);
-  const [toast,        setToast]        = useState('');
+  const rid = request._id || request.id;
+
+  const [suggested,   setSuggested]  = useState([]);
+  const [searched,    setSearched]   = useState([]);
+  // newlySelected: IDs added during this session (not pre-existing)
+  const [newlySelected, setNewlySelected] = useState(new Set());
+  const [attachNote,  setAttachNote] = useState(request.adminNotes || '');
+  const [newStatus,   setNewStatus]  = useState(request.status);
+  const [toast,       setToast]      = useState('');
+  const [busy,        setBusy]       = useState('');
+
+  // Already-attached candidates (populated objects from the request)
+  const attached = Array.isArray(request.submittedCandidates) ? request.submittedCandidates : [];
 
   useEffect(() => {
-    setLoading(l=>({...l,suggested:true}));
-    api.getSuggestedCandidatesForRequest(request._id||request.id)
-      .then(r=>setSuggested(Array.isArray(r?.data)?r.data:[]))
-      .catch(()=>setSuggested([]))
-      .finally(()=>setLoading(l=>({...l,suggested:false})));
-  }, [request._id||request.id]);
+    setBusy('suggested');
+    api.getSuggestedCandidatesForRequest(rid)
+      .then(r => setSuggested(Array.isArray(r?.data) ? r.data : []))
+      .catch(() => setSuggested([]))
+      .finally(() => setBusy(''));
+  }, [rid]);
 
   const handleSearch = async (qs) => {
-    setLoading(l=>({...l,search:true}));
+    setBusy('search');
     try {
       const r = await api.searchCandidatesAdvanced(qs);
-      setSearched(Array.isArray(r?.data)?r.data:[]);
+      setSearched(Array.isArray(r?.data) ? r.data : []);
     } catch { setSearched([]); }
-    setLoading(l=>({...l,search:false}));
+    setBusy('');
   };
 
-  const toggleCandidate = (id) => setSelected(prev=>{
-    const next=new Set(prev);
-    next.has(id)?next.delete(id):next.add(id);
+  const toggleNew = (id) => setNewlySelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
 
-  const handleAttach = async () => {
-    if (selected.size===0) return;
-    setLoading(l=>({...l,save:true}));
+  // Save status + note (without adding new candidates)
+  const handleSaveStatus = async () => {
+    setBusy('status');
     try {
-      await api.attachCandidatesToRequest(request._id||request.id, { candidateIds:[...selected], note:attachNote });
-      if (newStatus!==request.status) await api.updateCandidateRequest(request._id||request.id,{status:newStatus});
-      setToast('✅ Candidates attached and request updated!');
+      await api.updateCandidateRequest(rid, { status: newStatus, adminNotes: attachNote });
+      setToast('✅ Status updated!');
       onSaved();
-    } catch(e){setToast(`❌ ${e.message}`);}
-    setLoading(l=>({...l,save:false}));
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setBusy('');
   };
+
+  // Attach newly-selected candidates
+  const handleAttach = async () => {
+    if (newlySelected.size === 0) return;
+    setBusy('attach');
+    try {
+      await api.attachCandidatesToRequest(rid, { candidateIds: [...newlySelected], note: attachNote });
+      if (newStatus !== request.status) await api.updateCandidateRequest(rid, { status: newStatus });
+      setToast(`✅ ${newlySelected.size} candidate${newlySelected.size !== 1 ? 's' : ''} attached and admin notified!`);
+      onSaved();
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setBusy('');
+  };
+
+  // IDs already attached — used to filter them out from suggested/search
+  const attachedIds = new Set(attached.map(c => String(c._id || c.id || c)));
 
   return (
     <div style={{ fontFamily:ff, animation:'tn-fadein 0.2s ease both' }}>
-      <Toast msg={toast} onClose={()=>setToast('')} />
+      <Toast msg={toast} onClose={() => setToast('')} />
 
-      {/* Back button + header */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+      {/* Back + title */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, flexWrap:'wrap' }}>
         <button onClick={onClose} style={{ ...btnG, display:'flex', alignItems:'center', gap:6, padding:'8px 16px' }}>
           ← Back to Requests
         </button>
-        <div>
+        <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:10, fontWeight:800, color:'#0176D3', letterSpacing:1.5, textTransform:'uppercase' }}>Candidate Request</div>
-          <h2 style={{ margin:0, fontSize:20, fontWeight:900, color:'#0A1628' }}>{request.roleTitle}</h2>
-          <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{request.tenantId?.name||'Org'} · {new Date(request.createdAt).toLocaleDateString('en-IN')}</div>
+          <h2 style={{ margin:0, fontSize:20, fontWeight:900, color:'#0A1628', wordBreak:'break-word' }}>{request.roleTitle}</h2>
+          <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>
+            {request.tenantId?.name || 'Org'} · Requested by {request.requestedBy?.name || '—'} · {new Date(request.createdAt).toLocaleDateString('en-IN')}
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+          <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:`${URGENCY_COLORS[request.urgency]||'#706E6B'}18`, color:URGENCY_COLORS[request.urgency]||'#706E6B' }}>
+            {request.urgency||'medium'}
+          </span>
+          <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:20, background:(STATUS_COLORS[request.status]||STATUS_COLORS.pending).bg, color:(STATUS_COLORS[request.status]||STATUS_COLORS.pending).text }}>
+            {(STATUS_COLORS[request.status]||STATUS_COLORS.pending).label}
+          </span>
         </div>
       </div>
 
-      {/* Requirements card */}
-      <div style={{ ...card, marginBottom:20, padding:'16px 20px' }}>
-        <div style={{ fontWeight:700, fontSize:12, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Requirements</div>
-        <div style={{ fontSize:14, color:'#374151', lineHeight:1.7 }}>{request.requirements||'No specific requirements noted.'}</div>
+      {/* Requirements */}
+      <div style={{ ...card, marginBottom:16, padding:'16px 20px' }}>
+        <div style={{ fontWeight:700, fontSize:11, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Requirements</div>
+        <div style={{ fontSize:14, color:'#374151', lineHeight:1.7, whiteSpace:'pre-wrap' }}>{request.requirements || 'No specific requirements noted.'}</div>
       </div>
 
-      {/* Status + note section */}
-      <div style={{ ...card, marginBottom:20, padding:'16px 20px' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+      {/* Status + note save */}
+      <div style={{ ...card, marginBottom:16, padding:'16px 20px' }}>
+        <div style={{ fontWeight:700, fontSize:12, color:'#0A1628', marginBottom:12 }}>Update Request</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, marginBottom:12 }}>
           <div>
-            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Update Status</label>
+            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Status</label>
             <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ ...inp, width:'100%' }}>
               {['pending','in_progress','fulfilled','cancelled'].map(s=><option key={s} value={s}>{s.replace('_',' ')}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Attach Note (optional)</label>
-            <input value={attachNote} onChange={e=>setAttachNote(e.target.value)} placeholder="Note for the org admin…" style={{ ...inp, width:'100%', boxSizing:'border-box' }} />
+            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Admin Note (visible to org)</label>
+            <input value={attachNote} onChange={e=>setAttachNote(e.target.value)}
+              placeholder="Leave a note for the requesting org…"
+              style={{ ...inp, width:'100%', boxSizing:'border-box' }} />
           </div>
         </div>
+        <button onClick={handleSaveStatus} disabled={busy==='status'} style={{ ...btnG, fontSize:12 }}>
+          {busy==='status' ? 'Saving…' : '💾 Save Status & Note'}
+        </button>
+      </div>
 
-        {selected.size>0 && (
-          <div style={{ background:'rgba(27,79,216,0.08)', border:'1px solid rgba(27,79,216,0.2)', borderRadius:10, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'#1B4FD8' }}>{selected.size} candidate{selected.size!==1?'s':''} selected</span>
-            <button onClick={handleAttach} disabled={loading.save} style={{ ...btnP, padding:'8px 18px', fontSize:12 }}>
-              {loading.save?'Attaching…':'Attach & Notify Admin'}
+      {/* Already-attached candidates */}
+      {attached.length > 0 && (
+        <div style={{ ...card, marginBottom:16, padding:'16px 20px' }}>
+          <div style={{ fontWeight:700, fontSize:12, color:'#059669', textTransform:'uppercase', letterSpacing:0.5, marginBottom:12 }}>
+            👥 {attached.length} Candidate{attached.length!==1?'s':''} Already Attached
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {attached.map(c => {
+              const cid = String(c._id || c.id || c);
+              const name = c.name || '—';
+              return (
+                <div key={cid} style={{ display:'flex', alignItems:'center', gap:12, background:'#F8FAFF', borderRadius:10, padding:'10px 14px', border:'1px solid rgba(16,185,129,0.2)' }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#10B981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:14, flexShrink:0 }}>
+                    {name[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:'#0A1628' }}>{name}</div>
+                    <div style={{ fontSize:11, color:'#64748B' }}>
+                      {c.title && `${c.title}`}{c.currentCompany ? ` · ${c.currentCompany}` : ''}{c.email ? ` · ${c.email}` : ''}{c.phone ? ` · ${c.phone}` : ''}
+                    </div>
+                    {Array.isArray(c.skills) && c.skills.length>0 && (
+                      <div style={{ display:'flex', gap:3, flexWrap:'wrap', marginTop:3 }}>
+                        {c.skills.slice(0,5).map(s=><span key={s} style={{ background:'rgba(16,185,129,0.08)', color:'#059669', fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:20 }}>{s}</span>)}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontSize:10, fontWeight:700, color:'#059669', background:'rgba(16,185,129,0.1)', padding:'3px 10px', borderRadius:20, flexShrink:0 }}>✓ Attached</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Add more candidates */}
+      <div style={{ ...card, padding:'20px' }}>
+        <div style={{ fontWeight:800, fontSize:14, color:'#0A1628', marginBottom:4 }}>Add Candidates</div>
+        <div style={{ fontSize:12, color:'#706E6B', marginBottom:16 }}>Select candidates to attach to this request and notify the organisation.</div>
+
+        {newlySelected.size > 0 && (
+          <div style={{ background:'rgba(27,79,216,0.08)', border:'1px solid rgba(27,79,216,0.2)', borderRadius:10, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#1B4FD8' }}>{newlySelected.size} new candidate{newlySelected.size!==1?'s':''} selected</span>
+            <button onClick={handleAttach} disabled={busy==='attach'} style={{ ...btnP, padding:'8px 18px', fontSize:12 }}>
+              {busy==='attach' ? 'Attaching…' : '📨 Attach & Notify Admin'}
             </button>
           </div>
         )}
-      </div>
 
-      {/* Candidates section */}
-      <div style={{ ...card, padding:'20px' }}>
-          {/* Suggested candidates */}
-          <div style={{ fontWeight:800, fontSize:14, color:'#0A1628', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
-            <span>⭐ Suggested Matches</span>
-            {loading.suggested && <Spinner size={14} />}
+        {/* Suggested */}
+        <div style={{ fontWeight:700, fontSize:13, color:'#0A1628', marginBottom:10, display:'flex', alignItems:'center', gap:8 }}>
+          <span>⭐ Suggested Matches</span>
+          {busy==='suggested' && <Spinner size={14} />}
+        </div>
+        {busy!=='suggested' && suggested.length===0 && (
+          <div style={{ color:'#94A3B8', fontSize:12, marginBottom:16, padding:'12px 14px', background:'#F8FAFC', borderRadius:8 }}>
+            No AI-suggested candidates. Use the search below.
           </div>
-          {!loading.suggested && suggested.length===0 && (
-            <div style={{ color:'#94A3B8', fontSize:12, marginBottom:16, padding:'12px 14px', background:'#F8FAFC', borderRadius:8 }}>
-              No suggested candidates found based on the role requirements. Use the search below.
+        )}
+        {suggested.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(
+          <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} matchScore={c.matchScore} />
+        ))}
+
+        {/* Search */}
+        <div style={{ marginTop:20, borderTop:'1px solid #F1F5F9', paddingTop:20 }}>
+          <SearchPanel onSearch={handleSearch} loading={busy==='search'} />
+          {busy==='search' && <div style={{ textAlign:'center', padding:20 }}><Spinner size={28} /></div>}
+          {busy!=='search' && searched.length>0 && (
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, color:'#374151', marginBottom:10 }}>Search Results ({searched.length})</div>
+              {searched.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(
+                <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} />
+              ))}
             </div>
           )}
-          {suggested.map(c=>(
-            <CandCard key={c.id||c._id} cand={c} selected={selected} onToggle={toggleCandidate} matchScore={c.matchScore} />
-          ))}
-
-          {/* Advanced search */}
-          <div style={{ marginTop:24, borderTop:'1px solid #F1F5F9', paddingTop:20 }}>
-            <SearchPanel onSearch={handleSearch} loading={loading.search} />
-            {loading.search && <div style={{ textAlign:'center', padding:20 }}><Spinner size={28} /></div>}
-            {!loading.search && searched.length>0 && (
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:'#374151', marginBottom:10 }}>Search Results ({searched.length})</div>
-                {searched.map(c=>(
-                  <CandCard key={c.id||c._id} cand={c} selected={selected} onToggle={toggleCandidate} />
-                ))}
-              </div>
-            )}
-          </div>
+        </div>
       </div>
     </div>
   );

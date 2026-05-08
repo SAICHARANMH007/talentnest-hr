@@ -31,7 +31,8 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
     CandidateRequest.find(filter)
       .populate('tenantId', 'name')
       .populate('requestedBy', 'name email')
-      .populate('submittedCandidates', 'name email phone title skills location experience')
+      .populate('submittedCandidates', 'name email phone title skills location experience currentCompany noticePeriod')
+      .populate('jobId', 'title location jobType companyName')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     CandidateRequest.countDocuments(filter),
   ]);
@@ -50,7 +51,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
 router.post('/', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
-    const { roleTitle, requirements, urgency, budget } = req.body;
+    const { roleTitle, requirements, urgency, budget, jobId } = req.body;
     if (!roleTitle) throw new AppError('roleTitle is required.', 400);
 
     const r = await CandidateRequest.create({
@@ -61,6 +62,7 @@ router.post('/', ...guard,
       urgency: urgency || 'medium',
       budget: budget || '',
       status: 'pending',
+      ...(jobId ? { jobId } : {}),
     });
 
     logger.audit('Candidate request submitted', req.user.id, req.user.tenantId, { requestId: r._id });

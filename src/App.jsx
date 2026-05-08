@@ -62,6 +62,7 @@ const SuperAdminPlaybooks = lazy(() => import('./pages/superadmin/SuperAdminPlay
 const SuperAdminCandidateRequests = lazy(() => import('./pages/superadmin/SuperAdminCandidateRequests.jsx'));
 const SuperAdminAuditLogs = lazy(() => import('./pages/superadmin/SuperAdminAuditLogs.jsx'));
 const SuperAdminBlogs     = lazy(() => import('./pages/superadmin/SuperAdminBlogs.jsx'));
+const SuperAdminBgvTracker = lazy(() => import('./pages/superadmin/SuperAdminBgvTracker.jsx'));
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
@@ -589,6 +590,7 @@ export default function App() {
             <Route path="all-candidates" element={<SuperAdminCandidates />} />
             <Route path="unregistered-candidates" element={<Suspense fallback={<PageLoader />}><SuperAdminUnregisteredCandidates /></Suspense>} />
             <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />
+            <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
           </>
         )}
 

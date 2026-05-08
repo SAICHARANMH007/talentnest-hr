@@ -16,6 +16,7 @@ const candidateRequestSchema = new mongoose.Schema({
 
   roleTitle   : { type: String },
   requirements: { type: String },
+  jobId       : { type: mongoose.Schema.Types.ObjectId, ref: 'Job', default: null },
 
   urgency: {
     type: String,
