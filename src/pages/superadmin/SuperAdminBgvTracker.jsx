@@ -7,6 +7,20 @@ import { api } from '../../api/api.js';
 
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 
+// Convert a base64 data URI to a Blob URL so <iframe> displays inline instead of downloading.
+// Chrome does not support data URIs in <iframe src> — they trigger a file download.
+function dataUriToBlobUrl(dataUri, mimeType) {
+  if (!dataUri) return null;
+  if (!dataUri.startsWith('data:')) return dataUri; // already a URL
+  try {
+    const base64 = dataUri.split(',')[1];
+    const binary = atob(base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mimeType || 'application/octet-stream' }));
+  } catch { return dataUri; }
+}
+
 const DOC_STATUS = {
   uploaded:     { bg:'rgba(1,118,211,0.1)',   text:'#0176D3',  label:'Uploaded',     icon:'📤' },
   under_review: { bg:'rgba(245,158,11,0.1)',  text:'#F59E0B',  label:'Under Review', icon:'⏳' },
@@ -41,7 +55,11 @@ function CandidateRow({ row, onVerify }) {
     setPreview({ docId, loading: true });
     try {
       const r = await api.getBgvDocumentFile(docId);
-      setPreview({ docId, loading: false, fileUrl: r?.data?.fileUrl, mimeType: r?.data?.mimeType });
+      const rawUrl  = r?.data?.fileUrl;
+      const mime    = r?.data?.mimeType || '';
+      // base64 data URIs in <iframe> trigger downloads in Chrome — convert to Blob URL
+      const displayUrl = dataUriToBlobUrl(rawUrl, mime);
+      setPreview({ docId, loading: false, fileUrl: displayUrl, mimeType: mime });
     } catch {
       setPreview(null);
       setToast('❌ Could not load document');
@@ -164,10 +182,10 @@ function CandidateRow({ row, onVerify }) {
       {/* Preview modal */}
       {preview && (
         <div style={{ position:'fixed', inset:0, zIndex:9100, background:'rgba(5,13,26,0.75)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-          onClick={() => setPreview(null)}>
+          onClick={() => { if (preview.fileUrl?.startsWith('blob:')) URL.revokeObjectURL(preview.fileUrl); setPreview(null); }}>
           <div style={{ background:'#fff', borderRadius:16, padding:20, maxWidth:820, width:'100%', maxHeight:'90vh', overflow:'auto', position:'relative' }}
             onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreview(null)}
+            <button onClick={() => { if (preview.fileUrl?.startsWith('blob:')) URL.revokeObjectURL(preview.fileUrl); setPreview(null); }}
               style={{ position:'absolute', top:14, right:14, background:'#F1F5F9', border:'none', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
             <h3 style={{ margin:'0 0 14px', fontSize:15, fontWeight:800 }}>Document Preview</h3>
             {preview.loading ? (

@@ -53,6 +53,7 @@ export const platformService = {
   async logJobShare(data)                { return req('POST', '/invites/log-share', data); },
   
   // Assessments
+  async listAssessments(qs)              { return req('GET', `/assessments${qs ? `?${qs}` : ''}`); },
   async getAssessment(id)                { return req('GET', `/assessments/${id}`); },
   async getAssessmentForJob(jobId)       { return req('GET', `/assessments/job/${jobId}`); },
   async getPublicAssessmentForJob(jobId) { return req('GET', `/assessments/public/job/${jobId}`, null, false); },

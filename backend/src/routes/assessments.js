@@ -131,6 +131,51 @@ router.get('/public/job/:jobId', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/assessments — list all assessments for the org (or all orgs for SA)
+router.get('/', auth, allowRoles('recruiter', 'admin', 'super_admin'), async (req, res) => {
+  try {
+    const filter = {};
+    if (req.user.role === 'super_admin') {
+      // SA can filter by org or see all
+      if (req.query.tenantId) filter.tenantId = req.query.tenantId;
+    } else if (req.user.role === 'admin') {
+      filter.tenantId = req.user.tenantId;
+    } else {
+      // Recruiter: only jobs assigned to them
+      const myJobs = await Job.find({ tenantId: req.user.tenantId, assignedRecruiters: req.user.id }).select('_id').lean();
+      filter.jobId = { $in: myJobs.map(j => String(j._id)) };
+    }
+    if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === 'true';
+
+    const assessments = await Assessment.find(filter).sort({ createdAt: -1 }).lean();
+
+    // Enrich with job title, company, and submission count
+    const enriched = await Promise.all(assessments.map(async a => {
+      const job = await Job.findById(a.jobId).select('title company companyName location').lean();
+      const subCount = await require('../models/AssessmentSubmission').countDocuments({ assessmentId: String(a._id) });
+      return {
+        id            : String(a._id),
+        _id           : String(a._id),
+        title         : a.title,
+        jobId         : a.jobId,
+        jobTitle      : job?.title || '—',
+        jobCompany    : job?.companyName || job?.company || '',
+        jobLocation   : job?.location || '',
+        timeLimitMins : a.timeLimitMins || 0,
+        passingScore  : a.passingScore || 0,
+        isActive      : a.isActive,
+        autoAdvance   : a.autoAdvance,
+        questionCount : Array.isArray(a.questions) ? a.questions.length : 0,
+        submissionCount: subCount,
+        createdAt     : a.createdAt,
+        tenantId      : a.tenantId,
+      };
+    }));
+
+    res.json({ success: true, data: enriched });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/assessments ─────────────────────────────────────────────────────
 router.post('/', auth, allowRoles('recruiter','admin','super_admin'), async (req, res) => {
   try {

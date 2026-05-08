@@ -1,5 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/api.js';
+
+function dataUriToBlobUrl(dataUri, mimeType) {
+  if (!dataUri) return null;
+  if (!dataUri.startsWith('data:')) return dataUri;
+  try {
+    const base64 = dataUri.split(',')[1];
+    const binary = atob(base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mimeType || 'application/octet-stream' }));
+  } catch { return dataUri; }
+}
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -83,8 +95,10 @@ export default function CandidateBackgroundVerification({ user }) {
   const handlePreview = async (docId) => {
     setPreview({ docId, loading: true, fileUrl: null });
     try {
-      const r = await api.getBgvDocumentFile(docId);
-      setPreview({ docId, loading: false, fileUrl: r?.data?.fileUrl, mimeType: r?.data?.mimeType });
+      const r    = await api.getBgvDocumentFile(docId);
+      const mime = r?.data?.mimeType || '';
+      const url  = dataUriToBlobUrl(r?.data?.fileUrl, mime);
+      setPreview({ docId, loading: false, fileUrl: url, mimeType: mime });
     } catch {
       setPreview(null);
       setToast('❌ Could not load document preview');
@@ -232,10 +246,10 @@ export default function CandidateBackgroundVerification({ user }) {
       {/* Document preview modal */}
       {preview && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(5,13,26,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={() => setPreview(null)}>
+          onClick={() => { if (preview.fileUrl?.startsWith('blob:')) URL.revokeObjectURL(preview.fileUrl); setPreview(null); }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 800, width: '100%', maxHeight: '90vh', overflow: 'auto', position: 'relative' }}
             onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreview(null)} style={{ position: 'absolute', top: 14, right: 14, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <button onClick={() => { if (preview.fileUrl?.startsWith('blob:')) URL.revokeObjectURL(preview.fileUrl); setPreview(null); }} style={{ position: 'absolute', top: 14, right: 14, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             {preview.loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner size={32} /></div>
             ) : preview.fileUrl ? (

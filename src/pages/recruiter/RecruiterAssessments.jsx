@@ -115,47 +115,70 @@ function JobSearchPicker({ jobs, value, onChange, placeholder = 'Search jobs…'
 
 export default function RecruiterAssessments({ user }) {
   const navigate = useNavigate();
+
+  // ── All-assessments list (default view) ───────────────────────────────────
+  const [allAssessments, setAllAssessments] = useState([]);
+  const [listLoading,    setListLoading]    = useState(true);
+  const [listSearch,     setListSearch]     = useState('');
+
+  // ── Detail view (when clicking into a specific assessment) ─────────────────
   const [jobs, setJobs]             = useState([]);
   const [selJob, setSelJob]         = useState('');
   const [assessment, setAssessment] = useState(null);
   const [submissions, setSubs]      = useState([]);
-  const [loading, setLoading]       = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // ── Shared ─────────────────────────────────────────────────────────────────
   const [toast, setToast]           = useState('');
-  const [reviewModal, setReview]    = useState(null); // { assessmentId, submissionId }
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(BLANK_FORM());
   const [creating, setCreating]     = useState(false);
 
+  const isDetail = !!assessment; // true = showing detail, false = showing list
+
+  // Load all assessments for the org/platform
+  const loadAll = React.useCallback(() => {
+    setListLoading(true);
+    api.listAssessments()
+      .then(r => setAllAssessments(Array.isArray(r?.data) ? r.data : []))
+      .catch(() => setAllAssessments([]))
+      .finally(() => setListLoading(false));
+  }, []);
+
+  // Load jobs for the create picker
   useEffect(() => {
     const isSA = user.role === 'super_admin';
     const opts = isSA
-      ? { limit: 10000, platform: true }          // SA: all jobs across platform
-      : ['admin'].includes(user.role)
-        ? { limit: 5000 }                          // admin: all org jobs
-        : { recruiterId: user.id, limit: 500 };    // recruiter: own jobs
+      ? { limit: 10000, platform: true }
+      : user.role === 'admin'
+        ? { limit: 5000 }
+        : { recruiterId: user.id, limit: 500 };
     api.getJobs(opts)
       .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
       .catch(() => setJobs([]));
-  }, [user.id, user.role]);
+    loadAll();
+  }, [user.id, user.role, loadAll]);
 
-  const loadJob = async (jobId) => {
-    setSelJob(jobId);
+  // Open detail view for a specific assessment row
+  const openDetail = async (row) => {
+    setSelJob(String(row.jobId));
     setAssessment(null);
     setSubs([]);
-    if (!jobId) return;
-    setLoading(true);
+    setDetailLoading(true);
     try {
-      const a = await api.getAssessmentForJob(jobId);
-      if (!a) { setLoading(false); return; }
+      const a = await api.getAssessmentForJob(String(row.jobId));
+      if (!a) { setDetailLoading(false); return; }
       setAssessment(a);
       const subs = await api.getAssessmentSubmissions(a._id || a.id);
       setSubs(Array.isArray(subs) ? subs : []);
     } catch (e) {
       if (!e.message?.includes('No assessment')) setToast('❌ ' + e.message);
     } finally {
-      setLoading(false);
+      setDetailLoading(false);
     }
   };
+
+  const closeDetail = () => { setAssessment(null); setSelJob(''); setSubs([]); loadAll(); };
 
   const saveAssessment = async (status) => {
     const f = createForm;
@@ -172,17 +195,20 @@ export default function RecruiterAssessments({ user }) {
       if (existing) {
         await api.updateAssessment(existing, payload);
         setToast('✅ Assessment updated!');
+        // Reload current detail
+        const a = await api.getAssessmentForJob(f.jobId);
+        if (a) setAssessment(a);
       } else {
         await api.createAssessment(payload);
         setToast('✅ Assessment created!');
+        loadAll();
       }
       setShowCreate(false);
-      loadJob(f.jobId || selJob);
     } catch (e) { setToast('❌ ' + e.message); }
     setCreating(false);
   };
 
-  const addQuestion = () => setCreateForm(p => ({ ...p, questions: [...p.questions, BLANK_QUESTION()] }));
+  const addQuestion    = () => setCreateForm(p => ({ ...p, questions: [...p.questions, BLANK_QUESTION()] }));
   const removeQuestion = (id) => setCreateForm(p => ({ ...p, questions: p.questions.filter(q => q.id !== id) }));
   const updateQuestion = (id, field, val) => setCreateForm(p => ({ ...p, questions: p.questions.map(q => q.id === id ? { ...q, [field]: val } : q) }));
 
@@ -190,47 +216,39 @@ export default function RecruiterAssessments({ user }) {
   const failCount = submissions.filter(s => s.result === 'fail').length;
   const pendCount = submissions.filter(s => s.result === 'pending' || !s.result).length;
 
+  const filteredList = listSearch
+    ? allAssessments.filter(a =>
+        (a.title || '').toLowerCase().includes(listSearch.toLowerCase()) ||
+        (a.jobTitle || '').toLowerCase().includes(listSearch.toLowerCase()) ||
+        (a.jobCompany || '').toLowerCase().includes(listSearch.toLowerCase())
+      )
+    : allAssessments;
+
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
 
-      <PageHeader title="Assessments" subtitle="Review candidate assessment submissions"
-        action={<button onClick={() => { setCreateForm(BLANK_FORM()); setShowCreate(true); }} style={{ background:'linear-gradient(135deg,#0176D3,#0154A4)',color:'#fff',border:'none',borderRadius:8,padding:'9px 18px',fontWeight:700,fontSize:13,cursor:'pointer' }}>+ Create Assessment</button>}
-      />
-
-      <div style={{ ...card, marginBottom: 20 }}>
-        <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Search & Select Job</label>
-        <JobSearchPicker
-          jobs={jobs}
-          value={selJob}
-          onChange={jid => loadJob(jid)}
-          placeholder="Search jobs by title, company…"
-        />
-      </div>
-
-      {loading && <p style={{ color: '#706E6B' }}><Spinner /> Loading…</p>}
-
-      {!loading && selJob && !assessment && (
-        <div style={{ ...card, textAlign: 'center', padding: 40 }}>
-          <p style={{ fontSize: 28, margin: '0 0 8px' }}>📋</p>
-          <p style={{ color: '#706E6B', fontSize: 13 }}>No assessment attached to this job yet.</p>
-          <button
-            onClick={() => { setCreateForm({ ...BLANK_FORM(), jobId: selJob }); setShowCreate(true); }}
-            style={{ background: 'linear-gradient(135deg,#0176D3,#0154A4)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 8 }}
-          >+ Create Assessment</button>
-        </div>
-      )}
-
-      {!loading && assessment && (
+      {/* ── Detail view ─────────────────────────────────────────────────────── */}
+      {isDetail && (
         <>
-          {/* Assessment summary */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <button onClick={closeDetail}
+              style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+              ← Back to Assessments
+            </button>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: '#0A1628' }}>{assessment.title}</div>
+              <div style={{ fontSize: 12, color: '#706E6B', marginTop: 1 }}>{assessment.jobTitle || allAssessments.find(a => a.jobId === selJob)?.jobTitle || ''}</div>
+            </div>
+          </div>
+
           <div style={{ ...card, marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12, justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <h3 style={{ color: '#181818', fontSize: 15, fontWeight: 700, margin: 0 }}>{assessment.title}</h3>
                 <Badge label={assessment.isActive ? '✅ Active' : '⏸ Inactive'} color={assessment.isActive ? '#2E844A' : '#64748b'} />
                 {assessment.timeLimitMins > 0 && <Badge label={`⏱ ${assessment.timeLimitMins}m`} color="#0176D3" />}
                 {assessment.passingScore > 0 && <Badge label={`Pass: ${assessment.passingScore}%`} color="#8b5cf6" />}
+                <Badge label={`${Array.isArray(assessment.questions) ? assessment.questions.length : 0} questions`} color="#706E6B" />
               </div>
               <button onClick={() => {
                 const qs = Array.isArray(assessment.questions) ? assessment.questions.map(q => ({ ...q, id: q.id || Date.now() + Math.random() })) : [BLANK_QUESTION()];
@@ -240,28 +258,19 @@ export default function RecruiterAssessments({ user }) {
                 ✏️ Edit Assessment
               </button>
             </div>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#181818', fontWeight: 700, fontSize: 18 }}>{submissions.length}</div>
-                <div style={{ color: '#9E9D9B', fontSize: 11 }}>Total</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#34d399', fontWeight: 700, fontSize: 18 }}>{passCount}</div>
-                <div style={{ color: '#9E9D9B', fontSize: 11 }}>Passed</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#FE5C4C', fontWeight: 700, fontSize: 18 }}>{failCount}</div>
-                <div style={{ color: '#9E9D9B', fontSize: 11 }}>Failed</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#F59E0B', fontWeight: 700, fontSize: 18 }}>{pendCount}</div>
-                <div style={{ color: '#9E9D9B', fontSize: 11 }}>Pending</div>
-              </div>
+            <div style={{ display: 'flex', gap: 20 }}>
+              {[['Total', submissions.length, '#181818'], ['✅ Passed', passCount, '#34d399'], ['❌ Failed', failCount, '#FE5C4C'], ['⏳ Pending', pendCount, '#F59E0B']].map(([label, val, color]) => (
+                <div key={label} style={{ textAlign: 'center' }}>
+                  <div style={{ color, fontWeight: 700, fontSize: 18 }}>{val}</div>
+                  <div style={{ color: '#9E9D9B', fontSize: 11 }}>{label}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Submissions list */}
-          {submissions.length === 0 ? (
+          {detailLoading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}><Spinner size={28} /></div>
+          ) : submissions.length === 0 ? (
             <div style={{ ...card, textAlign: 'center', padding: 32 }}>
               <p style={{ color: '#706E6B', fontSize: 13 }}>No submissions yet.</p>
             </div>
@@ -298,6 +307,84 @@ export default function RecruiterAssessments({ user }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── List view (default) ──────────────────────────────────────────────── */}
+      {!isDetail && (
+        <>
+          <PageHeader title="📝 Assessments" subtitle={`${allAssessments.length} assessment${allAssessments.length !== 1 ? 's' : ''} across your organisation`}
+            action={<button onClick={() => { setCreateForm(BLANK_FORM()); setShowCreate(true); }} style={{ background:'linear-gradient(135deg,#0176D3,#0154A4)',color:'#fff',border:'none',borderRadius:8,padding:'9px 18px',fontWeight:700,fontSize:13,cursor:'pointer' }}>+ Create Assessment</button>}
+          />
+
+          <div style={{ ...card, marginBottom: 16, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input value={listSearch} onChange={e => setListSearch(e.target.value)}
+              placeholder="Search by title, job or company…"
+              style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, outline: 'none' }} />
+            <button onClick={loadAll} style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>↻ Refresh</button>
+          </div>
+
+          {listLoading ? (
+            <div style={{ textAlign: 'center', padding: 60 }}><Spinner size={32} /></div>
+          ) : filteredList.length === 0 ? (
+            <div style={{ ...card, textAlign: 'center', padding: '60px 40px' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{listSearch ? 'No assessments match your search' : 'No assessments yet'}</div>
+              <div style={{ fontSize: 12, color: '#706E6B', marginBottom: 20 }}>
+                {listSearch ? 'Try a different search term.' : 'Create a screening assessment for any of your jobs.'}
+              </div>
+              {!listSearch && <button onClick={() => { setCreateForm(BLANK_FORM()); setShowCreate(true); }} style={{ background: 'linear-gradient(135deg,#0176D3,#0154A4)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Create First Assessment</button>}
+            </div>
+          ) : (
+            <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC' }}>
+                      {['Job', 'Assessment Title', 'Status', 'Questions', 'Submissions', 'Created', ''].map(h => (
+                        <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredList.map(a => (
+                      <tr key={a.id} style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#FAFAFE'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                        onClick={() => openDetail(a)}>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle || '—'}</div>
+                          {a.jobCompany && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{a.jobCompany}{a.jobLocation ? ` · ${a.jobLocation}` : ''}</div>}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: '#0A1628' }}>{a.title}</div>
+                          {a.timeLimitMins > 0 && <div style={{ fontSize: 11, color: '#0176D3', marginTop: 1 }}>⏱ {a.timeLimitMins}min</div>}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: a.isActive ? '#2E844A' : '#64748b', background: a.isActive ? 'rgba(46,132,74,0.1)' : '#F1F5F9', padding: '3px 10px', borderRadius: 20 }}>
+                            {a.isActive ? '✅ Active' : '⏸ Inactive'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#374151', fontSize: 13 }}>{a.questionCount}</td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: a.submissionCount > 0 ? '#0176D3' : '#94A3B8' }}>{a.submissionCount}</span>
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#94A3B8', fontSize: 12, whiteSpace: 'nowrap' }}>
+                          {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <button onClick={e => { e.stopPropagation(); openDetail(a); }}
+                            style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 8, color: '#0176D3', padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Open →
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
