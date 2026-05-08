@@ -38,15 +38,20 @@ export default function RecruiterAIMatch({ user }) {
         appId=a?.data?.id||a?.data?._id?.toString()||a?.id||a?._id?.toString();
       }
       catch(e) {
-        if(e.message.toLowerCase().includes("already")) {
-          const appsRes=await api.getApplications({jobId:selJob,candidateId});
-          const apps=Array.isArray(appsRes)?appsRes:(appsRes?.data||[]);
-          appId=apps[0]?.id||apps[0]?._id?.toString();
+        const body=e?.response?await e.response?.json?.().catch(()=>null):null;
+        const existingId=body?.existingId||body?.data?.id;
+        if(existingId||e.message?.toLowerCase().includes('already')){
+          appId=existingId;
+          if(!appId){
+            const appsRes=await api.getApplications({jobId:selJob,candidateId});
+            const apps=Array.isArray(appsRes)?appsRes:(appsRes?.data||[]);
+            appId=apps[0]?.id||apps[0]?._id?.toString();
+          }
         } else throw e;
       }
       if(!appId) throw new Error("Could not find or create application");
       await api.updateStage(appId,"shortlisted","Shortlisted via AI match");
-      setToast("Shortlisted successfully!");
+      setToast("✅ Shortlisted successfully! Candidate added to pipeline.");
       setResults(prev=>prev.map(r=>r.candidate?.id===candidateId?{...r,_shortlisted:true}:r));
     } catch(e) { setToast(`Shortlist failed: ${e.message}`); }
     setShortlisting(s=>({...s,[candidateId]:false}));

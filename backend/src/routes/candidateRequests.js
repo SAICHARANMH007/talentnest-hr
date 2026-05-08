@@ -220,18 +220,55 @@ router.post('/:id/attach-candidates', ...guard, allowRoles('super_admin'), async
 // GET /api/candidate-requests/:id/suggested-candidates — matching engine suggestions
 router.get('/:id/suggested-candidates', ...guard, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const { findSuggestedCandidates } = require('../utils/candidateMatchingEngine');
+  const Candidate = require('../models/Candidate');
+
   const cr = await CandidateRequest.findById(req.params.id).lean();
   if (!cr) throw new AppError('Request not found.', 404);
 
+  // Extract skills from the requirements text (simple word-boundary extraction)
+  // CandidateRequest has no structured skills field — parse from requirements freetext
+  const COMMON_SKILLS = [
+    'react','angular','vue','node','nodejs','python','java','golang','ruby','php','swift','kotlin',
+    'typescript','javascript','sql','mysql','postgresql','mongodb','redis','aws','gcp','azure','docker',
+    'kubernetes','terraform','ansible','jenkins','ci/cd','git','graphql','rest','api','machine learning',
+    'ai','data science','analytics','excel','powerbi','tableau','sap','salesforce','recruitment','hr',
+    'talent acquisition','sourcing','screening','interviewing','leadership','management','product',
+    'design','ux','ui','figma','scrum','agile','jira','testing','qa','devops','linux','networking',
+  ];
+  const reqText = ((cr.roleTitle || '') + ' ' + (cr.requirements || '')).toLowerCase();
+  const extractedSkills = COMMON_SKILLS.filter(s => reqText.includes(s));
+
   const jobSnapshot = {
     title          : cr.roleTitle || '',
-    skills         : Array.isArray(cr.skills) ? cr.skills : [],
-    experienceLevel: cr.experienceLevel || '',
-    location       : cr.location || '',
-    jobType        : cr.jobType || '',
+    skills         : extractedSkills.length > 0 ? extractedSkills : [],
+    experienceLevel: '',
+    location       : '',
+    jobType        : '',
   };
 
-  const candidates = await findSuggestedCandidates(jobSnapshot, cr.tenantId);
+  // findSuggestedCandidates needs candidates to match against — pass excludeTenantId = null
+  // so SA sees candidates from all orgs
+  let candidates = [];
+  try {
+    candidates = await findSuggestedCandidates(jobSnapshot, null);
+  } catch {}
+
+  // If matching engine returns nothing (empty skills → no signal), fall back to
+  // top recent candidates across the platform
+  if (!candidates.length) {
+    const recent = await Candidate.find({ deletedAt: null })
+      .select('_id name email title currentCompany skills experience location noticePeriodDays availability')
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+    candidates = recent.map(c => ({
+      ...c,
+      id: c._id?.toString(),
+      skills: Array.isArray(c.skills) ? c.skills : [],
+      matchScore: 0,
+    }));
+  }
+
   res.json({ success: true, data: candidates });
 }));
 

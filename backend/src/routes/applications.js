@@ -410,19 +410,73 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   // For candidate self-apply: look up the job by ID only (jobs are public), then
   // create the application under the job's tenantId so recruiters can see it.
   const isCandidate = req.user.role === 'candidate';
-  const [job, candidate] = await Promise.all([
-    isCandidate
-      ? Job.findOne({ _id: jobId, status: 'active', deletedAt: null }).lean()
-      : Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
-    isCandidate
-      ? Candidate.findOne({ _id: candidateId, deletedAt: null }).lean()
-      : Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
-  ]);
-  if (!job)       throw new AppError('Job not found.', 404);
-  if (!candidate) throw new AppError('Candidate not found.', 404);
 
-  const exists = await Application.findOne({ jobId, candidateId, deletedAt: null });
-  if (exists) throw new AppError('This candidate has already been submitted for this job.', 409);
+  const job = await (isCandidate
+    ? Job.findOne({ _id: jobId, status: 'active', deletedAt: null }).lean()
+    : Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean());
+  if (!job) throw new AppError('Job not found.', 404);
+
+  // Resolve candidate — recruiters/admins may pass a User._id from Talent Match or
+  // a Candidate._id from the pipeline. We try both to avoid "Candidate not found" errors.
+  let candidate = null;
+  if (isCandidate) {
+    candidate = await Candidate.findOne({ _id: candidateId, deletedAt: null }).lean();
+  } else {
+    // 1. Direct Candidate record lookup (normal pipeline case)
+    candidate = await Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId, deletedAt: null }).lean();
+
+    if (!candidate) {
+      // 2. candidateId might be a User._id (Talent Match passes User records)
+      //    Look up Candidate by userId backlink or email
+      const User = require('../models/User');
+      const userDoc = await User.findById(candidateId).lean();
+      if (userDoc) {
+        candidate = await Candidate.findOne({
+          $or: [
+            { userId: userDoc._id },
+            { email: userDoc.email },
+          ],
+          tenantId: req.user.tenantId,
+          deletedAt: null,
+        }).lean();
+
+        // 3. Still no Candidate record — auto-create one from the User so the shortlist works
+        if (!candidate) {
+          candidate = await Candidate.create({
+            tenantId  : req.user.tenantId,
+            userId    : userDoc._id,
+            name      : userDoc.name      || '',
+            email     : userDoc.email     || '',
+            phone     : userDoc.phone     || '',
+            title     : userDoc.title     || '',
+            skills    : Array.isArray(userDoc.skills) ? userDoc.skills : [],
+            experience: userDoc.experience ?? null,
+            location  : userDoc.location  || '',
+            source    : 'platform',
+          });
+          // Use the newly created Candidate doc
+          candidate = candidate.toObject();
+        }
+        // Rewrite candidateId so the Application stores the Candidate._id, not the User._id
+        candidateId = String(candidate._id);
+      }
+    }
+  }
+  if (!candidate) throw new AppError('Candidate not found. Make sure this candidate exists in your organisation.', 404);
+
+  // Deduplicate — check with the resolved candidateId
+  const checkId = String(candidate._id);
+
+  const exists = await Application.findOne({ jobId, candidateId: checkId, deletedAt: null });
+  if (exists) {
+    // Return the existing application so the caller (e.g. Talent Match shortlist) can
+    // still move it to Shortlisted without needing to do a separate lookup.
+    return res.status(409).json({
+      error: 'This candidate has already been submitted for this job.',
+      existingId: String(exists._id),
+      data: normalizeApp(exists),
+    });
+  }
 
   const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
@@ -445,7 +499,7 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   const app = await Application.create({
     tenantId: appTenantId,
     jobId,
-    candidateId,
+    candidateId: checkId,  // always the resolved Candidate._id (not User._id)
     source: 'platform',
     coverLetter: coverLetter || '',
     talentMatchScore: score,

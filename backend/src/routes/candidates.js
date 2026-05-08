@@ -411,38 +411,78 @@ router.post('/upload-my-resume', authMiddleware, tenantGuard, upload.single('res
 // GET /api/candidates/search — advanced candidate search (super_admin only)
 router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req, { limit: 50 });
-  const filter = { deletedAt: null };
+  const andClauses = [{ deletedAt: null }];
 
+  // Skills filter — $in array of regex patterns
   if (req.query.skills) {
     const skills = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (skills.length) filter.skills = { $in: skills.map(s => new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')) };
+    if (skills.length) {
+      andClauses.push({ skills: { $in: skills.map(s => new RegExp(escRe(s), 'i')) } });
+    }
   }
-  if (req.query.experienceLevel) filter.experienceLevel = req.query.experienceLevel;
+
+  // Experience level: frontend sends 'fresher','junior','mid','senior','lead'
+  // Map these to numeric ranges on the Candidate.experience (years) field
+  if (req.query.experienceLevel) {
+    const lvlMap = { fresher: [0,1], junior: [1,3], mid: [3,6], senior: [6,12], lead: [10,60] };
+    const range = lvlMap[req.query.experienceLevel.toLowerCase()];
+    if (range) andClauses.push({ experience: { $gte: range[0], $lte: range[1] } });
+  }
+
+  // Numeric experience range (explicit min/max)
   if (req.query.minExperience || req.query.maxExperience) {
-    filter.experience = {};
-    if (req.query.minExperience) filter.experience.$gte = Number(req.query.minExperience);
-    if (req.query.maxExperience) filter.experience.$lte = Number(req.query.maxExperience);
+    const expFilter = {};
+    if (req.query.minExperience) expFilter.$gte = Number(req.query.minExperience);
+    if (req.query.maxExperience) expFilter.$lte = Number(req.query.maxExperience);
+    andClauses.push({ experience: expFilter });
   }
-  if (req.query.location)     filter.location = { $regex: String(req.query.location).trim(), $options: 'i' };
-  if (req.query.jobType)      filter.jobTypePreference = req.query.jobType;
-  if (req.query.noticePeriod) filter.noticePeriod = req.query.noticePeriod;
-  if (req.query.expectedSalaryMin || req.query.expectedSalaryMax) {
-    filter.expectedSalary = {};
-    if (req.query.expectedSalaryMin) filter.expectedSalary.$gte = Number(req.query.expectedSalaryMin);
-    if (req.query.expectedSalaryMax) filter.expectedSalary.$lte = Number(req.query.expectedSalaryMax);
+
+  if (req.query.location) {
+    andClauses.push({ location: { $regex: escRe(req.query.location.trim()), $options: 'i' } });
   }
+
+  // noticePeriod: frontend sends strings like 'immediate','15days','30days','60days','90days'
+  // Map to noticePeriodDays range
+  if (req.query.noticePeriod) {
+    const npMap = { immediate: [0,3], '15days': [1,15], '30days': [15,35], '60days': [35,65], '90days': [65,95] };
+    const range = npMap[req.query.noticePeriod];
+    if (range) andClauses.push({ noticePeriodDays: { $gte: range[0], $lte: range[1] } });
+    // Also try string matching on availability field
+  }
+
+  // jobType: match against availability/candidateStatus text (Candidate has no jobTypePreference field)
+  if (req.query.jobType) {
+    const jt = escRe(req.query.jobType);
+    andClauses.push({ $or: [
+      { availability: { $regex: jt, $options: 'i' } },
+      { candidateStatus: { $regex: jt, $options: 'i' } },
+      { additionalDetails: { $regex: jt, $options: 'i' } },
+    ]});
+  }
+
+  // Keyword: name, title, company, skills, summary
   if (req.query.keyword) {
-    const kw = new RegExp(String(req.query.keyword).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    filter.$or = [{ name: kw }, { title: kw }, { currentCompany: kw }, { skills: kw }];
+    const kw = new RegExp(escRe(req.query.keyword.trim()), 'i');
+    andClauses.push({ $or: [
+      { name: kw }, { title: kw }, { currentCompany: kw },
+      { skills: kw }, { summary: kw }, { email: kw },
+    ]});
   }
+
+  const filter = andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
 
   const [data, total] = await Promise.all([
     Candidate.find(filter)
-      .select('_id name email phone title currentCompany skills experience location noticePeriod expectedSalary jobTypePreference resumeUrl photoUrl')
+      .select('_id name email phone title currentCompany skills experience location noticePeriodDays availability candidateStatus resumeUrl photoUrl')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Candidate.countDocuments(filter),
   ]);
-  const normalized = data.map(c => ({ ...c, id: c._id?.toString(), skills: Array.isArray(c.skills) ? c.skills : [] }));
+  const normalized = data.map(c => ({
+    ...c,
+    id          : c._id?.toString(),
+    skills      : Array.isArray(c.skills) ? c.skills : [],
+    noticePeriod: c.noticePeriodDays ? `${c.noticePeriodDays} days` : (c.availability || ''),
+  }));
   res.json(paginatedResponse(normalized, total, limit, page));
 }));
 
