@@ -620,6 +620,16 @@ export default function RecruiterPipeline({ user }) {
               {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.company} ({j.applicantsCount} applicants)</option>)}
             </select>
           </div>
+          {selJob && (
+            <button
+              onClick={() => {
+                // Navigate to Talent Match with this job pre-selected via query param
+                navigate(`/app/talent-match?job=${selJob}`);
+              }}
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              🎯 Find Matching Candidates
+            </button>
+          )}
         </div>
         {selectedJob && (
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

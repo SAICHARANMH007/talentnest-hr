@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -9,10 +10,11 @@ import { matchCandidatesToJob } from '../../api/matching.js';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
 /**
- * RecruiterTalentMatch — Uses deterministic RegEx heuristics to match candidates 
+ * RecruiterTalentMatch — Uses deterministic RegEx heuristics to match candidates
  * to specific job requirements based on skills, experience, and location.
  */
 export default function RecruiterTalentMatch({ user }) {
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState("");
   const [results, setResults] = useState([]);
@@ -22,11 +24,19 @@ export default function RecruiterTalentMatch({ user }) {
   const [jobsLoading, setJobsLoad] = useState(true);
 
   useEffect(() => {
+    const jobParam = searchParams.get('job');
     api.getJobs(user.id)
-      .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
+      .then(j => {
+        const list = Array.isArray(j) ? j : (j?.data || []);
+        setJobs(list);
+        // Pre-select job when navigated from Pipeline → "Find Matching Candidates"
+        if (jobParam && list.some(jj => String(jj.id || jj._id) === jobParam)) {
+          setSelJob(jobParam);
+        }
+      })
       .catch(() => { })
       .finally(() => setJobsLoad(false));
-  }, [user.id]);
+  }, [user.id, searchParams]);
 
   const run = async (jobId = selJob) => {
     if (!jobId) { setResults([]); return; }
@@ -121,6 +131,9 @@ export default function RecruiterTalentMatch({ user }) {
                 <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0176D3", display: "flex", alignItems: "center", justifyCenter: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>{i + 1}</div>
                 <span style={{ color: "#181818", fontWeight: 600 }}>{r.candidate.name}</span>
                 <PresenceBadge userId={r.candidate.id} showLabel={false} />
+                {r.candidate.bgvVerified && (
+                  <span title="BGV documents verified by TalentNest HR" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg,#10B981,#059669)', color: '#fff', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 20, letterSpacing: '0.4px' }}>🏅 VERIFIED</span>
+                )}
                 <Badge label={`${r.matchScore}%`} color={r.matchScore >= 80 ? "#2E844A" : "#A07E00"} />
                 <Badge label={r.recommendation} color={rc[r.recommendation] || "#0176D3"} />
                 {r._shortlisted && <Badge label="Shortlisted" color="#2E844A" />}

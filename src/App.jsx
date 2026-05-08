@@ -448,10 +448,13 @@ export default function App() {
       <Route path="/services/:slug" element={<Suspense fallback={<PageLoader />}><ServiceDetailPage /></Suspense>} />
       <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactPage /></Suspense>} />
       <Route path="/hrms" element={<Suspense fallback={<PageLoader />}><HRMSPage /></Suspense>} />
-      <Route path="/products"           element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
-      <Route path="/products/hireboard"  element={<Suspense fallback={<PageLoader />}><ProductHireBoard /></Suspense>} />
-      <Route path="/products/peopledesk" element={<Suspense fallback={<PageLoader />}><ProductPeopleDesk /></Suspense>} />
-      <Route path="/products/jobtrack"   element={<Suspense fallback={<PageLoader />}><ProductJobTrack /></Suspense>} />
+      <Route path="/products"              element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
+      <Route path="/products/hireboard"   element={<Suspense fallback={<PageLoader />}><ProductHireBoard /></Suspense>} />
+      <Route path="/products/recruit-os"  element={<Navigate to="/products/hireboard" replace />} />
+      <Route path="/products/peopledesk"  element={<Suspense fallback={<PageLoader />}><ProductPeopleDesk /></Suspense>} />
+      <Route path="/products/people-os"   element={<Navigate to="/products/peopledesk" replace />} />
+      <Route path="/products/jobtrack"    element={<Suspense fallback={<PageLoader />}><ProductJobTrack /></Suspense>} />
+      <Route path="/products/career-os"   element={<Navigate to="/products/jobtrack" replace />} />
       <Route path="/blog" element={<Suspense fallback={<PageLoader />}><BlogPage /></Suspense>} />
       <Route path="/blog/:slug" element={<Suspense fallback={<PageLoader />}><BlogPostPage /></Suspense>} />
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />
