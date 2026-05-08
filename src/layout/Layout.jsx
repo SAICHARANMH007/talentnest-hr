@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
-import { api } from '../api/api.js';
+import { api, setToken as setApiToken } from '../api/api.js';
 import ChangePasswordModal from '../components/shared/ChangePasswordModal.jsx';
 import EmailSettingsModal from '../components/shared/EmailSettingsModal.jsx';
 import QuickActionMenu from '../components/ui/QuickActionMenu.jsx';
@@ -659,6 +659,80 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
   );
 }
 
+// ── Impersonation Banner ───────────────────────────────────────────────────────
+function ImpersonationBanner() {
+  const [impersonating, setImpersonating] = useState(() => !!sessionStorage.getItem('tn_sa_backup'));
+
+  // Re-check on storage events (if impersonation starts/ends in another component)
+  useEffect(() => {
+    const check = () => setImpersonating(!!sessionStorage.getItem('tn_sa_backup'));
+    window.addEventListener('tn_impersonate_change', check);
+    return () => window.removeEventListener('tn_impersonate_change', check);
+  }, []);
+
+  if (!impersonating) return null;
+
+  const currentUser = (() => {
+    try { return JSON.parse(sessionStorage.getItem('tn_user') || '{}'); } catch { return {}; }
+  })();
+
+  const handleExit = () => {
+    try {
+      const backup = JSON.parse(sessionStorage.getItem('tn_sa_backup') || '{}');
+      // Restore original super admin's tn_user so Layout shows correct name after redirect
+      if (backup.user) sessionStorage.setItem('tn_user', backup.user);
+      // Clear impersonation keys — initAuth() in App.jsx will use the HTTP-only
+      // refresh cookie to silently issue a fresh super admin access token
+      sessionStorage.removeItem('tn_impersonate_token');
+      sessionStorage.removeItem('tn_sa_backup');
+      // Clear the in-memory API token so the next request goes through initAuth
+      setApiToken(null);
+      // Hard reload to /app — App.jsx initAuth() will restore the SA session
+      window.location.href = '/app';
+    } catch {
+      sessionStorage.removeItem('tn_impersonate_token');
+      sessionStorage.removeItem('tn_sa_backup');
+      window.location.href = '/app';
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #7f1d1d, #991b1b)',
+      borderBottom: '2px solid #ef4444',
+      padding: '8px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      flexShrink: 0,
+      zIndex: 9999,
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ color: '#fef2f2', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ background: '#ef4444', borderRadius: '50%', width: 10, height: 10, display: 'inline-block', animation: 'pulse-dot 1.4s ease-in-out infinite' }} />
+        Impersonating: <b style={{ color: '#fff' }}>{currentUser.name || currentUser.email || 'Unknown User'}</b>
+        {currentUser.role && <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: '#fecaca', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{currentUser.role.replace('_', ' ')}</span>}
+      </span>
+      <button onClick={handleExit} style={{
+        background: '#ef4444',
+        border: '1px solid rgba(255,255,255,0.3)',
+        borderRadius: 8,
+        color: '#fff',
+        fontWeight: 800,
+        fontSize: 12,
+        padding: '7px 16px',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        minHeight: 34,
+        letterSpacing: '0.02em',
+      }}>
+        ✕ Exit Impersonation
+      </button>
+    </div>
+  );
+}
+
 // ── Main Layout ────────────────────────────────────────────────────────────────
 export default function Layout({ user, onLogout }) {
   const rk                               = user.role === 'super_admin' ? 'superadmin' : user.role;
@@ -730,6 +804,9 @@ export default function Layout({ user, onLogout }) {
         .tn-app-icon-btn { aspect-ratio: 1 / 1; line-height: 1; place-items: center; overflow: hidden; }
         .tn-app-icon-btn svg { flex: 0 0 auto; }
       `}</style>
+
+      {/* Impersonation Banner — visible on every page when SA is impersonating */}
+      <ImpersonationBanner />
 
       {/* Trial Banner */}
       {trialDays !== null && (

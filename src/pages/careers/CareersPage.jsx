@@ -34,6 +34,7 @@ function getCompanyCareerUrl(externalUrl) {
 }
 
 function ApplyModal({ job, onClose }) {
+  const navigate = useNavigate();
   // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
     try {
@@ -203,6 +204,15 @@ function ApplyModal({ job, onClose }) {
             if (typeof window.tn_refreshUser === 'function') {
               window.tn_refreshUser(regResult.user);
             }
+            // If no external company page, auto-redirect to app after brief delay
+            const hasExternal = !!getCompanyCareerUrl(job.externalUrl);
+            if (!hasExternal) {
+              setAccountCreated(true);
+              setDone(true);
+              setSubmitting(false);
+              setTimeout(() => { window.location.href = '/app/applications'; }, 2000);
+              return;
+            }
           }
           setAccountCreated(true);
         } catch (regErr) {
@@ -246,15 +256,15 @@ function ApplyModal({ job, onClose }) {
           </div>
         )}
 
-        {/* New account created */}
+        {/* New account created — show auto-redirect countdown */}
         {createAccount && accountCreated && (
           <div style={{ background: 'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
-            <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account created! You are now logged in.</p>
+            <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account created! Signing you in…</p>
             <p style={{ color: '#374151', fontSize: 12, margin: '0 0 10px' }}>
-              Your application for <b>{job.title}</b> is already in your pipeline.
+              Your application for <b>{job.title}</b> is in your pipeline. Redirecting to your dashboard…
             </p>
             <a href="/app/applications" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-              📋 Track My Application →
+              📋 Go to My Applications →
             </a>
           </div>
         )}

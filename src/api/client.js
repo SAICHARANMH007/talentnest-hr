@@ -87,7 +87,13 @@ export async function initAuth() {
     if (!res.ok) {
       // Refresh failed — but if we have a cached user, keep them logged in until
       // the next API call fails. Avoids flash-of-logout on slow Render cold starts.
-      if (storedUser) return { networkError: true };
+      if (storedUser) {
+        // Also restore the access token so the next API call sends an Authorization header.
+        // Without this, the request goes out without a token → instant 401 → logout, even
+        // though the backend is just cold-starting and the session is actually still valid.
+        if (stored) _accessToken = stored;
+        return { networkError: true };
+      }
       return null;
     }
     const data = await res.json();
@@ -98,6 +104,9 @@ export async function initAuth() {
     }
     return null;
   } catch {
+    // Network error (timeout, offline, Render cold start) — keep any existing token
+    // in memory so the next API call can at least try to authenticate.
+    if (stored) _accessToken = stored;
     return { networkError: true };
   }
 }

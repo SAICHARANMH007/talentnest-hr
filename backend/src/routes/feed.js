@@ -48,7 +48,7 @@ function safeText(v) { return String(v || '').replace(/&/g,'&amp;').replace(/</g
 function cdata(v)    { return `<![CDATA[${String(v || '')}]]>`; }
 
 async function fetchActiveJobs(tenantId) {
-  const filter = { status: 'active', deletedAt: null };
+  const filter = { status: 'active', approvalStatus: { $nin: ['pending_approval', 'rejected'] }, deletedAt: null };
   if (tenantId) filter.tenantId = tenantId;
   return Job.find(filter)
     .select('title company companyName location description requirements skills salaryMin salaryMax jobType experience department careerPageSlug tenantId createdAt updatedAt')
@@ -182,7 +182,7 @@ router.get('/sitemap.xml', async (req, res) => {
     if (_sitemapCache && (Date.now() - _sitemapCachedAt) < SITEMAP_TTL) {
       return res.send(_sitemapCache);
     }
-    const jobs = await Job.find({ status: 'active', deletedAt: null }).select('careerPageSlug updatedAt createdAt _id').lean();
+    const jobs = await Job.find({ status: 'active', approvalStatus: { $nin: ['pending_approval', 'rejected'] }, deletedAt: null }).select('careerPageSlug updatedAt createdAt _id').lean();
     const staticPages = [
       { url: SITE_URL, priority: '1.0', freq: 'daily' },
       { url: `${SITE_URL}/careers`, priority: '0.9', freq: 'daily' },
