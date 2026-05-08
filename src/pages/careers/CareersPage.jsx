@@ -697,6 +697,66 @@ class CareersErrorBoundary extends Component {
   }
 }
 
+// ── Job Share Bar — rendered at the bottom of every job card ─────────────────
+function JobShareBar({ job }) {
+  const [copied, setCopied] = React.useState(false);
+  const jid     = job._id || job.id;
+  const jobUrl  = `${window.location.origin}/careers?job=${jid}`;
+  const title   = `${job.title}${job.company ? ` @ ${job.company}` : ''}`;
+  const loc     = job.location ? ` · ${job.location}` : '';
+  const waText  = encodeURIComponent(`🚀 Job Opening: ${title}${loc}\n\n${jobUrl}`);
+  const liUrl   = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+  const twUrl   = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`🚀 Hiring: ${title}\n👉 Apply: ${jobUrl}\n#Hiring #Jobs`)}`;
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(jobUrl)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => {});
+  };
+
+  const shareNative = () => {
+    if (navigator.share) {
+      navigator.share({ title, text: `Job Opening: ${title}`, url: jobUrl }).catch(() => {});
+    }
+  };
+
+  return (
+    <div style={{
+      borderTop: '2px solid #EEF2FF',
+      padding: '12px 28px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+      background: 'linear-gradient(135deg,#F8FAFF,#EEF2FF)',
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 800, color: '#6366F1', letterSpacing: '0.3px', flexShrink: 0 }}>🔗 Share this job:</span>
+      <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#25D366', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+        💬 WhatsApp
+      </a>
+      <a href={liUrl} target="_blank" rel="noopener noreferrer"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#0A66C2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+        💼 LinkedIn
+      </a>
+      <a href={twUrl} target="_blank" rel="noopener noreferrer"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#1DA1F2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+        🐦 Twitter
+      </a>
+      <button onClick={copyLink}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: copied ? '#10B981' : '#6366F1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', flexShrink: 0, transition: 'background 0.2s' }}>
+        {copied ? '✓ Copied!' : '🔗 Copy Link'}
+      </button>
+      {typeof navigator.share === 'function' && (
+        <button onClick={shareNative}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#F59E0B', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', flexShrink: 0 }}>
+          ↗ More
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function CareersPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1162,50 +1222,8 @@ export default function CareersPage() {
                     </div>
                     </div>
 
-                    {/* ── Share bar — full width, always visible ── */}
-                    {(() => {
-                      const jid = j._id || j.id;
-                      const jobUrl = `${window.location.origin}/careers?job=${jid}`;
-                      const jobTitle = `${j.title}${j.company ? ` @ ${j.company}` : ''}`;
-                      const waText = encodeURIComponent(`🚀 Job Opening: ${jobTitle}${j.location ? ` · ${j.location}` : ''}\n\n${jobUrl}`);
-                      const liUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
-                      const twText = encodeURIComponent(`🚀 Hiring: ${jobTitle}\n👉 Apply: ${jobUrl}\n#Hiring #Jobs`);
-                      const twUrl = `https://twitter.com/intent/tweet?text=${twText}`;
-                      return (
-                        <div style={{ borderTop: '1px solid #F1F5F9', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: '#FAFBFC' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.5px', textTransform: 'uppercase', marginRight: 4 }}>Share:</span>
-                          {/* WhatsApp */}
-                          <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#25D366', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                            💬 WhatsApp
-                          </a>
-                          {/* LinkedIn */}
-                          <a href={liUrl} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#0A66C2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                            💼 LinkedIn
-                          </a>
-                          {/* X / Twitter */}
-                          <a href={twUrl} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#000', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                            𝕏 Twitter
-                          </a>
-                          {/* Copy link */}
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(jobUrl).catch(()=>{}); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            🔗 Copy Link
-                          </button>
-                          {/* Native share (mobile) */}
-                          {navigator.share && (
-                            <button
-                              onClick={() => navigator.share({ title: jobTitle, text: `Job Opening: ${jobTitle}`, url: jobUrl }).catch(() => {})}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 20, background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', whiteSpace: 'nowrap' }}>
-                              ↗ More
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {/* ── Share bar ── */}
+                    <JobShareBar job={j} />
                   </div>
                 ))}
 
