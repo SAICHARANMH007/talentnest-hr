@@ -157,7 +157,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [trendData,     setTrendData]     = useState([]);
   const [applicantRows, setApplicantRows] = useState([]);
-  const [candidateRecords, setCandidateRecords] = useState([]);
+  const [recentApps,   setRecentApps]    = useState([]); // fast 20-record feed for Platform Pulse
   const [selectedJobIds, setSelectedJobIds] = useState([]);
   const [mergeReview, setMergeReview] = useState(null); // { groups: { primary, dupes, candCount }[] }
   const [merging, setMerging] = useState(false);
@@ -205,15 +205,18 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const end = new Date().toISOString().split('T')[0];
     const start = days ? new Date(Date.now() - days * 86400000).toISOString().split('T')[0] : null;
 
-    // Phase 1: FAST STATS — unblocks KPI cards immediately (Critical Path)
+    // Phase 1: FAST STATS — unblocks KPI cards + Platform Pulse immediately
     Promise.all([
       api.getDashboardStats(platformWide).catch(() => null),
       api.getRecruiterLeaderboard().catch(() => []),
-    ]).then(([s, l]) => {
+      // Load 20 most-recent applications immediately so Platform Pulse shows without waiting for 2000-app scan
+      api.getApplications({ limit: 20, platform: platformWide }).then(unwrap).catch(() => []),
+    ]).then(([s, l, recent]) => {
       setServerStats(s?.data || null);
       setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
+      setRecentApps(Array.isArray(recent) ? recent : []);
       setLoading(false);
-      
+
       // Phase 2: Progressively load heavier data in chunks to avoid blocking main thread
       setTimeout(() => {
         api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
@@ -263,7 +266,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         // High-Capacity Global Candidate Scan
         api.getUsers({ role: 'candidate', limit: 2000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
         api.getApplicants({ limit: 1000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
-        api.getCandidateRecords({ limit: 1000, platform: platformWide }).then(r => setCandidateRecords(Array.isArray(r?.data) ? r.data : [])).catch(() => setCandidateRecords([]));
+        // getCandidateRecords removed — section deleted from UI
       }, 300);
     }).catch(() => setLoading(false));
   }, [period, platformWide]);
@@ -553,10 +556,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const trends = useMemo(() => trendData, [trendData]);
 
   const recentActivity = useMemo(() => {
+    // Prefer recentApps (20 records, loaded in Phase 1 for instant display).
+    // Fall back to allApps (2000 records, Phase 3) once it loads for completeness.
+    const source = recentApps.length > 0 ? recentApps : allApps;
     const seen = new Set();
     const out = [];
-    for (const a of [...allApps].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))) {
-      const jobKey = extractId(a.jobId);
+    for (const a of [...source].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))) {
+      const jobKey  = extractId(a.jobId);
       const candKey = extractId(a.candidateId || a.candidate);
       const stageKey = a.stage || a.currentStage || '';
       const key = `${candKey}|${jobKey}|${stageKey}`;
@@ -564,7 +570,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (out.length >= 15) break;
     }
     return out;
-  }, [allApps]);
+  }, [recentApps, allApps]);
 
   // ── Drill-down helpers ────────────────────────────────────────────────────
   // Shared: sets loading title, fetches, then populates drawer
@@ -903,58 +909,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
           }
         </div>
       </div>
-
-      {isSuperAdmin && (
-        <div style={{ ...glassPanel, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div>
-              <h3 style={{ ...sectionTitle, margin: 0 }}>All Candidate Records</h3>
-              <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>
-                Candidate accounts and profiles, including those who have not applied yet.
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={openCandidatesDrill} style={{ ...btnG, borderRadius: 10, padding: '8px 14px', fontSize: 12 }}>View All Candidates</button>
-              <button
-                disabled={exporting.candidates}
-                onClick={() => handleExport('candidates', '/dashboard/candidate-records/export', `candidate-records-${new Date().toISOString().split('T')[0]}.xlsx`)}
-                style={{ ...btnP, borderRadius: 10, padding: '8px 14px', fontSize: 12, opacity: exporting.candidates ? 0.6 : 1 }}>
-                {exporting.candidates ? 'Exporting…' : 'Export Candidate Excel'}
-              </button>
-            </div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC' }}>
-                  {['Candidate', 'Email', 'Mobile', 'Organisation', 'Role', 'Status'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800, color: '#0A1628', borderBottom: '2px solid #E2E8F0' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {candidateRecords.slice(0, 8).map((r, i) => (
-                  <tr key={r.id || r._id || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{r.name || 'Candidate'}</td>
-                    <td style={{ padding: '10px 12px', color: '#0176D3' }}>{r.email || 'No email'}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {(r.phone || r.candidatePhone) ? (
-                        <span style={{ color: '#166534', background: '#F0FDF4', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>📞 {r.phone || r.candidatePhone}</span>
-                      ) : <span style={{ color: '#94A3B8', fontSize: 11 }}>—</span>}
-                    </td>
-                    <td style={{ padding: '10px 12px', color: '#334155' }}>{r.organisationName || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#706E6B' }}>{r.title || '-'}</td>
-                    <td style={{ padding: '10px 12px' }}><Badge label="Active" color="#10b981" /></td>
-                  </tr>
-                ))}
-                {candidateRecords.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: '#94A3B8' }}>No candidate records found yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       <div className="analytics-chart-row-rev">
         <div style={glassPanel}>
