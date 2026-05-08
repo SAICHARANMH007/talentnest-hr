@@ -178,19 +178,45 @@ function ApplyModal({ job, onClose }) {
       if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     }
     const screeningAnswers = questions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }));
+
+    // ── Step 1: Capture location (if not already captured or explicitly declined) ──
+    // Triggered on submit (user gesture) so browser allows geolocation prompt.
+    let finalGeo = geo;
+    let finalGeoStatus = geoStatus;
+    if (geoStatus === 'banner' || geoStatus === 'idle') {
+      setGeoStatus('asking');
+      try {
+        const pos = await Promise.race([
+          requestGeolocation(),
+          new Promise(r => setTimeout(() => r(null), 7000)), // 7s max wait
+        ]);
+        if (pos) { finalGeo = pos; finalGeoStatus = 'granted'; setGeo(pos); setGeoStatus('granted'); }
+        else      { finalGeoStatus = 'denied'; setGeoStatus('denied'); }
+      } catch { finalGeoStatus = 'denied'; setGeoStatus('denied'); }
+    }
+
+    // ── Step 2: Request notification permission (triggers Chrome native prompt) ──
+    // Must run during a user gesture (the submit click). Submission continues
+    // regardless of whether the user allows or denies.
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotifStatus(perm);
+      } catch { /* Safari older versions don't support promise form */ }
+    }
+
     setSubmitting(true);
     setError('');
     try {
       const payload = { ...form, screeningAnswers };
-      if (geo) {
-        payload.geoLat      = geo.lat;
-        payload.geoLng      = geo.lng;
-        payload.geoAccuracy = geo.accuracy;
-        payload.geoCity     = geo.city;
-        payload.geoCountry  = geo.country;
+      if (finalGeo) {
+        payload.geoLat      = finalGeo.lat;
+        payload.geoLng      = finalGeo.lng;
+        payload.geoAccuracy = finalGeo.accuracy;
+        payload.geoCity     = finalGeo.city;
+        payload.geoCountry  = finalGeo.country;
       } else {
-        // Record that location was explicitly declined or unavailable
-        payload.geoDeclined = geoStatus === 'denied';
+        payload.geoDeclined = finalGeoStatus === 'denied';
       }
       const applyResult = await api.applyPublic(job.id, payload);
       // Store whether they had an account so the success screen shows the right message
@@ -608,44 +634,40 @@ function ApplyModal({ job, onClose }) {
           </div>
         )}
       </div>
-      {/* Notification permission banner — shown before submitting */}
+      {/* Notification banner — informs candidate that Chrome will ask on submit */}
       {notifStatus === 'default' && (
-        <div style={{ marginTop: 16, background: 'linear-gradient(135deg,rgba(124,58,237,0.07),rgba(109,40,217,0.03))', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ marginTop: 16, background: 'linear-gradient(135deg,rgba(124,58,237,0.09),rgba(109,40,217,0.04))', border: '2px solid rgba(124,58,237,0.3)', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <span style={{ fontSize: 22, flexShrink: 0 }}>🔔</span>
+            <span style={{ fontSize: 24, flexShrink: 0 }}>🔔</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#5b21b6', marginBottom: 3 }}>Get notified about your application</div>
-              <div style={{ fontSize: 12, color: '#374151', marginBottom: 10, lineHeight: 1.6 }}>
-                Allow notifications so we can update you when your application status changes — interview invites, shortlisting, and offers.
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={() => {
-                  Notification.requestPermission().then(p => setNotifStatus(p));
-                }} style={{ background: '#7c3aed', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer' }}>
-                  🔔 Allow Notifications
-                </button>
-                <button onClick={() => setNotifStatus('denied')}
-                  style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 8, color: '#64748B', fontWeight: 600, fontSize: 12, padding: '8px 14px', cursor: 'pointer' }}>
-                  Skip
-                </button>
+              <div style={{ fontWeight: 800, fontSize: 14, color: '#5b21b6', marginBottom: 4 }}>Stay updated — allow notifications</div>
+              <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.65 }}>
+                When you tap <strong>Submit Application</strong>, your browser will ask to allow notifications. Please tap <strong>Allow</strong> so we can notify you of interview invites, shortlisting, and offer letters in real time.
               </div>
             </div>
           </div>
         </div>
       )}
       {notifStatus === 'granted' && (
-        <div style={{ marginTop: 12, padding: '8px 14px', background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 8, fontSize: 12, color: '#5b21b6', fontWeight: 600 }}>
-          🔔 Notifications enabled — you'll be updated on your application status
+        <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, fontSize: 12, color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>🔔</span> Notifications enabled — we'll alert you on every status update
         </div>
       )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 1, opacity: submitting ? 0.6 : 1, justifyContent: 'center' }}>
-          {submitting ? <><Spinner /> Submitting…</> : '🚀 Submit Application'}
+        <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 1, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 50, fontSize: 15 }}>
+          {submitting
+            ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
+            : '🚀 Submit Application'}
         </button>
-        <button onClick={onClose} className="btn btn-secondary">Cancel</button>
+        <button onClick={onClose} className="btn btn-secondary" style={{ minHeight: 50 }}>Cancel</button>
       </div>
-      <p style={{ color: '#706E6B', fontSize: 11, marginTop: 12, textAlign: 'center' }}>
+      {(geoStatus === 'banner' || geoStatus === 'idle') && notifStatus === 'default' && (
+        <p style={{ color: '#7c3aed', fontSize: 11, marginTop: 8, textAlign: 'center', fontWeight: 600 }}>
+          ⚡ On submit: browser will ask for location + notifications
+        </p>
+      )}
+      <p style={{ color: '#706E6B', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
         Already have an account?{' '}
         <a href="/login" style={{ color: '#014486', textDecoration: 'none', fontWeight: 600 }}>Sign in</a>
         {' '}to track your application status.
