@@ -459,8 +459,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [serverStats, allCandidates, jobCounts, localAppStats]);
   
   const stageBreakdown = useMemo(() => {
-    // 1. Priority: Backend Aggregates (Covers ALL data for the selected period)
-    if (analyticsData?.byStage) {
+    // 1. Priority: Backend Aggregates — only when byStage has actual data.
+    // IMPORTANT: check .length > 0, not just truthiness — [] is truthy but empty.
+    if (analyticsData?.byStage?.length > 0) {
       const countMap = {};
       analyticsData.byStage.forEach(x => {
         const fId = DB_TO_FRONTEND_STAGE[x.stage] || x.stage?.toLowerCase().replace(/\s+/g, '_');
@@ -473,7 +474,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         stageKey: s,
       }));
     }
-    // 2. Fallback: Local calculated stats (only before analyticsData loads)
+    // 2. Fallback: all-time local stats from the non-date-filtered getApplications call
     if (localAppStats.pipeline && Object.keys(localAppStats.pipeline).length > 0) {
       return STAGES.map((s, i) => ({
         label: STAGE_LABELS[s] || s,
@@ -1086,26 +1087,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* ── Advanced Analytics Section ── */}
-      <div style={{ ...glassPanel, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0A1628', whiteSpace: 'nowrap' }}>📅 Advanced Analytics</h3>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#706E6B', whiteSpace: 'nowrap' }}>From</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, outline: 'none' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#706E6B', whiteSpace: 'nowrap' }}>To</label>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, outline: 'none' }} />
-          </div>
-          <button onClick={applyFilter} style={{ ...btnP, borderRadius: 10, padding: '8px 20px' }}>Apply Filter</button>
-          {isSuperAdmin && <button onClick={findDuplicates} style={{ ...btnG, color:'#0176D3', borderColor:'#0176D3' }}>🪄 Merge & Keep One</button>}
-          <span style={{ fontSize: 11, color: '#94A3B8' }}>Showing: {appliedStart} → {appliedEnd}</span>
-        </div>
-      </div>
-
       <div className="analytics-2col">
 
         {/* ── Hiring Funnel ── */}
@@ -1185,52 +1166,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
             );
           })()}
         </div>
-      </div>
-
-      {/* ── Dropout Analysis ── */}
-      <div style={{ ...glassPanel, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0A1628' }}>Dropout Analysis</h3>
-            <button
-              disabled={exporting.dropout}
-              onClick={() => handleExport('dropout', `/dashboard/dropout-analysis/export?startDate=${appliedStart}&endDate=${appliedEnd}`, `dropout-${appliedStart}.xlsx`)}
-              style={{ ...btnG, borderRadius: 10, padding: '7px 14px', fontSize: 12, opacity: exporting.dropout ? 0.6 : 1 }}>
-              {exporting.dropout ? '…' : '⬇ Export Excel'}
-            </button>
-          </div>
-          {dropoutSection.loading && <SectionSkeleton />}
-          {dropoutSection.error   && <SectionError message={dropoutSection.error} onRetry={dropoutSection.reload} />}
-          {!dropoutSection.loading && !dropoutSection.error && (() => {
-            const rows = Array.isArray(dropoutSection.data?.data) ? dropoutSection.data.data : [];
-            const total = dropoutSection.data?.total || 0;
-            if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No rejections in this period</div>;
-            return (
-              <div>
-                <div style={{ marginBottom: 12, fontSize: 12, color: '#706E6B' }}>
-                  <strong>{total}</strong> candidate{total !== 1 ? 's' : ''} rejected — stage where they dropped out:
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {rows.map(r => {
-                    const pct = r.percentage;
-                    return (
-                      <div key={r.stage}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>Dropped at: {r.stage}</span>
-                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 700 }}>{r.count} ({pct}%)</span>
-                        </div>
-                        <HorizBar value={r.count} max={Math.max(...rows.map(x => x.count), 1)} color="#ef4444" height={7} />
-                        {r.topReasons?.length > 0 && (
-                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>
-                            Top reason: {r.topReasons[0].reason}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
       </div>
 
       {/* ── Time to Hire ── */}

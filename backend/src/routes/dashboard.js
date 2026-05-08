@@ -600,44 +600,65 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
 }));
 
 /* GET /api/dashboard/trends
-   Get application counts per day for the last 14 days.
+   Application counts per day — 30-day window in IST so seeded/older orgs show data.
+   Falls back to all-time if the last 30 days are all zero (demo/seeded orgs).
 */
 router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const ago14 = new Date();
-  ago14.setDate(ago14.getDate() - 14);
-  ago14.setHours(0, 0, 0, 0);
-
-  // Use IST (UTC+5:30) for date grouping so "today" aligns with the user's calendar day.
-  // Without this, apps created before 5:30 AM IST appear as the previous UTC day.
+  const WINDOW = 30; // days to show on the chart
   const TZ = 'Asia/Kolkata';
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - WINDOW);
+  cutoff.setHours(0, 0, 0, 0);
+
   const raw = await Application.aggregate([
-    { $match: { ...orgF, createdAt: { $gte: ago14 } } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: TZ } },
-        count: { $sum: 1 }
-      }
-    },
-    { $sort: { _id: 1 } }
+    { $match: { ...orgF, createdAt: { $gte: cutoff } } },
+    { $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ } },
+        count: { $sum: 1 },
+    }},
+    { $sort: { _id: 1 } },
   ]);
 
   const map = {};
   raw.forEach(r => { map[r._id] = r.count; });
 
-  // Build IST dates for last 14 days
-  const data = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date();
-    // Convert current UTC time to IST, then subtract i days
-    const istNow = new Date(d.toLocaleString('en-US', { timeZone: TZ }));
-    istNow.setDate(istNow.getDate() - i);
-    const key = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, '0')}-${String(istNow.getDate()).padStart(2, '0')}`;
-    data.push({
-      date: key,
-      label: istNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: map[key] || 0
-    });
+  // If all 30 days are zero, fall back to the last 30 days with actual data
+  const hasData = raw.length > 0;
+  let data = [];
+
+  if (!hasData) {
+    // Find the most recent applications and show their week
+    const recent = await Application.find({ ...orgF }).sort({ createdAt: -1 }).limit(200).lean();
+    if (recent.length > 0) {
+      // Group by day across the available data
+      const dayMap = {};
+      recent.forEach(a => {
+        const istDate = new Date(a.createdAt).toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
+        dayMap[istDate] = (dayMap[istDate] || 0) + 1;
+      });
+      const sortedDays = Object.keys(dayMap).sort();
+      data = sortedDays.slice(-WINDOW).map(key => ({
+        date: key,
+        label: new Date(key + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        value: dayMap[key] || 0,
+      }));
+    }
+  }
+
+  if (!data.length) {
+    // Build the standard 30-day window (will show zeros if no data)
+    for (let i = WINDOW - 1; i >= 0; i--) {
+      const istNow = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+      istNow.setDate(istNow.getDate() - i);
+      const key = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, '0')}-${String(istNow.getDate()).padStart(2, '0')}`;
+      data.push({
+        date: key,
+        label: istNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        value: map[key] || 0,
+      });
+    }
   }
 
   res.json({ success: true, data });
