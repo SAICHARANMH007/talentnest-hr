@@ -64,6 +64,7 @@ function ApplyModal({ job, onClose }) {
   const [accountCreated, setAccountCreated] = useState(false);
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | asking | granted | denied
   const [geo, setGeo] = useState(null); // { lat, lng, accuracy, city, country }
+  const [assessmentInfo, setAssessmentInfo] = useState(null); // { hasAssessment, assessmentId, title, ... }
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const isPreFilled = !!(prefill.name || prefill.email);
 
@@ -78,6 +79,15 @@ function ApplyModal({ job, onClose }) {
       else       setGeoStatus('denied');
     });
   }, []);
+
+  // Check if job has an assessment (public endpoint, no auth needed)
+  useEffect(() => {
+    if (!job?.id && !job?._id) return;
+    const jid = job.id || job._id;
+    api.getPublicAssessmentForJob(jid)
+      .then(r => setAssessmentInfo(r?.hasAssessment ? r : null))
+      .catch(() => setAssessmentInfo(null));
+  }, [job?.id, job?._id]);
 
   // When candidate enters their email and blurs out, check if they're registered
   // If yes, auto-fill all their profile fields so they don't re-enter anything
@@ -268,6 +278,21 @@ function ApplyModal({ job, onClose }) {
             </a>
           </div>
         )}
+        {/* Assessment CTA — shown when job has an active assessment */}
+        {assessmentInfo?.hasAssessment && (accountCreated || !!prefill.email) && (
+          <div style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(109,40,217,0.04))', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
+            <p style={{ color: '#5b21b6', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>📝 Assessment Required</p>
+            <p style={{ color: '#374151', fontSize: 12, margin: '0 0 8px', lineHeight: 1.6 }}>
+              <b>{assessmentInfo.title}</b>{assessmentInfo.timeLimitMins > 0 ? ` · ⏱ ${assessmentInfo.timeLimitMins} minutes` : ''}{assessmentInfo.questionCount > 0 ? ` · ${assessmentInfo.questionCount} questions` : ''}
+            </p>
+            <a href={`/app/assessment/${assessmentInfo.assessmentId}`}
+              style={{ display: 'inline-block', background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              🚀 Start Assessment →
+            </a>
+            <p style={{ color: '#94A3B8', fontSize: 11, margin: '6px 0 0' }}>Complete this assessment to advance your application faster.</p>
+          </div>
+        )}
+
         {getCompanyCareerUrl(job.externalUrl) ? (
           <>
             <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
@@ -310,6 +335,18 @@ function ApplyModal({ job, onClose }) {
 
   return (
     <Modal title={`Apply — ${job.title} @ ${job.company}`} onClose={onClose}>
+      {/* Assessment banner — show at top so candidate knows before applying */}
+      {assessmentInfo?.hasAssessment && (
+        <div style={{ marginBottom: 14, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(124,58,237,0.07),rgba(109,40,217,0.04))', borderRadius: 8, border: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>📝</span>
+          <div>
+            <p style={{ color: '#5b21b6', margin: 0, fontSize: 12, fontWeight: 700 }}>This job includes a screening assessment</p>
+            <p style={{ color: '#374151', margin: '2px 0 0', fontSize: 11 }}>
+              <b>{assessmentInfo.title}</b>{assessmentInfo.timeLimitMins > 0 ? ` · ${assessmentInfo.timeLimitMins} min` : ''}{assessmentInfo.questionCount > 0 ? ` · ${assessmentInfo.questionCount} questions` : ''} · Complete after applying to advance faster
+            </p>
+          </div>
+        </div>
+      )}
       {isPreFilled && (
         <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(1,118,211,0.06)', borderRadius: 8, border: '1px solid rgba(1,118,211,0.2)' }}>
           <p style={{ color: '#0154A4', margin: 0, fontSize: 12 }}>✓ Details pre-filled from your account. Edit if needed.</p>

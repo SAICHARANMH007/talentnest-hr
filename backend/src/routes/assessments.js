@@ -3,6 +3,7 @@ const express            = require('express');
 const Assessment         = require('../models/Assessment');
 const AssessmentSubmission = require('../models/AssessmentSubmission');
 const Application        = require('../models/Application');
+const Candidate          = require('../models/Candidate');
 const Job                = require('../models/Job');
 const User               = require('../models/User');
 const Notification       = require('../models/Notification');
@@ -11,6 +12,22 @@ const { allowRoles }     = require('../middleware/rbac');
 // unified auth alias used throughout this file
 const auth = authMiddleware;
 const router             = express.Router();
+
+/**
+ * Resolve a candidate's Candidate._id from their User record.
+ * Application.candidateId stores Candidate._id (not User._id), so we must
+ * look up the Candidate doc by email (or userId backlink) to find applications.
+ */
+async function resolveCandidateId(userObj) {
+  // First try userId backlink (set when candidate registers via platform)
+  const byUserId = await Candidate.findOne({ userId: userObj.id, deletedAt: null }).lean();
+  if (byUserId) return String(byUserId._id);
+  // Fall back to email match
+  const byEmail = await Candidate.findOne({ email: userObj.email, deletedAt: null }).lean();
+  if (byEmail) return String(byEmail._id);
+  // No candidate doc — treat user.id as the candidateId (legacy/edge case)
+  return String(userObj.id);
+}
 
 const TIMER_GRACE_MS = 30_000; // 30s grace period for network latency on submit
 const MAX_QUESTIONS  = 50;
@@ -95,6 +112,25 @@ async function checkExpiry(submission, assessment) {
   return submission;
 }
 
+// ── PUBLIC: GET /api/assessments/public/job/:jobId ────────────────────────────
+// No auth required — tells career page whether a job has an active assessment.
+router.get('/public/job/:jobId', async (req, res) => {
+  try {
+    const assessment = await Assessment.findOne({ jobId: String(req.params.jobId), isActive: true })
+      .select('_id title timeLimitMins passingScore questions')
+      .lean();
+    if (!assessment) return res.json({ hasAssessment: false });
+    res.json({
+      hasAssessment  : true,
+      assessmentId   : String(assessment._id),
+      title          : assessment.title || 'Screening Assessment',
+      timeLimitMins  : assessment.timeLimitMins || 0,
+      passingScore   : assessment.passingScore || 0,
+      questionCount  : Array.isArray(assessment.questions) ? assessment.questions.length : 0,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/assessments ─────────────────────────────────────────────────────
 router.post('/', auth, allowRoles('recruiter','admin','super_admin'), async (req, res) => {
   try {
@@ -104,9 +140,12 @@ router.post('/', auth, allowRoles('recruiter','admin','super_admin'), async (req
     const job = await Job.findById(jobId).lean();
     if (!job) return res.status(404).json({ error: 'Job not found.' });
 
-    // Ownership check
-    if (req.user.role === 'recruiter' && String(job.recruiterId) !== String(req.user.id))
-      return res.status(403).json({ error: 'You can only create assessments for your own jobs.' });
+    // Ownership check — recruiter must be in job.assignedRecruiters
+    if (req.user.role === 'recruiter') {
+      const assigned = (job.assignedRecruiters || []).map(String);
+      if (!assigned.includes(String(req.user.id)))
+        return res.status(403).json({ error: 'You can only create assessments for jobs assigned to you.' });
+    }
     if (req.user.role === 'admin' && String(job.tenantId) !== String(req.user.tenantId))
       return res.status(403).json({ error: 'Job does not belong to your organisation.' });
 
@@ -225,13 +264,15 @@ router.post('/:id/start', auth, allowRoles('candidate'), async (req, res) => {
     const a = parseQ(assessment);
     if (!a.isActive) return res.status(403).json({ error: 'This assessment is no longer active.' });
 
-    // Must have applied to the job
-    const app = await Application.findOne({ jobId: a.jobId, candidateId: String(req.user.id) });
+    // Must have applied to the job.
+    // Application.candidateId = Candidate._id, NOT User._id — resolve it first.
+    const resolvedCandId = await resolveCandidateId(req.user);
+    const app = await Application.findOne({ jobId: a.jobId, candidateId: resolvedCandId, deletedAt: null });
     if (!app) return res.status(403).json({ error: 'You must apply to this job before taking the assessment.' });
     const appData = app.toJSON ? app.toJSON() : app;
 
     // One-attempt enforcement: no existing non-expired submission
-    const allSubs = await AssessmentSubmission.find({ assessmentId: String(req.params.id), candidateId: String(req.user.id) });
+    const allSubs = await AssessmentSubmission.find({ assessmentId: String(req.params.id), candidateId: resolvedCandId });
     const active = (Array.isArray(allSubs) ? allSubs : [])
       .map(s => s.toJSON ? s.toJSON() : s)
       .filter(s => s.status !== 'expired');
@@ -249,7 +290,7 @@ router.post('/:id/start', auth, allowRoles('candidate'), async (req, res) => {
       tenantId: req.user.tenantId,
       assessmentId: String(req.params.id),
       jobId: a.jobId,
-      candidateId: String(req.user.id),
+      candidateId: resolvedCandId,  // use resolved Candidate._id, not User._id
       applicationId: appData.id,
       status: 'in_progress',
       startedAt: now,
@@ -267,8 +308,11 @@ router.post('/:id/submit', auth, allowRoles('candidate'), async (req, res) => {
     if (!assessment) return res.status(404).json({ error: 'Assessment not found.' });
     const a = parseQ(assessment);
 
+    // Resolve candidateId same way as start — Candidate._id, not User._id
+    const resolvedCandId = await resolveCandidateId(req.user);
+
     // Find the candidate's in-progress submission
-    const allSubs = await AssessmentSubmission.find({ assessmentId: String(req.params.id), candidateId: String(req.user.id) });
+    const allSubs = await AssessmentSubmission.find({ assessmentId: String(req.params.id), candidateId: resolvedCandId });
     const sub = (Array.isArray(allSubs) ? allSubs : [])
       .map(s => s.toJSON ? s.toJSON() : s)
       .find(s => s.status === 'in_progress');
@@ -380,11 +424,18 @@ router.get('/:id/submissions', auth, async (req, res) => {
     const subs = await AssessmentSubmission.find({ assessmentId: String(req.params.id) });
     const items = Array.isArray(subs) ? subs : [];
 
-    // Enrich with candidate name
+    // Enrich with candidate name — candidateId is Candidate._id, look there first
     const enriched = await Promise.all(items.map(async s => {
       const sub = parseS(s);
-      const cand = await User.findById(sub.candidateId).lean();
-      return { ...sub, candidateName: cand?.name || 'Unknown', candidateEmail: cand?.email || '' };
+      let name = 'Unknown', email = '';
+      const candDoc = await Candidate.findById(sub.candidateId).lean();
+      if (candDoc) { name = candDoc.name || name; email = candDoc.email || email; }
+      else {
+        // fallback: try User model for older submissions stored with User._id
+        const userDoc = await User.findById(sub.candidateId).lean();
+        if (userDoc) { name = userDoc.name || name; email = userDoc.email || email; }
+      }
+      return { ...sub, candidateName: name, candidateEmail: email };
     }));
 
     res.json(enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
@@ -402,8 +453,9 @@ router.get('/:id/submissions/:subId', auth, async (req, res) => {
     if (!subDoc) return res.status(404).json({ error: 'Submission not found.' });
     let sub = parseS(subDoc);
 
-    // Auth check
-    const isOwner = String(sub.candidateId) === String(req.user.id);
+    // Auth check — candidateId may be Candidate._id or User._id
+    const resolvedCandId2 = await resolveCandidateId(req.user);
+    const isOwner = String(sub.candidateId) === resolvedCandId2 || String(sub.candidateId) === String(req.user.id);
     const isManager = await canManage(req.user, a);
     if (!isOwner && !isManager) return res.status(403).json({ error: 'Access denied.' });
 
@@ -456,7 +508,11 @@ router.patch('/:id/submissions/:subId/review', auth, async (req, res) => {
 // Candidate: see all their submissions across all assessments
 router.get('/candidate/my', auth, allowRoles('candidate'), async (req, res) => {
   try {
-    const subs = await AssessmentSubmission.find({ candidateId: String(req.user.id) });
+    const resolvedCandId = await resolveCandidateId(req.user);
+    // Find by resolved Candidate._id AND by User._id (for older submissions)
+    const subs = await AssessmentSubmission.find({
+      candidateId: { $in: [resolvedCandId, String(req.user.id)] }
+    });
     const items = Array.isArray(subs) ? subs : [];
     const enriched = await Promise.all(items.map(async s => {
       const sub = parseS(s);
@@ -475,8 +531,9 @@ router.post('/:id/submissions/:subId/violation', auth, async (req, res) => {
     const { type } = req.body;
     const sub = await AssessmentSubmission.findById(req.params.subId);
     if (!sub) return res.status(404).json({ error: 'Submission not found' });
-    if (String(sub.candidateId) !== String(req.user._id || req.user.id))
-      return res.status(403).json({ error: 'Forbidden' });
+    const resolvedForViolation = await resolveCandidateId(req.user);
+    const candMatchesViolation = String(sub.candidateId) === resolvedForViolation || String(sub.candidateId) === String(req.user.id);
+    if (!candMatchesViolation) return res.status(403).json({ error: 'Forbidden' });
 
     const violations = Array.isArray(sub.violations) ? [...sub.violations] : [];
     violations.push({ type: type || 'unknown', timestamp: new Date() });

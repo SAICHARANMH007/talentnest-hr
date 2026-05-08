@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -38,6 +38,81 @@ const BLANK_FORM = () => ({
 
 const DIFFICULTY_COLOR = { easy: '#10B981', medium: '#F59E0B', hard: '#EF4444' };
 
+// ── Searchable job picker ──────────────────────────────────────────────────────
+function JobSearchPicker({ jobs, value, onChange, placeholder = 'Search jobs…' }) {
+  const [q, setQ] = React.useState('');
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  const selected = jobs.find(j => (j._id || j.id) === value);
+
+  React.useEffect(() => {
+    const h = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const filtered = q.trim()
+    ? jobs.filter(j =>
+        (j.title || '').toLowerCase().includes(q.toLowerCase()) ||
+        (j.companyName || j.company || '').toLowerCase().includes(q.toLowerCase())
+      ).slice(0, 50)
+    : jobs.slice(0, 80);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 8, border: `1.5px solid ${open ? '#0176D3' : '#e2e8f0'}`, fontSize: 13, cursor: 'pointer', background: '#f8fafc', boxSizing: 'border-box', width: '100%', userSelect: 'none' }}
+      >
+        <span style={{ flex: 1, color: selected ? '#181818' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selected ? `${selected.title}${selected.companyName || selected.company ? ` @ ${selected.companyName || selected.company}` : ''}` : placeholder}
+        </span>
+        <span style={{ color: '#94A3B8', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#fff', border: '1.5px solid #0176D3', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.13)', marginTop: 4, overflow: 'hidden' }}>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9' }}>
+            <input
+              autoFocus
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Type to search jobs…"
+              style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+            {value && (
+              <div onClick={() => { onChange(''); setQ(''); setOpen(false); }}
+                style={{ padding: '8px 12px', fontSize: 12, color: '#94A3B8', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}>
+                ✕ Clear selection
+              </div>
+            )}
+            {filtered.length === 0 && (
+              <div style={{ padding: '16px 12px', color: '#94A3B8', fontSize: 12, textAlign: 'center' }}>No jobs found</div>
+            )}
+            {filtered.map(j => {
+              const jid = j._id || j.id;
+              const isSelected = jid === value;
+              return (
+                <div key={jid}
+                  onClick={() => { onChange(jid); setQ(''); setOpen(false); }}
+                  style={{ padding: '10px 12px', fontSize: 13, cursor: 'pointer', background: isSelected ? 'rgba(1,118,211,0.08)' : 'transparent', color: isSelected ? '#0176D3' : '#181818', fontWeight: isSelected ? 700 : 400, borderBottom: '1px solid #f8fafc' }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
+                  <div>{j.title}</div>
+                  {(j.companyName || j.company) && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{j.companyName || j.company}{j.location ? ` · ${j.location}` : ''}</div>}
+                </div>
+              );
+            })}
+            {jobs.length > 80 && !q && <div style={{ padding: '8px 12px', fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>Type to search {jobs.length} jobs</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RecruiterAssessments({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs]             = useState([]);
@@ -52,8 +127,16 @@ export default function RecruiterAssessments({ user }) {
   const [creating, setCreating]     = useState(false);
 
   useEffect(() => {
-    api.getJobs(['admin','super_admin'].includes(user.role) ? undefined : user.id).then(j => setJobs(Array.isArray(j) ? j : (j?.data || []))).catch(() => setJobs([]));
-  }, [user.id]);
+    const isSA = user.role === 'super_admin';
+    const opts = isSA
+      ? { limit: 10000, platform: true }          // SA: all jobs across platform
+      : ['admin'].includes(user.role)
+        ? { limit: 5000 }                          // admin: all org jobs
+        : { recruiterId: user.id, limit: 500 };    // recruiter: own jobs
+    api.getJobs(opts)
+      .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
+      .catch(() => setJobs([]));
+  }, [user.id, user.role]);
 
   const loadJob = async (jobId) => {
     setSelJob(jobId);
@@ -116,11 +199,13 @@ export default function RecruiterAssessments({ user }) {
       />
 
       <div style={{ ...card, marginBottom: 20 }}>
-        <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Select Job</label>
-        <select value={selJob} onChange={e => loadJob(e.target.value)} style={inp}>
-          <option value="">— Choose a job —</option>
-          {jobs.map(j => <option key={j._id} value={j._id}>{j.title}{j.companyName ? ` @ ${j.companyName}` : ''}</option>)}
-        </select>
+        <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Search & Select Job</label>
+        <JobSearchPicker
+          jobs={jobs}
+          value={selJob}
+          onChange={jid => loadJob(jid)}
+          placeholder="Search jobs by title, company…"
+        />
       </div>
 
       {loading && <p style={{ color: '#706E6B' }}><Spinner /> Loading…</p>}
@@ -233,14 +318,15 @@ export default function RecruiterAssessments({ user }) {
             </div>
             <div style={{ padding:'24px 28px 28px', display:'flex', flexDirection:'column', gap:0 }}>
 
-            {/* Job selector */}
+            {/* Job selector — searchable */}
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, fontWeight:700, color:'#475569', display:'block', marginBottom:5 }}>Job *</label>
-              <select value={createForm.jobId || ''} onChange={e => setCreateForm(p => ({...p, jobId: e.target.value}))}
-                style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:13, outline:'none', background:'#f8fafc', boxSizing:'border-box' }}>
-                <option value="">— Select a job —</option>
-                {jobs.map(j => <option key={j._id||j.id} value={j._id||j.id}>{j.title}{j.companyName ? ` @ ${j.companyName}` : ''}</option>)}
-              </select>
+              <JobSearchPicker
+                jobs={jobs}
+                value={createForm.jobId || ''}
+                onChange={jid => setCreateForm(p => ({ ...p, jobId: jid }))}
+                placeholder="Search and select a job…"
+              />
             </div>
 
             {/* Title & time */}

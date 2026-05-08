@@ -55,6 +55,7 @@ export const platformService = {
   // Assessments
   async getAssessment(id)                { return req('GET', `/assessments/${id}`); },
   async getAssessmentForJob(jobId)       { return req('GET', `/assessments/job/${jobId}`); },
+  async getPublicAssessmentForJob(jobId) { return req('GET', `/assessments/public/job/${jobId}`, null, false); },
   async createAssessment(data)           { return req('POST', '/assessments', data); },
   async updateAssessment(id, data)       { return req('PATCH', `/assessments/${id}`, data); },
   async deleteAssessment(id)             { return req('DELETE', `/assessments/${id}`); },
