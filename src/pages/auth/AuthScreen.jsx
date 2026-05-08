@@ -5,10 +5,8 @@ import Logo from '../../components/Logo.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import UploadZone from '../../components/ui/UploadZone.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
-import { parseFile } from '../../api/matching.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -195,9 +193,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [currentCompany, setCompany]  = useState('');
   const [experience, setExperience]   = useState('');
   const [availability, setAvailability] = useState('');
-  const [resumeName, setRN]     = useState('');
-  const [extracting, setEx]     = useState(false);
-  const [extracted, setEx2]     = useState(null);
   const [agreed, setAgreed]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [toast, setToast]       = useState('');
@@ -238,17 +233,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     setLoading(false);
   };
 
-  const handleResume = async (f) => {
-    setRN(f.name); setEx(true);
-    try {
-      const p = await parseFile(f);
-      setEx2(p);
-      if (!name && p.name) setName(p.name);
-      setToast('✅ Resume parsed — AI extracted your details!');
-    } catch (e) { setToast('❌ Parse failed: ' + e.message); }
-    setEx(false);
-  };
-
   const submit = async () => {
     if (!email || !pw) return setToast('❌ Email and password required');
     if (mode === 'register') {
@@ -274,7 +258,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           return;
         }
       } else {
-        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability, ...(extracted || {}), skills: extracted?.skills || '' });
+        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability });
       }
       onAuth(d.user, d.token);
       navigate('/app');
@@ -395,19 +379,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
           {mode === 'register' && (
             <>
-              <div>
-                <label style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>RESUME <span style={{ color: '#706E6B', fontWeight: 400 }}>(optional — PDF, DOCX, TXT — AI will auto-fill your profile)</span></label>
-                <UploadZone label="Upload Resume" onFile={handleResume} loading={extracting} fileName={resumeName} />
-                {extracted && (
-                  <div style={{ marginTop: 8, background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontSize: 20 }}>✅</span>
-                    <div>
-                      <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: 0 }}>{extracted.name}</p>
-                      <p style={{ color: '#706E6B', fontSize: 11, margin: '2px 0 0' }}>{extracted.title} · {(extracted.skills || '').split(',').slice(0, 3).join(', ')}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
               {/* Mobile-friendly T&C tap card — large touch target, clear visual state */}
               <div
                 role="checkbox"

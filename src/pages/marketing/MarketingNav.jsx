@@ -197,15 +197,18 @@ export default function MarketingNav({ active = 'home' }) {
       `}</style>
 
       <header style={{
-        background: scrolled ? 'var(--mkt-nav-bg)' : 'transparent',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: scrolled ? '1px solid var(--mkt-card-border)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 10px 40px rgba(0,0,0,0.15)' : 'none',
+        // Scrolled: solid dark nav background  |  Top: subtle gradient so white text stays readable
+        background: scrolled
+          ? 'var(--mkt-nav-bg)'
+          : 'linear-gradient(to bottom, rgba(3,13,26,0.72) 0%, rgba(3,13,26,0) 100%)',
+        backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+        boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.25)' : 'none',
         height: 66,
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 1000,
-        transition: 'all 0.3s ease',
+        transition: 'background 0.35s ease, backdrop-filter 0.35s ease, box-shadow 0.35s ease',
         display: 'flex', alignItems: 'center',
         fontFamily: ff,
       }}>

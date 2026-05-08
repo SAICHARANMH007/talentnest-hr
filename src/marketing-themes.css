@@ -64,6 +64,23 @@
 }
 .mkt-section-dark .mkt-text-muted { color: rgba(255,255,255,0.55) !important; }
 
+/* ── Cards inside dark sections reset to theme-aware text colors.
+   Without this, the !important above forces white text on cards that have
+   a light background (var(--mkt-card-bg)) in the light/mixed theme —
+   making text invisible (white on white). ── */
+.mkt-section-dark .mkt-card h1,.mkt-section-dark .mkt-card h2,
+.mkt-section-dark .mkt-card h3,.mkt-section-dark .mkt-card h4,
+.mkt-section-dark .mkt-card h5,.mkt-section-dark .mkt-card h6 {
+  color: var(--mkt-text-heading) !important;
+}
+.mkt-section-dark .mkt-card p,
+.mkt-section-dark .mkt-card li {
+  color: var(--mkt-text-muted) !important;
+}
+.mkt-section-dark .mkt-card span {
+  color: inherit;
+}
+
 /* Light background sections (feature grids, FAQs, team) */
 .mkt-section-light {
   background: var(--mkt-section-bg);
