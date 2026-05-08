@@ -124,10 +124,11 @@ function ApplyModal({ job, onClose }) {
           ];
 
           for (const [key, val] of fields) {
-            // Only fill if current field is empty OR exactly matches the prefilled value 
-            // (the latter handles cases where the browser autofilled the same value)
-            if (val && (!prev[key] || prev[key] === val)) {
-              if (!prev[key]) updates[key] = val;
+            // Overwrite if field is empty OR it matches the DB value (already prefilled)
+            // OR if the user hasn't manually edited the field (handles browser autofill interference)
+            const isManual = userEditedFields.has(key);
+            if (val && (!prev[key] || prev[key] === val || !isManual)) {
+              if (prev[key] !== val) updates[key] = val;
               filled.push(key);
             }
           }
