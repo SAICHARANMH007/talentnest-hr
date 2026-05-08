@@ -42,6 +42,13 @@ function ApplyModal({ job, orgName, onClose }) {
   const [userEditedFields, setUserEditedFields] = useState(new Set());
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // Auto-trigger prefill on mount if email is already present (e.g. from sessionStorage)
+  useEffect(() => {
+    if (form.email && /\S+@\S+\.\S+/.test(form.email)) {
+      handleEmailBlur();
+    }
+  }, []);
+
   const handleEmailBlur = async () => {
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;

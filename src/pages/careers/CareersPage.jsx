@@ -100,7 +100,12 @@ function ApplyModal({ job, onClose }) {
   // Track which prefilled fields the user has manually edited
   const [userEditedFields, setUserEditedFields] = React.useState(new Set());
 
-  const handleEmailBlur = async () => {
+  // Auto-trigger prefill on mount if email is already present (from sessionStorage)
+  useEffect(() => {
+    if (form.email && /\S+@\S+\.\S+/.test(form.email)) {
+      handleEmailBlur();
+    }
+  }, []);
     const email = form.email?.trim();
     if (!email || !/\S+@\S+\.\S+/.test(email)) return;
     setEmailChecking(true);

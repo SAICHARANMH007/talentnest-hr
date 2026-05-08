@@ -145,7 +145,8 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   // Only non-sensitive professional fields are returned.
   // hasPhone = boolean tells the UI "this account has a phone on file" without revealing it.
 
-  const user = await User.findOne({ email: emailLower, role: 'candidate', deletedAt: null })
+  // Search for any user with this email (admin, recruiter, or candidate)
+  const user = await User.findOne({ email: emailLower, deletedAt: null })
     .select('name phone title currentCompany experience availability').lean();
 
   if (user) {
