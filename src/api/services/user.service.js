@@ -81,4 +81,12 @@ export const userService = {
     const r = await req('PATCH', `/candidates/${id}`, data);
     return r?.data || r;
   },
+
+  // ── BGV Documents ──────────────────────────────────────────────────────────
+  async getBgvDocuments()              { return req('GET', '/bgv'); },
+  async getBgvDocumentsForUser(userId) { return req('GET', `/bgv/user/${userId}`); },
+  async getBgvDocumentFile(docId)      { return req('GET', `/bgv/${docId}/file`); },
+  async uploadBgvDocument(formData)    { return req('POST', '/bgv', formData); },
+  async verifyBgvDocument(docId, body) { return req('PATCH', `/bgv/${docId}/verify`, body); },
+  async deleteBgvDocument(docId)       { return req('DELETE', `/bgv/${docId}`); },
 };

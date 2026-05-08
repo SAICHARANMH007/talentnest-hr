@@ -76,8 +76,8 @@ function CandCard({ cand, selected, onToggle, matchScore }) {
   );
 }
 
-// ── Detail drawer ──────────────────────────────────────────────────────────
-function DetailDrawer({ request, onClose, onSaved }) {
+// ── Full-page detail view (replaces the drawer) ──────────────────────────────
+function DetailPage({ request, onClose, onSaved }) {
   const [suggested,    setSuggested]    = useState([]);
   const [searched,     setSearched]     = useState([]);
   const [loading,      setLoading]      = useState({ suggested:false, search:false, save:false });
@@ -122,53 +122,56 @@ function DetailDrawer({ request, onClose, onSaved }) {
   };
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9000, display:'flex' }}>
+    <div style={{ fontFamily:ff, animation:'tn-fadein 0.2s ease both' }}>
       <Toast msg={toast} onClose={()=>setToast('')} />
-      <div onClick={onClose} style={{ flex:1, background:'rgba(5,13,26,0.4)', backdropFilter:'blur(4px)' }} />
-      <div style={{ width:'min(720px,100vw)', height:'100%', background:'#F8FAFF', borderLeft:'1px solid #E2E8F0', display:'flex', flexDirection:'column', boxShadow:'-12px 0 42px rgba(0,0,0,0.15)', overflow:'hidden' }}>
-        {/* Header */}
-        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E2E8F0', background:'#fff' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-            <div>
-              <div style={{ fontSize:10, fontWeight:800, color:'#0176D3', letterSpacing:1.5, textTransform:'uppercase', marginBottom:4 }}>Candidate Request</div>
-              <h2 style={{ margin:0, fontSize:18, fontWeight:900, color:'#0A1628' }}>{request.roleTitle}</h2>
-              <div style={{ fontSize:12, color:'#706E6B', marginTop:4 }}>{request.tenantId?.name||'Org'} · {new Date(request.createdAt).toLocaleDateString('en-IN')}</div>
-            </div>
-            <button onClick={onClose} style={{ background:'#F1F5F9', border:'none', width:32, height:32, borderRadius:10, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+
+      {/* Back button + header */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+        <button onClick={onClose} style={{ ...btnG, display:'flex', alignItems:'center', gap:6, padding:'8px 16px' }}>
+          ← Back to Requests
+        </button>
+        <div>
+          <div style={{ fontSize:10, fontWeight:800, color:'#0176D3', letterSpacing:1.5, textTransform:'uppercase' }}>Candidate Request</div>
+          <h2 style={{ margin:0, fontSize:20, fontWeight:900, color:'#0A1628' }}>{request.roleTitle}</h2>
+          <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>{request.tenantId?.name||'Org'} · {new Date(request.createdAt).toLocaleDateString('en-IN')}</div>
+        </div>
+      </div>
+
+      {/* Requirements card */}
+      <div style={{ ...card, marginBottom:20, padding:'16px 20px' }}>
+        <div style={{ fontWeight:700, fontSize:12, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Requirements</div>
+        <div style={{ fontSize:14, color:'#374151', lineHeight:1.7 }}>{request.requirements||'No specific requirements noted.'}</div>
+      </div>
+
+      {/* Status + note section */}
+      <div style={{ ...card, marginBottom:20, padding:'16px 20px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Update Status</label>
+            <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ ...inp, width:'100%' }}>
+              {['pending','in_progress','fulfilled','cancelled'].map(s=><option key={s} value={s}>{s.replace('_',' ')}</option>)}
+            </select>
           </div>
-          <div style={{ marginTop:12, padding:12, background:'#F8FAFC', borderRadius:10, fontSize:13, color:'#374151', lineHeight:1.6 }}>
-            {request.requirements||'No specific requirements noted.'}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Attach Note (optional)</label>
+            <input value={attachNote} onChange={e=>setAttachNote(e.target.value)} placeholder="Note for the org admin…" style={{ ...inp, width:'100%', boxSizing:'border-box' }} />
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
-          {/* Attach status + note */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Update Status</label>
-              <select value={newStatus} onChange={e=>setNewStatus(e.target.value)} style={{ ...inp, width:'100%' }}>
-                {['pending','in_progress','fulfilled','cancelled'].map(s=><option key={s} value={s}>{s.replace('_',' ')}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:11, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Attach Note (optional)</label>
-              <input value={attachNote} onChange={e=>setAttachNote(e.target.value)} placeholder="Note for the org admin…" style={{ ...inp, width:'100%', boxSizing:'border-box' }} />
-            </div>
+        {selected.size>0 && (
+          <div style={{ background:'rgba(27,79,216,0.08)', border:'1px solid rgba(27,79,216,0.2)', borderRadius:10, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#1B4FD8' }}>{selected.size} candidate{selected.size!==1?'s':''} selected</span>
+            <button onClick={handleAttach} disabled={loading.save} style={{ ...btnP, padding:'8px 18px', fontSize:12 }}>
+              {loading.save?'Attaching…':'Attach & Notify Admin'}
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* Selected count */}
-          {selected.size>0 && (
-            <div style={{ background:'rgba(27,79,216,0.08)', border:'1px solid rgba(27,79,216,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'#1B4FD8' }}>{selected.size} candidate{selected.size!==1?'s':''} selected</span>
-              <button onClick={handleAttach} disabled={loading.save} style={{ ...btnP, padding:'8px 18px', fontSize:12 }}>
-                {loading.save?'Attaching…':'Attach & Notify Admin'}
-              </button>
-            </div>
-          )}
-
+      {/* Candidates section */}
+      <div style={{ ...card, padding:'20px' }}>
           {/* Suggested candidates */}
-          <div style={{ fontWeight:800, fontSize:13, color:'#0A1628', marginBottom:10, display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ fontWeight:800, fontSize:14, color:'#0A1628', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
             <span>⭐ Suggested Matches</span>
             {loading.suggested && <Spinner size={14} />}
           </div>
@@ -182,7 +185,7 @@ function DetailDrawer({ request, onClose, onSaved }) {
           ))}
 
           {/* Advanced search */}
-          <div style={{ marginTop:20 }}>
+          <div style={{ marginTop:24, borderTop:'1px solid #F1F5F9', paddingTop:20 }}>
             <SearchPanel onSearch={handleSearch} loading={loading.search} />
             {loading.search && <div style={{ textAlign:'center', padding:20 }}><Spinner size={28} /></div>}
             {!loading.search && searched.length>0 && (
@@ -194,7 +197,6 @@ function DetailDrawer({ request, onClose, onSaved }) {
               </div>
             )}
           </div>
-        </div>
       </div>
     </div>
   );
@@ -222,10 +224,14 @@ export default function SuperAdminCandidateRequests() {
 
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 
+  // When a request is open, show the full-page detail view instead of the list
+  if (detail) {
+    return <DetailPage request={detail} onClose={()=>setDetail(null)} onSaved={()=>{setDetail(null);load();setToast('✅ Updated!');}} />;
+  }
+
   return (
     <div style={{ fontFamily:ff }}>
       <Toast msg={toast} onClose={()=>setToast('')} />
-      {detail && <DetailDrawer request={detail} onClose={()=>setDetail(null)} onSaved={()=>{setDetail(null);load();setToast('✅ Updated!');}} />}
 
       <PageHeader title="🙋 Candidate Requests" subtitle="Staffing requests from all organisations" />
 

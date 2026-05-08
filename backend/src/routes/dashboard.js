@@ -608,11 +608,14 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   ago14.setDate(ago14.getDate() - 14);
   ago14.setHours(0, 0, 0, 0);
 
+  // Use IST (UTC+5:30) for date grouping so "today" aligns with the user's calendar day.
+  // Without this, apps created before 5:30 AM IST appear as the previous UTC day.
+  const TZ = 'Asia/Kolkata';
   const raw = await Application.aggregate([
     { $match: { ...orgF, createdAt: { $gte: ago14 } } },
     {
       $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: TZ } },
         count: { $sum: 1 }
       }
     },
@@ -622,14 +625,17 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   const map = {};
   raw.forEach(r => { map[r._id] = r.count; });
 
+  // Build IST dates for last 14 days
   const data = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().split('T')[0];
+    // Convert current UTC time to IST, then subtract i days
+    const istNow = new Date(d.toLocaleString('en-US', { timeZone: TZ }));
+    istNow.setDate(istNow.getDate() - i);
+    const key = `${istNow.getFullYear()}-${String(istNow.getMonth() + 1).padStart(2, '0')}-${String(istNow.getDate()).padStart(2, '0')}`;
     data.push({
       date: key,
-      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      label: istNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       value: map[key] || 0
     });
   }

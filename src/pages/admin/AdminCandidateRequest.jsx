@@ -40,6 +40,7 @@ export default function AdminCandidateRequest({ user }) {
   const [showForm, setShowForm] = useState(false);
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [submitting,setSubmitting]= useState(false);
+  const [detail,   setDetail]   = useState(null); // full-page detail view
 
   const load = () => {
     setLoading(true); setError('');
@@ -77,6 +78,86 @@ export default function AdminCandidateRequest({ user }) {
       setToast(`❌ ${e.message}`);
     }
   };
+
+  // Full-page detail view for a request
+  if (detail) {
+    const hasCandidates = Array.isArray(detail.submittedCandidates) && detail.submittedCandidates.length > 0;
+    return (
+      <div>
+        <Toast msg={toast} onClose={() => setToast('')} />
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+          <button onClick={() => setDetail(null)} style={{ ...btnG, display:'flex', alignItems:'center', gap:6 }}>
+            ← Back
+          </button>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:'#0176D3', textTransform:'uppercase', letterSpacing:1 }}>Candidate Request</div>
+            <h2 style={{ margin:0, fontSize:19, fontWeight:900, color:'#0A1628' }}>{detail.roleTitle}</h2>
+            <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>Submitted {new Date(detail.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+          </div>
+        </div>
+
+        {/* Requirements */}
+        <div style={{ ...card, marginBottom:16, padding:'16px 20px' }}>
+          <div style={{ fontWeight:700, fontSize:11, color:'#475569', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6 }}>Requirements</div>
+          <div style={{ fontSize:14, color:'#374151', lineHeight:1.7 }}>{detail.requirements || 'No specific requirements.'}</div>
+          {detail.adminNotes && (
+            <div style={{ marginTop:12, padding:'10px 14px', background:'rgba(1,118,211,0.07)', borderRadius:8, fontSize:13, color:'#0176D3', fontWeight:600 }}>
+              📝 Note from TalentNest: {detail.adminNotes}
+            </div>
+          )}
+        </div>
+
+        {/* Submitted candidates */}
+        <div style={card}>
+          {!hasCandidates ? (
+            <div style={{ textAlign:'center', padding:'40px 20px', color:'#706E6B' }}>
+              <div style={{ fontSize:36, marginBottom:10 }}>⏳</div>
+              <div style={{ fontWeight:600, marginBottom:6 }}>Awaiting Candidates</div>
+              <div style={{ fontSize:13 }}>TalentNest is sourcing candidates for this role. You'll receive a notification when they're ready.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize:13, fontWeight:800, color:'#059669', marginBottom:16, textTransform:'uppercase', letterSpacing:0.5 }}>
+                👥 {detail.submittedCandidates.length} Candidate{detail.submittedCandidates.length !== 1 ? 's' : ''} Submitted by TalentNest
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {detail.submittedCandidates.map(c => {
+                  const cid = c.id || c._id?.toString();
+                  return (
+                    <div key={cid} style={{ background:'#F8FAFF', borderRadius:12, padding:'14px 18px', border:'1px solid #E2E8F0', display:'flex', gap:14, alignItems:'flex-start', flexWrap:'wrap' }}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#0176D3,#014486)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:16, flexShrink:0 }}>
+                        {(c.name || '?')[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:800, fontSize:14, color:'#0A1628' }}>{c.name}</div>
+                        <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>
+                          {c.title && `${c.title}`}{c.currentCompany ? ` · ${c.currentCompany}` : ''}
+                          {c.experience ? ` · ${c.experience}y exp` : ''}
+                        </div>
+                        <div style={{ fontSize:12, color:'#94A3B8', marginTop:1 }}>
+                          {c.email}{c.phone ? ` · 📞 ${c.phone}` : ''}{c.location ? ` · 📍 ${c.location}` : ''}
+                        </div>
+                        {c.skills?.length > 0 && (
+                          <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:6 }}>
+                            {c.skills.slice(0,6).map(s => (
+                              <span key={s} style={{ background:'rgba(1,118,211,0.08)', color:'#0176D3', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>{s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', gap:8, flexShrink:0, alignSelf:'center' }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'#059669', background:'rgba(5,150,105,0.08)', padding:'4px 10px', borderRadius:20 }}>✓ TalentNest Verified</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -123,6 +204,9 @@ export default function AdminCandidateRequest({ user }) {
                       <Badge label={r.urgency} color={S.urgencyColors[r.urgency] || '#706E6B'} />
                       <Badge label={(r.status || 'pending').replace('_', ' ')} color={S.statusColors[r.status] || '#706E6B'} />
                       {r.budget && <span style={{ fontSize: 12, color: '#64748B' }}>💰 {r.budget}</span>}
+                      <button onClick={() => setDetail(r)} style={{ ...btnG, padding: '5px 14px', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}>
+                        {hasCandidates ? `👥 View ${r.submittedCandidates.length} Candidates` : 'View Details →'}
+                      </button>
                       {r.status === 'pending' && (
                         <button onClick={() => handleCancel(r.id || r._id)} style={{ ...btnD, padding: '5px 12px', fontSize: 12 }}>Cancel</button>
                       )}
