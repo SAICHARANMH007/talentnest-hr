@@ -37,7 +37,7 @@ function JobShareBar({ job }) {
   const [copied, setCopied] = React.useState(false);
   const jid     = job._id || job.id;
   const jobUrl  = `${window.location.origin}/careers?job=${jid}`;
-  const title   = `${job.title}${job.company ? ` @ ${job.company}` : ''}`;
+  const title   = `${job.title} @ TalentNest HR`;
   const loc     = job.location ? ` · ${job.location}` : '';
   const waText  = encodeURIComponent(`🚀 Job Opening: ${title}${loc}\n\n${jobUrl}`);
   const liUrl   = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
@@ -101,6 +101,13 @@ export default function CareersPage() {
   const [loading, setLoading] = useState(true);
   const initialCompanyFilter = searchParams.get('company') || '';
   const initialSearch = searchParams.get('search') || '';
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
   
   const [search, setSearch] = useState(initialCompanyFilter || initialSearch || '');
   const [debouncedSearch, setDebouncedSearch] = useState(initialCompanyFilter || initialSearch || '');
@@ -393,7 +400,7 @@ export default function CareersPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: 'white', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>{job.company || job.companyName} · {job.location || 'India'}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>TalentNest HR · {job.location || 'India'}</div>
                       </div>
                       <span style={{ background: `${(job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981'))}22`, color: (job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981')), fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>{job.urgency || 'New'}</span>
                     </div>
@@ -415,9 +422,9 @@ export default function CareersPage() {
       </section>
 
       {/* ── FILTER BAR ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '16px 0', position: 'sticky', top: 70, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: isMobile ? '10px 0' : '16px 0', position: 'sticky', top: isMobile ? 60 : 70, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', transition: 'padding 0.2s' }}>
         <div className="tn-container">
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: isMobile ? 8 : 10, flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'center', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 4 : 0, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
             {/* Urgency filter pills */}
             {['All', 'High', 'Medium', 'Low'].map(u => (
               <button key={u} onClick={() => setUrgencyFilter(u)} style={{ padding: '8px 18px', borderRadius: 50, border: '1.5px solid', borderColor: urgencyFilter === u ? '#0176D3' : '#E2E8F0', background: urgencyFilter === u ? 'linear-gradient(135deg,#0176D3,#014486)' : 'transparent', color: urgencyFilter === u ? '#fff' : '#64748B', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
@@ -431,7 +438,7 @@ export default function CareersPage() {
             >
               {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? 'All Locations' : l}</option>)}
             </select>
-            <span style={{ marginLeft: 'auto', color: '#64748B', fontSize: 13 }}>
+            <span style={{ marginLeft: isMobile ? 0 : 'auto', color: '#64748B', fontSize: isMobile ? 11 : 13, whiteSpace: 'nowrap', paddingRight: isMobile ? 12 : 0 }}>
               <b style={{ color: '#0176D3' }}>{filtered.length}</b> roles found
             </span>
           </div>
@@ -461,7 +468,7 @@ export default function CareersPage() {
                       🔗 Shared Job
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', marginBottom: 4 }}>{sharedJob.title}</div>
-                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>🏢 {sharedJob.company}{sharedJob.location ? ` · 📍 ${sharedJob.location}` : ''}</div>
+                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>🏢 TalentNest HR{sharedJob.location ? ` · 📍 ${sharedJob.location}` : ''}</div>
                     <button onClick={() => { setApplying(sharedJob); setViewingJob(sharedJob); }}
                       className="tn-btn tn-btn-primary" style={{ fontSize: 13, padding: '10px 22px' }}>
                       Apply Now →
@@ -508,14 +515,14 @@ export default function CareersPage() {
                           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0A1628', margin: 0 }}>
                             <a href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}
                                style={{ color: 'inherit', textDecoration: 'none' }}
-                               aria-label={`View ${j.title} at ${j.company} job details`}>
+                               aria-label={`View ${j.title} at TalentNest HR job details`}>
                               {j.title}
                             </a>
                           </h3>
                         </div>
 
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#64748B', fontSize: '0.85rem', marginBottom: 10 }}>
-                          <span>🏢 {j.company}</span>
+                          <span>🏢 TalentNest HR</span>
                           <span>📍 {j.location || 'Remote'}</span>
                           <span>🗓 {j.experience || 'Any'} exp</span>
                         </div>

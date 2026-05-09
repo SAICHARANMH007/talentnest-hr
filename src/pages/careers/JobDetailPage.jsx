@@ -10,7 +10,7 @@
  * If job has externalUrl, shows a redirect notice after applying.
  */
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import MarketingNav from '../marketing/MarketingNav.jsx';
 import MarketingFooter from '../marketing/MarketingFooter.jsx';
@@ -37,7 +37,9 @@ export default function JobDetailPage() {
   const [job, setJob]  = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
+  const [searchParams] = useSearchParams();
   const [applying, setApplying] = useState(false);
+  const explicitOrg = searchParams.get('org');
 
   useEffect(() => {
     if (!document.getElementById('marketing-css')) {
@@ -75,7 +77,7 @@ export default function JobDetailPage() {
           el.setAttribute('content', content);
         };
         const canonical = `${SITEURL}/careers/job/${slug}`;
-        const desc = `${j.title} opening at ${j.company || 'TalentNest HR'} in ${j.location || 'India'}. ${j.description ? j.description.slice(0, 120).replace(/\n/g, ' ') + '…' : ''}`;
+        const desc = `${j.title} opening at ${explicitOrg || 'TalentNest HR'} in ${j.location || 'India'}. ${j.description ? j.description.slice(0, 120).replace(/\n/g, ' ') + '…' : ''}`;
 
         setMeta('description', desc);
         setMeta('og:title',       `${j.title} — ${j.location} | TalentNest HR`, true);
@@ -103,13 +105,13 @@ export default function JobDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'JobPosting',
           title: j.title,
-          description: j.description || `${j.title} opening at ${j.company || 'TalentNest HR'} in ${j.location || 'India'}.`,
+          description: j.description || `${j.title} opening at ${explicitOrg || 'TalentNest HR'} in ${j.location || 'India'}.`,
           datePosted: j.createdAt || new Date().toISOString(),
           validThrough: new Date(Date.now() + 60 * 86400000).toISOString(),
           employmentType: mapType(j.jobType),
           hiringOrganization: {
             '@type': 'Organization',
-            name: j.company || j.companyName || 'TalentNest HR',
+            name: explicitOrg || 'TalentNest HR',
             sameAs: SITEURL,
           },
           jobLocation: {
@@ -123,7 +125,7 @@ export default function JobDetailPage() {
           },
           identifier: {
             '@type': 'PropertyValue',
-            name: j.company || 'TalentNest HR',
+            name: explicitOrg || 'TalentNest HR',
             value: slug,
           },
           url: canonical,
@@ -212,8 +214,7 @@ export default function JobDetailPage() {
 
           {/* Meta row */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 28, alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {job.company || job.companyName}</span>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>📍 {job.location}</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {explicitOrg || 'TalentNest HR'}</span>
             {job.jobType && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>💼 {job.jobType}</span>}
             {job.workMode && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>🏠 {job.workMode}</span>}
             {job.experience && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>⏱ {job.experience}</span>}
@@ -300,7 +301,7 @@ export default function JobDetailPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 14px' }}>Job Details</h3>
             {[
-              ['Company',     job.company || job.companyName],
+              ['Company',     explicitOrg || 'TalentNest HR'],
               ['Location',    job.location],
               ['Job Type',    job.jobType],
               ['Work Mode',   job.workMode],
@@ -344,9 +345,19 @@ export default function JobDetailPage() {
         >
           <div style={{ textAlign: 'center', padding: '10px 0' }}>
             <div style={{ background: 'rgba(1,118,211,0.06)', padding: '20px', borderRadius: 20, marginBottom: 20 }}>
-              <div style={{ color: '#0176D3', fontSize: 12, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>JOB OPENING</div>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#032D60', margin: '0 0 4px' }}>{job.title}</h3>
-              <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>{job.company} · {job.location}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  {(explicitOrg || 'T').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h1 style={{ fontSize: 'clamp(20px, 4vw, 32px)', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>{job.title}</h1>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
+                    <span>🏢 {explicitOrg || 'TalentNest HR'}</span>
+                    <span>📍 {job.location || 'India'}</span>
+                    <span>⏱ {job.jobType || 'Full-time'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, marginBottom: 12 }}>
