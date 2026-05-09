@@ -156,7 +156,18 @@ function ImpersonateTab({ users }) {
   const [toast, setToast]     = useState('');
   const [loading, setLoading] = useState('');
 
-  const isImpersonating = !!sessionStorage.getItem('tn_sa_backup');
+  const isImpersonating = (() => {
+    const backup = !!sessionStorage.getItem('tn_sa_backup');
+    if (!backup) return false;
+    try {
+      const token = sessionStorage.getItem('tn_token');
+      if (!token) return false;
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return !!payload.originalUserId;
+    } catch (e) {
+      return false;
+    }
+  })();
 
   const filtered = (users || []).filter(u => u.role !== 'super_admin' && (
     !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())

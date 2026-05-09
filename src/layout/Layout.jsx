@@ -661,13 +661,30 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
 
 // ── Impersonation Banner ───────────────────────────────────────────────────────
 function ImpersonationBanner() {
-  const [impersonating, setImpersonating] = useState(() => !!sessionStorage.getItem('tn_sa_backup'));
+  const checkImpersonation = () => {
+    const backup = !!sessionStorage.getItem('tn_sa_backup');
+    if (!backup) return false;
+    // Cross-verify with the actual token payload to avoid "ghost" banners after logout
+    try {
+      const token = sessionStorage.getItem('tn_token');
+      if (!token) return false;
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return !!payload.originalUserId;
+    } catch (e) {
+      return false;
+    }
+  };
 
-  // Re-check on storage events (if impersonation starts/ends in another component)
+  const [impersonating, setImpersonating] = useState(checkImpersonation);
+
   useEffect(() => {
-    const check = () => setImpersonating(!!sessionStorage.getItem('tn_sa_backup'));
+    const check = () => setImpersonating(checkImpersonation());
     window.addEventListener('tn_impersonate_change', check);
-    return () => window.removeEventListener('tn_impersonate_change', check);
+    window.addEventListener('storage', check); // Handle cross-tab changes
+    return () => {
+      window.removeEventListener('tn_impersonate_change', check);
+      window.removeEventListener('storage', check);
+    };
   }, []);
 
   if (!impersonating) return null;
