@@ -82,6 +82,9 @@ function normalizeApp(app) {
     if (a.jobId.company && !a.jobId.companyName) a.jobId.companyName = a.jobId.company;
     if (a.jobId.companyName && !a.jobId.company) a.jobId.company = a.jobId.companyName;
   }
+  if (a.talentMatchScore != null && a.aiMatchScore == null) {
+    a.aiMatchScore = a.talentMatchScore;
+  }
   return a;
 }
 
@@ -858,6 +861,15 @@ router.patch('/:id/stage', ...guard,
           if (req.body.rejectionReason) app.rejectionReason = req.body.rejectionReason;
         }
         await app.save({ session });
+
+        // Auto-assign the recruiter to the candidate if currently unassigned
+        if (req.user.role === 'recruiter') {
+          const candidate = await Candidate.findById(app.candidateId).session(session);
+          if (candidate && !candidate.assignedRecruiterId) {
+            candidate.assignedRecruiterId = req.user.id;
+            await candidate.save({ session });
+          }
+        }
       });
     } finally {
       session.endSession();

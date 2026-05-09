@@ -158,7 +158,7 @@ async function buildApplicationFilters(req) {
   if (status) filter.status = status;
   if (minScore !== undefined && minScore !== '') {
     const score = Number(minScore);
-    if (!Number.isNaN(score)) filter.aiMatchScore = { $gte: score };
+    if (!Number.isNaN(score)) filter.talentMatchScore = { $gte: score };
   }
   if (startDate || endDate) {
     filter.createdAt = {};
@@ -270,7 +270,7 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     assignedRecruiterId,
     stage: app?.currentStage || '',
     status: app?.status || '',
-    aiMatchScore: app?.aiMatchScore ?? '',
+    aiMatchScore: app?.talentMatchScore ?? '',
     skillScore: match.skillScore ?? '',
     experienceScore: match.experienceScore ?? '',
     locationScore: match.locationScore ?? '',
@@ -857,7 +857,7 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
   const [apps, total, tenantMap] = await Promise.all([
     Application.find(filter)
       .populate({ path: 'jobId', select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters' })
-      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId createdAt' })
+      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId assignedRecruiterId createdAt' })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
