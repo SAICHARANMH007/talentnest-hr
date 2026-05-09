@@ -195,39 +195,40 @@ function PasswordStrength({ pw }) {
 function EntryScreen({ onSelect, navigate }) {
   return (
     <div style={{ ...BG, flexDirection: 'column' }}>
-      {/* Background Decorative Elements */}
-      <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '70%', height: '70%', background: 'radial-gradient(circle, rgba(79, 70, 229, 0.18) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 1, pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(0, 194, 203, 0.12) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 1, pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', top: '20%', right: '15%', width: '30%', height: '30%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 1, pointerEvents: 'none' }} />
+      {/* Industry Standard Background: Mesh Gradient + Grid */}
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%)', zIndex: 1 }} />
+      <div style={{ position: 'fixed', inset: 0, backgroundImage: 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 2 }} />
 
       <style>{`
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .entry-card { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .entry-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .entry-card { transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+        .entry-card:hover { transform: translateY(-12px); box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5), 0 18px 36px -18px rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.3) !important; }
+        .btn-hover { transition: all 0.3s; }
+        .btn-hover:hover { filter: brightness(1.1); transform: scale(1.02); }
       `}</style>
 
-      <div style={{ textAlign: 'center', marginBottom: 56, animation: 'fadeUp 0.6s ease both', zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <Logo size="xl" variant="full" theme="light" />
+      <div style={{ textAlign: 'center', marginBottom: 64, animation: 'fadeUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) both', zIndex: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+          {/* FIXED: Logo theme="dark" for dark background visibility */}
+          <Logo size="xl" variant="full" theme="dark" />
         </div>
-        <div style={{ height: 2, width: 40, background: 'linear-gradient(90deg, transparent, #00C2CB, transparent)', margin: '0 auto 16px' }} />
-        <p style={{ color: '#94A3B8', fontSize: 16, fontWeight: 500, margin: 0, letterSpacing: '0.5px' }}>Welcome to your AI-Powered Recruitment Hub</p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, fontWeight: 500, margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Next-Generation Recruitment
+        </p>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.6s 0.15s ease both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 580, zIndex: 10 }}>
+      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.8s 0.2s cubic-bezier(0.23, 1, 0.32, 1) both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 640, zIndex: 10 }}>
         {/* Job Seeker Card */}
         <button
           onClick={() => onSelect('candidate')}
           className="entry-card"
-          style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', borderRadius: 24, padding: '40px 32px', width: 'min(260px, 100%)', flex: '1 1 240px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(1,118,211,0.5)'; e.currentTarget.style.background = 'rgba(1,118,211,0.08)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(16px)', borderRadius: 32, padding: '48px 32px', width: 'min(280px, 100%)', flex: '1 1 260px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
         >
-          <div style={{ width: 72, height: 72, background: 'rgba(1,118,211,0.1)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 20px', border: '1px solid rgba(1,118,211,0.2)' }}>👤</div>
-          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 10px' }}>Job Seeker</h3>
-          <p style={{ color: '#94A3B8', fontSize: 14, margin: '0 0 24px', lineHeight: 1.6 }}>Find your dream job with AI-powered matching & apply in one click</p>
-          <div style={{ background: 'linear-gradient(135deg, #0176D3, #0154A4)', borderRadius: 12, padding: '12px 0', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 8px 16px rgba(1,118,211,0.2)' }}>
-            Get Started →
+          <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, rgba(1,118,211,0.2), rgba(1,118,211,0.05))', borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 24px', border: '1px solid rgba(1,118,211,0.2)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>👤</div>
+          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Job Seeker</h3>
+          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.6 }}>Discover opportunities tailored to your skills and ambition.</p>
+          <div className="btn-hover" style={{ background: 'linear-gradient(135deg, #0176D3, #014486)', borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, boxShadow: '0 10px 20px -5px rgba(1,118,211,0.4)' }}>
+            Find a Job →
           </div>
         </button>
 
@@ -235,26 +236,24 @@ function EntryScreen({ onSelect, navigate }) {
         <button
           onClick={() => onSelect('employer')}
           className="entry-card"
-          style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', borderRadius: 24, padding: '40px 32px', width: 'min(260px, 100%)', flex: '1 1 240px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,194,203,0.5)'; e.currentTarget.style.background = 'rgba(0,194,203,0.08)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(16px)', borderRadius: 32, padding: '48px 32px', width: 'min(280px, 100%)', flex: '1 1 260px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
         >
-          <div style={{ width: 72, height: 72, background: 'rgba(0,194,203,0.1)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 20px', border: '1px solid rgba(0,194,203,0.2)' }}>🏢</div>
-          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 10px' }}>Employer</h3>
-          <p style={{ color: '#94A3B8', fontSize: 14, margin: '0 0 24px', lineHeight: 1.6 }}>Post jobs, manage pipeline & hire top talent 3x faster with AI</p>
-          <div style={{ background: 'linear-gradient(135deg, #00C2CB, #0891B2)', borderRadius: 12, padding: '12px 0', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 8px 16px rgba(0,194,203,0.2)' }}>
-            Start Hiring →
+          <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, rgba(0,194,203,0.2), rgba(0,194,203,0.05))', borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 24px', border: '1px solid rgba(0,194,203,0.2)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>🏢</div>
+          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Employer</h3>
+          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.6 }}>Optimize your hiring process with AI-driven insights.</p>
+          <div className="btn-hover" style={{ background: 'linear-gradient(135deg, #00C2CB, #0891B2)', borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, boxShadow: '0 10px 20px -5px rgba(0,194,203,0.4)' }}>
+            Hire Talent →
           </div>
         </button>
       </div>
 
-      <div style={{ marginTop: 48, textAlign: 'center', animation: 'fadeUp 0.6s 0.3s ease both', opacity: 0, animationFillMode: 'forwards', zIndex: 10 }}>
-        <button onClick={() => navigate('/careers')} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#94A3B8', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '12px 28px', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = '#94A3B8'; }}>
-          🔍 Browse open jobs without logging in
+      <div style={{ marginTop: 64, textAlign: 'center', animation: 'fadeUp 0.8s 0.4s cubic-bezier(0.23, 1, 0.32, 1) both', opacity: 0, animationFillMode: 'forwards', zIndex: 10 }}>
+        <button onClick={() => navigate('/careers')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 14, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '12px 32px', transition: 'all 0.3s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'transparent'; }}>
+          🔍 Explore open opportunities
         </button>
       </div>
 
-      <button onClick={() => navigate('/')} style={{ marginTop: 32, background: 'none', border: 'none', color: '#64748B', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', zIndex: 10 }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>← Back to Home</button>
+      <button onClick={() => navigate('/')} style={{ marginTop: 40, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', zIndex: 10 }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}>← Back to Main Website</button>
     </div>
   );
 }
@@ -376,12 +375,13 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-          <button onClick={onBack} style={{ background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 14, cursor: 'pointer', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
-          <div>
-            <h2 style={{ color: '#032D60', fontSize: 20, fontWeight: 800, margin: 0 }}>👤 Job Seeker</h2>
-            <p style={{ color: '#0176D3', fontSize: 12, margin: '2px 0 0' }}>Find your next opportunity</p>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <Logo size="lg" variant="full" theme="light" />
           </div>
+          <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
+          <h2 style={{ color: '#0F172A', fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Job Seeker</h2>
+          <p style={{ color: '#64748B', fontSize: 14, margin: '4px 0 0' }}>Access your personalized career portal</p>
         </div>
 
         {/* Tabs */}
@@ -878,19 +878,25 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       <div style={CARD}>
 
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 14, cursor: 'pointer', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ color: '#181818', fontSize: 20, fontWeight: 800, margin: 0 }}>🏢 Employer Login</h2>
-            <p style={{ color: '#0176D3', fontSize: 12, margin: '2px 0 0' }}>
-              {step === 1 ? 'Step 1 of 2 — Verify your company' : 'Step 2 of 2 — Sign in to your portal'}
-            </p>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <Logo size="lg" variant="full" theme="light" />
           </div>
-          {/* Step dots */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[1,2].map(s => (
-              <div key={s} style={{ width: s === step ? 20 : 8, height: 8, borderRadius: 4, background: s === step ? '#0176D3' : '#DDDBDA', transition: 'all 0.3s' }} />
-            ))}
+          <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+            <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#64748B', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <h2 style={{ color: '#0F172A', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Employer</h2>
+              <p style={{ color: '#64748B', fontSize: 13, margin: '2px 0 0' }}>
+                {step === 1 ? 'Verify your organization' : 'Sign in to recruitment portal'}
+              </p>
+            </div>
+            {/* Step dots */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[1,2].map(s => (
+                <div key={s} style={{ width: s === step ? 20 : 8, height: 8, borderRadius: 4, background: s === step ? '#0176D3' : '#E2E8F0', transition: 'all 0.3s' }} />
+              ))}
+            </div>
           </div>
         </div>
 
