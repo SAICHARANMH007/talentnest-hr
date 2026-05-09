@@ -2815,6 +2815,37 @@ ${heroHtml(form.icon,'CUSTOM PLAYBOOK',form.title, form.desc || 'Custom playbook
           </div>
         )}
       </div>
+
+      {/* ─── PITCH DECKS SECTION ─── */}
+      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', borderTop: '4px solid #F59E0B', marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0A1628', margin: 0 }}>📊 Platform Presentation Decks</h2>
+            <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>Download individual, high-resolution pitch decks and sales materials for every stakeholder.</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+          {[
+            { id: 'investor',  title: 'Investor Pitch Deck',  icon: '📈', color: '#0176D3', desc: 'Full vision, scalability, and market metrics for investors.' },
+            { id: 'recruiter', title: 'Recruiter Playbook',   icon: '🎯', color: '#10B981', desc: 'The ultimate guide for recruiter efficiency and AI matching.' },
+            { id: 'candidate', title: 'Candidate Roadmap',    icon: '🚀', color: '#7C3AED', desc: 'A user manual for candidates to maximize their success.' },
+            { id: 'technical', title: 'AI Technical Paper',   icon: '🛡️', color: '#BA0517', desc: 'Technical details on our bot-masking & AI security layer.' },
+          ].map(deck => (
+            <div key={deck.id} style={{ padding: 20, background: '#F8FAFC', borderRadius: 14, border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = deck.color}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
+              <div style={{ fontSize: 24, marginBottom: 12, width: 44, height: 44, background: '#fff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>{deck.icon}</div>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', marginBottom: 6 }}>{deck.title}</h3>
+              <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 16, flex: 1 }}>{deck.desc}</p>
+              <button onClick={() => alert(`Initiating high-res PDF download for ${deck.title}...`)} 
+                style={{ width: '100%', padding: '10px', background: deck.color, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                ⬇️ Download PDF
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
