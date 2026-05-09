@@ -218,8 +218,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (statsObj.recent) {
         setRecentApps(statsObj.recent);
       } else {
-        // Fallback for older backend versions
-        api.getApplications({ limit: 50, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
+        // Fallback for older backend versions — increase limit to 100 for better visibility
+        api.getApplications({ limit: 100, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
       }
       
       setLoading(false);
@@ -586,7 +586,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       const stageKey = a.stage || a.currentStage || '';
       const key = `${candKey}|${jobKey}|${stageKey}`;
       if (!seen.has(key)) { seen.add(key); out.push(a); }
-      if (out.length >= 15) break;
+      if (out.length >= 30) break; // Increased from 15 to 30 for better visibility
     }
     return out;
   }, [recentApps, allApps]);

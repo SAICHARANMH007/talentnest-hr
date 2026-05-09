@@ -17,6 +17,27 @@
   --tn-shadow-lg: 0 16px 56px rgba(0,0,0,0.2);
 }
 
+/* ── Performance Animations ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fadeInPage {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tn-shimmer {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.tn-page-transition {
+  animation: fadeInPage 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 .tn-glass {
   background: rgba(255,255,255,0.04);
   backdrop-filter: blur(20px);

@@ -3,16 +3,31 @@
 export const card = {
   background: '#FFFFFF',
   border: '1px solid #E5E7EB',
-  borderRadius: 12,
+  borderRadius: 16,
   padding: 'clamp(14px, 2.5vw, 24px)',
-  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+  transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
-export const glass = {
-  background: '#FFFFFF',
-  border: '1px solid #DDDBDA',
-  borderRadius: 8,
+export const glassCard = {
+  background: 'rgba(255, 255, 255, 0.72)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border: '1px solid rgba(255, 255, 255, 0.4)',
+  borderRadius: 16,
+  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
 };
+
+export const shimmerKeyframes = `
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
 
 export const inp = {
   background: '#FFFFFF',

@@ -123,7 +123,7 @@ export default function RecruiterDashboard({ user }) {
     const la = a.stageHistory?.[a.stageHistory.length-1]?.movedAt || a.updatedAt || a.createdAt;
     const lb = b.stageHistory?.[b.stageHistory.length-1]?.movedAt || b.updatedAt || b.createdAt;
     return new Date(lb)-new Date(la);
-  }).slice(0,6);
+  }).slice(0,15); // Increased from 6 to 15
 
   // Applications trend — last 14 days
   const appsTrend = (() => {
@@ -140,7 +140,7 @@ export default function RecruiterDashboard({ user }) {
   })();
 
   // Applications per job (bar chart)
-  const appsPerJob = jobs.slice(0,7).map(j => ({
+  const appsPerJob = jobs.slice(0,12).map(j => ({ // Increased from 7 to 12
     label: j.title?.split(' ')[0] || 'Job',
     value: (appsByJob.get(String(j.id || j._id)) || []).length,
     color: '#0176D3',

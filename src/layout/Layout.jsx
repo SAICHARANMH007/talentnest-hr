@@ -833,6 +833,14 @@ export default function Layout({ user, onLogout }) {
       {/* Impersonation Banner — visible on every page when SA is impersonating */}
       <ImpersonationBanner />
 
+      {/* Offline Status */}
+      {!online && (
+        <div style={{ background: '#BA0517', color: '#fff', padding: '10px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 700, zIndex: 10000, position: 'sticky', top: 0 }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <span>Connection Lost. You are currently offline. Changes may not be saved.</span>
+        </div>
+      )}
+
       {/* Trial Banner */}
       {trialDays !== null && (
         <div style={{ background: '#FFF3CD', borderBottom: '1px solid #F59E0B', padding: '8px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, fontSize: 12, flexShrink: 0 }}>
@@ -881,7 +889,9 @@ export default function Layout({ user, onLogout }) {
           </div>
 
           <Suspense fallback={<PageLoader />}>
-            <Outlet />
+            <div key={window.location.pathname} className="tn-page-transition">
+              <Outlet />
+            </div>
           </Suspense>
         </div>
       </div>
