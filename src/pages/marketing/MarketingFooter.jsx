@@ -76,8 +76,14 @@ export default function MarketingFooter() {
           {/* Brand & Socials */}
           <div style={{ maxWidth: 320 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={LOGO_PATH} alt="TalentNest HR" style={{ height: 32 }} />
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: 'rgba(var(--mkt-accent-rgb, 0, 194, 203), 0.12)',
+                border: '1px solid rgba(var(--mkt-accent-rgb, 0, 194, 203), 0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <img src={LOGO_PATH} alt="TalentNest HR" style={{ height: 28, maxWidth: 28, objectFit: 'contain' }} />
               </div>
               <span style={{ fontWeight: 900, fontSize: '1.4rem', color: '#fff', letterSpacing: '-0.04em' }}>
                 Talent<span style={{ color: 'var(--mkt-accent)' }}>Nest</span> HR

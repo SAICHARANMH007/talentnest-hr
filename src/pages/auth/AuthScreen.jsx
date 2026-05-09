@@ -400,8 +400,17 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       <div style={CARD}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <Logo size="lg" variant="full" theme="light" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+            <div style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, rgba(1, 118, 211, 0.05) 0%, rgba(1, 118, 211, 0.02) 100%)',
+              border: '1px solid rgba(1, 118, 211, 0.12)',
+              borderRadius: 20,
+              boxShadow: '0 4px 12px rgba(1, 118, 211, 0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Logo size="lg" variant="full" theme="light" />
+            </div>
           </div>
           <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
           <h2 style={{ color: '#0F172A', fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Job Seeker</h2>
@@ -919,8 +928,17 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
         {/* ── Header ── */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <Logo size="lg" variant="full" theme="light" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+            <div style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, rgba(1, 118, 211, 0.05) 0%, rgba(1, 118, 211, 0.02) 100%)',
+              border: '1px solid rgba(1, 118, 211, 0.12)',
+              borderRadius: 20,
+              boxShadow: '0 4px 12px rgba(1, 118, 211, 0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Logo size="lg" variant="full" theme="light" />
+            </div>
           </div>
           <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>

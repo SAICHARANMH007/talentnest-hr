@@ -216,10 +216,15 @@ export default function MarketingNav({ active = 'home' }) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 20px',
         }}>
-          {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{ height: 44, width: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <img src={logoSrc} alt="TalentNest HR" style={{ maxHeight: 38, maxWidth: 38, width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+            <div style={{
+              height: 44, width: 44, borderRadius: 12,
+              background: scrolled ? 'rgba(var(--mkt-accent-rgb), 0.08)' : 'rgba(255,255,255,0.08)',
+              border: scrolled ? '1px solid rgba(var(--mkt-accent-rgb), 0.15)' : '1px solid rgba(255,255,255,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              backdropFilter: 'blur(8px)',
+            }}>
+              <img src={logoSrc} alt="TalentNest HR" style={{ maxHeight: 32, maxWidth: 32, width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1 }}>
               <span style={{ fontWeight: 900, fontSize: 18, color: logoNameColor, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
@@ -410,8 +415,13 @@ export default function MarketingNav({ active = 'home' }) {
         <div className="tn-mobile-nav">
           <div className="tn-mobile-header">
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
-              <div style={{ height: 40, width: 40, background: 'var(--mkt-card-bg)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={logoSrc} alt="Logo" style={{ maxHeight: 32 }} />
+              <div style={{
+                height: 40, width: 40,
+                background: 'rgba(var(--mkt-accent-rgb), 0.1)',
+                border: '1px solid rgba(var(--mkt-accent-rgb), 0.2)',
+                borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <img src={logoSrc} alt="Logo" style={{ maxHeight: 28, maxWidth: 28, objectFit: 'contain' }} />
               </div>
               <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--mkt-text-heading)' }}>
                 Talent<span style={{ color: 'var(--mkt-accent)' }}>Nest</span>
