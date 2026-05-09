@@ -722,31 +722,35 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         />
       )}
 
-      {/* Resume modal */}
+      {/* ── Resume Viewer Modal ── */}
+      {/* ── Resume Viewer Modal ── */}
       {detailUser && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.75)', backdropFilter: 'blur(8px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 16px' }}>
-          <div style={{ width: '100%', maxWidth: 940, height: 'min(900px, 92vh)', display: 'flex', flexDirection: 'column', borderRadius: 24, overflow: 'hidden', boxShadow: '0 32px 64px rgba(0,0,0,0.3)' }}>
-            
-            {/* STICKY HEADER */}
-            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 20 }}>
-                   {(detailUser.name || '?')[0].toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Professional Dossier</div>
-                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 18 }}>{detailUser.name}</div>
-                </div>
-              </div>
-              <button onClick={() => setDetailUser(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: 10, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>✕</button>
-            </div>
-
-            {/* SCROLLABLE BODY */}
-            <div style={{ background: '#F8FAFF', overflowY: 'auto', flex: 1, padding: '2px' }}>
-              <ResumeCard candidate={detailUser} />
-            </div>
+        <Modal
+          title={`Resume: ${detailUser.name || 'Candidate'}`}
+          onClose={() => setDetailUser(null)}
+          wide
+          footer={
+            <button 
+              onClick={() => setDetailUser(null)} 
+              style={{ ...btnG, padding: '10px 24px' }}
+            >
+              Close Viewer
+            </button>
+          }
+        >
+          <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+            <ResumeCard candidate={detailUser} />
           </div>
-        </div>
+          
+          <div style={{ marginTop: 24 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#014486', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Application Pipeline</h4>
+            <CandidatePipelinePanel 
+              candidateEmail={detailUser.email} 
+              candidateId={detailUser.id || detailUser._id} 
+              onToast={setToast} 
+            />
+          </div>
+        </Modal>
       )}
 
       <PageHeader title={pageTitle} subtitle={pageSubtitle} action={

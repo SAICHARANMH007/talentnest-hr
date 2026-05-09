@@ -28,7 +28,11 @@ function getCompanyCareerUrl(externalUrl) {
 const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
 const URGENCY_LABEL  = { High: '🔥 Emergency', Medium: '⚡ High Priority', Low: '📌 Normal', '': '📋 Open' };
 
-// ── Apply Modal (lightweight, embedded-safe) ──────────────────────────────────
+import Modal from '../../components/ui/Modal.jsx';
+import { btnP, btnG } from '../../constants/styles.js';
+import { Link } from 'react-router-dom';
+
+// ── Apply Modal (Standardized Portal-based) ──────────────────────────────────
 function ApplyModal({ job, orgName, onClose }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', title: '', currentCompany: '', experience: '', availability: '', coverLetter: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +44,12 @@ function ApplyModal({ job, orgName, onClose }) {
   const [emailFoundMsg, setEmailFoundMsg] = useState('');
   const [prefillState, setPrefillState] = useState(null); // { isRegistered, hasPhone, fields[] }
   const [userEditedFields, setUserEditedFields] = useState(new Set());
+  
+  // Account creation state
+  const [createAccount, setCreateAccount] = useState(false);
+  const [password, setPassword] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   // Auto-trigger prefill on mount if email is already present (e.g. from sessionStorage)
@@ -63,7 +73,6 @@ function ApplyModal({ job, orgName, onClose }) {
         const updates = {};
         const filled = [];
         
-        // Use current form state to decide what to update
         const fields = [
           ['name', p.name],
           ['title', p.title],
@@ -118,7 +127,9 @@ function ApplyModal({ job, orgName, onClose }) {
     if (!form.name.trim())  { setError('Full name is required.'); return; }
     if (!form.email.trim()) { setError('Email is required.'); return; }
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
-    // Location is OPTIONAL — never block submission if denied
+    if (createAccount && !password) { setError('Please enter a password for your account.'); return; }
+    if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions.'); return; }
+    
     setSubmitting(true); setError('');
     try {
       const payload = { ...form };
@@ -131,126 +142,154 @@ function ApplyModal({ job, orgName, onClose }) {
       } else {
         payload.geoDeclined = geoStatus === 'denied';
       }
+      
       await api.applyPublic(job.id || job._id, payload);
+      
+      if (createAccount && password) {
+        try {
+          await api.register({
+            name: form.name,
+            email: form.email,
+            password,
+            phone: form.phone,
+            role: 'candidate',
+            title: form.title,
+            currentCompany: form.currentCompany,
+            experience: form.experience ? Number(form.experience) : undefined,
+            availability: form.availability,
+            companyName: orgName || 'TalentNest HR',
+          });
+        } catch (regErr) {
+          console.warn('[Apply] Account creation skipped:', regErr.message);
+        }
+      }
+      
       setDone(true);
     } catch (e) { setError(e.message || 'Submission failed. Please try again.'); }
     setSubmitting(false);
   };
 
+  if (done) return (
+    <Modal title="Application Submitted!" onClose={onClose}>
+      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
+        <h3 style={{ color: '#065f46', fontWeight: 800, margin: '0 0 12px' }}>Thank you, {form.name}!</h3>
+        <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
+          Your application for <strong>{job.title}</strong> has been received by <strong>{orgName}</strong>. 
+          The recruiting team will be in touch soon.
+        </p>
+        <button onClick={onClose} style={{ ...btnP, width: '100%', justifyContent: 'center', minHeight: 48 }}>Close</button>
+      </div>
+    </Modal>
+  );
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
-        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 700 }}>APPLY NOW</div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>{job.title}</div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>{orgName} · {job.location}</div>
+    <Modal
+      title={`Apply — ${job.title}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button onClick={onClose} style={btnG}>Cancel</button>
+          <button onClick={submit} disabled={submitting} style={{ ...btnP, flex: 1, minHeight: 48, justifyContent: 'center' }}>
+            {submitting ? '⏳ Submitting…' : '🚀 Submit Application'}
+          </button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Location Info Banner */}
+        <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.18)', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>📍</span>
+          <div style={{ fontSize: 12, color: '#0176D3', lineHeight: 1.6 }}>
+            {geoStatus === 'granted' && geo
+              ? <><strong>Location detected{geo.city ? ` — ${geo.city}` : ''}.</strong> This helps us send you relevant job alerts near you.</>
+              : <>We use your location to find job openings near you. You can share or skip — it's optional.</>
+            }
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, color: '#fff', width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>✕</button>
         </div>
-        <div style={{ padding: '24px' }}>
-          {done ? (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>🎉</div>
-              <h3 style={{ color: '#065f46', fontWeight: 800, margin: '0 0 8px' }}>Application Submitted!</h3>
-              <p style={{ color: '#64748B', fontSize: 14 }}>Thank you, {form.name}! The team at {orgName} will be in touch within 48 hours.</p>
-              <button onClick={onClose} style={{ marginTop: 16, background: '#0176D3', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}>Close</button>
+
+        {error && <div style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 10, padding: '12px 16px', color: '#BA0517', fontSize: 13, fontWeight: 600 }}>{error}</div>}
+
+        {/* Form Fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Email Address *</label>
+            <input type="email" value={form.email} onChange={e => sf('email', e.target.value)} onBlur={handleEmailBlur} placeholder="jane@example.com"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, outline: 'none' }} />
+            {emailChecking && <div style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>Looking up profile…</div>}
+            {emailFoundMsg && <div style={{ fontSize: 11, color: '#059669', marginTop: 4, fontWeight: 600 }}>{emailFoundMsg}</div>}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('name') ? '#059669' : '#374151', marginBottom: 6 }}>
+              {isHighlighted('name') ? '✅ Full Name (auto-filled)' : 'Full Name *'}
+            </label>
+            <input value={form.name} onChange={e => handleFieldChange('name', e.target.value)} placeholder="Jane Smith"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: isHighlighted('name') ? '1.5px solid #059669' : '1px solid #E2E8F0', background: isHighlighted('name') ? '#f0fdf4' : '#fff', fontSize: 15, outline: 'none' }} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Mobile Number *</label>
+            <input type="tel" value={form.phone} onChange={e => handleFieldChange('phone', e.target.value)} placeholder="+91 99999 99999"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 15, outline: 'none' }} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('title') ? '#059669' : '#374151', marginBottom: 6 }}>Current Title</label>
+              <input value={form.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="e.g. Developer"
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: isHighlighted('title') ? '1.5px solid #059669' : '1px solid #E2E8F0', background: isHighlighted('title') ? '#f0fdf4' : '#fff', fontSize: 15, outline: 'none' }} />
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('availability') ? '#059669' : '#374151', marginBottom: 6 }}>Availability</label>
+              <select value={form.availability} onChange={e => handleFieldChange('availability', e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #E2E8F0', background: isHighlighted('availability') ? '#f0fdf4' : '#fff', fontSize: 15, outline: 'none', cursor: 'pointer' }}>
+                <option value="">Select…</option>
+                <option value="immediate">Immediate</option>
+                <option value="15 days">15 Days Notice</option>
+                <option value="30 days">30 Days Notice</option>
+                <option value="45 days">45 Days Notice</option>
+                <option value="60 days">60 Days Notice</option>
+              </select>
+            </div>
+          </div>
 
-              {/* Why we ask for location — always shown, honest explanation */}
-              <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.18)', borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
-                <div style={{ fontSize: 12, color: '#0176D3', lineHeight: 1.55 }}>
-                  {geoStatus === 'granted' && geo
-                    ? <><strong>Location detected{geo.city ? ` — ${geo.city}` : ''}.</strong> We use this to show your application on our hiring map and send you job alerts for roles near you.</>
-                    : geoStatus === 'asking'
-                    ? <>Checking your location… We use this to send you nearby job alerts. You can allow or skip — it's optional.</>
-                    : <><strong>Location not shared — that's okay.</strong> We use location to send you relevant job alerts near you. You can still apply without it.</>
-                  }
-                </div>
-              </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Cover Letter (optional)</label>
+            <textarea value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} rows={3} placeholder="Tell us why you're a great fit…"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none', resize: 'vertical' }} />
+          </div>
 
-              {error && <div style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 8, padding: '10px 14px', color: '#BA0517', fontSize: 13 }}>{error}</div>}
-
-              {[['Full Name *', 'name', 'text', 'Jane Smith'], ['Email *', 'email', 'email', 'jane@example.com'], ['Mobile Number *', 'phone', 'tel', '+91 99999 99999']].map(([label, key, type, ph]) => (
-                <div key={key}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted(key) ? '#059669' : '#374151', marginBottom: 4 }}>
-                    {isHighlighted(key) ? `✅ ${label} (auto-filled)` : label}
-                  </label>
-                  <input type={type} value={form[key]} 
-                    onChange={e => key === 'email' ? sf(key, e.target.value) : handleFieldChange(key, e.target.value)} 
-                    onBlur={key === 'email' ? handleEmailBlur : undefined}
-                    placeholder={ph}
-                    style={{ 
-                      width: '100%', padding: '12px 14px', borderRadius: 10, 
-                      border: '1px solid', 
-                      borderColor: isHighlighted(key) ? '#059669' : '#E2E8F0',
-                      background: isHighlighted(key) ? '#f0fdf4' : '#fff',
-                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
-                    }} />
-                  {key === 'email' && emailChecking && <div style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>Looking up profile…</div>}
-                  {key === 'email' && emailFoundMsg && <div style={{ fontSize: 11, color: emailFoundMsg.includes('Registered') ? '#059669' : '#0176D3', marginTop: 4 }}>{emailFoundMsg}</div>}
-                </div>
-              ))}
-
-              {/* Title and Availability — stacked on mobile, side by side on wider screens */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('title') ? '#059669' : '#374151', marginBottom: 4 }}>
-                    {isHighlighted('title') ? '✅ Current Title (auto)' : 'Current Title'}
-                  </label>
-                  <input value={form.title} onChange={e => handleFieldChange('title', e.target.value)} placeholder="e.g. Developer"
-                    style={{ 
-                      width: '100%', padding: '12px 14px', borderRadius: 10, 
-                      border: '1px solid',
-                      borderColor: isHighlighted('title') ? '#059669' : '#E2E8F0',
-                      background: isHighlighted('title') ? '#f0fdf4' : '#fff',
-                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
-                    }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: isHighlighted('availability') ? '#059669' : '#374151', marginBottom: 4 }}>
-                    {isHighlighted('availability') ? '✅ Availability (auto)' : 'Availability'}
-                  </label>
-                  <select value={form.availability} onChange={e => handleFieldChange('availability', e.target.value)}
-                    style={{ 
-                      width: '100%', padding: '12px 14px', borderRadius: 10, 
-                      border: '1px solid',
-                      borderColor: isHighlighted('availability') ? '#059669' : '#E2E8F0',
-                      background: isHighlighted('availability') ? '#f0fdf4' : '#fff',
-                      fontSize: 15, boxSizing: 'border-box', outline: 'none', WebkitAppearance: 'none' 
-                    }}>
-                    <option value="">Select…</option>
-                    <option value="immediate">Immediate</option>
-                    <option value="15 days">15 Days Notice</option>
-                    <option value="30 days">30 Days Notice</option>
-                    <option value="45 days">45 Days Notice</option>
-                    <option value="60 days">60 Days Notice</option>
-                  </select>
-                </div>
-              </div>
+          {/* Account Creation Section */}
+          <div style={{ background: 'rgba(1,118,211,0.04)', border: '1.5px solid rgba(1,118,211,0.2)', borderRadius: 14, padding: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)}
+                style={{ marginTop: 2, width: 18, height: 18, accentColor: '#0176D3' }} />
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Cover Letter (optional)</label>
-                <textarea value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} rows={3} placeholder="Tell us why you're a great fit…"
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#032D60' }}>🚀 Create a free account to track this application</div>
+                <p style={{ fontSize: 12, color: '#64748B', marginTop: 4, lineHeight: 1.5 }}>See status updates and manage your applications in one place.</p>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <button onClick={submit} disabled={submitting}
-                  style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontWeight: 800, fontSize: 16, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, letterSpacing: 0.3 }}>
-                  {submitting ? '⏳ Submitting…' : '🚀 Submit Application'}
-                </button>
-                <button onClick={onClose} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
-                  Cancel
-                </button>
+            </label>
+            {createAccount && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>CREATE PASSWORD *</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters"
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #0176D3', fontSize: 15, outline: 'none' }} />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+                  <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: '#10B981' }} />
+                  <span style={{ fontSize: 12, color: '#374151' }}>
+                    I agree to the <Link to="/terms" target="_blank" style={{ color: '#0176D3', fontWeight: 700 }}>Terms</Link> & <Link to="/privacy" target="_blank" style={{ color: '#0176D3', fontWeight: 700 }}>Privacy Policy</Link>.
+                  </span>
+                </label>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

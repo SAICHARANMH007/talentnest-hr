@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
@@ -14,7 +15,7 @@ import { SM, STAGES } from '../../constants/stages.js';
 /**
  * Unified Master Record Drawer
  * Handles both "User/Admin Edit" and "Candidate/Pipeline Stage Management".
- * Props: user (required), app (optional), onClose, onUpdated
+ * Uses createPortal to escape parent transform/filter contexts.
  */
 function buildForm(u) {
   return {
@@ -58,14 +59,12 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [isCandidateModel, setIsCandidateModel] = useState(false);
   const [hiredModal, setHiredModal] = useState(null); // { appId, candidateName, jobTitle }
 
-  // Track whether user has started editing — if they have, don't overwrite with fetch
+  // Track whether user has started editing
   const userEditedRef = useRef(false);
   const sf = (k, v) => { userEditedRef.current = true; setForm(p => ({ ...p, [k]: v })); };
 
-  // When a partial candidate object is passed, fetch full profile for editing.
-  // Guard: never overwrite form once user has started typing.
   useEffect(() => {
-    userEditedRef.current = false; // reset on new candidate
+    userEditedRef.current = false; 
     const uid = u?.id || u?._id?.toString();
     if (!uid) return;
     const isCandidate = (u?.role || 'candidate') === 'candidate';
@@ -78,9 +77,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     
     if (hasFullData && !u?._partial) return;
 
-    // Fetch full record. If candidate fetch fails or returns empty, try user fetch.
     api.getCandidate(uid).then(full => {
-      // Check if we got a valid record (must have at least name or email)
       if (full && (full.name || full.email)) {
         if (userEditedRef.current) return;
         const enriched = { ...u, ...full, role: 'candidate', id: full.id || full._id?.toString() };
@@ -97,14 +94,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         setFullUser(enriched);
         setForm(buildForm(enriched));
         setIsCandidateModel(false);
-      }).catch(() => {
-        // If both fail, keep the initial prop data in the form
-      });
+      }).catch(() => {});
     });
-  }, [u?.id, u?._id]); // eslint-disable-line
+  }, [u?.id, u?._id]);
 
-  // If we have a candidate but no app context, try to find the last application for context
-  // Always fetch ALL applications for this candidate so the pipeline shows complete history
   const [allFetchedApps, setAllFetchedApps] = useState([]);
   useEffect(() => {
     const isCandidate = (u?.role || 'candidate') === 'candidate';
@@ -120,7 +113,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         setCurrentStage(list[0].stage);
       }
     }).catch(() => setAllFetchedApps([])).finally(() => setLoadingApp(false));
-  }, [u?.id, u?._id, u?.role]); // eslint-disable-line
+  }, [u?.id, u?._id, u?.role]);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -135,25 +128,16 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       setToast('❌ Name and Email are required');
       return;
     }
-    // Phone is strongly recommended but not a hard blocker for profile edits —
-    // it is required for WhatsApp/calling but not for stage moves or note updates.
-    // We warn but allow save so HR isn't blocked editing other fields.
-    if (!form.phone?.trim()) {
-      setToast('⚠️ No mobile number — WhatsApp/calls won\'t work for this candidate. Saving anyway…');
-      // don't return — continue to save
-    }
     setSaving(true);
     try {
       const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
       const mid = fullUser?.id || fullUser?._id || u.id || u._id;
       let updated;
       if (isCandidateModel) {
-        // Record lives in the Candidate collection (added by recruiter/admin, no User account)
         const raw = await api.updateCandidate(mid, { ...form, skills });
         updated = raw?.data || raw;
         if (updated) updated = { role: 'candidate', ...updated, id: updated.id || updated._id?.toString() };
       } else {
-        // Record lives in the User collection (self-registered or invited candidate)
         const raw = await api.updateUser(mid, { ...form, skills });
         updated = raw?.data || raw;
       }
@@ -173,15 +157,12 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       setApp(prev => ({ ...prev, stage: newStage }));
       setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
       onUpdated?.();
-      // When moved to Hired: prompt HR for CTC + joining date
       if (newStage === 'selected') {
         const candName = fullUser?.name || u?.name || form.name || 'Candidate';
         const jobTitle = app?.job?.title || app?.jobTitle || '';
         setHiredModal({ appId: String(appId), candidateName: candName, jobTitle });
       }
-    } catch (e) {
-      setToast(`❌ ${e.message}`);
-    }
+    } catch (e) { setToast(`❌ ${e.message}`); }
     setChangingStage(false);
   };
 
@@ -201,8 +182,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     transition: 'all 0.2s', letterSpacing: 0.5
   });
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex' }}>
+  const content = (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100000, display: 'flex' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       {hiredModal && (
         <HiredDetailsModal
@@ -251,8 +232,6 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
           
           {tab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              {/* Dynamic Action Panel */}
               {app && (
                 <div style={{ ...card, background: 'linear-gradient(135deg, #fff, #F8FAFF)', border: '1.5px solid #0176D320', padding: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
@@ -351,168 +330,89 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
               {loadingApp ? (
                 <div style={{ textAlign: 'center', padding: 40 }}><Spinner /> Analysing career footprint...</div>
               ) : (
-                <>
-                  {/* Activity List: Show all applications */}
-                  {(() => {
-                    // Always use allFetchedApps (has real Application._id for stage changes).
-                    // Fall back to u.allApplications only for display when fetch hasn't returned yet.
-                    const allApps = allFetchedApps.length > 0
-                      ? allFetchedApps.map(a => ({
-                          id: a.id || a._id?.toString(),
-                          _id: a._id,
-                          jobId: a.jobId?._id?.toString() || a.jobId?.toString(),
-                          jobTitle: (a.jobId && typeof a.jobId === 'object' ? a.jobId.title : null) || a.job?.title || 'Unknown Job',
-                          stage: a.stage || a.currentStage,
-                          status: a.status,
-                          appliedAt: a.createdAt,
-                          updatedAt: a.updatedAt,
-                          rejectionReason: a.rejectionReason,
-                          stageHistory: a.stageHistory,
-                          appliedFrom: a.appliedFrom,
-                        }))
-                      : (u.allApplications || []);
-                    // If we only have one app or it's the active one, show details.
-                    // But if there are multiple, show a summary list first.
-                    if (allApps.length === 0 && !app) {
-                      return <div style={{ ...card, textAlign: 'center', padding: 40, color: '#94A3B8' }}>No active job applications found for this candidate.</div>;
-                    }
-
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div style={card}>
-                          <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 1, margin: '0 0 16px' }}>CAREER FOOTPRINT — {allApps.length || (app?1:0)} APPLICATIONS</p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {/* Current/Latest App Details */}
-                            {app && (
-                              <div style={{ padding: '12px 14px', background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
-                                  <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
-                                </div>
-                                <StageHistory history={app.stageHistory} />
-                              </div>
-                            )}
-
-                            {/* Other Applications — each with own stage change */}
-                            {allApps.filter(a => String(a.id || a._id) !== String(app?.id || app?._id)).map(a => {
-                              const appId = String(a.id || a._id);
-                              const appStage = a.stage || a.currentStage || 'applied';
-                              return (
-                                <div key={appId} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                                    <div>
-                                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle || 'Job'}</div>
-                                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                                        Applied {a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
-                                      </div>
-                                    </div>
-                                    <Badge label={SM[appStage]?.label || appStage} color={SM[appStage]?.color || '#64748B'} />
-                                  </div>
-                                  {/* Stage change for this application */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>Move to:</span>
-                                    <select
-                                      value={appStage}
-                                      disabled={changingStage}
-                                      onChange={async (e) => {
-                                        const newStage = e.target.value;
-                                        setChangingStage(true);
-                                        try {
-                                          await api.updateStage(appId, newStage);
-                                          // Update both sources so UI reflects change immediately
-                                          setFullUser(prev => prev ? {
-                                            ...prev,
-                                            allApplications: (prev.allApplications || []).map(x =>
-                                              String(x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
-                                            )
-                                          } : prev);
-                                          setAllFetchedApps(prev => prev.map(x =>
-                                            String(x.id || x._id) === appId ? { ...x, stage: newStage, currentStage: newStage } : x
-                                          ));
-                                          if (app && String(app.id || app._id) === appId) setCurrentStage(newStage);
-                                          setToast(`✅ Stage updated to ${SM[newStage]?.label || newStage}`);
-                                          if (newStage === 'selected') {
-                                            const candName = fullUser?.name || u?.name || form.name || 'Candidate';
-                                            const jobTitle = a.jobTitle || '';
-                                            setHiredModal({ appId, candidateName: candName, jobTitle });
-                                          }
-                                        } catch (err) { setToast(`❌ ${err.message}`); }
-                                        setChangingStage(false);
-                                      }}
-                                      style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${STAGE_DROPDOWN_COLORS[appStage] || '#DDDBDA'}`, background: '#fff', fontSize: 11, fontWeight: 700, color: STAGE_DROPDOWN_COLORS[appStage] || '#374151', cursor: 'pointer', outline: 'none' }}>
-                                      {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
-                                    </select>
-                                    <button
-                                      onClick={() => { setApp(a); setCurrentStage(appStage); }}
-                                      style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                      History →
-                                    </button>
-                                    {a.appliedFrom?.lat && a.appliedFrom?.lng && (
-                                      <a href={`https://www.google.com/maps?q=${a.appliedFrom.lat},${a.appliedFrom.lng}`}
-                                        target="_blank" rel="noopener noreferrer"
-                                        title={`Applied from: ${a.appliedFrom.city || a.appliedFrom.lat+','+a.appliedFrom.lng}`}
-                                        style={{ background: 'none', border: 'none', color: '#059669', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}>
-                                        📍 Location
-                                      </a>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={card}>
+                    <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 1, margin: '0 0 16px' }}>CAREER FOOTPRINT — {allFetchedApps.length} APPLICATIONS</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {app && (
+                        <div style={{ padding: '12px 14px', background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
+                            <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
                           </div>
+                          <StageHistory history={app.stageHistory} />
                         </div>
-
-                        {app?.rejectionReason && (
-                          <div style={{ ...card, background: 'rgba(186,5,23,0.06)', border: '1.5px solid rgba(186,5,23,0.2)' }}>
-                             <p style={{ color: '#BA0517', fontSize: 11, fontWeight: 800, margin: '0 0 4px' }}>REJECTION INSIGHT</p>
-                             <p style={{ margin: 0, fontSize: 13, color: '#BA0517' }}>{app.rejectionReason}</p>
+                      )}
+                      {allFetchedApps.filter(a => String(a.id || a._id) !== String(app?.id || app?._id)).map(a => {
+                        const appId = String(a.id || a._id);
+                        const appStage = a.stage || a.currentStage || 'applied';
+                        return (
+                          <div key={appId} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{a.jobTitle || a.job?.title || 'Job'}</div>
+                                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                  Applied {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
+                                </div>
+                              </div>
+                              <Badge label={SM[appStage]?.label || appStage} color={SM[appStage]?.color || '#64748B'} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <select
+                                value={appStage}
+                                disabled={changingStage}
+                                onChange={async (e) => {
+                                  const newStage = e.target.value;
+                                  setChangingStage(true);
+                                  try {
+                                    await api.updateStage(appId, newStage);
+                                    setAllFetchedApps(prev => prev.map(x => String(x.id || x._id) === appId ? { ...x, stage: newStage } : x));
+                                    if (appId === String(app?.id || app?._id)) setCurrentStage(newStage);
+                                    setToast(`✅ Stage updated`);
+                                    if (newStage === 'selected') setHiredModal({ appId, candidateName: form.name, jobTitle: a.jobTitle || a.job?.title });
+                                  } catch (err) { setToast(`❌ ${err.message}`); }
+                                  setChangingStage(false);
+                                }}
+                                style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid #DDDBDA`, fontSize: 11, fontWeight: 700 }}>
+                                {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                              </select>
+                              <button onClick={() => setApp(a)} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>View History →</button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
           {tab === 'resume' && (
             <div>
-              {/* Full-page resume button */}
               <div style={{ marginBottom: 12, display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => {
-                    const cid = fullUser?.id || u?.id || fullUser?._id?.toString() || u?._id?.toString();
-                    if (cid) navigate(`/app/resume/${cid}`);
-                  }}
-                  style={{ ...btnP, padding: '8px 18px', fontSize: 13 }}
-                >
-                  🖥️ View Full-Page Resume
-                </button>
+                <button onClick={() => navigate(`/app/resume/${fullUser?.id || u?.id}`)} style={{ ...btnP, padding: '8px 18px', fontSize: 13 }}>🖥️ View Full-Page Resume</button>
               </div>
               <div style={{ border: '2px solid #F1F5F9', borderRadius: 20, overflow: 'hidden', background: '#fff' }}>
                 <ResumeCard candidate={fullUser || u} />
               </div>
             </div>
           )}
-
         </div>
 
         {/* STICKY FOOTER */}
-        <div style={{ padding: '16px clamp(16px,4vw,28px)', background: '#fff', borderTop: '1px solid #E2E8F0', flexShrink: 0, display: 'flex', gap: 12, boxShadow: '0 -4px 10px rgba(0,0,0,0.04)' }}>
-             <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, minHeight: 48, fontSize: 14, fontWeight: 800, background: 'linear-gradient(135deg,#0176D3,#0154A4)', boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
-               {saving ? '⏳ Saving Updates...' : '✓ Save Profile Changes'}
+        <div style={{ padding: '16px clamp(16px,4vw,28px)', background: '#fff', borderTop: '1px solid #E2E8F0', flexShrink: 0, display: 'flex', gap: 12 }}>
+             <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, minHeight: 48, fontSize: 14, fontWeight: 800 }}>
+               {saving ? '⏳ Saving...' : '✓ Save Changes'}
              </button>
              {onDelete && (
-                <button onClick={() => {
-                  if (window.confirm(`Permanently delete "${u.name}"? This cannot be undone.`)) {
-                    onDelete(u.id || u._id); onClose();
-                  }
-                }} style={{ ...btnD, height: 48, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }} title="Delete user permanently">🗑</button>
+                <button onClick={() => { if (window.confirm(`Delete "${u.name}"?`)) { onDelete(u.id || u._id); onClose(); } }} style={{ ...btnD, height: 48, width: 48, padding: 0 }}>🗑</button>
              )}
-             <button onClick={onClose} style={{ ...btnG, height: 48, padding: '0 20px', fontSize: 13 }}>Cancel</button>
+             <button onClick={onClose} style={{ ...btnG, height: 48, padding: '0 20px' }}>Cancel</button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

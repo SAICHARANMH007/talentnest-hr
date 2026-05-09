@@ -16,6 +16,8 @@ import MarketingNav from '../marketing/MarketingNav.jsx';
 import MarketingFooter from '../marketing/MarketingFooter.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { btnP, btnG } from '../../constants/styles.js';
+import Modal from '../../components/ui/Modal.jsx';
 
 const ApplyModal = lazy(() => import('../careers/CareersPage.jsx').then(m => ({ default: m.ApplyModal || (() => null) })));
 
@@ -322,29 +324,39 @@ export default function JobDetailPage() {
 
       {/* Apply modal */}
       {applying && !job.externalUrl && (
-        <Suspense fallback={null}>
-          {/* Inline lightweight apply modal */}
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-            onClick={e => e.target === e.currentTarget && setApplying(false)}>
-            <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
-              <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 700 }}>APPLY NOW</div>
-                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>{job.title}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>{job.company} · {job.location}</div>
-                </div>
-                <button onClick={() => setApplying(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>✕</button>
-              </div>
-              <div style={{ padding: 24, textAlign: 'center' }}>
-                <Link to={`/careers?job=${job.id || job._id}`}
-                  style={{ display: 'inline-block', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', padding: '12px 28px', borderRadius: 12, fontWeight: 700, textDecoration: 'none', fontSize: 14 }}>
-                  Continue to Full Application →
-                </Link>
-                <p style={{ color: '#64748B', fontSize: 12, marginTop: 10 }}>You'll be taken to the job board to complete your application.</p>
-              </div>
+        <Modal
+          title="Apply for Job"
+          onClose={() => setApplying(false)}
+          footer={
+            <Link 
+              to={`/careers?job=${job.id || job._id}`}
+              style={{ 
+                ...btnP,
+                width: '100%',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                minHeight: 48
+              }}
+            >
+              🚀 Continue to Full Application →
+            </Link>
+          }
+        >
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <div style={{ background: 'rgba(1,118,211,0.06)', padding: '20px', borderRadius: 20, marginBottom: 20 }}>
+              <div style={{ color: '#0176D3', fontSize: 12, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>JOB OPENING</div>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#032D60', margin: '0 0 4px' }}>{job.title}</h3>
+              <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>{job.company} · {job.location}</p>
             </div>
+            
+            <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, marginBottom: 12 }}>
+              To ensure the best matching for this role, please complete our structured application form.
+            </p>
+            <p style={{ color: '#64748B', fontSize: 13 }}>
+              You'll be able to pre-fill your details if you've applied before.
+            </p>
           </div>
-        </Suspense>
+        </Modal>
       )}
 
       <MarketingFooter />

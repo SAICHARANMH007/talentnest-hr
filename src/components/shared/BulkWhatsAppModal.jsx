@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { btnP, btnG } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import Modal from '../ui/Modal.jsx';
 
 const TEMPLATE_VARS = '{{CandidateName}}, {{JobTitle}}, {{CompanyName}}, {{RecruiterName}}, {{InterviewDate}}';
 
@@ -9,14 +10,7 @@ const DEFAULT_TEMPLATE =
 
 /**
  * BulkWhatsAppModal
- *
- * Props:
- *   candidates    — array of selected candidate objects
- *   jobTitle      — string
- *   companyName   — string
- *   recruiterName — string
- *   onClose       — () => void
- *   onComplete    — (summary: string) => void
+ * Uses createPortal via the Modal component for consistent UI.
  */
 export default function BulkWhatsAppModal({
   candidates = [],
@@ -60,7 +54,6 @@ export default function BulkWhatsAppModal({
         interviewDate: c.interviewDate || '',
       }));
 
-      // Track progress via optimistic counter while request runs
       const progressInterval = setInterval(() => {
         setProgress(p => p && p.current < p.total - 1 ? { ...p, current: p.current + 1 } : p);
       }, 1100);
@@ -82,146 +75,13 @@ export default function BulkWhatsAppModal({
     }
   };
 
-  const handleClose = () => {
-    if (!sending) onClose();
-  };
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Bulk WhatsApp"
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(5,13,26,0.72)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 10001,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div style={{
-        background: '#fff', borderRadius: 16,
-        width: '100%', maxWidth: 600,
-        padding: 28,
-        display: 'flex', flexDirection: 'column', gap: 16,
-        maxHeight: '90vh', overflowY: 'auto',
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#032D60' }}>
-            Send WhatsApp to {candidates.length} Candidate{candidates.length !== 1 ? 's' : ''}
-          </div>
-          <button
-            onClick={handleClose}
-            disabled={sending}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#706E6B', lineHeight: 1 }}
-            aria-label="Close"
-          >
-            &times;
-          </button>
-        </div>
-
-        {/* Variable hint */}
-        <div style={{
-          fontSize: 12, color: '#706E6B',
-          background: 'rgba(1,118,211,0.06)',
-          border: '1px solid rgba(1,118,211,0.15)',
-          borderRadius: 8, padding: '10px 12px',
-          lineHeight: 1.6,
-        }}>
-          <strong style={{ color: '#0176D3' }}>Template variables:</strong><br />
-          <code style={{ fontSize: 11 }}>{TEMPLATE_VARS}</code>
-        </div>
-
-        {/* Template textarea */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#444', display: 'block', marginBottom: 6 }}>
-            Message Template
-          </label>
-          <textarea
-            value={template}
-            onChange={e => setTemplate(e.target.value)}
-            rows={7}
-            disabled={sending}
-            style={{
-              width: '100%', padding: '9px 12px',
-              border: '1px solid #DDDBDA', borderRadius: 8,
-              fontSize: 13, outline: 'none',
-              resize: 'vertical', fontFamily: 'inherit',
-              boxSizing: 'border-box',
-              opacity: sending ? 0.6 : 1,
-            }}
-          />
-        </div>
-
-        {/* Live preview */}
-        {firstCandidate && (
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 6 }}>
-              Preview <span style={{ fontWeight: 400, color: '#706E6B' }}>(using {firstCandidate.name || 'first candidate'}'s data)</span>
-            </div>
-            <pre style={{
-              background: '#F3F2F2',
-              border: '1px solid #DDDBDA',
-              borderRadius: 8, padding: '10px 14px',
-              fontSize: 12, color: '#444',
-              whiteSpace: 'pre-wrap', lineHeight: 1.6,
-              maxHeight: 160, overflowY: 'auto',
-              margin: 0,
-            }}>
-              {preview}
-            </pre>
-          </div>
-        )}
-
-        {/* Progress indicator */}
-        {sending && progress && (
-          <div style={{
-            background: 'rgba(1,118,211,0.07)',
-            border: '1px solid rgba(1,118,211,0.2)',
-            borderRadius: 8, padding: '12px 16px',
-            fontSize: 13, color: '#0176D3', fontWeight: 600,
-          }}>
-            Sending... {Math.min(progress.current, progress.total)} of {progress.total}
-            <div style={{
-              marginTop: 8, height: 6, background: '#DDDBDA', borderRadius: 4, overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${progress.total > 0 ? (Math.min(progress.current, progress.total) / progress.total) * 100 : 0}%`,
-                background: '#25D366',
-                borderRadius: 4,
-                transition: 'width 0.4s ease',
-              }} />
-            </div>
-          </div>
-        )}
-
-        {/* Summary */}
-        {summary && (
-          <div style={{
-            background: summary.error ? 'rgba(186,5,23,0.07)' : 'rgba(34,197,94,0.08)',
-            border: `1px solid ${summary.error ? 'rgba(186,5,23,0.2)' : 'rgba(34,197,94,0.3)'}`,
-            borderRadius: 8, padding: '12px 16px',
-            fontSize: 13, lineHeight: 1.6,
-          }}>
-            {summary.error ? (
-              <span style={{ color: '#ba0517' }}>Error: {summary.error}</span>
-            ) : (
-              <>
-                <span style={{ color: '#16a34a', fontWeight: 700 }}>{summary.sent} sent successfully</span>
-                {summary.failed > 0 && (
-                  <span style={{ color: '#ba0517', fontWeight: 700, marginLeft: 12 }}>{summary.failed} failed</span>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={handleClose} disabled={sending} style={btnG}>
+    <Modal
+      title={`Send WhatsApp to ${candidates.length} Candidate${candidates.length !== 1 ? 's' : ''}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button onClick={onClose} disabled={sending} style={btnG}>
             {summary ? 'Close' : 'Cancel'}
           </button>
           {!summary && (
@@ -230,15 +90,113 @@ export default function BulkWhatsAppModal({
               disabled={sending || !template.trim() || candidates.length === 0}
               style={{
                 ...btnP,
-                background: '#25D366', borderColor: '#25D366',
+                background: '#25D366', 
+                border: 'none',
                 opacity: (sending || !template.trim()) ? 0.6 : 1,
               }}
             >
-              {sending ? 'Sending...' : `Send to ${candidates.length} Candidate${candidates.length !== 1 ? 's' : ''}`}
+              {sending ? '⏳ Sending...' : `Send to ${candidates.length} Candidates`}
             </button>
           )}
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Variable hint */}
+        <div style={{
+          fontSize: 12, color: '#0176D3',
+          background: 'rgba(1,118,211,0.06)',
+          border: '1px solid rgba(1,118,211,0.15)',
+          borderRadius: 12, padding: '12px 16px',
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ display: 'block', marginBottom: 4 }}>Available variables:</strong>
+          <code style={{ fontSize: 11, background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>{TEMPLATE_VARS}</code>
         </div>
+
+        {/* Template textarea */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#181818', display: 'block', marginBottom: 8 }}>
+            Message Template
+          </label>
+          <textarea
+            value={template}
+            onChange={e => setTemplate(e.target.value)}
+            rows={6}
+            disabled={sending}
+            style={{
+              width: '100%', padding: '14px',
+              border: '1.5px solid #E2E8F0', borderRadius: 12,
+              fontSize: 14, outline: 'none',
+              resize: 'vertical', fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              background: sending ? '#F8FAFC' : '#fff'
+            }}
+          />
+        </div>
+
+        {/* Live preview */}
+        {firstCandidate && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#181818', marginBottom: 8 }}>
+              Live Preview <span style={{ fontWeight: 400, color: '#706E6B' }}>(showing {firstCandidate.name})</span>
+            </div>
+            <div style={{
+              background: '#F8FAFF',
+              border: '1.5px solid #E2E8F0',
+              borderRadius: 12, padding: '16px',
+              fontSize: 13, color: '#1E293B',
+              whiteSpace: 'pre-wrap', lineHeight: 1.65,
+              maxHeight: 160, overflowY: 'auto'
+            }}>
+              {preview}
+            </div>
+          </div>
+        )}
+
+        {/* Progress indicator */}
+        {sending && progress && (
+          <div style={{
+            background: 'rgba(37,211,102,0.05)',
+            border: '1.5px solid rgba(37,211,102,0.2)',
+            borderRadius: 12, padding: '16px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: '#166534', fontWeight: 700 }}>Processing Queue</span>
+              <span style={{ fontSize: 13, color: '#166534', fontWeight: 700 }}>{Math.min(progress.current, progress.total)} / {progress.total}</span>
+            </div>
+            <div style={{ height: 8, background: '#E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${progress.total > 0 ? (Math.min(progress.current, progress.total) / progress.total) * 100 : 0}%`,
+                background: '#25D366',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* Summary */}
+        {summary && (
+          <div style={{
+            background: summary.error ? 'rgba(186,5,23,0.06)' : 'rgba(34,197,94,0.06)',
+            border: `1.5px solid ${summary.error ? 'rgba(186,5,23,0.2)' : 'rgba(34,197,94,0.2)'}`,
+            borderRadius: 12, padding: '16px',
+            fontSize: 13, lineHeight: 1.6
+          }}>
+            {summary.error ? (
+              <span style={{ color: '#BA0517', fontWeight: 700 }}>⚠️ Error: {summary.error}</span>
+            ) : (
+              <div style={{ display: 'flex', gap: 16 }}>
+                <span style={{ color: '#166534', fontWeight: 700 }}>✅ {summary.sent} Delivered</span>
+                {summary.failed > 0 && (
+                  <span style={{ color: '#BA0517', fontWeight: 700 }}>❌ {summary.failed} Failed</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

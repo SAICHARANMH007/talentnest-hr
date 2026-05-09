@@ -234,7 +234,7 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
     ...s, count: candidates.filter(c => c.stage === s.id).length,
   })).filter(s => s.count > 0);
 
-  return (
+  const content = (
     <div style={SF.overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={SF.drawer}>
         <Toast msg={toast} onClose={() => setToast('')} />
@@ -242,12 +242,12 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
         {/* Header */}
         <div style={SF.header}>
           <div>
-            <div style={{ color:'#FFFFFF', fontWeight:800, fontSize:18 }}>{job.title}</div>
-            <div style={{ color:'rgba(255,255,255,0.7)', fontSize:13, marginTop:2 }}>{job.company} · {job.location}</div>
+            <div style={{ color: '#FFFFFF', fontWeight: 800, fontSize: 18 }}>{job.title}</div>
+            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 2 }}>{job.company} · {job.location}</div>
           </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <Badge label={job.status || 'Open'} color={job.status==='Open'?'#2E844A':'#BA0517'} />
-            <Badge label={job.urgency || 'Medium'} color={job.urgency==='High'?'#BA0517':job.urgency==='Medium'?'#A07E00':'#2E844A'} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Badge label={job.status || 'Open'} color={job.status === 'Open' ? '#2E844A' : '#BA0517'} />
+            <Badge label={job.urgency || 'Medium'} color={job.urgency === 'High' ? '#BA0517' : job.urgency === 'Medium' ? '#A07E00' : '#2E844A'} />
             {onDelete && (
               <button
                 onClick={() => { if (confirm(`Delete "${job.title}"? This will remove the job and all its applications.`)) { onDelete(job.id); onClose(); } }}
@@ -256,208 +256,214 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                 🗑 Delete
               </button>
             )}
-            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', borderRadius:4, padding:'6px 12px', cursor:'pointer', fontSize:13 }}>✕ Close</button>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 4, padding: '6px 12px', cursor: 'pointer', fontSize: 13 }}>✕ Close</button>
           </div>
         </div>
 
-        {/* Recruiter Assignment (admin/super_admin only) */}
-        {isAdminOrSuper && (
-          <div style={SF.section}>
-            <div style={SF.label}>Assigned Recruiter</div>
-            <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-              <select style={SF.select} value={job.recruiterId || ''} onChange={e => assignRecruiter(e.target.value)} disabled={assigning}>
-                <option value="">-- Select Recruiter --</option>
-                {recruiters.map(r => (
-                  <option key={r.id} value={r.id}>{r.name} ({r.email})</option>
-                ))}
-              </select>
-              {assigning && <Spinner />}
-              {job.recruiterName && (
-                <span style={{ color:'#706E6B', fontSize:12, whiteSpace:'nowrap' }}>
-                  Currently: <strong style={{ color:'#181818' }}>{job.recruiterName}</strong>
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {loading ? (
-          <div style={{ padding:40, textAlign:'center' }}><Spinner /></div>
-        ) : (
-          <>
-            {/* Stage summary */}
-            {stageSummary.length > 0 && (
-              <div style={SF.section}>
-                <div style={SF.label}>Pipeline — {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}</div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                  {stageSummary.map(s => (
-                    <div key={s.id} style={{ background:`${s.color}15`, border:`1px solid ${s.color}40`, borderRadius:20, padding:'4px 12px', display:'flex', alignItems:'center', gap:6 }}>
-                      <span style={{ fontSize:12 }}>{s.icon}</span>
-                      <span style={{ color:s.color, fontSize:12, fontWeight:600 }}>{s.label}</span>
-                      <span style={{ background:s.color, color:'#fff', borderRadius:10, padding:'0 6px', fontSize:11, fontWeight:700 }}>{s.count}</span>
-                    </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* Recruiter Assignment (admin/super_admin only) */}
+          {isAdminOrSuper && (
+            <div style={SF.section}>
+              <div style={SF.label}>Assigned Recruiter</div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <select style={SF.select} value={job.recruiterId || ''} onChange={e => assignRecruiter(e.target.value)} disabled={assigning}>
+                  <option value="">-- Select Recruiter --</option>
+                  {recruiters.map(r => (
+                    <option key={r.id} value={r.id}>{r.name} ({r.email})</option>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* Multi-select Add Candidates (admin/super_admin only) */}
-            {isAdminOrSuper && (
-              <div style={SF.section}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                  <div style={SF.label}>Add Candidates to Pipeline</div>
-                  <span style={{ color:'#706E6B', fontSize:11 }}>
-                    {availableCandidates.length} available · {candidates.length} already in pipeline
+                </select>
+                {assigning && <Spinner />}
+                {job.recruiterName && (
+                  <span style={{ color: '#706E6B', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    Currently: <strong style={{ color: '#181818' }}>{job.recruiterName}</strong>
                   </span>
-                </div>
-                {availableCandidates.length === 0 ? (
-                  <div style={{ color:'#706E6B', fontSize:13, padding:'8px 0' }}>All candidates are already in this pipeline.</div>
-                ) : (
-                  <MultiCandidatePicker
-                    availableCandidates={availableCandidates}
-                    onAdd={addCandidatesToPipeline}
-                    adding={addingCandidate}
-                  />
                 )}
-                {/* Pipeline List */}
-            <div style={SF.section}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                <div style={SF.label}>Candidates in Pipeline</div>
-                <input 
-                  placeholder="Search pipeline..." 
-                  value={pipelineSearch} 
-                  onChange={e => setPipelineSearch(e.target.value)}
-                  style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #DDDBDA', fontSize:11, outline:'none', width:140 }}
-                />
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>
+          ) : (
+            <>
+              {/* Stage summary */}
+              {stageSummary.length > 0 && (
+                <div style={SF.section}>
+                  <div style={SF.label}>Pipeline — {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {stageSummary.map(s => (
+                      <div key={s.id} style={{ background: `${s.color}15`, border: `1px solid ${s.color}40`, borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12 }}>{s.icon}</span>
+                        <span style={{ color: s.color, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
+                        <span style={{ background: s.color, color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, fontWeight: 700 }}>{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Multi-select Add Candidates (admin/super_admin only) */}
+              {isAdminOrSuper && (
+                <div style={SF.section}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={SF.label}>Add Candidates to Pipeline</div>
+                    <span style={{ color: '#706E6B', fontSize: 11 }}>
+                      {availableCandidates.length} available · {candidates.length} already in pipeline
+                    </span>
+                  </div>
+                  {availableCandidates.length === 0 ? (
+                    <div style={{ color: '#706E6B', fontSize: 13, padding: '8px 0' }}>All candidates are already in this pipeline.</div>
+                  ) : (
+                    <MultiCandidatePicker
+                      availableCandidates={availableCandidates}
+                      onAdd={addCandidatesToPipeline}
+                      adding={addingCandidate}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Pipeline List */}
+              <div style={SF.section}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={SF.label}>Candidates in Pipeline</div>
+                  <input
+                    placeholder="Search pipeline..."
+                    value={pipelineSearch}
+                    onChange={e => setPipelineSearch(e.target.value)}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #DDDBDA', fontSize: 11, outline: 'none', width: 140 }}
+                  />
+                </div>
+
+                {candidates.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#706E6B', fontSize: 13 }}>No candidates in pipeline yet.</div>
+                ) : (() => {
+                  const filt = candidates.filter(app => {
+                    const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
+                    const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
+                    const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
+                    const q = pipelineSearch.toLowerCase();
+                    return (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q);
+                  });
+
+                  if (filt.length === 0) return <div style={{ textAlign: 'center', padding: 20, color: '#706E6B', fontSize: 12 }}>No matching candidates</div>;
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {filt.map(app => {
+                        const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
+                        const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
+                        const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
+                        const stage = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
+                        const candName = c.name || app.candidateName || 'Candidate';
+
+                        return (
+                          <div key={app.id || app._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#F8FAFF', borderRadius: 10, border: '1px solid rgba(1,118,211,0.1)' }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                              {(candName[0] || '?').toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{candName}</div>
+                              <div style={{ color: '#706E6B', fontSize: 11, marginTop: 1 }}>{c.email || app.candidateEmail || 'No email provided'}</div>
+                              {(c.phone || app.candidatePhone || app.phone) ? (
+                                <div style={{ fontSize: 10, color: '#166534', background: '#F0FDF4', padding: '2px 8px', borderRadius: 10, display: 'inline-block', marginTop: 4 }}>📞 {c.phone || app.candidatePhone || app.phone}</div>
+                              ) : null}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                              {isAdminOrSuper ? (
+                                <select
+                                  value={app.stage}
+                                  onChange={async (e) => {
+                                    const newStage = e.target.value;
+                                    const appId = app.id || app._id;
+                                    try {
+                                      await api.updateStage(appId, newStage);
+                                      setCandidates(prev => prev.map(a => (a.id || a._id) === appId ? { ...a, stage: newStage } : a));
+                                      setToast(`✅ Stage → ${newStage}`);
+                                    } catch (err) { setToast(`❌ ${err.message}`); }
+                                  }}
+                                  style={{ padding: '4px 8px', borderRadius: 8, border: `1.5px solid ${stage.color}60`, background: `${stage.color}10`, color: stage.color, fontSize: 11, fontWeight: 700, cursor: 'pointer', outline: 'none' }}
+                                >
+                                  {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                                </select>
+                              ) : (
+                                <span style={{ background: `${stage.color}15`, color: stage.color, border: `1px solid ${stage.color}40`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                                  {stage.icon} {stage.label}
+                                </span>
+                              )}
+                              {/* Pre-boarding button for Hired candidates (admin/recruiter only) */}
+                              {(app.stage === 'selected' || app.currentStage === 'Hired') && isAdminOrSuper && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.startPreBoarding(app.id || app._id);
+                                      setToast('✅ Pre-boarding started for this candidate');
+                                    } catch (e) {
+                                      if (e.message?.includes('already')) setToast('ℹ️ Pre-boarding already exists');
+                                      else setToast('❌ ' + e.message);
+                                    }
+                                  }}
+                                  style={{ fontSize: 10, background: '#0176D3', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
+                                >
+                                  🚀 Pre-boarding
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {candidates.length === 0 ? (
-                <div style={{ textAlign:'center', padding:'24px 0', color:'#706E6B', fontSize:13 }}>No candidates in pipeline yet.</div>
-              ) : (() => {
-                const filt = candidates.filter(app => {
-                  const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
-                  const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
-                  const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
-                  const q = pipelineSearch.toLowerCase();
-                  return (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q);
-                });
-
-                if (filt.length === 0) return <div style={{ textAlign:'center', padding:20, color:'#706E6B', fontSize:12 }}>No matching candidates</div>;
-
-                return (
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {filt.map(app => {
-                      const cId = String(app.candidateId?._id || app.candidateId || app.candidate?._id || '');
-                      const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
-                      const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
-                      const stage = SM[app.stage] || { color:'#0176D3', label: app.stage, icon:'•' };
-                      const candName = c.name || app.candidateName || 'Candidate';
-
-                      return (
-                        <div key={app.id || app._id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'#F8FAFF', borderRadius:10, border:'1px solid rgba(1,118,211,0.1)' }}>
-                          <div style={{ width:36, height:36, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14, flexShrink:0 }}>
-                            {(candName[0] || '?').toUpperCase()}
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ color:'#181818', fontWeight:700, fontSize:14 }}>{candName}</div>
-                            <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{c.email || app.candidateEmail || 'No email provided'}</div>
-                            {(c.phone || app.candidatePhone || app.phone) ? (
-                              <div style={{ fontSize:10, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {c.phone || app.candidatePhone || app.phone}</div>
-                            ) : null}
-                          </div>
-                          <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
-                            {isAdminOrSuper ? (
-                              <select
-                                value={app.stage}
-                                onChange={async (e) => {
-                                  const newStage = e.target.value;
-                                  const appId = app.id || app._id;
-                                  try {
-                                    await api.updateStage(appId, newStage);
-                                    setCandidates(prev => prev.map(a => (a.id || a._id) === appId ? { ...a, stage: newStage } : a));
-                                    setToast(`✅ Stage → ${newStage}`);
-                                  } catch (err) { setToast(`❌ ${err.message}`); }
-                                }}
-                                style={{ padding:'4px 8px', borderRadius:8, border:`1.5px solid ${stage.color}60`, background:`${stage.color}10`, color:stage.color, fontSize:11, fontWeight:700, cursor:'pointer', outline:'none' }}
-                              >
-                                {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
-                              </select>
-                            ) : (
-                              <span style={{ background:`${stage.color}15`, color:stage.color, border:`1px solid ${stage.color}40`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                                {stage.icon} {stage.label}
-                              </span>
-                            )}
-                            {/* Pre-boarding button for Hired candidates (admin/recruiter only) */}
-                            {(app.stage === 'selected' || app.currentStage === 'Hired') && isAdminOrSuper && (
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api.startPreBoarding(app.id || app._id);
-                                    setToast('✅ Pre-boarding started for this candidate');
-                                  } catch (e) {
-                                    if (e.message?.includes('already')) setToast('ℹ️ Pre-boarding already exists');
-                                    else setToast('❌ ' + e.message);
-                                  }
-                                }}
-                                style={{ fontSize:10, background:'#0176D3', color:'#fff', border:'none', borderRadius:6, padding:'3px 8px', cursor:'pointer', fontWeight:700, whiteSpace:'nowrap' }}
-                              >
-                                🚀 Pre-boarding
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+              {/* Job Details */}
+              <div style={SF.section}>
+                <div style={SF.label}>Job Description</div>
+                {[
+                  ['Experience', job.experience],
+                  ['Job Type', job.jobType || job.type],
+                  ['Salary', job.salary],
+                  ['Deadline', job.applicationDeadline],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label} style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#706E6B', fontSize: 12, fontWeight: 600 }}>{label}: </span>
+                    <span style={{ color: '#181818', fontSize: 13 }}>{value}</span>
                   </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-            {/* Job Details */}
-            <div style={SF.section}>
-              <div style={SF.label}>Job Description</div>
-              {[
-                ['Experience', job.experience],
-                ['Job Type', job.jobType || job.type],
-                ['Salary', job.salary],
-                ['Deadline', job.applicationDeadline],
-              ].filter(([,v]) => v).map(([label, value]) => (
-                <div key={label} style={{ marginBottom:8 }}>
-                  <span style={{ color:'#706E6B', fontSize:12, fontWeight:600 }}>{label}: </span>
-                  <span style={{ color:'#181818', fontSize:13 }}>{value}</span>
-                </div>
-              ))}
-              {/* Skills — normalize array or comma-string to badge list */}
-              {job.skills && (() => {
-                const skillArr = Array.isArray(job.skills)
-                  ? job.skills
-                  : (job.skills || '').split(',').map(s => s.trim()).filter(Boolean);
-                return skillArr.length > 0 ? (
-                  <div style={{ marginBottom:8 }}>
-                    <div style={{ color:'#706E6B', fontSize:12, fontWeight:600, marginBottom:5 }}>Skills Required</div>
-                    <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                      {skillArr.map(s => (
-                        <span key={s} style={{ background:'#eff6ff', color:'#1d4ed8', border:'1px solid #bfdbfe', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{s}</span>
-                      ))}
+                ))}
+                {/* Skills — normalize array or comma-string to badge list */}
+                {job.skills && (() => {
+                  const skillArr = Array.isArray(job.skills)
+                    ? job.skills
+                    : (job.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+                  return skillArr.length > 0 ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ color: '#706E6B', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>Skills Required</div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {skillArr.map(s => (
+                          <span key={s} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>{s}</span>
+                        ))}
+                      </div>
                     </div>
+                  ) : null;
+                })()}
+                {job.description && (
+                  <div style={{ marginTop: 12, color: '#3E3E3C', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{job.description}</div>
+                )}
+                {job.requirements && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ color: '#706E6B', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Requirements</div>
+                    <div style={{ color: '#3E3E3C', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{job.requirements}</div>
                   </div>
-                ) : null;
-              })()}
-              {job.description && (
-                <div style={{ marginTop:12, color:'#3E3E3C', fontSize:13, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{job.description}</div>
-              )}
-              {job.requirements && (
-                <div style={{ marginTop:12 }}>
-                  <div style={{ color:'#706E6B', fontSize:12, fontWeight:600, marginBottom:4 }}>Requirements</div>
-                  <div style={{ color:'#3E3E3C', fontSize:13, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{job.requirements}</div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
+
+  return require('react-dom').createPortal(content, document.body);
+}
 }

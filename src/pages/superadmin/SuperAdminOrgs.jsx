@@ -564,72 +564,65 @@ export default function SuperAdminOrgs() {
 
       {/* Create Org Modal */}
       {showCreate && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520, maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 60px rgba(0,0,0,0.22)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div>
-                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Super Admin</div>
-                <h3 style={{ color: '#fff', margin: 0, fontSize: 17, fontWeight: 800 }}>🏢 Create Organisation</h3>
-                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '4px 0 0' }}>Set up the org — then invite admin accounts to manage it</p>
-              </div>
-              <button onClick={() => { setShowCreate(false); setForm(EMPTY_FORM); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
-            </div>
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
-              <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} placeholder="TechCorp India Pvt. Ltd." />
-              <Field label="Company Domain" required value={form.domain} onChange={v => sf('domain', v)} placeholder="techcorp.in" hint="Employers use this domain to verify and log in (www/https stripped automatically)" />
-              {/* Staffing Agency Toggle */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: form.isStaffingAgency ? 'rgba(1,118,211,0.06)' : '#F8FAFC', borderRadius: 10, padding: '12px 14px', border: `1px solid ${form.isStaffingAgency ? 'rgba(1,118,211,0.25)' : '#E2E8F0'}`, cursor: 'pointer' }} onClick={() => sf('isStaffingAgency', !form.isStaffingAgency)}>
-                <div style={{ width: 36, height: 20, borderRadius: 10, background: form.isStaffingAgency ? '#0176D3' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0, position: 'relative', marginTop: 2 }}>
-                  <div style={{ position: 'absolute', top: 2, left: form.isStaffingAgency ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#181818' }}>Staffing Agency Organisation</div>
-                  <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>Enable if this org is a staffing agency — they get full candidate-pool, job-posting, and client-request features like the Super Admin.</div>
-                </div>
-              </div>
-              <div>
-                <Field label="Logo URL" value={form.logoUrl} onChange={v => sf('logoUrl', v)} placeholder="https://company.com/logo.png" hint="Direct link to company logo image" />
-                {form.logoUrl && <img src={form.logoUrl} alt="logo preview" style={{ marginTop: 8, height: 40, borderRadius: 6, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />}
-              </div>
-              <FormRow cols={2}>
-                <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="Information Technology" />
-                <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
-                  options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
-              </FormRow>
-              <Field label="Plan" value={form.plan} onChange={v => sf('plan', v)}
-                options={[{value:'trial',label:'Trial (14 days)'},{value:'starter',label:'Starter'},{value:'growth',label:'Growth'},{value:'enterprise',label:'Enterprise'}]} />
-            </div>
-            <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #F1F5F9', background: '#fff', display: 'flex', gap: 12 }}>
-              <button onClick={createOrg} disabled={saving} style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : 1 }}>{saving ? 'Creating…' : '🏢 Create Organisation'}</button>
+        <Modal
+          title="🏢 Create Organisation"
+          onClose={() => { setShowCreate(false); setForm(EMPTY_FORM); }}
+          footer={
+            <>
+              <button onClick={createOrg} disabled={saving} style={{ ...btnP, flex: 1 }}>{saving ? 'Creating…' : 'Create Organisation'}</button>
               <button onClick={() => { setShowCreate(false); setForm(EMPTY_FORM); }} style={btnG}>Cancel</button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>Set up the org — then invite admin accounts to manage it</p>
+            
+            <Field label="Organisation Name" required value={form.name} onChange={v => sf('name', v)} placeholder="TechCorp India Pvt. Ltd." />
+            <Field label="Company Domain" required value={form.domain} onChange={v => sf('domain', v)} placeholder="techcorp.in" hint="Employers use this domain to verify and log in" />
+            
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: form.isStaffingAgency ? 'rgba(1,118,211,0.06)' : '#F8FAFC', borderRadius: 12, padding: '16px', border: `1px solid ${form.isStaffingAgency ? 'rgba(1,118,211,0.25)' : '#E2E8F0'}`, cursor: 'pointer' }} onClick={() => sf('isStaffingAgency', !form.isStaffingAgency)}>
+              <div style={{ width: 36, height: 20, borderRadius: 10, background: form.isStaffingAgency ? '#0176D3' : '#CBD5E1', transition: 'background 0.2s', flexShrink: 0, position: 'relative', marginTop: 2 }}>
+                <div style={{ position: 'absolute', top: 2, left: form.isStaffingAgency ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#181818' }}>Staffing Agency Organisation</div>
+                <div style={{ fontSize: 11, color: '#706E6B', marginTop: 4 }}>Enable if this org is a staffing agency — they get full candidate-pool and client-request management.</div>
+              </div>
             </div>
+
+            <Field label="Logo URL" value={form.logoUrl} onChange={v => sf('logoUrl', v)} placeholder="https://company.com/logo.png" />
+            {form.logoUrl && <img src={form.logoUrl} alt="logo preview" style={{ height: 40, borderRadius: 6, objectFit: 'contain', alignSelf: 'flex-start' }} onError={e => e.target.style.display = 'none'} />}
+            
+            <FormRow cols={2}>
+              <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="Information Technology" />
+              <Field label="Company Size" value={form.size} onChange={v => sf('size', v)}
+                options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({value:s,label:`${s} employees`}))} placeholder="Select size" />
+            </FormRow>
+            <Field label="Plan" value={form.plan} onChange={v => sf('plan', v)}
+              options={[{value:'trial',label:'Trial (14 days)'},{value:'starter',label:'Starter'},{value:'growth',label:'Growth'},{value:'enterprise',label:'Enterprise'}]} />
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Invite Admin Modal */}
       {showInvite && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 440, maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 60px rgba(0,0,0,0.22)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div>
-                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Access Control</div>
-                <h3 style={{ color: '#fff', margin: 0, fontSize: 17, fontWeight: 800 }}>👤 Invite Admin</h3>
-                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '4px 0 0' }}>They'll manage this org's recruiters and candidates</p>
-              </div>
-              <button onClick={() => { setShowInvite(null); setInviteForm(INVITE_EMPTY); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
-            </div>
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
-               <Field label="Full Name" required value={inviteForm.name} onChange={v => sif('name', v)} placeholder="Priya Sharma" />
-               <Field label="Email" required type="email" value={inviteForm.email} onChange={v => sif('email', v)} placeholder="admin@company.com" />
-               <Field label="Phone Number" required type="tel" value={inviteForm.phone} onChange={v => sif('phone', v)} placeholder="+91 ..." />
-            </div>
-            <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #F1F5F9', background: '#fff', display: 'flex', gap: 12 }}>
-              <button onClick={inviteAdmin} disabled={saving} style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : 1 }}>{saving ? 'Creating…' : '✅ Create Admin Account'}</button>
+        <Modal
+          title="👤 Invite Admin"
+          onClose={() => { setShowInvite(null); setInviteForm(INVITE_EMPTY); }}
+          footer={
+            <>
+              <button onClick={inviteAdmin} disabled={saving} style={{ ...btnP, flex: 1 }}>{saving ? 'Creating…' : 'Create Admin Account'}</button>
               <button onClick={() => { setShowInvite(null); setInviteForm(INVITE_EMPTY); }} style={btnG}>Cancel</button>
-            </div>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>They'll manage this org's recruiters and candidates.</p>
+            <Field label="Full Name" required value={inviteForm.name} onChange={v => sif('name', v)} placeholder="Priya Sharma" />
+            <Field label="Email" required type="email" value={inviteForm.email} onChange={v => sif('email', v)} placeholder="admin@company.com" />
+            <Field label="Phone Number" required type="tel" value={inviteForm.phone} onChange={v => sif('phone', v)} placeholder="+91 ..." />
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Career Listing Modal */}
