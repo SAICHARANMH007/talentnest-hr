@@ -37,7 +37,8 @@ function JobShareBar({ job }) {
   const [copied, setCopied] = React.useState(false);
   const jid     = job._id || job.id;
   const jobUrl  = `${window.location.origin}/careers?job=${jid}`;
-  const title   = `${job.title} @ TalentNest HR`;
+  const displayCompany = (!!sessionStorage.getItem('tn_token')) ? (job.company || 'TalentNest HR') : 'TalentNest HR';
+  const title   = `${job.title} @ ${displayCompany}`;
   const loc     = job.location ? ` · ${job.location}` : '';
   const waText  = encodeURIComponent(`🚀 Job Opening: ${title}${loc}\n\n${jobUrl}`);
   const liUrl   = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
@@ -102,6 +103,7 @@ export default function CareersPage() {
   const initialCompanyFilter = searchParams.get('company') || '';
   const initialSearch = searchParams.get('search') || '';
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
   
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -400,7 +402,7 @@ export default function CareersPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: 'white', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>TalentNest HR · {job.location || 'India'}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 1 }}>{isLoggedIn ? (job.company || job.companyName) : 'TalentNest HR'} · {job.location || 'India'}</div>
                       </div>
                       <span style={{ background: `${(job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981'))}22`, color: (job.urgency === 'High' ? '#BA0517' : (job.urgency === 'Medium' ? '#F59E0B' : '#10b981')), fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 100, flexShrink: 0 }}>{job.urgency || 'New'}</span>
                     </div>
@@ -468,7 +470,7 @@ export default function CareersPage() {
                       🔗 Shared Job
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', marginBottom: 4 }}>{sharedJob.title}</div>
-                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>🏢 TalentNest HR{sharedJob.location ? ` · 📍 ${sharedJob.location}` : ''}</div>
+                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>🏢 {isLoggedIn ? sharedJob.company : 'TalentNest HR'}{sharedJob.location ? ` · 📍 ${sharedJob.location}` : ''}</div>
                     <button onClick={() => { setApplying(sharedJob); setViewingJob(sharedJob); }}
                       className="tn-btn tn-btn-primary" style={{ fontSize: 13, padding: '10px 22px' }}>
                       Apply Now →
@@ -515,14 +517,14 @@ export default function CareersPage() {
                           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0A1628', margin: 0 }}>
                             <a href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}
                                style={{ color: 'inherit', textDecoration: 'none' }}
-                               aria-label={`View ${j.title} at TalentNest HR job details`}>
+                               aria-label={`View ${j.title} at ${isLoggedIn ? j.company : 'TalentNest HR'} job details`}>
                               {j.title}
                             </a>
                           </h3>
                         </div>
 
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#64748B', fontSize: '0.85rem', marginBottom: 10 }}>
-                          <span>🏢 TalentNest HR</span>
+                          <span>🏢 {isLoggedIn ? j.company : 'TalentNest HR'}</span>
                           <span>📍 {j.location || 'Remote'}</span>
                           <span>🗓 {j.experience || 'Any'} exp</span>
                         </div>

@@ -40,6 +40,7 @@ export default function JobDetailPage() {
   const [searchParams] = useSearchParams();
   const [applying, setApplying] = useState(false);
   const explicitOrg = searchParams.get('org');
+  const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
 
   useEffect(() => {
     if (!document.getElementById('marketing-css')) {
@@ -105,13 +106,13 @@ export default function JobDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'JobPosting',
           title: j.title,
-          description: j.description || `${j.title} opening at ${explicitOrg || 'TalentNest HR'} in ${j.location || 'India'}.`,
+          description: j.description || `${j.title} opening at ${isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')} in ${j.location || 'India'}.`,
           datePosted: j.createdAt || new Date().toISOString(),
           validThrough: new Date(Date.now() + 60 * 86400000).toISOString(),
           employmentType: mapType(j.jobType),
           hiringOrganization: {
             '@type': 'Organization',
-            name: explicitOrg || 'TalentNest HR',
+            name: isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR'),
             sameAs: SITEURL,
           },
           jobLocation: {
@@ -125,7 +126,7 @@ export default function JobDetailPage() {
           },
           identifier: {
             '@type': 'PropertyValue',
-            name: explicitOrg || 'TalentNest HR',
+            name: isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR'),
             value: slug,
           },
           url: canonical,
@@ -214,7 +215,7 @@ export default function JobDetailPage() {
 
           {/* Meta row */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 28, alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {explicitOrg || 'TalentNest HR'}</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')}</span>
             {job.jobType && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>💼 {job.jobType}</span>}
             {job.workMode && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>🏠 {job.workMode}</span>}
             {job.experience && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>⏱ {job.experience}</span>}
@@ -301,7 +302,7 @@ export default function JobDetailPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 14px' }}>Job Details</h3>
             {[
-              ['Company',     explicitOrg || 'TalentNest HR'],
+              ['Company',     isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')],
               ['Location',    job.location],
               ['Job Type',    job.jobType],
               ['Work Mode',   job.workMode],
@@ -347,12 +348,12 @@ export default function JobDetailPage() {
             <div style={{ background: 'rgba(1,118,211,0.06)', padding: '20px', borderRadius: 20, marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {(explicitOrg || 'T').charAt(0).toUpperCase()}
+                  {(isLoggedIn ? (job.company || 'T') : (explicitOrg || 'T')).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <h1 style={{ fontSize: 'clamp(20px, 4vw, 32px)', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>{job.title}</h1>
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
-                    <span>🏢 {explicitOrg || 'TalentNest HR'}</span>
+                    <span>🏢 {isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')}</span>
                     <span>📍 {job.location || 'India'}</span>
                     <span>⏱ {job.jobType || 'Full-time'}</span>
                   </div>
