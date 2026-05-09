@@ -54,23 +54,28 @@ export default function SuperAdminPlatform({ onNavigate }) {
     const unwrap = (r) => Array.isArray(r) ? r : (r?.data || []);
     Promise.all([
       api.getOrgs().catch(() => []),
-      api.getUsers({ limit: 10000000 }).catch(() => []),
       api.getAuditLogs().catch(() => []),
-      // High-accuracy counts
+      // High-accuracy counts from summarized endpoints
       api.getUserCount().catch(() => 0),
-      api.getJobs().then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
+      api.getJobs({ limit: 1 }).then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
       api.getApplications({ limit: 1 }).then(r => r?.pagination?.total ?? 0).catch(() => 0),
-    ]).then(([o, u, logs, uCount, jCount, aCount]) => {
+    ]).then(([o, logs, uCount, jCount, aCount]) => {
       const orgList = unwrap(o);
       setOrgs(orgList);
-      setUsers(unwrap(u));
       setAuditLogs(unwrap(logs));
+      
+      const totalUsers = typeof uCount === 'number' ? uCount : (uCount?.total || uCount?.count || uCount?.data || 0);
       setCounts({
         orgs: orgList.length,
-        users: typeof uCount === 'number' ? uCount : (uCount?.count || uCount?.data || 0),
+        users: totalUsers,
         jobs: typeof jCount === 'number' ? jCount : (jCount?.total || 0),
         apps: typeof aCount === 'number' ? aCount : (aCount?.total || 0),
       });
+
+      // Role breakdown logic for a fast dashboard: 
+      // If we don't have the full user list (to keep it fast), we use a placeholder or 
+      // fetch a sample. For now, we'll skip the 10M fetch and rely on the total count.
+      setUsers([]); 
     }).finally(() => setLoading(false));
   }, []);
 
