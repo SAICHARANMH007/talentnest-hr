@@ -44,10 +44,10 @@ function OtpScreen({ email, onVerified, onBack }) {
     <div>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>🔐</div>
-        <h2 style={{ color: '#181818', fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Two-Factor Authentication</h2>
+        <h2 style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Two-Factor Authentication</h2>
         <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>
           A 6-digit OTP has been sent to your registered phone or email.<br />
-          <strong style={{ color: '#181818' }}>{email}</strong>
+          <strong style={{ color: '#FFFFFF' }}>{email}</strong>
         </p>
       </div>
 
@@ -128,8 +128,8 @@ const CARD = {
 const INP = { 
   width: '100%', 
   padding: '14px 18px', 
-  background: 'rgba(255, 255, 255, 0.04)', 
-  border: '1.5px solid rgba(255, 255, 255, 0.1)', 
+  background: 'rgba(255, 255, 255, 0.05)', 
+  border: '1.5px solid rgba(255, 255, 255, 0.12)', 
   borderRadius: 14, 
   color: '#FFFFFF', 
   fontSize: 15, 
@@ -255,6 +255,14 @@ function EntryScreen({ onSelect, navigate }) {
         .entry-card:hover .action-btn {
           transform: translateY(-2px);
           box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        input::placeholder { color: rgba(255,255,255,0.3) !important; }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #ffffff !important;
+          -webkit-box-shadow: 0 0 0px 1000px #0e1a2d inset !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
       `}</style>
 
@@ -518,27 +526,27 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           {mode === 'register' && (
             <>
               <div>
-                <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>FULL NAME *</label>
+                <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>FULL NAME *</label>
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" style={INP} autoComplete="off" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
               </div>
               <div>
-                <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER *</label>
+                <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER *</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
               </div>
               {/* Professional details — auto stacks to single column on mobile */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT TITLE</label>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT TITLE</label>
                   <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Software Engineer" style={INP} />
                 </div>
                 <div>
-                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT COMPANY</label>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT COMPANY</label>
                   <input value={currentCompany} onChange={e => setCompany(e.target.value)} placeholder="e.g. Infosys" style={INP} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
                   <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#181818' : '#9CA3AF' }}>
                     <option value="">Select…</option>
                     {['0','1','2','3','4','5','6','7','8','9','10','12','15','18','20','25'].map(y => (
@@ -547,7 +555,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   </select>
                 </div>
                 <div>
-                  <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>AVAILABILITY</label>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>AVAILABILITY</label>
                   <select value={availability} onChange={e => setAvailability(e.target.value)} style={{ ...INP, cursor: 'pointer', color: availability ? '#181818' : '#9CA3AF' }}>
                     <option value="">Select…</option>
                     <option value="immediate">Immediate</option>
@@ -563,7 +571,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           )}
 
           <div>
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={INP} autoComplete="email" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
           </div>
 
@@ -578,7 +586,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
           {mode === 'register' && (
             <div>
-              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
               <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
               {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
             </div>
@@ -586,7 +594,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
           {mode === 'register' && (
             <div>
-              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
               <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
               {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
             </div>
@@ -736,11 +744,11 @@ function ForgotPasswordForm({ onBack }) {
 
         {step === 'email' && (
           <>
-            <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Reset Password</h2>
-            <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 24px', lineHeight: 1.6 }}>
+            <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Reset Password</h2>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 24px', lineHeight: 1.6 }}>
               Enter your registered email. We'll send a 6-digit OTP to verify it's you.
             </p>
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EMAIL ADDRESS *</label>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EMAIL ADDRESS *</label>
             <input
               type="email"
               value={email}
@@ -758,11 +766,11 @@ function ForgotPasswordForm({ onBack }) {
 
         {step === 'otp' && (
           <>
-            <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Enter OTP</h2>
-            <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 6px', lineHeight: 1.6 }}>
-              We sent a 6-digit code to <strong style={{ color: '#181818' }}>{email}</strong>
+            <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Enter OTP</h2>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 6px', lineHeight: 1.6 }}>
+              We sent a 6-digit code to <strong style={{ color: '#FFFFFF' }}>{email}</strong>
             </p>
-            <p style={{ color: '#9CA3AF', fontSize: 11, margin: '0 0 24px' }}>Check your inbox (and spam folder). Valid for 10 minutes.</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '0 0 24px' }}>Check your inbox (and spam folder). Valid for 10 minutes.</p>
 
             {/* OTP digit boxes */}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 24 }}>
@@ -804,7 +812,7 @@ function ForgotPasswordForm({ onBack }) {
 
             <div style={{ textAlign: 'center' }}>
               {resendCooldown > 0 ? (
-                <p style={{ color: '#9CA3AF', fontSize: 12, margin: 0 }}>Resend in {resendCooldown}s</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: 0 }}>Resend in {resendCooldown}s</p>
               ) : (
                 <button
                   onClick={async () => { setOtp(''); await sendOtp(); }}
@@ -847,25 +855,25 @@ function ResetPasswordForm({ token, email: initEmail, onBack }) {
     <div style={BG}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
-        <h2 style={{ color: '#0d2150', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Set New Password</h2>
-        <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 24px' }}>for <strong>{initEmail}</strong></p>
+        <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: '0 0 6px' }}>Set New Password</h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 24px' }}>for <strong>{initEmail}</strong></p>
 
         {done ? (
           <div style={{ background: 'rgba(46,132,74,0.08)', border: '1px solid rgba(46,132,74,0.3)', borderRadius: 12, padding: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
             <p style={{ color: '#2E844A', fontWeight: 700, margin: '0 0 6px' }}>Password updated!</p>
-            <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>You can now sign in with your new password.</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>You can now sign in with your new password.</p>
             <button onClick={onBack} style={{ ...BTN_P, marginTop: 20, padding: '10px 24px' }}>Go to Login</button>
           </div>
         ) : (
           <>
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>NEW PASSWORD *</label>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>NEW PASSWORD *</label>
             <div style={{ position: 'relative', marginBottom: 4 }}>
               <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
+              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
             </div>
             <PasswordStrength pw={pw} />
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', margin: '14px 0 6px' }}>CONFIRM PASSWORD *</label>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', margin: '14px 0 6px' }}>CONFIRM PASSWORD *</label>
             <input type="password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" style={{ ...INP, marginBottom: 4, borderColor: pw2 && pw !== pw2 ? '#BA0517' : '' }} />
             {pw2 && pw !== pw2 && <p style={{ color: '#BA0517', fontSize: 11, margin: '0 0 12px', fontWeight: 600 }}>⚠️ Passwords do not match</p>}
             {pw2 && pw === pw2 && <p style={{ color: '#2E844A', fontSize: 11, margin: '0 0 12px', fontWeight: 600 }}>✓ Passwords match</p>}
@@ -1030,10 +1038,10 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           </div>
           <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-            <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#64748B', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+            <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             <div style={{ flex: 1, textAlign: 'left' }}>
-              <h2 style={{ color: '#0F172A', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Employer</h2>
-              <p style={{ color: '#64748B', fontSize: 13, margin: '2px 0 0' }}>
+              <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Employer</h2>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '2px 0 0' }}>
                 {step === 1 ? 'Verify your organization' : 'Sign in to recruitment portal'}
               </p>
             </div>
@@ -1056,10 +1064,10 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             </div>
 
             <div>
-              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>COMPANY WEBSITE *</label>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>COMPANY WEBSITE *</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9E9D9B', fontSize: 13 }}>🌐</span>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>🌐</span>
                   <input
                     value={companyUrl}
                     onChange={e => { setCompanyUrl(e.target.value); setOrgInfo(null); }}
@@ -1077,7 +1085,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   {domainChecking ? <Spinner /> : 'Verify'}
                 </button>
               </div>
-              <p style={{ color: '#9E9D9B', fontSize: 11, margin: '6px 0 0' }}>e.g. talentnesthr.com · acmecorp.com · yourcompany.in</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '6px 0 0' }}>e.g. talentnesthr.com · acmecorp.com · yourcompany.in</p>
             </div>
 
             {/* Result: not checked yet */}
@@ -1094,7 +1102,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(46,132,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🏢</div>
                   <div>
                     <p style={{ color: '#2E844A', fontSize: 14, fontWeight: 800, margin: 0 }}>✅ {orgInfo.org?.name}</p>
-                    <p style={{ color: '#706E6B', fontSize: 11, margin: '2px 0 0' }}>Organisation verified and active</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '2px 0 0' }}>Organisation verified and active</p>
                   </div>
                   <span style={{ marginLeft: 'auto', background: planBg[orgInfo.org?.plan] || '#f1f5f9', color: planColors[orgInfo.org?.plan] || '#706E6B', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, textTransform: 'capitalize' }}>
                     {orgInfo.org?.plan} Plan
@@ -1110,7 +1118,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {orgInfo && !orgInfo.found && (
               <div style={{ background: 'rgba(186,5,23,0.05)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 12, padding: '14px 16px' }}>
                 <p style={{ color: '#BA0517', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>❌ Company not registered</p>
-                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
                   <strong>{companyUrl}</strong> is not registered on TalentNest HR. Contact us to get your organisation set up.
                 </p>
                 <a href="mailto:hr@talentnesthr.com" style={{ color: '#0176D3', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
@@ -1123,7 +1131,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {orgInfo?.suspended && (
               <div style={{ background: 'rgba(186,5,23,0.06)', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 12, padding: '14px 16px' }}>
                 <p style={{ color: '#BA0517', fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>⛔ Account Suspended</p>
-                <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>{orgInfo.suspendedReason}</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: 0 }}>{orgInfo.suspendedReason}</p>
               </div>
             )}
           </div>
@@ -1137,21 +1145,21 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               <span style={{ fontSize: 18 }}>🏢</span>
               <div style={{ flex: 1 }}>
                 <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: 0 }}>{orgInfo?.org?.name}</p>
-                <p style={{ color: '#706E6B', fontSize: 11, margin: '1px 0 0' }}>Verified organisation · {orgInfo?.org?.plan} plan</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '1px 0 0' }}>Verified organisation · {orgInfo?.org?.plan} plan</p>
               </div>
               <span style={{ color: '#2E844A', fontSize: 18 }}>✅</span>
             </div>
 
             <div>
-              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={`hr@${companyUrl.replace(/^www\./,'')}`} style={INP} autoFocus />
             </div>
 
             <div>
-              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
               <div style={{ position: 'relative' }}>
                 <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-                <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
+                <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
               </div>
             </div>
 
@@ -1169,7 +1177,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               <div style={{ marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 12px' }}>
                   <div style={{ flex: 1, height: 1, background: '#FAFAF9' }} />
-                  <span style={{ color: '#475569', fontSize: 11 }}>or</span>
+                  <span style={{ color: '#FFFFFF', fontSize: 11 }}>or</span>
                   <div style={{ flex: 1, height: 1, background: '#FAFAF9' }} />
                 </div>
                 <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }} />
@@ -1238,7 +1246,7 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
         <span style={{ fontSize: 18 }}>🏢</span>
         <div>
           <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: 0 }}>{orgInfo?.org?.name || companyUrl}</p>
-          <p style={{ color: '#706E6B', fontSize: 11, margin: '1px 0 0' }}>Registering as Recruiter</p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '1px 0 0' }}>Registering as Recruiter</p>
         </div>
       </div>
       {[
@@ -1246,22 +1254,22 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
         { key: 'email',    label: 'WORK EMAIL *',     type: 'email',    ph: `recruiter@${(companyUrl||'').replace(/^www\./,'')}` },
       ].map(f => (
         <div key={f.key}>
-          <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label}</label>
+          <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label}</label>
           <input type={f.type} value={form[f.key]} onChange={e => sf(f.key, e.target.value)} placeholder={f.ph} style={INP} />
         </div>
       ))}
       <div>
-        <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>PASSWORD *</label>
+        <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>PASSWORD *</label>
         <div style={{ position: 'relative' }}>
           <input type={showPw ? 'text' : 'password'} value={form.password} onChange={e => sf('password', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="Min 8 chars, 1 uppercase, 1 number" style={{ ...INP, paddingRight: 44 }} />
-          <button onClick={() => setShow(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
+          <button onClick={() => setShow(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
         </div>
         <PasswordStrength pw={form.password} />
       </div>
       <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', opacity: loading ? 0.7 : 1 }}>
         {loading ? <><Spinner /> Creating account…</> : '🚀 Create Recruiter Account'}
       </button>
-      <p style={{ color: '#706E6B', fontSize: 11, textAlign: 'center', margin: 0 }}>
+      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center', margin: 0 }}>
         Already have an account?{' '}
         <span onClick={onBack} style={{ color: '#0176D3', cursor: 'pointer' }}>Sign in</span>
       </p>
