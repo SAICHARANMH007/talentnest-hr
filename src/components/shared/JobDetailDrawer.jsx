@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Badge from '../ui/Badge.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import Toast from '../ui/Toast.jsx';
@@ -464,6 +465,5 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
     </div>
   );
 
-  return require('react-dom').createPortal(content, document.body);
-}
+  return createPortal(content, document.body);
 }

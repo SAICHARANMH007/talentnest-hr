@@ -70,4 +70,9 @@ function clearCacheForUser(userId) {
   }
 }
 
+/** Wipes the entire cache store. */
+function clearCache() {
+  store.clear();
+}
+
 module.exports = { cacheRoute, invalidatePrefix, clearCache, clearCacheForUser };
