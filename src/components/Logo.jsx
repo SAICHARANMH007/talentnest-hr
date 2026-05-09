@@ -35,33 +35,34 @@ export default function Logo({
   const IconMark = () => {
     const s = iconSize;
     return (
-      <svg width={s} height={s} viewBox="0 0 100 100" fill="none" style={{ borderRadius: '24%', overflow: 'hidden' }}>
-        {/* Rounded Square Background */}
-        <rect width="100" height="100" rx="24" fill="#031026" />
+      <svg width={s} height={s} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '22%', overflow: 'hidden' }}>
+        {/* Rounded Square Background - Matches original dark navy */}
+        <rect width="100" height="100" rx="22" fill="#031026" />
         
-        {/* Hexagon Shell */}
+        {/* Main Hexagon Shell - Pointed top orientation */}
         <path 
-          d="M50 20 L76 35 V65 L50 80 L24 65 V35 Z" 
-          stroke={hrColor} 
-          strokeWidth="4" 
-          fill="rgba(0, 194, 203, 0.1)" 
+          d="M50 12 L84 31 V69 L50 88 L16 69 V31 Z" 
+          stroke="#3B82F6" 
+          strokeWidth="8" 
+          strokeLinejoin="round"
+          fill="rgba(59, 130, 246, 0.08)" 
         />
         
-        {/* Nodes */}
+        {/* Corner Nodes - Matching the 6-point pattern */}
         {[
-          [50, 20], [76, 35], [76, 65], [50, 80], [24, 65], [24, 35]
+          [50, 12], [84, 31], [84, 69], [50, 88], [16, 69], [16, 31]
         ].map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="3" fill={hrColor} />
+          <circle key={i} cx={x} cy={y} r="6" fill="#3B82F6" />
         ))}
 
-        {/* Center Circle */}
-        <circle cx="50" cy="53" r="14" fill={accentColor} />
+        {/* Center Primary Circle */}
+        <circle cx="50" cy="51" r="18" fill="#3B82F6" />
         
-        {/* Arrow */}
+        {/* Bold White Upward Arrow */}
         <path 
-          d="M50 60 V46 M44 52 L50 45 L56 52" 
+          d="M50 64 V38 M40 48 L50 38 L60 48" 
           stroke="white" 
-          strokeWidth="5" 
+          strokeWidth="8" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
         />
