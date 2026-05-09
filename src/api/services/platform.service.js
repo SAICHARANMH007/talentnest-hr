@@ -142,6 +142,7 @@ export const platformService = {
 
   // Impersonation (super_admin)
   async impersonate(userId)             { return req('POST', '/auth/impersonate', { targetUserId: userId }); },
+  async stopImpersonate()               { return req('POST', '/auth/stop-impersonate', {}); },
 
   // Bulk WhatsApp outreach (legacy endpoint)
   async bulkWhatsApp(data)              { return req('POST', '/users/bulk-whatsapp', data); },

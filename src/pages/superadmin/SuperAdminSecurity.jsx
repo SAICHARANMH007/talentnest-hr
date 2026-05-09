@@ -189,7 +189,7 @@ function ImpersonateTab({ users }) {
 
   const handleExitImpersonation = async () => {
     try {
-      const res = await api.post('/auth/stop-impersonate');
+      const res = await api.stopImpersonate();
       
       // Clear ALL auth state from sessionStorage to force a fresh restore on reload
       sessionStorage.removeItem('tn_impersonate_token');

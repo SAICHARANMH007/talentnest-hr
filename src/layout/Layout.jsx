@@ -679,7 +679,7 @@ function ImpersonationBanner() {
   const handleExit = async () => {
     try {
       // 1. Call backend to restore the original SA session cookie
-      const res = await api.post('/auth/stop-impersonate');
+      const res = await api.stopImpersonate();
       
       // 2. Clear ALL auth state from sessionStorage to force a fresh restore on reload
       sessionStorage.removeItem('tn_impersonate_token');
