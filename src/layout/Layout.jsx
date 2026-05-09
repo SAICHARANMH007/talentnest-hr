@@ -588,6 +588,7 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
         {nav.map(n => (
           <NavLink key={n.id} to={`/app/${n.id}`} onClick={() => setMobileOpen?.(false)}
             data-label={n.label}
+            data-tour-id={n.id}
             title={n.label}
             style={({ isActive }) => ({
               width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12,
