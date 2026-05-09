@@ -809,6 +809,7 @@ export default function CareersPage() {
   const [viewingJob, setViewingJob] = useState(null); // job whose JSON-LD is injected
   const [sharedJob, setSharedJob] = useState(null); // job featured at top when coming from a shared link
   const [sharePopover, setSharePopover] = useState(null); // job id whose share popover is open
+  const [expanded, setExpanded] = useState(null); // id of job whose details are expanded
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -1166,7 +1167,11 @@ export default function CareersPage() {
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.1)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; }}
                   >
-                    <div style={{ padding: '24px 28px' }}>
+                    {(() => {
+                      const isOpen = expanded === (j.id || j._id);
+                      return (
+                        <>
+                    <div style={{ padding: '24px 28px', cursor: 'pointer' }} onClick={() => setExpanded(isOpen ? null : (j.id || j._id))}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 260 }}>
                         {/* Badges */}
@@ -1207,7 +1212,7 @@ export default function CareersPage() {
                         </div>
 
                         {j.description && (
-                          <p style={{ color: '#64748B', fontSize: '0.875rem', margin: '0 0 12px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{j.description}</p>
+                          <p style={{ color: '#64748B', fontSize: '0.875rem', margin: '0 0 12px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: isOpen ? 'unset' : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{j.description}</p>
                         )}
 
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -1244,12 +1249,26 @@ export default function CareersPage() {
                         <button onClick={() => navigate('/login')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F7F8FC', color: '#64748B', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           Sign In to Track
                         </button>
+                        <span style={{ color: '#94a3b8', fontSize: 11 }}>{isOpen ? '▲ Hide' : '▼ Details'}</span>
                       </div>
                     </div>
                     </div>
 
+                    {/* Expanded details */}
+                    {isOpen && j.requirements && (
+                      <div style={{ padding: '0 28px 20px', borderTop: '1px solid #F1F5F9' }}>
+                        <div style={{ marginTop: 16 }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
+                          <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* ── Share bar ── */}
                     <JobShareBar job={j} />
+                    </>
+                    );
+                    })()}
                   </div>
                 ))}
 
