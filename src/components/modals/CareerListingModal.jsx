@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
+import Modal from '../ui/Modal.jsx';
+import { btnP, btnG } from '../../constants/styles.js';
 
 const URGENCY_COLOR = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
 const URGENCY_LABEL = { High: '🔥 Emergency', Medium: '⚡ High', Low: '📌 Normal' };

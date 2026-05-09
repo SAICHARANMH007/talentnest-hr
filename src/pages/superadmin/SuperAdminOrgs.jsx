@@ -4,6 +4,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
+import Modal from '../../components/ui/Modal.jsx';
 import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
 
 const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 20 };
