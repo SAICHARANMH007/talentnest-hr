@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { set401Handler, clearToken, default as api, setToken as setApiToken, tokenIsValid } from './api/api.js';
 import { usePushNotifications } from './hooks/usePushNotifications.js';
 import { API_BASE_URL } from './api/config.js';
+import PlatformPresentationModal from './components/modals/PlatformPresentationModal.jsx';
 
 // ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────────────────
 const MeetingRoom      = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
@@ -635,6 +636,7 @@ export default function App() {
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <PlatformPresentationModal />
     </ErrorBoundary>
   );
 }
