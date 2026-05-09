@@ -37,30 +37,30 @@ export default function Logo({
     return (
       <svg width={s} height={s} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: '22%', overflow: 'hidden' }}>
         {/* Rounded Square Background - Matches original dark navy */}
-        <rect width="100" height="100" rx="22" fill="#031026" />
+        <rect width="100" height="100" rx="22" fill="#041634" />
         
-        {/* Main Hexagon Shell - Pointed top orientation */}
+        {/* Main Hexagon - Solid fill matching background */}
         <path 
           d="M50 12 L84 31 V69 L50 88 L16 69 V31 Z" 
-          stroke="#3B82F6" 
-          strokeWidth="8" 
+          stroke="#3170F3" 
+          strokeWidth="7" 
           strokeLinejoin="round"
-          fill="rgba(59, 130, 246, 0.08)" 
+          fill="#041634" 
         />
         
-        {/* Corner Nodes - Matching the 6-point pattern */}
+        {/* Midpoint Side Nodes - Exactly 6 nodes on side centers */}
         {[
-          [50, 12], [84, 31], [84, 69], [50, 88], [16, 69], [16, 31]
+          [67, 21], [84, 50], [67, 79], [33, 79], [16, 50], [33, 21]
         ].map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="6" fill="#3B82F6" />
+          <circle key={i} cx={x} cy={y} r="7" fill="#3170F3" />
         ))}
 
         {/* Center Primary Circle */}
-        <circle cx="50" cy="51" r="18" fill="#3B82F6" />
+        <circle cx="50" cy="51" r="18" fill="#3170F3" />
         
         {/* Bold White Upward Arrow */}
         <path 
-          d="M50 64 V38 M40 48 L50 38 L60 48" 
+          d="M50 65 V39 M40 49 L50 38 L60 49" 
           stroke="white" 
           strokeWidth="8" 
           strokeLinecap="round" 

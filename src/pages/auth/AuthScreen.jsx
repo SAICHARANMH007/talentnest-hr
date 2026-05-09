@@ -112,11 +112,11 @@ const BG = {
 };
 
 const CARD = { 
-  background: 'rgba(255, 255, 255, 0.98)', 
-  backdropFilter: 'blur(12px)',
-  boxShadow: '0 32px 80px rgba(0,0,0,0.35)', 
-  border: '1px solid rgba(255,255,255,0.2)', 
-  borderRadius: 28, 
+  background: 'rgba(10, 22, 40, 0.92)', 
+  backdropFilter: 'blur(20px)',
+  boxShadow: '0 32px 80px rgba(0,0,0,0.5)', 
+  border: '1px solid rgba(255,255,255,0.08)', 
+  borderRadius: 32, 
   padding: 'clamp(24px, 5vw, 44px)', 
   width: '100%', 
   maxWidth: 480, 
@@ -128,10 +128,10 @@ const CARD = {
 const INP = { 
   width: '100%', 
   padding: '14px 18px', 
-  background: '#F8FAFC', 
-  border: '1.5px solid #E2E8F0', 
+  background: 'rgba(255, 255, 255, 0.04)', 
+  border: '1.5px solid rgba(255, 255, 255, 0.1)', 
   borderRadius: 14, 
-  color: '#0F172A', 
+  color: '#FFFFFF', 
   fontSize: 15, 
   outline: 'none', 
   boxSizing: 'border-box', 
@@ -491,24 +491,24 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
             <div style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, rgba(1, 118, 211, 0.05) 0%, rgba(1, 118, 211, 0.02) 100%)',
-              border: '1px solid rgba(1, 118, 211, 0.12)',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               borderRadius: 20,
-              boxShadow: '0 4px 12px rgba(1, 118, 211, 0.04)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Logo size="lg" variant="full" theme="light" />
+              <Logo size="lg" variant="full" theme="dark" />
             </div>
           </div>
-          <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
-          <h2 style={{ color: '#0F172A', fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Job Seeker</h2>
-          <p style={{ color: '#64748B', fontSize: 14, margin: '4px 0 0' }}>Access your personalized career portal</p>
+          <div style={{ height: 1, width: '100%', background: 'rgba(255,255,255,0.05)', marginBottom: 24 }} />
+          <h2 style={{ color: '#FFFFFF', fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Job Seeker</h2>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '4px 0 0' }}>Access your personalized career portal</p>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: '#FFFFFF', borderRadius: 12, padding: 4 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 4, border: '1px solid rgba(255,255,255,0.06)' }}>
           {['login', 'register'].map(m => (
-            <button key={m} onClick={() => { setMode(m); setToast(''); }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', background: mode === m ? '#0176D3' : 'transparent', color: mode === m ? '#fff' : '#706E6B', transition: 'all 0.2s' }}>
+            <button key={m} onClick={() => { setMode(m); setToast(''); }} style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', background: mode === m ? '#0176D3' : 'transparent', color: mode === m ? '#fff' : 'rgba(255,255,255,0.5)', transition: 'all 0.2s' }}>
               {m === 'login' ? 'Sign In' : 'Create Account'}
             </button>
           ))}
@@ -568,10 +568,10 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           </div>
 
           <div>
-            <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
             <div style={{ position: 'relative' }}>
               <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
+              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}>{showPw ? '🙈' : '👁'}</button>
             </div>
             {mode === 'register' && <PasswordStrength pw={pw} />}
           </div>
@@ -602,21 +602,21 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
                   padding: '13px 16px', borderRadius: 12,
-                  border: `2px solid ${agreed ? '#0176D3' : '#E2E8F0'}`,
-                  background: agreed ? 'rgba(1,118,211,0.06)' : '#FAFAFA',
+                  border: `2px solid ${agreed ? '#0176D3' : 'rgba(255,255,255,0.1)'}`,
+                  background: agreed ? 'rgba(1,118,211,0.08)' : 'rgba(255,255,255,0.03)',
                   transition: 'all 0.2s', userSelect: 'none',
                 }}>
                 {/* Custom checkbox box */}
                 <div style={{
                   width: 24, height: 24, borderRadius: 7, flexShrink: 0,
-                  border: `2px solid ${agreed ? '#0176D3' : '#CBD5E1'}`,
-                  background: agreed ? '#0176D3' : '#fff',
+                  border: `2px solid ${agreed ? '#0176D3' : 'rgba(255,255,255,0.2)'}`,
+                  background: agreed ? '#0176D3' : 'rgba(255,255,255,0.05)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s',
                 }}>
                   {agreed && <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>✓</span>}
                 </div>
-                <span style={{ color: '#374151', fontSize: 13, lineHeight: 1.5, flex: 1 }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 1.5, flex: 1 }}>
                   I agree to the{' '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
@@ -648,9 +648,9 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
         {GOOGLE_CLIENT_ID && (
           <div style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 14px' }}>
-              <div style={{ flex: 1, height: 1, background: '#FAFAF9' }} />
-              <span style={{ color: '#475569', fontSize: 11 }}>or</span>
-              <div style={{ flex: 1, height: 1, background: '#FAFAF9' }} />
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
             </div>
             <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }} />
           </div>
@@ -664,9 +664,9 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           </p>
         )}
 
-        <p style={{ color: '#475569', fontSize: 11, textAlign: 'center', marginTop: 12 }}>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 12 }}>
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <span onClick={() => setMode(mode === 'login' ? 'register' : 'login')} style={{ color: '#0176D3', cursor: 'pointer' }}>
+          <span onClick={() => setMode(mode === 'login' ? 'register' : 'login')} style={{ color: '#0176D3', cursor: 'pointer', fontWeight: 700 }}>
             {mode === 'login' ? 'Register free' : 'Sign in'}
           </span>
         </p>

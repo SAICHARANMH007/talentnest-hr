@@ -218,14 +218,8 @@ export default function MarketingNav({ active = 'home' }) {
           width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 20px',
         }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{
-              height: 44, width: 44, borderRadius: 12,
-              background: scrolled ? 'rgba(var(--mkt-accent-rgb), 0.08)' : 'rgba(255,255,255,0.08)',
-              border: scrolled ? '1px solid rgba(var(--mkt-accent-rgb), 0.15)' : '1px solid rgba(255,255,255,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              backdropFilter: 'blur(8px)',
-            }}>
-              <Logo size="sm" variant="icon" theme={scrolled ? 'light' : 'dark'} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Logo size="sm" variant="icon" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
@@ -424,12 +418,8 @@ export default function MarketingNav({ active = 'home' }) {
         <div className="tn-mobile-nav">
           <div className="tn-mobile-header">
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
-              <div style={{
-                height: 40, width: 40,
-                border: '1px solid rgba(var(--mkt-accent-rgb), 0.2)',
-                borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Logo size="sm" variant="icon" theme="light" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Logo size="sm" variant="icon" />
               </div>
               <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--mkt-text-heading)' }}>
                 Talent<span style={{ color: 'var(--mkt-accent)' }}>Nest</span>
