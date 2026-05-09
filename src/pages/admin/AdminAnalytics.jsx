@@ -209,12 +209,19 @@ export default function AdminAnalytics({ user, onNavigate }) {
     Promise.all([
       api.getDashboardStats(platformWide).catch(() => null),
       api.getRecruiterLeaderboard().catch(() => []),
-      // Load 20 most-recent applications immediately so Platform Pulse shows without waiting for 2000-app scan
-      api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).catch(() => []),
-    ]).then(([s, l, recent]) => {
-      setServerStats(s?.data || null);
+    ]).then(([s, l]) => {
+      const statsObj = s?.data || s || {};
+      setServerStats(statsObj);
       setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
-      setRecentApps(Array.isArray(recent) ? recent : []);
+      
+      // Use recent apps from aggregated stats if available (FAST)
+      if (statsObj.recent) {
+        setRecentApps(statsObj.recent);
+      } else {
+        // Fallback for older backend versions
+        api.getApplications({ limit: 50, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
+      }
+      
       setLoading(false);
 
       // Phase 2: Progressively load heavier data in chunks to avoid blocking main thread
@@ -224,49 +231,59 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }, 50);
 
       setTimeout(() => {
-        // High-Capacity Global Job Scan
-        api.getJobs({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
+        // High-Capacity Global Job Scan (Limited for performance, full count from stats)
+        api.getJobs({ limit: 1000, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
-          const active = list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
-          setJobCounts({ active, total: list.length });
+          const active = statsObj.activeJobs ?? list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
+          setJobCounts({ active, total: statsObj.totalJobs ?? list.length });
         }).catch(() => setAllJobs([]));
         
-        // Cap at 2000 — sufficient for pipeline charts, prevents UI freeze on large datasets
-        api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
-          setAllApps(list);
+        // If server provides pipeline data, use it immediately
+        if (statsObj.pipeline) {
           const pipe = {};
-          MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
-          const now = Date.now();
-          const thirtyDaysAgo = now - (30 * 86400000);
-          let appsLast30 = 0;
-
-          list.forEach(a => {
-            const raw = (a.stage || a.currentStage || '').toLowerCase();
-            const created = new Date(a.createdAt).getTime();
-            if (created >= thirtyDaysAgo) appsLast30++;
-
-            let mapped = null;
-            if (raw === 'new' || raw === 'applied') mapped = 'applied';
-            else if (raw === 'screening' || raw === 'shortlist' || raw === 'shortlisted') mapped = 'screening';
-            else if (raw.includes('scheduled') || raw.includes('round 1')) mapped = 'interview_scheduled';
-            else if (raw.includes('completed') || raw.includes('round 2')) mapped = 'interview_completed';
-            else if (raw.includes('offer')) mapped = 'offer_extended';
-            else if (raw === 'hired' || raw === 'selected') mapped = 'selected';
-            else if (raw === 'rejected' || raw === 'declined') mapped = 'rejected';
-            
-            if (mapped && pipe[mapped] !== undefined) pipe[mapped]++;
+          MASTER_STAGES.forEach(s => {
+            // Match backend stages to frontend MASTER_STAGES
+            pipe[s.id] = statsObj.pipeline[s.id] || statsObj.pipeline[s.label] || 0;
           });
-
           const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
-          setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: appsLast30 });
-        }).catch(() => setAllApps([]));
+          setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
+        } else {
+          // Fallback: Dashboard Overview Application Scan (Limited for performance)
+          api.getApplications({ limit: 1000, platform: platformWide }).then(unwrap).then(list => {
+            setAllApps(list);
+            const pipe = {};
+            MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
+            const now = Date.now();
+            const thirtyDaysAgo = now - (30 * 86400000);
+            let appsLast30 = 0;
+
+            list.forEach(a => {
+              const raw = (a.stage || a.currentStage || '').toLowerCase();
+              const created = new Date(a.createdAt).getTime();
+              if (created >= thirtyDaysAgo) appsLast30++;
+
+              let mapped = null;
+              if (raw === 'new' || raw === 'applied') mapped = 'applied';
+              else if (raw === 'screening' || raw === 'shortlist' || raw === 'shortlisted') mapped = 'screening';
+              else if (raw.includes('scheduled') || raw.includes('round 1')) mapped = 'interview_scheduled';
+              else if (raw.includes('completed') || raw.includes('round 2')) mapped = 'interview_completed';
+              else if (raw.includes('offer')) mapped = 'offer_extended';
+              else if (raw === 'hired' || raw === 'selected') mapped = 'selected';
+              else if (raw === 'rejected' || raw === 'declined') mapped = 'rejected';
+              
+              if (mapped && pipe[mapped] !== undefined) pipe[mapped]++;
+            });
+
+            const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
+            setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: appsLast30 });
+          }).catch(() => setAllApps([]));
+        }
       }, 150);
 
       setTimeout(() => {
-        // High-Capacity Global Candidate Scan
+        // High-Capacity Global Data Access (Fetch in background for drill-downs/exports)
         api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
         api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
-        // getCandidateRecords removed — section deleted from UI
       }, 300);
     }).catch(() => setLoading(false));
   }, [period, platformWide]);

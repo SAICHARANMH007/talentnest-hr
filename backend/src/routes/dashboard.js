@@ -343,13 +343,25 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
   const candF = platformWide ? { role: 'candidate' } : { role: 'candidate', ...tenantScope };
 
   const del = { deletedAt: null };
-  const [candidates, recruiters, openJobs, applications, hired] = await Promise.all([
+  const [candidates, recruiters, openJobs, applications, hired, pipelineAgg, recentApps] = await Promise.all([
     countUniqueCandidateProfiles(platformWide ? {} : tenantScope, platformWide ? { isActive: true } : { ...tenantScope, isActive: true }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
     Application.countDocuments({ ...orgF, ...del }),
     Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
+    Application.aggregate([
+      { $match: { ...orgF, ...del } },
+      { $group: { _id: '$currentStage', count: { $sum: 1 } } }
+    ]),
+    Application.find({ ...orgF, ...del })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate(JOB_APPLICANT_POPULATE)
+      .lean()
   ]);
+
+  const pipeline = {};
+  pipelineAgg.forEach(r => { pipeline[r._id || 'Applied'] = r.count; });
 
   const avgPerJob = openJobs > 0 ? parseFloat((applications / openJobs).toFixed(1)) : 0;
   const active    = await Application.countDocuments({ ...orgF, ...del, currentStage: { $in: STAGES_ACTIVE } });
@@ -383,6 +395,8 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     appsLast30,
     placementsLast30: hiredLast30,
     platformWide,
+    pipeline,
+    recent: recentApps,
     subtitle: `${active} candidates actively in pipeline`,
     changes: {
       candidates : pct(candNew, candOld),
