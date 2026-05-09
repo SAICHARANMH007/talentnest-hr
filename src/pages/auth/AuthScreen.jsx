@@ -41,29 +41,33 @@ function OtpScreen({ email, onVerified, onBack }) {
   };
 
   return (
-    <div>
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ fontSize: 48, marginBottom: 8 }}>🔐</div>
-        <h2 style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Two-Factor Authentication</h2>
-        <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>
+    <div style={{ animation: 'fadeUp 0.6s ease-out' }}>
+      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20 }}>
+            <Logo size="md" variant="icon" />
+          </div>
+        </div>
+        <h2 style={{ color: '#FFFFFF', fontSize: 24, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-0.02em' }}>Security Verification</h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>
           A 6-digit OTP has been sent to your registered phone or email.<br />
           <strong style={{ color: '#FFFFFF' }}>{email}</strong>
         </p>
       </div>
 
       {error && (
-        <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#BA0517', fontSize: 13, marginBottom: 14 }}>
+        <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#FF7676', fontSize: 13, marginBottom: 14 }}>
           {error}
         </div>
       )}
       {resent && (
-        <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '10px 14px', color: '#065f46', fontSize: 13, marginBottom: 14 }}>
+        <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '10px 14px', color: '#34D399', fontWeight: 700, fontSize: 13, marginBottom: 14 }}>
           ✅ A new OTP was sent. Please check your phone or email.
         </div>
       )}
 
       <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: 13, marginBottom: 6 }}>
+        <label style={{ display: 'block', fontWeight: 600, color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 6 }}>
           Enter 6-digit OTP
         </label>
         <input
@@ -73,20 +77,20 @@ function OtpScreen({ email, onVerified, onBack }) {
           placeholder="• • • • • •"
           maxLength={6}
           autoFocus
-          style={{ width: '100%', padding: '14px 16px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, color: '#0f172a', fontSize: 22, outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace', letterSpacing: 8, textAlign: 'center' }}
+          style={{ ...INP, fontSize: 22, letterSpacing: 8, textAlign: 'center', fontFamily: 'monospace' }}
         />
       </div>
 
       <button
         onClick={verify}
         disabled={loading || otp.length < 6}
-        style={{ width: '100%', background: 'linear-gradient(135deg, #0176D3, #014486)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, padding: '14px', cursor: loading || otp.length < 6 ? 'not-allowed' : 'pointer', opacity: loading || otp.length < 6 ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}
+        style={{ ...BTN_P, width: '100%', padding: '14px', cursor: loading || otp.length < 6 ? 'not-allowed' : 'pointer', opacity: loading || otp.length < 6 ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}
       >
         {loading ? <><Spinner /> Verifying…</> : '✅ Verify & Sign In'}
       </button>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 13, cursor: 'pointer', padding: 0 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', padding: 0 }}>
           ← Back to Login
         </button>
         <button onClick={resend} disabled={resending} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 13, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
@@ -1027,18 +1031,18 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
             <div style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, rgba(1, 118, 211, 0.05) 0%, rgba(1, 118, 211, 0.02) 100%)',
-              border: '1px solid rgba(1, 118, 211, 0.12)',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 20,
-              boxShadow: '0 4px 12px rgba(1, 118, 211, 0.04)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Logo size="lg" variant="full" theme="light" />
+              <Logo size="lg" variant="full" theme="dark" />
             </div>
           </div>
-          <div style={{ height: 1, width: '100%', background: '#F1F5F9', marginBottom: 24 }} />
+          <div style={{ height: 1, width: '100%', background: 'rgba(255,255,255,0.06)', marginBottom: 24 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-            <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+            <button onClick={step === 2 ? () => setStep(1) : onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 10, color: 'rgba(255,255,255,0.6)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             <div style={{ flex: 1, textAlign: 'left' }}>
               <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Employer</h2>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '2px 0 0' }}>
@@ -1048,7 +1052,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {/* Step dots */}
             <div style={{ display: 'flex', gap: 6 }}>
               {[1,2].map(s => (
-                <div key={s} style={{ width: s === step ? 20 : 8, height: 8, borderRadius: 4, background: s === step ? '#0176D3' : '#E2E8F0', transition: 'all 0.3s' }} />
+                <div key={s} style={{ width: s === step ? 20 : 8, height: 8, borderRadius: 4, background: s === step ? '#0176D3' : 'rgba(255,255,255,0.1)', transition: 'all 0.3s' }} />
               ))}
             </div>
           </div>
@@ -1057,8 +1061,8 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
         {/* ── STEP 1: Company Domain Verification ── */}
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: '#F8FAFF', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
-              <p style={{ color: '#334155', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
                 Enter your <strong>company website</strong> to verify your organisation is registered on TalentNest HR.
               </p>
             </div>
@@ -1090,21 +1094,21 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
             {/* Result: not checked yet */}
             {!orgInfo && !domainChecking && (
-              <div style={{ background: '#F8FAFF', border: '1px dashed #CBD5E1', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
-                <p style={{ color: '#94A3B8', fontSize: 12, margin: 0 }}>Enter your company website above and click <strong>Verify</strong></p>
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: 0 }}>Enter your company website above and click <strong>Verify</strong></p>
               </div>
             )}
 
             {/* Result: verified ✅ */}
             {orgInfo?.found && !orgInfo?.suspended && (
-              <div style={{ background: 'rgba(46,132,74,0.07)', border: '1px solid rgba(46,132,74,0.35)', borderRadius: 12, padding: '16px' }}>
+              <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 12, padding: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(46,132,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🏢</div>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🏢</div>
                   <div>
-                    <p style={{ color: '#2E844A', fontSize: 14, fontWeight: 800, margin: 0 }}>✅ {orgInfo.org?.name}</p>
+                    <p style={{ color: '#34D399', fontSize: 14, fontWeight: 800, margin: 0 }}>✅ {orgInfo.org?.name}</p>
                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '2px 0 0' }}>Organisation verified and active</p>
                   </div>
-                  <span style={{ marginLeft: 'auto', background: planBg[orgInfo.org?.plan] || '#f1f5f9', color: planColors[orgInfo.org?.plan] || '#706E6B', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, textTransform: 'capitalize' }}>
+                  <span style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, textTransform: 'capitalize', border: '1px solid rgba(255,255,255,0.1)' }}>
                     {orgInfo.org?.plan} Plan
                   </span>
                 </div>
@@ -1141,13 +1145,13 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Org badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px' }}>
               <span style={{ fontSize: 18 }}>🏢</span>
               <div style={{ flex: 1 }}>
-                <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: 0 }}>{orgInfo?.org?.name}</p>
+                <p style={{ color: '#3170F3', fontSize: 12, fontWeight: 800, margin: 0 }}>{orgInfo?.org?.name}</p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '1px 0 0' }}>Verified organisation · {orgInfo?.org?.plan} plan</p>
               </div>
-              <span style={{ color: '#2E844A', fontSize: 18 }}>✅</span>
+              <span style={{ color: '#34D399', fontSize: 18 }}>✅</span>
             </div>
 
             <div>
@@ -1242,10 +1246,10 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>🏢</span>
         <div>
-          <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, margin: 0 }}>{orgInfo?.org?.name || companyUrl}</p>
+          <p style={{ color: '#3170F3', fontSize: 12, fontWeight: 800, margin: 0 }}>{orgInfo?.org?.name || companyUrl}</p>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: '1px 0 0' }}>Registering as Recruiter</p>
         </div>
       </div>
