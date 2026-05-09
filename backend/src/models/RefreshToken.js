@@ -24,7 +24,9 @@ const refreshTokenSchema = new mongoose.Schema({
     type: Date,
     required: true,
     index: { expires: 0 } // TTL index
-  }
+  },
+  revokedAt: Date,
+  replacedBy: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model('RefreshToken', refreshTokenSchema);

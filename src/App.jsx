@@ -1,6 +1,6 @@
 import { useState, useEffect, Component, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { set401Handler, default as api, setToken as setApiToken } from './api/api.js';
+import { set401Handler, clearToken, default as api, setToken as setApiToken, tokenIsValid } from './api/api.js';
 import { usePushNotifications } from './hooks/usePushNotifications.js';
 import { API_BASE_URL } from './api/config.js';
 
@@ -277,8 +277,10 @@ export default function App() {
   useEffect(() => {
     set401Handler(() => {
       setUser(null);
+      clearToken();
       sessionStorage.removeItem('tn_user');
-      sessionStorage.removeItem('tn_token');
+      sessionStorage.removeItem('tn_impersonate_token');
+      sessionStorage.removeItem('tn_sa_backup');
       navigate('/login', { replace: true });
     });
 
@@ -286,7 +288,10 @@ export default function App() {
     // IMPORTANT: set the token BEFORE setUser() to avoid 401s on first render.
     const impersonateToken = sessionStorage.getItem('tn_impersonate_token');
     const saBackup = sessionStorage.getItem('tn_sa_backup');
-    if (impersonateToken && saBackup) {
+    
+    // Only restore impersonation if we have both the token and the backup, 
+    // AND the token hasn't obviously expired yet.
+    if (impersonateToken && saBackup && tokenIsValid(impersonateToken)) {
       try {
         const storedUser = sessionStorage.getItem('tn_user');
         if (storedUser) {
@@ -297,7 +302,10 @@ export default function App() {
           setAuthLoading(false);
           return;
         }
-      } catch {}
+      } catch (e) {
+        sessionStorage.removeItem('tn_impersonate_token');
+        sessionStorage.removeItem('tn_sa_backup');
+      }
     }
 
     // Silent session restore via HTTP-only refresh cookie

@@ -410,104 +410,117 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
   });
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px' }}>
-      <div style={{ width:'100%', maxWidth:920, background:'#FFFFFF', borderRadius:20, display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 48px)', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden' }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.75)', backdropFilter:'blur(8px)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px 16px' }}>
+      <div style={{ width:'100%', maxWidth:980, height:'min(900px, 92vh)', background:'#FFFFFF', borderRadius:24, display:'flex', flexDirection:'column', boxShadow:'0 32px 64px rgba(0,0,0,0.3)', overflow:'hidden' }}>
         <Toast msg={toast} onClose={() => setToast('')}/>
 
-        {/* Gradient sticky header */}
-        <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', padding:'18px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <div>
-            <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:3 }}>Offer Generation</div>
-            <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>📨 Generate Offer Letter</h3>
-            <p style={{ color:'rgba(255,255,255,0.7)', fontSize:12, margin:'3px 0 0' }}>{c?.name} · {j?.title} · {j?.company}</p>
+        {/* STICKY HEADER */}
+        <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', padding:'22px 32px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+             <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:20 }}>
+                {(c?.name || '?')[0].toUpperCase()}
+             </div>
+             <div>
+                <div style={{ color:'rgba(255,255,255,0.7)', fontSize:10, fontWeight:800, letterSpacing:1.5, textTransform:'uppercase', marginBottom:2 }}>Executive Placement</div>
+                <h3 style={{ color:'#fff', margin:0, fontSize:18, fontWeight:800 }}>📨 Generate Offer Package</h3>
+                <p style={{ color:'rgba(255,255,255,0.8)', fontSize:12, margin:'2px 0 0' }}>{c?.name} · {j?.title} · {j?.company}</p>
+             </div>
           </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:34, height:34, borderRadius:8, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:36, height:36, borderRadius:10, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s' }}>✕</button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display:'flex', gap:4, padding:'12px 28px 0', borderBottom:'1px solid #F3F2F2', background:'#fff', flexShrink:0 }}>
-          <button style={tabBtn('configure', '⚙ Configure')} onClick={() => setTab('configure')}>⚙ Configure</button>
-          <button style={tabBtn('preview', '📄 Preview Letter')} onClick={() => { if(!form.annualCTC) { setToast('❌ Enter Annual CTC first'); return; } setTab('preview'); }}>📄 Preview Letter</button>
+        <div style={{ display:'flex', gap:0, padding:'0 32px', borderBottom:'1px solid #E2E8F0', background:'#fff', flexShrink:0 }}>
+          <button style={tabBtn('configure', '⚙ Configure Terms')} onClick={() => setTab('configure')}>⚙ Configure Package</button>
+          <button style={tabBtn('preview', '📄 Preview Document')} onClick={() => { if(!form.annualCTC) { setToast('❌ Enter Annual CTC first'); return; } setTab('preview'); }}>📄 Preview Letter</button>
         </div>
 
-        <div style={{ padding:'20px 28px', overflowY:'auto', flex:1 }}>
+        <div style={{ padding:'28px 32px', overflowY:'auto', flex:1, background:'#F8FAFF' }}>
 
           {/* ── CONFIGURE TAB ── */}
           {tab === 'configure' && (
             <div>
-              {/* Candidate banner */}
-              <div style={{ ...card, display:'flex', alignItems:'center', gap:14, marginBottom:20, background:'rgba(1,118,211,0.06)', border:'1px solid rgba(1,118,211,0.15)' }}>
-                <div style={{ width:44, height:44, borderRadius:'50%', background:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', color:'#181818', fontWeight:700, fontSize:18, flexShrink:0 }}>{(c?.name||'?')[0]}</div>
+              {/* Candidate Info Card */}
+              <div style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:16, padding:'16px 20px', marginBottom:28, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:16, boxShadow:'0 2px 8px rgba(0,0,0,0.02)' }}>
                 <div>
-                  <div style={{ color:'#181818', fontWeight:600 }}>{c?.name}</div>
-                  <div style={{ color:'#0176D3', fontSize:12 }}>{j?.title} · {j?.company}</div>
-                  <div style={{ color:'#706E6B', fontSize:11 }}>{c?.email} · {c?.phone}</div>
+                   <p style={{ color:'#64748B', fontSize:11, fontWeight:700, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:0.5 }}>Candidate Details</p>
+                   <p style={{ color:'#1E293B', fontSize:15, fontWeight:800, margin:0 }}>{c?.name}</p>
+                   <p style={{ color:'#64748B', fontSize:13, margin:'2px 0 0' }}>{c?.email} · {c?.phone || 'No phone'}</p>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                   <p style={{ color:'#64748B', fontSize:11, fontWeight:700, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:0.5 }}>Target Position</p>
+                   <p style={{ color:'#0176D3', fontSize:15, fontWeight:800, margin:0 }}>{j?.title}</p>
+                   <p style={{ color:'#64748B', fontSize:13, margin:'2px 0 0' }}>{j?.company}</p>
                 </div>
               </div>
 
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:14 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap:18 }}>
                 <Field label="Designation / Job Title *" value={form.designation} onChange={v=>sf('designation',v)}/>
-                <Field label="Department" value={form.department} onChange={v=>sf('department',v)} placeholder="Engineering / IT / Operations"/>
-                <Field label="Client / Employer Company *" value={form.clientCompany} onChange={v=>sf('clientCompany',v)}/>
-                <Field label="Work Location *" value={form.workLocation} onChange={v=>sf('workLocation',v)}/>
-                <Field label="Reporting To" value={form.reportingTo} onChange={v=>sf('reportingTo',v)}/>
-                <Dropdown label="Employment Type" value={form.employmentType} onChange={v=>sf('employmentType',v)} options={['Full-Time (Permanent)','Contract (Fixed Term)','Contract-to-Hire','On Deputation','Internship']}/>
-                <Field label="Date of Joining" value={form.joiningDate} onChange={v=>sf('joiningDate',v)} type="date"/>
-                <Field label="Acceptance Deadline *" value={form.acceptanceDeadline} onChange={v=>sf('acceptanceDeadline',v)} type="date"/>
+                <Field label="Department / Business Unit" value={form.department} onChange={v=>sf('department',v)} placeholder="e.g. Engineering / IT / Operations"/>
+                <Field label="Client / Employer Legal Name *" value={form.clientCompany} onChange={v=>sf('clientCompany',v)}/>
+                <Field label="Work Location / Base *" value={form.workLocation} onChange={v=>sf('workLocation',v)}/>
+                <Field label="Reporting Manager" value={form.reportingTo} onChange={v=>sf('reportingTo',v)}/>
+                <Dropdown label="Employment Nature" value={form.employmentType} onChange={v=>sf('employmentType',v)} options={['Full-Time (Permanent)','Contract (Fixed Term)','Contract-to-Hire','On Deputation','Internship']}/>
+                <Field label="Tentative Joining Date" value={form.joiningDate} onChange={v=>sf('joiningDate',v)} type="date"/>
+                <Field label="Offer Acceptance Deadline *" value={form.acceptanceDeadline} onChange={v=>sf('acceptanceDeadline',v)} type="date"/>
               </div>
 
               {/* CTC section */}
-              <div style={{ ...card, marginTop:20, border:'1px solid rgba(1,118,211,0.2)' }}>
-                <p style={{ color:'#0176D3', fontSize:11, fontWeight:700, margin:'0 0 14px', letterSpacing:1 }}>💰 CTC STRUCTURE</p>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap:12 }}>
-                  <Field label="Annual CTC (₹) *" value={form.annualCTC} onChange={v=>sf('annualCTC',v)} placeholder="600000"/>
+              <div style={{ background:'#fff', border:'1.5px solid rgba(1,118,211,0.2)', borderRadius:20, padding:'24px', marginTop:28, boxShadow:'0 12px 32px rgba(1,118,211,0.06)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
+                   <div style={{ width:32, height:32, borderRadius:8, background:'rgba(1,118,211,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>💰</div>
+                   <p style={{ color:'#0176D3', fontSize:13, fontWeight:800, margin:0, letterSpacing:0.5, textTransform:'uppercase' }}>Remuneration Structure</p>
+                </div>
+                
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap:18, marginBottom:24 }}>
+                  <Field label="Total Annual CTC (₹) *" value={form.annualCTC} onChange={v=>sf('annualCTC',v)} placeholder="e.g. 1200000"/>
                   <div>
-                    <label style={{ color:'#0176D3', fontSize:11, display:'block', marginBottom:6 }}>Variable Pay %</label>
-                    <select value={form.variablePct} onChange={e=>sf('variablePct', Number(e.target.value))} style={inp}>
-                      {[0,5,10,15,20,25,30].map(v=><option key={v} value={v}>{v}%</option>)}
+                    <label style={{ color:'#64748B', fontSize:12, fontWeight:700, display:'block', marginBottom:8 }}>Performance Pay %</label>
+                    <select value={form.variablePct} onChange={e=>sf('variablePct', Number(e.target.value))} style={{ ...inp, height:46, fontSize:14 }}>
+                      {[0,5,10,15,20,25,30].map(v=><option key={v} value={v}>{v}% Variable</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ color:'#0176D3', fontSize:11, display:'block', marginBottom:6 }}>City Type (HRA)</label>
-                    <select value={form.isMetro?'metro':'non'} onChange={e=>sf('isMetro', e.target.value==='metro')} style={inp}>
-                      <option value="metro">Metro (50% HRA) — Hyd, Blr, Mum, Del, Chennai, Pune</option>
-                      <option value="non">Non-Metro (40% HRA)</option>
+                    <label style={{ color:'#64748B', fontSize:12, fontWeight:700, display:'block', marginBottom:8 }}>City Classification (HRA)</label>
+                    <select value={form.isMetro?'metro':'non'} onChange={e=>sf('isMetro', e.target.value==='metro')} style={{ ...inp, height:46, fontSize:14 }}>
+                      <option value="metro">Tier 1 Metro (50% HRA)</option>
+                      <option value="non">Tier 2/3 City (40% HRA)</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Live CTC breakdown */}
                 {ctc && (
-                  <div style={{ marginTop:14, overflowX:'auto' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11.5 }}>
+                  <div style={{ background:'#F8FAFF', borderRadius:16, padding:'16px', border:'1px solid #E2E8F0', overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
                       <thead>
-                        <tr style={{ background:'rgba(13,33,80,0.8)' }}>
-                          <th style={{ color:'#0176D3', padding:'7px 10px', textAlign:'left', fontSize:11 }}>Component</th>
-                          <th style={{ color:'#0176D3', padding:'7px 10px', textAlign:'right', fontSize:11 }}>Monthly</th>
-                          <th style={{ color:'#0176D3', padding:'7px 10px', textAlign:'right', fontSize:11 }}>Annual</th>
+                        <tr>
+                          <th style={{ color:'#64748B', padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:1 }}>Component</th>
+                          <th style={{ color:'#64748B', padding:'10px 14px', textAlign:'right', fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:1 }}>Monthly</th>
+                          <th style={{ color:'#64748B', padding:'10px 14px', textAlign:'right', fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:1 }}>Annual</th>
                         </tr>
                       </thead>
                       <tbody>
                         {[
-                          ['Basic',          ctc.monthly.basic,     ctc.annual.basic,     false],
-                          ['HRA',            ctc.monthly.hra,       ctc.annual.hra,       false],
+                          ['Basic Salary',   ctc.monthly.basic,     ctc.annual.basic,     false],
+                          ['House Rent (HRA)', ctc.monthly.hra,       ctc.annual.hra,       false],
                           ['Transport',      ctc.monthly.transport, ctc.annual.transport, false],
                           ['Medical',        ctc.monthly.medical,   ctc.annual.medical,   false],
                           ['Special Allow.', ctc.monthly.special,   ctc.annual.special,   false],
-                          ...(form.variablePct>0 ? [['Variable Pay', ctc.monthly.variable, ctc.annual.variable, false]] : []),
-                          ['Gross Salary',   ctc.monthly.gross,     ctc.annual.gross,     true],
-                          ["Employer PF",    ctc.monthly.empPF,     ctc.annual.empPF,     false],
+                          ...(form.variablePct>0 ? [['Variable Component', ctc.monthly.variable, ctc.annual.variable, false]] : []),
+                          ['TOTAL GROSS',    ctc.monthly.gross,     ctc.annual.gross,     true],
+                          ["Employer's PF",  ctc.monthly.empPF,     ctc.annual.empPF,     false],
                           ['Gratuity Prov.', ctc.monthly.gratuity,  ctc.annual.gratuity,  false],
-                          ['Total CTC',      Math.round(Number(form.annualCTC)/12), Number(form.annualCTC), true, '#0176D3'],
-                          ['─ Employee PF',  -ctc.monthly.eePF,     -ctc.annual.eePF,     false, '#BA0517'],
-                          ['─ Prof. Tax',    -ctc.monthly.pt,       -ctc.annual.pt,       false, '#BA0517'],
-                          ['─ TDS (est.)',   -ctc.monthly.tds,      -ctc.annual.tds,      false, '#BA0517'],
-                          ['≈ Net In-Hand',  ctc.monthly.inHand,    ctc.annual.inHand,    true, '#2E844A'],
+                          ['TOTAL CTC',      Math.round(Number(form.annualCTC)/12), Number(form.annualCTC), true, '#0176D3'],
+                          ['─ Employee PF',  -ctc.monthly.eePF,     -ctc.annual.eePF,     false, '#E11D48'],
+                          ['─ Prof. Tax',    -ctc.monthly.pt,       -ctc.annual.pt,       false, '#E11D48'],
+                          ['─ Est. TDS',     -ctc.monthly.tds,      -ctc.annual.tds,      false, '#E11D48'],
+                          ['≈ Net Take-Home', ctc.monthly.inHand,    ctc.annual.inHand,    true, '#059669'],
                         ].map(([l, m, a, bold, accent], i) => (
-                          <tr key={i} style={{ background: bold ? 'rgba(1,118,211,0.08)' : i%2===0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                            <td style={{ padding:'5px 10px', color: accent || '#181818', fontWeight: bold?700:400 }}>{l}</td>
-                            <td style={{ padding:'5px 10px', textAlign:'right', color: accent || '#181818', fontWeight: bold?700:400 }}>{fmt(Math.abs(m))}</td>
-                            <td style={{ padding:'5px 10px', textAlign:'right', color: accent || '#181818', fontWeight: bold?700:400 }}>{fmt(Math.abs(a))}</td>
+                          <tr key={i} style={{ borderBottom: i === 6 || i === 9 ? '2px solid #E2E8F0' : '1px solid #F1F5F9' }}>
+                            <td style={{ padding:'8px 14px', color: accent || '#1E293B', fontWeight: bold?800:400 }}>{l}</td>
+                            <td style={{ padding:'8px 14px', textAlign:'right', color: accent || '#1E293B', fontWeight: bold?800:400 }}>{fmt(Math.abs(m))}</td>
+                            <td style={{ padding:'8px 14px', textAlign:'right', color: accent || '#1E293B', fontWeight: bold?800:400 }}>{fmt(Math.abs(a))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -517,25 +530,30 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               </div>
 
               {/* HR & Policies */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:14, marginTop:14 }}>
-                <Dropdown label="Probation Period" value={form.probation} onChange={v=>sf('probation',v)} options={['1 month','3 months','6 months','No probation']}/>
-                <Field label="Probation Notice (days)" value={form.probationNotice} onChange={v=>sf('probationNotice',v)} placeholder="15"/>
-                <Dropdown label="Notice Period (post-confirmation)" value={form.noticePeriod} onChange={v=>sf('noticePeriod',v)} options={['15 days','30 days','45 days','60 days','90 days','120 days']}/>
-                <Field label="HR Signatory Name" value={form.hrName} onChange={v=>sf('hrName',v)}/>
-                <Field label="Authorized Signatory (optional)" value={form.authorizedBy} onChange={v=>sf('authorizedBy',v)} placeholder="CEO / Director"/>
-                <Field label="Email Note to Candidate (optional)" value={form.emailNote} onChange={v=>sf('emailNote',v)} placeholder="We look forward to your joining!"/>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap:18, marginTop:24 }}>
+                <Dropdown label="Probation Duration" value={form.probation} onChange={v=>sf('probation',v)} options={['1 month','3 months','6 months','No probation']}/>
+                <Field label="Notice during Probation (days)" value={form.probationNotice} onChange={v=>sf('probationNotice',v)} placeholder="15"/>
+                <Dropdown label="Confirmation Notice Period" value={form.noticePeriod} onChange={v=>sf('noticePeriod',v)} options={['15 days','30 days','45 days','60 days','90 days','120 days']}/>
+                <Field label="HR Signatory" value={form.hrName} onChange={v=>sf('hrName',v)}/>
+                <Field label="Approval Authority (optional)" value={form.authorizedBy} onChange={v=>sf('authorizedBy',v)} placeholder="CEO / Director"/>
+                <div style={{ gridColumn:'span 2' }}>
+                   <Field label="Email Cover Note" value={form.emailNote} onChange={v=>sf('emailNote',v)} rows={2} placeholder="Add a personal touch to the offer email…"/>
+                </div>
               </div>
             </div>
           )}
 
           {/* ── PREVIEW TAB ── */}
           {tab === 'preview' && ctc && (
-            <div>
-              <div style={{ display:'flex', justifyContent:'flex-end', gap:10, marginBottom:12 }}>
-                <button onClick={handlePrint} style={{ ...btnP, padding:'7px 16px', fontSize:12 }}>🖨 Print / Save PDF</button>
-                <button onClick={() => setTab('configure')} style={{ ...btnG, padding:'7px 14px', fontSize:12 }}>← Edit</button>
+            <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(1,118,211,0.06)', padding:'12px 20px', borderRadius:16, border:'1px solid rgba(1,118,211,0.1)' }}>
+                <div style={{ color:'#0176D3', fontSize:13, fontWeight:700 }}>📄 Document Preview Protocol Active</div>
+                <div style={{ display:'flex', gap:10 }}>
+                  <button onClick={handlePrint} style={{ ...btnP, height:38, padding:'0 18px', fontSize:12, background:'linear-gradient(135deg,#032D60,#0176D3)' }}>🖨 Download PDF</button>
+                  <button onClick={() => setTab('configure')} style={{ ...btnG, height:38, padding:'0 18px', fontSize:12 }}>← Revise Terms</button>
+                </div>
               </div>
-              <div ref={docRef} style={{ background:'#fff', border:'1px solid #181818', borderRadius:8, padding:'32px 40px' }}>
+              <div ref={docRef} style={{ background:'#fff', borderRadius:12, padding:'48px 60px', boxShadow:'0 8px 32px rgba(0,0,0,0.1)', border:'1px solid #E2E8F0' }}>
                 <OfferLetterDoc data={{ candidate:c, job:j, form }} ctc={ctc}/>
               </div>
             </div>
@@ -543,17 +561,17 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
 
         </div>
 
-        {/* Sticky footer — always visible */}
-        <div style={{ flexShrink:0, padding:'14px 28px', borderTop:'1px solid #F1F5F9', background:'#fff', display:'flex', gap:10, flexWrap:'wrap' }}>
+        {/* STICKY FOOTER */}
+        <div style={{ flexShrink:0, padding:'20px 32px', borderTop:'1px solid #E2E8F0', background:'#fff', display:'flex', gap:12, boxShadow:'0 -4px 12px rgba(0,0,0,0.03)' }}>
           {tab === 'configure' && (
-            <button onClick={() => { if(!form.annualCTC){setToast('❌ Enter Annual CTC first');return;} setTab('preview'); }} style={{ ...btnP, padding:'8px 18px' }}>
-              📄 Preview Letter →
+            <button onClick={() => { if(!form.annualCTC){setToast('❌ Enter Annual CTC first');return;} setTab('preview'); }} style={{ ...btnP, flex:1, height:52, fontSize:15, fontWeight:800, background:'linear-gradient(135deg,#032D60,#0176D3)' }}>
+              📄 Generate & Preview Letter →
             </button>
           )}
-          <button onClick={sendOffer} disabled={saving||!form.annualCTC} style={{ ...btnP, background:'linear-gradient(135deg,#059669,#047857)', opacity:(saving||!form.annualCTC)?0.5:1, padding:'8px 18px' }}>
-            {saving ? <><Spinner/> Processing…</> : '📨 Confirm & Send Offer'}
+          <button onClick={sendOffer} disabled={saving||!form.annualCTC} style={{ ...btnP, flex:1, height:52, fontSize:15, fontWeight:800, background:'linear-gradient(135deg,#059669,#047857)', opacity:(saving||!form.annualCTC)?0.6:1 }}>
+            {saving ? <><Spinner/> Finalizing Package…</> : '📨 Confirm & Send Offer Package'}
           </button>
-          <button onClick={onClose} style={{ ...btnG, padding:'8px 16px' }}>Cancel</button>
+          <button onClick={onClose} style={{ ...btnG, height:52, padding:'0 24px', fontSize:15 }}>Discard</button>
         </div>
       </div>
     </div>

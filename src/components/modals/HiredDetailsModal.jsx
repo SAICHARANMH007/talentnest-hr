@@ -41,9 +41,9 @@ export default function HiredDetailsModal({ appId, candidateName, jobTitle, onCl
   };
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.6)', backdropFilter:'blur(4px)', zIndex:10100, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.6)', backdropFilter:'blur(4px)', zIndex:10100, display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'60px 20px' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:480, boxShadow:'0 24px 64px rgba(0,0,0,0.25)', overflow:'hidden' }}>
+      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:480, boxShadow:'0 24px 64px rgba(0,0,0,0.25)', overflow:'hidden', margin:'auto 0' }}>
 
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#059669,#047857)', padding:'20px 24px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>

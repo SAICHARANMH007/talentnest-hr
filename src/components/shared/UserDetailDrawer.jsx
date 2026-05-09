@@ -217,7 +217,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
       <div className="tn-drawer" style={{ background: '#F8FAFF', borderLeft: '1px solid #E2E8F0', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 42px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
-        {/* Header Section */}
+        {/* STICKY HEADER */}
         <div style={{ padding: 'clamp(14px,3vw,24px) clamp(16px,4vw,28px)', borderBottom: '1px solid #E2E8F0', background: '#fff', flexShrink: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <div style={{ width: 44, height: 44, borderRadius: 14, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
@@ -240,13 +240,13 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
           </div>
 
           <div style={{ display: 'flex', gap: 0, marginTop: 16, borderBottom: '1px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 Profile</button>
-            {(form.role || u.role || 'candidate') === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Pipeline</button>}
-            <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 Resume</button>
+            <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 Profile Information</button>
+            {(form.role || u.role || 'candidate') === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Career Tracking</button>}
+            <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 Documents</button>
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* SCROLLABLE BODY */}
         <div style={{ padding: 'clamp(14px,3vw,24px) clamp(16px,4vw,28px) 40px', overflowY: 'auto', flex: 1 }}>
           
           {tab === 'profile' && (
@@ -342,17 +342,6 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                 <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, minWidth: 140, padding: '11px 16px', fontSize: 13, whiteSpace: 'nowrap' }}>{saving ? '⏳ Saving...' : '✓ Save Changes'}</button>
-                 {onDelete && (
-                    <button onClick={() => {
-                      if (window.confirm(`Permanently delete "${u.name}"? This cannot be undone.`)) {
-                        onDelete(u.id || u._id); onClose();
-                      }
-                    }} style={{ ...btnD, padding: '10px 16px', flexShrink: 0 }} title="Delete user permanently">🗑 Delete</button>
-                 )}
               </div>
             </div>
           )}
@@ -507,6 +496,21 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
             </div>
           )}
 
+        </div>
+
+        {/* STICKY FOOTER */}
+        <div style={{ padding: '16px clamp(16px,4vw,28px)', background: '#fff', borderTop: '1px solid #E2E8F0', flexShrink: 0, display: 'flex', gap: 12, boxShadow: '0 -4px 10px rgba(0,0,0,0.04)' }}>
+             <button onClick={saveProfile} disabled={saving} style={{ ...btnP, flex: 1, minHeight: 48, fontSize: 14, fontWeight: 800, background: 'linear-gradient(135deg,#0176D3,#0154A4)', boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
+               {saving ? '⏳ Saving Updates...' : '✓ Save Profile Changes'}
+             </button>
+             {onDelete && (
+                <button onClick={() => {
+                  if (window.confirm(`Permanently delete "${u.name}"? This cannot be undone.`)) {
+                    onDelete(u.id || u._id); onClose();
+                  }
+                }} style={{ ...btnD, height: 48, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }} title="Delete user permanently">🗑</button>
+             )}
+             <button onClick={onClose} style={{ ...btnG, height: 48, padding: '0 20px', fontSize: 13 }}>Cancel</button>
         </div>
       </div>
     </div>

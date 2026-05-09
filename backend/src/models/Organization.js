@@ -33,7 +33,9 @@ const orgSchema = new mongoose.Schema({
     allowPublicJobs   : { type: Boolean, default: true },
     maxStorageGB      : { type: Number, default: 5 }, // Default 5GB
     customPipelineStages: [String],
-    dataVisibility    : { type: String, enum: ['own', 'org'], default: 'org' }
+    dataVisibility    : { type: String, enum: ['own', 'org'], default: 'org' },
+    security          : { type: mongoose.Schema.Types.Mixed },
+    featureFlags      : { type: mongoose.Schema.Types.Mixed },
   },
 
   // Stats / Analytics

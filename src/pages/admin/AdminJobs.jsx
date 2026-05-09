@@ -640,50 +640,48 @@ export default function AdminJobs({ user }) {
           return (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.title||'').toLowerCase().includes(q);
         });
         return (
-          <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', zIndex:10001, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 16px', overflowY:'auto' }}>
-            <div style={{ background:'#fff', borderRadius:16, padding:0, width:'100%', maxWidth:520, boxShadow:'0 8px 40px rgba(0,0,0,0.2)', overflow:'hidden' }}>
-              {/* Header */}
-              <div style={{ padding:'18px 24px 0', background:'linear-gradient(135deg,#032D60,#0176D3)' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-                  <div>
-                    <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>Assign — {assigningJob.title}</div>
-                    <div style={{ color:'rgba(255,255,255,0.7)', fontSize:12, marginTop:2 }}>{assigningJob.company}{assigningJob.location ? ` · ${assigningJob.location}` : ''}</div>
+          <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px' }}>
+            <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:520, height:'min(680px, 90vh)', boxShadow:'0 32px 64px rgba(0,0,0,0.25)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+              
+              {/* STICKY HEADER */}
+              <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', flexShrink:0 }}>
+                <div style={{ padding:'20px 24px 0' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                    <div>
+                      <div style={{ color:'rgba(255,255,255,0.7)', fontSize:10, fontWeight:700, letterSpacing:1.2, textTransform:'uppercase', marginBottom:2 }}>Assignment Portal</div>
+                      <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>{assigningJob.title}</div>
+                      <div style={{ color:'rgba(255,255,255,0.75)', fontSize:12, marginTop:2 }}>{assigningJob.company}</div>
+                    </div>
+                    <button onClick={() => setAssigningJob(null)} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:8, color:'#fff', width:32, height:32, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
                   </div>
-                  <button onClick={() => setAssigningJob(null)} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:6, color:'#fff', cursor:'pointer', padding:'4px 10px', fontSize:16 }}>✕</button>
-                </div>
-                {/* Tabs */}
-                <div style={{ display:'flex', gap:0 }}>
-                  {[{id:'recruiter',label:'👤 Assign Recruiter'},{id:'candidates',label:'👥 Assign Candidates'}].map(t => (
-                    <button key={t.id} onClick={() => setAssignTab(t.id)} style={{
-                      background:'none', border:'none', padding:'8px 16px', color: assignTab===t.id ? '#fff' : 'rgba(255,255,255,0.6)',
-                      fontWeight: assignTab===t.id ? 700 : 500, fontSize:13, cursor:'pointer',
-                      borderBottom: assignTab===t.id ? '2px solid #fff' : '2px solid transparent',
-                    }}>{t.label}</button>
-                  ))}
+                  {/* Tabs */}
+                  <div style={{ display:'flex', gap:0 }}>
+                    {[{id:'recruiter',label:'👤 Recruiter'},{id:'candidates',label:'👥 Candidates'}].map(t => (
+                      <button key={t.id} onClick={() => setAssignTab(t.id)} style={{
+                        background:'none', border:'none', padding:'10px 16px', color: assignTab===t.id ? '#fff' : 'rgba(255,255,255,0.6)',
+                        fontWeight: assignTab===t.id ? 800 : 500, fontSize:13, cursor:'pointer',
+                        borderBottom: assignTab===t.id ? '3px solid #fff' : '3px solid transparent',
+                        transition: 'all 0.2s'
+                      }}>{t.label}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ padding:'20px 24px' }}>
+              {/* SCROLLABLE BODY */}
+              <div style={{ padding:'24px', flex:1, overflowY:'auto' }}>
                 {/* TAB: Recruiter */}
                 {assignTab === 'recruiter' && (
                   <div>
-                    <p style={{ color:'#706E6B', fontSize:13, margin:'0 0 14px' }}>Select a recruiter to own this job posting.</p>
-                    <select id="assign-recruiter-sel" defaultValue={assigningJob.recruiterId || ''} style={{ width:'100%', padding:'10px 14px', borderRadius:10, border:'1.5px solid #DDDBDA', fontSize:13, marginBottom:16, outline:'none', boxSizing:'border-box' }}>
-                      <option value="">— Select recruiter —</option>
-                      {recruiterUsers.map(r => <option key={r.id} value={r.id}>{r.name} ({r.email})</option>)}
-                    </select>
-                    <div style={{ display:'flex', gap:10 }}>
-                      <button disabled={assigningLoading} onClick={async () => {
-                        const sel = document.getElementById('assign-recruiter-sel').value;
-                        if (!sel) return setToast('❌ Please select a recruiter');
-                        setAssigningLoading(true);
-                        try { await api.assignRecruiterToJob(assigningJob.id, sel); setToast('✅ Recruiter assigned!'); load(); setAssigningJob(null); }
-                        catch (e) { setToast('❌ ' + e.message); }
-                        setAssigningLoading(false);
-                      }} style={{ ...btnP, flex:1, justifyContent:'center', opacity: assigningLoading ? 0.7 : 1 }}>
-                        {assigningLoading ? 'Saving…' : '✓ Save Recruiter'}
-                      </button>
-                      <button onClick={() => setAssigningJob(null)} style={{ ...btnG, flex:1, justifyContent:'center' }}>Cancel</button>
+                    <p style={{ color:'#374151', fontSize:14, margin:'0 0 16px', lineHeight:1.5 }}>
+                      Select the recruiter who will lead the hiring process for this position.
+                    </p>
+                    <div style={{ marginBottom:20 }}>
+                       <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Select Recruiter</label>
+                       <select id="assign-recruiter-sel" defaultValue={assigningJob.recruiterId || ''} style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, outline:'none', boxSizing:'border-box', background:'#F8FAFF' }}>
+                         <option value="">— Select recruiter —</option>
+                         {recruiterUsers.map(r => <option key={r.id} value={r.id}>{r.name} ({r.email})</option>)}
+                       </select>
                     </div>
                   </div>
                 )}
@@ -691,41 +689,64 @@ export default function AdminJobs({ user }) {
                 {/* TAB: Candidates */}
                 {assignTab === 'candidates' && (
                   <div>
-                    <input placeholder="Search candidates…" value={candSearch} onChange={e => setCandSearch(e.target.value)}
-                      style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:13, outline:'none', marginBottom:12, boxSizing:'border-box' }} />
+                    <div style={{ position:'sticky', top:0, background:'#fff', zIndex:5, paddingBottom:12 }}>
+                      <input placeholder="Search talent pool by name or email…" value={candSearch} onChange={e => setCandSearch(e.target.value)}
+                        style={{ width:'100%', padding:'11px 16px', borderRadius:12, border:'1.5px solid #E2E8F0', fontSize:13, outline:'none', boxSizing:'border-box', background:'#F8FAFF' }} />
+                    </div>
 
-                    <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid #f1f5f9', borderRadius:10, marginBottom:12 }}>
-                      {filtCands.length === 0 && <p style={{ color:'#9E9D9B', textAlign:'center', padding:'20px', fontSize:13, margin:0 }}>No candidates found.</p>}
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {filtCands.length === 0 && <p style={{ color:'#9E9D9B', textAlign:'center', padding:'40px 0', fontSize:13 }}>No matching candidates found.</p>}
                       {filtCands.map(c => {
                         const alreadyIn = assignedCandIds.has(String(c.id));
                         const app = jobApplications.find(a => String(a.candidateId||a.candidate?._id) === String(c.id));
                         const isSelected = selectedCandIds.includes(c.id);
                         return (
-                          <label key={c.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', cursor: alreadyIn ? 'not-allowed' : 'pointer', background: isSelected ? 'rgba(1,118,211,0.05)' : 'transparent', borderBottom:'1px solid #f8fafc', opacity: alreadyIn ? 0.6 : 1 }}>
+                          <label key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, cursor: alreadyIn ? 'not-allowed' : 'pointer', background: isSelected ? 'rgba(1,118,211,0.06)' : '#F8FAFF', border:`1px solid ${isSelected ? 'rgba(1,118,211,0.2)' : 'rgba(226,232,240,0.5)'}`, transition: 'all 0.15s' }}>
                             <input type="checkbox" checked={isSelected} disabled={alreadyIn}
                               onChange={() => setSelectedCandIds(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])}
-                              style={{ accentColor:'#0176D3', width:15, height:15, flexShrink:0 }} />
+                              style={{ accentColor:'#0176D3', width:18, height:18, flexShrink:0 }} />
                             <div style={{ flex:1, minWidth:0 }}>
-                              <div style={{ color:'#181818', fontSize:13, fontWeight:600 }}>{c.name}</div>
+                              <div style={{ color:'#181818', fontSize:13, fontWeight:700 }}>{c.name}</div>
                               <div style={{ color:'#0176D3', fontSize:11 }}>{c.email}</div>
-                              {c.title && <div style={{ color:'#706E6B', fontSize:11 }}>{c.title}{c.location ? ` · ${c.location}` : ''}</div>}
                             </div>
                             {alreadyIn && app && (
-                              <span style={{ fontSize:10, fontWeight:700, background:'rgba(1,118,211,0.1)', color:'#0176D3', padding:'2px 8px', borderRadius:10, whiteSpace:'nowrap' }}>
-                                {app.stage || 'Applied'}
+                              <span style={{ fontSize:10, fontWeight:800, background:'rgba(1,118,211,0.1)', color:'#0176D3', padding:'4px 10px', borderRadius:10 }}>
+                                {SM[app.stage]?.label || app.stage}
                               </span>
                             )}
                           </label>
                         );
                       })}
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    {selectedCandIds.length > 0 && (
-                      <div style={{ background:'rgba(1,118,211,0.06)', border:'1px solid rgba(1,118,211,0.2)', borderRadius:8, padding:'8px 12px', color:'#0176D3', fontSize:12, fontWeight:600, marginBottom:12 }}>
-                        {selectedCandIds.length} candidate{selectedCandIds.length!==1?'s':''} selected
-                      </div>
-                    )}
-
+              {/* STICKY FOOTER */}
+              <div style={{ padding:'20px 24px', borderTop:'1px solid #E2E8F0', background:'#fff', flexShrink:0 }}>
+                {assignTab === 'recruiter' ? (
+                  <div style={{ display:'flex', gap:10 }}>
+                    <button disabled={assigningLoading} onClick={async () => {
+                      const sel = document.getElementById('assign-recruiter-sel').value;
+                      if (!sel) return setToast('❌ Please select a recruiter');
+                      setAssigningLoading(true);
+                      try { await api.assignRecruiterToJob(assigningJob.id, sel); setToast('✅ Recruiter assigned!'); load(); setAssigningJob(null); }
+                      catch (e) { setToast('❌ ' + e.message); }
+                      setAssigningLoading(false);
+                    }} style={{ ...btnP, flex:1, height:48, fontSize:14, justifyContent:'center', background:'linear-gradient(135deg,#032D60,#0176D3)', opacity: assigningLoading ? 0.7 : 1 }}>
+                      {assigningLoading ? '⚙️ Saving…' : '✓ Confirm Recruiter'}
+                    </button>
+                    <button onClick={() => setAssigningJob(null)} style={{ ...btnG, flex:1, height:48, fontSize:14, justifyContent:'center' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                    <div style={{ flex:1 }}>
+                       {selectedCandIds.length > 0 ? (
+                         <div style={{ color:'#0176D3', fontSize:12, fontWeight:700 }}>{selectedCandIds.length} candidate{selectedCandIds.length!==1?'s':''} selected</div>
+                       ) : (
+                         <div style={{ color:'#94A3B8', fontSize:12 }}>No selection</div>
+                       )}
+                    </div>
                     <div style={{ display:'flex', gap:10 }}>
                       <button disabled={assigningLoading || selectedCandIds.length === 0} onClick={async () => {
                         setAssigningLoading(true);
@@ -737,10 +758,10 @@ export default function AdminJobs({ user }) {
                           load();
                         } catch (e) { setToast('❌ ' + e.message); }
                         setAssigningLoading(false);
-                      }} style={{ ...btnP, flex:1, justifyContent:'center', opacity:(assigningLoading||selectedCandIds.length===0)?0.6:1 }}>
-                        {assigningLoading ? 'Assigning…' : `Assign ${selectedCandIds.length||'?'} →`}
+                      }} style={{ ...btnP, height:48, padding:'0 24px', fontSize:14, justifyContent:'center', background:'linear-gradient(135deg,#032D60,#0176D3)', opacity:(assigningLoading||selectedCandIds.length===0)?0.6:1 }}>
+                        {assigningLoading ? '⚙️ Assigning…' : `Assign Selection →`}
                       </button>
-                      <button onClick={() => setAssigningJob(null)} style={{ ...btnG, flex:1, justifyContent:'center' }}>Close</button>
+                      <button onClick={() => setAssigningJob(null)} style={{ ...btnG, height:48, padding:'0 20px', fontSize:14, justifyContent:'center' }}>Close</button>
                     </div>
                   </div>
                 )}
@@ -770,48 +791,51 @@ export default function AdminJobs({ user }) {
       {/* ── Merge Review Modal ── */}
       {mergeReview && (
         <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:11000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:600, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.25)' }}>
-            <div style={{ padding:'24px 32px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:600, height:'min(640px, 90vh)', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.25)' }}>
+            
+            {/* STICKY HEADER */}
+            <div style={{ padding:'20px 32px', background:'linear-gradient(135deg,#032D60,#0176D3)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
               <div>
-                <h2 style={{ margin:0, color:'#fff', fontSize:20, fontWeight:800 }}>🪄 Review Job Migration</h2>
-                <p style={{ margin:'4px 0 0', color:'rgba(255,255,255,0.7)', fontSize:13 }}>Merging {mergeReview.length} groups of duplicate jobs</p>
+                <h2 style={{ margin:0, color:'#fff', fontSize:18, fontWeight:800 }}>🪄 Review Job Migration</h2>
+                <p style={{ margin:'2px 0 0', color:'rgba(255,255,255,0.7)', fontSize:12 }}>Merging {mergeReview.length} duplicate groups</p>
               </div>
               <button onClick={() => setMergeReview(null)} style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer' }}>✕</button>
             </div>
             
-            <div style={{ flex:1, overflowY:'auto', padding:32 }}>
-              <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:24, display:'flex', gap:12 }}>
-                <div style={{ fontSize:20 }}>🛡️</div>
-                <div style={{ color:'#991B1B', fontSize:13, lineHeight:1.5 }}>
-                  <strong>Safety Protocol Active:</strong> Candidates from duplicate jobs will be linked to the primary job <strong>before</strong> the duplicates are closed. No data will be lost.
+            {/* SCROLLABLE BODY */}
+            <div style={{ flex:1, overflowY:'auto', padding:'24px 32px' }}>
+              <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10 }}>
+                <span style={{ fontSize:18 }}>🛡️</span>
+                <div style={{ color:'#991B1B', fontSize:12, lineHeight:1.5 }}>
+                  <strong>Safety Protocol:</strong> Candidates will be linked to the primary job <strong>before</strong> duplicates are closed. No data will be lost.
                 </div>
               </div>
 
-              <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
                 {mergeReview.map((group, i) => (
                   <div key={i} style={{ border:'1px solid #E2E8F0', borderRadius:16, overflow:'hidden' }}>
-                    <div style={{ background:'#F8FAFF', padding:'12px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <span style={{ fontSize:12, fontWeight:800, color:'#032D60' }}>GROUP {i+1}</span>
-                      <span style={{ fontSize:11, color:'#0176D3', background:'rgba(1,118,211,0.1)', padding:'2px 8px', borderRadius:20 }}>{group.duplicates.length + 1} Identical Postings</span>
+                    <div style={{ background:'#F8FAFF', padding:'10px 16px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <span style={{ fontSize:11, fontWeight:800, color:'#032D60' }}>GROUP {i+1}</span>
+                      <span style={{ fontSize:10, color:'#0176D3', background:'rgba(1,118,211,0.1)', padding:'2px 6px', borderRadius:20 }}>{group.duplicates.length + 1} Postings</span>
                     </div>
-                    <div style={{ padding:20 }}>
-                      <div style={{ marginBottom:16 }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>KEEPING AS PRIMARY</div>
-                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                          <div style={{ background:'#2E844A', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>PRIMARY</div>
+                    <div style={{ padding:16 }}>
+                      <div style={{ marginBottom:12 }}>
+                        <div style={{ fontSize:9, fontWeight:700, color:'#706E6B', letterSpacing:0.8, marginBottom:4 }}>PRIMARY JOB</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <div style={{ background:'#2E844A', color:'#fff', padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:800 }}>KEEP</div>
                           <div>
-                            <div style={{ fontWeight:700, fontSize:14 }}>{group.primary.title}</div>
-                            <div style={{ fontSize:12, color:'#706E6B' }}>{group.primary.company} · {group.primary.applicantsCount || 0} existing apps</div>
+                            <div style={{ fontWeight:700, fontSize:13 }}>{group.primary.title}</div>
+                            <div style={{ fontSize:11, color:'#706E6B' }}>{group.primary.company} · {group.primary.applicantsCount || 0} apps</div>
                           </div>
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize:10, fontWeight:700, color:'#706E6B', letterSpacing:1, marginBottom:6 }}>CONSOLIDATING (TO BE CLOSED)</div>
-                        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        <div style={{ fontSize:9, fontWeight:700, color:'#706E6B', letterSpacing:0.8, marginBottom:4 }}>MIGRATING (TO BE CLOSED)</div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                           {group.duplicates.map(d => (
-                            <div key={d.id} style={{ display:'flex', alignItems:'center', gap:12, opacity:0.8 }}>
-                              <div style={{ background:'#BA0517', color:'#fff', padding:'4px 10px', borderRadius:8, fontSize:11, fontWeight:800 }}>CLOSE</div>
-                              <div style={{ fontSize:13 }}>{d.title} <span style={{ color:'#706E6B' }}>({d.applicantsCount || 0} to migrate)</span></div>
+                            <div key={d.id} style={{ display:'flex', alignItems:'center', gap:10, opacity:0.8 }}>
+                              <div style={{ background:'#BA0517', color:'#fff', padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:800 }}>MIGRATE</div>
+                              <div style={{ fontSize:12 }}>{d.title} <span style={{ color:'#706E6B' }}>({d.applicantsCount || 0} apps)</span></div>
                             </div>
                           ))}
                         </div>
@@ -822,23 +846,25 @@ export default function AdminJobs({ user }) {
               </div>
             </div>
 
-            {/* Progress bar — only visible while merging */}
-            {merging && (
-              <div style={{ padding:'0 24px 16px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:'#0176D3' }}>{mergeStatus}</span>
-                  <span style={{ fontSize:12, color:'#64748B' }}>{Math.round(mergeProgress)}%</span>
+            {/* STICKY FOOTER */}
+            <div style={{ padding:24, borderTop:'1px solid #E2E8F0', background:'#fff', flexShrink:0 }}>
+              {merging && (
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#0176D3' }}>{mergeStatus}</span>
+                    <span style={{ fontSize:12, color:'#64748B' }}>{Math.round(mergeProgress)}%</span>
+                  </div>
+                  <div style={{ height:6, background:'#E2E8F0', borderRadius:6, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${mergeProgress}%`, background:'linear-gradient(90deg,#0176D3,#10b981)', borderRadius:6, transition:'width 0.5s ease' }} />
+                  </div>
                 </div>
-                <div style={{ height:8, background:'#E2E8F0', borderRadius:8, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${mergeProgress}%`, background:'linear-gradient(90deg,#0176D3,#10b981)', borderRadius:8, transition:'width 0.5s ease' }} />
-                </div>
+              )}
+              <div style={{ display:'flex', gap:12 }}>
+                <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:14, justifyContent:'center', opacity: merging ? 0.8 : 1 }}>
+                  {merging ? '⚙️ Processing…' : '✓ Confirm & Merge All'}
+                </button>
+                <button onClick={() => setMergeReview(null)} disabled={merging} style={{ ...btnG, flex:1, height:48, fontSize:14, justifyContent:'center', opacity: merging ? 0.5 : 1 }}>Cancel</button>
               </div>
-            )}
-            <div style={{ padding:24, borderTop:'1px solid #E2E8F0', display:'flex', gap:12 }}>
-              <button onClick={executeMerge} disabled={merging} style={{ ...btnP, flex:1, height:48, fontSize:15, justifyContent:'center', opacity: merging ? 0.8 : 1 }}>
-                {merging ? '⚙️ Migrating — please wait…' : '✓ Confirm & Merge All'}
-              </button>
-              <button onClick={() => setMergeReview(null)} disabled={merging} style={{ ...btnG, flex:1, height:48, fontSize:15, justifyContent:'center', opacity: merging ? 0.5 : 1 }}>Cancel</button>
             </div>
           </div>
         </div>

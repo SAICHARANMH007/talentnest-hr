@@ -13,7 +13,7 @@ function jwtExp(token) {
     return JSON.parse(atob(b64)).exp || 0;
   } catch { return 0; }
 }
-function tokenIsValid(token) {
+export function tokenIsValid(token) {
   if (!token) return false;
   return jwtExp(token) > Date.now() / 1000 + 30; // 30s buffer
 }

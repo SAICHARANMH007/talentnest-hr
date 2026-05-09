@@ -6,7 +6,7 @@
  * industry standards while maintaining zero-breakage for existing components.
  */
 
-import { set401Handler as _set401, initAuth as _initAuth, downloadBlob as _downloadBlob, getToken as _getToken, setToken as _setToken } from './client.js';
+import { set401Handler as _set401, initAuth as _initAuth, downloadBlob as _downloadBlob, getToken as _getToken, setToken as _setToken, tokenIsValid as _tokenIsValid, clearToken as _clearToken } from './client.js';
 import { authService } from './services/auth.service.js';
 import { userService } from './services/user.service.js';
 import { jobService } from './services/job.service.js';
@@ -22,6 +22,8 @@ export const set401Handler = _set401;
 export const initAuth = _initAuth;
 export const downloadBlob = _downloadBlob;
 export const setToken = _setToken;
+export const clearToken = _clearToken;
+export const tokenIsValid = _tokenIsValid;
 
 // The unified API object
 export const api = {

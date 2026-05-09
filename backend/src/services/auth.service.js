@@ -82,7 +82,7 @@ class AuthService {
   /**
    * Central method to issue dual tokens (Access/Refresh) + create UserSession
    */
-  async issueTokens(res, user, req, originalUserId = null) {
+  async issueTokens(res, user, req, originalUserId = null, reuseRefreshToken = false, forcedRefreshToken = null) {
     if (!user) throw new AppError('User not found.', 404);
 
     // ── Access Token (short-lived) ─────────────────────────────────────────────
@@ -94,42 +94,47 @@ class AuthService {
     );
 
     // ── Refresh Token (long-lived) ─────────────────────────────────────────────
-    const refreshTokenString = crypto.randomBytes(40).toString('hex');
+    let refreshTokenString;
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    try {
-      await RefreshToken.create({
-        token: refreshTokenString,
-        userId: user._id,
-        originalUserId,
-        expiresAt,
-        ip: req?.ip,
-        userAgent: req?.headers?.['user-agent'],
-      });
-    } catch (err) {
-      if (err.name === 'ValidationError') {
-        console.error('❌ RefreshToken Validation Error:', err.message, err.errors);
+    if (reuseRefreshToken && req.signedCookies?.tn_refresh_token) {
+      refreshTokenString = req.signedCookies.tn_refresh_token;
+    } else {
+      refreshTokenString = forcedRefreshToken || crypto.randomBytes(40).toString('hex');
+      try {
+        await RefreshToken.create({
+          token: refreshTokenString,
+          userId: user._id,
+          originalUserId,
+          expiresAt,
+          ip: req?.ip,
+          userAgent: req?.headers?.['user-agent'],
+        });
+      } catch (err) {
+        if (err.name === 'ValidationError') {
+          console.error('❌ RefreshToken Validation Error:', err.message, err.errors);
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    // ── UserSession record ─────────────────────────────────────────────────────
-    try {
-      const ua = req?.headers?.['user-agent'] || '';
-      const { browser, os, deviceName } = UserSession.parseUA(ua);
-      await UserSession.create({
-        userId:       user._id,
-        tenantId:     user.tenantId || user.orgId || null,
-        refreshToken: refreshTokenString,
-        ip:           req?.ip,
-        userAgent:    ua,
-        browser,
-        os,
-        deviceName,
-        lastActive:   new Date(),
-        expiresAt,
-      });
-    } catch (_) { /* non-critical — don't block login */ }
+      // ── UserSession record ─────────────────────────────────────────────────────
+      try {
+        const ua = req?.headers?.['user-agent'] || '';
+        const { browser, os, deviceName } = UserSession.parseUA(ua);
+        await UserSession.create({
+          userId:       user._id,
+          tenantId:     user.tenantId || user.orgId || null,
+          refreshToken: refreshTokenString,
+          ip:           req?.ip,
+          userAgent:    ua,
+          browser,
+          os,
+          deviceName,
+          lastActive:   new Date(),
+          expiresAt,
+        });
+      } catch (_) { /* non-critical — don't block login */ }
+    }
 
     // ── HttpOnly Cookie ────────────────────────────────────────────────────────
     const IS_PROD = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
@@ -147,10 +152,10 @@ class AuthService {
       recruiter:   '/recruiter/dashboard',
       candidate:   '/candidate/dashboard',
       client:      '/client/dashboard',
+      hiring_manager: '/dashboard',
     };
 
     const normalizedUser = normalize(user);
-    // Ensure orgId is always present as a frontend-compat alias for tenantId
     if (!normalizedUser.orgId && normalizedUser.tenantId) {
       normalizedUser.orgId = normalizedUser.tenantId;
     }
@@ -163,16 +168,33 @@ class AuthService {
   }
 
   /**
-   * Refresh Token Logic (IAM Standard with Rotation)
+   * Refresh Token Logic (IAM Standard with Rotation + Grace Period)
    */
   async refresh(req, res) {
     const oldToken = req.signedCookies ? req.signedCookies.tn_refresh_token : null;
     if (!oldToken) throw new AppError('No refresh token provided.', 401);
 
     const stored = await RefreshToken.findOne({ token: oldToken });
+    
     if (!stored) {
       res.clearCookie('tn_refresh_token');
       throw new AppError('Invalid refresh token session.', 401);
+    }
+
+    // ── Grace Period ───────────────────────────────────────────────────────────
+    // If the token was revoked within the last 60s, it's likely a race condition
+    // from parallel requests or multiple tabs. Reuse the replacement token.
+    if (stored.revokedAt) {
+      const GRACE_WINDOW = 60 * 1000;
+      if (Date.now() - new Date(stored.revokedAt).getTime() < GRACE_WINDOW && stored.replacedBy) {
+        const user = await User.findById(stored.userId);
+        if (!user || !user.isActive) throw new AppError('User inactive.', 401);
+        // Return a fresh access token using the REPLACED token from the cookie (if updated)
+        // or just issue a fresh access token for the same session.
+        return this.issueTokens(res, user, req, stored.originalUserId, true);
+      }
+      res.clearCookie('tn_refresh_token');
+      throw new AppError('Session expired (token recycled).', 401);
     }
 
     if (new Date() > stored.expiresAt) {
@@ -190,15 +212,21 @@ class AuthService {
       throw new AppError('User inactive or not found.', 401);
     }
 
-    // Token rotation — deactivate old session
-    await RefreshToken.deleteOne({ _id: stored._id });
+    // ── Token Rotation ────────────────────────────────────────────────────────
+    // We mark the old token as revoked instead of deleting it immediately.
+    // This provides a buffer for multi-tab environments.
+    const newTokenString = crypto.randomBytes(40).toString('hex');
+    
+    stored.revokedAt = new Date();
+    stored.replacedBy = newTokenString;
+    await stored.save();
+
     await UserSession.findOneAndUpdate(
       { refreshToken: oldToken },
       { isActive: false }
     ).catch(() => {});
 
-    const { token, user: userData } = await this.issueTokens(res, user, req);
-    return { token, user: userData };
+    return this.issueTokens(res, user, req, stored.originalUserId, false, newTokenString);
   }
 
   /**
