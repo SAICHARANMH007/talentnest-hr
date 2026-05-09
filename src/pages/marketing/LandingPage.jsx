@@ -576,6 +576,8 @@ export default function LandingPage() {
 
       <MarketingFooter />
 
+      {applying && <PublicApplyModal job={applying} onClose={() => setApplying(null)} />}
+
       <style>{`
         @keyframes tn-float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
         @media(max-width:768px){
