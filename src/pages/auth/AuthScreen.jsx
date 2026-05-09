@@ -98,11 +98,76 @@ function OtpScreen({ email, onVerified, onBack }) {
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-const BG = { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #060d1a 0%, #0d1e3d 55%, #0a2a52 100%)', padding: 20, fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", overflowY: 'auto' };
-const CARD = { background: '#ffffff', boxShadow: '0 24px 64px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 'clamp(20px, 4vw, 40px)', width: '100%', maxWidth: 460, boxSizing: 'border-box' };
-const INP = { width: '100%', padding: '13px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, color: '#0f172a', fontSize: 16, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.2s', WebkitAppearance: 'none' };
-const BTN_P = { background: 'linear-gradient(135deg, #0176D3, #014486)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 700, padding: '13px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' };
-const BTN_G = { background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 12, color: '#374151', fontSize: 13, fontWeight: 500, padding: '11px 20px', cursor: 'pointer', transition: 'all 0.2s' };
+const BG = { 
+  minHeight: '100dvh', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  background: '#0A1628', 
+  padding: 20, 
+  fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", 
+  overflowY: 'auto',
+  position: 'relative',
+  overflow: 'hidden'
+};
+
+const CARD = { 
+  background: 'rgba(255, 255, 255, 0.98)', 
+  backdropFilter: 'blur(12px)',
+  boxShadow: '0 32px 80px rgba(0,0,0,0.35)', 
+  border: '1px solid rgba(255,255,255,0.2)', 
+  borderRadius: 28, 
+  padding: 'clamp(24px, 5vw, 44px)', 
+  width: '100%', 
+  maxWidth: 480, 
+  boxSizing: 'border-box',
+  position: 'relative',
+  zIndex: 10
+};
+
+const INP = { 
+  width: '100%', 
+  padding: '14px 18px', 
+  background: '#F8FAFC', 
+  border: '1.5px solid #E2E8F0', 
+  borderRadius: 14, 
+  color: '#0F172A', 
+  fontSize: 15, 
+  outline: 'none', 
+  boxSizing: 'border-box', 
+  fontFamily: 'inherit', 
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+  WebkitAppearance: 'none' 
+};
+
+const BTN_P = { 
+  background: 'linear-gradient(135deg, #0176D3 0%, #014486 100%)', 
+  border: 'none', 
+  borderRadius: 14, 
+  color: '#fff', 
+  fontSize: 15, 
+  fontWeight: 700, 
+  padding: '14px 28px', 
+  cursor: 'pointer', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  gap: 10, 
+  transition: 'all 0.2s',
+  boxShadow: '0 4px 14px rgba(1, 118, 211, 0.3)'
+};
+
+const BTN_G = { 
+  background: '#F1F5F9', 
+  border: '1px solid #E2E8F0', 
+  borderRadius: 14, 
+  color: '#475569', 
+  fontSize: 14, 
+  fontWeight: 600, 
+  padding: '12px 24px', 
+  cursor: 'pointer', 
+  transition: 'all 0.2s' 
+};
 
 // ── Employer plan colour maps (static — defined at module level to avoid remount) ──
 const PLAN_COLORS_MAP = { enterprise: '#2E844A', growth: '#0176D3', starter: '#A07E00', free: '#706E6B', trial: '#F59E0B' };
@@ -130,26 +195,38 @@ function PasswordStrength({ pw }) {
 function EntryScreen({ onSelect, navigate }) {
   return (
     <div style={{ ...BG, flexDirection: 'column' }}>
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div style={{ textAlign: 'center', marginBottom: 48, animation: 'fadeUp 0.5s ease both' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+      {/* Background Decorative Elements */}
+      <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '70%', height: '70%', background: 'radial-gradient(circle, rgba(79, 70, 229, 0.18) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 1, pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(0, 194, 203, 0.12) 0%, transparent 70%)', filter: 'blur(80px)', zIndex: 1, pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', top: '20%', right: '15%', width: '30%', height: '30%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: 1, pointerEvents: 'none' }} />
+
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .entry-card { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .entry-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+      `}</style>
+
+      <div style={{ textAlign: 'center', marginBottom: 56, animation: 'fadeUp 0.6s ease both', zIndex: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
           <Logo size="xl" variant="full" theme="light" />
         </div>
-        <p style={{ color: 'rgba(147,197,253,0.9)', fontSize: 15, margin: 0 }}>AI-Powered Recruitment Platform</p>
+        <div style={{ height: 2, width: 40, background: 'linear-gradient(90deg, transparent, #00C2CB, transparent)', margin: '0 auto 16px' }} />
+        <p style={{ color: '#94A3B8', fontSize: 16, fontWeight: 500, margin: 0, letterSpacing: '0.5px' }}>Welcome to your AI-Powered Recruitment Hub</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.5s 0.1s ease both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 540 }}>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.6s 0.15s ease both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 580, zIndex: 10 }}>
         {/* Job Seeker Card */}
         <button
           onClick={() => onSelect('candidate')}
-          style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 20, padding: '32px 24px', width: 'min(240px, 100%)', flex: '1 1 200px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(1,118,211,0.14)'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.6)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(1,118,211,0.2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(1,118,211,0.06)'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.3)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+          className="entry-card"
+          style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', borderRadius: 24, padding: '40px 32px', width: 'min(260px, 100%)', flex: '1 1 240px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(1,118,211,0.5)'; e.currentTarget.style.background = 'rgba(1,118,211,0.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
         >
-          <div style={{ fontSize: 52, marginBottom: 16 }}>👤</div>
-          <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>Job Seeker</h3>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 16px', lineHeight: 1.5 }}>Find your dream job with AI-powered matching & apply in one click</p>
-          <div style={{ background: '#0176D3', borderRadius: 10, padding: '8px 0', color: '#fff', fontSize: 13, fontWeight: 700 }}>
+          <div style={{ width: 72, height: 72, background: 'rgba(1,118,211,0.1)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 20px', border: '1px solid rgba(1,118,211,0.2)' }}>👤</div>
+          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 10px' }}>Job Seeker</h3>
+          <p style={{ color: '#94A3B8', fontSize: 14, margin: '0 0 24px', lineHeight: 1.6 }}>Find your dream job with AI-powered matching & apply in one click</p>
+          <div style={{ background: 'linear-gradient(135deg, #0176D3, #0154A4)', borderRadius: 12, padding: '12px 0', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 8px 16px rgba(1,118,211,0.2)' }}>
             Get Started →
           </div>
         </button>
@@ -157,26 +234,27 @@ function EntryScreen({ onSelect, navigate }) {
         {/* Employer Card */}
         <button
           onClick={() => onSelect('employer')}
-          style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 20, padding: '32px 24px', width: 'min(240px, 100%)', flex: '1 1 200px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', color: 'inherit' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.14)'; e.currentTarget.style.borderColor = 'rgba(37,99,235,0.6)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(37,99,235,0.2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.06)'; e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+          className="entry-card"
+          style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', borderRadius: 24, padding: '40px 32px', width: 'min(260px, 100%)', flex: '1 1 240px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,194,203,0.5)'; e.currentTarget.style.background = 'rgba(0,194,203,0.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
         >
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🏢</div>
-          <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>Employer</h3>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '0 0 16px', lineHeight: 1.5 }}>Post jobs, manage pipeline & hire top talent 3x faster with AI</p>
-          <div style={{ background: 'linear-gradient(135deg,#014486,#014486)', borderRadius: 10, padding: '8px 0', color: '#fff', fontSize: 13, fontWeight: 700 }}>
+          <div style={{ width: 72, height: 72, background: 'rgba(0,194,203,0.1)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 20px', border: '1px solid rgba(0,194,203,0.2)' }}>🏢</div>
+          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 10px' }}>Employer</h3>
+          <p style={{ color: '#94A3B8', fontSize: 14, margin: '0 0 24px', lineHeight: 1.6 }}>Post jobs, manage pipeline & hire top talent 3x faster with AI</p>
+          <div style={{ background: 'linear-gradient(135deg, #00C2CB, #0891B2)', borderRadius: 12, padding: '12px 0', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 8px 16px rgba(0,194,203,0.2)' }}>
             Start Hiring →
           </div>
         </button>
       </div>
 
-      <div style={{ marginTop: 32, textAlign: 'center', animation: 'fadeUp 0.5s 0.2s ease both', opacity: 0, animationFillMode: 'forwards' }}>
-        <button onClick={() => navigate('/careers')} style={{ background: 'none', border: '1px solid #DDDBDA', borderRadius: 10, color: '#706E6B', fontSize: 13, cursor: 'pointer', padding: '8px 20px' }}>
+      <div style={{ marginTop: 48, textAlign: 'center', animation: 'fadeUp 0.6s 0.3s ease both', opacity: 0, animationFillMode: 'forwards', zIndex: 10 }}>
+        <button onClick={() => navigate('/careers')} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#94A3B8', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '12px 28px', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = '#94A3B8'; }}>
           🔍 Browse open jobs without logging in
         </button>
       </div>
 
-      <button onClick={() => navigate('/')} style={{ marginTop: 24, background: 'none', border: 'none', color: '#475569', fontSize: 12, cursor: 'pointer' }}>← Back to Website</button>
+      <button onClick={() => navigate('/')} style={{ marginTop: 32, background: 'none', border: 'none', color: '#64748B', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', zIndex: 10 }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>← Back to Home</button>
     </div>
   );
 }
