@@ -216,41 +216,93 @@ const PLAN_BG_MAP = { enterprise: 'rgba(46,132,74,0.12)', growth: 'rgba(1,118,21
 // ── Entry Screen: Job Seeker vs Employer ──────────────────────────────────────
 function EntryScreen({ onSelect, navigate }) {
   return (
-    <div style={{ ...BG, flexDirection: 'column' }}>
-      {/* Industry Standard Background: Mesh Gradient + Grid */}
-      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%)', zIndex: 1 }} />
-      <div style={{ position: 'fixed', inset: 0, backgroundImage: 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 2 }} />
+    <div style={{ ...BG, flexDirection: 'column', position: 'relative' }}>
+      {/* Premium Ambient Background */}
+      <div style={{ 
+        position: 'fixed', inset: 0, 
+        background: 'radial-gradient(circle at 0% 0%, rgba(1, 118, 211, 0.15) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(0, 194, 203, 0.1) 0%, transparent 40%), #050B15',
+        zIndex: 1 
+      }} />
+      
+      {/* Subtle Grid Overlay */}
+      <div style={{ 
+        position: 'fixed', inset: 0, 
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+        pointerEvents: 'none',
+        zIndex: 2 
+      }} />
 
       <style>{`
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .entry-card { transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
-        .entry-card:hover { transform: translateY(-12px); box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5), 0 18px 36px -18px rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.3) !important; }
-        .btn-hover { transition: all 0.3s; }
-        .btn-hover:hover { filter: brightness(1.1); transform: scale(1.02); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes glow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .entry-card { 
+          transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(20px);
+        }
+        .entry-card:hover { 
+          transform: translateY(-12px) scale(1.02); 
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: 0 40px 80px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.05);
+        }
+        .entry-card:hover .icon-box {
+          transform: scale(1.1) rotate(5deg);
+          box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.4);
+        }
+        .entry-card:hover .action-btn {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
       `}</style>
 
-      <div style={{ textAlign: 'center', marginBottom: 64, animation: 'fadeUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) both', zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          {/* FIXED: Logo theme="dark" for dark background visibility */}
+      <div style={{ textAlign: 'center', marginBottom: 60, animation: 'fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) both', zIndex: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
           <Logo size="xl" variant="full" theme="dark" />
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, fontWeight: 500, margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          Next-Generation Recruitment
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+          <div style={{ height: 1, width: 40, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2))' }} />
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            Choose Your Journey
+          </span>
+          <div style={{ height: 1, width: 40, background: 'linear-gradient(90deg, rgba(255,255,255,0.2), transparent)' }} />
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.8s 0.2s cubic-bezier(0.23, 1, 0.32, 1) both', opacity: 0, animationFillMode: 'forwards', width: '100%', maxWidth: 640, zIndex: 10 }}>
+      <div style={{ 
+        display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', 
+        animation: 'fadeUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both', 
+        opacity: 0, width: '100%', maxWidth: 800, zIndex: 10 
+      }}>
         {/* Job Seeker Card */}
         <button
           onClick={() => onSelect('candidate')}
           className="entry-card"
-          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(16px)', borderRadius: 32, padding: '48px 32px', width: 'min(280px, 100%)', flex: '1 1 260px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
+          style={{ 
+            borderRadius: 32, padding: '54px 32px', width: '320px', 
+            cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center'
+          }}
         >
-          <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, rgba(1,118,211,0.2), rgba(1,118,211,0.05))', borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 24px', border: '1px solid rgba(1,118,211,0.2)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>👤</div>
-          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Job Seeker</h3>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.6 }}>Discover opportunities tailored to your skills and ambition.</p>
-          <div className="btn-hover" style={{ background: 'linear-gradient(135deg, #0176D3, #014486)', borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, boxShadow: '0 10px 20px -5px rgba(1,118,211,0.4)' }}>
-            Find a Job →
+          <div className="icon-box" style={{ 
+            width: 88, height: 88, background: 'linear-gradient(135deg, #0176D3, #014486)', 
+            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+            boxShadow: '0 12px 24px rgba(1, 118, 211, 0.3)',
+            '--accent-rgb': '1, 118, 211'
+          }}>👤</div>
+          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Job Seeker</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+            Upload your resume, find matching roles, and track applications in real-time.
+          </p>
+          <div className="action-btn" style={{ 
+            width: '100%', background: 'linear-gradient(135deg, #0176D3, #014486)', 
+            borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, 
+            transition: 'all 0.3s' 
+          }}>
+            Discover Jobs →
           </div>
         </button>
 
@@ -258,24 +310,60 @@ function EntryScreen({ onSelect, navigate }) {
         <button
           onClick={() => onSelect('employer')}
           className="entry-card"
-          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(16px)', borderRadius: 32, padding: '48px 32px', width: 'min(280px, 100%)', flex: '1 1 260px', cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none' }}
+          style={{ 
+            borderRadius: 32, padding: '54px 32px', width: '320px', 
+            cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center'
+          }}
         >
-          <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, rgba(0,194,203,0.2), rgba(0,194,203,0.05))', borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 24px', border: '1px solid rgba(0,194,203,0.2)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>🏢</div>
-          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Employer</h3>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 32px', lineHeight: 1.6 }}>Optimize your hiring process with AI-driven insights.</p>
-          <div className="btn-hover" style={{ background: 'linear-gradient(135deg, #00C2CB, #0891B2)', borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, boxShadow: '0 10px 20px -5px rgba(0,194,203,0.4)' }}>
-            Hire Talent →
+          <div className="icon-box" style={{ 
+            width: 88, height: 88, background: 'linear-gradient(135deg, #00C2CB, #0891B2)', 
+            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+            boxShadow: '0 12px 24px rgba(0, 194, 203, 0.3)',
+            '--accent-rgb': '0, 194, 203'
+          }}>🏢</div>
+          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Employer</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+            Post jobs, manage your talent pipeline, and build high-performance teams.
+          </p>
+          <div className="action-btn" style={{ 
+            width: '100%', background: 'linear-gradient(135deg, #00C2CB, #0891B2)', 
+            borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, 
+            transition: 'all 0.3s' 
+          }}>
+            Find Talent →
           </div>
         </button>
       </div>
 
-      <div style={{ marginTop: 64, textAlign: 'center', animation: 'fadeUp 0.8s 0.4s cubic-bezier(0.23, 1, 0.32, 1) both', opacity: 0, animationFillMode: 'forwards', zIndex: 10 }}>
-        <button onClick={() => navigate('/careers')} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 14, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '12px 32px', transition: 'all 0.3s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'transparent'; }}>
-          🔍 Explore open opportunities
+      <div style={{ marginTop: 60, textAlign: 'center', animation: 'fadeUp 1s 0.4s both', opacity: 0, zIndex: 10 }}>
+        <button 
+          onClick={() => navigate('/careers')} 
+          style={{ 
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', 
+            borderRadius: 100, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, 
+            cursor: 'pointer', padding: '10px 24px', transition: 'all 0.3s',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+        >
+          🔍 Browse open positions without an account
         </button>
       </div>
 
-      <button onClick={() => navigate('/')} style={{ marginTop: 40, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', zIndex: 10 }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}>← Back to Main Website</button>
+      <button 
+        onClick={() => navigate('/')} 
+        style={{ 
+          marginTop: 40, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', 
+          fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'color 0.2s', zIndex: 10 
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+        onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+      >
+        ← Return to Main Website
+      </button>
     </div>
   );
 }

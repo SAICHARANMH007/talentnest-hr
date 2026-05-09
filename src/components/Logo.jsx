@@ -20,50 +20,49 @@ export default function Logo({
     );
   }
 
-  const iconSizes = { xs: 16, sm: 20, md: 28, lg: 36, xl: 52 };
-  const textSizes = { xs: 10, sm: 12, md: 15, lg: 19, xl: 28 };
-  const tagSizes  = { xs: 7,  sm: 8,  md: 9,  lg: 11, xl: 16 };
-  const gaps      = { xs: 4,  sm: 5,  md: 7,  lg: 9,  xl: 14 };
+  const iconSizes = { xs: 20, sm: 28, md: 36, lg: 48, xl: 64 };
+  const textSizes = { xs: 12, sm: 16, md: 20, lg: 24, xl: 32 };
+  const tagSizes  = { xs: 8,  sm: 10, md: 12, lg: 14, xl: 18 };
+  const subSizes  = { xs: 6,  sm: 7,  md: 8,  lg: 10, xl: 12 };
+  const gaps      = { xs: 6,  sm: 8,  md: 10, lg: 12, xl: 16 };
 
   const iconSize    = iconSizes[size];
-  const mainColor   = theme === 'light' ? '#0F2B6B' : '#FFFFFF';
-  const accentColor = theme === 'light' ? '#1B4FD8' : '#3B7FE8';
-  const tagColor    = theme === 'light' ? '#1B4FD8' : '#06B6D4';
+  const mainColor   = theme === 'light' ? '#0F172A' : '#FFFFFF';
+  const accentColor = '#0176D3'; // Deep Blue
+  const hrColor     = '#00C2CB'; // Cyan
+  const subColor    = theme === 'light' ? '#64748B' : 'rgba(255,255,255,0.5)';
 
-  const IconMark = () => {
-    const s  = iconSize;
-    const cx = s / 2;
-    const cy = s / 2;
-    const r  = s * 0.42;
-    const hex = Array.from({ length: 6 }, (_, i) => {
-      const angle = (Math.PI / 3) * i - Math.PI / 2;
-      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
-    });
-    const hexPoints = hex.map(p => `${p.x},${p.y}`).join(' ');
-    const nodeR   = s * 0.07;
-    const centerR = s * 0.13;
-    const arrowLen = s * 0.13;
-
+    const s = iconSize;
     return (
-      <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} fill="none">
-        <polygon points={hexPoints} fill={accentColor} opacity={theme === 'light' ? 0.12 : 0.2} />
-        <polygon points={hexPoints} stroke={accentColor} strokeWidth={s * 0.045} fill="none" />
-        {hex.map((p, i) => (
-          <line key={i} x1={cx} y1={cy}
-            x2={cx + (p.x - cx) * 0.6} y2={cy + (p.y - cy) * 0.6}
-            stroke={accentColor} strokeWidth={s * 0.025} opacity={0.5}
-          />
+      <svg width={s} height={s} viewBox="0 0 100 100" fill="none" style={{ borderRadius: '24%', overflow: 'hidden' }}>
+        {/* Rounded Square Background */}
+        <rect width="100" height="100" rx="24" fill="#031026" />
+        
+        {/* Hexagon Shell */}
+        <path 
+          d="M50 20 L76 35 V65 L50 80 L24 65 V35 Z" 
+          stroke={hrColor} 
+          strokeWidth="4" 
+          fill="rgba(0, 194, 203, 0.1)" 
+        />
+        
+        {/* Nodes */}
+        {[
+          [50, 20], [76, 35], [76, 65], [50, 80], [24, 65], [24, 35]
+        ].map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="3" fill={hrColor} />
         ))}
-        {hex.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={nodeR} fill={accentColor} opacity={0.88} />
-        ))}
-        <circle cx={cx} cy={cy} r={centerR} fill={accentColor} />
-        <line x1={cx} y1={cy + arrowLen * 0.4} x2={cx} y2={cy - arrowLen}
-          stroke="#fff" strokeWidth={s * 0.045} strokeLinecap="round" />
-        <path
-          d={`M${cx - arrowLen * 0.55} ${cy - arrowLen * 0.5} L${cx} ${cy - arrowLen * 1.1} L${cx + arrowLen * 0.55} ${cy - arrowLen * 0.5}`}
-          stroke="#fff" strokeWidth={s * 0.045} fill="none"
-          strokeLinecap="round" strokeLinejoin="round"
+
+        {/* Center Circle */}
+        <circle cx="50" cy="53" r="14" fill={accentColor} />
+        
+        {/* Arrow */}
+        <path 
+          d="M50 60 V46 M44 52 L50 45 L56 52" 
+          stroke="white" 
+          strokeWidth="5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
         />
       </svg>
     );
@@ -74,14 +73,23 @@ export default function Logo({
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: gaps[size], minWidth: 0, ...style }} className={className}>
       {variant !== 'wordmark' && <IconMark />}
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, minWidth: 0, overflow: 'hidden' }}>
-        <span style={{ fontSize: textSizes[size], fontWeight: 800, color: mainColor, letterSpacing: '-0.03em', fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          TalentNest
-        </span>
-        <span style={{ fontSize: tagSizes[size], fontWeight: 700, color: tagColor, letterSpacing: '0.3em', marginTop: size === 'xs' ? 0 : 1, fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          HR
-        </span>
-      </div>
+      {variant !== 'icon' && (
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: size === 'xs' ? 2 : 4 }}>
+            <span style={{ fontSize: textSizes[size], fontWeight: 900, color: mainColor, letterSpacing: '-0.02em', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              TalentNest
+            </span>
+            <span style={{ fontSize: textSizes[size], fontWeight: 900, color: hrColor, letterSpacing: '-0.02em', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              HR
+            </span>
+          </div>
+          {variant === 'full' && (
+            <span style={{ fontSize: subSizes[size], fontWeight: 800, color: subColor, letterSpacing: '0.25em', marginTop: 4, textTransform: 'uppercase' }}>
+              FIND · HIRE · GROW
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

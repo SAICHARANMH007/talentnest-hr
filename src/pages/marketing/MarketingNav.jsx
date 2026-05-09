@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_PATH } from '../../config/logo.js';
+import Logo from '../../components/Logo.jsx';
 import { useLogo } from '../../context/LogoContext.jsx';
 import { useMarketingTheme, THEMES } from '../../context/MarketingThemeContext.jsx';
 
@@ -224,12 +225,20 @@ export default function MarketingNav({ active = 'home' }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               backdropFilter: 'blur(8px)',
             }}>
-              <img src={logoSrc} alt="TalentNest HR" style={{ maxHeight: 32, maxWidth: 32, width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+              <Logo size="sm" variant="icon" theme={scrolled ? 'light' : 'dark'} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1 }}>
-              <span style={{ fontWeight: 900, fontSize: 18, color: logoNameColor, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
-                Talent<span style={{ color: 'var(--mkt-accent)' }}>Nest</span> HR
-              </span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span style={{ fontWeight: 900, fontSize: 18, color: logoNameColor, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
+                  Talent
+                </span>
+                <span style={{ fontWeight: 900, fontSize: 18, color: '#00C2CB', letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
+                  Nest
+                </span>
+                <span style={{ fontWeight: 900, fontSize: 18, color: logoNameColor, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
+                  HR
+                </span>
+              </div>
               <span style={{ fontSize: 10, color: logoSubColor, fontWeight: 800, letterSpacing: '0.2em', marginTop: 4, whiteSpace: 'nowrap' }}>
                 FIND · HIRE · GROW
               </span>
@@ -417,11 +426,10 @@ export default function MarketingNav({ active = 'home' }) {
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
               <div style={{
                 height: 40, width: 40,
-                background: 'rgba(var(--mkt-accent-rgb), 0.1)',
                 border: '1px solid rgba(var(--mkt-accent-rgb), 0.2)',
                 borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                <img src={logoSrc} alt="Logo" style={{ maxHeight: 28, maxWidth: 28, objectFit: 'contain' }} />
+                <Logo size="sm" variant="icon" theme="light" />
               </div>
               <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--mkt-text-heading)' }}>
                 Talent<span style={{ color: 'var(--mkt-accent)' }}>Nest</span>
