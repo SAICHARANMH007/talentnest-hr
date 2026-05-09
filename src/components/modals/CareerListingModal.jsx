@@ -115,7 +115,10 @@ export default function CareerListingModal({ org, user, onClose }) {
 
   const filteredJobs = jobs.filter(j => {
     const q = search.toLowerCase();
-    return !q || (j.title||'').toLowerCase().includes(q) || (j.location||'').toLowerCas  return (
+    return !q || (j.title || '').toLowerCase().includes(q) || (j.location || '').toLowerCase().includes(q);
+  });
+
+  return (
     <Modal
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
