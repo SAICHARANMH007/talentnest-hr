@@ -244,14 +244,15 @@ export default function LandingPage() {
       .then(r => r.json())
       .then(setLiveStats)
       .catch(() => {});
-    fetch(`${API_BASE_URL}/jobs/public?limit=6`)
+    fetch(`${API_BASE_URL}/jobs/public?limit=50`)
       .then(r => r.json())
       .then(d => {
-        const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
-        setLiveJobs(arr.slice(0, 6));
-        // Use pagination total or array length for the stat counters
+        let arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+        // Randomize the order of jobs for a fresh look every visit
+        arr = [...arr].sort(() => Math.random() - 0.5);
+        setLiveJobs(arr);
         setTotalJobs(d?.pagination?.total || arr.length);
-        setUrgentJobs(arr.filter(j => j.urgency === 'High' || j.urgency === 'high').length);
+        setUrgentJobs(arr.filter(j => (j.urgency || '').toLowerCase() === 'high').length);
       })
       .catch(() => {});
   };
@@ -361,11 +362,11 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Job cards */}
+            {/* Randomly Selected 6 Jobs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {liveJobs.length > 0 ? liveJobs.map((job, i) => {
+              {liveJobs.length > 0 ? liveJobs.slice(0, 6).map((job, i) => {
                 const isActive = i === jobTick;
-                const urgColor = job.urgency === 'high' ? '#F87171' : job.urgency === 'medium' ? '#FBBF24' : '#34D399';
+                const urgColor = (job.urgency || '').toLowerCase() === 'high' ? '#F87171' : (job.urgency || '').toLowerCase() === 'medium' ? '#FBBF24' : '#34D399';
                 return (
                   <div
                     key={job._id || job.id || i}
