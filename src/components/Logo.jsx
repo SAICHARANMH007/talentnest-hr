@@ -32,6 +32,7 @@ export default function Logo({
   const hrColor     = '#00C2CB'; // Cyan
   const subColor    = theme === 'light' ? '#64748B' : 'rgba(255,255,255,0.5)';
 
+  const IconMark = () => {
     const s = iconSize;
     return (
       <svg width={s} height={s} viewBox="0 0 100 100" fill="none" style={{ borderRadius: '24%', overflow: 'hidden' }}>

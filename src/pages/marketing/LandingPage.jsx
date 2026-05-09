@@ -37,7 +37,7 @@ function SectionHeading({ children, sub, center = true, color = 'var(--mkt-text-
   return (
     <div style={{ textAlign: center ? 'center' : 'left', marginBottom: sub ? 12 : 0 }}>
       <h2 style={{
-        fontSize: 'clamp(28px, 4.5vw, 52px)', fontWeight: 900,
+        fontSize: 'clamp(32px, 4.5vw, 52px)', fontWeight: 900,
         letterSpacing: '-0.035em', lineHeight: 1.08, color, margin: 0,
       }}>{children}</h2>
       {sub && <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.15rem)', color: subColor, marginTop: 16, lineHeight: 1.75, maxWidth: 620, margin: '16px auto 0', fontWeight: 500 }}>{sub}</p>}
@@ -193,7 +193,7 @@ export default function LandingPage() {
         {/* Grid */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: '120px 24px 100px', gap: 64 }}>
+        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 12vw, 120px) 24px clamp(60px, 10vw, 100px)', gap: 'clamp(32px, 8vw, 64px)' }}>
           {/* Left */}
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>
@@ -201,10 +201,10 @@ export default function LandingPage() {
               <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's Elite Staffing Platform</span>
             </div>
 
-            <h1 style={{ fontSize: 'clamp(40px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
               Hire <span className="mkt-gradient-text">Right.</span><br />
               Hire Fast.<br />
-              <span style={{ fontSize: 'clamp(22px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Hire with Confidence.</span>
+              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Hire with Confidence.</span>
             </h1>
 
             <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, maxWidth: 520, marginBottom: 48, marginTop: 20, fontWeight: 500 }}>
@@ -344,12 +344,12 @@ export default function LandingPage() {
           TRUST STRIP
       ══════════════════════════════════════════════════════════════ */}
       <section style={{ background: 'var(--mkt-surface-bg)', borderTop: `1px solid var(--mkt-card-border)`, borderBottom: `1px solid var(--mkt-card-border)`, padding: '22px 0' }}>
-        <div className="tn-container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          <div style={{ minWidth: 220 }}>
+        <div className="tn-container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ minWidth: 220, textAlign: 'center' }} className="mkt-trust-label">
             <div style={{ color: 'var(--mkt-text-heading)', fontSize: 14, fontWeight: 800 }}>Built for modern hiring teams</div>
             <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>From urgent staffing to full recruitment operations</div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', flex: 1 }}>
             {TRUST_BADGES.map(item => (
               <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--mkt-card-bg)', color: 'var(--mkt-text)', border: `1px solid var(--mkt-card-border)`, borderRadius: 999, padding: '10px 14px', fontSize: 12, fontWeight: 700 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--mkt-accent)', display: 'inline-block' }} />
@@ -363,12 +363,12 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════ */}
-      <section className="mkt-reveal" style={{ background: 'var(--mkt-primary-dark)', padding: '48px 0', boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)' }}>
-        <div className="tn-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32 }}>
+      <section className="mkt-reveal" style={{ background: 'var(--mkt-primary-dark)', padding: 'clamp(40px, 8vw, 60px) 0', boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)' }}>
+        <div className="tn-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'clamp(20px, 4vw, 32px)' }}>
           {STATS.map((s, i) => (
-            <div key={i} style={{ textAlign: 'center', padding: '12px 24px', borderRight: i < STATS.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
-              <div style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{getStatNum(s)}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.label}</div>
+            <div key={i} className="mkt-stat-item" style={{ textAlign: 'center', padding: '12px 10px' }}>
+              <div style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{getStatNum(s)}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -377,7 +377,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           VALUE PILLARS
       ══════════════════════════════════════════════════════════════ */}
-      <section style={{ background: 'var(--mkt-surface-bg)', padding: '96px 0' }}>
+      <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Why TalentNest</SectionLabel>
           <SectionHeading sub="A sharper staffing experience for teams that need speed, clarity, and execution.">
@@ -461,14 +461,14 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           SERVICES
       ══════════════════════════════════════════════════════════════ */}
-      <section className="mkt-reveal" style={{ background: 'var(--mkt-section-bg)', padding: '120px 0' }}>
+      <section className="mkt-reveal" style={{ background: 'var(--mkt-section-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Expertise</SectionLabel>
           <SectionHeading sub="World-class teams require world-class talent. We curate shortlists that don't just fill roles—they drive revenue.">
             Tailored solutions for<br /><span className="mkt-gradient-text">every function</span>
           </SectionHeading>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 28, marginTop: 72 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 28, marginTop: 72 }}>
             {SERVICES.map((s, idx) => (
               <Link key={s.slug} to={`/services/${s.slug}`} style={{ textDecoration: 'none' }} className={`mkt-reveal ${idx % 2 === 0 ? '' : 'mkt-reveal-delayed'}`}>
                 <div style={{ background: 'var(--mkt-card-bg)', border: `1px solid var(--mkt-card-border)`, borderRadius: 24, padding: 36, height: '100%', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: 'var(--shadow-md)' }}
@@ -491,7 +491,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           HOW IT WORKS
       ══════════════════════════════════════════════════════════════ */}
-      <section style={{ background: 'var(--mkt-surface-bg)', padding: '96px 0' }}>
+      <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>The Process</SectionLabel>
           <SectionHeading sub="From brief to hire in 5 clear steps. No surprises, no wasted time.">
@@ -518,14 +518,14 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           TESTIMONIALS
       ══════════════════════════════════════════════════════════════ */}
-      <section className="mkt-reveal" style={{ background: 'var(--mkt-surface-bg)', padding: '120px 0' }}>
+      <section className="mkt-reveal" style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Client Success</SectionLabel>
           <SectionHeading sub="Industry leaders trust TalentNest to power their high-growth teams.">
             Trusted by the <span className="mkt-gradient-text">Best in Business</span>
           </SectionHeading>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 32, marginTop: 72 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 32, marginTop: 72 }}>
             {TESTIMONIALS.map((t, i) => (
               <div key={i} className={`mkt-card mkt-reveal ${i === 1 ? 'mkt-reveal-delayed' : ''}`} style={{ background: 'var(--mkt-card-bg)', border: `1px solid var(--mkt-card-border)`, borderRadius: 24, padding: 40, boxShadow: 'var(--shadow-lg)' }}>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
@@ -556,18 +556,18 @@ export default function LandingPage() {
       }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.1, backgroundImage: 'radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 80% 70%, white 1px, transparent 1px)', backgroundSize: '100px 100px' }} />
         
-        <div className="tn-container" style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <h2 style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', marginBottom: 24, lineHeight: 1 }}>
+        <div className="tn-container" style={{ textAlign: 'center', position: 'relative', zIndex: 1, padding: '0 24px' }}>
+          <h2 style={{ fontSize: 'clamp(32px, 6vw, 64px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', marginBottom: 24, lineHeight: 1 }}>
             Ready to lead the <span style={{ color: 'var(--mkt-accent)' }}>Future of Work?</span>
           </h2>
-          <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.7)', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', lineHeight: 1.8, fontWeight: 500 }}>
+          <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.25rem)', color: 'rgba(255,255,255,0.7)', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', lineHeight: 1.8, fontWeight: 500 }}>
             Stop settling for volume. Start hiring for resonance. Your first shortlist of pre-vetted elite talent is just 48 hours away.
           </p>
-          <div style={{ display: 'flex', gap: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/contact" className="btn btn-primary btn-lg" style={{ borderRadius: 14, padding: '20px 48px', fontSize: 18 }}>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/contact" className="btn btn-primary btn-lg mkt-cta-btn" style={{ borderRadius: 14, padding: 'clamp(14px, 3vw, 20px) clamp(24px, 5vw, 48px)', fontSize: 'clamp(16px, 2vw, 18px)' }}>
               Get Started Now →
             </Link>
-            <Link to="/careers" className="btn btn-outline btn-lg" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', borderRadius: 14, padding: '20px 48px', fontSize: 18, backdropFilter: 'blur(10px)' }}>
+            <Link to="/careers" className="btn btn-outline btn-lg mkt-cta-btn" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', borderRadius: 14, padding: 'clamp(14px, 3vw, 20px) clamp(24px, 5vw, 48px)', fontSize: 'clamp(16px, 2vw, 18px)', backdropFilter: 'blur(10px)' }}>
               Browse Talent Pool
             </Link>
           </div>
@@ -580,9 +580,19 @@ export default function LandingPage() {
 
       <style>{`
         @keyframes tn-float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+        
+        .mkt-stat-item { border-right: 1px solid rgba(255,255,255,0.1); }
+        .mkt-stat-item:last-child { border-right: none; }
+
         @media(max-width:768px){
           .tn-desktop{display:none!important}
-          .mkt-hero-grid{grid-template-columns:1fr!important}
+          .mkt-hero-grid{grid-template-columns:1fr!important; text-align: center; }
+          .mkt-hero-grid h1, .mkt-hero-grid p { margin-left: auto; margin-right: auto; }
+          .mkt-hero-grid .mkt-reveal-delayed { justify-content: center; }
+          .mkt-trust-label { text-align: center!important; }
+          .mkt-stat-item { border-right: none!important; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 20px 0!important; }
+          .mkt-stat-item:last-child { border-bottom: none!important; }
+          .mkt-cta-btn { width: 100%; max-width: 320px; }
         }
       `}</style>
     </div>
