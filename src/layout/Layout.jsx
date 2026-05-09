@@ -681,11 +681,13 @@ function ImpersonationBanner() {
       // 1. Call backend to restore the original SA session cookie
       const res = await api.post('/auth/stop-impersonate');
       
-      // 2. Clear impersonation state from sessionStorage
+      // 2. Clear ALL auth state from sessionStorage to force a fresh restore on reload
       sessionStorage.removeItem('tn_impersonate_token');
       sessionStorage.removeItem('tn_sa_backup');
+      sessionStorage.removeItem('tn_token');
+      sessionStorage.removeItem('tn_user');
       
-      // 3. Update local state with restored user data if returned
+      // 3. Update local state with restored user data if returned (pre-emptive for smoother reload)
       if (res?.user) {
         sessionStorage.setItem('tn_user', JSON.stringify(res.user));
         setApiToken(res.token);

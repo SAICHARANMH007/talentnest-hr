@@ -189,9 +189,18 @@ function ImpersonateTab({ users }) {
 
   const handleExitImpersonation = async () => {
     try {
-      await api.post('/auth/stop-impersonate');
-      sessionStorage.removeItem('tn_sa_backup');
+      const res = await api.post('/auth/stop-impersonate');
+      
+      // Clear ALL auth state from sessionStorage to force a fresh restore on reload
       sessionStorage.removeItem('tn_impersonate_token');
+      sessionStorage.removeItem('tn_sa_backup');
+      sessionStorage.removeItem('tn_token');
+      sessionStorage.removeItem('tn_user');
+      
+      if (res?.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(res.user));
+      }
+      
       logAudit('Impersonation Ended', 'Auth', 'Returned to super admin session', 'info');
       window.location.href = '/app/security';
     } catch {
