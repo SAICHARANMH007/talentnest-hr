@@ -68,7 +68,7 @@ function fmtDate(v) {
   return v ? new Date(v).toLocaleDateString('en-IN') : '-';
 }
 
-function buildQuery(filters, limit = 1000) {
+function buildQuery(filters, limit = 10000000) {
   const q = new URLSearchParams();
   q.set('limit', String(limit));
   Object.entries(filters).forEach(([k, v]) => {
@@ -214,8 +214,8 @@ export default function ApplicantsRecordsPage({ user }) {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      canManage ? api.getUsers({ role: 'recruiter', limit: 2000 }).catch(() => []) : Promise.resolve([]),
-      api.getJobs({ limit: 2000 }).catch(() => []),
+      canManage ? api.getUsers({ role: 'recruiter', limit: 10000000 }).catch(() => []) : Promise.resolve([]),
+      api.getJobs({ limit: 10000000 }).catch(() => []),
     ]).then(([recruiterRes, jobRes]) => {
       if (!alive) return;
       setRecruiters(toArray(recruiterRes));
@@ -233,7 +233,7 @@ export default function ApplicantsRecordsPage({ user }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getApplicants({ ...filters, page, limit: 50 });
+      const res = await api.getApplicants({ ...filters, page, limit: 10000000 });
       setRows(Array.isArray(res?.data) ? res.data : []);
       setTotal(res?.pagination?.total || res?.total || 0);
       setPages(res?.pagination?.pages || 1);
@@ -263,7 +263,7 @@ export default function ApplicantsRecordsPage({ user }) {
   const exportRows = async () => {
     setExporting(true);
     try {
-      const blob = await downloadBlob(`/dashboard/applicants/export?${buildQuery(filters, 10000)}`);
+      const blob = await downloadBlob(`/dashboard/applicants/export?${buildQuery(filters, 10000000)}`);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `applicant-records-${new Date().toISOString().split('T')[0]}.xlsx`;

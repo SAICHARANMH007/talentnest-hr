@@ -10,7 +10,7 @@ export const applicationService = {
     const r = await req('GET', '/applications/mine');
     return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
   },
-  async getApplications({ jobId, candidateId, stage, limit, recruiterId, platform, startDate, endDate, email } = {}) {
+  async getApplications({ jobId, candidateId, stage, limit = 10000000, recruiterId, platform, startDate, endDate, email } = {}) {
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);
     if (candidateId) params.set('candidateId', candidateId);

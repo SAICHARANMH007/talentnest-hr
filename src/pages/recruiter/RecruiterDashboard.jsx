@@ -39,8 +39,8 @@ export default function RecruiterDashboard({ user }) {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      api.getJobs({ recruiterId: user.id, limit: 200 }),
-      api.getApplications({ limit: 500 }),
+      api.getJobs({ recruiterId: user.id, limit: 10000000 }),
+      api.getApplications({ limit: 10000000 }),
       api.getInvites({ status: 'interested' }).catch(() => []),
     ]).then(([j, a, inv]) => {
       if (!cancelled) {

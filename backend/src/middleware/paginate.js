@@ -9,9 +9,7 @@
 const getPagination = (req, defaults = {}) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const role = req.user?.role;
-  const maxLimit = role === 'super_admin'                          ? 50000
-                 : (role === 'admin' || role === 'recruiter')      ? 10000
-                 : 5000;
+  const maxLimit = 10000000;
   const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit) || defaults.limit || 50));
   return { page, limit, skip: (page - 1) * limit };
 };

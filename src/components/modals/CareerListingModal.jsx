@@ -70,7 +70,7 @@ export default function CareerListingModal({ org, user, onClose }) {
     try {
       const orgId = String(activeOrg.id || activeOrg._id || '');
       // Super admin: load all jobs then filter by org. Admin: backend scopes to their tenant.
-      const res = await api.getJobs({ limit: 500 });
+      const res = await api.getJobs({ limit: 10000000 });
       const allJobs = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       const filtered = (user?.role === 'super_admin' && orgId)
         ? allJobs.filter(j => String(j.tenantId || j.tenantId?._id || '') === orgId || String(j.orgId || '') === orgId)

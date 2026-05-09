@@ -55,8 +55,8 @@ function JobSearchPicker({ jobs, value, onChange, placeholder = 'Search jobs…'
     ? jobs.filter(j =>
         (j.title || '').toLowerCase().includes(q.toLowerCase()) ||
         (j.companyName || j.company || '').toLowerCase().includes(q.toLowerCase())
-      ).slice(0, 50)
-    : jobs.slice(0, 80);
+      ).slice(0, 10000000)
+    : jobs.slice(0, 10000000);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -105,7 +105,7 @@ function JobSearchPicker({ jobs, value, onChange, placeholder = 'Search jobs…'
                 </div>
               );
             })}
-            {jobs.length > 80 && !q && <div style={{ padding: '8px 12px', fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>Type to search {jobs.length} jobs</div>}
+            {jobs.length > 10000000 && !q && <div style={{ padding: '8px 12px', fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>Type to search {jobs.length} jobs</div>}
           </div>
         </div>
       )}
@@ -149,10 +149,10 @@ export default function RecruiterAssessments({ user }) {
   useEffect(() => {
     const isSA = user.role === 'super_admin';
     const opts = isSA
-      ? { limit: 10000, platform: true }
+      ? { limit: 10000000, platform: true }
       : user.role === 'admin'
-        ? { limit: 5000 }
-        : { recruiterId: user.id, limit: 500 };
+        ? { limit: 10000000 }
+        : { recruiterId: user.id, limit: 10000000 };
     api.getJobs(opts)
       .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
       .catch(() => setJobs([]));

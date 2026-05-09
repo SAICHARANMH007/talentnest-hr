@@ -23,7 +23,7 @@ function CandidatePipelinePanel({ candidateEmail, candidateId, onToast }) {
     setState(p => ({ ...p, loading: true }));
     try {
       // Use email-based fetching for candidates to get all applications
-      const res = await api.getApplications({ email: candidateEmail, limit: 100 });
+      const res = await api.getApplications({ email: candidateEmail, limit: 10000000 });
       const apps = Array.isArray(res) ? res : (res?.data || []);
       setState({ loading: false, apps, error: false });
     } catch {
@@ -97,7 +97,7 @@ function RecruiterActivityPanel({ recruiterId }) {
         const jobs = Array.isArray(jobsRes) ? jobsRes : (jobsRes?.data || []);
 
         // Fetch all applications for this recruiter in one request (populated with candidateId)
-        const appsRes = await api.getApplications({ recruiterId, limit: 200 });
+        const appsRes = await api.getApplications({ recruiterId, limit: 10000000 });
         const allApps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
 
         // Attach job title from jobs list for display
@@ -273,7 +273,7 @@ function AssignToJobModal({ count, onClose, onDone }) {
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    api.getJobs({ limit: 200 }).then(j => {
+    api.getJobs({ limit: 10000000 }).then(j => {
       const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
       // Normalize _id → id so toggleJob/checked work correctly with lean() results
       setJobs(arr
@@ -446,7 +446,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [formErrors, setFormErrors]   = useState({});
   const [orgs, setOrgs]               = useState([]);
   const [saving, setSaving]           = useState(false);
-  const [pagination, setPagination]   = useState({ page: 1, limit: isSuperAdmin ? 500 : 100, total: 0, pages: 1 });
+  const [pagination, setPagination]   = useState({ page: 1, limit: 10000000, total: 0, pages: 1 });
 
   // ── basic filters ──
   const [search, setSearch]       = useState('');

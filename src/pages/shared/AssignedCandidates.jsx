@@ -28,7 +28,7 @@ export default function AssignedCandidates({ user }) {
   useEffect(() => {
     const fetches = [
       api.getJobs({}).catch(() => []),
-      api.getApplications({ limit: 500 }).catch(() => []),
+      api.getApplications({ limit: 10000000 }).catch(() => []),
     ];
     if (!isAdmin) {
       // Recruiter: also fetch their own candidate requests that have been fulfilled

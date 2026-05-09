@@ -55,7 +55,7 @@ export default function AdminCandidateRequest({ user }) {
 
   // Load active jobs for the job selector in the form
   useEffect(() => {
-    api.getJobs({ status: 'active', limit: 500 })
+    api.getJobs({ status: 'active', limit: 10000000 })
       .then(r => setJobs(Array.isArray(r) ? r : (r?.data || [])))
       .catch(() => setJobs([]));
   }, []);

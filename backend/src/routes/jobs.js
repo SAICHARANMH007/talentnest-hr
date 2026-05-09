@@ -65,7 +65,7 @@ router.get('/public/single/:id', asyncHandler(async (req, res) => {
 router.get('/public', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
-  const { page, limit, skip } = getPagination(req, { limit: parseInt(req.query.limit) || 20 });
+  const { page, limit, skip } = getPagination(req, { limit: parseInt(req.query.limit) || 10000000 });
   // Career portal: show active jobs that are approved OR have no approvalStatus field
   // (seeded/legacy jobs predate the approval workflow — treat them as approved)
   const filter = { status: 'active', approvalStatus: { $nin: ['pending_approval', 'rejected'] }, deletedAt: null };

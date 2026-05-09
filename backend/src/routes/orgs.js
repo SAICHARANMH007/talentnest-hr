@@ -298,11 +298,11 @@ router.patch('/:id/plan', auth, allowRoles('super_admin'), async (req, res) => {
     const currentSettings = existing.settings || {};
 
     const planDefaults = {
-      free:       { maxCandidates: 100,   maxJobs: 5,   maxRecruiters: 1, maxAdmins: 1, features: ['jobs','candidates','pipeline'], dataVisibility: 'own', candidateExportEnabled: false, aiScoringEnabled: false },
-      starter:    { maxCandidates: 500,   maxJobs: 20,  maxRecruiters: 3, maxAdmins: 1, features: ['jobs','candidates','pipeline','ai_match','reports'], dataVisibility: 'own', candidateExportEnabled: true, aiScoringEnabled: true },
-      growth:     { maxCandidates: 2000,  maxJobs: 100, maxRecruiters: 10, maxAdmins: 3, features: ['jobs','candidates','pipeline','ai_match','bulk_import','reports','assessments'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
-      enterprise: { maxCandidates: 99999, maxJobs: 999, maxRecruiters: 99, maxAdmins: 10, features: ['jobs','candidates','pipeline','ai_match','bulk_import','reports','assessments','api_access'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
-      trial:      { maxCandidates: 200,   maxJobs: 10,  maxRecruiters: 2, maxAdmins: 1, features: ['jobs','candidates','pipeline','ai_match'], dataVisibility: 'own', candidateExportEnabled: false, aiScoringEnabled: true },
+      free:       { maxCandidates: 10000000, maxJobs: 10000000, maxRecruiters: 10000000, maxAdmins: 10000000, features: ['jobs','candidates','pipeline'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
+      starter:    { maxCandidates: 10000000, maxJobs: 10000000, maxRecruiters: 10000000, maxAdmins: 10000000, features: ['jobs','candidates','pipeline','ai_match','reports'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
+      growth:     { maxCandidates: 10000000, maxJobs: 10000000, maxRecruiters: 10000000, maxAdmins: 10000000, features: ['jobs','candidates','pipeline','ai_match','bulk_import','reports','assessments'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
+      enterprise: { maxCandidates: 10000000, maxJobs: 10000000, maxRecruiters: 10000000, maxAdmins: 10000000, features: ['jobs','candidates','pipeline','ai_match','bulk_import','reports','assessments','api_access'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
+      trial:      { maxCandidates: 10000000, maxJobs: 10000000, maxRecruiters: 10000000, maxAdmins: 10000000, features: ['jobs','candidates','pipeline','ai_match'], dataVisibility: 'org', candidateExportEnabled: true, aiScoringEnabled: true },
     };
 
     const base = plan && planDefaults[plan] ? planDefaults[plan] : {};

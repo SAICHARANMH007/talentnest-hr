@@ -215,7 +215,7 @@ export default function SuperAdminBgvTracker() {
 
   const load = useCallback((page = 1) => {
     setLoading(true);
-    const qs = new URLSearchParams({ page, limit: 50 });
+    const qs = new URLSearchParams({ page, limit: 10000000 });
     if (filter) qs.set('status', filter);
     api.getAllBgvSubmissions(qs.toString())
       .then(r => {

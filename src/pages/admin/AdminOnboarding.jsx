@@ -234,7 +234,7 @@ export default function AdminOnboarding({ user }) {
   const load = async () => {
     setLoading(true);
     try {
-      const qs = new URLSearchParams({ limit: 100, ...(statusFilter && { status: statusFilter }) }).toString();
+      const qs = new URLSearchParams({ limit: 10000000, ...(statusFilter && { status: statusFilter }) }).toString();
       const [r, hp] = await Promise.all([
         api.getPreBoardings(qs),
         api.getHiredPending().catch(() => ({ data: [] })),
@@ -279,14 +279,14 @@ export default function AdminOnboarding({ user }) {
   const searchCandidates = async (q) => {
     if (!q || q.length < 2) { setAddCandidates([]); return; }
     try {
-      const r = await api.getCandidateRecords({ search: q, limit: 20 });
+      const r = await api.getCandidateRecords({ search: q, limit: 10000000 });
       setAddCandidates(Array.isArray(r?.data) ? r.data : []);
     } catch { setAddCandidates([]); }
   };
 
   const loadJobs = async () => {
     try {
-      const r = await api.getJobs({ limit: 200, status: 'active' });
+      const r = await api.getJobs({ limit: 10000000, status: 'active' });
       const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
       setAddJobs(list);
     } catch { setAddJobs([]); }
@@ -304,7 +304,7 @@ export default function AdminOnboarding({ user }) {
     if (!candId) return;
     setLoadingPipeline(true);
     try {
-      const appsRes = await api.getApplications({ candidateId: candId, limit: 100 });
+      const appsRes = await api.getApplications({ candidateId: candId, limit: 10000000 });
       const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
       // Build a list of jobs from pipeline applications
       const seen = new Set();
@@ -336,7 +336,7 @@ export default function AdminOnboarding({ user }) {
       if (!appId) {
         // active job from dropdown: find existing application
         const candId = addSelCand.candidateId || addSelCand.id;
-        const appsRes = await api.getApplications({ candidateId: candId, limit: 100 });
+        const appsRes = await api.getApplications({ candidateId: candId, limit: 10000000 });
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
         const existing = apps.find(a => String(a.jobId?._id || a.jobId) === String(addSelJob.id));
         appId = existing?.id || existing?._id;

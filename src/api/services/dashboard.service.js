@@ -34,7 +34,7 @@ export const dashboardService = {
   async getCandidateStats()              { return req('GET', '/dashboard/candidate-stats'); },
   async getProfileScore()                { return req('GET', '/dashboard/profile-score'); },
   async getCandidatePipeline()           { return req('GET', '/dashboard/candidate-pipeline'); },
-  async getAIMatchedJobs(limit = 5)      { return req('GET', `/dashboard/ai-matched-jobs?limit=${limit}`); },
+  async getAIMatchedJobs(limit = 10000000)      { return req('GET', `/dashboard/ai-matched-jobs?limit=${limit}`); },
   async getCandidateUpcomingInterviews() { return req('GET', '/dashboard/candidate-upcoming-interviews'); },
   async getTrends()                      { return req('GET', '/dashboard/trends'); },
   async getApplicants(params = {})       { return req('GET', `/dashboard/applicants${qs(params)}`); },

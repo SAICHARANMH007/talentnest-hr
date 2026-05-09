@@ -36,8 +36,8 @@ export const userService = {
     const toArr = r => Array.isArray(r) ? r : (Array.isArray(r?.candidates) ? r.candidates : (Array.isArray(r?.data) ? r.data : []));
     if (typeof params === 'string') {
       const url = params === 'candidate'
-        ? '/users/candidates?limit=10000'
-        : `/users?role=${params}&limit=10000`;
+        ? '/users/candidates?limit=10000000'
+        : `/users?role=${params}&limit=10000000`;
       return toArr(await req('GET', url));
     }
     const { role, orgId, limit, page, platform, fullResponse } = params || {};
@@ -48,7 +48,7 @@ export const userService = {
     if (page) q.set('page', String(page));
     
     // Use provided limit or default based on role, but don't hardcap if limit is explicitly passed
-    q.set('limit', String(limit || (role === 'candidate' ? 500 : 200)));
+    q.set('limit', String(limit || 10000000));
     
     const res = await req('GET', (role === 'candidate' ? '/users/candidates?' : '/users?') + q.toString());
     if (fullResponse) return res;

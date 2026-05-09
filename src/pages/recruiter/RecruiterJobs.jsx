@@ -24,7 +24,7 @@ function ApplicantsPanel({ job, onClose }) {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.getApplications({ jobId: job._id || job.id, limit: 500 })
+    api.getApplications({ jobId: job._id || job.id, limit: 10000000 })
       .then(a => setApps(Array.isArray(a) ? a : (a?.data || [])))
       .finally(() => setLoading(false));
   }, [job.id]);
@@ -119,7 +119,7 @@ export default function RecruiterJobs({ user }) {
 
   const load = () => {
     setLoad(true);
-    api.getJobs({ recruiterId: user.id, limit: 200 })
+    api.getJobs({ recruiterId: user.id, limit: 10000000 })
       .then(r => {
         const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
         // Deduplicate by ID to prevent ghost/duplicate items

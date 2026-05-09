@@ -120,7 +120,7 @@ export default function SuperAdminCandidates() {
   const doExport = async () => {
     setExporting(true);
     try {
-      const params = new URLSearchParams({ limit: 10000 });
+      const params = new URLSearchParams({ limit: 10000000 });
       if (tab === 'applied')  params.set('appliedOnly', 'true');
       if (tab === 'platform') params.set('registeredOnly', 'true');
       if (search) params.set('search', search);

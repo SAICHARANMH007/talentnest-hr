@@ -12,7 +12,7 @@ const AppError     = require('../utils/AppError');
 router.get('/', auth, asyncHandler(async (req, res) => {
   const userId  = req.user._id || req.user.id;
   const page    = Math.max(1, parseInt(req.query.page, 10)  || 1);
-  const limit   = Math.min(1000, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const limit   = 10000000;
   const skip    = (page - 1) * limit;
 
   const [all, total] = await Promise.all([
@@ -99,7 +99,7 @@ router.post('/platform-summary', auth, asyncHandler(async (req, res) => {
 
   if (docs.length) await Notification.insertMany(docs, { ordered: false });
 
-  const fresh = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(200).lean();
+  const fresh = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(10000000).lean();
   res.json(fresh.map(n => ({ ...n, id: n._id.toString(), body: n.body || n.message })));
 }));
 

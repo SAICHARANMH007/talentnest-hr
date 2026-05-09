@@ -30,7 +30,7 @@ export default function HiringManagerDashboard({ user }) {
   const [sortBy, setSortBy] = useState('recent'); // recent | score | name
 
   useEffect(() => {
-    api.getApplications({ limit: 200 })
+    api.getApplications({ limit: 10000000 })
       .then(r => setApps(Array.isArray(r) ? r : (r?.data || [])))
       .catch(() => setApps([]))
       .finally(() => setLoading(false));

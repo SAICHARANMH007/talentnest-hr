@@ -26,7 +26,7 @@ export default function ClientDashboard({ user }) {
   const [error,   setError]   = useState('');
 
   useEffect(() => {
-    api.getApplications({ limit: 500 })
+    api.getApplications({ limit: 10000000 })
       .then(r => setApps(Array.isArray(r) ? r : (r?.data || [])))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));

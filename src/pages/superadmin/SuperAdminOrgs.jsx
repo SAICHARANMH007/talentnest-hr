@@ -71,7 +71,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite, onOpenListing }) {
     if (!orgId) return;
     setLoadingUsers(true);
     try {
-      const res = await api.getUsers({ orgId, limit: 200 });
+      const res = await api.getUsers({ orgId, limit: 10000000 });
       const list = Array.isArray(res) ? res : (res?.data || []);
       // Sort: super_admin first, then admin, then others
       const roleOrder = { super_admin: 0, admin: 1, recruiter: 2, candidate: 3 };

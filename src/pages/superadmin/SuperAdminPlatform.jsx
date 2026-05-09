@@ -54,7 +54,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
     const unwrap = (r) => Array.isArray(r) ? r : (r?.data || []);
     Promise.all([
       api.getOrgs().catch(() => []),
-      api.getUsers({ limit: 1000 }).catch(() => []),
+      api.getUsers({ limit: 10000000 }).catch(() => []),
       api.getAuditLogs().catch(() => []),
       // High-accuracy counts
       api.getUserCount().catch(() => 0),

@@ -39,7 +39,7 @@ export default function ClientInterviews({ user }) {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getApplications({ limit: 500 })
+    api.getApplications({ limit: 10000000 })
       .then(r => {
         const arr = Array.isArray(r) ? r : (r?.data || []);
         const all = [];

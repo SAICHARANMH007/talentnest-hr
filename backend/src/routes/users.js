@@ -98,7 +98,7 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
 
 // GET /api/users/candidates — Candidate listing (recruiter/admin)
 router.get('/candidates', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req, { limit: req.user.role === 'super_admin' ? 100 : 50 });
+  const { page, limit, skip } = getPagination(req, { limit: 10000000 });
   const filter = req.user.role === 'super_admin'
     ? { role: 'candidate', ...(req.query.tenantId ? { tenantId: req.query.tenantId } : {}) }
     : { role: 'candidate', tenantId: req.user.tenantId };
@@ -232,7 +232,7 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   const filter = { deletedAt: null };
   if (tid) filter.$or = [{ tenantId: tid }, { orgId: tid }];
   if (req.query.role) filter.role = req.query.role;
-  const exportLimit = req.user.role === 'super_admin' ? 50000 : 5000;
+  const exportLimit = 10000000;
   const users = await User.find(filter).select('-password -passwordHash').sort({ createdAt: -1 }).limit(exportLimit).lean();
   const candidateEmails = [...new Set(users.filter(u => u.role === 'candidate' && u.email).map(u => u.email.toLowerCase()))];
   const candidateProfiles = candidateEmails.length ? await Candidate.find({ email: { $in: candidateEmails }, deletedAt: null }).lean() : [];
