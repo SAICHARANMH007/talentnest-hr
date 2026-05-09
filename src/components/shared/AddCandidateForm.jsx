@@ -414,8 +414,12 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-          <button onClick={save} disabled={saving || extracting} style={{ ...btnP, padding: '12px 24px', flex: 1, opacity: (saving || extracting) ? 0.6 : 1 }}>
-            {saving ? <><Spinner /> Saving…</> : '✅ Save Candidate Record'}
+          <button 
+            onClick={save} 
+            disabled={saving || extracting} 
+            style={{ ...btnP, padding: '12px 24px', flex: 1, opacity: (saving || extracting) ? 0.6 : 1, cursor: (saving || extracting) ? 'not-allowed' : 'pointer' }}
+          >
+            {saving ? <><Spinner /> Saving Record...</> : '✅ Save Candidate Record'}
           </button>
           <button onClick={() => { setForm(EMP); setFname(''); setShowPreview(false); setConf({}); setParseCount(0); }} style={{ ...btnG, padding: '12px 20px' }}>
             Clear Form

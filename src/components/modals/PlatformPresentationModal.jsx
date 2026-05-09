@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { btnP, btnG } from '../../constants/styles.js';
+import { btnP, btnG, Z } from '../../constants/styles.js';
 
 const TOUR_STEPS = {
   candidate: [
@@ -84,7 +84,7 @@ export default function PlatformPresentationModal() {
   const firstName = user.name?.split(' ')[0] || 'User';
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10005, overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z.SPOTLIGHT, overflow: 'hidden' }}>
       {/* Dimmed Overlay */}
       <div style={{
         position: 'absolute', inset: 0,
@@ -104,7 +104,7 @@ export default function PlatformPresentationModal() {
         background: '#fff', borderRadius: 24, padding: 32,
         boxShadow: '0 32px 64px rgba(0,0,0,0.4)',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        zIndex: 10006
+        zIndex: Z.SPOTLIGHT + 1
       }}>
         {step === -1 ? (
           <div style={{ textAlign: 'center' }}>
@@ -148,7 +148,7 @@ export default function PlatformPresentationModal() {
 
       {/* Pointer line - only if spotlight active */}
       {spotlight && (
-        <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10006 }}>
+        <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: Z.SPOTLIGHT + 1 }}>
           <line 
             x1={spotlight.left + spotlight.width} 
             y1={spotlight.top + spotlight.height / 2} 

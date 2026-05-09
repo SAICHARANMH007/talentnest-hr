@@ -151,46 +151,43 @@ export async function req(method, path, body, auth = true) {
 async function _doReq(method, path, body, auth = true, _retry = false) {
   const isFormData = body instanceof FormData;
   const headers = {
-    'X-Requested-With': 'TalentNest', // CSRF guard header
+    'X-Requested-With': 'TalentNest',
   };
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-  if (auth && _accessToken) {
-    headers['Authorization'] = `Bearer ${_accessToken}`;
-  }
+  if (!isFormData) headers['Content-Type'] = 'application/json';
+  if (auth && _accessToken) headers['Authorization'] = `Bearer ${_accessToken}`;
+
+  // ── Global Request Timeout (30s) ──
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   let res;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
-      // Only send credentials (HTTP-only refresh cookie) for authenticated requests.
-      // Public endpoints (auth=false) use 'omit' so the server can respond with
-      // Access-Control-Allow-Origin: * without triggering CORS credential conflict.
       credentials: auth ? 'include' : 'omit',
       body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
+      signal: controller.signal,
     });
-  } catch (networkErr) {
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('⏱️ Request timed out. Please check your connection.');
     const isProd = import.meta.env.PROD;
     const msg = isProd 
-      ? `❌ Cannot reach server at ${API_BASE_URL}. The backend may be booting up — please refresh in 30 seconds.`
-      : `❌ Backend Connection Refused. Ensure the server is running on http://localhost:5000 (API_BASE_URL: ${API_BASE_URL})`;
+      ? `❌ Cannot reach server. The backend may be booting up — please refresh in 30 seconds.`
+      : `❌ Backend Connection Refused (API_BASE_URL: ${API_BASE_URL})`;
     throw new Error(msg);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
-  // ── IAM Standard Background Token Refresh ──────────────────────────────────
+  // ── IAM Standard Background Token Refresh ──
   if (res.status === 401 && auth && !_retry) {
     try {
-      // Deduplicate parallel refresh calls
       if (!_refreshing) {
         _refreshing = fetch(`${API_BASE_URL}${_refreshPath}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'TalentNest',
-          },
-          credentials: 'include', // required for HTTP-only cookie to be sent
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'TalentNest' },
+          credentials: 'include',
         }).then(r => r.json());
       }
 
@@ -199,17 +196,14 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
 
       if (refreshRes.token) {
         _accessToken = refreshRes.token;
-        sessionStorage.setItem(TOKEN_KEY, refreshRes.token); // Persist refreshed token
+        sessionStorage.setItem(TOKEN_KEY, refreshRes.token);
         if (refreshRes.user) sessionStorage.setItem('tn_user', JSON.stringify(refreshRes.user));
-        // Retry original request with new token
         return _doReq(method, path, body, auth, true);
       }
-    } catch (refreshErr) {
+    } catch {
       _refreshing = null;
-      console.error('Seamless refresh failed', refreshErr);
     }
 
-    // Refresh failed → hard logout
     _accessToken = null;
     sessionStorage.removeItem('tn_user');
     if (_on401) _on401();

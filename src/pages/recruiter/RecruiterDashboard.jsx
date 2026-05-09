@@ -35,6 +35,7 @@ export default function RecruiterDashboard({ user }) {
   const [drawerUser, setDrawerUser] = useState(null);
   const [drillDown, setDrillDown] = useState(null); // { title, items }
   const [interestedInvites, setInterestedInvites] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +70,11 @@ export default function RecruiterDashboard({ user }) {
 
         const invArr = Array.isArray(inv) ? inv : (inv?.data || []);
         setInterestedInvites(invArr.filter(i => i.status === 'interested'));
+        setError(null);
       }
-    }).catch(() => {}).finally(() => { if (!cancelled) setLoad(false); });
+    }).catch(e => {
+      if (!cancelled) setError(e.message || 'Failed to connect to server');
+    }).finally(() => { if (!cancelled) setLoad(false); });
     return () => { cancelled = true; };
   }, [user.id]);
 
@@ -86,6 +90,17 @@ export default function RecruiterDashboard({ user }) {
   }, [apps]);
 
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
+
+  if (error) return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:300, gap:16, background:'#fff', borderRadius:16, border:'1px solid #fee2e2', padding:24 }}>
+      <span style={{ fontSize:32 }}>⚠️</span>
+      <div style={{ textAlign:'center' }}>
+        <h3 style={{ margin:0, color:'#991b1b' }}>Dashboard Sync Failed</h3>
+        <p style={{ margin:'4px 0 0', color:'#b91c1c', fontSize:13 }}>{error}</p>
+      </div>
+      <button onClick={() => window.location.reload()} style={{ ...btnP, padding:'8px 24px' }}>↻ Retry Connection</button>
+    </div>
+  );
 
   const myApps = apps;
   const totalApplicants = myApps.length;

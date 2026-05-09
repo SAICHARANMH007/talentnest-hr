@@ -171,6 +171,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [drillDownSearch, setDrillDownSearch] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
   const [toast,         setToast]         = useState('');
+  const [error,         setError]         = useState(null);
   const [drawerUser,    setDrawerUser]    = useState(null);
   const [selectedItems, setSelectedItems] = useState([]); // For bulk actions
 
@@ -285,7 +286,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
         api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
         api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
       }, 300);
-    }).catch(() => setLoading(false));
+      setError(null);
+    }).catch(e => {
+      setError(e.message || 'Failed to sync platform analytics');
+      setLoading(false);
+    });
   }, [period, platformWide]);
 
   useEffect(() => { load(); }, [load]);
@@ -728,6 +733,15 @@ export default function AdminAnalytics({ user, onNavigate }) {
     <div style={{ padding: 40, textAlign: 'center' }}>
       <div style={{ fontSize: 24, animation: 'pulse 2s infinite', color: '#0176D3' }}>📊 Synchronizing Analytics Engine...</div>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }`}</style>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center', background:'#fff', borderRadius:24, border:'1px solid #fee2e2', margin:20 }}>
+      <div style={{ fontSize:40, marginBottom:16 }}>📡</div>
+      <h2 style={{ margin:'0 0 8px', color:'#991b1b' }}>Platform Sync Interrupted</h2>
+      <p style={{ color:'#b91c1c', fontSize:14, marginBottom:24, maxWidth:400, marginInline:'auto' }}>{error}</p>
+      <button onClick={() => window.location.reload()} style={{ ...btnP, padding:'12px 32px' }}>↻ Reconnect to Dashboard</button>
     </div>
   );
 

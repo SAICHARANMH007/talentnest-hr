@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { glassCard } from '../../constants/styles.js';
+import { glassCard, Z } from '../../constants/styles.js';
 
 /**
  * Modal — standard portal-based dialog.
@@ -18,7 +18,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
         background: "rgba(5, 13, 26, 0.75)", 
         backdropFilter: "blur(8px)", 
         WebkitBackdropFilter: "blur(8px)",
-        zIndex: 100000, 
+        zIndex: Z.MODAL, 
         display: "flex", 
         alignItems: "center", 
         justifyContent: "center", 

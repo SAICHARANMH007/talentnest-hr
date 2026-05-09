@@ -32,6 +32,17 @@ export const shimmerKeyframes = `
   }
 `;
 
+export const Z = {
+  BASE: 1,
+  SIDEBAR: 5000,
+  OVERLAY: 10000,
+  MODAL: 20000,
+  SPOTLIGHT: 30000,
+  DROPDOWN: 40000,
+  TOAST: 50000,
+  LOADER: 60000,
+};
+
 export const inp = {
   background: '#FFFFFF',
   border: '1.5px solid #E5E7EB',
