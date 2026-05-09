@@ -21,6 +21,7 @@ export function tokenIsValid(token) {
 let _accessToken = null;
 export const setToken  = (t) => {
   _accessToken = t;
+  clearCache(); // prevent stale data between users/impersonation
   if (t) {
     sessionStorage.setItem(TOKEN_KEY, t);
     localStorage.setItem('tn_logged_in', 'true');
@@ -31,6 +32,7 @@ export const setToken  = (t) => {
 };
 export const clearToken = () => {
   _accessToken = null;
+  clearCache();
   sessionStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem('tn_logged_in');
 };
@@ -57,9 +59,10 @@ function cacheGet(key) {
 }
 function cacheSet(key, data) { _cache.set(key, { data, ts: Date.now() }); }
 // Invalidate any cache entries whose path starts with prefix
-function cacheInvalidate(prefix) {
+function clearCacheByPrefix(prefix) {
   for (const k of _cache.keys()) { if (k.startsWith(prefix)) _cache.delete(k); }
 }
+export function clearCache() { _cache.clear(); }
 
 // Token Refresh State (IAM Standard)
 let _refreshing = null;
@@ -141,7 +144,7 @@ export async function req(method, path, body, auth = true) {
   }
   // Mutations — invalidate cache for the affected resource path
   const base = path.split('?')[0].replace(/\/[a-f0-9]{24}(\/.*)?$/, '');
-  cacheInvalidate(base);
+  clearCacheByPrefix(base);
   return _doReq(method, path, body, auth);
 }
 

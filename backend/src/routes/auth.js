@@ -16,6 +16,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/auth.service');
 const AppError = require('../utils/AppError');
 const logger = require('../middleware/logger');
+const { clearCacheForUser } = require('../middleware/cache');
 const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
 
 // ── Rate limiters ────────────────────────────────────────────────────────────
@@ -536,6 +537,9 @@ router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
   if (!target) throw new AppError('Target user not found.', 404);
   if (target.role === 'super_admin') throw new AppError('Cannot impersonate another Super Admin.', 403);
 
+  // Clear Super Admin's dashboard cache so they don't see their own stats while starting to impersonate
+  clearCacheForUser(req.user._id);
+
   const result = await authService.issueTokens(res, target, req, req.user._id);
   res.json({ success: true, ...result, impersonating: true, originalUserId: req.user._id });
 }));
@@ -558,6 +562,10 @@ router.post('/stop-impersonate', authMiddleware, asyncHandler(async (req, res) =
   
   // Issue fresh tokens for the original Super Admin
   const result = await authService.issueTokens(res, originalUser, req);
+  
+  // Clear Super Admin's dashboard cache so they see FRESH stats from the platform-wide view
+  clearCacheForUser(stored.originalUserId);
+
   res.json({ success: true, ...result });
 }));
 

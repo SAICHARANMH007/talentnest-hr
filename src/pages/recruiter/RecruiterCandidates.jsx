@@ -117,20 +117,22 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
   };
 
   return (
-    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10, padding: isMobile ? '12px 14px' : undefined }}>
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14, padding: isMobile ? '16px' : '20px', transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid #E2E8F0' }}
+         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.08)'; }}
+         onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = card.boxShadow; }}>
 
       {/* ── Header: avatar + identity + resume button ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div style={{ width: isMobile ? 40 : 44, height: isMobile ? 40 : 44, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#032D60)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 16 : 18 }}>
+          <div style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, background: 'linear-gradient(135deg,#0176D3 0%,#014486 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 18 : 22, boxShadow: '0 4px 12px rgba(1,118,211,0.25)' }}>
             {(c.name || '?')[0].toUpperCase()}
           </div>
         </div>
 
         {/* Identity */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
-            <div style={{ color: '#181818', fontWeight: 700, fontSize: isMobile ? 14 : 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', marginBottom: 2 }}>
+            <div style={{ color: '#0F172A', fontWeight: 800, fontSize: isMobile ? 15 : 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, letterSpacing: '-0.3px' }}>
               {c.name || '—'}
             </div>
             <PresenceBadge userId={c.id || c._id} showLabel={true} />
@@ -138,40 +140,38 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
 
           {/* Title */}
           {c.title && (
-            <div style={{ color: '#0176D3', fontSize: 12, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {c.title}
             </div>
           )}
 
-          {/* Meta row — location / exp / phone, always wraps */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Meta row — location / exp / phone */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {c.location && (
-              <span style={{ color: '#706E6B', fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
-                📍 <span style={{ maxWidth: isMobile ? 90 : 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{c.location}</span>
+              <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>
+                📍 {c.location}
               </span>
             )}
-            {exp > 0 && <span style={{ color: '#706E6B', fontSize: 11, whiteSpace: 'nowrap' }}>⏱ {exp}y exp</span>}
-            {c.phone && <span style={{ color: '#706E6B', fontSize: 11, whiteSpace: 'nowrap' }}>📞 {c.phone}</span>}
+            {exp > 0 && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>⏱ {exp}y exp</span>}
+            {c.phone && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>📞 {c.phone}</span>}
           </div>
 
           {/* Email */}
           {c.email && (
-            <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ color: '#64748B', fontSize: 11, marginTop: 4, opacity: 0.8 }}>
               ✉ {c.email}
             </div>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          {onEditProfile && (
-            <button onClick={() => onEditProfile(c)}
-              style={{ ...btnP, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, flexShrink: 0, minHeight: 36 }}>
-              {isMobile ? '✏️' : '✏️ Edit Profile'}
-            </button>
-          )}
+          <button onClick={() => onEditProfile(c)}
+            style={{ ...btnP, padding: '8px 14px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ✏️ Edit
+          </button>
           <button onClick={() => onViewResume(c)}
-            style={{ ...btnG, padding: isMobile ? '6px 10px' : '6px 14px', fontSize: 11, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3', flexShrink: 0, minHeight: 36 }}>
-            {isMobile ? '📋' : '📋 Resume'}
+            style={{ ...btnG, padding: '8px 14px', fontSize: 12, borderRadius: 8, color: '#0176D3', borderColor: 'rgba(1,118,211,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            📋 Resume
           </button>
         </div>
       </div>
@@ -188,26 +188,26 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
 
       {/* ── Summary ── */}
       {c.summary && (
-        <div style={{ color: '#706E6B', fontSize: 12, lineHeight: 1.55, borderLeft: '2px solid rgba(1,118,211,0.25)', paddingLeft: 10 }}>
-          {c.summary.slice(0, isMobile ? 120 : 180)}{c.summary.length > (isMobile ? 120 : 180) ? '…' : ''}
+        <div style={{ color: '#475569', fontSize: 13, lineHeight: 1.6, borderLeft: '3px solid #0176D3', paddingLeft: 12, margin: '4px 0', background: 'rgba(1,118,211,0.03)', padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>
+          {c.summary.slice(0, isMobile ? 120 : 200)}{c.summary.length > (isMobile ? 120 : 200) ? '…' : ''}
         </div>
       )}
 
       {/* ── Outreach tracker ── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', background: '#F8FAFF', padding: '8px 12px', borderRadius: 10, border: '1px solid #EAF5FE' }}>
         {c.lastReachedOutAt ? (
-          <span style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '3px 10px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            📬 {timeAgo(c.lastReachedOutAt)}
+          <span style={{ fontSize: 12, color: '#0176D3', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            📬 Reached out {timeAgo(c.lastReachedOutAt)}
           </span>
         ) : (
-          <span style={{ fontSize: 11, color: '#C9C7C5', borderRadius: 20, padding: '3px 8px' }}>Not contacted</span>
+          <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>Not contacted yet</span>
         )}
-        {c.reachOutNote && !isMobile && (
-          <span style={{ fontSize: 11, color: '#706E6B', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>"{c.reachOutNote}"</span>
-        )}
+        <div style={{ flex: 1 }} />
         <button
           onClick={() => setShowNote(p => !p)}
-          style={{ fontSize: 11, background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', padding: '4px 10px', cursor: 'pointer', fontWeight: 600, minHeight: 32 }}
+          style={{ fontSize: 12, background: '#fff', border: '1px solid #0176D3', borderRadius: 6, color: '#0176D3', padding: '4px 12px', cursor: 'pointer', fontWeight: 700, transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#0176D3'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#0176D3'; }}
         >
           {showNote ? '✕ Cancel' : '+ Log Outreach'}
         </button>
@@ -231,63 +231,67 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
       )}
 
       {/* ── Add to pipeline ── */}
-      <div style={{ paddingTop: 8, borderTop: '1px solid #F3F2F2' }}>
-        <div style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>ADD TO PIPELINE</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} ref={dropRef}>
-          <div style={{ position: 'relative', flex: 1 }}>
+      <div style={{ paddingTop: 14, borderTop: '1px solid #F1F5F9', marginTop: 4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 240, position: 'relative' }} ref={dropRef}>
+          <label style={{ color: '#64748B', fontSize: 10, fontWeight: 800, marginBottom: 6, display: 'block', letterSpacing: 0.5 }}>QUICK ADD TO JOB</label>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => setDropOpen(p => !p)}
-              style={{ width: '100%', padding: '8px 10px', fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: '#fff', border: '1.5px solid #DDDBDA', borderRadius: 8, color: '#181818', outline: 'none', fontFamily: 'inherit', minHeight: 38 }}
+              style={{ flex: 1, padding: '10px 14px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#1E293B', outline: 'none', transition: 'all 0.2s', fontWeight: 600 }}
             >
-              <span style={{ color: selJobs.length > 0 ? '#181818' : '#9E9D9B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {selJobs.length > 0 ? `${selJobs.length} role${selJobs.length > 1 ? 's' : ''} selected` : '— Select role(s) —'}
+              <span style={{ color: selJobs.length > 0 ? '#1E293B' : '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selJobs.length > 0 ? `🎯 ${selJobs.length} Job${selJobs.length > 1 ? 's' : ''} selected` : 'Select job(s)...'}
               </span>
-              <span style={{ fontSize: 10, opacity: 0.5, flexShrink: 0, marginLeft: 4 }}>{dropOpen ? '▲' : '▼'}</span>
+              <span style={{ fontSize: 10, opacity: 0.5, marginLeft: 6 }}>{dropOpen ? '▲' : '▼'}</span>
             </button>
-            {dropOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 300, background: '#fff', border: '1px solid #DDDBDA', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
+            <button
+              disabled={selJobs.length === 0 || adding}
+              onClick={async () => {
+                if (!selJobs.length) return;
+                setAdding(true);
+                for (const jobId of selJobs) await onAddPipeline(c, jobId);
+                setSelJobs([]); setDropOpen(false); setAdding(false);
+              }}
+              style={{ ...btnP, padding: '10px 24px', fontSize: 13, minWidth: 100, opacity: (selJobs.length === 0 || adding) ? 0.6 : 1 }}
+            >
+              {adding ? '...' : `➕ Add to Pipeline`}
+            </button>
+          </div>
+          {dropOpen && (
+              <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 300, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 -12px 32px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto' }}>
                 {jobs.length === 0 ? (
-                  <div style={{ padding: 14, color: '#9E9D9B', fontSize: 12 }}>No jobs available</div>
+                  <div style={{ padding: 16, color: '#94A3B8', fontSize: 13, textAlign: 'center' }}>No jobs available</div>
                 ) : jobs.map(j => {
                   const checked = selJobs.includes(j.id);
                   return (
                     <div key={j.id} onClick={() => toggleJob(j.id)}
-                      style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: checked ? 'rgba(1,118,211,0.06)' : '#fff', borderBottom: '1px solid #F3F2F2' }}
-                      onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F3F2F2'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = checked ? 'rgba(1,118,211,0.06)' : '#fff'; }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? '#0176D3' : '#DDDBDA'}`, background: checked ? '#0176D3' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
+                      style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 16px', cursor: 'pointer', background: checked ? '#F8FAFF' : '#fff', borderBottom: '1px solid #F1F5F9' }}
+                      onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F8FAFF'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = checked ? '#F8FAFF' : '#fff'; }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${checked ? '#0176D3' : '#CBD5E1'}`, background: checked ? '#0176D3' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {checked && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#181818', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</div>
-                        <div style={{ color: '#706E6B', fontSize: 11 }}>{j.company}</div>
+                        <div style={{ color: '#1E293B', fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title}</div>
+                        <div style={{ color: '#64748B', fontSize: 11 }}>{j.company}</div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </div>
-          <button
-            disabled={selJobs.length === 0 || adding}
-            onClick={async () => {
-              if (!selJobs.length) return;
-              setAdding(true);
-              for (const jobId of selJobs) await onAddPipeline(c, jobId);
-              setSelJobs([]); setDropOpen(false); setAdding(false);
-            }}
-            style={{ ...btnP, padding: '8px 14px', fontSize: 12, whiteSpace: 'nowrap', opacity: (selJobs.length === 0 || adding) ? 0.5 : 1, minHeight: 38, flexShrink: 0 }}
-          >
-            {adding ? <Spinner /> : `➕${selJobs.length > 1 ? ` (${selJobs.length})` : ' Add'}`}
-          </button>
         </div>
 
-        <button
-          onClick={() => onInvite(c)}
-          style={{ marginTop: 8, width: '100%', padding: '9px 0', background: 'rgba(1,118,211,0.05)', border: '1.5px dashed rgba(1,118,211,0.35)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}
-        >
-          📧 Send Invite to Apply
-        </button>
+        <div style={{ flexShrink: 0, paddingTop: 18 }}>
+          <button
+            onClick={() => onInvite(c)}
+            style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 13, fontWeight: 800, cursor: 'pointer', padding: '8px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(1,118,211,0.08)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            📧 Send Invitation
+          </button>
+        </div>
       </div>
     </div>
   );

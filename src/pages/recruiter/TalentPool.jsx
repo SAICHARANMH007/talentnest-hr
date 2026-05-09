@@ -8,6 +8,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { fmtDateShort } from '../../utils/india.js';
 import { api } from '../../api/api.js';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 
 // ── Styles outside component ───────────────────────────────────────────────────
 const S = {
@@ -26,6 +27,7 @@ export default function TalentPool({ user }) {
   const [selJob,    setSelJob]    = useState('');
   const [pulling,   setPulling]   = useState(false);
   const [search,    setSearch]    = useState('');
+  const [detailUser,setDetailUser]= useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -121,13 +123,18 @@ export default function TalentPool({ user }) {
                     <td style={S.td}>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
+                          onClick={() => setDetailUser({ ...p.candidateId, role: 'candidate', _partial: true })}
+                          style={{ ...btnG, fontSize: 12, padding: '6px 12px' }}>
+                          👁️ View
+                        </button>
+                        <button
                           onClick={() => { setPullTarget(p); setSelJob(''); }}
                           style={{ ...btnP, fontSize: 12, padding: '6px 14px' }}>
                           ➕ Pull into Job
                         </button>
                         <button
                           onClick={() => handleUnpark(id)}
-                          style={{ ...btnD, fontSize: 12 }}>
+                          style={{ ...btnD, fontSize: 12, padding: '6px 10px' }}>
                           Remove
                         </button>
                       </div>
@@ -166,6 +173,13 @@ export default function TalentPool({ user }) {
             </select>
           </div>
         </Modal>
+      )}
+      {detailUser && (
+        <UserDetailDrawer
+          user={detailUser}
+          onClose={() => setDetailUser(null)}
+          onUpdated={load}
+        />
       )}
     </div>
   );

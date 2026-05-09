@@ -222,24 +222,26 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   };
 
   return (
-    <div style={{ ...card, border: `1px solid ${s.color}22` }}>
+    <div style={{ ...card, border: `1px solid ${s.color}22`, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', padding: '20px' }}
+         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.08)'; }}
+         onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = card.boxShadow; }}>
       {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Checkbox */}
           <input
             type="checkbox"
             checked={isSelected}
             onChange={() => onSelect(app.id)}
-            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0176D3', flexShrink: 0 }}
+            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#0176D3', flexShrink: 0, borderRadius: 6 }}
           />
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
-            {(c?.name || '?')[0]}
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
+            {(c?.name || '?')[0].toUpperCase()}
           </div>
           <div>
-            <div style={{ color: '#181818', fontWeight: 600, fontSize: 14 }}>{c?.name}</div>
-            <div style={{ color: '#0176D3', fontSize: 12 }}>{c?.title} · {c?.experience || 0}y exp</div>
-            <div style={{ color: '#706E6B', fontSize: 11 }}>{c?.email} · {c?.phone || 'No phone'}</div>
+            <div style={{ color: '#0F172A', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>{c?.name}</div>
+            <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700 }}>{c?.title} · {c?.experience || 0}y exp</div>
+            <div style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{c?.email} · {c?.phone || 'No phone'}</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -247,10 +249,10 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
             <Badge label={s.icon + ' ' + s.label} color={s.color} />
             <SlaDot app={app} />
           </div>
-          <span style={{ color: '#9E9D9B', fontSize: 11 }}>Applied {new Date(app.createdAt).toLocaleDateString()}</span>
-          {app.emailSent && <span style={{ color: '#86efac', fontSize: 10 }}>📧 Invite sent</span>}
+          <span style={{ color: '#94A3B8', fontSize: 11, fontWeight: 600 }}>Applied {new Date(app.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</span>
+          {app.emailSent && <span style={{ color: '#10b981', fontSize: 10, fontWeight: 800, background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 20 }}>📧 Invite sent</span>}
           {c?.videoResumeUrl && (
-            <button onClick={() => window.open(c.videoResumeUrl, '_blank')} style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 6, padding: '2px 7px', fontSize: 11, cursor: 'pointer', color: '#0176D3' }} title="View video resume">🎥</button>
+            <button onClick={() => window.open(c.videoResumeUrl, '_blank')} style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#0176D3', fontWeight: 700 }} title="View video resume">🎥 Video Resume</button>
           )}
         </div>
       </div>
@@ -268,28 +270,32 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
 
       {/* Screening Answers */}
       {app.screeningAnswers?.length > 0 && (
-        <div style={{ marginBottom: 10, padding: '8px 12px', background: 'rgba(124,58,237,0.05)', borderRadius: 10, border: '1px solid rgba(124,58,237,0.15)' }}>
-          <div style={{ color: '#7C3AED', fontSize: 11, fontWeight: 700, marginBottom: 6 }}>📋 Screening Answers</div>
-          {app.screeningAnswers.map((qa, i) => (
-            <div key={i} style={{ marginBottom: 4 }}>
-              <div style={{ color: '#374151', fontSize: 11, fontWeight: 600 }}>{qa.question}</div>
-              <div style={{ color: '#706E6B', fontSize: 11, marginTop: 1 }}>{qa.answer || '—'}</div>
-            </div>
-          ))}
+        <div style={{ marginBottom: 14, padding: '12px 16px', background: 'linear-gradient(135deg,rgba(124,58,237,0.06),rgba(124,58,237,0.02))', borderRadius: 14, border: '1.5px solid rgba(124,58,237,0.12)' }}>
+          <div style={{ color: '#7C3AED', fontSize: 11, fontWeight: 900, marginBottom: 8, letterSpacing: 0.8, textTransform: 'uppercase' }}>📋 Screening Answers</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {app.screeningAnswers.map((qa, i) => (
+              <div key={i} style={{ borderBottom: i < app.screeningAnswers.length - 1 ? '1px solid rgba(124,58,237,0.08)' : 'none', paddingBottom: i < app.screeningAnswers.length - 1 ? 8 : 0 }}>
+                <div style={{ color: '#1E293B', fontSize: 12, fontWeight: 700 }}>{qa.question}</div>
+                <div style={{ color: '#475569', fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>{qa.answer || '—'}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Feedback display */}
       {app.feedback && (
-        <div style={{ marginBottom: 10, padding: '8px 12px', background: 'rgba(1,118,211,0.06)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.15)' }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>Interview Feedback</span>
-            <span style={{ color: '#0176D3', fontSize: 12, fontWeight: 700 }}>{'★'.repeat(app.feedback.rating || 0)}</span>
-            <span style={{ color: app.feedback.recommendation ? '#34d399' : '#FE5C4C', fontSize: 11, fontWeight: 600 }}>
-              {app.feedback.recommendation ? '✓ Move Forward' : '✕ Do Not Proceed'}
-            </span>
+        <div style={{ marginBottom: 14, padding: '12px 16px', background: 'rgba(1,118,211,0.06)', borderRadius: 14, border: '1.5px solid rgba(1,118,211,0.12)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 900, letterSpacing: 0.8, textTransform: 'uppercase' }}>🎯 Interview Feedback</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+               <span style={{ color: '#F59E0B', fontSize: 14 }}>{'★'.repeat(app.feedback.rating || 0)}</span>
+               <span style={{ color: app.feedback.recommendation ? '#10b981' : '#ef4444', fontSize: 11, fontWeight: 800, background: app.feedback.recommendation ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', padding: '2px 10px', borderRadius: 20 }}>
+                 {app.feedback.recommendation ? '✓ Proceed' : '✕ Reject'}
+               </span>
+            </div>
           </div>
-          {app.feedback.strengths && <div style={{ color: '#706E6B', fontSize: 11 }}>+ {app.feedback.strengths}</div>}
+          {app.feedback.strengths && <div style={{ color: '#334155', fontSize: 12, lineHeight: 1.5, fontStyle: 'italic' }}>"{app.feedback.strengths}"</div>}
         </div>
       )}
 

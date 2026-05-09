@@ -21,6 +21,11 @@ function cacheRoute(ttlSeconds = 60) {
   return function cacheMiddleware(req, res, next) {
     if (req.method !== 'GET') return next();
 
+    // Respect browser hard-refresh (Ctrl+F5)
+    if (req.headers['cache-control'] === 'no-cache' || req.headers['pragma'] === 'no-cache') {
+      return next();
+    }
+
     // Critical fix: Key must be isolated by tenant and user role to prevent data leaks between organizations.
     const key = `${req.user?.tenantId || 'global'}:${req.user?.id || 'anon'}:${req.originalUrl || req.url}`;
     const cached = store.get(key);
@@ -56,9 +61,13 @@ function invalidatePrefix(prefix) {
   }
 }
 
-/** Clear the entire cache (useful after bulk mutations). */
-function clearCache() {
-  store.clear();
+/** Clear all entries for a specific user (useful after impersonation changes). */
+function clearCacheForUser(userId) {
+  if (!userId) return;
+  const uid = String(userId);
+  for (const key of store.keys()) {
+    if (key.includes(`:${uid}:`)) store.delete(key);
+  }
 }
 
-module.exports = { cacheRoute, invalidatePrefix, clearCache };
+module.exports = { cacheRoute, invalidatePrefix, clearCache, clearCacheForUser };

@@ -205,7 +205,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
               {(form.name || u.name || '?')[0].toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ color: '#0A1628', fontSize: 'clamp(15px,3vw,20px)', fontWeight: 900, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.name || u.name || '—'}</h2>
+              <h2 style={{ color: '#0A1628', fontSize: 'clamp(16px, 3.5vw, 22px)', fontWeight: 900, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.5px' }}>{form.name || u.name || '—'}</h2>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Badge label={(form.role || u.role || 'candidate').replace('_', ' ')} color="#0176D3" />
                 {app && <Badge label={(SM[currentStage]?.label || currentStage)} color={SM[currentStage]?.color || '#0176D3'} />}
@@ -214,10 +214,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                     ✅ BGV Verified
                   </span>
                 )}
-                <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>🏢 {fullUser?.orgName || u.orgName || 'TalentNest HR'}</span>
+                <span style={{ color: '#706E6B', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>🏢 {fullUser?.orgName || u.orgName || 'TalentNest HR'}</span>
               </div>
             </div>
-            <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', color: '#64748B', width: 36, height: 36, borderRadius: 12, cursor: 'pointer', fontSize: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#E2E8F0'} onMouseLeave={e => e.currentTarget.style.background = '#F1F5F9'}>✕</button>
           </div>
 
           <div style={{ display: 'flex', gap: 0, marginTop: 16, borderBottom: '1px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none' }}>

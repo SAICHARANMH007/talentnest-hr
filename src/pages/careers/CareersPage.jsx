@@ -387,7 +387,20 @@ function ApplyModal({ job, onClose }) {
   );
 
   return (
-    <Modal title={`Apply — ${job.title} @ ${job.company}`} onClose={onClose}>
+    <Modal
+      title={`Apply — ${job.title} @ ${job.company}`}
+      onClose={onClose}
+      footer={
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 2, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15 }}>
+            {submitting
+              ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
+              : '🚀 Submit Application'}
+          </button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minHeight: 48 }}>Cancel</button>
+        </div>
+      }
+    >
       {/* Assessment banner — show at top so candidate knows before applying */}
       {assessmentInfo?.hasAssessment && (
         <div style={{ marginBottom: 14, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(124,58,237,0.07),rgba(109,40,217,0.04))', borderRadius: 8, border: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -675,16 +688,8 @@ function ApplyModal({ job, onClose }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 1, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 50, fontSize: 15 }}>
-          {submitting
-            ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
-            : '🚀 Submit Application'}
-        </button>
-        <button onClick={onClose} className="btn btn-secondary" style={{ minHeight: 50 }}>Cancel</button>
-      </div>
       {(geoStatus === 'banner' || geoStatus === 'idle') && notifStatus === 'default' && (
-        <p style={{ color: '#7c3aed', fontSize: 11, marginTop: 8, textAlign: 'center', fontWeight: 600 }}>
+        <p style={{ color: '#7c3aed', fontSize: 11, marginTop: 12, textAlign: 'center', fontWeight: 600 }}>
           ⚡ On submit: browser will ask for location + notifications
         </p>
       )}
