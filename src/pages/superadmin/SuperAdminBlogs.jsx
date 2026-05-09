@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api/api.js';
-import { btnP, btnG, glass, inp } from '../../constants/styles.js';
+import { btnP, btnG, glassCard, inp } from '../../constants/styles.js';
 
 const CATEGORIES = [
   'IT Staffing', 'Cybersecurity', 'HR Strategy', 'Recruitment Tips',
@@ -138,7 +138,7 @@ export default function SuperAdminBlogs() {
           {/* Left: main content */}
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             {/* Title */}
-            <div style={{ ...glass, padding:20 }}>
+            <div style={{ ...glassCard, padding:20 }}>
               <label style={labelStyle}>Blog Title *</label>
               <input style={{ ...inp, width:'100%', fontSize:'1rem', fontWeight:600 }}
                 value={form.title} onChange={e => handleTitleChange(e.target.value)}
@@ -155,7 +155,7 @@ export default function SuperAdminBlogs() {
             </div>
 
             {/* Excerpt */}
-            <div style={{ ...glass, padding:20 }}>
+            <div style={{ ...glassCard, padding:20 }}>
               <label style={labelStyle}>Excerpt / Summary *</label>
               <textarea style={{ ...inp, width:'100%', minHeight:80, resize:'vertical' }}
                 value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
@@ -164,7 +164,7 @@ export default function SuperAdminBlogs() {
             </div>
 
             {/* Sections */}
-            <div style={{ ...glass, padding:20 }}>
+            <div style={{ ...glassCard, padding:20 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <label style={{ ...labelStyle, margin:0 }}>Content Sections</label>
                 <button onClick={addSection} style={{ ...btnG, padding:'6px 14px', fontSize:12 }}>+ Add Section</button>
@@ -193,7 +193,7 @@ export default function SuperAdminBlogs() {
           {/* Right: metadata */}
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             {/* Publish controls */}
-            <div style={{ ...glass, padding:20 }}>
+            <div style={{ ...glassCard, padding:20 }}>
               <div style={{ display:'flex', gap:10, marginBottom:16 }}>
                 <button onClick={handleSave} disabled={saving}
                   style={{ ...btnP, flex:1, padding:'10px 0', fontSize:14, opacity: saving ? 0.7 : 1 }}>
@@ -217,7 +217,7 @@ export default function SuperAdminBlogs() {
             </div>
 
             {/* Category */}
-            <div style={{ ...glass, padding:20 }}>
+            <div style={{ ...glassCard, padding:20 }}>
               <label style={labelStyle}>Category *</label>
               <select style={{ ...inp, width:'100%' }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}

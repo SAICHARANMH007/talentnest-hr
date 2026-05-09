@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { glass } from '../../constants/styles.js';
+import { glassCard } from '../../constants/styles.js';
 
 /**
  * Modal — standard portal-based dialog.
@@ -30,7 +30,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
       <div
         className={`tn-modal ${wide ? 'tn-modal-wide' : 'tn-modal-regular'}`}
         style={{ 
-          ...glass, 
+          ...glassCard, 
           width: "100%", 
           maxWidth: width || (wide ? '940px' : '640px'), 
           display: "flex", 

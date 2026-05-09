@@ -18,6 +18,9 @@ export const glassCard = {
   boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
 };
 
+// Aliases for backward compatibility to prevent build breakage
+export const glass = glassCard;
+
 export const shimmerKeyframes = `
   @keyframes shimmer {
     0% { background-position: -200% 0; }
