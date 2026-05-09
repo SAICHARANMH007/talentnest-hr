@@ -146,7 +146,7 @@ const INP = {
 
 // ── Icons ──
 const EyeIcon = ({ visible }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748B" xmlns="http://www.w3.org/2000/svg">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748B" xmlns="http://www.w3.org/2000/svg" style={{ pointerEvents: 'none' }}>
     {visible ? (
       <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
     ) : (
@@ -594,7 +594,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
             <div style={{ position: 'relative' }}>
               <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
+              <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
                 <EyeIcon visible={showPw} />
               </button>
             </div>
@@ -887,7 +887,7 @@ function ResetPasswordForm({ token, email: initEmail, onBack }) {
             <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>NEW PASSWORD *</label>
             <div style={{ position: 'relative', marginBottom: 4 }}>
               <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-              <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
+              <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
                 <EyeIcon visible={showPw} />
               </button>
             </div>
@@ -1178,7 +1178,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
               <div style={{ position: 'relative' }}>
                 <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" style={{ ...INP, paddingRight: 44 }} />
-                <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
+                <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
                 <EyeIcon visible={showPw} />
               </button>
               </div>
@@ -1283,7 +1283,7 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
         <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>PASSWORD *</label>
         <div style={{ position: 'relative' }}>
           <input type={showPw ? 'text' : 'password'} value={form.password} onChange={e => sf('password', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="Min 8 chars, 1 uppercase, 1 number" style={{ ...INP, paddingRight: 44 }} />
-          <button onClick={() => setShow(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
+          <button type="button" onClick={() => setShow(!showPw)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
             <EyeIcon visible={showPw} />
           </button>
         </div>
