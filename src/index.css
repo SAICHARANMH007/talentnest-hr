@@ -624,7 +624,7 @@ img, video, svg {
 }
 
 /* ── Touch targets — minimum 44px for accessibility ── */
-button, a, input, select, textarea {
+button, a, input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   min-height: 44px;
 }
 
@@ -797,6 +797,22 @@ button, a, input, select, textarea {
 .tn-table-scroll table {
   min-width: 600px;
   width: 100%;
+}
+
+/* ── Filter bar horizontal scroll on mobile ── */
+@media (max-width: 768px) {
+  .tn-filter-bar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px !important;
+  }
+  .tn-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .tn-filter-bar > * {
+    flex-shrink: 0 !important;
+  }
 }
 
 /* Page headers with actions: stack on mobile */

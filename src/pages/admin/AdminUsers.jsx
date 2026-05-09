@@ -836,7 +836,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e8ecf0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
 
             {/* Row 1 — quick filters */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px' }} className="tn-filter-bar">
               {/* Search pill */}
               <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0, width: '100%' }}>
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, pointerEvents: 'none', color: '#9ca3af' }}>🔍</span>
@@ -986,7 +986,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
 
       {/* ── Bulk selection action bar ─────────────────────────────────────── */}
       {activeTab === 'users' && isCandidates && !loading && filtered.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 12px', background: selectedIds.size > 0 ? 'rgba(1,118,211,0.08)' : '#FAFAFA', border: `1px solid ${selectedIds.size > 0 ? 'rgba(1,118,211,0.3)' : '#F3F2F2'}`, borderRadius: 10, transition: 'all 0.2s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 12px', background: selectedIds.size > 0 ? 'rgba(1,118,211,0.08)' : '#fff', border: `1px solid ${selectedIds.size > 0 ? 'rgba(1,118,211,0.3)' : '#E2E8F0'}`, borderRadius: 12, transition: 'all 0.2s', overflowX: 'auto', whiteSpace: 'nowrap' }} className="tn-filter-bar">
           <input
             type="checkbox"
             checked={selectedIds.size > 0 && selectedIds.size === filtered.length}
@@ -1048,8 +1048,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                   {/* Identity block — flex:1 + minWidth:0 ensures text truncation works */}
                   <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
 
-                    {/* Name — own line, always truncates */}
-                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {/* Name — allow wrap on mobile, bold and clear */}
+                    <div style={{ color: '#181818', fontWeight: 800, fontSize: 15, lineHeight: 1.3, marginBottom: 2 }}>
                       {u.name || u.email?.split('@')[0] || 'No Name'}
                     </div>
 
@@ -1066,14 +1066,14 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                       )}
                     </div>
 
-                    {/* Email */}
-                    <div style={{ color: '#0176D3', fontSize: 12, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {/* Email — allow more space, small and subtle */}
+                    <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>
                       {u.email}
                     </div>
 
-                    {/* Title + location */}
+                    {/* Title + location — allow wrapping to keep info visible */}
                     {(u.title || u.location) && (
-                      <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4, lineHeight: 1.4 }}>
                         {u.title}{u.title && u.location ? ' · ' : ''}{u.location ? `📍 ${u.location}` : ''}
                       </div>
                     )}
