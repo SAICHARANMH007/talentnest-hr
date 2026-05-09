@@ -5,6 +5,7 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
+import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 
 // ─── shared tiny helpers ────────────────────────────────────────────────────
 const G  = 'linear-gradient(135deg,#0176D3 0%,#00C2CB 100%)';
@@ -45,106 +46,7 @@ function SectionHeading({ children, sub, center = true, color = 'var(--mkt-text-
 }
 
 // ─── Apply Modal ─────────────────────────────────────────────────────────────
-function ApplyModal({ job, onClose }) {
-  const titleId = useId();
-  const descId = useId();
-  const firstInputRef = useRef(null);
-  const prefill = (() => { try { const u = JSON.parse(sessionStorage.getItem('tn_user') || '{}'); return { name: u.name || '', email: u.email || '' }; } catch { return { name: '', email: '' }; } })();
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: '', coverLetter: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
-  const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    firstInputRef.current?.focus();
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onClose]);
-
-  const submit = async () => {
-    if (!form.name || !form.email) { setError('Name and email are required.'); return; }
-    setSubmitting(true); setError('');
-    try {
-      await api.applyPublic(job.id, form);
-      setDone(true);
-      if (job.externalUrl) setTimeout(() => window.open(job.externalUrl, '_blank', 'noopener,noreferrer'), 1200);
-    } catch (e) { setError(e.message); }
-    setSubmitting(false);
-  };
-
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.8)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        onClick={(event) => event.stopPropagation()}
-        style={{ background: 'var(--mkt-card-bg)', borderRadius: 24, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 32px 100px rgba(0,0,0,0.5)', border: '1px solid var(--mkt-card-border)' }}
-      >
-        <div style={{ background: G, padding: '32px 40px 28px', borderRadius: '24px 24px 0 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <h3 id={titleId} style={{ color: '#fff', fontWeight: 900, fontSize: 20, margin: 0, letterSpacing: '-0.02em' }}>Apply: {job.title}</h3>
-              <p id={descId} style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600, margin: '6px 0 0' }}>{job.company}</p>
-            </div>
-            <button aria-label="Close apply dialog" onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, color: '#fff', cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>✕</button>
-          </div>
-        </div>
-        <div style={{ padding: '32px 40px' }}>
-          {done ? (
-            <div style={{ textAlign: 'center', padding: '30px 0' }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-              <p style={{ fontWeight: 900, fontSize: 20, color: 'var(--mkt-text-heading)' }}>Application received!</p>
-              <p style={{ color: 'var(--mkt-text-muted)', fontSize: 14, marginTop: 10, lineHeight: 1.6 }}>We've received your profile. Our team will review it and get back to you within 48 hours. Good luck!</p>
-              <button onClick={onClose} style={{ marginTop: 24, background: G, border: 'none', borderRadius: 12, color: '#fff', padding: '14px 40px', fontWeight: 800, cursor: 'pointer', fontSize: 15, boxShadow: '0 8px 20px rgba(1,118,211,0.3)' }}>Close</button>
-            </div>
-          ) : (
-            <>
-              {error && <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 12, color: '#EF4444', fontSize: 13, fontWeight: 600 }}>⚠️ {error}</div>}
-              {[
-                { label: 'Full Name *', key: 'name', placeholder: 'Jane Smith', type: 'text' },
-                { label: 'Email *', key: 'email', placeholder: 'jane@example.com', type: 'email' },
-                { label: 'Phone', key: 'phone', placeholder: '+91 79955 35539', type: 'tel' },
-              ].map(f => (
-                <div key={f.key} style={{ marginBottom: 18 }}>
-                  <label htmlFor={`apply-${f.key}`} style={{ display: 'block', fontSize: 11, fontWeight: 900, color: 'var(--mkt-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>{f.label}</label>
-                  <input id={`apply-${f.key}`} ref={f.key === 'name' ? firstInputRef : null} type={f.type} value={form[f.key]} onChange={e => sf(f.key, e.target.value)} placeholder={f.placeholder}
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '13px 16px', border: '1.5px solid var(--mkt-card-border)', borderRadius: 12, fontSize: 14, outline: 'none', fontFamily: 'inherit', color: 'var(--mkt-text)', background: 'var(--mkt-surface-bg)', transition: 'border-color 0.2s' }} onFocus={e => e.target.style.borderColor = 'var(--mkt-primary)'} onBlur={e => e.target.style.borderColor = 'var(--mkt-card-border)'} />
-                </div>
-              ))}
-              <div style={{ marginBottom: 24 }}>
-                <label htmlFor="apply-cover-letter" style={{ display: 'block', fontSize: 11, fontWeight: 900, color: 'var(--mkt-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Cover Letter (optional)</label>
-                <textarea id="apply-cover-letter" value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} placeholder="Tell us why you're a great fit…" rows={4}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '13px 16px', border: '1.5px solid var(--mkt-card-border)', borderRadius: 12, fontSize: 14, outline: 'none', fontFamily: 'inherit', resize: 'vertical', color: 'var(--mkt-text)', background: 'var(--mkt-surface-bg)', transition: 'border-color 0.2s' }} onFocus={e => e.target.style.borderColor = 'var(--mkt-primary)'} onBlur={e => e.target.style.borderColor = 'var(--mkt-card-border)'} />
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={submit} disabled={submitting} style={{ flex: 1, background: G, border: 'none', borderRadius: 12, color: '#fff', padding: '16px', fontWeight: 900, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1, boxShadow: '0 8px 24px rgba(1,118,211,0.3)', transition: 'all 0.2s' }} onMouseEnter={e => { if(!submitting) e.currentTarget.style.transform = 'translateY(-2px)'; }} onMouseLeave={e => { if(!submitting) e.currentTarget.style.transform = 'translateY(0)'; }}>
-                  {submitting ? 'Submitting…' : '🚀 Submit Application'}
-                </button>
-                <button onClick={onClose} style={{ padding: '16px 24px', border: '1.5px solid var(--mkt-card-border)', borderRadius: 12, background: 'var(--mkt-card-bg)', color: 'var(--mkt-text-muted)', cursor: 'pointer', fontWeight: 800, fontSize: 14, transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--mkt-text-muted)'; e.currentTarget.style.color = 'var(--mkt-text-heading)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--mkt-card-border)'; e.currentTarget.style.color = 'var(--mkt-text-muted)'; }}>Cancel</button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// Replaced simplified ApplyModal with shared PublicApplyModal
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const SERVICES = [
@@ -276,7 +178,7 @@ export default function LandingPage() {
   return (
     <div className="mkt-page" style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", background: 'var(--mkt-section-bg)', color: 'var(--mkt-text)' }}>
       <MarketingNav active="home" />
-      {applying && <ApplyModal job={applying} onClose={() => setApplying(null)} />}
+      {applying && <PublicApplyModal job={applying} onClose={() => setApplying(null)} />}
 
       {/* ══════════════════════════════════════════════════════════════
           HERO
@@ -370,7 +272,7 @@ export default function LandingPage() {
                 return (
                   <div
                     key={job._id || job.id || i}
-                    onClick={() => setApplying({ id: job._id || job.id, title: job.title, companyName: job.companyName })}
+                    onClick={() => setApplying(job)}
                     style={{
                       background: isActive ? 'rgba(1,118,211,0.18)' : 'rgba(255,255,255,0.05)',
                       border: `1px solid ${isActive ? 'rgba(1,118,211,0.45)' : 'rgba(255,255,255,0.1)'}`,
