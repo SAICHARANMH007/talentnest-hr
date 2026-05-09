@@ -203,7 +203,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ color: '#181818', fontSize: 13, fontWeight: 600 }}>
-                        {log.userId?.name || 'System'} <span style={{ fontWeight: 400, color: '#64748B' }}>{log.message}</span>
+                        {log.userName || 'System'} <span style={{ fontWeight: 400, color: '#64748B' }}>{log.message}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
                         <span style={{ color: '#9E9D9B', fontSize: 11 }}>{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

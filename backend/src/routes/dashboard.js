@@ -357,6 +357,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
       .sort({ createdAt: -1 })
       .limit(20)
       .populate(JOB_APPLICANT_POPULATE)
+      .populate(CANDIDATE_APPLICANT_POPULATE)
       .lean()
   ]);
 

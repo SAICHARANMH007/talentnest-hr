@@ -436,7 +436,9 @@ export default function App() {
 
   const logout = () => {
     sessionStorage.removeItem('tn_user');
-    sessionStorage.removeItem('tn_token'); // clear persisted token
+    sessionStorage.removeItem('tn_token');
+    sessionStorage.removeItem('tn_impersonate_token');
+    sessionStorage.removeItem('tn_sa_backup');
     setUser(null);
     api.logout().catch(() => {});   // clears HTTP-only refresh cookie on server
     navigate('/login', { replace: true });

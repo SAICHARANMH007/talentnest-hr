@@ -553,9 +553,11 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }
     }
 
-    // 4. Fallback: email prefix or "Unknown"
+    // 4. Fallback: email prefix or "Candidate"
     const email = app.candidateEmail || app.email || u?.email;
-    return { name: email ? email.split('@')[0] : 'Unknown', user: null };
+    if (email) return { name: email.split('@')[0], user: null };
+    
+    return { name: app.name || 'Candidate', user: null };
   }, [allCandidates, allApps]);
 
   const topJobs = useMemo(() => {
