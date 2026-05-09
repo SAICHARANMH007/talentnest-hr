@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Modal from '../ui/Modal.jsx';
 import { api } from '../../api/api.js';
 import Spinner from '../ui/Spinner.jsx';
 

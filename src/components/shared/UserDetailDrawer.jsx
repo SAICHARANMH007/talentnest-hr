@@ -6,6 +6,7 @@ import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import StageHistory from '../pipeline/StageHistory.jsx';
+import ErrorReportBoundary from './ErrorReportBoundary.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import HiredDetailsModal from '../modals/HiredDetailsModal.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
@@ -65,8 +66,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
   useEffect(() => {
     userEditedRef.current = false; 
-    const uid = u?.id || u?._id?.toString();
+    let uid = u?.id || u?._id?.toString();
+    if (!uid && typeof u === 'string') uid = u;
     if (!uid) return;
+
     const isCandidate = (u?.role || 'candidate') === 'candidate';
     if (!isCandidate) return;
 
@@ -96,16 +99,17 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         setIsCandidateModel(false);
       }).catch(() => {});
     });
-  }, [u?.id, u?._id]);
+  }, [u]);
 
   const [allFetchedApps, setAllFetchedApps] = useState([]);
   useEffect(() => {
     const isCandidate = (u?.role || 'candidate') === 'candidate';
     if (!isCandidate) return;
-    const uid = u?.id || u?._id?.toString();
+    let uid = u?.id || u?._id?.toString();
+    if (!uid && typeof u === 'string') uid = u;
     if (!uid) return;
     setLoadingApp(true);
-    api.getApplications({ candidateId: uid, email: u?.email, limit: 10000000 }).then(res => {
+    api.getApplications({ candidateId: uid, email: u?.email, limit: 1 }).then(res => {
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setAllFetchedApps(list);
       if (!app && list.length > 0) {
@@ -113,7 +117,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         setCurrentStage(list[0].stage);
       }
     }).catch(() => setAllFetchedApps([])).finally(() => setLoadingApp(false));
-  }, [u?.id, u?._id, u?.role]);
+  }, [u]);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -184,6 +188,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
 
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100000, display: 'flex' }}>
+      <ErrorReportBoundary>
       <Toast msg={toast} onClose={() => setToast('')} />
       {hiredModal && (
         <HiredDetailsModal
@@ -410,7 +415,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
              )}
              <button onClick={onClose} style={{ ...btnG, height: 48, padding: '0 20px' }}>Cancel</button>
         </div>
-      </div>
+        </div>
+      </ErrorReportBoundary>
     </div>
   );
 

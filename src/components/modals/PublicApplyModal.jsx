@@ -6,29 +6,7 @@ import Field from '../ui/Field.jsx';
 import Modal from '../ui/Modal.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
 
-// Detect generic job board search pages — these should NOT redirect, all applications
-// go through TalentNest HR. Real company career pages (e.g. careers.tcs.com) are kept.
-function isJobBoardSearchUrl(url) {
-  if (!url) return false;
-  const lUrl = url.toLowerCase();
-  return (
-    lUrl.includes('naukri.com') ||
-    lUrl.includes('linkedin.com/jobs/search') ||
-    (lUrl.includes('indeed.com') && lUrl.includes('/jobs')) ||
-    lUrl.includes('glassdoor.co.in/Jobs') ||
-    lUrl.includes('glassdoor.com/Job') ||
-    lUrl.includes('shine.com/job-search') ||
-    lUrl.includes('monster.com/jobs') ||
-    lUrl.includes('simplyhired.co.in') ||
-    lUrl.includes('timesjobs.com')
-  );
-}
-
-// Returns the effective externalUrl — null if it's a generic job board search page
-function getCompanyCareerUrl(externalUrl) {
-  if (!externalUrl || isJobBoardSearchUrl(externalUrl)) return null;
-  return externalUrl;
-}
+import { getCompanyCareerUrl } from '../../utils/url.js';
 
 export default function PublicApplyModal({ job, onClose }) {
   const navigate = useNavigate();
@@ -453,7 +431,8 @@ export default function PublicApplyModal({ job, onClose }) {
           {createAccount && (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create Password" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #ddd' }} />
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm Password" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #ddd' }} />
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm Password" style={{ width: '100%', padding: '10px', borderRadius: 8, border: confirmPassword && password !== confirmPassword ? '1px solid #BA0517' : '1px solid #ddd' }} />
+              {confirmPassword && password !== confirmPassword && <p style={{ color: '#BA0517', fontSize: 11, marginTop: -4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
               <label style={{ display: 'flex', gap: 10, fontSize: 11 }}>
                 <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} />
                 I agree to the Terms & Privacy Policy

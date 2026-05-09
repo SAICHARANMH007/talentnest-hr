@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Modal from '../ui/Modal.jsx';
 import Field from '../ui/Field.jsx';
 import { api } from '../../api/api.js';
 

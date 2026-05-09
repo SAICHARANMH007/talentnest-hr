@@ -9,29 +9,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import MarketingNav from '../marketing/MarketingNav.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
-// Detect generic job board search pages — these should NOT redirect, all applications
-// go through TalentNest HR. Real company career pages (e.g. careers.tcs.com) are kept.
-function isJobBoardSearchUrl(url) {
-  if (!url) return false;
-  const lUrl = url.toLowerCase();
-  return (
-    lUrl.includes('naukri.com') ||
-    lUrl.includes('linkedin.com/jobs/search') ||
-    (lUrl.includes('indeed.com') && lUrl.includes('/jobs')) ||
-    lUrl.includes('glassdoor.co.in/Jobs') ||
-    lUrl.includes('glassdoor.com/Job') ||
-    lUrl.includes('shine.com/job-search') ||
-    lUrl.includes('monster.com/jobs') ||
-    lUrl.includes('simplyhired.co.in') ||
-    lUrl.includes('timesjobs.com')
-  );
-}
-
-// Returns the effective externalUrl — null if it's a generic job board search page
-function getCompanyCareerUrl(externalUrl) {
-  if (!externalUrl || isJobBoardSearchUrl(externalUrl)) return null;
-  return externalUrl;
-}
+import { getCompanyCareerUrl } from '../../utils/url.js';
 
 const TYPE_COLOR = { High: '#BA0517', Medium: '#F59E0B', Low: '#10b981' };
 

@@ -3,6 +3,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
+import Modal from '../../components/ui/Modal.jsx';
 import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
@@ -11,88 +12,93 @@ const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 function RejectModal({ job, onConfirm, onClose }) {
   const [note, setNote] = useState('');
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10001, padding:'24px 16px' }}>
-      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:460, boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden' }}>
-        <div style={{ background:'linear-gradient(135deg,#7f1d1d,#dc2626)', padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div>
-            <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:3 }}>Job Approval</div>
-            <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>Return for Revision</h3>
-          </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16 }}>✕</button>
+    <Modal
+      title={
+        <div>
+          <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:3 }}>Job Approval</div>
+          <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>Return for Revision</h3>
         </div>
-        <div style={{ padding:'20px 24px' }}>
-          <div style={{ background:'#FEF2F2', border:'1px solid rgba(220,38,38,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
-            <div style={{ color:'#181818', fontSize:14, fontWeight:600 }}>{job.title}</div>
-            <div style={{ color:'#dc2626', fontSize:12 }}>{job.company || job.companyName}</div>
-          </div>
-          <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Reason for rejection *</label>
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="Tell the recruiter what to fix before resubmitting…"
-            rows={4}
-            style={{ ...inp, width:'100%', resize:'vertical', boxSizing:'border-box', marginBottom:16 }}
-          />
-          <div style={{ display:'flex', gap:10 }}>
-            <button onClick={onClose} style={{ ...btnG, flex:1 }}>Cancel</button>
-            <button
-              onClick={() => { if (!note.trim()) return; onConfirm(note.trim()); }}
-              disabled={!note.trim()}
-              style={{ ...btnD, flex:1, opacity: note.trim() ? 1 : 0.5, cursor: note.trim() ? 'pointer' : 'not-allowed' }}>
-              Return for Revision
-            </button>
-          </div>
+      }
+      onClose={onClose}
+      width="460px"
+      footer={
+        <>
+          <button onClick={onClose} style={{ ...btnG, flex:1 }}>Cancel</button>
+          <button
+            onClick={() => { if (!note.trim()) return; onConfirm(note.trim()); }}
+            disabled={!note.trim()}
+            style={{ ...btnD, flex:2, opacity: note.trim() ? 1 : 0.5, cursor: note.trim() ? 'pointer' : 'not-allowed' }}>
+            Return for Revision
+          </button>
+        </>
+      }
+    >
+      <div style={{ padding:'4px 0' }}>
+        <div style={{ background:'#FEF2F2', border:'1px solid rgba(220,38,38,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:16 }}>
+          <div style={{ color:'#181818', fontSize:14, fontWeight:600 }}>{job.title}</div>
+          <div style={{ color:'#dc2626', fontSize:12 }}>{job.company || job.companyName}</div>
         </div>
+        <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Reason for rejection *</label>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Tell the recruiter what to fix before resubmitting…"
+          rows={4}
+          style={{ ...inp, width:'100%', resize:'vertical', boxSizing:'border-box' }}
+          autoFocus
+        />
       </div>
-    </div>
+    </Modal>
   );
 }
 
 function JobPreviewModal({ job, onClose, onApprove, onReject }) {
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10000, padding:'24px 16px' }}>
-      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:680, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden' }}>
-        <div style={{ background:'linear-gradient(135deg,#0F2B6B,#1B4FD8)', padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-          <div>
-            <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:4 }}>Job Preview</div>
-            <h2 style={{ color:'#fff', margin:0, fontSize:18, fontWeight:800 }}>{job.title}</h2>
-            <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, marginTop:4 }}>{job.company || job.companyName} · {job.location}</div>
-          </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16, flexShrink:0 }}>✕</button>
+    <Modal
+      title={
+        <div>
+          <div style={{ color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase', marginBottom:4 }}>Job Preview</div>
+          <h2 style={{ color:'#fff', margin:0, fontSize:18, fontWeight:800 }}>{job.title}</h2>
+          <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, marginTop:4 }}>{job.company || job.companyName} · {job.location}</div>
         </div>
-        <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
-            {[['Department',job.department],['Job Type',job.jobType],['Experience',job.experience],['Location',job.location],['Openings',job.numberOfOpenings],['Urgency',job.urgency]]
-              .filter(([,v]) => v)
-              .map(([label, val]) => (
-                <div key={label} style={{ background:'#F8FAFC', borderRadius:8, padding:'10px 14px' }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{val}</div>
-                </div>
-              ))}
-          </div>
-          {Array.isArray(job.skills) && job.skills.length > 0 && (
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Required Skills</div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {job.skills.map(s => <span key={s} style={{ background:'rgba(27,79,216,0.1)', color:'#1B4FD8', fontSize:12, fontWeight:600, padding:'3px 10px', borderRadius:20 }}>{s}</span>)}
-              </div>
-            </div>
-          )}
-          {job.description && (
-            <div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Description</div>
-              <div style={{ fontSize:13, color:'#374151', lineHeight:1.7, whiteSpace:'pre-wrap' }}>{job.description}</div>
-            </div>
-          )}
-        </div>
-        <div style={{ padding:'16px 24px', borderTop:'1px solid #E2E8F0', display:'flex', gap:10, justifyContent:'flex-end', background:'#FAFAFA' }}>
+      }
+      onClose={onClose}
+      width="680px"
+      footer={
+        <div style={{ display:'flex', gap:10, justifyContent:'flex-end', width:'100%' }}>
           <button onClick={onClose} style={{ ...btnG, padding:'10px 20px' }}>Close</button>
           <button onClick={onReject} style={{ ...btnD, padding:'10px 20px' }}>✕ Reject</button>
           <button onClick={onApprove} style={{ padding:'10px 20px', fontWeight:800, fontSize:13, border:'none', borderRadius:10, cursor:'pointer', background:'linear-gradient(135deg,#16a34a,#15803d)', color:'#fff' }}>✓ Approve & Publish</button>
         </div>
+      }
+    >
+      <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          {[
+            ['Department',job.department],['Job Type',job.jobType],['Experience',job.experience],['Location',job.location],['Openings',job.numberOfOpenings],['Urgency',job.urgency]
+          ].filter(([,v]) => v).map(([label, val]) => (
+            <div key={label} style={{ background:'#F8FAFC', borderRadius:8, padding:'10px 14px' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', marginBottom:2 }}>{label}</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'#0F172A' }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        {Array.isArray(job.skills) && job.skills.length > 0 && (
+          <div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Required Skills</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {job.skills.map(s => <span key={s} style={{ background:'rgba(27,79,216,0.1)', color:'#1B4FD8', fontSize:12, fontWeight:600, padding:'3px 10px', borderRadius:20 }}>{s}</span>)}
+            </div>
+          </div>
+        )}
+        {job.description && (
+          <div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:8 }}>Description</div>
+            <div style={{ fontSize:13, color:'#374151', lineHeight:1.7, whiteSpace:'pre-wrap' }}>{job.description}</div>
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

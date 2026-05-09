@@ -8,21 +8,7 @@ import MarketingFooter from '../marketing/MarketingFooter.jsx';
 
 // Slug that identifies TalentNest HR's own org — gets full marketing header/footer
 const MAIN_ORG_SLUG = 'talentnesthr';
-
-// Same logic as CareersPage — never redirect to generic job board search pages
-function getCompanyCareerUrl(externalUrl) {
-  if (!externalUrl) return null;
-  const lUrl = externalUrl.toLowerCase();
-  const isJobBoard = (
-    lUrl.includes('naukri.com') ||
-    lUrl.includes('linkedin.com/jobs/search') ||
-    (lUrl.includes('indeed.com') && lUrl.includes('/jobs')) ||
-    lUrl.includes('glassdoor') ||
-    lUrl.includes('shine.com/job-search') ||
-    lUrl.includes('monster.com/jobs')
-  );
-  return isJobBoard ? null : externalUrl;
-}
+import { getCompanyCareerUrl } from '../../utils/url.js';
 
 // ── Urgency config ────────────────────────────────────────────────────────────
 const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
@@ -48,6 +34,7 @@ function ApplyModal({ job, orgName, onClose }) {
   // Account creation state
   const [createAccount, setCreateAccount] = useState(false);
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
   
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -128,6 +115,7 @@ function ApplyModal({ job, orgName, onClose }) {
     if (!form.email.trim()) { setError('Email is required.'); return; }
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
     if (createAccount && !password) { setError('Please enter a password for your account.'); return; }
+    if (createAccount && password !== confirmPassword) { setError('Passwords do not match.'); return; }
     if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions.'); return; }
     
     setSubmitting(true); setError('');
@@ -276,6 +264,12 @@ function ApplyModal({ job, orgName, onClose }) {
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>CREATE PASSWORD *</label>
                   <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 8 characters"
                     style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #0176D3', fontSize: 15, outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>CONFIRM PASSWORD *</label>
+                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Re-enter password"
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: confirmPassword && password !== confirmPassword ? '1px solid #BA0517' : '1px solid #0176D3', fontSize: 15, outline: 'none' }} />
+                  {confirmPassword && password !== confirmPassword && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #E2E8F0' }}>
                   <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}

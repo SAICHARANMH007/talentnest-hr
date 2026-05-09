@@ -169,27 +169,49 @@ const BTN_G = {
   transition: 'all 0.2s' 
 };
 
-// ── Employer plan colour maps (static — defined at module level to avoid remount) ──
-const PLAN_COLORS_MAP = { enterprise: '#2E844A', growth: '#0176D3', starter: '#A07E00', free: '#706E6B', trial: '#F59E0B' };
-const PLAN_BG_MAP = { enterprise: 'rgba(46,132,74,0.12)', growth: 'rgba(1,118,211,0.12)', starter: 'rgba(160,126,0,0.12)', free: 'rgba(112,110,107,0.1)', trial: 'rgba(245,158,11,0.12)' };
-
 function PasswordStrength({ pw }) {
-  const checks = [pw.length >= 8, /[A-Z]/.test(pw), /[0-9]/.test(pw), /[^A-Za-z0-9]/.test(pw)];
-  const score = checks.filter(Boolean).length;
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-  const colors = ['', '#BA0517', '#F59E0B', '#0176D3', '#2E844A'];
   if (!pw) return null;
+  const checks = {
+    length:  pw.length >= 8,
+    upper:   /[A-Z]/.test(pw),
+    number:  /\d/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+  const score  = Object.values(checks).filter(Boolean).length;
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+  const colors = ['#e2e8f0', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e'];
+  const color  = colors[score];
+
   return (
-    <div style={{ marginTop: 6 }}>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+    <div style={{ margin: '8px 0 16px' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
         {[1,2,3,4].map(i => (
-          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= score ? colors[score] : '#DDDBDA', transition: 'background 0.3s' }} />
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= score ? color : '#e2e8f0', transition: 'background 0.3s' }} />
         ))}
       </div>
-      <span style={{ color: colors[score], fontSize: 11, fontWeight: 600 }}>{labels[score]}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: 11, color, fontWeight: 700 }}>{labels[score]}</span>
+        <span style={{ fontSize: 10, color: '#94a3b8' }}>{score}/4 criteria met</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+        {[
+          { key: 'length',  label: '8+ chars' },
+          { key: 'upper',   label: 'Uppercase' },
+          { key: 'number',  label: 'Number' },
+          { key: 'special', label: 'Symbol' },
+        ].map(({ key, label }) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: checks[key] ? '#22c55e' : '#94a3b8' }}>
+            <span>{checks[key] ? '✓' : '○'}</span> {label}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+// ── Employer plan colour maps (static — defined at module level to avoid remount) ──
+const PLAN_COLORS_MAP = { enterprise: '#2E844A', growth: '#0176D3', starter: '#A07E00', free: '#706E6B', trial: '#F59E0B' };
+const PLAN_BG_MAP = { enterprise: 'rgba(46,132,74,0.12)', growth: 'rgba(1,118,211,0.12)', starter: 'rgba(160,126,0,0.12)', free: 'rgba(112,110,107,0.1)', trial: 'rgba(245,158,11,0.12)' };
 
 // ── Entry Screen: Job Seeker vs Employer ──────────────────────────────────────
 function EntryScreen({ onSelect, navigate }) {
@@ -264,6 +286,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [mode, setMode]         = useState(prefill?.mode === 'register' ? 'register' : 'login');
   const [email, setEmail]       = useState(prefill?.email || '');
   const [pw, setPw]             = useState(prefill?.password || '');
+  const [confirmPw, setConfirmPw] = useState('');
   const [name, setName]               = useState(prefill?.name || '');
   const [phone, setPhone]             = useState('');
   const [title, setTitle]             = useState('');
@@ -315,6 +338,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     if (mode === 'register') {
       if (!name) return setToast('❌ Full name is required');
       if (!phone) return setToast('❌ Mobile number is required');
+      if (pw !== confirmPw) return setToast('❌ Passwords do not match');
       if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw))
         return setToast('❌ Password must be 8+ characters with 1 uppercase letter and 1 number');
       if (!agreed) return setToast('❌ Please accept the terms to continue');
@@ -454,6 +478,22 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             </div>
             {mode === 'register' && <PasswordStrength pw={pw} />}
           </div>
+
+          {mode === 'register' && (
+            <div>
+              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
+              <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
+              {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div>
+              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
+              <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
+              {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
+            </div>
+          )}
 
           {mode === 'register' && (
             <>

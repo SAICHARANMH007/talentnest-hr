@@ -25,6 +25,7 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState("");
   const [emailResult, setEmailResult] = useState(null);
+  const [useInternalRoom, setUseInternalRoom] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,6 +55,15 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (useInternalRoom && format === "video") {
+      const roomId = Math.random().toString(36).substring(2, 12);
+      setVideoLink(`${window.location.origin}/meeting/${roomId}`);
+    } else if (!useInternalRoom && videoLink.includes('/meeting/')) {
+      setVideoLink("");
+    }
+  }, [useInternalRoom, format]);
 
   const candidate = app?.candidate;
   const job = app?.job;
@@ -134,8 +144,24 @@ export default function ScheduleInterviewPage({ user, onBack, onDone }) {
                 <Dropdown label="Interview Format" value={format} onChange={setFormat} options={[{value:"video",label:"Video Call"},{value:"phone",label:"Phone Call"},{value:"in_person",label:"In-Person"}]} />
              </div>
              <div style={{ marginTop: 16 }}>
-                <Field label="Meeting Link / Physical Address" value={videoLink} onChange={setVideoLink} placeholder="e.g. https://zoom.us/j/... or Office Room 402" />
+                <Field label="Meeting Link / Physical Address" value={videoLink} onChange={v => { setVideoLink(v); if (!v.includes('/meeting/')) setUseInternalRoom(false); }} placeholder="e.g. https://zoom.us/j/... or Office Room 402" />
              </div>
+             {format === 'video' && (
+               <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(1,118,211,0.05)', borderRadius: 12, border: '1px solid rgba(1,118,211,0.1)' }}>
+                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                   <input 
+                     type="checkbox" 
+                     checked={useInternalRoom} 
+                     onChange={e => setUseInternalRoom(e.target.checked)} 
+                     style={{ width: 18, height: 18, accentColor: '#0176D3' }}
+                   />
+                   <div>
+                     <div style={{ fontSize: 13, fontWeight: 700, color: '#032D60' }}>🎥 Use TalentNest Internal Meeting Room</div>
+                     <p style={{ fontSize: 11, color: '#64748B', margin: '2px 0 0' }}>Generate a private, secure video link automatically.</p>
+                   </div>
+                 </label>
+               </div>
+             )}
              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginTop: 16 }}>
                <Field label="Interviewer Name" value={interviewerName} onChange={setInterviewerName} placeholder="e.g. Sarah Chen" />
                <Field label="Interviewer Email" value={interviewerEmail} onChange={setInterviewerEmail} placeholder="sarah@company.com" type="email" />
