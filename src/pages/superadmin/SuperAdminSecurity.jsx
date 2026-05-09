@@ -187,19 +187,17 @@ function ImpersonateTab({ users }) {
     }
   };
 
-  const handleExitImpersonation = () => {
+  const handleExitImpersonation = async () => {
     try {
-      const backup = JSON.parse(sessionStorage.getItem('tn_sa_backup') || '{}');
-      // Restore cached user profile so UI shows correct name after redirect
-      if (backup.user) sessionStorage.setItem('tn_user', backup.user);
-      // Clear impersonated token — initAuth() on App.jsx mount will silently
-      // issue a fresh super admin token from the HTTP-only refresh cookie
-      clearToken();
+      await api.post('/auth/stop-impersonate');
       sessionStorage.removeItem('tn_sa_backup');
       sessionStorage.removeItem('tn_impersonate_token');
       logAudit('Impersonation Ended', 'Auth', 'Returned to super admin session', 'info');
-      window.location.href = '/app';
-    } catch { window.location.href = '/app'; }
+      window.location.href = '/app/security';
+    } catch {
+      sessionStorage.clear();
+      window.location.href = '/login';
+    }
   };
 
   return (

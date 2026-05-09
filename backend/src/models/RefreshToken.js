@@ -8,6 +8,11 @@ const refreshTokenSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  originalUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
   token: {
     type: String,
     required: true,

@@ -536,8 +536,29 @@ router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
   if (!target) throw new AppError('Target user not found.', 404);
   if (target.role === 'super_admin') throw new AppError('Cannot impersonate another Super Admin.', 403);
 
-  const result = await authService.issueTokens(res, target, req);
+  const result = await authService.issueTokens(res, target, req, req.user._id);
   res.json({ success: true, ...result, impersonating: true, originalUserId: req.user._id });
+}));
+
+// ── POST /api/auth/stop-impersonate ──────────────────────────────────────────
+router.post('/stop-impersonate', authMiddleware, asyncHandler(async (req, res) => {
+  const oldToken = req.signedCookies ? req.signedCookies.tn_refresh_token : null;
+  if (!oldToken) throw new AppError('No active session found.', 401);
+
+  const stored = await RefreshToken.findOne({ token: oldToken });
+  if (!stored || !stored.originalUserId) {
+    throw new AppError('No active impersonation session found.', 400);
+  }
+
+  const originalUser = await User.findById(stored.originalUserId);
+  if (!originalUser) throw new AppError('Original user not found.', 404);
+
+  // Clean up the impersonated session
+  await RefreshToken.deleteOne({ _id: stored._id });
+  
+  // Issue fresh tokens for the original Super Admin
+  const result = await authService.issueTokens(res, originalUser, req);
+  res.json({ success: true, ...result });
 }));
 
 // ── POST /api/auth/verify-domain (legacy support) ────────────────────────────

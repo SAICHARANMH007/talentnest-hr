@@ -676,23 +676,28 @@ function ImpersonationBanner() {
     try { return JSON.parse(sessionStorage.getItem('tn_user') || '{}'); } catch { return {}; }
   })();
 
-  const handleExit = () => {
+  const handleExit = async () => {
     try {
-      const backup = JSON.parse(sessionStorage.getItem('tn_sa_backup') || '{}');
-      // Restore original super admin's tn_user so Layout shows correct name after redirect
-      if (backup.user) sessionStorage.setItem('tn_user', backup.user);
-      // Clear impersonation keys — initAuth() in App.jsx will use the HTTP-only
-      // refresh cookie to silently issue a fresh super admin access token
+      // 1. Call backend to restore the original SA session cookie
+      const res = await api.post('/auth/stop-impersonate');
+      
+      // 2. Clear impersonation state from sessionStorage
       sessionStorage.removeItem('tn_impersonate_token');
       sessionStorage.removeItem('tn_sa_backup');
-      // Clear the in-memory API token so the next request goes through initAuth
-      setApiToken(null);
-      // Hard reload to /app — App.jsx initAuth() will restore the SA session
-      window.location.href = '/app';
-    } catch {
-      sessionStorage.removeItem('tn_impersonate_token');
-      sessionStorage.removeItem('tn_sa_backup');
-      window.location.href = '/app';
+      
+      // 3. Update local state with restored user data if returned
+      if (res?.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(res.user));
+        setApiToken(res.token);
+      }
+      
+      // 4. Hard reload to SA dashboard
+      window.location.href = '/app/security';
+    } catch (err) {
+      console.error('Exit impersonation failed:', err);
+      // Fallback: clear everything and go to login if API fails
+      sessionStorage.clear();
+      window.location.href = '/login';
     }
   };
 

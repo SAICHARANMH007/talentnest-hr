@@ -82,13 +82,13 @@ class AuthService {
   /**
    * Central method to issue dual tokens (Access/Refresh) + create UserSession
    */
-  async issueTokens(res, user, req) {
+  async issueTokens(res, user, req, originalUserId = null) {
     if (!user) throw new AppError('User not found.', 404);
 
     // ── Access Token (short-lived) ─────────────────────────────────────────────
     const tenantId = (user.tenantId || user.orgId || '').toString();
     const accessToken = jwt.sign(
-      { userId: user._id, tenantId, role: user.role },
+      { userId: user._id, tenantId, role: user.role, originalUserId },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -101,6 +101,7 @@ class AuthService {
       await RefreshToken.create({
         token: refreshTokenString,
         userId: user._id,
+        originalUserId,
         expiresAt,
         ip: req?.ip,
         userAgent: req?.headers?.['user-agent'],
