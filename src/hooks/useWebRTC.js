@@ -139,32 +139,27 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
 
     const src = stream || localStreamRef.current;
     
-    // Modern Transceiver-based approach — critical for Mac/Safari compatibility
-    // This ensures directions are correctly negotiated before the offer is even created.
-    if (pc.addTransceiver) {
-      // Audio is always required for calls
-      pc.addTransceiver('audio', { direction: 'sendrecv', streams: src ? [src] : [] });
-      // Only add video transceiver if this is a video call
-      if (video || (src && src.getVideoTracks().length > 0)) {
-        pc.addTransceiver('video', { direction: 'sendrecv', streams: src ? [src] : [] });
-      }
-    }
-
-    // Still add tracks for older browser compatibility
+    // 1. Add tracks first — this is the most reliable way to associate tracks with a stream
     if (src) {
-      src.getTracks().forEach(t => {
+      src.getTracks().forEach(track => {
         try {
-          // If we already added a transceiver for this kind, use the sender instead of addTrack
-          const sender = pc.getSenders().find(s => s.track?.kind === t.kind || (!s.track && s.dtlsTransport));
-          if (sender && !sender.track) {
-            sender.replaceTrack(t).catch(() => {});
-          } else {
-            pc.addTrack(t, src);
-          }
+          pc.addTrack(track, src);
         } catch (err) {
-          console.warn('[WebRTC] addTrack fallback:', err.message);
+          console.warn('[WebRTC] addTrack error:', err.message);
         }
       });
+    }
+
+    // 2. Ensure transceivers are set to 'sendrecv' for all media types
+    // This is CRITICAL for mobile/Safari to allow bi-directional audio
+    pc.getTransceivers().forEach(tr => {
+      if (tr.receiver) tr.direction = 'sendrecv';
+    });
+
+    // Fallback: If no tracks were added but we expect audio/video, add transceivers manually
+    if (pc.getTransceivers().length === 0) {
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
+      if (video) pc.addTransceiver('video', { direction: 'sendrecv' });
     }
 
     // Trickle ICE — send candidates as they arrive for faster connection

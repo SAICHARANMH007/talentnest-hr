@@ -66,15 +66,19 @@ export default function CallManager({ user }) {
 
   const socketRef = useRef(null);
   // ── KEY FIX: use refs for anything accessed inside socket handlers ──────────
-  // State variables read inside socket.on() closures MUST be refs, not state,
-  // because the handlers are registered once and capture the initial (stale) value.
-  const callInfoRef = useRef(null);   // mirrors callInfo state — always current
-  const localStreamRef2 = useRef(null); // mirrors localStream from useWebRTC
+  const callStateRef = useRef('idle'); 
+  const callInfoRef = useRef(null);   
+  const localStreamRef2 = useRef(null); 
+  const remoteStreamRef = useRef(null); 
+
+  // Sync state helpers
+  const _setCallState = (val) => { callStateRef.current = val; setCallState(val); };
+  const _setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
 
   const ringTimer = useRef(null);
   const endTimer = useRef(null);
-  const endingRef = useRef(false); // prevents re-entrant endCallInternal calls
-  const audioCtxRef = useRef(null);  // AudioContext used to unlock mobile audio
+  const endingRef = useRef(false); 
+  const audioCtxRef = useRef(null);  
 
   const [callState, setCallState] = useState('idle');
   const [connectionState, setConnectionState] = useState('new');
@@ -83,12 +87,6 @@ export default function CallManager({ user }) {
   const [callStartedAt, setCallStartedAt] = useState(null);
   const [meetingNotice, setMeetingNotice] = useState(null);
   const [endReason, setEndReason] = useState('');
-
-  // ── KEY FIX: use refs for audio playback ──────────────────────────────────
-  const remoteStreamRef = useRef(null); 
-
-  // Always keep ref in sync with state
-  const setCallInfo = (val) => { callInfoRef.current = val; setCallInfo_(val); };
 
   const remoteAudioRef = useRef(null); // hidden <audio> element — plays remote audio for ALL call types
 
@@ -223,13 +221,13 @@ export default function CallManager({ user }) {
     });
 
     socket.on('call:initiated', ({ callId }) => {
-      setCallInfo({ ...(callInfoRef.current || {}), callId });
+      _setCallInfo({ ...(callInfoRef.current || {}), callId });
     });
 
     // ── INCOMING ─────────────────────────────────────────────────────────────
     socket.on('call:incoming', ({ callId, fromUserId, fromName, callType, callMessage }) => {
-      setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType, callMessage: callMessage || '' });
-      setCallState('incoming');
+      _setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType, callMessage: callMessage || '' });
+      _setCallState('incoming');
     });
 
     // ── NEW: Listen for meeting join notifications from scheduled rooms ──────
@@ -242,7 +240,7 @@ export default function CallManager({ user }) {
     // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
     socket.on('call:accepted', ({ callId, socketId: peerSocketId }) => {
       if (callStateRef.current !== 'outgoing') return;
-      setCallState('active');
+      _setCallState('active');
       setCallStartedAt(Date.now());
       
       // Use the existing stream we already started in startCall
@@ -314,11 +312,11 @@ export default function CallManager({ user }) {
     clearTimeout(endTimer.current);
     stopAll();
     setRemoteStream(null);
-    setCallState('ended');
+    _setCallState('ended');
     setEndReason(reason);
     endTimer.current = setTimeout(() => {
-      setCallState('idle');
-      setCallInfo(null);
+      _setCallState('idle');
+      _setCallInfo(null);
       setEndReason('');
       setCallStartedAt(null);
       remoteStreamRef.current = null; // Clear stream ref
@@ -333,8 +331,8 @@ export default function CallManager({ user }) {
     // Reset ending guard in case previous call's endTimer hasn't fired yet
     endingRef.current = false;
     clearTimeout(endTimer.current);
-    setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType, callMessage: callMessage || '' });
-    setCallState('outgoing');
+    _setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType, callMessage: callMessage || '' });
+    _setCallState('outgoing');
     
     // START MEDIA IMMEDIATELY for the caller so it's ready when recipient accepts
     const stream = await startLocalMedia(callType === 'video');
@@ -363,7 +361,7 @@ export default function CallManager({ user }) {
       return;
     }
     localStreamRef2.current = stream;
-    setCallState('active');
+    _setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
   }, [startLocalMedia, unlockAudio]);
 
