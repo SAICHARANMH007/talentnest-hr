@@ -16,12 +16,17 @@ export default function GuestJoin({ roomToken, onJoin }) {
       .then(r => { setRoom(r?.data || r); setLoading(false); })
       .catch(err => {
         const msg = err?.response?.data?.error || err?.message || 'Room not found.';
-        if (err?.response?.status === 425) {
-          setMsUntil(err.response.data.msUntil);
-          setRoom(err.response.data);
+        const isEarly = err?.response?.status === 425 || msg?.toLowerCase().includes('early');
+        
+        if (isEarly) {
+          // If it's just early, we still want to show the room details and join form
+          setMsUntil(err?.response?.data?.msUntil || 0);
+          setRoom(err?.response?.data || {});
+          setLoading(false);
+        } else {
+          setError(msg);
+          setLoading(false);
         }
-        setError(msg);
-        setLoading(false);
       });
   }, [roomToken]);
 
@@ -112,6 +117,16 @@ export default function GuestJoin({ roomToken, onJoin }) {
             Join Meeting
           </button>
         </form>
+
+        <div style={{ marginTop: 24, textAlign: 'center', borderTop: '1px solid #F1F5F9', paddingTop: 16 }}>
+          <p style={{ color: '#64748B', fontSize: 12, margin: '0 0 8px' }}>Are you the interviewer?</p>
+          <button 
+            onClick={() => navigate('/login')}
+            style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Log in to your account
+          </button>
+        </div>
 
         <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, marginTop: 20 }}>
           By joining, you consent to the meeting being recorded if the host enables recording.
