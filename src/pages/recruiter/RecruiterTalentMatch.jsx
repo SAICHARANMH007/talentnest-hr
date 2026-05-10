@@ -57,34 +57,16 @@ export default function RecruiterTalentMatch({ user }) {
     if (selJob) run(selJob);
   }, [selJob]);
 
-  const shortlist = async (candidateId) => {
-    setShortlisting(s => ({ ...s, [candidateId]: true }));
+  const handleAction = async (candidateId, action) => {
+    setShortlisting(s => ({ ...s, [`${candidateId}-${action}`]: true }));
     try {
-      let appId;
-      try {
-        const a = await api.applyToJob(selJob, candidateId);
-        appId = a?.data?.id || a?.data?._id?.toString() || a?.id || a?._id?.toString();
-      } catch (e) {
-        // Backend returns 409 with existingId when candidate is already applied.
-        // Use the existing application directly to avoid a second lookup.
-        const body = e?.response ? await e.response?.json?.().catch(() => null) : null;
-        const existingId = body?.existingId || body?.data?.id;
-        if (existingId || e.message?.toLowerCase().includes('already')) {
-          appId = existingId;
-          if (!appId) {
-            // Fallback: search for the existing application
-            const appsRes = await api.getApplications({ jobId: selJob, candidateId });
-            const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
-            appId = apps[0]?.id || apps[0]?._id?.toString();
-          }
-        } else throw e;
-      }
-      if (!appId) throw new Error("Could not find or create application record");
-      await api.updateStage(appId, "shortlisted", "Shortlisted via Talent Match");
-      setToast("✅ Shortlisted successfully! Candidate added to pipeline.");
-      setResults(prev => prev.map(r => r.candidate?.id === candidateId ? { ...r, _shortlisted: true } : r));
-    } catch (e) { setToast(`❌ Shortlist failed: ${e.message}`); }
-    setShortlisting(s => ({ ...s, [candidateId]: false }));
+      await api.talentMatchAction(candidateId, selJob, action);
+      setToast(action === 'shortlist' ? "✅ Shortlisted successfully! Invitation added to candidate dashboard." : "🎯 Interest shown! Notification sent to candidate.");
+      setResults(prev => prev.map(r => r.candidate?.id === candidateId ? { ...r, [`_${action}`]: true, _shortlisted: action === 'shortlist' || r._shortlisted } : r));
+    } catch (e) { 
+      setToast(`❌ Action failed: ${e.message}`); 
+    }
+    setShortlisting(s => ({ ...s, [`${candidateId}-${action}`]: false }));
   };
 
   const rc = { "Strong Match": "#2E844A", "Good Match": "#0176D3", "Possible Match": "#A07E00" };
@@ -103,7 +85,7 @@ export default function RecruiterTalentMatch({ user }) {
             <label style={{ color: "#0176D3", fontSize: 11, display: "block", marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Select a Job to Analyze</label>
             <select value={selJob} onChange={e => { setSelJob(e.target.value); }} style={inp}>
               <option value="">— Choose a job —</option>
-              {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.companyName || j.company}</option>)}
+              {jobs.map(j => <option key={j.id || j._id} value={j.id || j._id}>{j.title} @ {j.companyName || j.company}</option>)}
             </select>
           </div>
           <button onClick={() => run()} disabled={!selJob || loading} style={{ ...btnP, opacity: (!selJob || loading) ? 0.6 : 1 }}>
@@ -137,6 +119,7 @@ export default function RecruiterTalentMatch({ user }) {
                 <Badge label={`${r.matchScore}%`} color={r.matchScore >= 80 ? "#2E844A" : "#A07E00"} />
                 <Badge label={r.recommendation} color={rc[r.recommendation] || "#0176D3"} />
                 {r._shortlisted && <Badge label="Shortlisted" color="#2E844A" />}
+                {r._interest && <Badge label="Interest Shown" color="#0176D3" />}
               </div>
               <div style={{ color: "#0176D3", fontSize: 12 }}>{r.candidate.title} · {r.candidate.experience || 0}y exp · {r.candidate.location || "—"}</div>
               <p style={{ color: "#706E6B", fontSize: 12, marginTop: 6, lineHeight: '1.5' }}>{r.reasoning}</p>
@@ -144,12 +127,20 @@ export default function RecruiterTalentMatch({ user }) {
                 {(r.highlights || []).map((h, j) => <Badge key={j} label={"✓ " + h} color="#014486" />)}
               </div>
             </div>
-            <button
-              onClick={() => shortlist(r.candidate.id)}
-              disabled={shortlisting[r.candidate.id] || r._shortlisted}
-              style={{ ...btnP, opacity: (shortlisting[r.candidate.id] || r._shortlisted) ? 0.5 : 1, cursor: (shortlisting[r.candidate.id] || r._shortlisted) ? "default" : "pointer" }}>
-              {shortlisting[r.candidate.id] ? <><Spinner /></> : r._shortlisted ? "Shortlisted" : "Shortlist"}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                onClick={() => handleAction(r.candidate.id, 'shortlist')}
+                disabled={shortlisting[`${r.candidate.id}-shortlist`] || r._shortlisted}
+                style={{ ...btnP, padding: '6px 12px', fontSize: 12, opacity: (shortlisting[`${r.candidate.id}-shortlist`] || r._shortlisted) ? 0.5 : 1 }}>
+                {shortlisting[`${r.candidate.id}-shortlist`] ? <><Spinner /></> : r._shortlisted ? "Shortlisted" : "Shortlist"}
+              </button>
+              <button
+                onClick={() => handleAction(r.candidate.id, 'interest')}
+                disabled={shortlisting[`${r.candidate.id}-interest`] || r._interest || r._shortlisted}
+                style={{ ...btnP, background: '#fff', color: '#0176D3', border: '1px solid #0176D3', padding: '6px 12px', fontSize: 12, opacity: (shortlisting[`${r.candidate.id}-interest`] || r._interest || r._shortlisted) ? 0.5 : 1 }}>
+                {shortlisting[`${r.candidate.id}-interest`] ? <><Spinner /></> : r._interest ? "Interest Shown" : "Show Interest"}
+              </button>
+            </div>
           </div>
         </div>
       ))}

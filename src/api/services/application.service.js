@@ -48,6 +48,9 @@ export const applicationService = {
   async addFeedback(appId, feedback) { return req('PATCH', `/applications/${appId}/feedback`, feedback); },
   async withdrawApplication(appId) { return req('DELETE', `/applications/${appId}`); },
   async getApplicationLocations() { return req('GET', '/applications/locations'); },
+  async talentMatchAction(candidateId, jobId, action) {
+    return req('POST', '/invites/talent-match', { candidateId, jobId, action });
+  },
   async parseResume(file) {
     const fd = new FormData();
     fd.append('file', file);

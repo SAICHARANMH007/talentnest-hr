@@ -146,6 +146,71 @@ function buildInviteHtml({ candidate, job, message, token, fromName, fromOrg }) 
 </body></html>`;
 }
 
+// ── POST /api/invites/talent-match ─── recruiter shortlists/shows interest from Talent Match ──
+router.post('/talent-match', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (req, res) => {
+  try {
+    const { candidateId, jobId, action } = req.body; // action: 'shortlist' | 'interest'
+    if (!candidateId || !jobId) return res.status(400).json({ error: 'candidateId and jobId required.' });
+
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found.' });
+
+    const candidateUser = await User.findById(candidateId);
+    if (!candidateUser) return res.status(404).json({ error: 'Candidate user not found.' });
+
+    const CandidateModel = require('../models/Candidate');
+    let candidateRecord = await CandidateModel.findOne({ email: candidateUser.email, tenantId: job.tenantId });
+    if (!candidateRecord) {
+      candidateRecord = await CandidateModel.create({
+        tenantId: job.tenantId, userId: candidateUser._id, name: candidateUser.name,
+        email: candidateUser.email, phone: candidateUser.phone || '', source: 'talent_match',
+      });
+    }
+
+    const stage = action === 'shortlist' ? 'Shortlisted' : 'Applied';
+    let app = await Application.findOne({ jobId, candidateId: candidateRecord._id });
+    if (app) {
+      if (action === 'shortlist' && app.currentStage !== 'Shortlisted') {
+        app.currentStage = 'Shortlisted';
+        app.stageHistory.push({ stage: 'Shortlisted', movedBy: req.user._id, movedAt: new Date(), notes: 'Shortlisted via Talent Match' });
+        await app.save();
+      }
+    } else {
+      app = await Application.create({
+        tenantId: job.tenantId, jobId, candidateId: candidateRecord._id,
+        source: 'talent_match', currentStage: stage,
+        stageHistory: [{ stage, movedBy: req.user._id, movedAt: new Date(), notes: `${action === 'shortlist' ? 'Shortlisted' : 'Interested'} via Talent Match` }],
+      });
+    }
+
+    let invite = await Invite.findOne({ candidateId, jobId });
+    const inviteStatus = action === 'shortlist' ? 'interested' : 'sent';
+    if (invite) {
+      await Invite.findByIdAndUpdate(invite.id, {
+        status: inviteStatus,
+        message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
+        sentBy: req.user._id, sentByName: req.user.name || '',
+      });
+    } else {
+      await Invite.create({
+        candidateId, jobId, tenantId: job.tenantId, token: randomUUID(),
+        status: inviteStatus, sentBy: req.user._id, sentByName: req.user.name || '',
+        message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
+        candidateName: candidateUser.name, candidateEmail: candidateUser.email, jobTitle: job.title, type: 'talent_match',
+      });
+    }
+
+    const Notification = require('../models/Notification');
+    await Notification.create({
+      userId: candidateId, tenantId: job.tenantId, type: 'invite',
+      title: action === 'shortlist' ? '⭐ Shortlisted!' : '🎯 New Interest',
+      body: `A recruiter has ${action === 'shortlist' ? 'shortlisted you' : 'shown interest'} for ${job.title}.`,
+      link: '/app/applications',
+    });
+    res.json({ success: true, applicationId: app._id, action });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/invites ─── send invites to candidates ─────────────────────────
 router.post('/', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (req, res) => {
   try {
@@ -173,7 +238,6 @@ router.post('/', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (r
       if (!candidate) continue;
       const c = candidate.toJSON ? candidate.toJSON() : candidate;
 
-      // Upsert invite
       let existing = await Invite.findOne({ candidateId: cid, jobId: String(jobId) });
       let token, inviteId;
 
@@ -198,7 +262,6 @@ router.post('/', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (r
         inviteId = inv.id;
       }
 
-      // Send email
       const html = buildInviteHtml({ candidate: c, job: j, message, token, fromName, fromOrg });
       const subject = `You're invited! ${j.title} — ${fromName} thinks you're a great fit`;
 
@@ -206,18 +269,15 @@ router.post('/', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (r
         await sendInviteEmail(sender, c.email, `"${fromName}" <${fromEmail}>`, subject, html);
         EmailLog.create({ to: c.email, subject, body: html, status: 'sent', provider: sender?.type || 'dev', jobId: String(jobId), candidateId: cid, sentBy: req.user._id, retryCount: 0 }).catch(() => {});
       } catch (err) {
-        console.error('Invite email error:', c.email, err.message);
-        // Mark the invite record as failed so OutreachTracker shows it
         await Invite.findByIdAndUpdate(inviteId, { status: 'failed', emailError: err.message }).catch(() => {});
         EmailLog.create({ to: c.email, subject, body: html, status: 'failed', error: err.message, provider: sender?.type || 'dev', jobId: String(jobId), candidateId: cid, sentBy: req.user._id, retryCount: 0 }).catch(() => {});
       }
-
       results.push({ candidateId: cid, inviteId, token });
     }
-
     res.json({ sent: results.length, results });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 
 // ── GET /api/invites/mine ─── candidate sees their own invites ────────────────
 router.get('/mine', auth, async (req, res) => {

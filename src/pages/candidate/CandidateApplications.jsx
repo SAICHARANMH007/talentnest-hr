@@ -244,20 +244,24 @@ export default function CandidateApplications({ user }) {
             const INVITE_STATUS = {
               sent:       { color: '#0176D3', bg: 'rgba(1,118,211,0.08)',  label: '📨 Pending Response' },
               opened:     { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', label: '👁 Opened' },
-              interested: { color: '#2E844A', bg: 'rgba(46,132,74,0.08)',  label: '✅ Interested' },
+              interested: { color: '#2E844A', bg: 'rgba(46,132,74,0.08)',  label: '⭐ Shortlisted / Interested' },
               declined:   { color: '#6b7280', bg: 'rgba(107,114,128,0.08)', label: '👋 Declined' },
               failed:     { color: '#BA0517', bg: 'rgba(186,5,23,0.08)',   label: '🚫 Failed to Send' },
             };
             const st = INVITE_STATUS[inv.status] || INVITE_STATUS.sent;
+            const isShortlisted = inv.status === 'interested' || inv.type === 'talent_match';
             // Invite has jobId populated as job data
             const job = inv.jobId || inv.job;
             return (
-              <div key={inv.id || inv._id} style={{ ...card, border: `1px solid ${st.color}33` }}>
+              <div key={inv.id || inv._id} style={{ ...card, border: `1px solid ${st.color}33`, position: 'relative', overflow: 'hidden' }}>
+                {inv.type === 'talent_match' && (
+                  <div style={{ position: 'absolute', top: 0, right: 0, background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 10px', borderRadius: '0 0 0 10px', letterSpacing: '0.5px' }}>TALENT MATCH</div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
                     {job && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
-                    <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3 }}>Invited {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : ''}</div>
+                    <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3 }}>{inv.type === 'talent_match' ? 'Matched' : 'Invited'} {inv.sentAt || inv.createdAt ? new Date(inv.sentAt || inv.createdAt).toLocaleDateString() : ''}</div>
                     {inv.message && (
                       <div style={{ color: '#374151', fontSize: 12, marginTop: 6, background: '#f0f7ff', borderLeft: '3px solid #0176D3', padding: '8px 12px', borderRadius: 4, fontStyle: 'italic' }}>
                         "{inv.message}"
@@ -266,8 +270,8 @@ export default function CandidateApplications({ user }) {
                   </div>
                   <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
                 </div>
-                {['sent', 'opened'].includes(inv.status) && (
-                  <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid #F3F2F2' }}>
+                <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid #F3F2F2' }}>
+                  {['sent', 'opened'].includes(inv.status) ? (
                     <a
                       href={`/invite/${inv.token}`}
                       target="_blank" rel="noreferrer"
@@ -275,8 +279,15 @@ export default function CandidateApplications({ user }) {
                     >
                       ✅ View & Respond
                     </a>
-                  </div>
-                )}
+                  ) : (
+                    <button
+                      onClick={() => setActiveTab('applications')}
+                      style={{ flex: 1, background: 'rgba(46,132,74,0.1)', border: '1px solid rgba(46,132,74,0.3)', color: '#2E844A', padding: '9px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      📊 Track Application Progress
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
