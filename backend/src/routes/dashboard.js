@@ -344,7 +344,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
   const candF = platformWide ? { role: 'candidate' } : { role: 'candidate', ...tenantScope };
 
   const del = { deletedAt: null };
-  const [candidates, recruiters, openJobs, applications, hired, pipelineAgg, recentApps] = await Promise.all([
+  const [candidates, recruiters, openJobs, applications, hired, pipelineAgg, recentApps, revenueAgg] = await Promise.all([
     countUniqueCandidateProfiles(platformWide ? {} : tenantScope, platformWide ? { isActive: true } : { ...tenantScope, isActive: true }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
