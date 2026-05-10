@@ -283,6 +283,13 @@ export default function MeetingRoom() {
       }
     : (guestIdentity ? { ...guestIdentity } : null);
 
+  // ── Load Room Metadata ────────────────────────────────────────────────────
+  useEffect(() => {
+    api.getRoom(roomToken)
+      .then(data => setRoomMeta(data?.data || data))
+      .catch(err => console.error('[Room] Load failed:', err));
+  }, [roomToken]);
+
   // ── Show guest form if not authenticated ─────────────────────────────────
   if (!isAuthenticated && !guestIdentity) {
     return <GuestJoin roomToken={roomToken} onJoin={(g) => setGuestIdentity(g)} />;
@@ -407,10 +414,10 @@ export default function MeetingRoom() {
     // Host controls
     // ── CHECK EXPIRY ──────────────────────────────────────────────────────
     const now = new Date();
-    const scheduled = roomData.scheduledAt ? new Date(roomData.scheduledAt) : null;
+    const scheduled = roomMeta?.scheduledAt ? new Date(roomMeta.scheduledAt) : null;
     // Expire 2 hours after scheduled time
     if (scheduled && (now - scheduled) > (2 * 60 * 60 * 1000)) {
-      if (!hasHadConnection && roomData.participants?.length < 2) {
+      if (!hasHadConnection && (roomMeta?.participants?.length || 0) < 2) {
         setMeetingNotHappened(true);
       } else {
         setMeetingEnded(true);
