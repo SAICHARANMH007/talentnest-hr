@@ -177,19 +177,36 @@ export default function RecruiterInterviews({ user }) {
                     <td style={S.td}><div style={{ whiteSpace: 'nowrap' }}>{fmt(round.scheduledAt)}</div></td>
                     <td style={S.td}>{FORMAT_LABELS[round.format] || round.format || '—'}</td>
                     <td style={S.td}>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {round.videoLink && (
-                          round.videoLink.includes('/meeting/') ? (
-                            <a href={round.videoLink} target="_blank" rel="noreferrer noopener" style={{ ...btnP, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>🎥 Start Room</a>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {round.videoLink ? (
+                            round.videoLink.includes('/meeting/') ? (
+                              <a href={round.videoLink} target="_blank" rel="noreferrer noopener" style={{ ...btnP, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>🎥 Start Room</a>
+                            ) : (
+                              <a href={/^https?:\/\//i.test(round.videoLink) ? round.videoLink : `https://${round.videoLink}`} target="_blank" rel="noreferrer noopener" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>
+                            )
                           ) : (
-                            <a href={/^https?:\/\//i.test(round.videoLink) ? round.videoLink : `https://${round.videoLink}`} target="_blank" rel="noreferrer noopener" style={{ ...btnG, fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Join</a>
-                          )
-                        )}
-                        {isPast(round.scheduledAt) && !hasFeedback && (
-                          <button onClick={() => { setScorecardApp({ app, idx }); setScorecard(SCORECARD_EMPTY); }} style={{ ...btnP, fontSize: 12 }}>Scorecard</button>
-                        )}
-                        {hasFeedback && <Badge label="Scored" color="#34d399" />}
-                      </div>
+                            round.format === 'video' && (
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const roomId = Math.random().toString(36).substring(2, 12);
+                                    const link = `${window.location.origin}/meeting/${roomId}`;
+                                    await api.scheduleInterview(app.id || app._id, { ...round, videoLink: link, roundIndex: idx });
+                                    setToast('✅ Meeting room created!');
+                                    load();
+                                  } catch (e) { setToast(`❌ ${e.message}`); }
+                                }}
+                                style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}
+                              >
+                                + Create Room
+                              </button>
+                            )
+                          )}
+                          {isPast(round.scheduledAt) && !hasFeedback && (
+                            <button onClick={() => { setScorecardApp({ app, idx }); setScorecard(SCORECARD_EMPTY); }} style={{ ...btnP, fontSize: 12 }}>Scorecard</button>
+                          )}
+                          {hasFeedback && <Badge label="Scored" color="#34d399" />}
+                        </div>
                     </td>
                   </tr>
                 );

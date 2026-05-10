@@ -67,25 +67,7 @@ export default function GuestJoin({ roomToken, onJoin }) {
     </div>
   );
 
-  if (msUntil > 0) return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⏰</div>
-          <h2 style={{ color: '#0F172A', marginBottom: 8 }}>Meeting Hasn't Started Yet</h2>
-          {room?.scheduledAt && (
-            <p style={{ color: '#64748B' }}>
-              Scheduled for {new Date(room.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} · {new Date(room.scheduledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-            </p>
-          )}
-          <div style={{ fontSize: 56, fontWeight: 900, color: '#0176D3', margin: '24px 0', fontVariantNumeric: 'tabular-nums' }}>
-            {formatCountdown(msUntil)}
-          </div>
-          <p style={{ color: '#94A3B8', fontSize: 13 }}>The room opens 15 minutes before the scheduled time.</p>
-        </div>
-      </div>
-    </div>
-  );
+  // Removed msUntil lock - users can join anytime once the link is created.
 
   return (
     <div style={styles.page}>

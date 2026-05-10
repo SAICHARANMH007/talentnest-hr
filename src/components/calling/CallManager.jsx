@@ -81,6 +81,7 @@ export default function CallManager({ user }) {
   const [callInfo, setCallInfo_] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [callStartedAt, setCallStartedAt] = useState(null);
+  const [meetingNotice, setMeetingNotice] = useState(null);
   const [endReason, setEndReason] = useState('');
 
   // Always keep ref in sync with state
@@ -272,6 +273,13 @@ export default function CallManager({ user }) {
     // Receiver is not online — instant feedback instead of waiting 30s
     socket.on('call:unavailable', ({ message }) => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
+    // ── MEETING NOTIFICATIONS ───────────────────────────────────────────────
+    socket.on('meeting:joined', ({ roomToken, name, role }) => {
+      setMeetingNotice({ roomToken, name, role });
+      // Auto-hide after 8 seconds
+      setTimeout(() => setMeetingNotice(null), 8000);
+    });
+
     // ── CONNECTION HEALTH ────────────────────────────────────────────────────
     socket.on('connect', () => {
       console.log('[Call] Socket connected:', socket.id);
@@ -316,6 +324,15 @@ export default function CallManager({ user }) {
     clearTimeout(endTimer.current);
     setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType, callMessage: callMessage || '' });
     setCallState('outgoing');
+    
+    // START MEDIA IMMEDIATELY for the caller so it's ready when recipient accepts
+    const stream = await startLocalMedia(callType === 'video');
+    if (!stream) {
+      endCallInternal('Media access denied');
+      return;
+    }
+    localStreamRef2.current = stream;
+
     socketRef.current.emit('call:initiate', { toUserId, callType, toName, callMessage: callMessage || '' });
     clearTimeout(ringTimer.current);
     ringTimer.current = setTimeout(() => endCallInternal('No answer'), RING_DURATION + 2000);
@@ -326,8 +343,14 @@ export default function CallManager({ user }) {
     const cid = callInfoRef.current?.callId;
     if (!cid) return;
     const isVideo = callInfoRef.current?.callType === 'video';
-    const stream = await startLocalMedia(isVideo); // pass actual call type
-    if (!stream) return;
+    const stream = await startLocalMedia(isVideo); 
+    if (!stream) {
+      // If media fails, we can't answer properly. Show reason.
+      const msg = permError || 'Could not access camera/microphone';
+      socketRef.current?.emit('call:decline', { callId: cid, reason: msg });
+      endCallInternal(msg);
+      return;
+    }
     localStreamRef2.current = stream;
     setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
@@ -366,8 +389,47 @@ export default function CallManager({ user }) {
     />
   );
 
-  // When idle, render ONLY the audio element (keeps ref alive for unlockAudio)
-  if (callState === 'idle') return audioEl;
+  // ── Meeting Notice Banner ────────────────────────────────────────────────
+  const MeetingBanner = meetingNotice && (
+    <div style={{
+      position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 100001, background: '#0176D3', color: '#fff',
+      padding: '12px 24px', borderRadius: 16, display: 'flex', alignItems: 'center',
+      gap: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
+      animation: 'tn-slide-down 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+    }}>
+      <div style={{ fontSize: 24 }}>🎥</div>
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 14 }}>{meetingNotice.name} is in the room</div>
+        <div style={{ fontSize: 11, opacity: 0.9 }}>{meetingNotice.role === 'interviewer' ? 'The recruiter' : 'The candidate'} has joined the interview room.</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
+        <button 
+          onClick={() => { setMeetingNotice(null); window.open(`/meeting/${meetingNotice.roomToken}`, '_blank'); }}
+          style={{ background: '#fff', color: '#0176D3', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+        >
+          Join Now
+        </button>
+        <button 
+          onClick={() => setMeetingNotice(null)}
+          style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer' }}
+        >
+          ✕
+        </button>
+      </div>
+      <style>{`
+        @keyframes tn-slide-down { from { transform: translate(-50%, -40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+      `}</style>
+    </div>
+  );
+
+  // When idle, render audio + meeting notice
+  if (callState === 'idle') return (
+    <>
+      {audioEl}
+      {MeetingBanner}
+    </>
+  );
 
   const isVideo = callInfo?.callType === 'video';
   const callMsg = callInfo?.callMessage || '';
@@ -540,6 +602,7 @@ export default function CallManager({ user }) {
           <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', textAlign: 'center' }}>{endReason || 'Call Ended'}</div>
         </div>
       </div>
+      {MeetingBanner}
     </>
   );
 }

@@ -257,6 +257,8 @@ export default function MeetingRoom() {
   const [participants, setParticipants] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [meetingEnded, setMeetingEnded] = useState(false);
+  const [meetingNotHappened, setMeetingNotHappened] = useState(false);
+  const [hasHadConnection, setHasHadConnection] = useState(false);
   const [roomMeta, setRoomMeta] = useState(null);
   const [permError, setPermError] = useState('');
   const [toast, setToast] = useState('');
@@ -269,8 +271,16 @@ export default function MeetingRoom() {
 
   const mySocketId = socketRef.current?.id;
 
+  const isRecruiter = storedUser?.role === 'recruiter' || storedUser?.role === 'admin' || storedUser?.role === 'super_admin';
   const identity = isAuthenticated
-    ? { userId: storedUser.id || storedUser._id, name: storedUser.name, email: storedUser.email, role: storedUser.role === 'recruiter' || storedUser.role === 'admin' || storedUser.role === 'super_admin' ? 'interviewer' : 'candidate', isGuest: false, isHost: false }
+    ? { 
+        userId: storedUser.id || storedUser._id, 
+        name: storedUser.name, 
+        email: storedUser.email, 
+        role: isRecruiter ? 'interviewer' : 'candidate', 
+        isGuest: false, 
+        isHost: isRecruiter // FIXED: Recruiter/Admin is the host
+      }
     : (guestIdentity ? { ...guestIdentity } : null);
 
   // ── Show guest form if not authenticated ─────────────────────────────────
@@ -317,9 +327,13 @@ export default function MeetingRoom() {
         isGuest: identity.isGuest,
         isHost: identity.isHost,
       });
+      // Notify the other party via the global signaling socket
+      socket.emit('meeting:notify-join', { roomToken, name: identity.name, role: identity.role });
     });
 
     socket.on('room-state', ({ participants: pList, chatMessages: msgs, isRecording: rec, screenSharerId: ssId, status }) => {
+      setParticipants(pList);
+      if (pList.length >= 2) setHasHadConnection(true);
       if (status === 'ended') { setMeetingEnded(true); return; }
       setChatMessages(msgs || []);
       setIsRecording(rec || false);
@@ -391,6 +405,19 @@ export default function MeetingRoom() {
     socket.on('takeover-denied', () => showToast('Takeover request was denied.'));
 
     // Host controls
+    // ── CHECK EXPIRY ──────────────────────────────────────────────────────
+    const now = new Date();
+    const scheduled = roomData.scheduledAt ? new Date(roomData.scheduledAt) : null;
+    // Expire 2 hours after scheduled time
+    if (scheduled && (now - scheduled) > (2 * 60 * 60 * 1000)) {
+      if (!hasHadConnection && roomData.participants?.length < 2) {
+        setMeetingNotHappened(true);
+      } else {
+        setMeetingEnded(true);
+      }
+    }
+
+    setLoading(false);
     socket.on('force-muted', () => { setMicOn(false); localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; }); showToast('You were muted by the host'); });
     socket.on('removed-from-room', () => { setMeetingEnded(true); showToast('You were removed from the meeting'); });
     socket.on('recording-started', () => { setIsRecording(true); showToast('Recording started'); });
@@ -546,6 +573,33 @@ export default function MeetingRoom() {
   const screenSharer = participantEntries.find(p => p.socketId === screenSharerId);
 
   // ── Ended State ──────────────────────────────────────────────────────────
+  if (meetingNotHappened) {
+    return (
+      <div style={{ height: '100dvh', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 460, width: '100%', background: '#fff', borderRadius: 24, padding: 40, textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: 64, marginBottom: 20 }}>📅</div>
+          <h2 style={{ color: '#0F172A', fontSize: 24, fontWeight: 800, marginBottom: 12 }}>Meeting Did Not Happen</h2>
+          <p style={{ color: '#64748B', lineHeight: 1.6, marginBottom: 32 }}>
+            This interview session was scheduled but no connection was established. The link has now expired.
+          </p>
+          {isHost ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button 
+                onClick={() => window.location.href = `/app/interviews`}
+                style={{ ...btnP, width: '100%', padding: '14px' }}
+              >
+                Reschedule Interview
+              </button>
+              <button onClick={() => window.location.href = '/app/dashboard'} style={{ color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Back to Dashboard</button>
+            </div>
+          ) : (
+            <button onClick={() => window.location.href = '/app/dashboard'} style={btnP}>Return to Dashboard</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (meetingEnded) return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#fff', borderRadius: 20, padding: 48, textAlign: 'center', maxWidth: 440 }}>
