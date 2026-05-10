@@ -319,9 +319,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
       }, 150);
 
       setTimeout(() => {
-        // High-Capacity Drill-downs (Paginated)
-        api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-        api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        // Removed aggressive 10M pre-fetches here to restore fast page loads.
+        // The drill-downs still use 10M limits on-demand, so full data visibility is preserved.
+        // api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        // api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
       }, 300);
 
       setError(null);
