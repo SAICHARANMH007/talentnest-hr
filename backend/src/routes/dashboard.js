@@ -13,6 +13,7 @@ const { allowRoles }  = require('../middleware/rbac');
 const asyncHandler    = require('../utils/asyncHandler');
 const AppError        = require('../utils/AppError');
 const { exportToExcel } = require('../utils/exportToExcel');
+const PaymentRecord   = require('../models/PaymentRecord');
 const { cacheRoute }  = require('../middleware/cache');
 
 
@@ -358,7 +359,11 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
       .limit(20)
       .populate(JOB_APPLICANT_POPULATE)
       .populate(CANDIDATE_APPLICANT_POPULATE)
-      .lean()
+      .lean(),
+    PaymentRecord.aggregate([
+      { $match: { ...orgF, status: 'captured' } },
+      { $group: { _id: null, total: { $sum: '$amountINR' } } }
+    ])
   ]);
 
   const pipeline = {};
@@ -397,6 +402,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     placementsLast30: hiredLast30,
     platformWide,
     pipeline,
+    revenue: revenueAgg[0]?.total || 0,
     recent: recentApps,
     subtitle: `${active} candidates actively in pipeline`,
     changes: {
@@ -558,7 +564,8 @@ router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), 
 
 /* GET /api/dashboard/analytics */
 router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
-  const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const platformWide = req.user.role === 'super_admin' && req.query.platform === 'true';
+  const orgF = platformWide ? {} : { tenantId: req.user.tenantId };
   const { startDate, endDate } = req.query;
   const dateFilter = {};
   if (startDate) dateFilter.$gte = new Date(startDate);
@@ -566,7 +573,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
   const dateF = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
   // Compute avgTimeToHire via aggregation — avoids fetching all hired docs to Node memory
-  const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg] = await Promise.all([
+  const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg, revenueAgg] = await Promise.all([
     Application.countDocuments({ ...orgF, ...dateF }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
@@ -595,9 +602,14 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       },
       { $group: { _id: null, avg: { $avg: '$daysToHire' }, count: { $sum: 1 } } },
     ]),
+    PaymentRecord.aggregate([
+      { $match: { ...orgF, ...dateF, status: 'captured' } },
+      { $group: { _id: null, total: { $sum: '$amountINR' } } }
+    ]),
   ]);
 
   const avgTimeToHire = timeAgg[0]?.count > 0 ? Math.round(timeAgg[0].avg || 0) : 0;
+  const revenue       = revenueAgg[0]?.total || 0;
 
   res.json({ success: true, data: {
     overview: {
@@ -607,6 +619,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       inProgress: totalApps - hiredApps - rejectedApps,
       conversionRate: totalApps > 0 ? Math.round((hiredApps / totalApps) * 100) : 0,
       avgTimeToHire,
+      revenue,
     },
     byStage: byStage.map(s => ({ stage: s._id, count: s.count })),
     bySource: bySource.map(s => ({ source: s._id || 'direct', count: s.count })),

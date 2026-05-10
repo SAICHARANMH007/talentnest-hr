@@ -22,18 +22,12 @@ const sanitize = require('./src/middleware/sanitize');
 // ── Startup Sanity Check (Enterprise Standard) ──────────────────────────────
 const IS_PROD = process.env.NODE_ENV === 'production' || !!process.env.RENDER || !!process.env.RENDER;
 
-const criticalVars = ['MONGODB_URI', 'JWT_SECRET'];
+const criticalVars = ['MONGODB_URI', 'JWT_SECRET', 'COOKIE_SECRET'];
 const missing = criticalVars.filter(v => !process.env[v]);
 if (missing.length) {
   console.error(`❌  CRITICAL: Missing environment variables: ${missing.join(', ')}`);
+  console.error(`🚨  TalentNest cannot start in production without these secrets.`);
   process.exit(1);
-}
-// COOKIE_SECRET must be set in Render environment variables. 
-// Using fallback for local dev compatibility but this MUST be set in production.
-// ACTION REQUIRED: Add COOKIE_SECRET to Render dashboard.
-if (!process.env.COOKIE_SECRET) {
-  console.error('🚨  SECURITY WARNING: COOKIE_SECRET not set. Add it to Render env vars immediately!');
-  process.env.COOKIE_SECRET = 'talentnest_default_secure_secret_2026_prod';
 }
 
 const app = express();

@@ -9,8 +9,15 @@
 const getPagination = (req, defaults = {}) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const role = req.user?.role;
-  const maxLimit = 10000000;
-  const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit) || defaults.limit || 50));
+  
+  // Enterprise Hard Ceilings
+  let maxLimit = 500; // Default for public/candidates
+  if (role === 'super_admin') maxLimit = 50000;
+  else if (role === 'admin' || role === 'recruiter') maxLimit = 10000;
+
+  const requestedLimit = parseInt(req.query.limit) || defaults.limit || 50;
+  const limit = Math.min(maxLimit, Math.max(1, requestedLimit));
+  
   return { page, limit, skip: (page - 1) * limit };
 };
 

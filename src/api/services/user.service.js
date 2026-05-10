@@ -70,6 +70,7 @@ export const userService = {
   async markReachOut(id, note)          { return req('PATCH', `/users/${id}/reach-out`, { note }); },
   async assignCandidate(id, recruiterId) { return req('PATCH', `/users/${id}/assign`, { recruiterId }); },
   async mergeUsers(primaryId, duplicateId) { return req('POST', '/users/merge', { primaryId, duplicateId }); },
+  async mergeCandidates(payload) { return req('POST', '/candidates/merge', payload); },
   async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); },
 
   // Candidate-model (separate from User model) — used by pipeline/application populate

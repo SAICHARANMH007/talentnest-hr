@@ -86,6 +86,7 @@ const candidateSchema = new mongoose.Schema({
   submittedByTenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
 
   deletedAt: { type: Date, default: null },
+  mergedInto: { type: mongoose.Schema.Types.ObjectId, ref: 'Candidate', default: null },
 }, { timestamps: true });
 
 candidateSchema.index({ tenantId: 1 });

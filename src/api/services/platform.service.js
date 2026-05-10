@@ -22,6 +22,7 @@ export const platformService = {
   async getBillingInvoices()             { return req('GET', '/billing/invoices'); },
 
   // Org Settings
+  async getMyOrg()                       { return req('GET', '/orgs/my-org'); },
   async getOrgSettings(id)               { return req('GET', `/orgs/${id}`); },
   async updateOrgSettings(id, data)      { return req('PATCH', `/orgs/${id}`, data); },
   

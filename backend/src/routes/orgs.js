@@ -161,6 +161,17 @@ router.get('/logo', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// GET /api/orgs/my-org — secure access to non-sensitive org info for all members (recruiters, etc)
+router.get('/my-org', auth, async (req, res) => {
+  try {
+    const orgId = req.user.orgId || req.user.tenantId;
+    if (!orgId) return res.status(404).json({ error: 'No organization linked to user session.' });
+    const org = await Organization.findById(orgId).select('name slug logoUrl brandColor industry').lean();
+    if (!org) return res.status(404).json({ error: 'Organization not found.' });
+    res.json(normalize(org));
+  } catch (e) { res.status(500).json({ error: safeError(e) }); }
+});
+
 // POST /api/orgs/logo/upload — upload new logo (admin/super_admin)
 router.post('/logo/upload', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
   try {

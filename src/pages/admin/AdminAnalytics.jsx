@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api, downloadBlob } from '../../api/api.js';
+import { req } from '../../api/client.js';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import HorizBar from '../../components/charts/HorizBar.jsx';
@@ -28,8 +29,63 @@ const glassPanel = {
   padding       : 32,
   boxShadow     : '0 4px 24px rgba(0, 0, 0, 0.06)',
   transition    : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  minHeight     : 180, // prevent collapse when chart returns null during load
+  minHeight     : 180, 
 };
+
+const skeletonStyles = `
+@keyframes tn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.tn-skeleton {
+  background: linear-gradient(90deg, #f8f9fa 25%, #eef0f2 50%, #f8f9fa 75%);
+  background-size: 200% 100%;
+  animation: tn-shimmer 2s infinite linear;
+}
+.analytics-chart-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.analytics-chart-row-rev {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) {
+  .analytics-chart-row, .analytics-chart-row-rev {
+    grid-template-columns: 1fr;
+  }
+}
+`;
+
+function KPICard({ label, value, icon, color, sub, onClick, loading }) {
+  if (loading) return <div className="tn-skeleton" style={{ ...glassPanel, minHeight: 110, borderRadius: 24 }} />;
+  return (
+    <div 
+      onClick={onClick}
+      style={{ 
+        ...glassPanel, 
+        minHeight: 'auto', 
+        padding: '24px', 
+        cursor: onClick ? 'pointer' : 'default',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>{label}</div>
+          <div style={{ fontSize: 'clamp(20px, 2.5vw, 26px)', fontWeight: 900, color: '#0A1628', lineHeight: 1.2 }}>{value}</div>
+        </div>
+        <div style={{ fontSize: 24, background: `${color}15`, width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
+      </div>
+      {sub && <div style={{ fontSize: 11, color: color, fontWeight: 700, marginTop: 12, opacity: 0.9 }}>{sub}</div>}
+    </div>
+  );
+}
 
 // Placeholder shown inside chart panels when data is loading or unavailable
 function ChartPlaceholder({ loading = false, label = 'Chart', height = 160 }) {
@@ -94,11 +150,11 @@ const extractId = (v) => {
 // ── Skeleton Loader ──────────────────────────────────────────────────────────
 function SectionSkeleton() {
   return (
-    <div style={{ ...glassPanel, minHeight: 180 }}>
+    <div style={{ ...glassPanel, minHeight: 220 }}>
+      <div className="tn-skeleton" style={{ height: 12, width: '40%', borderRadius: 6, marginBottom: 24 }} />
       {[1, 2, 3].map(i => (
-        <div key={i} style={{ height: 18, background: 'linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)', backgroundSize: '200% 100%', borderRadius: 8, marginBottom: 14, animation: 'shimmer 1.5s infinite', opacity: 1 - i * 0.2 }} />
+        <div key={i} className="tn-skeleton" style={{ height: 16, width: '100%', borderRadius: 8, marginBottom: 14, opacity: 1 - i * 0.2 }} />
       ))}
-      <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
     </div>
   );
 }
@@ -215,77 +271,59 @@ export default function AdminAnalytics({ user, onNavigate }) {
       setServerStats(statsObj);
       setLeaderboard(Array.isArray(l) ? l : (l?.data || []));
       
-      // Use recent apps from aggregated stats if available (FAST)
       if (statsObj.recent) {
         setRecentApps(statsObj.recent);
       } else {
-        // Fallback for older backend versions — increase limit to 100 for better visibility
         api.getApplications({ limit: 100, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
       }
       
       setLoading(false);
 
-      // Phase 2: Progressively load heavier data in chunks to avoid blocking main thread
+      // Phase 2: Progressively load heavier data
       setTimeout(() => {
         api.getTrends().then(r => setTrendData(r?.data || [])).catch(() => setTrendData([]));
-        api.getAnalytics(start, end).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
+        api.getAnalytics({ startDate: start, endDate: end, platform: platformWide }).then(r => setAnalyticsData(r?.data || null)).catch(() => setAnalyticsData(null));
       }, 50);
 
       setTimeout(() => {
-        // High-Capacity Global Job Scan (Limited for performance, full count from stats)
-        api.getJobs({ limit: 1000, platform: platformWide }).then(unwrap).then(list => {
+        // High-Capacity Job Scan (Rely on aggregated stats where possible)
+        api.getJobs({ limit: 100, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
-          const active = statsObj.activeJobs ?? list.filter(j => (j.status || '').toLowerCase() === 'active' || (j.status || '').toLowerCase() === 'open').length;
-          setJobCounts({ active, total: statsObj.totalJobs ?? list.length });
+          setJobCounts({ 
+            active: statsObj.activeJobs ?? list.filter(j => ['active', 'open'].includes((j.status || '').toLowerCase())).length,
+            total: statsObj.totalJobs ?? list.length 
+          });
         }).catch(() => setAllJobs([]));
         
-        // If server provides pipeline data, use it immediately
+        // Use backend pipeline aggregation (Production Standard)
         if (statsObj.pipeline) {
           const pipe = {};
           MASTER_STAGES.forEach(s => {
-            // Match backend stages to frontend MASTER_STAGES
             pipe[s.id] = statsObj.pipeline[s.id] || statsObj.pipeline[s.label] || 0;
           });
           const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
           setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
         } else {
-          // Fallback: Dashboard Overview Application Scan (Limited for performance)
-          api.getApplications({ limit: 1000, platform: platformWide }).then(unwrap).then(list => {
+          // Fallback (Avoid OOM)
+          api.getApplications({ limit: 200, platform: platformWide }).then(unwrap).then(list => {
             setAllApps(list);
             const pipe = {};
             MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
-            const now = Date.now();
-            const thirtyDaysAgo = now - (30 * 86400000);
-            let appsLast30 = 0;
-
             list.forEach(a => {
-              const raw = (a.stage || a.currentStage || '').toLowerCase();
-              const created = new Date(a.createdAt).getTime();
-              if (created >= thirtyDaysAgo) appsLast30++;
-
-              let mapped = null;
-              if (raw === 'new' || raw === 'applied') mapped = 'applied';
-              else if (raw === 'screening' || raw === 'shortlist' || raw === 'shortlisted') mapped = 'screening';
-              else if (raw.includes('scheduled') || raw.includes('round 1')) mapped = 'interview_scheduled';
-              else if (raw.includes('completed') || raw.includes('round 2')) mapped = 'interview_completed';
-              else if (raw.includes('offer')) mapped = 'offer_extended';
-              else if (raw === 'hired' || raw === 'selected') mapped = 'selected';
-              else if (raw === 'rejected' || raw === 'declined') mapped = 'rejected';
-              
-              if (mapped && pipe[mapped] !== undefined) pipe[mapped]++;
+              const mapped = DB_TO_FRONTEND_STAGE[a.currentStage || a.stage] || 'applied';
+              if (pipe[mapped] !== undefined) pipe[mapped]++;
             });
-
-            const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
-            setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: appsLast30 });
+            setLocalAppStats({ total: list.length, pipeline: pipe, last30: list.length });
           }).catch(() => setAllApps([]));
         }
       }, 150);
 
       setTimeout(() => {
-        // High-Capacity Global Data Access (Fetch in background for drill-downs/exports)
-        api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-        api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        // High-Capacity Drill-downs (Paginated)
+        api.getUsers({ role: 'candidate', limit: 40, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getApplicants({ limit: 40, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
       }, 300);
+
       setError(null);
     }).catch(e => {
       setError(e.message || 'Failed to sync platform analytics');
@@ -468,6 +506,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         appsLast30:      serverStats.appsLast30 || localAppStats.last30 || 0,
         placements:      hiredCount,
         placementsLast30: last30Hired,
+        revenue:         serverStats?.revenue || 0,
         fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : (serverStats.fillRate || 0),
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
@@ -478,6 +517,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       activeJobs:      activeJobs,
       totalApps:       totalApps,
       placements:      hiredCount,
+      revenue:         0,
       fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : 0,
       avgTimeToHire:   null,
     };
@@ -749,6 +789,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
   return (
     <ErrorReportBoundary componentName="AdminAnalytics">
       <div style={{ maxWidth: '100%', paddingBottom: 80 }}>
+        <style>{skeletonStyles}</style>
+        <Toast msg={toast} onClose={() => setToast('')} />
 
       {/* ── Merge Review Modal ── */}
       {mergeReview && (
@@ -890,16 +932,17 @@ export default function AdminAnalytics({ user, onNavigate }) {
       </div>
 
       {/* ── KPI Row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
-        <TrendCard label="Total Candidates" value={analyticsData?.total ?? stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
-        <TrendCard label="Active Job Postings" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
-        <TrendCard label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
+        <KPICard loading={loading} label="Total Candidates" value={analyticsData?.total ?? stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
+        <KPICard loading={loading} label="PLATFORM REVENUE" value={`₹${(stats.revenue || 0).toLocaleString('en-IN')}`} icon="💰" color="#10B981" />
+        <KPICard loading={loading} label="OPEN POSITIONS" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
+        <KPICard loading={loading} label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
           sub={stats.appsLast30 ? `${stats.appsLast30} in last 30 days` : undefined}
           onClick={openAppsDrill} />
-        <TrendCard label="Total Placements" value={stats.placements} icon="🎉" color="#10b981"
+        <KPICard loading={loading} label="Total Placements" value={stats.placements} icon="🎉" color="#10b981"
           sub={stats.placementsLast30 ? `${stats.placementsLast30} hired last 30 days` : undefined}
           onClick={openPlacementsDrill} />
-        <TrendCard label="Fill Rate" value={`${stats.fillRate}%`} icon="📈" color="#032D60"
+        <KPICard loading={loading} label="Fill Rate" value={`${stats.fillRate}%`} icon="📈" color="#032D60"
           sub="hires ÷ total job positions" />
       </div>
 
@@ -1511,10 +1554,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
         </div>
       )}
 
-      <Toast msg={toast} onClose={() => setToast('')} />
       {drawerUser && <UserDetailDrawer user={drawerUser} onClose={() => setDrawerUser(null)} />}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }`}</style>
-      </div>
     </ErrorReportBoundary>
   );
 }

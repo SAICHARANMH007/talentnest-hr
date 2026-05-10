@@ -20,12 +20,8 @@ export const dashboardService = {
   async getTopSkills()                  { return req('GET', '/dashboard/top-skills'); },
   async getAvailabilityPool()           { return req('GET', '/dashboard/availability-pool'); },
   async getJobsBreakdown()              { return req('GET', '/dashboard/jobs-breakdown'); },
-  async getAnalytics(startDate, endDate) {
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', startDate);
-    if (endDate)   params.set('endDate', endDate);
-    const s = params.toString();
-    return req('GET', `/dashboard/analytics${s ? `?${s}` : ''}`);
+  async getAnalytics(params = {}) {
+    return req('GET', `/dashboard/analytics${qs(params)}`);
   },
   async getRecruiterStats()              { return req('GET', '/dashboard/recruiter-stats'); },
   async getHiringFunnel()                { return req('GET', '/dashboard/hiring-funnel'); },

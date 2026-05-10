@@ -486,4 +486,57 @@ router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(as
   res.json(paginatedResponse(normalized, total, limit, page));
 }));
 
+// POST /api/candidates/merge — merge multiple candidates into one primary
+router.post('/merge', ...guard,
+  allowRoles('admin', 'super_admin'),
+  asyncHandler(async (req, res) => {
+    const { primaryId, duplicateIds, fieldOverrides = {} } = req.body;
+    if (!primaryId || !duplicateIds?.length) throw new AppError('primaryId and duplicateIds are required.', 400);
+
+    const primary = await Candidate.findOne({ _id: primaryId, tenantId: req.user.tenantId, deletedAt: null });
+    if (!primary) throw new AppError('Primary candidate not found.', 404);
+
+    const duplicates = await Candidate.find({ _id: { $in: duplicateIds }, tenantId: req.user.tenantId, deletedAt: null });
+    if (!duplicates.length) throw new AppError('No valid duplicate candidates found.', 404);
+
+    // 1. Move all applications from duplicates to primary
+    const Application = require('../models/Application');
+    await Application.updateMany(
+      { candidateId: { $in: duplicateIds }, tenantId: req.user.tenantId },
+      { $set: { candidateId: primary._id } }
+    );
+
+    // 2. Consolidate skills
+    let allSkills = [...(primary.parsedProfile?.skills || [])];
+    duplicates.forEach(d => {
+      if (d.parsedProfile?.skills) allSkills.push(...d.parsedProfile.skills);
+    });
+    allSkills = [...new Set(allSkills.map(s => s.toLowerCase().trim()))].filter(Boolean);
+
+    // 3. Update primary record with overrides and consolidated skills
+    const updates = {
+      ...fieldOverrides,
+      'parsedProfile.skills': allSkills,
+    };
+    // Ensure we don't accidentally overwrite primary with nulls from duplicates unless explicit
+    ['phone', 'location', 'currentCompany', 'title', 'resumeUrl', 'photoUrl'].forEach(f => {
+      if (!updates[f] && !primary[f]) {
+        const found = duplicates.find(d => d[f]);
+        if (found) updates[f] = found[f];
+      }
+    });
+
+    await Candidate.findByIdAndUpdate(primaryId, { $set: updates });
+
+    // 4. Soft-delete duplicates
+    await Candidate.updateMany(
+      { _id: { $in: duplicateIds } },
+      { $set: { deletedAt: new Date(), mergedInto: primary._id } }
+    );
+
+    logger.audit('Candidates merged', req.user.id, req.user.tenantId, { primaryId, duplicateIds });
+    res.json({ success: true, message: `Successfully merged ${duplicates.length} records into ${primary.name}.` });
+  })
+);
+
 module.exports = router;

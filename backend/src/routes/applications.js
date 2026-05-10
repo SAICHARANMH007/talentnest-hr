@@ -855,12 +855,17 @@ router.patch('/:id/stage', ...guard,
 
         app.currentStage = stage;
         app.stageHistory.push({ stage, movedBy: req.user.id, movedAt: new Date(), notes: notes || '' });
-        if (stage === 'Hired')    app.status = 'hired';
+        if (stage === 'Hired') {
+          app.status = 'hired';
+          // Senior Optimization: Update job counts INSIDE the transaction to prevent sync drift
+          await Job.findByIdAndUpdate(app.jobId, { $inc: { hiredCount: 1 } }).session(session);
+        }
         if (stage === 'Rejected') {
           app.status = 'rejected';
           if (req.body.rejectionReason) app.rejectionReason = req.body.rejectionReason;
         }
         await app.save({ session });
+
 
         // Auto-assign the recruiter to the candidate if currently unassigned
         if (req.user.role === 'recruiter') {
@@ -942,7 +947,6 @@ router.patch('/:id/stage', ...guard,
     }
 
     if (stage === 'Hired') {
-      await Job.findByIdAndUpdate(app.jobId, { $inc: { hiredCount: 1 } });
       // Auto-create pre-boarding checklist for the hired candidate
       try {
         const { createPreBoardingForApplication } = require('./preboarding');

@@ -19,15 +19,14 @@ function calculateTalentMatchScore(job, candidate, opts = {}) {
   if (jobSkills.length > 0) {
     let matched = 0;
     for (const js of jobSkills) {
-      // Exact word-boundary match: split each skill into tokens so that
-      // "java" matches "java spring boot" but NOT "javascript".
-      const jsTokens = js.split(/[\s\-\/\.]+/).filter(Boolean);
-      if (candSkills.some(cs => {
-        if (cs === js) return true; // exact match shortcut
-        const csTokens = cs.split(/[\s\-\/\.]+/).filter(Boolean);
-        // Every token of the job skill must appear as a whole token in the candidate skill
-        return jsTokens.length > 0 && jsTokens.every(jt => csTokens.includes(jt));
-      })) matched++;
+      // Production Standard: Use strict word boundaries to prevent partial matches 
+      // (e.g. "Java" should NOT match "JavaScript").
+      const escaped = js.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const boundaryRegex = new RegExp(`\\b${escaped}\\b`, 'i');
+      
+      if (candSkills.some(cs => boundaryRegex.test(cs))) {
+        matched++;
+      }
     }
     skillScore = Math.round((matched / jobSkills.length) * 100);
   } else {

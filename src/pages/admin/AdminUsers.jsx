@@ -14,6 +14,7 @@ import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import InviteModal from '../../components/shared/InviteModal.jsx';
+import CandidateMergeWizard from '../../components/modals/CandidateMergeWizard.jsx';
 
 // ── Candidate pipeline panel ────────────────────────────────────────────────
 function CandidatePipelinePanel({ candidateEmail, candidateId, onToast }) {
@@ -446,6 +447,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [formErrors, setFormErrors]   = useState({});
   const [orgs, setOrgs]               = useState([]);
   const [saving, setSaving]           = useState(false);
+  const [showMerge, setShowMerge]     = useState(false);
   const [pagination, setPagination]   = useState({ page: 1, limit: 10000000, total: 0, pages: 1 });
 
   // ── basic filters ──
@@ -707,12 +709,23 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
             const uid = clean?.id || clean?._id;
             setUsers(prev => prev.map(u => (u.id === uid || u._id === uid) ? { ...u, ...clean } : u));
             setDrawerUser(clean);
+            if (uid === (user.id || user._id)) {
+              if (typeof window.tn_refreshUser === 'function') window.tn_refreshUser(clean);
+            }
             setToast('✅ Profile updated!');
             load();
           }} 
         />
       )}
       {resetPwdUser && <ChangePasswordModal user={user} targetUser={resetPwdUser} isSuperAdminReset={true} onClose={() => setResetPwdUser(null)} />}
+      {showMerge && (
+        <CandidateMergeWizard 
+          isOpen={showMerge} 
+          onClose={() => setShowMerge(false)} 
+          candidates={filtered.filter(u => selectedIds.has(u.id))}
+          onMerged={() => { load(); clearSel(); setToast('✅ Records consolidated successfully'); }}
+        />
+      )}
       {showAssign && <AssignToJobModal count={selectedIds.size} onClose={() => setShowAssign(false)} onDone={handleAssignDone} />}
       {showInvite && (
         <InviteModal
@@ -1005,6 +1018,11 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
               <button onClick={() => setShowAssign(true)} style={{ ...btnP, padding: '5px 14px', fontSize: 12 }}>
                 Assign to Job →
               </button>
+              {isSuperAdmin && selectedIds.size > 1 && (
+                <button onClick={() => setShowMerge(true)} style={{ ...btnG, padding: '5px 14px', fontSize: 12, color: '#10B981', borderColor: '#10B981' }}>
+                  🪄 Merge Records
+                </button>
+              )}
               <button onClick={clearSel} style={{ background: 'none', border: 'none', color: '#706E6B', fontSize: 12, cursor: 'pointer' }}>Clear</button>
             </>
           )}

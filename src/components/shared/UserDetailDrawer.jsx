@@ -9,7 +9,7 @@ import StageHistory from '../pipeline/StageHistory.jsx';
 import ErrorReportBoundary from './ErrorReportBoundary.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import HiredDetailsModal from '../modals/HiredDetailsModal.jsx';
-import { btnP, btnG, btnD, card } from '../../constants/styles.js';
+import { Z, btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM, STAGES } from '../../constants/stages.js';
 
@@ -102,50 +102,50 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   }, [u]);
 
   const [allFetchedApps, setAllFetchedApps] = useState([]);
-  useEffect(() => {
-    const isCandidate = (u?.role || 'candidate') === 'candidate';
-    if (!isCandidate) return;
-    let uid = u?.id || u?._id?.toString();
-    if (!uid && typeof u === 'string') uid = u;
-    if (!uid) return;
-    setLoadingApp(true);
-    api.getApplications({ candidateId: uid, email: u?.email, limit: 1 }).then(res => {
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      setAllFetchedApps(list);
-      if (!app && list.length > 0) {
-        setApp(list[0]);
-        setCurrentStage(list[0].stage);
-      }
-    }).catch(() => setAllFetchedApps([])).finally(() => setLoadingApp(false));
-  }, [u]);
 
   useEffect(() => {
     if (isSuperAdmin) {
-      api.getOrgs().then(res => setOrgs(Array.isArray(res) ? res : (res?.data || []))).catch(() => {});
+      api.getOrgs().then(data => setOrgs(Array.isArray(data) ? data : [])).catch(() => setOrgs([]));
     }
   }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (tab === 'pipeline' && u) {
+      let uid = u.id || u._id?.toString();
+      if (!uid && typeof u === 'string') uid = u;
+      if (uid) {
+        setLoadingApp(true);
+        api.getApplications({ userId: uid, limit: 1000 }).then(res => {
+          const list = Array.isArray(res) ? res : (res?.data || []);
+          setAllFetchedApps(list);
+          const active = list.find(a => ['applied','screening','shortlisted','interview_scheduled','interview_completed','offer_extended'].includes(a.stage));
+          if (active) {
+            setApp(active);
+            setCurrentStage(active.stage || active.currentStage);
+          }
+        }).finally(() => setLoadingApp(false));
+      }
+    }
+  }, [tab, u]);
 
   if (!u) return null;
 
   const saveProfile = async () => {
-    if (!form.name || !form.email) {
-      setToast('❌ Name and Email are required');
-      return;
-    }
     setSaving(true);
     try {
-      const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
-      const mid = fullUser?.id || fullUser?._id || u.id || u._id;
+      const uid = u.id || u._id?.toString();
+      const payload = { ...form };
       let updated;
-      if (isCandidateModel) {
-        const raw = await api.updateCandidate(mid, { ...form, skills });
-        updated = raw?.data || raw;
-        if (updated) updated = { role: 'candidate', ...updated, id: updated.id || updated._id?.toString() };
+      if (isCandidateModel || form.role === 'candidate') {
+        payload.skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : form.skills;
+        const res = await api.updateCandidate(uid, payload);
+        updated = res?.data || res;
       } else {
-        const raw = await api.updateUser(mid, { ...form, skills });
-        updated = raw?.data || raw;
+        const res = await api.updateUser(uid, payload);
+        updated = res?.data || res;
       }
-      setToast('✅ Profile saved!');
+      
+      setToast('✅ Profile updated successfully');
       onUpdated?.(updated);
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSaving(false);
@@ -187,7 +187,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   });
 
   const content = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100000, display: 'flex' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z.DRAWER, display: 'flex' }}>
       <ErrorReportBoundary>
       <Toast msg={toast} onClose={() => setToast('')} />
       {hiredModal && (
