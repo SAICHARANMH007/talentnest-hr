@@ -324,7 +324,6 @@ export default function MeetingRoom() {
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
-
     socket.on('connect', () => {
       socket.emit('join-room', {
         roomToken,
@@ -335,8 +334,10 @@ export default function MeetingRoom() {
         isGuest: identity.isGuest,
         isHost: identity.isHost,
       });
-      // Notify the other party via the global signaling socket
-      socket.emit('meeting:notify-join', { roomToken, name: identity.name, role: identity.role });
+      // 3. Notify the other party via the global signaling socket (/call namespace)
+      const notifySocket = io(`${SOCKET_URL}/call`, { auth: { token } });
+      notifySocket.emit('meeting:notify-join', { roomToken, name: identity.name, role: identity.role });
+      setTimeout(() => notifySocket.disconnect(), 5000); 
     });
 
     socket.on('room-state', ({ participants: pList, chatMessages: msgs, isRecording: rec, screenSharerId: ssId, status }) => {
@@ -412,20 +413,28 @@ export default function MeetingRoom() {
     socket.on('takeover-approved', () => startScreenShareAfterApproval(socket, stream));
     socket.on('takeover-denied', () => showToast('Takeover request was denied.'));
 
-    // Host controls
-    // ── CHECK EXPIRY ──────────────────────────────────────────────────────
-    const now = new Date();
-    const scheduled = roomMeta?.scheduledAt ? new Date(roomMeta.scheduledAt) : null;
-    // Expire 2 hours after scheduled time
-    if (scheduled && (now - scheduled) > (2 * 60 * 60 * 1000)) {
-      if (!hasHadConnection && (roomMeta?.participants?.length || 0) < 2) {
-        setMeetingNotHappened(true);
-      } else {
-        setMeetingEnded(true);
-      }
-    }
+    });
 
-    setLoading(false);
+  }, [roomToken, joined, identity?.userId]);
+
+  // ── Interview Lifecycle & Expiry ──────────────────────────────────────────
+  useEffect(() => {
+    if (!roomMeta) return;
+    const check = () => {
+      const now = new Date();
+      const scheduled = roomMeta.scheduledAt ? new Date(roomMeta.scheduledAt) : null;
+      if (scheduled && (now - scheduled) > (2 * 60 * 60 * 1000)) {
+        if (!hasHadConnection && (roomMeta.participants?.length || 0) < 2) {
+          setMeetingNotHappened(true);
+        } else {
+          setMeetingEnded(true);
+        }
+      }
+    };
+    check();
+    const inv = setInterval(check, 60000); // Check every minute
+    return () => clearInterval(inv);
+  }, [roomMeta, hasHadConnection]);
     socket.on('force-muted', () => { setMicOn(false); localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; }); showToast('You were muted by the host'); });
     socket.on('removed-from-room', () => { setMeetingEnded(true); showToast('You were removed from the meeting'); });
     socket.on('recording-started', () => { setIsRecording(true); showToast('Recording started'); });

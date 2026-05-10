@@ -230,15 +230,13 @@ export default function CallManager({ user }) {
     socket.on('call:incoming', ({ callId, fromUserId, fromName, callType, callMessage }) => {
       setCallInfo({ callId, peerId: fromUserId, peerName: fromName, callType, callMessage: callMessage || '' });
       setCallState('incoming');
-      try {
-        if (Notification.permission === 'granted') {
-          new Notification(`Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`, {
-            body: `${fromName} is calling you on TalentNest`, icon: '/logo.svg',
-          });
-        } else if (Notification.permission !== 'denied') {
-          Notification.requestPermission();
-        }
-      } catch { }
+    });
+
+    // ── NEW: Listen for meeting join notifications from scheduled rooms ──────
+    socket.on('meeting:joined', ({ roomToken, name, role }) => {
+      setMeetingNotice({ roomToken, name, role });
+      // Auto-hide after 15 seconds
+      setTimeout(() => setMeetingNotice(prev => prev?.roomToken === roomToken ? null : prev), 15000);
     });
 
     // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
@@ -581,7 +579,6 @@ export default function CallManager({ user }) {
       )}
     </>
   );
-}
 }
 
 function CallBtn({ icon, label, color, onClick }) {
