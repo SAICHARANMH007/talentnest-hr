@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import GuestJoin from './GuestJoin.jsx';
+import { api } from '../../api/api.js';
 import { SOCKET_BASE_URL } from '../../api/config.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
