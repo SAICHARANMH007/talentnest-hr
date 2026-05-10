@@ -319,21 +319,6 @@ export default function MeetingRoom() {
       .catch(err => console.error('[Room] Load failed:', err));
   }, [roomToken]);
 
-  // ── Show auth loader while session is being restored ─────────────────────
-  if (authLoading) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 48, height: 48, border: '4px solid rgba(1,118,211,0.3)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 600 }}>Verifying session…</span>
-        <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  // ── Show guest form only if not authenticated and no guest identity ───────
-  if (!isAuthenticated && !guestIdentity) {
-    return <GuestJoin roomToken={roomToken} onJoin={(g) => setGuestIdentity(g)} />;
-  }
 
   // ── Join Room ─────────────────────────────────────────────────────────────
   const enterRoom = useCallback(async () => {
@@ -624,6 +609,22 @@ export default function MeetingRoom() {
   ].filter(Boolean);
 
   const screenSharer = participantEntries.find(p => p.socketId === screenSharerId);
+
+  // ── Show auth loader while session is being restored ─────────────────────
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: 48, height: 48, border: '4px solid rgba(1,118,211,0.3)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 600 }}>Verifying session…</span>
+        <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // ── Show guest form only if not authenticated and no guest identity ───────
+  if (!isAuthenticated && !guestIdentity) {
+    return <GuestJoin roomToken={roomToken} onJoin={(g) => setGuestIdentity(g)} />;
+  }
 
   // ── Ended State ──────────────────────────────────────────────────────────
   if (meetingNotHappened) {
