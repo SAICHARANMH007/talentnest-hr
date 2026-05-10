@@ -53,8 +53,8 @@ export default function SuperAdminPlatform({ onNavigate }) {
   useEffect(() => {
     const unwrap = (r) => Array.isArray(r) ? r : (r?.data || []);
     Promise.all([
-      api.getOrgs({ limit: 10000000 }).catch(() => []),
-      api.getAuditLogs({ limit: 10000000 }).catch(() => []),
+      api.getOrgs().catch(() => []),
+      api.getAuditLogs('limit=100').catch(() => []),
       // High-accuracy counts from summarized endpoints
       api.getUserCount().catch(() => 0),
       api.getJobs({ limit: 1, platform: true }).then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),

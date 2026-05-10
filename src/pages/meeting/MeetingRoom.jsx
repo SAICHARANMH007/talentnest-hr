@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import GuestJoin from './GuestJoin.jsx';
-import { api } from '../../api/api.js';
+import { api, initAuth, setToken } from '../../api/api.js';
 import { SOCKET_BASE_URL } from '../../api/config.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -237,8 +237,36 @@ const smallBtn = { background: '#334155', border: 'none', color: '#fff', padding
 export default function MeetingRoom() {
   const { roomToken } = useParams();
 
-  // Auth check
-  const storedUser = (() => { try { return JSON.parse(sessionStorage.getItem('tn_user')); } catch { return null; } })();
+  // ── Auth bootstrap ─────────────────────────────────────────────────────────
+  // sessionStorage is tab-isolated — a new tab (window.open) starts empty.
+  // We call initAuth() which exchanges the HTTP-only refresh cookie for a
+  // fresh access token, exactly the same way App.jsx bootstraps on load.
+  // While auth is resolving we show a loader — never the guest join form.
+  const [authLoading, setAuthLoading] = useState(true);
+  const [storedUser, setStoredUser] = useState(() => {
+    // Try sessionStorage first — works when navigating within the same tab
+    try { return JSON.parse(sessionStorage.getItem('tn_user')); } catch { return null; }
+  });
+
+  useEffect(() => {
+    // If we already have the user in sessionStorage (same-tab navigation), skip initAuth
+    if (storedUser?.id || storedUser?._id) {
+      setAuthLoading(false);
+      return;
+    }
+    // New tab: no sessionStorage — try the refresh-token cookie
+    initAuth().then(result => {
+      if (result?.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(result.user));
+        if (result.token) setToken(result.token);
+        setStoredUser(result.user);
+      }
+      // If result is null the user is genuinely not logged in — guest form shown
+    }).catch(() => {
+      // Network error — leave storedUser as null, guest form shown
+    }).finally(() => setAuthLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isAuthenticated = !!(storedUser?.id || storedUser?._id);
 
   const [guestIdentity, setGuestIdentity] = useState(null);
@@ -280,7 +308,7 @@ export default function MeetingRoom() {
         email: storedUser.email, 
         role: isRecruiter ? 'interviewer' : 'candidate', 
         isGuest: false, 
-        isHost: isRecruiter // FIXED: Recruiter/Admin is the host
+        isHost: isRecruiter // Recruiter/Admin is the host
       }
     : (guestIdentity ? { ...guestIdentity } : null);
 
@@ -291,7 +319,18 @@ export default function MeetingRoom() {
       .catch(err => console.error('[Room] Load failed:', err));
   }, [roomToken]);
 
-  // ── Show guest form if not authenticated ─────────────────────────────────
+  // ── Show auth loader while session is being restored ─────────────────────
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: 48, height: 48, border: '4px solid rgba(1,118,211,0.3)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 600 }}>Verifying session…</span>
+        <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // ── Show guest form only if not authenticated and no guest identity ───────
   if (!isAuthenticated && !guestIdentity) {
     return <GuestJoin roomToken={roomToken} onJoin={(g) => setGuestIdentity(g)} />;
   }

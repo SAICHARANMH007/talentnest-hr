@@ -301,12 +301,6 @@ export default function CallManager({ user }) {
     // Receiver is not online — instant feedback instead of waiting 30s
     socket.on('call:unavailable', ({ message }) => { clearTimeout(ringTimer.current); endCallInternal(message || 'User is not online'); });
 
-    // ── MEETING NOTIFICATIONS ───────────────────────────────────────────────
-    socket.on('meeting:joined', ({ roomToken, name, role }) => {
-      setMeetingNotice({ roomToken, name, role });
-      // Auto-hide after 8 seconds
-      setTimeout(() => setMeetingNotice(null), 8000);
-    });
 
     // ── CONNECTION HEALTH ────────────────────────────────────────────────────
     socket.on('connect', () => {
