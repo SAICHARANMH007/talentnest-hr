@@ -274,7 +274,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (statsObj.recent) {
         setRecentApps(statsObj.recent);
       } else {
-        api.getApplications({ limit: 50, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
+        api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
       }
       
       setLoading(false);
@@ -287,7 +287,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Job Scan (Rely on aggregated stats where possible)
-        api.getJobs({ limit: 500, platform: platformWide }).then(unwrap).then(list => {
+        api.getJobs({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
           setJobCounts({ 
             active: statsObj.activeJobs ?? list.filter(j => ['active', 'open'].includes((j.status || '').toLowerCase())).length,
@@ -305,7 +305,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
           setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
         } else {
           // Fallback
-          api.getApplications({ limit: 500, platform: platformWide }).then(unwrap).then(list => {
+          api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
             setAllApps(list);
             const pipe = {};
             MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
@@ -320,8 +320,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Drill-downs (Paginated)
-        api.getUsers({ role: 'candidate', limit: 100, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-        api.getApplicants({ limit: 100, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
       }, 300);
 
       setError(null);
@@ -655,7 +655,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       return;
     }
     fetchDrill('Candidate Database', 'user', async () => {
-      const raw = await api.getCandidateRecords({ limit: 2000 }).catch(() => ({ data: [] }));
+      const raw = await api.getCandidateRecords({ limit: 10000000 }).catch(() => ({ data: [] }));
       const list = Array.isArray(raw?.data) ? raw.data : [];
       return list.map(c => ({
         ...c,
@@ -668,12 +668,12 @@ export default function AdminAnalytics({ user, onNavigate }) {
   };
 
   const openActiveJobsDrill = () => fetchDrill('Active Postings', 'job', async () => {
-    const raw = await api.getJobs({ status: 'active', limit: 2000 }).then(unwrap).catch(() => []);
+    const raw = await api.getJobs({ status: 'active', limit: 10000000 }).then(unwrap).catch(() => []);
     return raw.map(j => ({ ...j, id: j.id || j._id, name: j.title, sub: `${j.companyName || 'Internal'} · ${j.location || ''}`, status: j.status }));
   });
 
   const openAppsDrill = () => fetchDrill('All Applications', 'app', async () => {
-    const raw = await api.getApplicants({ limit: 2000 }).catch(() => ({ data: [] }));
+    const raw = await api.getApplicants({ limit: 10000000 }).catch(() => ({ data: [] }));
     const list = raw?.data || [];
     return list.map(c => ({
       ...c,
@@ -687,8 +687,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const openVelocityDrill = (point = null) => fetchDrill(point?.date ? `Applications on ${point.label}` : 'Application Velocity — Last 14 Days', 'app', async () => {
     const params = point?.date
-      ? { startDate: point.date, endDate: point.date, limit: 2000 }
-      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 2000 };
+      ? { startDate: point.date, endDate: point.date, limit: 10000000 }
+      : { startDate: new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], limit: 10000000 };
     const raw = await api.getApplicants(params).catch(() => ({ data: [] }));
     return (raw?.data || []).map(r => ({
       ...r,
@@ -702,7 +702,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
   const openPlacementsDrill = () => fetchDrill('Total Placements (Last 30 Days)', 'app', async () => {
     const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const raw = await api.getApplications({ stage: 'Hired', startDate: thirtyDaysAgo.toISOString().split('T')[0], limit: 2000, platform: platformWide }).then(unwrap).catch(() => []);
+    const raw = await api.getApplications({ stage: 'Hired', startDate: thirtyDaysAgo.toISOString().split('T')[0], limit: 10000000, platform: platformWide }).then(unwrap).catch(() => []);
     return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || a.job?.title || 'Unknown Job'} · Hired on ${fmtDate(a.updatedAt || a.createdAt)}` }));
   });
 
@@ -710,7 +710,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     if (!seg.stageKey || seg.value === 0) return;
     const dbStage = FRONTEND_TO_DB_STAGE[seg.stageKey] || seg.stageKey;
     fetchDrill(STAGE_LABELS[seg.stageKey] || seg.stageKey, 'app', async () => {
-      const raw = await api.getApplications({ stage: dbStage, limit: 2000 }).then(unwrap).catch(() => []);
+      const raw = await api.getApplications({ stage: dbStage, limit: 10000000 }).then(unwrap).catch(() => []);
       return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${a.jobId?.title || 'Unknown Job'} · ${STAGE_LABELS[seg.stageKey]}` }));
     });
   };
@@ -718,7 +718,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const openJobBarDrill = (bar) => {
     if (!bar.id) return;
     fetchDrill(bar.label, 'app', async () => {
-      const raw = await api.getApplications({ jobId: bar.id, limit: 2000 }).then(unwrap).catch(() => []);
+      const raw = await api.getApplications({ jobId: bar.id, limit: 10000000 }).then(unwrap).catch(() => []);
       return raw.map(a => ({ ...a, id: a.id || a._id, name: getCandidateData(a).name, sub: `${STAGE_LABELS[a.stage || a.currentStage] || a.currentStage || a.stage}` }));
     });
   };
@@ -729,7 +729,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const sourceLabel = seg.label;
     fetchDrill(`Source: ${sourceLabel} (${seg.value} applications)`, 'app', async () => {
       // Fetch applicants and filter by source client-side (backend /applicants supports source via search)
-      const raw = await api.getApplicants({ limit: 2000, platform: platformWide }).catch(() => ({ data: [] }));
+      const raw = await api.getApplicants({ limit: 10000000, platform: platformWide }).catch(() => ({ data: [] }));
       const rows = Array.isArray(raw?.data) ? raw.data : [];
       return rows
         .filter(r => (r.source || 'platform').toLowerCase() === sourceLabel.toLowerCase())
@@ -1019,7 +1019,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     if (!rid) { setDrillDown({ title: `${r.name}'s Pipeline`, type: 'app', items: [] }); return; }
                     setDrillDown({ title: `${r.name}'s Pipeline — Loading…`, type: 'app', items: [] });
                     try {
-                      const raw = await api.getApplications({ recruiterId: rid, limit: 2000 }).then(unwrap).catch(() => []);
+                      const raw = await api.getApplications({ recruiterId: rid, limit: 10000000 }).then(unwrap).catch(() => []);
                       const items = raw.map(a => {
                         const cand = getCandidateData(a);
                         const jobTitle = (typeof a.jobId === 'object' ? a.jobId?.title : null) || a.job?.title || 'Unknown Job';
