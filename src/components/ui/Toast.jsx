@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Z } from '../../constants/styles.js';
 
 export default function Toast({ msg, onClose }) {

@@ -274,7 +274,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (statsObj.recent) {
         setRecentApps(statsObj.recent);
       } else {
-        api.getApplications({ limit: 100, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
+        api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
       }
       
       setLoading(false);
@@ -287,7 +287,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Job Scan (Rely on aggregated stats where possible)
-        api.getJobs({ limit: 100, platform: platformWide }).then(unwrap).then(list => {
+        api.getJobs({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
           setJobCounts({ 
             active: statsObj.activeJobs ?? list.filter(j => ['active', 'open'].includes((j.status || '').toLowerCase())).length,
@@ -305,7 +305,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
           setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
         } else {
           // Fallback (Avoid OOM)
-          api.getApplications({ limit: 200, platform: platformWide }).then(unwrap).then(list => {
+          api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
             setAllApps(list);
             const pipe = {};
             MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
@@ -320,8 +320,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Drill-downs (Paginated)
-        api.getUsers({ role: 'candidate', limit: 40, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
-        api.getApplicants({ limit: 40, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
+        api.getUsers({ role: 'candidate', limit: 10000000, platform: platformWide }).then(unwrap).then(setAllCandidates).catch(() => setAllCandidates([]));
+        api.getApplicants({ limit: 10000000, platform: platformWide }).then(r => setApplicantRows(Array.isArray(r?.data) ? r.data : [])).catch(() => setApplicantRows([]));
       }, 300);
 
       setError(null);

@@ -98,9 +98,19 @@ export default function CallManager({ user }) {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => { });
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => { });
       }
+
+      // PRO TIP: To fully "unlock" audio output on iOS Safari, we must play 
+      // a silent buffer through the AudioContext during a user gesture.
+      const silentBuffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+
       // Also try to resume any existing remote audio element
       const el = remoteAudioRef.current;
       if (el) {
@@ -239,7 +249,18 @@ export default function CallManager({ user }) {
 
     // ── ACCEPTED (fires on caller side) ──────────────────────────────────────
     socket.on('call:accepted', ({ callId, socketId: peerSocketId }) => {
-      if (callStateRef.current !== 'outgoing') return;
+      console.log(`[Call] Received accept for ${callId} from ${peerSocketId}`);
+      if (callStateRef.current !== 'outgoing') {
+        console.warn('[Call] Ignoring accept: state is', callStateRef.current);
+        return;
+      }
+      
+      const currentCid = callInfoRef.current?.callId;
+      if (callId && currentCid && callId !== currentCid) {
+        console.warn(`[Call] CallID mismatch: expected ${currentCid}, got ${callId}`);
+        return;
+      }
+
       _setCallState('active');
       setCallStartedAt(Date.now());
       

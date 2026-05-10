@@ -53,12 +53,12 @@ export default function SuperAdminPlatform({ onNavigate }) {
   useEffect(() => {
     const unwrap = (r) => Array.isArray(r) ? r : (r?.data || []);
     Promise.all([
-      api.getOrgs().catch(() => []),
-      api.getAuditLogs().catch(() => []),
+      api.getOrgs({ limit: 10000000 }).catch(() => []),
+      api.getAuditLogs({ limit: 10000000 }).catch(() => []),
       // High-accuracy counts from summarized endpoints
       api.getUserCount().catch(() => 0),
-      api.getJobs({ limit: 1 }).then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
-      api.getApplications({ limit: 1 }).then(r => r?.pagination?.total ?? 0).catch(() => 0),
+      api.getJobs({ limit: 1, platform: true }).then(r => r?.pagination?.total ?? (Array.isArray(r?.data) ? r.data.length : 0)).catch(() => 0),
+      api.getApplications({ limit: 1, platform: true }).then(r => r?.pagination?.total ?? 0).catch(() => 0),
     ]).then(([o, logs, uCount, jCount, aCount]) => {
       const orgList = unwrap(o);
       setOrgs(orgList);
