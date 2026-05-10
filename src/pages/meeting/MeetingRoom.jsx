@@ -413,6 +413,16 @@ export default function MeetingRoom() {
     socket.on('takeover-approved', () => startScreenShareAfterApproval(socket, stream));
     socket.on('takeover-denied', () => showToast('Takeover request was denied.'));
 
+    socket.on('force-muted', () => { setMicOn(false); localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; }); showToast('You were muted by the host'); });
+    socket.on('removed-from-room', () => { setMeetingEnded(true); showToast('You were removed from the meeting'); });
+    socket.on('recording-started', () => { setIsRecording(true); showToast('Recording started'); });
+    socket.on('recording-stopped', () => { setIsRecording(false); showToast('Recording stopped'); });
+    socket.on('meeting-ended', () => setMeetingEnded(true));
+
+    socket.on('error', ({ code, message }) => {
+      if (code === 'TOO_EARLY') { /* handled in GuestJoin */ }
+      else if (code === 'ROOM_ENDED') setMeetingEnded(true);
+      else showToast(message);
     });
 
   }, [roomToken, joined, identity?.userId]);
@@ -435,19 +445,6 @@ export default function MeetingRoom() {
     const inv = setInterval(check, 60000); // Check every minute
     return () => clearInterval(inv);
   }, [roomMeta, hasHadConnection]);
-    socket.on('force-muted', () => { setMicOn(false); localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; }); showToast('You were muted by the host'); });
-    socket.on('removed-from-room', () => { setMeetingEnded(true); showToast('You were removed from the meeting'); });
-    socket.on('recording-started', () => { setIsRecording(true); showToast('Recording started'); });
-    socket.on('recording-stopped', () => { setIsRecording(false); showToast('Recording stopped'); });
-    socket.on('meeting-ended', () => setMeetingEnded(true));
-
-    socket.on('error', ({ code, message }) => {
-      if (code === 'TOO_EARLY') { /* handled in GuestJoin */ }
-      else if (code === 'ROOM_ENDED') setMeetingEnded(true);
-      else showToast(message);
-    });
-
-  }, [roomToken, joined, identity?.userId]);
 
   // Auto-enter room once identity is set
   useEffect(() => { if (identity && !joined) enterRoom(); }, [identity, joined]);
