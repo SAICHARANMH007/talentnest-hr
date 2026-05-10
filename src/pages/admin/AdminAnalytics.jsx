@@ -1556,6 +1556,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       {drawerUser && <UserDetailDrawer user={drawerUser} onClose={() => setDrawerUser(null)} />}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }`}</style>
+      </div>
     </ErrorReportBoundary>
   );
 }
