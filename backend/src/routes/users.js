@@ -710,7 +710,7 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
     }
   }
 
-  res.json({ success: true, message: \`Invites sent successfully to \${results.sent} candidates.\`, results });
+  res.json({ success: true, message: `Invites sent successfully to ${results.sent} candidates.`, results });
 }));
 
 // GET /api/users/unsubscribe — One-click unsubscribe from marketing emails
@@ -723,7 +723,7 @@ router.get('/unsubscribe', asyncHandler(async (req, res) => {
   // For safety, let's just mark interestStatus = 'not_interested' on Candidate.
   await Candidate.updateMany({ email: email.toLowerCase().trim() }, { $set: { interestStatus: 'not_interested' } });
   
-  res.send(\`
+  res.send(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -742,7 +742,7 @@ router.get('/unsubscribe', asyncHandler(async (req, res) => {
       </div>
     </body>
     </html>
-  \`);
+  `);
 }));
 
 module.exports = router;
