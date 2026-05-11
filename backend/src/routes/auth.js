@@ -573,6 +573,12 @@ router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
   // Clear Super Admin's dashboard cache so they don't see their own stats while starting to impersonate
   clearCacheForUser(req.user._id);
 
+  // Ensure target is activated so impersonation doesn't immediately fail on the next API call
+  if (!target.isActive) {
+    target.isActive = true;
+    await target.save();
+  }
+
   const result = await authService.issueTokens(res, target, req, req.user._id);
   res.json({ success: true, ...result, impersonating: true, originalUserId: req.user._id });
 }));
@@ -684,7 +690,11 @@ router.post('/google', loginLimiter, asyncHandler(async (req, res) => {
     }
   }
 
-  await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+  // If user exists, ensure they are activated (e.g. if they were previously an unaccepted invite)
+  await User.findByIdAndUpdate(user._id, { 
+    lastLogin: new Date(),
+    isActive: true 
+  });
   await adoptApplications(user);
   const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
