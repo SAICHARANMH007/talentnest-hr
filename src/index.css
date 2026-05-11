@@ -10,11 +10,38 @@
   --tn-white:   #FFFFFF;
   --tn-off:     #F8FAFF;
   --tn-gray:    #64748B;
-  --tn-trans:   all 0.22s cubic-bezier(0.4,0,0.2,1);
+  --tn-trans:   all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   --tn-radius:  14px;
   --tn-glow:    0 0 40px rgba(1,118,211,0.2);
   --tn-shadow:  0 4px 24px rgba(0,0,0,0.12);
   --tn-shadow-lg: 0 16px 56px rgba(0,0,0,0.2);
+  --tn-apple-glass: saturate(180%) blur(20px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  height: -webkit-fill-available;
+}
+
+body {
+  background: var(--tn-black);
+  color: var(--tn-white);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overscroll-behavior-y: none;
 }
 
 /* ── Performance Animations ── */
