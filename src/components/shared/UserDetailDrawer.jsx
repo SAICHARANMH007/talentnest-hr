@@ -114,7 +114,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       if (!uid && typeof u === 'string') uid = u;
       if (uid) {
         setLoadingApp(true);
-        api.getApplications({ userId: uid, limit: 1000 }).then(res => {
+        api.getApplications({ candidateId: uid, email: u.email, limit: 1000 }).then(res => {
           const list = Array.isArray(res) ? res : (res?.data || []);
           setAllFetchedApps(list);
           const active = list.find(a => ['applied','screening','shortlisted','interview_scheduled','interview_completed','offer_extended'].includes(a.stage));

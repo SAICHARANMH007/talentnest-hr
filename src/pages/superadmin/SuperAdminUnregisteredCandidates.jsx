@@ -243,8 +243,8 @@ export default function SuperAdminUnregisteredCandidates() {
     setAssigning(true);
     try {
       const emails = Array.from(selectedCandidates);
-      await api.inviteGuestCandidates(emails);
-      setToast(`Marketing invite sent to ${emails.length} candidates.`);
+      const res = await api.inviteGuestCandidates(emails);
+      setToast(res.message || `Marketing invites processed.`);
       setSelectedCandidates(new Set());
     } catch (err) {
       alert('Failed to send invites.');

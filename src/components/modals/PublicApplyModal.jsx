@@ -8,7 +8,7 @@ import { requestGeolocation } from '../../utils/geolocation.js';
 
 import { getCompanyCareerUrl } from '../../utils/url.js';
 
-export default function PublicApplyModal({ job, onClose }) {
+export default function PublicApplyModal({ job, orgName, onClose }) {
   const navigate = useNavigate();
   // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
@@ -211,7 +211,7 @@ export default function PublicApplyModal({ job, onClose }) {
             title: form.title, currentCompany: form.currentCompany,
             experience: form.experience ? Number(form.experience) : undefined,
             availability: form.availability,
-            companyName: 'TalentNest HR',
+            companyName: orgName || 'TalentNest HR',
           });
           if (regResult?.token && regResult?.user) {
             sessionStorage.setItem('tn_token', regResult.token);
@@ -273,8 +273,8 @@ export default function PublicApplyModal({ job, onClose }) {
         {createAccount && accountCreated && (
           <div style={{ background: 'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 12, textAlign: 'left' }}>
             <p style={{ color: '#065f46', fontSize: 14, fontWeight: 800, margin: '0 0 4px' }}>✅ Account created! Signing you in…</p>
-            <p style={{ color: '#374151', fontSize: 12, margin: '0 0 10px' }}>
-              Your application for <b>{job.title}</b> is in your pipeline. Redirecting to your dashboard…
+            <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
+              Your application for <strong>{job.title}</strong> has been successfully saved {orgName ? <>with <strong>{orgName}</strong></> : ''}. Redirecting to your dashboard…
             </p>
             <a href="/app/applications" style={{ display: 'inline-block', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
               📋 Go to My Applications →
@@ -298,7 +298,7 @@ export default function PublicApplyModal({ job, onClose }) {
         {getCompanyCareerUrl(job.externalUrl) ? (
           <>
             <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-              Your profile for <b>{job.title}</b> at <b>{job.company || job.companyName}</b> has been saved with us.
+              Your profile for <b>{job.title}</b> at <b>{job.company || job.companyName || orgName || 'TalentNest HR'}</b> has been saved with us.
             </p>
             <div style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(245,158,11,0.04))', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '12px 16px', marginTop: 12 }}>
               <p style={{ color: '#92400e', fontSize: 13, margin: 0, fontWeight: 600 }}>
@@ -312,7 +312,7 @@ export default function PublicApplyModal({ job, onClose }) {
           </>
         ) : (
           <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-            Your application for <b>{job.title}</b> at <b>{job.company || job.companyName}</b> has been received.
+            Your application for <b>{job.title}</b> at <b>{job.company || job.companyName || orgName || 'TalentNest HR'}</b> has been received.
             The recruiting team will be in touch within 48 hours.
           </p>
         )}
@@ -333,7 +333,7 @@ export default function PublicApplyModal({ job, onClose }) {
 
   return (
     <Modal
-      title={`Apply — ${job.title} @ ${job.company || job.companyName}`}
+      title={`Apply — ${job.title} @ ${job.company || job.companyName || orgName || 'TalentNest HR'}`}
       onClose={onClose}
       footer={
         <div style={{ display: 'flex', gap: 10, width: '100%' }}>

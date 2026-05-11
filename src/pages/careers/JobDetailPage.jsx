@@ -233,17 +233,10 @@ export default function JobDetailPage() {
 
           {/* CTA */}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {job.externalUrl ? (
-              <a href={job.externalUrl} target="_blank" rel="noopener noreferrer"
-                style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                🚀 Apply on Company Site →
-              </a>
-            ) : (
-              <button onClick={() => setApplying(true)}
-                style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-                🚀 Apply Now →
-              </button>
-            )}
+            <button onClick={() => setApplying(true)}
+              style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+              {job.externalUrl ? '🌐 Apply on Company Site →' : '🚀 Apply Now →'}
+            </button>
             <Link to="/careers" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', padding: '13px 20px', borderRadius: 12, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
               ← All Jobs
             </Link>
@@ -285,17 +278,10 @@ export default function JobDetailPage() {
             <div style={{ fontSize: 13, color: '#64748B', marginBottom: 10, lineHeight: 1.5 }}>
               Interested in this role?
             </div>
-            {job.externalUrl ? (
-              <a href={job.externalUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'block', width: '100%', boxSizing: 'border-box', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, textDecoration: 'none', textAlign: 'center' }}>
-                Apply on Company Site →
-              </a>
-            ) : (
-              <button onClick={() => setApplying(true)}
-                style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
-                Apply Now →
-              </button>
-            )}
+            <button onClick={() => setApplying(true)}
+              style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+              {job.externalUrl ? 'Apply on Company Site →' : 'Apply Now →'}
+            </button>
           </div>
 
           {/* Job details */}
@@ -325,7 +311,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Apply modal */}
-      {applying && !job.externalUrl && (
+      {applying && (
         <Modal
           title="Apply for Job"
           onClose={() => setApplying(false)}

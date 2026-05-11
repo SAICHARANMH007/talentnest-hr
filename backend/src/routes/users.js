@@ -683,34 +683,64 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
   const { emails } = req.body;
   if (!emails || !Array.isArray(emails)) throw new AppError('emails array is required', 400);
 
-  const { sendEmailWithRetry, templates } = require('../utils/email');
+  const { sendBatchEmailWithRetry, templates } = require('../utils/email');
   const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
   const results = { sent: 0, failed: 0, errors: [] };
 
-  for (const email of emails) {
-    try {
-      const candidate = await Candidate.findOne({ email: email.toLowerCase().trim(), deletedAt: null }).lean();
-      if (!candidate) continue;
+  try {
+    // 1. Fetch all candidates
+    const candidates = await Candidate.find({ 
+      email: { $in: emails.map(e => e.toLowerCase().trim()) }, 
+      deletedAt: null,
+      interestStatus: { $ne: 'not_interested' }
+    }).lean();
 
+    // 2. Prepare email payloads
+    const emailPayloads = candidates.map(candidate => {
       const link = `${FRONTEND_URL}/signup?email=${encodeURIComponent(candidate.email)}`;
       const tpl = templates.guestAccountInvite(candidate.name || 'Candidate', candidate.email, link, {
         orgName: 'TalentNest HR',
       });
+      return {
+        to: candidate.email,
+        subject: tpl.subject,
+        html: tpl.html,
+      };
+    });
 
-      await sendEmailWithRetry(candidate.email, tpl.subject, tpl.html);
-      
-      // Track that we sent the invite
-      await Candidate.updateMany({ email: candidate.email }, { $set: { accountInviteSentAt: new Date() } });
-      
-      results.sent++;
-    } catch (err) {
-      results.failed++;
-      results.errors.push({ email, error: err.message });
+    if (emailPayloads.length === 0) {
+      return res.json({ success: true, message: 'No valid candidates found or all are unsubscribed.', results });
     }
-  }
 
-  res.json({ success: true, message: `Invites sent successfully to ${results.sent} candidates.`, results });
+    // 3. Process in batches of 100 (Resend limit per batch request)
+    const BATCH_LIMIT = 100;
+    const sentEmails = [];
+
+    for (let i = 0; i < emailPayloads.length; i += BATCH_LIMIT) {
+      const chunk = emailPayloads.slice(i, i + BATCH_LIMIT);
+      try {
+        await sendBatchEmailWithRetry(chunk);
+        results.sent += chunk.length;
+        sentEmails.push(...chunk.map(c => c.to));
+      } catch (err) {
+        results.failed += chunk.length;
+        results.errors.push({ error: err.message, chunk: chunk.map(c => c.to) });
+      }
+    }
+
+    // 4. Update sent tracking for successful emails
+    if (sentEmails.length > 0) {
+      await Candidate.updateMany(
+        { email: { $in: sentEmails } }, 
+        { $set: { accountInviteSentAt: new Date() } }
+      );
+    }
+
+    res.json({ success: true, message: `Invites processed. Sent: ${results.sent}, Failed: ${results.failed}.`, results });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message, results });
+  }
 }));
 
 // GET /api/users/unsubscribe — One-click unsubscribe from marketing emails

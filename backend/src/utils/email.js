@@ -43,4 +43,52 @@ const sendEmailWithRetry = async (to, subject, html, attachments, maxRetries = 3
 
 const templates = require('./emailTemplates');
 
-module.exports = { sendEmailWithRetry, templates };
+async function sendBatchViaResend(emails) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM || 'hr@talentnesthr.com';
+  
+  if (!apiKey) {
+    console.log(`[Email DEV] Batch sending ${emails.length} emails`);
+    return { data: emails.map((_, i) => ({ id: `dev-mode-${i}` })) };
+  }
+
+  // Map to Resend batch format
+  const body = emails.map(e => ({
+    from: `TalentNest HR <${from}>`,
+    to: Array.isArray(e.to) ? e.to : [e.to],
+    subject: e.subject,
+    html: e.html,
+    ...(e.attachments && e.attachments.length ? { attachments: e.attachments } : {})
+  }));
+
+  const r = await fetch('https://api.resend.com/emails/batch', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || JSON.stringify(d));
+  return d;
+}
+
+const sendBatchEmailWithRetry = async (emails, maxRetries = 3) => {
+  if (!emails || !emails.length) return { data: [] };
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await sendBatchViaResend(emails);
+      logger.info(`Batch email sent to ${emails.length} recipients`, { attempt });
+      return result;
+    } catch (err) {
+      logger.warn(`Batch email attempt ${attempt} failed: ${err.message}`);
+      if (attempt === maxRetries) {
+        logger.error(`Batch email delivery failed after ${maxRetries} attempts`, { error: err.message });
+        throw err;
+      }
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+    }
+  }
+};
+
+module.exports = { sendEmailWithRetry, sendBatchEmailWithRetry, templates };

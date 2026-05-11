@@ -11,12 +11,13 @@ const MAIN_ORG_SLUG = 'talentnesthr';
 import { getCompanyCareerUrl } from '../../utils/url.js';
 
 // ── Urgency config ────────────────────────────────────────────────────────────
-const URGENCY_COLOR  = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
-const URGENCY_LABEL  = { High: '🔥 Emergency', Medium: '⚡ High Priority', Low: '📌 Normal', '': '📋 Open' };
+const URGENCY_COLOR = { High: '#BA0517', Medium: '#F59E0B', Low: '#10B981', '': '#0176D3' };
+const URGENCY_LABEL = { High: '🔥 Emergency', Medium: '⚡ High Priority', Low: '📌 Normal', '': '📋 Open' };
 
 import Modal from '../../components/ui/Modal.jsx';
 import { btnP, btnG } from '../../constants/styles.js';
 import { Link } from 'react-router-dom';
+import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 
 // ── Apply Modal (Standardized Portal-based) ──────────────────────────────────
 function ApplyModal({ job, orgName, onClose }) {
@@ -30,13 +31,13 @@ function ApplyModal({ job, orgName, onClose }) {
   const [emailFoundMsg, setEmailFoundMsg] = useState('');
   const [prefillState, setPrefillState] = useState(null); // { isRegistered, hasPhone, fields[] }
   const [userEditedFields, setUserEditedFields] = useState(new Set());
-  
+
   // Account creation state
   const [createAccount, setCreateAccount] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedTerms, setAgreedTerms] = useState(false);
-  
+
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   // Auto-trigger prefill on mount if email is already present (e.g. from sessionStorage)
@@ -59,7 +60,7 @@ function ApplyModal({ job, orgName, onClose }) {
         const p = r.profile;
         const updates = {};
         const filled = [];
-        
+
         const fields = [
           ['name', p.name],
           ['title', p.title],
@@ -106,33 +107,33 @@ function ApplyModal({ job, orgName, onClose }) {
     setGeoStatus('asking');
     requestGeolocation().then(pos => {
       if (pos) { setGeo(pos); setGeoStatus('granted'); }
-      else       setGeoStatus('denied');
+      else setGeoStatus('denied');
     }).catch(() => setGeoStatus('denied'));
   }, []);
 
   const submit = async () => {
-    if (!form.name.trim())  { setError('Full name is required.'); return; }
+    if (!form.name.trim()) { setError('Full name is required.'); return; }
     if (!form.email.trim()) { setError('Email is required.'); return; }
     if (!form.phone.trim()) { setError('Mobile number is required.'); return; }
     if (createAccount && !password) { setError('Please enter a password for your account.'); return; }
     if (createAccount && password !== confirmPassword) { setError('Passwords do not match.'); return; }
     if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions.'); return; }
-    
+
     setSubmitting(true); setError('');
     try {
       const payload = { ...form };
       if (geo) {
-        payload.geoLat      = geo.lat;
-        payload.geoLng      = geo.lng;
+        payload.geoLat = geo.lat;
+        payload.geoLng = geo.lng;
         payload.geoAccuracy = geo.accuracy;
-        payload.geoCity     = geo.city;
-        payload.geoCountry  = geo.country;
+        payload.geoCity = geo.city;
+        payload.geoCountry = geo.country;
       } else {
         payload.geoDeclined = geoStatus === 'denied';
       }
-      
+
       await api.applyPublic(job.id || job._id, payload);
-      
+
       if (createAccount && password) {
         try {
           await api.register({
@@ -151,21 +152,39 @@ function ApplyModal({ job, orgName, onClose }) {
           console.warn('[Apply] Account creation skipped:', regErr.message);
         }
       }
-      
+
       setDone(true);
+      const companyCareerUrl = getCompanyCareerUrl(job.externalUrl);
+      if (companyCareerUrl) {
+        setTimeout(() => window.open(companyCareerUrl, '_blank', 'noopener,noreferrer'), 1200);
+      }
     } catch (e) { setError(e.message || 'Submission failed. Please try again.'); }
     setSubmitting(false);
   };
 
   if (done) return (
-    <Modal title="Application Submitted!" onClose={onClose}>
+    <Modal title={getCompanyCareerUrl(job.externalUrl) ? '✅ Profile Saved!' : 'Application Submitted!'} onClose={onClose}>
       <div style={{ textAlign: 'center', padding: '24px 0' }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>{getCompanyCareerUrl(job.externalUrl) ? '🚀' : '🎉'}</div>
         <h3 style={{ color: '#065f46', fontWeight: 800, margin: '0 0 12px' }}>Thank you, {form.name}!</h3>
         <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, margin: '0 0 24px' }}>
-          Your application for <strong>{job.title}</strong> has been received by <strong>{orgName}</strong>. 
-          The recruiting team will be in touch soon.
+          Your profile for <strong>{job.title}</strong> has been saved with <strong>{orgName}</strong>.
         </p>
+
+        {getCompanyCareerUrl(job.externalUrl) ? (
+          <div style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(245,158,11,0.04))', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+            <p style={{ color: '#92400e', fontSize: 13, margin: 0, fontWeight: 600 }}>
+              🌐 Redirecting you to the employer's career page…
+            </p>
+            <a href={getCompanyCareerUrl(job.externalUrl)} target="_blank" rel="noopener noreferrer" onClick={onClose}
+              style={{ display: 'inline-block', marginTop: 10, background: 'linear-gradient(135deg,#F59E0B,#d97706)', color: '#fff', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              Open Careers Page →
+            </a>
+          </div>
+        ) : (
+          <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>The recruiting team will be in touch soon.</p>
+        )}
+
         <button onClick={onClose} style={{ ...btnP, width: '100%', justifyContent: 'center', minHeight: 48 }}>Close</button>
       </div>
     </Modal>
@@ -295,11 +314,11 @@ export default function OrgCareersPage() {
   // TalentNest HR's own career page gets full Marketing nav + footer
   const isMainOrg = orgSlug === MAIN_ORG_SLUG;
 
-  const [org, setOrg]         = useState(null);
-  const [jobs, setJobs]       = useState([]);
+  const [org, setOrg] = useState(null);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
-  const [search, setSearch]   = useState('');
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [urgency, setUrgency] = useState('All');
   const [location, setLocation] = useState('All');
   const [applying, setApplying] = useState(null);
@@ -320,11 +339,11 @@ export default function OrgCareersPage() {
   }, [orgSlug]);
 
   const locations = ['All', ...new Set(jobs.map(j => j.location).filter(Boolean))];
-  const filtered  = jobs.filter(j => {
+  const filtered = jobs.filter(j => {
     const q = search.toLowerCase();
-    const matchSearch = !q || (j.title||'').toLowerCase().includes(q) || (j.company||'').toLowerCase().includes(q) || (j.skills||[]).join(',').toLowerCase().includes(q);
-    const matchUrgency   = urgency === 'All' || j.urgency === urgency;
-    const matchLocation  = location === 'All' || j.location === location;
+    const matchSearch = !q || (j.title || '').toLowerCase().includes(q) || (j.company || '').toLowerCase().includes(q) || (j.skills || []).join(',').toLowerCase().includes(q);
+    const matchUrgency = urgency === 'All' || j.urgency === urgency;
+    const matchLocation = location === 'All' || j.location === location;
     return matchSearch && matchUrgency && matchLocation;
   });
 
@@ -357,7 +376,7 @@ export default function OrgCareersPage() {
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100vh', background: '#F7F8FC' }}>
-      {applying && <ApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
+      {applying && <PublicApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
 
       {/* Full Marketing nav — only for TalentNest HR's own career page */}
       {isMainOrg && !embed && <MarketingNav active="careers" />}
@@ -462,7 +481,7 @@ export default function OrgCareersPage() {
                         <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800, color: '#0A1628' }}>{j.title}</h3>
                         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: '#64748B', fontSize: 13 }}>
                           {j.location && <span>📍 {j.location}</span>}
-                          {j.jobType  && <span>💼 {j.jobType}</span>}
+                          {j.jobType && <span>💼 {j.jobType}</span>}
                           {j.experience && <span>🗓 {j.experience} exp</span>}
                           {(j.salaryMin || j.salaryMax) && (
                             <span style={{ color: '#10B981', fontWeight: 700 }}>
@@ -483,17 +502,14 @@ export default function OrgCareersPage() {
                       </div>
                       {/* CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                        {getCompanyCareerUrl(j.externalUrl) ? (
-                          <a href={getCompanyCareerUrl(j.externalUrl)} target="_blank" rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
-                            Apply Now →
-                          </a>
-                        ) : (
-                          <button onClick={e => { e.stopPropagation(); setApplying(j); }}
-                            style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            Apply Now →
-                          </button>
+                        <button onClick={e => { e.stopPropagation(); setApplying(j); }}
+                          style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
+                        </button>
+                        {getCompanyCareerUrl(j.externalUrl) && (
+                          <span style={{ color: '#94a3b8', fontSize: '0.7rem', textAlign: 'right', maxWidth: 160, lineHeight: 1.4 }}>
+                            We save your profile, then redirect you
+                          </span>
                         )}
                         <span style={{ color: '#94A3B8', fontSize: 11 }}>{isOpen ? '▲ Hide' : '▼ Details'}</span>
                       </div>
