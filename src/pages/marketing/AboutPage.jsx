@@ -95,10 +95,10 @@ export default function AboutPage() {
               </h2>
               <div style={{ color: 'var(--mkt-text)', fontSize: '1.1rem', lineHeight: 1.8 }}>
                 <p style={{ marginBottom:20 }}>
-                  TalentNest HR was built with a clear purpose — to make great hiring accessible to every company without the noise, delays, and disappointment that come with large impersonal agencies. We are a focused team of specialists who care deeply about every single placement.
+                  TalentNest HR was built with a clear purpose — to simplify hiring through technology. We are a platform-first recruitment partner that combines the speed of a job board with the precision of a staffing agency.
                 </p>
                 <p style={{ marginBottom:32, color: 'var(--mkt-text-muted)' }}>
-                  We combine deep domain expertise with cutting-edge selection tools to deliver staffing solutions that are faster, more accurate, and more cost-effective than traditional approaches. Every client gets a named consultant — not a call centre.
+                  By providing businesses with advanced hiring software (ATS/HRMS) and a public-facing job portal, we give HR teams the tools they need to succeed independently, while our staffing specialists stand ready to provide strategic support for critical executive and technical roles.
                 </p>
               </div>
               <Link to="/contact" className="btn btn-primary">Get in Touch →</Link>

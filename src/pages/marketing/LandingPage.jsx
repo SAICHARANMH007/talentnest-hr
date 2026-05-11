@@ -90,24 +90,24 @@ const TRUST_BADGES = [
 
 const VALUE_PILLARS = [
   {
-    icon: '🎯',
-    title: 'Role-fit over resume volume',
-    desc: 'We send curated shortlists with hiring rationale, not inbox-flooding candidate dumps.',
-    points: ['Pre-vetted profiles', 'Skill + culture alignment', 'Decision-ready shortlist'],
+    icon: '🚀',
+    title: 'Public Job Board & Portal',
+    desc: 'List your openings on India’s most specialized job board for tech and executive talent.',
+    points: ['High-intent candidate pool', 'AI-powered matching', 'Direct application tracking'],
     accent: '#0176D3',
   },
   {
     icon: '⚙️',
-    title: 'Recruitment workflow in one system',
+    title: 'Complete Recruitment Stack',
     desc: 'Jobs, pipeline, outreach, interviews, offers, and onboarding stay connected inside the platform.',
-    points: ['Unified dashboard', 'Automated follow-ups', 'Live hiring visibility'],
+    points: ['Unified ATS dashboard', 'Automated hiring workflows', 'Live pipeline visibility'],
     accent: '#00C2CB',
   },
   {
-    icon: '🛡️',
-    title: 'Operational confidence for every hire',
-    desc: 'Our process reduces hiring risk with faster cycles, structured coordination, and replacement support.',
-    points: ['48-hour response cycle', '90-day replacement support', 'Clear recruiter ownership'],
+    icon: '🎯',
+    title: 'Strategic Staffing Support',
+    desc: 'Our expert recruiters provide 48-hour shortlists and a 90-day replacement guarantee for critical roles.',
+    points: ['48-hour response cycle', '90-day replacement support', 'Expert industry sourcing'],
     accent: '#F59E0B',
   },
 ];
@@ -198,17 +198,17 @@ export default function LandingPage() {
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>
               <span className="mkt-glass-dark" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mkt-accent)', boxShadow: '0 0 12px var(--mkt-accent)', display: 'inline-block' }} />
-              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's Elite Staffing Platform</span>
+              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's #1 Job Board &amp; Recruitment Platform</span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-              Hire <span className="mkt-gradient-text">Right.</span><br />
-              Hire Fast.<br />
-              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Hire with Confidence.</span>
+              The Future of <span className="mkt-gradient-text">Hiring.</span><br />
+              Simpler. Faster.<br />
+              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Job Board &amp; Recruitment Stack.</span>
             </h1>
 
             <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, maxWidth: 520, marginBottom: 48, marginTop: 20, fontWeight: 500 }}>
-              Connecting the top 1% of IT, Cybersecurity, and Executive talent with innovative organizations globally — delivered in 48 hours.
+              The leading job board for IT, Cybersecurity, and Executive roles. Manage your entire hiring lifecycle — from job posting to onboarding — in one powerful platform.
             </p>
 
             <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -380,8 +380,8 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Why TalentNest</SectionLabel>
-          <SectionHeading sub="A sharper staffing experience for teams that need speed, clarity, and execution.">
-            More than an agency.<br /><span style={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>A hiring platform built for speed.</span>
+          <SectionHeading sub="A complete recruitment ecosystem for teams that need speed, clarity, and execution.">
+            More than an agency.<br /><span style={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>The Ultimate Job Board &amp; ATS Stack.</span>
           </SectionHeading>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 22, marginTop: 52 }}>

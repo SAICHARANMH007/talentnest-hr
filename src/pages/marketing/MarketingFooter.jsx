@@ -90,7 +90,7 @@ export default function MarketingFooter() {
               </span>
             </div>
             <p style={{ fontSize: '1rem', lineHeight: 1.7, color: 'rgba(255,255,255,0.5)', marginBottom: '32px' }}>
-              Redefining recruitment through technology and precision. Your trusted partner for IT, cybersecurity, and strategic staffing globally.
+              The leading job board and recruitment platform for modern hiring teams. Your trusted partner for talent acquisition, ATS pipeline management, and strategic staffing.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               {SOCIALS.map(s => (
