@@ -38,22 +38,7 @@ function findSection(text, headers) {
   return m ? m[1] : null;
 }
 
-// ── Text Extraction ───────────────────────────────────────────────────────────
 
-async function extractText(fileBuffer, mimeType) {
-  if (mimeType === 'application/pdf') {
-    const data = await pdfParse(fileBuffer);
-    return data.text || '';
-  }
-  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    const result = await mammoth.extractRawText({ buffer: fileBuffer });
-    return result.value || '';
-  }
-  if (mimeType === 'text/plain') {
-    return fileBuffer.toString('utf8');
-  }
-  throw new Error(`Unsupported MIME type: ${mimeType}`);
-}
 
 // ── Field Extractors ──────────────────────────────────────────────────────────
 
@@ -442,13 +427,11 @@ function extractPortfolio(text) {
 // ── Main Entry Point ──────────────────────────────────────────────────────────
 
 /**
- * Parse a resume buffer and extract structured fields.
- * @param {Buffer} fileBuffer
- * @param {string} mimeType - 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' | 'text/plain'
- * @returns {Promise<{ fields: object, confidence: object }>}
+ * Parse a resume text and extract structured fields.
+ * @param {string} text - The raw text of the resume
+ * @returns {{ fields: object, confidence: object }}
  */
-async function parseResume(fileBuffer, mimeType) {
-  const text = await extractText(fileBuffer, mimeType);
+function parseResume(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   const raw = {
