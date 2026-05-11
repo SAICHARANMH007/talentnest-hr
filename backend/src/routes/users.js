@@ -83,10 +83,47 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
   }
 
   // Location filter
-  if (req.query.location) filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  if (req.query.location) {
+    const locs = Array.isArray(req.query.location) ? req.query.location : req.query.location.split(',').filter(Boolean);
+    if (locs.length > 0) filter.location = { $in: locs.map(l => new RegExp(escRe(l), 'i')) };
+  }
   
+  // Skills filter
+  if (req.query.skills) {
+    const skillList = Array.isArray(req.query.skills) ? req.query.skills : req.query.skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (skillList.length > 0) filter.skills = { $in: skillList.map(s => new RegExp(escRe(s), 'i')) };
+  }
+
   // Availability filter
   if (req.query.availability) filter.availability = req.query.availability;
+
+  // Client filter
+  if (req.query.client) filter.client = req.query.client;
+
+  // Talent Associate (TA) filter
+  if (req.query.ta) filter.ta = req.query.ta;
+
+  // Job Role filter
+  if (req.query.jobRole) {
+    const roles = Array.isArray(req.query.jobRole) ? req.query.jobRole : req.query.jobRole.split(',').filter(Boolean);
+    if (roles.length > 0) filter.jobRole = { $in: roles.map(r => new RegExp(escRe(r), 'i')) };
+  }
+
+  // Certifications filter
+  if (req.query.certifications) {
+    if (req.query.certifications === 'Yes') filter.certifications = { $exists: true, $not: { $size: 0 } };
+    else if (req.query.certifications === 'No') filter.$or = [{ certifications: { $exists: false } }, { certifications: { $size: 0 } }];
+  }
+
+  // Company filter
+  if (req.query.currentCompany) filter.currentCompany = { $regex: escRe(req.query.currentCompany), $options: 'i' };
+
+  // Experience range
+  if (req.query.expMin || req.query.expMax) {
+    filter.experience = {};
+    if (req.query.expMin) filter.experience.$gte = Number(req.query.expMin);
+    if (req.query.expMax) filter.experience.$lte = Number(req.query.expMax);
+  }
 
   const [users, total] = await Promise.all([
     User.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),

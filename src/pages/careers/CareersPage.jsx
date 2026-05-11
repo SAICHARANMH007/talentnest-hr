@@ -36,7 +36,8 @@ class CareersErrorBoundary extends Component {
 function JobShareBar({ job }) {
   const [copied, setCopied] = React.useState(false);
   const jid     = job._id || job.id;
-  const jobUrl  = `${window.location.origin}/careers?job=${jid}`;
+  const slug    = job.seoSlug || job.careerPageSlug || jid;
+  const jobUrl  = `${window.location.origin}/careers/job/${slug}`;
   const displayCompany = (!!sessionStorage.getItem('tn_token')) ? (job.company || 'TalentNest HR') : 'TalentNest HR';
   const title   = `${job.title} @ ${displayCompany}`;
   const loc     = job.location ? ` · ${job.location}` : '';
@@ -206,8 +207,13 @@ export default function CareersPage() {
     api.getPublicJobs('?' + params.toString())
       .then(res => {
         if (!active) return;
-        const arr = Array.isArray(res) ? res : (res?.data || []);
+        let arr = Array.isArray(res) ? res : (res?.data || []);
         
+        // ── Dynamic Shuffling — makes the board look "live" and fresh on every refresh ──
+        if (page === 1 && !debouncedSearch && urgencyFilter === 'All' && locationFilter === 'All') {
+          arr = [...arr].sort(() => Math.random() - 0.5);
+        }
+
         setJobs(prev => page === 1 ? arr : [...prev, ...arr]);
         setTotalJobs(res?.pagination?.total || (page === 1 ? arr.length : totalJobs));
         if (res?.stats) setStats(res.stats);
@@ -283,7 +289,8 @@ export default function CareersPage() {
   // ── Share a job (Web Share API on mobile, fallback to platform links) ────────
   const shareJob = async (j) => {
     const jid  = j.id || j._id;
-    const jobUrl = `${window.location.origin}/careers?job=${jid}`;
+    const slug = j.seoSlug || j.careerPageSlug || jid;
+    const jobUrl = `${window.location.origin}/careers/job/${slug}`;
     const title = `${j.title}${j.company ? ` @ ${j.company}` : ''}`;
     const text  = `🚀 Job Opening: ${title}${j.location ? ` · ${j.location}` : ''}`;
 
@@ -332,15 +339,15 @@ export default function CareersPage() {
           <div className="tn-responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
             {/* LEFT — text */}
             <div className="tn-mobile-center" style={{ textAlign: 'left' }}>
-              <span className="tn-label">Open Positions</span>
+              <span className="tn-label">TalentNest HR — The Global Job Board</span>
               <h1 className="tn-mobile-center" style={{ color: '#ffffff', fontSize: 'clamp(2rem,5vw,3.2rem)', fontWeight: 900, margin: '16px 0 20px', lineHeight: 1.1 }}>
                 Find Your{' '}
                 <span style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  Dream Job
+                  Next Career
                 </span>
               </h1>
               <p className="tn-mobile-center" style={{ color: 'rgba(255,255,255,0.65)', fontSize: '1.05rem', maxWidth: 480, margin: '0 0 36px', lineHeight: 1.7 }}>
-                Browse hand-picked opportunities across IT, cybersecurity, finance and more. Apply in minutes — we respond within 48 hours.
+                Discover hand-picked opportunities across IT, cybersecurity, finance and more. TalentNest connects top candidates with world-class companies.
               </p>
 
               {/* Large search bar */}

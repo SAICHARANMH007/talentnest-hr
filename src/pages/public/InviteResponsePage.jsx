@@ -229,7 +229,7 @@ export default function InviteResponsePage() {
             {job && (
               <div style={{ marginBottom: 16 }}>
                 <Link
-                  to={`/careers?job=${job._id || job.id}`}
+                  to={`/careers/job/${job.seoSlug || job.careerPageSlug || job._id || job.id}`}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0176D3', fontSize: 13, fontWeight: 600, textDecoration: 'none', padding: '8px 20px', borderRadius: 50, border: '1.5px solid #bfdbfe', background: '#eff6ff' }}>
                   👁 View Full Job Description →
                 </Link>

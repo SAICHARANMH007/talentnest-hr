@@ -471,12 +471,13 @@ export default function RecruiterPipeline({ user }) {
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
   const [reviewModal, setReviewModal] = useState(null); // { assessmentId, submissionId }
   const [stageFilter, setSF] = useState('all');
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [intApp, setIntApp] = useState(null);
   const [rejApp, setRejApp] = useState(null);
   const [offerApp, setOfferApp] = useState(null);
 
   useEffect(() => {
-    api.getJobs({ recruiterId: user.id, limit: 10000000 }).then(j => {
+    api.getJobs({ recruiterId: user.id, limit: 100 }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
       const map = new Map();
       raw.forEach(item => {
@@ -488,21 +489,35 @@ export default function RecruiterPipeline({ user }) {
     api.getUser(user.id).then(r => setRecruiter(r?.data || r)).catch(() => {});
   }, [user.id]);
 
-  const loadApps = async (jid) => {
-    setSelJob(jid);
-    setSelectedIds([]);
-    setSF('all'); // always reset stage filter when switching jobs
+  const loadApps = async (jid, pg = 1) => {
+    if (jid !== selJob) {
+      setSelJob(jid);
+      setSelectedIds([]);
+      setSF('all');
+      setPagination(p => ({ ...p, page: 1 }));
+    }
     setAssessmentData(null);
     if (!jid) { setApps([]); return; }
     setLoad(true);
-    api.getApplications({ jobId: jid, limit: 10000000 }).then(a => {
-      const raw = Array.isArray(a) ? a : (a?.data || []);
+    
+    const params = { 
+      jobId: jid, 
+      page: pg, 
+      limit: pagination.limit,
+      stage: stageFilter === 'all' ? undefined : stageFilter,
+      // Status filter mapping:
+      status: statusFilter === 'parked' ? 'parked' : (statusFilter === 'all' ? undefined : statusFilter)
+    };
+
+    api.getApplications(params).then(res => {
+      const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       const map = new Map();
       raw.forEach(item => {
         const id = String(item.id || item._id);
         if (id) map.set(id, { ...item, id });
       });
       setApps(Array.from(map.values()));
+      if (res?.pagination) setPagination(res.pagination);
     }).catch(() => setApps([])).finally(() => setLoad(false));
     // Load assessment for this job
     api.getAssessmentForJob(jid).then(async (a) => {
@@ -514,7 +529,11 @@ export default function RecruiterPipeline({ user }) {
     }).catch(() => setAssessmentData(null));
   };
 
-  const refresh = () => loadApps(selJob);
+  const refresh = () => loadApps(selJob, pagination.page);
+
+  useEffect(() => {
+    if (selJob) loadApps(selJob, pagination.page);
+  }, [selJob, pagination.page, stageFilter, statusFilter]);
 
   const triggerHiredModal = (app, appId, newStage) => {
     if (newStage === 'selected') {
@@ -776,6 +795,29 @@ export default function RecruiterPipeline({ user }) {
                   />
                 ))}
               </div>
+
+              {/* Pagination Controls */}
+              {pagination.pages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24, padding: '20px 0', borderTop: '1px solid #e2e8f0' }}>
+                  <button 
+                    disabled={pagination.page <= 1} 
+                    onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                    style={{ ...btnG, padding: '8px 16px', opacity: pagination.page <= 1 ? 0.5 : 1 }}
+                  >
+                    ← Previous
+                  </button>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#475569' }}>
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+                  <button 
+                    disabled={pagination.page >= pagination.pages} 
+                    onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                    style={{ ...btnG, padding: '8px 16px', opacity: pagination.page >= pagination.pages ? 0.5 : 1 }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </>
           )}
         </>

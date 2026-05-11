@@ -18,8 +18,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { btnP, btnG } from '../../constants/styles.js';
 import Modal from '../../components/ui/Modal.jsx';
-
-const ApplyModal = lazy(() => import('../careers/CareersPage.jsx').then(m => ({ default: m.ApplyModal || (() => null) })));
+import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 
 const SITEURL = 'https://www.talentnesthr.com';
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
@@ -311,51 +310,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Apply modal */}
-      {applying && (
-        <Modal
-          title="Apply for Job"
-          onClose={() => setApplying(false)}
-          footer={
-            <Link 
-              to={`/careers?job=${job.id || job._id}`}
-              style={{ 
-                ...btnP,
-                width: '100%',
-                justifyContent: 'center',
-                textDecoration: 'none',
-                minHeight: 48
-              }}
-            >
-              🚀 Continue to Full Application →
-            </Link>
-          }
-        >
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
-            <div style={{ background: 'rgba(1,118,211,0.06)', padding: '20px', borderRadius: 20, marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {(isLoggedIn ? (job.company || 'T') : (explicitOrg || 'T')).charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h1 style={{ fontSize: 'clamp(20px, 4vw, 32px)', fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>{job.title}</h1>
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 500 }}>
-                    <span>🏢 {isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')}</span>
-                    <span>📍 {job.location || 'India'}</span>
-                    <span>⏱ {job.jobType || 'Full-time'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <p style={{ color: '#374151', fontSize: 15, lineHeight: 1.6, marginBottom: 12 }}>
-              To ensure the best matching for this role, please complete our structured application form.
-            </p>
-            <p style={{ color: '#64748B', fontSize: 13 }}>
-              You'll be able to pre-fill your details if you've applied before.
-            </p>
-          </div>
-        </Modal>
-      )}
+      {applying && <PublicApplyModal job={job} onClose={() => setApplying(false)} />}
 
       <MarketingFooter />
     </div>

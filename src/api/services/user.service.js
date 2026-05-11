@@ -32,31 +32,39 @@ export const userService = {
   async updateMyLoginLocation(geo) { return req('PATCH', '/users/me/location', { lat: geo.lat, lng: geo.lng, city: geo.city || '', country: geo.country || '' }); },
   async getUser(id)             { return req('GET', `/users/${id}`); },
   async updateUser(id, d)       { return req('PATCH', `/users/${id}`, d); },
-  async getUsers(params)          {
+  async getUsers(params) {
     const toArr = r => Array.isArray(r) ? r : (Array.isArray(r?.candidates) ? r.candidates : (Array.isArray(r?.data) ? r.data : []));
     if (typeof params === 'string') {
       const url = params === 'candidate'
-        ? '/users/candidates?limit=10000000'
-        : `/users?role=${params}&limit=10000000`;
+        ? '/users/candidates?limit=100'
+        : `/users?role=${params}&limit=100`;
       return toArr(await req('GET', url));
     }
-    const { role, orgId, limit, page, platform, fullResponse } = params || {};
+    
+    const { fullResponse, ...rest } = params || {};
     const q = new URLSearchParams();
-    if (role) q.set('role', role);
-    if (orgId) q.set('orgId', orgId);
-    if (platform) q.set('platform', 'true');
-    if (page) q.set('page', String(page));
+    Object.entries(rest).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)) {
+        q.set(k, Array.isArray(v) ? v.join(',') : String(v));
+      }
+    });
+
+    // Default limit to 50 if not provided
+    if (!q.has('limit')) q.set('limit', '50');
     
-    // Use provided limit or default based on role, but don't hardcap if limit is explicitly passed
-    q.set('limit', String(limit || 10000000));
-    
-    const res = await req('GET', (role === 'candidate' ? '/users/candidates?' : '/users?') + q.toString());
+    const url = (rest.role === 'candidate' ? '/users/candidates?' : '/users?') + q.toString();
+    const res = await req('GET', url);
     if (fullResponse) return res;
     return toArr(res);
   },
   async getUsersList(params = {}) {
     const q = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, v); });
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)) {
+        q.set(k, Array.isArray(v) ? v.join(',') : String(v));
+      }
+    });
+    if (!q.has('limit')) q.set('limit', '50');
     return req('GET', `/users?${q.toString()}`);
   },
   async getUserCount(role)      { return req('GET', `/users/count${role ? `?role=${role}` : ''}`); },

@@ -17,7 +17,8 @@ function getCareersBaseUrl() {
 
 function buildPost(job, platform) {
   const baseUrl = getCareersBaseUrl();
-  const url   = `${baseUrl}?job=${job.id}`;
+  const slug    = job.seoSlug || job.careerPageSlug || job.id || job._id;
+  const url     = `${baseUrl}/job/${slug}`;
   const title = job.title || 'Open Role';
   const co    = job.company  ? `@ ${job.company}` : '';
   const loc   = job.location ? `📍 ${job.location}` : '';
@@ -40,7 +41,8 @@ function buildPost(job, platform) {
 }
 
 function buildJobEmailHtml(job, candidateName, senderName, interestedUrl) {
-  const url    = `${getCareersBaseUrl()}?job=${job.id}`;
+  const slug   = job.seoSlug || job.careerPageSlug || job.id || job._id;
+  const url    = `${getCareersBaseUrl()}/job/${slug}`;
   const skills = Array.isArray(job.skills) ? job.skills : (job.skills || '').split(',').map(s => s.trim()).filter(Boolean);
   const greeting = candidateName ? `<p style="color:#374151;font-size:15px;margin:0 0 20px">Hi <strong>${candidateName}</strong>,</p>` : '';
   const sentByLine = senderName ? `<p style="color:#6b7280;font-size:12px;margin:4px 0 0">Sent by <strong>${senderName}</strong> via TalentNest HR</p>` : '';
@@ -110,14 +112,14 @@ function buildJobEmailHtml(job, candidateName, senderName, interestedUrl) {
 
 const PLATFORMS = [
   { id: 'whatsapp',  label: 'WhatsApp',  color: '#25D366', icon: '💬', help: 'Share this job instantly via WhatsApp — works on mobile and desktop web.',
-    shareUrl: (job, text) => `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + `${getCareersBaseUrl()}?job=${job.id}`)}` },
+    shareUrl: (job, text) => `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + `${getCareersBaseUrl()}/job/${job.seoSlug || job.careerPageSlug || job.id || job._id}`)}` },
   { id: 'email',     label: 'Email',     color: '#0176D3', icon: '📧', help: 'Send this job directly to email addresses using our branded template.' },
   { id: 'linkedin',  label: 'LinkedIn',  color: '#0A66C2', icon: '💼', help: 'Best for professional reach — posts to your company page or profile.',
-    shareUrl: (job) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${getCareersBaseUrl()}?job=${job.id}`)}` },
+    shareUrl: (job) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${getCareersBaseUrl()}/job/${job.seoSlug || job.careerPageSlug || job.id || job._id}`)}` },
   { id: 'twitter',   label: 'X / Twitter', color: '#000000', icon: '𝕏', help: 'Fast reach — tweet with pre-filled text and link.',
     shareUrl: (_job, text) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 280))}` },
   { id: 'facebook',  label: 'Facebook',  color: '#1877F2', icon: '📘', help: 'Share to your company page or personal feed.',
-    shareUrl: (job) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${getCareersBaseUrl()}?job=${job.id}`)}` },
+    shareUrl: (job) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${getCareersBaseUrl()}/job/${job.seoSlug || job.careerPageSlug || job.id || job._id}`)}` },
   { id: 'instagram', label: 'Instagram', color: '#E1306C', icon: '📸', help: 'Copy caption → paste in Instagram app. Add the job link to your bio.', shareUrl: null },
 ];
 
@@ -137,7 +139,8 @@ export default function ShareJobModal({ job, onClose, user }) {
   const platform = PLATFORMS.find(p => p.id === activePlatform);
   const postText = activePlatform !== 'email' ? buildPost(job, activePlatform) : '';
   const shareUrl = platform?.shareUrl?.(job, postText);
-  const jobUrl   = `${getCareersBaseUrl()}?job=${job.id}`;
+  const slug     = job.seoSlug || job.careerPageSlug || job.id || job._id;
+  const jobUrl   = `${getCareersBaseUrl()}/job/${slug}`;
   const senderName = user?.name || user?.email || '';
 
   const copy = async (text, setCopiedFn) => {

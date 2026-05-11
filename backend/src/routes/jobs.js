@@ -129,7 +129,18 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
     filter.assignedRecruiters = req.query.recruiterId;
   }
   if (req.query.status) filter.status = req.query.status;
-  if (req.query.search) filter.title  = { $regex: escRe(req.query.search), $options: 'i' };
+  if (req.query.urgency && req.query.urgency !== 'All') filter.urgency = req.query.urgency;
+  if (req.query.location && req.query.location !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  
+  if (req.query.search) {
+    const sr = { $regex: escRe(req.query.search), $options: 'i' };
+    filter.$or = [{ title: sr }, { company: sr }, { skills: sr }];
+  }
+  
+  if (req.query.skills) {
+    const skillList = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (skillList.length > 0) filter.skills = { $in: skillList.map(s => new RegExp(escRe(s), 'i')) };
+  }
   const [jobs, total] = await Promise.all([
     Job.find(filter).select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Job.countDocuments(filter),

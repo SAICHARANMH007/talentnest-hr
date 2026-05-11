@@ -51,7 +51,7 @@ export default function AdminJobs({ user }) {
   const [totalJobs, setTotalJobs] = useState(0);
   const [statusCounts, setStatusCounts] = useState({ open: 0, closed: 0, draft: 0, total: 0 });
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10000000;
+  const PAGE_SIZE = 50;
   const [editingJob, setEditingJob] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [listingOrg, setListingOrg] = useState(null);
@@ -65,9 +65,12 @@ export default function AdminJobs({ user }) {
       limit: PAGE_SIZE,
       page: pg,
       platform: user?.role === 'super_admin',
+      search,
+      status: statusFilter === 'All' ? undefined : (statusFilter === 'Open' ? 'active' : statusFilter.toLowerCase()),
+      urgency: urgencyFilter === 'All' ? undefined : urgencyFilter,
+      location: locFilter === 'All' ? undefined : locFilter,
+      recruiterId: recruiterFilter === 'All' ? undefined : recruiterFilter,
     };
-    if (statusFilter !== 'All') params.status = statusFilter === 'Open' ? 'active' : statusFilter.toLowerCase();
-    if (search) params.search = search;
 
     api.getJobs(params)
       .then(r => {
@@ -98,12 +101,22 @@ export default function AdminJobs({ user }) {
     }).catch(() => {});
   };
 
+  // Handle filter changes
   useEffect(() => {
     setPage(1);
     load(1);
+  }, [statusFilter, search, urgencyFilter, locFilter, recruiterFilter]);
+
+  // Handle pagination changes
+  useEffect(() => {
+    load(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page]);
+
+  useEffect(() => {
     api.getUsers('recruiter').then(u => setRecruiterUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setRecruiterUsers([]));
     api.getUsers('candidate').then(u => setCandidateUsers(Array.isArray(u) ? u : (Array.isArray(u?.data) ? u.data : []))).catch(() => setCandidateUsers([]));
-  }, [statusFilter, search]);
+  }, []);
 
   const saveJob = async (form) => {
     if (!form.title || !form.company) { setToast('❌ Title and company are required'); return; }
@@ -239,24 +252,8 @@ export default function AdminJobs({ user }) {
 
   const locations   = [...new Set(jobs.map(j => j.location).filter(Boolean))];
   const recruiters  = [...new Set(jobs.map(j => j.recruiterName).filter(Boolean))];
-  const filtered = jobs.filter(j => {
-    if (search) {
-      const q = search.toLowerCase();
-      const skillsStr = Array.isArray(j.skills) ? j.skills.join(', ') : (j.skills || '');
-      if (
-        !j.title?.toLowerCase().includes(q) &&
-        !j.company?.toLowerCase().includes(q) &&
-        !skillsStr.toLowerCase().includes(q)
-      ) return false;
-    }
-    // Handle both backend 'active' and frontend 'Open' labels
-    const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');
-    if (statusFilter !== 'All' && mappedStatus !== statusFilter) return false;
-    if (urgencyFilter !== 'All' && j.urgency !== urgencyFilter) return false;
-    if (locFilter !== 'All' && j.location !== locFilter) return false;
-    if (recruiterFilter !== 'All' && j.recruiterName !== recruiterFilter) return false;
-    return true;
-  });
+  // Server-side filtering: 'filtered' just returns the fetched jobs
+  const filtered = jobs;
   const hasFilters = !!(search || statusFilter!=='All' || urgencyFilter!=='All' || locFilter!=='All' || recruiterFilter!=='All');
 
   return (

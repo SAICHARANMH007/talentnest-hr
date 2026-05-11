@@ -448,7 +448,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [orgs, setOrgs]               = useState([]);
   const [saving, setSaving]           = useState(false);
   const [showMerge, setShowMerge]     = useState(false);
-  const [pagination, setPagination]   = useState({ page: 1, limit: 10000000, total: 0, pages: 1 });
+  const [pagination, setPagination]   = useState({ page: 1, limit: 50, total: 0, pages: 1 });
 
   // ── basic filters ──
   const [search, setSearch]       = useState('');
@@ -487,32 +487,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const hasFilters      = hasBasicFilters || hasAdvFilters;
 
   // ── filter logic ──
-  const filtered = users.filter(u => {
-    if (search) {
-      const q = search.toLowerCase();
-      if (!u.name?.toLowerCase().includes(q) &&
-          !u.email?.toLowerCase().includes(q) &&
-          !u.title?.toLowerCase().includes(q) &&
-          !u.currentCompany?.toLowerCase().includes(q) &&
-          !u.jobRole?.toLowerCase().includes(q)) return false;
-    }
-    if (skillsSel.length) { const sk = (Array.isArray(u.skills) ? u.skills.join(',') : (u.skills || '')).toLowerCase(); if (!skillsSel.some(s => sk.includes(s.toLowerCase()))) return false; }
-    if (locsSel.length && !locsSel.includes(u.location)) return false;
-    if (availFilter && u.availability !== availFilter) return false;
-    if (clientFilter && u.client !== clientFilter) return false;
-    if (taFilter && u.ta !== taFilter) return false;
-    if (jobRoleFilter.length && !jobRoleFilter.some(r => (u.jobRole || '').toLowerCase().includes(r.toLowerCase()))) return false;
-    if (certFilter) {
-      const certArr = Array.isArray(u.certifications) ? u.certifications : (() => { try { return JSON.parse(u.certifications || '[]'); } catch { return []; } })();
-      const hasCert = certArr.length > 0;
-      if (certFilter === 'Yes' && !hasCert) return false;
-      if (certFilter === 'No' && hasCert) return false;
-    }
-    if (companyFilter && !(u.currentCompany || '').toLowerCase().includes(companyFilter.toLowerCase())) return false;
-    if (expMin !== '' && (Number(u.experience) || 0) < Number(expMin)) return false;
-    if (expMax !== '' && (Number(u.experience) || 0) > Number(expMax)) return false;
-    return true;
-  });
+  // With server-side filtering, 'filtered' just returns the users array fetched from backend
+  const filtered = users;
 
   const clearAll = () => {
     setSearch(''); setSkillsSel([]); setLocsSel([]); setAvailFilter('');
@@ -524,45 +500,55 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const load = async (p = pagination.page, l = pagination.limit) => {
     setLoad(true);
     try {
-      const res = await api.getUsers({ 
+      const params = { 
         role: filterRole, 
         page: p, 
         limit: l, 
-        fullResponse: true 
-      });
+        fullResponse: true,
+        search,
+        skills: skillsSel,
+        location: locsSel,
+        availability: availFilter,
+        client: clientFilter,
+        ta: taFilter,
+        jobRole: jobRoleFilter,
+        certifications: certFilter,
+        currentCompany: companyFilter,
+        expMin,
+        expMax,
+        recruiterId: recruiterView ? recruiterId : undefined,
+      };
+      const res = await api.getUsers(params);
       
       const allArr = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.candidates) ? res.candidates : (Array.isArray(res) ? res : []));
       const pg = res?.pagination || { page: 1, limit: l, total: allArr.length, pages: 1 };
       
-      // Standardize: ensure each user has a string 'id' from either .id or ._id
       const normalized = allArr.map(u => ({
         ...u,
         id: u.id || u._id?.toString() || String(u._id || '')
       }));
-      const filtered2 = recruiterView && recruiterId ? normalized.filter(u => String(u.addedBy) === String(recruiterId)) : normalized;
-      setUsers(filtered2);
+      setUsers(normalized);
       setPagination(pg);
     } catch (e) { setToast(`❌ Failed to load users: ${e.message}`); setUsers([]); }
     setLoad(false);
   };
-  const prevFilters = useRef({ filterRole, recruiterId });
-
+  // Handle filter changes — reset to page 1
   useEffect(() => {
-    // If the role or recruiter changed, reset to page 1
-    if (prevFilters.current.filterRole !== filterRole || prevFilters.current.recruiterId !== recruiterId) {
-      prevFilters.current = { filterRole, recruiterId };
-      setPagination(p => ({ ...p, page: 1 }));
-      setExpandedRec(null);
-      setExpandedCand(null);
-      setSelectedIds(new Set());
-      setActiveTab('users');
-      // The page change will trigger the effect again, so we can skip loading now if page is not 1
-      if (pagination.page !== 1) return;
-    }
-    
+    setPagination(p => ({ ...p, page: 1 }));
+    setExpandedRec(null);
+    setExpandedCand(null);
+    setSelectedIds(new Set());
+    setActiveTab('users');
+  }, [
+    filterRole, recruiterId, search, skillsSel, locsSel, availFilter, 
+    clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax
+  ]);
+
+  // Handle data loading (triggered by pagination or filters)
+  useEffect(() => {
     load(pagination.page, pagination.limit);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [filterRole, recruiterId, pagination.page, pagination.limit]);
+  }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax]);
 
   // Auto-open detail drawer if coming from notification deep-link
   useEffect(() => {
