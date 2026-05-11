@@ -151,6 +151,7 @@ app.use('/api/recruiter', require('./src/routes/recruiterAdmin'));
 
 // ── Phase 4: Core hiring flow
 app.use('/api/candidates', require('./src/routes/candidates'));
+app.use('/api/imported-candidates', require('./src/routes/importedCandidates'));
 app.use('/api/interest', require('./src/routes/interest'));
 app.use('/api/track', require('./src/routes/track'));
 

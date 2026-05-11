@@ -1,962 +1,334 @@
+'use strict';
 import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api/api.js';
 import Field from '../../components/ui/Field.jsx';
-import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
-import ChatPanel from '../../components/shared/ChatPanel.jsx';
 
-const card  = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 };
-const btnP  = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
-const btnG  = { background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 10, color: '#181818', fontWeight: 600, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
+const card = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 };
+const btnP = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '9px 20px', cursor: 'pointer', fontSize: 13, transition: 'opacity 0.2s' };
+const btnG = { background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 10, color: '#181818', fontWeight: 600, padding: '9px 20px', cursor: 'pointer', fontSize: 13 };
 
-// ── Exact template columns + flexible aliases ─────────────────────────────────
-const TEMPLATE_COLS = [
-  'Source', 'TA', 'Date', 'Candidate Name', 'Mobile',
-  'Email ID', 'Overall Experience', 'Relevant Experience', 'Current Location',
-  'Preferred Work location', 'Current company', 'Client', 'Role',
-  'Skill', 'Certifications', 'Current CTC', 'Expected CTC',
-  'Client Spoc', 'Status', 'Additional Details', 'LinkedIn ID',
-];
-
-// Maps any column header variation → our field key
-const COL_ALIASES = {
-  source:             ['source', 'source name', 'lead source', 'referral source', 'sourced from'],
-  ta:                 ['ta', 'talent acquisition', 'talent acquisition person', 'ta name'],
-  dateAdded:          ['date', 'date added', 'submission date', 'entry date', 'date of entry'],
-  name:               ['candidate name', 'name', 'full name', 'candidate', 'fullname', 'candidate fullname'],
-  phone:              ['mobile', 'contact number', 'phone', 'contact', 'mobile number', 'phone number'],
-  email:              ['email id', 'email', 'email address', 'e-mail', 'mail', 'email(optional)'],
-  experience:         ['overall experience', 'experience', 'total experience', 'exp', 'years', 'yoe'],
-  relevantExperience: ['relevant experience', 'relevant exp', 'rel exp'],
-  location:           ['current location', 'location', 'city', 'current city'],
-  preferredLocation:  ['preferred work location', 'preferred location', 'pref location', 'work location'],
-  currentCompany:     ['current company', 'company', 'employer', 'current employer'],
-  orgName:            ['placement organisation', 'placement org', 'hiring company', 'org name'],
-  organisation:       ['organisation', 'organization', 'placement organisation'],
-  client:             ['client', 'client name', 'client company'],
-  jobRole:            ['role', 'job role', 'position', 'opening', 'job title'],
-  skills:             ['skill', 'skills', 'tech skills', 'technical skills', 'key skills'],
-  certifications:     ['certifications', 'certification', 'certs', 'certificates'],
-  currentCTC:         ['current ctc', 'ctc', 'current salary', 'salary'],
-  expectedCTC:        ['expected ctc', 'expected salary', 'exp ctc', 'expected'],
-  clientSpoc:         ['client spoc', 'spoc', 'client poc', 'contact person', 'poc'],
-  candidateStatus:    ['status', 'candidate status', 'pipeline status', 'hiring status', 'current status'],
-  additionalDetails:  ['additional details', 'additional', 'details', 'notes', 'remarks', 'comments', 'additional info'],
-  linkedin:           ['linkedin id', 'linkedin', 'linkedin url', 'linkedin profile', 'linkedin link'],
-};
-
-// Parse a single CSV line respecting quoted fields
-function parseCSVLine(line) {
-  const cols = []; let cur = ''; let inQ = false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; continue; }
-    cur += ch;
-  }
-  cols.push(cur.trim());
-  return cols;
-}
-
-// Large-file threshold — above this we stream instead of loading all at once
-const STREAM_THRESHOLD = 50 * 1024 * 1024; // 50 MB
-
-function parseFile(fileData, isCSV) {
-  if (isCSV) {
-    const lines = fileData.trim().split(/\r?\n/);
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    const rows = lines.slice(1).map(l => parseCSVLine(l));
-    return { headers, rows };
-  } else {
-    const wb = XLSX.read(fileData, {
-      type: 'array',
-      cellFormula: false,
-      cellHTML:    false,
-      cellNF:      false,
-      cellStyles:  false,
-      cellDates:   false,
-      sheetStubs:  false,
-    });
-    const ws  = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    return { headers: raw[0]?.map(h => String(h || '')) || [], rows: raw.slice(1) };
-  }
-}
-
-// Extract a clean email address from a cell that may contain hyperlinks or extra text
-// e.g. "john@example.com<https://...>" or "mailto:john@example.com" or "john@example.com (link)"
-function extractEmail(raw) {
-  const s = String(raw || '').trim();
-  // mailto: prefix
-  const mailto = s.match(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
-  if (mailto) return mailto[1].toLowerCase();
-  // Any email pattern within the string
-  const match = s.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-  return match ? match[0].toLowerCase() : s.toLowerCase();
-}
-
-function mapRow(row, headers) {
-  const result = {};
-  const hLower = headers.map(h => String(h || '').toLowerCase().trim());
-  for (const [field, aliases] of Object.entries(COL_ALIASES)) {
-    for (const alias of aliases) {
-      const idx = hLower.findIndex(h => h === alias);
-      if (idx !== -1) {
-        const raw = String(row[idx] ?? '').trim();
-        // Clean email field — extract just the address from hyperlink cells
-        result[field] = field === 'email' ? extractEmail(raw) : raw;
-        break;
-      }
-    }
-    // If column not in file at all → don't include key → backend won't overwrite existing data
-  }
-  return result;
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return 'Never';
-  const d = new Date(dateStr); if (isNaN(d)) return 'Never';
-  const s = Math.floor((Date.now() - d) / 1000);
-  if (s < 60) return 'just now'; if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
-  if (s < 604800) return `${Math.floor(s/86400)}d ago`;
-  return d.toLocaleDateString();
-}
-
-// ── Assign Recruiter Dropdown ─────────────────────────────────────────────────
-function AssignDropdown({ candidate, recruiters, onAssigned }) {
-  const [val, setVal]   = useState(candidate.assignedRecruiterId || '');
-  const [busy, setBusy] = useState(false);
-
-  const assign = async (recruiterId) => {
-    setBusy(true);
-    try {
-      const updated = await api.assignCandidate(candidate.id, recruiterId || null);
-      setVal(recruiterId);
-      onAssigned(updated);
-    } catch {}
-    setBusy(false);
-  };
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-      <span style={{ color: '#9E9D9B', fontSize: 11 }}>Assigned TA:</span>
-      <select
-        value={val}
-        onChange={e => assign(e.target.value)}
-        disabled={busy}
-        style={{ background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 6, color: val ? '#0176D3' : '#9E9D9B', fontSize: 11, padding: '3px 8px', cursor: 'pointer', outline: 'none' }}
-      >
-        <option value="">— Unassigned —</option>
-        {recruiters.map(r => (
-          <option key={r.id} value={r.id}>{r.name}{r.title ? ` (${r.title})` : ''}</option>
-        ))}
-      </select>
-      {busy && <span style={{ fontSize: 11, color: '#0176D3' }}>…</span>}
-      {val && !busy && <span style={{ fontSize: 11, color: '#34d399' }}>✓</span>}
-    </div>
-  );
-}
-
-// ── Contact Logger ────────────────────────────────────────────────────────────
-function ContactLogger({ candidate, onUpdate }) {
-  const [note, setNote]   = useState('');
-  const [busy, setBusy]   = useState(false);
-  const [open, setOpen]   = useState(false);
-
-  const markReached = async () => {
-    setBusy(true);
-    try { const u = await api.markReachOut(candidate.id, note); setNote(''); setOpen(false); onUpdate(u); } catch {}
-    setBusy(false);
-  };
-
-  return (
-    <div style={{ marginTop: 6 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        {candidate.lastReachedOutAt
-          ? <span style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>📬 Last contacted: {timeAgo(candidate.lastReachedOutAt)}</span>
-          : <span style={{ fontSize: 11, color: '#C9C7C5', background: '#FFFFFF', border: '1px solid #FAFAF9', borderRadius: 20, padding: '2px 10px' }}>Not yet contacted</span>}
-        {candidate.reachOutNote && <span style={{ fontSize: 11, color: '#706E6B', fontStyle: 'italic' }}>"{candidate.reachOutNote}"</span>}
-        <button onClick={() => setOpen(!open)} style={{ fontSize: 11, background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 8, color: '#0176D3', padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}>+ Log Contact</button>
-      </div>
-      {open && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-          <Field value={note} onChange={v => setNote(v)} placeholder="Note (LinkedIn, voicemail, WhatsApp…)" style={{ flex: 1 }} inputStyle={{ fontSize: 12, padding: '6px 10px' }} />
-          <button onClick={markReached} disabled={busy} style={{ ...btnP, padding: '6px 14px', fontSize: 12, opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap' }}>{busy ? '…' : '✓ Mark'}</button>
-          <button onClick={() => setOpen(false)} style={{ ...btnG, padding: '6px 12px', fontSize: 12 }}>✕</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SuperAdminCandidateImport({ user }) {
-  const [tab, setTab]           = useState('import');
-  const [file, setFile]         = useState(null);
-  // ── rows/headers stored in refs — NOT React state — so 35k rows never trigger re-render
-  const rowsRef                 = useRef([]);   // all raw rows
-  const headersRef              = useRef([]);   // file headers
-  const [rowCount, setRowCount] = useState(0);  // just the count for display
-  const [preview, setPreview]   = useState([]);
-  const [previewRaws, setPreviewRaws] = useState([]); // raw row arrays for table display
-  const [detectedHeaders, setDetectedHeaders] = useState([]); // for preview table display
-  const [parsing, setParsing]         = useState(false);
-  const [importing, setImporting]     = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [result, setResult]           = useState(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [filePassword, setFilePassword]   = useState('');
-  const [streamMode, setStreamMode]       = useState(false);
-  const [liveStats, setLiveStats]         = useState(null);  // live import progress stats
-  const pendingFileRef                = useRef(null);
-  const workerRef                     = useRef(null);
-  const [toast, setToast]       = useState('');
-  const [candidates, setCandidates] = useState([]);
-  const [candidateCount, setCandidateCount] = useState(null);
-  const [recruiters, setRecruiters] = useState([]);
-  const [loading, setLoading]   = useState(false);
-  const [search, setSearch]     = useState('');
-  const [filterClient, setFilterClient]   = useState('');
-  const [filterRole, setFilterRole]       = useState('');
-  const [filterAssigned, setFilterAssigned] = useState('all');
-  const [selected, setSelected] = useState(new Set());
-  const [bulkRecruiter, setBulkRecruiter] = useState('');
-  const [bulkAssigning, setBulkAssigning] = useState(false);
-  const [bulkToast, setBulkToast] = useState('');
-  const [drawerCandidate, setDrawerCandidate] = useState(null);
-  const [msgCandidate, setMsgCandidate] = useState(null);
+  const [tab, setTab] = useState('import'); // import, database, invited
+  const [file, setFile] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [headers, setHeaders] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [inviting, setInviting] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [toast, setToast] = useState('');
   const fileRef = useRef();
 
-  const refreshCount = async () => {
-    try { const r = await api.getUserCount('candidate'); setCandidateCount(r.count); } catch {}
-  };
-
-  // Fast count on mount — shows correct number without fetching full list
-  useEffect(() => { refreshCount(); loadRecruiters(); }, []);
-
   useEffect(() => {
-    if (tab === 'candidates') loadCandidates();
-  }, [tab]);
+    if (tab === 'database' || tab === 'invited') {
+      loadData();
+    }
+  }, [tab, page, search]);
 
-  const loadCandidates = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await api.getUsers('candidate');
-      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      const data = raw.map(c => ({ ...c, id: c.id || c._id?.toString() }));
-      setCandidates(data);
-      setCandidateCount(data.length);
-    } catch {}
+      const status = tab === 'database' ? 'pending' : 'invited';
+      const res = await api.getImportedCandidates({ page, status, search, limit: 50 });
+      setItems(res.data || []);
+      setTotal(res.pagination?.total || 0);
+    } catch (err) {
+      setToast('❌ Failed to load data');
+    }
     setLoading(false);
   };
-  const load = loadCandidates;
-  const loadRecruiters = async () => {
-    try { const r = await api.getUsers('recruiter'); setRecruiters(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])); } catch { setRecruiters([]); }
-  };
 
-  const bulkAssign = async () => {
-    if (!bulkRecruiter || selected.size === 0) return;
-    setBulkAssigning(true);
-    let ok = 0, fail = 0;
-    for (const id of selected) {
-      try { await api.assignCandidate(id, bulkRecruiter); ok++; }
-      catch { fail++; }
-    }
-    setBulkToast(`✅ Assigned ${ok} candidates${fail ? ` (${fail} failed)` : ''}`);
-    setSelected(new Set());
-    setBulkAssigning(false);
-    load();
-  };
-
-  // ── File parsing — Web Worker with fallback to chunked main-thread ───────────
-  const handleFileRead = (f, password = '') => {
-    setFile(f); setResult(null); setPreview([]); setRowCount(0); setDetectedHeaders([]);
-    setParsing(true); setNeedsPassword(false); setStreamMode(false);
-    if (workerRef.current) { workerRef.current.terminate(); workerRef.current = null; }
-
-    const isCSV = f.name.toLowerCase().endsWith('.csv');
-
-    // ── Large CSV: read only first 512KB for preview, stream the rest during import ──
-    if (isCSV && f.size > STREAM_THRESHOLD) {
-      setStreamMode(true);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const text = e.target.result;
-          const lines = text.split(/\r?\n/).filter(l => l.trim());
-          const hdrs = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-          const previewRows = lines.slice(1, 11).map(l => parseCSVLine(l));
-          headersRef.current = hdrs;
-          setDetectedHeaders(hdrs);
-          setPreviewRaws(previewRows);
-          setPreview(previewRows.map(r => mapRow(r, hdrs)));
-          // Estimate total rows from avg line length
-          const avgLen = text.length / Math.max(lines.length, 1);
-          const estimated = Math.max(1, Math.round((f.size - lines[0].length) / avgLen));
-          setRowCount(estimated);
-          setParsing(false);
-          setToast(`✅ Preview ready — ~${estimated.toLocaleString()} rows estimated. Click Import to stream all rows.`);
-        } catch (err) {
-          setParsing(false); setFile(null);
-          setToast(`❌ Could not read CSV: ${err.message}`);
-        }
-      };
-      reader.readAsText(f.slice(0, 512 * 1024)); // read only first 512KB
-      return;
-    }
-
-    // Called once we have parsed {headers, rows}
-    const onParsed = (hdrs, dataRows) => {
-      setParsing(false);
-      if (!dataRows.length) {
-        setFile(null);
-        setToast('❌ No data rows found. Make sure the file has data below the header row and is not empty.');
-        return;
-      }
-      // Store in refs — zero React overhead for 35k rows
-      rowsRef.current    = dataRows;
-      headersRef.current = hdrs;
-      // Only store tiny derived data in state (triggers one small re-render)
-      setRowCount(dataRows.length);
-      setDetectedHeaders(hdrs);
-      setPreviewRaws(dataRows.slice(0, 10));
-      setPreview(dataRows.slice(0, 10).map(r => mapRow(r, hdrs)));
-      setToast(`✅ Loaded ${dataRows.length.toLocaleString()} rows from ${f.name}`);
-    };
-
-    const onError = (msg) => {
-      setParsing(false); setFile(null);
-      if (msg.includes('password') || msg.includes('encrypted') || msg.includes('CFB') || msg.includes('ECMA-376')) {
-        setToast('❌ Password-protected file. Remove the password (File → Info → Protect Workbook → Remove Password) or save as CSV.');
-      } else {
-        setToast(`❌ Could not read file: ${msg || 'Unknown error'}. Try saving as .xlsx or .csv.`);
-      }
-    };
-
-    // Fallback: parse on main thread in small timeout slices (no Worker needed)
-    const fallbackParse = (fileData) => {
-      setTimeout(() => {
-        try {
-          const { headers: hdrs, rows: dataRows } = parseFile(
-            isCSV ? fileData : new Uint8Array(fileData), isCSV
-          );
-          const nonEmpty = dataRows.filter(r => r.some(c => String(c || '').trim() !== ''));
-          onParsed(hdrs, nonEmpty);
-        } catch (e) { onError(e.message || ''); }
-      }, 30);
-    };
-
-    // Try Web Worker first; fall back silently if not supported
-    let workerFailed = false;
-    try {
-      const worker = new Worker(
-        new URL('../../workers/xlsxWorker.js', import.meta.url),
-        { type: 'module' }
-      );
-      workerRef.current = worker;
-
-      worker.onmessage = ({ data }) => {
-        worker.terminate(); workerRef.current = null;
-        if (!data.ok) {
-          if (data.needsPassword) {
-            setParsing(false);
-            setNeedsPassword(true);
-            pendingFileRef.current = f;
-            setToast('🔒 This file is password-protected. Enter the password below to unlock it.');
-          } else {
-            onError(data.error || '');
-          }
-          return;
-        }
-        onParsed(data.headers, data.rows);
-      };
-      worker.onerror = () => {
-        worker.terminate(); workerRef.current = null;
-        if (!workerFailed) { workerFailed = true; /* fallback triggered by reader below */ }
-      };
-    } catch {
-      workerFailed = true;
-    }
-
+  const handleFileUpload = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      if (workerFailed || !workerRef.current) {
-        fallbackParse(e.target.result);
-        return;
-      }
-      if (isCSV) {
-        workerRef.current.postMessage({ fileData: e.target.result, isCSV: true, password });
-      } else {
-        try {
-          const buf = e.target.result;
-          workerRef.current.postMessage({ fileData: buf, isCSV: false, password }, [buf]);
-        } catch {
-          fallbackParse(e.target.result);
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        if (data.length > 0) {
+          setHeaders(data[0]);
+          // Convert array-rows to objects using headers as keys
+          const formattedRows = data.slice(1).map(row => {
+            const obj = {};
+            data[0].forEach((h, i) => {
+              obj[h || `Column_${i}`] = row[i];
+            });
+            return obj;
+          });
+          setRows(formattedRows);
+          setToast(`✅ Loaded ${formattedRows.length} records. Click Start Import below.`);
         }
+      } catch (err) {
+        setToast('❌ Error parsing file');
       }
     };
-    reader.onerror = () => onError('FileReader failed to read the file.');
-    if (isCSV) reader.readAsText(f);
-    else reader.readAsArrayBuffer(f);
+    reader.readAsBinaryString(f);
   };
 
-  const onDrop = (e) => {
-    e.preventDefault();
-    const f = e.dataTransfer?.files[0] || e.target.files?.[0];
-    if (f) handleFileRead(f);
-  };
-
-  // Shared counters (mutated across parallel batches)
-  const importCountersRef = useRef({ created: 0, updated: 0, skipped: 0, errors: [] });
-
-  const makeSendBatch = (hdrs) => async (rows) => {
-    const mapped = rows.map(r => mapRow(r, hdrs));
+  const startImport = async () => {
+    if (rows.length === 0) return;
+    setImporting(true);
     try {
-      const r = await api.bulkImportCandidates(mapped);
-      importCountersRef.current.created += r.created || 0;
-      importCountersRef.current.updated += r.updated || 0;
-      importCountersRef.current.skipped += r.skipped || 0;
-      if (r.errors?.length) importCountersRef.current.errors.push(...r.errors.slice(0, 2));
-    } catch (e) { importCountersRef.current.errors.push(e.message); }
-    // Live stats update after every batch
-    setLiveStats({ ...importCountersRef.current });
-    setCandidateCount(prev => (prev || 0) + (rows.length));
-  };
-
-  // Run up to CONCURRENCY batches in parallel
-  const runParallel = async (batches, sendBatch, CONCURRENCY = 5) => {
-    const queue = [...batches];
-    const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
-      while (queue.length) {
-        const batch = queue.shift();
-        if (batch) await sendBatch(batch);
-      }
-    });
-    await Promise.all(workers);
-  };
-
-  // ── Stream import for large CSV (>50MB / 4GB) — parallel batches, zero memory ──
-  const streamImportCSV = async () => {
-    setImporting(true); setResult(null); setImportProgress(0); setLiveStats({ created:0, updated:0, skipped:0, errors:[] });
-    importCountersRef.current = { created: 0, updated: 0, skipped: 0, errors: [] };
-    const BATCH = 1000; const CONCURRENCY = 5;
-    const hdrs = headersRef.current;
-    const sendBatch = makeSendBatch(hdrs);
-    let rowBuf = [], pendingBatches = [], leftover = '', bytesRead = 0;
-    let isFirstLine = true;
-    const decoder = new TextDecoder('utf-8');
-
-    const flush = async (force = false) => {
-      while (rowBuf.length >= BATCH || (force && rowBuf.length > 0)) {
-        pendingBatches.push(rowBuf.splice(0, BATCH));
-      }
-      if (pendingBatches.length >= CONCURRENCY || force) {
-        const toRun = pendingBatches.splice(0, pendingBatches.length);
-        await runParallel(toRun, sendBatch, CONCURRENCY);
-        setImportProgress(Math.min(99, Math.round((bytesRead / file.size) * 100)));
-      }
-    };
-
-    try {
-      const reader = file.stream().getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytesRead += value.byteLength;
-        const text = leftover + decoder.decode(value, { stream: true });
-        const lines = text.split(/\r?\n/);
-        leftover = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          if (isFirstLine) { isFirstLine = false; continue; }
-          rowBuf.push(parseCSVLine(line));
-          if (rowBuf.length >= BATCH) await flush();
-        }
-      }
-      if (leftover.trim()) rowBuf.push(parseCSVLine(leftover));
-      await flush(true);
-      const c = importCountersRef.current;
-      setImportProgress(100); setLiveStats(null);
-      setResult({ ...c });
-      setToast(`✅ Done: ${c.created.toLocaleString()} created, ${c.updated.toLocaleString()} updated, ${c.skipped} skipped${c.errors.length ? `, ${c.errors.length} errors` : ''}`);
-      refreshCount();
-    } catch (e) { setToast(`❌ Stream error: ${e.message}`); }
-    setImporting(false);
-  };
-
-  // ── Regular import (small/Excel files) — parallel batches + live stats ────────
-  const doImport = async () => {
-    if (streamMode) { await streamImportCSV(); return; }
-    const allRows = rowsRef.current;
-    const hdrs    = headersRef.current;
-    if (!allRows.length) { setToast('❌ No rows to import.'); return; }
-    setImporting(true); setResult(null); setImportProgress(0);
-    setLiveStats({ created:0, updated:0, skipped:0, errors:[] });
-    importCountersRef.current = { created: 0, updated: 0, skipped: 0, errors: [] };
-
-    const BATCH = 1000; const CONCURRENCY = 5;
-    const sendBatch = makeSendBatch(hdrs);
-    const total = allRows.length;
-
-    // Build all batch arrays upfront — raw rows only (makeSendBatch handles mapRow)
-    const batches = [];
-    for (let i = 0; i < total; i += BATCH)
-      batches.push(allRows.slice(i, i + BATCH));
-
-    // Run 5 batches at a time, update progress after each group
-    const GROUP = CONCURRENCY;
-    for (let g = 0; g < batches.length; g += GROUP) {
-      await runParallel(batches.slice(g, g + GROUP), sendBatch, GROUP);
-      setImportProgress(Math.min(99, Math.round(((g + GROUP) / batches.length) * 100)));
-      await new Promise(r => setTimeout(r, 10));
+      await api.bulkImportRaw(rows);
+      setToast(`🚀 Successfully imported ${rows.length} records!`);
+      setRows([]);
+      setFile(null);
+      setTab('database');
+    } catch (err) {
+      setToast('❌ Import failed');
     }
-
-    const c = importCountersRef.current;
-    setImportProgress(100); setLiveStats(null);
-    setResult({ ...c });
-    setToast(`✅ Done: ${c.created.toLocaleString()} created, ${c.updated.toLocaleString()} updated, ${c.skipped} skipped${c.errors.length ? `, ${c.errors.length} errors` : ''}`);
-    rowsRef.current = [];
-    refreshCount();
     setImporting(false);
   };
 
-  // ── Download exact template ──────────────────────────────────────────────────
-  const downloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([
-      TEMPLATE_COLS,
-      // Source, TA, Date, Candidate Name, Mobile, Email ID, Overall Exp, Relevant Exp, Current Loc, Preferred Loc, Current Company, Client, Role, Skill, Certifications, Current CTC, Expected CTC, Client Spoc, Status, Additional Details, LinkedIn ID
-      ['LinkedIn', 'Ravi Kumar', '2026-03-21', 'Priya Sharma', '+91 98765 43210', 'priya@example.com', '6', '4 years Java', 'Hyderabad', 'Hyderabad / Remote', 'TCS', 'Infosys', 'Java Developer', 'Java, Spring Boot, AWS', 'AWS Solutions Architect', '12 LPA', '18 LPA', 'Arun Mehta', 'Active', 'Available immediately', 'linkedin.com/in/priyasharma'],
-      ['Naukri', 'Sneha Patel', '2026-03-20', 'Rahul Verma', '+91 99887 76655', 'rahul@example.com', '3', '2 years SQL/Python', 'Bangalore', 'Bangalore', 'Capgemini', 'Wipro', 'Data Analyst', 'Python, SQL, Power BI', '', '8 LPA', '12 LPA', 'Nisha Gupta', 'Screening', 'Notice period: 30 days', 'linkedin.com/in/rahulverma'],
-      ['Referral', 'SAI', '2026-03-19', 'Jordan Lee', '+91 91122 33445', 'jordan@example.com', '5', '3 years DevOps', 'Pune', 'Any', 'HCL', 'TechM', 'DevOps Engineer', 'Kubernetes, Docker, Terraform', 'CKA', '15 LPA', '22 LPA', '', 'Shortlisted', '', 'linkedin.com/in/jordanlee'],
-    ]);
-    // Auto column widths
-    ws['!cols'] = TEMPLATE_COLS.map(() => ({ wch: 22 }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Candidates');
-    XLSX.writeFile(wb, 'TalentNest_Candidate_Template.xlsx');
+  const toggleSelect = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
   };
 
-  // ── Filtered candidates ──────────────────────────────────────────────────────
-  const filtered = candidates.filter(c => {
-    const q = search.toLowerCase();
-    const matchQ = !q || [c.name, c.email, c.phone, c.jobRole, c.title, c.currentCompany, c.client, c.ta, c.clientSpoc, c.source, c.skills, c.candidateStatus, c.linkedin]
-      .some(v => v?.toLowerCase().includes(q));
-    const matchClient   = !filterClient   || (c.client || '').toLowerCase().includes(filterClient.toLowerCase());
-    const matchRole     = !filterRole     || (c.jobRole || c.title || '').toLowerCase().includes(filterRole.toLowerCase());
-    const matchAssigned = filterAssigned === 'all'
-      || (filterAssigned === 'assigned'   && c.assignedRecruiterId)
-      || (filterAssigned === 'unassigned' && !c.assignedRecruiterId);
-    return matchQ && matchClient && matchRole && matchAssigned;
-  });
-
-  const updateCandidate = (updated) => {
-    const raw = updated?.data || updated;
-    const u = { ...raw, id: raw?.id || raw?._id?.toString() };
-    setCandidates(prev => prev.map(c => {
-      const cid = c.id || c._id?.toString();
-      const uid = u.id;
-      return cid === uid ? { ...c, ...u } : c;
-    }));
+  const selectAll = () => {
+    if (selectedIds.size === items.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
   };
 
-  // ── Unique filter options ────────────────────────────────────────────────────
-  const uniqueClients = [...new Set(candidates.map(c => c.client).filter(Boolean))].sort();
-  const uniqueRoles   = [...new Set(candidates.map(c => c.jobRole || c.title).filter(Boolean))].sort();
+  const sendInvites = async () => {
+    if (selectedIds.size === 0) return;
+    setInviting(true);
+    try {
+      const res = await api.sendImportedInvites([...selectedIds]);
+      setToast(`📩 ${res.message}`);
+      setSelectedIds(new Set());
+      loadData();
+    } catch (err) {
+      setToast('❌ Failed to send invites');
+    }
+    setInviting(false);
+  };
+
+  const clearDatabase = async () => {
+    if (!window.confirm('Are you sure? This will delete all imported records for your organisation.')) return;
+    try {
+      await api.clearImportedDatabase();
+      setToast('🗑️ Database cleared');
+      loadData();
+    } catch (err) {
+      setToast('❌ Failed to clear database');
+    }
+  };
 
   return (
-    <div>
-      {/* Toast */}
+    <div style={{ animation: 'tn-fadein 0.3s ease' }}>
+      {/* Toast Notification */}
       {toast && (
-        <div style={{ marginBottom: 16, padding: '10px 16px', background: toast.startsWith('❌') ? 'rgba(186,5,23,0.15)' : 'rgba(34,197,94,0.12)', border: `1px solid ${toast.startsWith('❌') ? 'rgba(186,5,23,0.3)' : 'rgba(34,197,94,0.3)'}`, borderRadius: 10, color: toast.startsWith('❌') ? '#FE5C4C' : '#86efac', fontSize: 13, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 1000, background: '#181818', color: '#fff', padding: '12px 24px', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.2)', display: 'flex', gap: 12, alignItems: 'center' }}>
           <span>{toast}</span>
-          <button onClick={() => setToast('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>✕</button>
+          <button onClick={() => setToast('')} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18 }}>✕</button>
         </div>
       )}
 
-      {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ color: '#181818', fontWeight: 800, fontSize: 22, margin: '0 0 4px' }}>Candidate Data Management</h1>
-        <p style={{ color: '#706E6B', fontSize: 13, margin: 0 }}>Import 30,000+ candidates from Excel/CSV · Assign to recruiters · Track outreach</p>
+        <h1 style={{ color: '#181818', fontWeight: 800, fontSize: 24, margin: '0 0 4px' }}>Imported Database</h1>
+        <p style={{ color: '#706E6B', fontSize: 13 }}>Manage your 30,000+ external candidates · Search clumsly data · Invite to platform</p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: '#FFFFFF', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+      {/* Tabs Control */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#f8fafc', padding: 6, borderRadius: 14, width: 'fit-content', border: '1px solid #e2e8f0' }}>
         {[
-          { id: 'import', label: '📥 Import from Excel' },
-          { id: 'candidates', label: `👥 Candidate Database (${candidateCount !== null ? candidateCount.toLocaleString() : '…'})` },
+          { id: 'import', label: '📥 Import Data', icon: '📊' },
+          { id: 'database', label: '📁 Raw Database', icon: '🗂️' },
+          { id: 'invited', label: '📩 Requests Sent', icon: '📧' }
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ background: tab === t.id ? '#0176D3' : 'transparent', border: 'none', borderRadius: 10, color: tab === t.id ? '#fff' : '#706E6B', fontWeight: tab === t.id ? 700 : 500, padding: '8px 18px', cursor: 'pointer', fontSize: 13 }}>
-            {t.label}
+          <button key={t.id} onClick={() => { setTab(t.id); setPage(1); setSelectedIds(new Set()); }}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: tab === t.id ? '#fff' : 'transparent', 
+              border: 'none', 
+              boxShadow: tab === t.id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+              borderRadius: 10, 
+              color: tab === t.id ? '#0176D3' : '#64748b', 
+              fontWeight: 700, 
+              padding: '8px 16px', 
+              cursor: 'pointer', 
+              fontSize: 13 
+            }}>
+            <span>{t.icon}</span> {t.label}
           </button>
         ))}
       </div>
 
-      {/* ────────────────── IMPORT TAB ────────────────── */}
+      {/* ── TAB: IMPORT ── */}
       {tab === 'import' && (
-        <>
-          {/* Template info */}
-          <div style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ color: '#181818', margin: '0 0 10px', fontSize: 15, fontWeight: 700 }}>📋 Template Columns (all {TEMPLATE_COLS.length} fields — none mandatory)</h3>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {TEMPLATE_COLS.map(col => (
-                    <span key={col} style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '3px 12px', fontSize: 11, color: '#706E6B' }}>{col}</span>
-                  ))}
-                </div>
-                <p style={{ color: '#706E6B', fontSize: 11, margin: '10px 0 0' }}>
-                  No field is required. You can import any partial template — only columns present in your file are updated. Existing records keep their data for columns not in your file. Empty TA defaults to <b>SAI</b>.
-                </p>
-              </div>
-              <button onClick={downloadTemplate} style={{ ...btnG, padding: '9px 18px', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                ⬇ Download Template
-              </button>
-            </div>
-          </div>
-
-          {/* Drop zone */}
-          <div
-            style={{ ...card, borderStyle: 'dashed', borderColor: 'rgba(1,118,211,0.3)', cursor: 'pointer', textAlign: 'center', padding: '40px 24px', transition: 'border-color 0.2s' }}
-            onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='rgba(1,118,211,0.7)'; }}
-            onDragLeave={e => { e.currentTarget.style.borderColor='rgba(1,118,211,0.3)'; }}
-            onDrop={e => { e.currentTarget.style.borderColor='rgba(1,118,211,0.3)'; onDrop(e); }}
+        <div style={card}>
+          <div 
             onClick={() => fileRef.current?.click()}
+            style={{ border: '2px dashed #CBD5E1', borderRadius: 16, padding: '60px 40px', textAlign: 'center', cursor: 'pointer', background: '#F8FAFC', transition: 'all 0.2s' }}
+            onMouseOver={e => e.currentTarget.style.borderColor = '#0176D3'}
+            onMouseOut={e => e.currentTarget.style.borderColor = '#CBD5E1'}
           >
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={onDrop} />
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-            <div style={{ color: '#181818', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
-              {file ? `✅ ${file.name}` : 'Drag & drop Excel or CSV here'}
-            </div>
-            <div style={{ color: '#64748b', fontSize: 13, marginBottom: 16 }}>
-              {file
-                ? parsing
-                  ? '⏳ Reading file… page stays responsive'
-                  : streamMode
-                    ? `~${rowCount.toLocaleString()} rows estimated — will stream directly from disk`
-                    : `${rowCount.toLocaleString()} rows ready to import`
-                : 'Supports .xlsx  .xls  .csv  — any size including 4GB+'}
-            </div>
-            {!file && !needsPassword && (
-              <button style={btnP} onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>Browse File</button>
-            )}
-            {/* Password prompt — shown when file is encrypted */}
-            {needsPassword && (
-              <div onClick={e => e.stopPropagation()} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                <div style={{ color: '#F59E0B', fontWeight: 700, fontSize: 13 }}>🔒 File is password-protected</div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="password"
-                    value={filePassword}
-                    onChange={e => setFilePassword(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && filePassword) handleFileRead(pendingFileRef.current, filePassword); }}
-                    placeholder="Enter file password…"
-                    autoFocus
-                    style={{ maxWidth: 220, fontSize: 13, background: '#fff', width: '100%', padding: '9px 12px', border: '1px solid #DDDBDA', borderRadius: 8, outline: 'none' }}
-                  />
-                  <button
-                    style={{ ...btnP, background: '#F59E0B', padding: '9px 18px' }}
-                    onClick={() => { if (filePassword) handleFileRead(pendingFileRef.current, filePassword); }}
-                  >
-                    Unlock & Read
-                  </button>
-                  <button
-                    style={{ ...btnG, padding: '9px 14px' }}
-                    onClick={() => { setNeedsPassword(false); setFilePassword(''); setFile(null); pendingFileRef.current = null; }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                <div style={{ color: '#94a3b8', fontSize: 11 }}>Password stays in your browser — never sent to our servers</div>
-              </div>
-            )}
+            <input type="file" ref={fileRef} style={{ display: 'none' }} accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
+            <h3 style={{ margin: '0 0 8px', color: '#1E293B' }}>{file ? file.name : 'Click to upload any Excel file'}</h3>
+            <p style={{ color: '#64748B', fontSize: 13 }}>No template required. Any columns, any order. We accept everything.</p>
           </div>
 
-          {/* Preview */}
-          {preview.length > 0 && (
-            <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                <h3 style={{ color: '#181818', margin: 0, fontSize: 14, fontWeight: 700 }}>
-                  Preview <span style={{ color: '#706E6B', fontWeight: 400, fontSize: 12 }}>(first 10 of {rowCount.toLocaleString()} rows)</span>
-                </h3>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setFile(null); rowsRef.current=[]; headersRef.current=[]; setRowCount(0); setDetectedHeaders([]); setPreview([]); setPreviewRaws([]); setResult(null); setLiveStats(null); if(fileRef.current) fileRef.current.value=''; }} style={{ ...btnG, padding: '7px 14px', fontSize: 12 }}>✕ Clear</button>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                    <button onClick={doImport} disabled={importing || parsing || rowCount === 0} style={{ ...btnP, padding: '7px 22px', fontSize: 12, opacity: (importing || parsing || rowCount === 0) ? 0.6 : 1 }}>
-                      {importing ? `⏳ ${importProgress}% — Importing…` : `🚀 Import All ${rowCount.toLocaleString()} Rows`}
-                    </button>
-                    {importing && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                        <div style={{ width: 200, height: 6, background: 'rgba(1,118,211,0.15)', borderRadius: 10, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${importProgress}%`, background: '#0176D3', borderRadius: 10, transition: 'width 0.3s ease' }} />
-                        </div>
-                        {liveStats && (
-                          <div style={{ display: 'flex', gap: 10, fontSize: 11, fontWeight: 600 }}>
-                            <span style={{ color: '#34d399' }}>✅ {(liveStats.created||0).toLocaleString()} created</span>
-                            <span style={{ color: '#0176D3' }}>🔄 {(liveStats.updated||0).toLocaleString()} updated</span>
-                            {liveStats.skipped > 0 && <span style={{ color: '#706E6B' }}>⏩ {liveStats.skipped} skipped</span>}
-                            {liveStats.errors?.length > 0 && <span style={{ color: '#FE5C4C' }}>⚠ {liveStats.errors.length} errors</span>}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {/* Show actual file headers detected */}
-              <div style={{ marginBottom: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ color: '#706E6B', fontSize: 11, fontWeight: 600 }}>Columns detected:</span>
-                {detectedHeaders.map(h => (
-                  <span key={h} style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '2px 10px', fontSize: 10, color: '#0176D3' }}>{h}</span>
-                ))}
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(1,118,211,0.2)' }}>
-                      {detectedHeaders.map(h => (
-                        <th key={h} style={{ padding: '7px 10px', color: '#0176D3', fontWeight: 700, textAlign: 'left', whiteSpace: 'nowrap', fontSize: 10, letterSpacing: '0.4px' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRaws.slice(0, 10).map((row, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #F3F2F2', background: i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                        {detectedHeaders.map((h, j) => {
-                          const v = Array.isArray(row) ? String(row[j] ?? '') : String(row[h] ?? '');
-                          return <td key={j} style={{ padding: '7px 10px', color: v ? '#181818' : '#DDDBDA', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || '—'}</td>;
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Result */}
-          {result && (
-            <div style={{ ...card, borderColor: 'rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.04)' }}>
-              <h3 style={{ color: '#34d399', margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>✅ Import Complete</h3>
-              <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-                {[
-                  { v: result.created, label: 'New Candidates', color: '#34d399' },
-                  { v: result.updated, label: 'Updated (existing)', color: '#0176D3' },
-                  { v: result.skipped, label: 'Skipped (no email)', color: '#706E6B' },
-                  ...(result.errors?.length ? [{ v: result.errors.length, label: 'Errors', color: '#BA0517' }] : []),
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{(s.v||0).toLocaleString()}</div>
-                    <div style={{ color: '#706E6B', fontSize: 12, marginTop: 4 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              {result.errors?.length > 0 && (
-                <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(186,5,23,0.08)', borderRadius: 8, maxHeight: 120, overflowY: 'auto' }}>
-                  <div style={{ color: '#FE5C4C', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Errors (first 20):</div>
-                  {result.errors.slice(0, 20).map((e, i) => <div key={i} style={{ color: '#fca5a5', fontSize: 11 }}>{e}</div>)}
-                </div>
-              )}
-              <button onClick={() => { setTab('candidates'); loadCandidates(); }} style={{ ...btnP, marginTop: 16, fontSize: 13 }}>
-                👥 View Candidate Database →
+          {rows.length > 0 && (
+            <div style={{ marginTop: 24, borderTop: '1px solid #E2E8F0', paddingTop: 24, textAlign: 'center' }}>
+              <p style={{ marginBottom: 16, fontWeight: 600, color: '#475569' }}>Total Records Found: {rows.length.toLocaleString()}</p>
+              <button 
+                onClick={startImport} 
+                disabled={importing}
+                style={{ ...btnP, padding: '12px 40px', fontSize: 15, opacity: importing ? 0.6 : 1 }}
+              >
+                {importing ? '⏳ Importing Data...' : '🚀 Start Bulk Import'}
               </button>
             </div>
           )}
-        </>
+        </div>
       )}
 
-      {/* ────────────────── CANDIDATES TAB ────────────────── */}
-      {tab === 'candidates' && (
+      {/* ── TAB: DATABASE & INVITED ── */}
+      {(tab === 'database' || tab === 'invited') && (
         <>
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Field value={search} onChange={v => setSearch(v)} placeholder="Search name, email, role, company…" style={{ flex: '1 1 200px', minWidth: 160 }} />
-            <Field value={filterClient} onChange={v => setFilterClient(v)} placeholder="Client" style={{ flex: '1 1 120px', minWidth: 100 }} />
-            <Field value={filterRole} onChange={v => setFilterRole(v)} placeholder="Role" style={{ flex: '1 1 120px', minWidth: 100 }} />
-            <Field value={filterAssigned} onChange={v => setFilterAssigned(v)} style={{ flex: '1 1 140px', minWidth: 120 }}
-              options={[{value:'all',label:'All'},{value:'assigned',label:'Assigned'},{value:'unassigned',label:'Unassigned'}]} />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-              <span style={{ color: '#706E6B', fontSize: 12, whiteSpace: 'nowrap' }}>{filtered.length.toLocaleString()} results</span>
-              <button onClick={loadCandidates} style={{ ...btnG, padding: '8px 12px', fontSize: 12 }}>↻</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, flex: 1 }}>
+              <Field 
+                value={search} 
+                onChange={v => setSearch(v)} 
+                placeholder="Search clumsly data (Name or Email)..." 
+                style={{ maxWidth: 400, flex: 1 }}
+              />
+              {tab === 'database' && selectedIds.size > 0 && (
+                <button 
+                  onClick={sendInvites} 
+                  disabled={inviting}
+                  style={{ ...btnP, background: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  {inviting ? '⏳ Sending...' : `🚀 Request to Create Account (${selectedIds.size})`}
+                </button>
+              )}
             </div>
+            {tab === 'database' && (
+              <button onClick={clearDatabase} style={{ ...btnG, color: '#EF4444', borderColor: 'rgba(239,68,68,0.2)' }}>
+                🗑️ Clear All Data
+              </button>
+            )}
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 56, color: '#706E6B' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-              <div style={{ fontSize: 14 }}>Loading candidates…</div>
+          <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    {tab === 'database' && (
+                      <th style={{ padding: '12px 16px', width: 40 }}>
+                        <input type="checkbox" checked={selectedIds.size > 0 && selectedIds.size === items.length} onChange={selectAll} style={{ cursor: 'pointer' }} />
+                      </th>
+                    )}
+                    <th style={{ padding: '12px 16px', color: '#64748B', fontWeight: 600, fontSize: 12 }}>IDENTIFIED NAME</th>
+                    <th style={{ padding: '12px 16px', color: '#64748B', fontWeight: 600, fontSize: 12 }}>IDENTIFIED EMAIL</th>
+                    <th style={{ padding: '12px 16px', color: '#64748B', fontWeight: 600, fontSize: 12 }}>DATE ADDED</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="5" style={{ padding: 40, textAlign: 'center' }}>
+                        <div className="tn-spinner" style={{ width: 24, height: 24, border: '3px solid #f3f3f3', borderTop: '3px solid #0176D3', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+                      </td>
+                    </tr>
+                  ) : items.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>No records found in this section.</td>
+                    </tr>
+                  ) : items.map(item => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.1s' }} onMouseOver={e => e.currentTarget.style.background = '#FBFDFF'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                      {tab === 'database' && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} style={{ cursor: 'pointer' }} />
+                        </td>
+                      )}
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1E293B' }}>{item.name || <span style={{ color: '#94A3B8', fontWeight: 400 }}>[Heuristic Scan Needed]</span>}</td>
+                      <td style={{ padding: '12px 16px', color: '#0176D3' }}>{item.email || <span style={{ color: '#EF4444', fontSize: 11 }}>⚠️ No Email Detected</span>}</td>
+                      <td style={{ padding: '12px 16px', color: '#64748B', fontSize: 12 }}>{new Date(item.createdAt).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button onClick={() => setDetailItem(item)} style={{ ...btnG, padding: '6px 12px', fontSize: 12 }}>View All Fields</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: 56 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-              <div style={{ color: '#706E6B', fontSize: 15, fontWeight: 600 }}>No candidates found</div>
-              <div style={{ color: '#C9C7C5', fontSize: 12, marginTop: 6 }}>Import Excel data or adjust your filters</div>
-              <button onClick={() => setTab('import')} style={{ ...btnP, marginTop: 16, fontSize: 13 }}>📥 Import Excel</button>
-            </div>
-          ) : (
-            <>
-              {/* Select-all bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid rgba(1,118,211,0.12)' }}>
-                <input type="checkbox"
-                  checked={selected.size === filtered.length && filtered.length > 0}
-                  onChange={e => setSelected(e.target.checked ? new Set(filtered.map(c => c.id)) : new Set())}
-                  style={{ accentColor: '#0176D3', cursor: 'pointer', width: 15, height: 15 }} />
-                <span style={{ color: '#706E6B', fontSize: 12 }}>Select all ({filtered.length})</span>
-                {selected.size > 0 && (
-                  <span style={{ color: '#0176D3', fontSize: 12, fontWeight: 700, marginLeft: 4 }}>{selected.size} selected</span>
-                )}
+            
+            {/* Pagination */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC' }}>
+              <span style={{ fontSize: 12, color: '#64748B' }}>Showing {items.length} of {total.toLocaleString()} records</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={{ ...btnG, padding: '6px 12px', opacity: page === 1 ? 0.5 : 1 }}>Previous</button>
+                <button disabled={items.length < 50} onClick={() => setPage(p => p + 1)} style={{ ...btnG, padding: '6px 12px', opacity: items.length < 50 ? 0.5 : 1 }}>Next</button>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {filtered.map(c => (
-                  <div key={c.id || c._id} style={{ ...card, padding: '14px 16px', position: 'relative' }}>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-
-                      {/* Checkbox */}
-                      <input type="checkbox"
-                        checked={selected.has(c.id)}
-                        onChange={e => { const s = new Set(selected); e.target.checked ? s.add(c.id) : s.delete(c.id); setSelected(s); }}
-                        style={{ accentColor: '#0176D3', cursor: 'pointer', marginTop: 4, width: 15, height: 15, flexShrink: 0 }} />
-
-                      {/* Avatar */}
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #0176D3, #014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0, boxShadow: '0 2px 8px rgba(1,118,211,0.2)' }}>
-                        {(c.name || '?')[0].toUpperCase()}
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-
-                        {/* Line 1: Name + role badge + exp */}
-                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-                          <span style={{ color: '#0A1628', fontWeight: 700, fontSize: 14 }}>{c.name || '—'}</span>
-                          {(c.jobRole || c.title) && (
-                            <span style={{ color: '#0176D3', fontSize: 11, background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '1px 9px', fontWeight: 600 }}>
-                              {c.jobRole || c.title}
-                            </span>
-                          )}
-                          {c.candidateStatus && (
-                            <span style={{ color: '#34d399', fontSize: 11, background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 20, padding: '1px 9px', fontWeight: 600 }}>
-                              {c.candidateStatus}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Line 2: Contact info */}
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
-                          {c.email && !c.email.includes('@placeholder.tn') && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>✉ {c.email}</span>
-                          )}
-                          {c.phone && <span>📞 {c.phone}</span>}
-                          {c.location && <span>📍 {c.location}</span>}
-                          {c.currentCompany && <span>🏢 {c.currentCompany}</span>}
-                        </div>
-
-                        {/* Line 3: Experience + CTC badges */}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
-                          {(c.experience > 0 || c.relevantExperience) && (
-                            <span style={{ fontSize: 11, color: '#706E6B', background: '#F3F2F2', borderRadius: 20, padding: '2px 9px' }}>
-                              {c.experience > 0 ? `${c.experience}y exp` : ''}{c.relevantExperience ? ` · ${c.relevantExperience} relevant` : ''}
-                            </span>
-                          )}
-                          {c.currentCTC && (
-                            <span style={{ fontSize: 11, color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 20, padding: '2px 9px', fontWeight: 600 }}>
-                              CTC {c.currentCTC}
-                            </span>
-                          )}
-                          {c.expectedCTC && (
-                            <span style={{ fontSize: 11, color: '#d97706', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 20, padding: '2px 9px', fontWeight: 600 }}>
-                              Exp {c.expectedCTC}
-                            </span>
-                          )}
-                          {c.preferredLocation && (
-                            <span style={{ fontSize: 11, color: '#7c3aed', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 20, padding: '2px 9px' }}>
-                              Pref: {c.preferredLocation}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Line 4: Client/TA/SPOC meta */}
-                        {(c.client || c.ta || c.clientSpoc || c.certifications) && (
-                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: '#706E6B', marginBottom: 6 }}>
-                            {c.client      && <span>🏛 {c.client}</span>}
-                            {c.ta          && <span>👤 TA: {c.ta}</span>}
-                            {c.clientSpoc  && <span>🤝 {c.clientSpoc}</span>}
-                            {c.certifications && <span>🏅 {c.certifications}</span>}
-                          </div>
-                        )}
-
-                        {/* Actions: Assign + Contact */}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
-                          <AssignDropdown candidate={c} recruiters={recruiters} onAssigned={updateCandidate} />
-                          <ContactLogger candidate={c} onUpdate={updateCandidate} />
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignSelf: 'flex-start' }}>
-                        <button
-                          onClick={() => setDrawerCandidate(c)}
-                          title="View / Edit candidate"
-                          style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, color: '#0176D3', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          ✏ Edit
-                        </button>
-                        <button
-                          onClick={() => setMsgCandidate(c)}
-                          title="Message candidate"
-                          style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, color: '#059669', fontSize: 12, fontWeight: 700, padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          💬 Message
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Bulk action bar */}
-          {selected.size > 0 && (
-            <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', background: '#fff', border: '1.5px solid rgba(1,118,211,0.4)', borderRadius: 14, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 1000, boxShadow: '0 8px 32px rgba(0,0,0,0.15)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 32px)' }}>
-              <span style={{ color: '#0176D3', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{selected.size} selected</span>
-              <select value={bulkRecruiter} onChange={e => setBulkRecruiter(e.target.value)}
-                style={{ padding: '7px 10px', background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 8, color: '#181818', fontSize: 12, flex: '1 1 140px', minWidth: 120 }}>
-                <option value="">Assign recruiter…</option>
-                {recruiters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-              <button onClick={bulkAssign} disabled={!bulkRecruiter || bulkAssigning}
-                style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '8px 14px', cursor: 'pointer', fontSize: 12, opacity: (!bulkRecruiter || bulkAssigning) ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                {bulkAssigning ? 'Assigning…' : 'Assign →'}
-              </button>
-              <button onClick={() => { setSelected(new Set()); setBulkToast(''); }} style={{ background: 'none', border: 'none', color: '#9E9D9B', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}>✕</button>
-              {bulkToast && <span style={{ color: '#34d399', fontSize: 12, fontWeight: 600 }}>{bulkToast}</span>}
             </div>
-          )}
+          </div>
         </>
       )}
 
-      {/* Edit drawer */}
-      {drawerCandidate && (
-        <UserDetailDrawer
-          user={drawerCandidate}
-          isSuperAdmin={true}
-          currentUserRole="super_admin"
-          onClose={() => setDrawerCandidate(null)}
-          onUpdated={(updated) => {
-            if (updated) updateCandidate(updated);
-            setDrawerCandidate(null);
-          }}
-        />
+      {/* ── DYNAMIC DETAIL MODAL ── */}
+      {detailItem && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: 600, maxHeight: '85vh', borderRadius: 20, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'tn-slideup 0.3s ease' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1E293B', margin: 0 }}>Candidate Profile Data</h2>
+              <button onClick={() => setDetailItem(null)} style={{ background: 'none', border: 'none', fontSize: 24, color: '#94A3B8', cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                {Object.entries(detailItem.data || {}).map(([key, val]) => (
+                  <div key={key} style={{ padding: '12px 16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid #F1F5F9' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.5px' }}>{key}</div>
+                    <div style={{ color: '#1E293B', fontWeight: 500, wordBreak: 'break-all' }}>{val || '—'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px', background: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button onClick={() => setDetailItem(null)} style={btnG}>Close</button>
+              {detailItem.status === 'pending' && (
+                <button 
+                  onClick={async () => {
+                    await api.sendImportedInvites([detailItem.id]);
+                    setToast('📩 Invitation sent!');
+                    setDetailItem(null);
+                    loadData();
+                  }}
+                  style={{ ...btnP, background: '#10B981' }}
+                >
+                  🚀 Request to Create Account
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Chat panel */}
-      {msgCandidate && (
-        <ChatPanel
-          open={true}
-          onClose={() => setMsgCandidate(null)}
-          myUser={user}
-          initialRecipient={{ userId: msgCandidate._id || msgCandidate.id, name: msgCandidate.name, role: msgCandidate.role || 'candidate' }}
-        />
-      )}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes tn-fadein { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes tn-slideup { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
