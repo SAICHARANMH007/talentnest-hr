@@ -583,7 +583,7 @@ export default function AdminJobs({ user }) {
                   <button onClick={async e => {
                     e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
                     try {
-                      const r = await api.getApplications({ jobId: j.id, limit: 10000000 }).catch(() => ({ data: [] }));
+                      const r = await api.getApplications({ jobId: j.id, limit: 100 }).catch(() => ({ data: [] }));
                       const list = Array.isArray(r) ? r : (r?.data || []);
                       setApplicantsJob({ job: j, apps: list });
                     } finally {
@@ -593,7 +593,7 @@ export default function AdminJobs({ user }) {
                   <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📣 Share</button>
                   <button onClick={e => { e.stopPropagation(); setAssessmentJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📋 Assessment</button>
                   <button onClick={e => { e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');
-                    api.getApplications({ jobId: j.id, limit: 10000000 }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
+                    api.getApplications({ jobId: j.id, limit: 100 }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
                   }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👤 Assign</button>
                   <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
                   <button onClick={() => del(j.id)} style={btnD}>Delete</button>

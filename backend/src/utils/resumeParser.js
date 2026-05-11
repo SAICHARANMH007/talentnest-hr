@@ -426,9 +426,6 @@ function extractPortfolio(text) {
 
 // ── Main Entry Point ──────────────────────────────────────────────────────────
 
-const pdfParse = require('pdf-parse');
-const mammoth  = require('mammoth');
-
 async function extractText(fileBuffer, mimeType) {
   if (mimeType === 'application/pdf') {
     const data = await pdfParse(fileBuffer);

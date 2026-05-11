@@ -590,7 +590,7 @@ export default function RecruiterPipeline({ user }) {
   };
 
   const stageCounts = STAGES.reduce((acc, s) => { acc[s.id] = apps.filter(a => a.stage === s.id).length; return acc; }, {});
-  let filtered = stageFilter === 'all' ? apps : apps.filter(a => a.stage === stageFilter);
+  let filtered = apps;
   
   // Sort applicants by assessment score (descending) so top candidates are prioritized
   if (assessmentData?.submissionsMap) {
