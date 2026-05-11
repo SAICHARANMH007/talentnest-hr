@@ -204,7 +204,7 @@ router.post('/talent-match', auth, allowRoles('admin', 'super_admin', 'recruiter
     await Notification.create({
       userId: candidateId, tenantId: job.tenantId, type: 'invite',
       title: action === 'shortlist' ? '⭐ Shortlisted!' : '🎯 New Interest',
-      body: `A recruiter has ${action === 'shortlist' ? 'shortlisted you' : 'shown interest'} for ${job.title}.`,
+      message: `A recruiter has ${action === 'shortlist' ? 'shortlisted you' : 'shown interest'} for ${job.title}.`,
       link: '/app/applications',
     });
     res.json({ success: true, applicationId: app._id, action });
