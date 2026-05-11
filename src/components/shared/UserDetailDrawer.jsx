@@ -70,16 +70,12 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     if (!uid && typeof u === 'string') uid = u;
     if (!uid) return;
 
-    const isCandidate = (u?.role || 'candidate') === 'candidate';
-    if (!isCandidate) return;
+    // Reset flag while verifying
+    setIsCandidateModel(false);
 
-    const hasFullData = u?._fullRecord === true
-      || (Array.isArray(u?.workHistory))
-      || (typeof u?.currentCTC === 'number')
-      || (typeof u?.currentCTC === 'string' && u.currentCTC.length > 0 && !u._partial);
+    // If we have full data and it's definitely a User record (has role and not partial), we can skip.
+    // But it's safer to just verify if we want to be 100% sure about the API to use.
     
-    if (hasFullData && !u?._partial) return;
-
     api.getCandidate(uid).then(full => {
       if (full && (full.name || full.email)) {
         if (userEditedRef.current) return;
@@ -97,7 +93,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         setFullUser(enriched);
         setForm(buildForm(enriched));
         setIsCandidateModel(false);
-      }).catch(() => {});
+      }).catch(() => {
+        // Fallback for cases where neither succeeds (e.g. permission issues), default to User API
+        setIsCandidateModel(false);
+      });
     });
   }, [u]);
 
@@ -136,7 +135,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       const uid = u.id || u._id?.toString();
       const payload = { ...form };
       let updated;
-      if (isCandidateModel || form.role === 'candidate') {
+      if (isCandidateModel) {
         payload.skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : form.skills;
         const res = await api.updateCandidate(uid, payload);
         updated = res?.data || res;

@@ -5,6 +5,7 @@ const multer         = require('multer');
 const pdfParse       = require('pdf-parse');
 const XLSX           = require('xlsx');
 const Candidate      = require('../models/Candidate');
+const User           = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard } = require('../middleware/tenantGuard');
 const { allowRoles } = require('../middleware/rbac');
@@ -223,11 +224,25 @@ router.patch('/:id', ...guard,
     const filter = { _id: req.params.id, deletedAt: null };
     if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
 
-    const candidate = await Candidate.findOneAndUpdate(
+    let candidate = await Candidate.findOneAndUpdate(
       filter,
       { $set: updates },
       { new: true }
     );
+
+    if (!candidate) {
+      // Fallback: If ID not found in Candidates, check if it's a User ID
+      const user = await User.findById(req.params.id).lean();
+      if (user && user.role === 'candidate') {
+        // Find candidate by email
+        candidate = await Candidate.findOneAndUpdate(
+          { email: user.email, tenantId: user.tenantId, deletedAt: null },
+          { $set: updates },
+          { new: true }
+        );
+      }
+    }
+
     if (!candidate) throw new AppError('Candidate not found.', 404);
 
     // Sync changes to User collection if a linked account exists
