@@ -856,10 +856,25 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
   
   const filter = await buildApplicationFilters(req);
 
-  // If search exists, we add it to the DB query instead of filtering in memory
+  // If search exists, we need to find candidates first because Application model doesn't store these fields directly
   if (search) {
     const searchRe = { $regex: search, $options: 'i' };
+    
+    // Find all matching candidates in this tenant (or all if super_admin)
+    const candFilter = { ...tenantFilter(req), deletedAt: null };
+    candFilter.$or = [
+      { name: searchRe },
+      { email: searchRe },
+      { phone: searchRe }
+    ];
+    
+    const matchingCandidates = await Candidate.find(candFilter).select('_id').lean();
+    const candidateIds = matchingCandidates.map(c => c._id);
+    
+    // Add to the application filter
     filter.$or = [
+      { candidateId: { $in: candidateIds } },
+      // Keep these for backward compatibility if some old apps have them denormalized
       { candidateName: searchRe },
       { candidateEmail: searchRe },
       { candidatePhone: searchRe },
