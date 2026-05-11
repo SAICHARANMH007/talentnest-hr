@@ -244,17 +244,32 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
             <div style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{c?.email} · {c?.phone || 'No phone'}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Badge label={s.icon + ' ' + s.label} color={s.color} />
-            <SlaDot app={app} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Match Score (UTO Engine) */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }} title={`UTO Score Breakdown: Skills: ${app.matchBreakdown?.skillScore || 0}%, Exp: ${app.matchBreakdown?.experienceScore || 0}%`}>
+              <div style={{ 
+                width:44, height:44, borderRadius:'50%', 
+                border:`3.5px solid ${app.talentMatchScore >= 80 ? '#10b981' : app.talentMatchScore >= 50 ? '#F59E0B' : '#BA0517'}`, 
+                display:'flex', alignItems:'center', justifyContent:'center', 
+                fontSize:12, fontWeight:900, color:'#0F172A', background:'#fff',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+              }}>
+                {app.talentMatchScore || 0}%
+              </div>
+              <div style={{ fontSize:7, fontWeight:900, color:'#64748B', textTransform:'uppercase', letterSpacing:1 }}>UTO Match</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Badge label={s.icon + ' ' + s.label} color={s.color} />
+                <SlaDot app={app} />
+              </div>
+              <span style={{ color: '#94A3B8', fontSize: 11, fontWeight: 600 }}>Applied {new Date(app.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</span>
+              {app.emailSent && <span style={{ color: '#10b981', fontSize: 10, fontWeight: 800, background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 20, marginTop:4 }}>📧 Invite sent</span>}
+              {c?.videoResumeUrl && (
+                <button onClick={() => window.open(c.videoResumeUrl, '_blank')} style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#0176D3', fontWeight: 700, marginTop:4 }} title="View video resume">🎥 Video Resume</button>
+              )}
+            </div>
           </div>
-          <span style={{ color: '#94A3B8', fontSize: 11, fontWeight: 600 }}>Applied {new Date(app.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</span>
-          {app.emailSent && <span style={{ color: '#10b981', fontSize: 10, fontWeight: 800, background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 20 }}>📧 Invite sent</span>}
-          {c?.videoResumeUrl && (
-            <button onClick={() => window.open(c.videoResumeUrl, '_blank')} style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#0176D3', fontWeight: 700 }} title="View video resume">🎥 Video Resume</button>
-          )}
-        </div>
       </div>
 
       {/* Tags display */}

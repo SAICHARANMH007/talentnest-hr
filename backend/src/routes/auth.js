@@ -19,6 +19,12 @@ const logger = require('../middleware/logger');
 const { clearCacheForUser } = require('../middleware/cache');
 const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
 
+const PUBLIC_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+  'aol.com', 'zoho.com', 'protonmail.com', 'yandex.com', 'rediffmail.com',
+  'live.com', 'msn.com', 'mail.com', 'gmx.com'
+];
+
 // ── Rate limiters ────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 5,
@@ -89,6 +95,27 @@ async function getTalentNestTenant(session) {
   return tenant;
 }
 
+/**
+ * Ensures all Candidate records matching the user's email are linked to their userId.
+ * This "adopts" guest applications from any organization across the platform.
+ */
+async function adoptApplications(user, session = null) {
+  if (user.role !== 'candidate') return;
+  try {
+    const emailLower = user.email.toLowerCase().trim();
+    const query = { email: emailLower, userId: { $ne: user._id }, deletedAt: null };
+    
+    if (session) {
+      await Candidate.updateMany(query, { $set: { userId: user._id } }).session(session);
+    } else {
+      await Candidate.updateMany(query, { $set: { userId: user._id } });
+    }
+    logger.info('Applications adopted', { email: emailLower, userId: user._id });
+  } catch (err) {
+    logger.error('Application adoption failed', { userId: user._id, err: err.message });
+  }
+}
+
 // ── POST /api/auth/register ──────────────────────────────────────────────────
 // Creates a Tenant + admin User in one atomic transaction.
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
@@ -104,6 +131,14 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     throw new AppError('Password must be at least 8 characters.', 400);
   if (await User.findOne({ email: email.toLowerCase().trim() }))
     throw new AppError('Email already registered.', 400);
+
+  // SECURITY: Block public domains for recruiters and admins
+  if (['recruiter', 'admin'].includes(role)) {
+    const domainPart = email.split('@')[1]?.toLowerCase();
+    if (PUBLIC_DOMAINS.includes(domainPart)) {
+      throw new AppError('Registration with public email domains (Gmail/Yahoo/etc) is not allowed for recruiters. Please use your corporate email or contact support to white-label your domain.', 403);
+    }
+  }
 
   const session = await mongoose.startSession();
   let result;
@@ -148,28 +183,24 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         ...(availability   ? { availability }                        : {}),
       }], { session });
 
-      // 3. Auto-create Candidate profile for self-registered job seekers so the
-      //    recruiter pipeline (Application.candidateId → Candidate) works immediately.
+      // 3. Auto-link/create Candidate profile(s) for self-registered job seekers.
       if (role === 'candidate') {
-        const uid = user?._id; // 'user' is the const [user] destructured above
-        const emailLower = email.toLowerCase().trim();
-        const existing = await Candidate.findOne({ email: emailLower, tenantId: tenant._id }).session(session);
-        if (!existing) {
+        await adoptApplications(user, session);
+        // Ensure at least one profile exists for the TalentNest HR tenant
+        const tnProfile = await Candidate.findOne({ email: user.email, tenantId: tenant._id, deletedAt: null }).session(session);
+        if (!tnProfile) {
           await Candidate.create([{
             tenantId: tenant._id,
             name: name.trim(),
-            email: emailLower,
+            email: user.email,
             phone: req.body.phone || '',
             source: 'platform',
-            userId: uid || null,
-            // Carry over professional fields so they're searchable immediately
+            userId: user._id,
             ...(title          ? { title: title?.trim() }                     : {}),
             ...(currentCompany ? { currentCompany: currentCompany?.trim() }   : {}),
             ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
             ...(availability   ? { availability }                              : {}),
           }], { session });
-        } else if (!existing.userId && uid) {
-          await Candidate.findByIdAndUpdate(existing._id, { $set: { userId: uid } }).session(session);
         }
       }
 
@@ -261,6 +292,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   }
 
   await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+  await adoptApplications(user);
   const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
 }));
@@ -506,6 +538,7 @@ router.post('/verify-otp', otpLimiter, asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) throw new AppError('Email and OTP are required.', 400);
   const user = await authService.verifyOtp(email, otp);
+  await adoptApplications(user);
   const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
 }));
@@ -652,6 +685,7 @@ router.post('/google', loginLimiter, asyncHandler(async (req, res) => {
   }
 
   await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+  await adoptApplications(user);
   const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
 }));

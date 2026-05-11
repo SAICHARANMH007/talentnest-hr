@@ -502,18 +502,19 @@ router.get('/:id/matching-candidates', ...guard, allowRoles('admin', 'super_admi
   const { findSuggestedCandidates } = require('../utils/candidateMatchingEngine');
   const jobFilter = { _id: req.params.id, deletedAt: null };
   if (req.user.role !== 'super_admin') jobFilter.tenantId = req.user.tenantId;
-  const job = await Job.findOne(jobFilter).select('title skills experience location jobType tenantId').lean();
+  const job = await Job.findOne(jobFilter).select('title skills description experience location jobType tenantId').lean();
   if (!job) throw new AppError('Job not found.', 404);
 
   const jobSnapshot = {
-    title          : job.title || '',
-    skills         : Array.isArray(job.skills) ? job.skills : [],
-    experienceLevel: job.experience || '',
-    location       : job.location || '',
-    jobType        : job.jobType || '',
+    title       : job.title || '',
+    description : job.description || '',
+    skills      : Array.isArray(job.skills) ? job.skills : [],
+    location    : job.location || '',
+    jobType     : job.jobType || '',
+    tenantId    : job.tenantId,
   };
 
-  const candidates = await findSuggestedCandidates(jobSnapshot, null); // null = don't exclude any tenant
+  const candidates = await findSuggestedCandidates(jobSnapshot, { limit: 50 });
   res.json({ success: true, data: candidates });
 }));
 

@@ -644,9 +644,10 @@ router.get('/mine', ...guard,
   allowRoles('candidate'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
-    // Find ALL Candidate documents that match this user's email (any tenant)
+    // Find ALL Candidate documents that match this user's email (any tenant) - case insensitive
+    const emailRegex = new RegExp(`^${req.user.email.toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     const candidateDocs = await Candidate.find({
-      email: req.user.email,
+      email: emailRegex,
       deletedAt: null,
     }).select('_id').lean();
     if (!candidateDocs.length) return res.json(paginatedResponse([], 0, limit, page));

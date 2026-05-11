@@ -356,6 +356,20 @@ export default function AdminJobs({ user }) {
                               <div style={{ fontSize:11, color:'#166534', background:'#F0FDF4', padding:'2px 8px', borderRadius:10, display:'inline-block', marginTop:4 }}>📞 {cand?.phone || a.candidatePhone || a.phone}</div>
                             ) : null}
                           </div>
+                          {/* Match Score (UTO Engine) */}
+                          <div style={{ marginLeft:'auto', marginRight:12, display:'flex', flexDirection:'column', alignItems:'center', gap:2, flexShrink:0 }} title={`Breakdown: Skills: ${a.matchBreakdown?.skillScore || 0}%, Exp: ${a.matchBreakdown?.experienceScore || 0}%`}>
+                            <div style={{ 
+                              width:42, height:42, borderRadius:'50%', 
+                              border:`3.5px solid ${a.talentMatchScore >= 80 ? '#10b981' : a.talentMatchScore >= 50 ? '#F59E0B' : '#BA0517'}`, 
+                              display:'flex', alignItems:'center', justifyContent:'center', 
+                              fontSize:12, fontWeight:900, color:'#032D60', background:'#fff',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                            }}>
+                              {a.talentMatchScore || 0}%
+                            </div>
+                            <div style={{ fontSize:8, fontWeight:800, color:'#706E6B', textTransform:'uppercase', letterSpacing:0.5 }}>Match</div>
+                          </div>
+
                           {/* Stage badge/selector */}
                           <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }} onClick={e => e.stopPropagation()}>
                             <select

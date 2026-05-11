@@ -554,4 +554,27 @@ router.post('/merge', ...guard,
   })
 );
 
+// GET /api/candidates/:id/suggested-jobs — jobs best matching this candidate
+router.get('/:id/suggested-jobs', ...guard, asyncHandler(async (req, res) => {
+  const { findSuggestedJobs } = require('../utils/candidateMatchingEngine');
+  
+  // Security: Candidates can only see their own suggestions.
+  // Admins/Recruiters can see suggestions for any candidate in their tenant.
+  const candId = req.params.id === 'me' ? req.user.id : req.params.id;
+  
+  const candFilter = { _id: candId, deletedAt: null };
+  if (req.user.role !== 'super_admin' && req.user.role !== 'candidate') {
+    candFilter.tenantId = req.user.tenantId;
+  } else if (req.user.role === 'candidate') {
+    // If candidate, ensure they are requesting THEIR own ID or 'me'
+    if (String(candId) !== String(req.user.id)) throw new AppError('Access denied.', 403);
+  }
+
+  const candidate = await Candidate.findOne(candFilter).lean();
+  if (!candidate) throw new AppError('Candidate not found.', 404);
+
+  const jobs = await findSuggestedJobs(candidate, { limit: 10 });
+  res.json({ success: true, data: jobs });
+}));
+
 module.exports = router;

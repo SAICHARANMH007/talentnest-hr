@@ -1,85 +1,134 @@
 'use strict';
 
+const { expandSkills } = require('./techOntology');
+
 /**
- * calculateTalentMatchScore — Deterministic Heuristics (RegEx-based matching).
- *
- * @param {object} job       — Job document (skills[], location, jobType)
+ * calculateTalentMatchScore — Deterministic UTO Engine (Universal Tech Ontology).
+ * Handles missing data gracefully through Dynamic Weight Redistribution.
+ * 
+ * @param {object} job       — Job document (skills[], location, jobType, description)
  * @param {object} candidate — Candidate document (parsedProfile, location, noticePeriodDays, willingToRelocate)
  * @param {object} [opts]    — { maxNoticeDays: number } overrides from job
  * @returns {{ score: number, breakdown: object }}
  */
 function calculateTalentMatchScore(job, candidate, opts = {}) {
   const profile = candidate.parsedProfile || {};
+  const cSkills = Array.isArray(candidate.skills) && candidate.skills.length > 0 ? candidate.skills : (profile.skills || []);
+  
+  // ── 1. Define Base Weights ─────────────────────────────────────────────────
+  let weights = {
+    skills: 0.50,
+    experience: 0.25,
+    location: 0.15,
+    notice: 0.10
+  };
 
-  // ── 1. Skills Score (45%) ──────────────────────────────────────────────────
-  const jobSkills  = normaliseSkills(job.skills);
-  const candSkills = normaliseSkills(profile.skills);
+  const scores = {
+    skills: 0,
+    experience: 0,
+    location: 0,
+    notice: 0
+  };
 
-  let skillScore = 0;
+  // ── 2. Skills Vector (Semantic + Exact) ────────────────────────────────────
+  const jobSkills = normaliseSkills(job.skills);
+  const candSkills = normaliseSkills(cSkills);
+  
   if (jobSkills.length > 0) {
+    const expandedJob = expandSkills(jobSkills);
+    const expandedCand = expandSkills(candSkills);
+    
     let matched = 0;
     for (const js of jobSkills) {
-      // Production Standard: Use strict word boundaries to prevent partial matches 
-      // (e.g. "Java" should NOT match "JavaScript").
       const escaped = js.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const boundaryRegex = new RegExp(`\\b${escaped}\\b`, 'i');
       
-      if (candSkills.some(cs => boundaryRegex.test(cs))) {
+      // Check exact or semantic match
+      if (expandedCand.some(cs => boundaryRegex.test(cs))) {
         matched++;
       }
     }
-    skillScore = Math.round((matched / jobSkills.length) * 100);
+    scores.skills = Math.round((matched / jobSkills.length) * 100);
   } else {
-    skillScore = 50; // No requirements specified → neutral
+    // If job has no skills, we can't score skills fairly.
+    // We'll mark it as "not applicable" for redistribution.
+    weights.skills = 0;
   }
 
-  // ── 2. Experience Score (30%) ──────────────────────────────────────────────
-  const requiredYears  = parseRequiredYears(job.description || '');
-  const candidateYears = profile.totalExperienceYears || 0;
+  // ── 3. Experience Vector ───────────────────────────────────────────────────
+  const requiredYears = parseRequiredYears(job.description || '');
+  const candidateYears = candidate.experience || profile.totalExperienceYears || 0;
 
-  let experienceScore = 50; // neutral default when no requirement found
   if (requiredYears > 0) {
     if (candidateYears >= requiredYears) {
-      experienceScore = 100;
+      scores.experience = 100;
     } else {
-      experienceScore = Math.round((candidateYears / requiredYears) * 100);
+      scores.experience = Math.round((candidateYears / requiredYears) * 100);
     }
+  } else {
+    // If job has no experience requirement, redistribute weight
+    weights.experience = 0;
   }
 
-  // ── 3. Location Score (15%) ────────────────────────────────────────────────
-  let locationScore = 20; // default: different location, not willing to relocate
-  const jobLoc  = (job.location || '').toLowerCase().trim();
+  // ── 4. Location Vector ─────────────────────────────────────────────────────
+  const jobLoc = (job.location || '').toLowerCase().trim();
   const candLoc = (candidate.location || '').toLowerCase().trim();
 
   if (!jobLoc || jobLoc === 'remote' || (job.jobType || '').toLowerCase().includes('remote')) {
-    locationScore = 100;
-  } else if (candLoc && jobLoc && candLoc.includes(jobLoc.split(',')[0])) {
-    locationScore = 100;
-  } else if (candidate.willingToRelocate) {
-    locationScore = 60;
+    scores.location = 100;
+  } else if (candLoc) {
+    if (candLoc.includes(jobLoc.split(',')[0])) {
+      scores.location = 100;
+    } else if (candidate.willingToRelocate) {
+      scores.location = 70; // Boosted for intent
+    } else {
+      scores.location = 30; // Still some value for "proximity" matches
+    }
+  } else {
+    // Missing candidate location: don't penalize, redistribute
+    weights.location = 0;
   }
 
-  // ── 4. Notice Period Score (10%) ───────────────────────────────────────────
-  const maxNoticeDays  = opts.maxNoticeDays || 90;
-  const candNoticeDays = candidate.noticePeriodDays || 0;
+  // ── 5. Notice Period Vector ────────────────────────────────────────────────
+  const maxNoticeDays = opts.maxNoticeDays || 90;
+  const candNoticeDays = candidate.noticePeriodDays != null ? candidate.noticePeriodDays : 90;
 
-  const noticeScore = candNoticeDays <= maxNoticeDays ? 100 : 50;
+  if (candidate.noticePeriodDays != null) {
+    scores.notice = candNoticeDays <= maxNoticeDays ? 100 : 50;
+  } else {
+    weights.notice = 0;
+  }
 
-  // ── Final weighted score ───────────────────────────────────────────────────
-  const score = Math.round(
-    skillScore * 0.45 +
-    experienceScore * 0.30 +
-    locationScore * 0.15 +
-    noticeScore * 0.10
-  );
+  // ── 6. Dynamic Weight Redistribution ───────────────────────────────────────
+  // Calculate the sum of weights that are actually being used
+  const activeWeightSum = Object.values(weights).reduce((a, b) => a + b, 0);
+  
+  let finalScore = 0;
+  if (activeWeightSum > 0) {
+    // Normalize weights so they sum to 1.0 (100%)
+    const normalizedWeights = {};
+    for (const k in weights) {
+      normalizedWeights[k] = weights[k] / activeWeightSum;
+    }
+
+    finalScore = Math.round(
+      scores.skills * (normalizedWeights.skills || 0) +
+      scores.experience * (normalizedWeights.experience || 0) +
+      scores.location * (normalizedWeights.location || 0) +
+      scores.notice * (normalizedWeights.notice || 0)
+    );
+  } else {
+    finalScore = 50; // Neutral if no data available at all
+  }
 
   return {
-    score: Math.min(100, Math.max(0, score)),
+    score: Math.min(100, Math.max(0, finalScore)),
     breakdown: {
-      skillScore,
-      experienceScore,
-      locationScore,
-      noticeScore,
+      skillScore: scores.skills,
+      experienceScore: scores.experience,
+      locationScore: scores.location,
+      noticeScore: scores.notice,
+      weightsUsed: weights
     },
   };
 }
@@ -93,14 +142,12 @@ function normaliseSkills(skills) {
 
 function parseRequiredYears(text) {
   if (!text) return 0;
-  // Ordered from most specific to least — all require "experience" context
-  // so we don't accidentally match "founded 15 years ago" etc.
   const patterns = [
     /(\d+)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp)/i,
     /(?:experience|exp)\s*[:\-]?\s*(\d+)\s*\+?\s*(?:years?|yrs?)/i,
-    /(?:minimum|min\.?|at\s+least|over|more\s+than)\s+(\d+)\s*(?:years?|yrs?)/i,
-    /(\d+)\s*[-–]\s*\d+\s*(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp)/i,
+    /(\d+)\s*-\s*(\d+)\s*(?:years?|yrs?)/i,
   ];
+
   for (const p of patterns) {
     const m = text.match(p);
     if (m) return parseInt(m[1], 10);
@@ -108,4 +155,6 @@ function parseRequiredYears(text) {
   return 0;
 }
 
-module.exports = { calculateTalentMatchScore };
+module.exports = {
+  calculateTalentMatchScore
+};

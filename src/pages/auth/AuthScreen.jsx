@@ -1136,12 +1136,12 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {/* Result: not registered ❌ */}
             {orgInfo && !orgInfo.found && (
               <div style={{ background: 'rgba(186,5,23,0.05)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 12, padding: '14px 16px' }}>
-                <p style={{ color: '#BA0517', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>❌ Company not registered</p>
+                <p style={{ color: '#BA0517', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>❌ Organization Not Registered</p>
                 <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
-                  <strong>{companyUrl}</strong> is not registered on TalentNest HR. Contact us to get your organisation set up.
+                  <strong>{companyUrl}</strong> is not registered on TalentNest HR. To use the platform as a recruiter, please ask your administrator to create an account from the Contact Us form.
                 </p>
                 <a href="mailto:hr@talentnesthr.com" style={{ color: '#0176D3', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                  📧 hr@talentnesthr.com — Request Access
+                  📧 hr@talentnesthr.com — Contact Administrator
                 </a>
               </div>
             )}
@@ -1250,6 +1250,13 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
       return setToast('❌ Name, email and password required');
     if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password))
       return setToast('❌ Password must be 8+ characters with 1 uppercase letter and 1 number');
+    
+    // SECURITY: Block public domains for recruiters
+    const PUBLIC_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'aol.com', 'zoho.com', 'protonmail.com', 'yandex.com', 'rediffmail.com', 'live.com', 'msn.com', 'mail.com', 'gmx.com'];
+    const domainPart = form.email.split('@')[1]?.toLowerCase();
+    if (PUBLIC_DOMAINS.includes(domainPart)) {
+      return setToast('❌ Public email domains (Gmail/Yahoo/etc) are not allowed for recruiters. Please use your corporate email or ask your administrator to create an account from the Contact Us form.');
+    }
     setL(true);
     try {
       const domain = (companyUrl || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0];
