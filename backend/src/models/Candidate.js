@@ -80,6 +80,7 @@ const candidateSchema = new mongoose.Schema({
   userId              : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   // Track whether we've sent the "create account" invite email — sent ONCE only
   accountInviteSentAt : { type: Date, default: null },
+  accountRequestSent  : { type: Boolean, default: false },
 
   // ── Soft delete ─────────────────────────────────────────────────────────────
   // Attribution (VMS Support)

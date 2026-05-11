@@ -770,7 +770,7 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
     if (sentEmails.length > 0) {
       await Candidate.updateMany(
         { email: { $in: sentEmails } }, 
-        { $set: { accountInviteSentAt: new Date() } }
+        { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } }
       );
     }
 

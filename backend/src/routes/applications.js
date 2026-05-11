@@ -320,7 +320,7 @@ router.post('/public', asyncHandler(async (req, res) => {
       </div>`
     ).then(async () => {
       // Mark invite as sent so we never send this email again to this candidate
-      await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date() } });
+      await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } });
     }).catch(() => {});
   } else if (existingUser) {
     // They already have an account — send a simple "thanks" confirmation only

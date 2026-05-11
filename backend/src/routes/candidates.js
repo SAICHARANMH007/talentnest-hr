@@ -105,6 +105,14 @@ router.get('/', ...guard,
     }
     if (req.query.source) filter.source = req.query.source;
 
+    // Invitation Status Filter (accountRequestSent tracking)
+    if (req.query.inviteStatus === 'sent') {
+      filter.accountRequestSent = true;
+    } else if (req.query.inviteStatus === 'pending') {
+      filter.accountRequestSent = { $ne: true };
+      filter.userId = null; // Only show guest users who haven't registered
+    }
+
     const [candidates, total] = await Promise.all([
       Candidate.find(filter).select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Candidate.countDocuments(filter),

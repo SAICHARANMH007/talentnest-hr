@@ -466,6 +466,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [companyFilter, setCompanyFilter] = useState('');
   const [expMin, setExpMin]               = useState('');
   const [expMax, setExpMax]               = useState('');
+  const [inviteStatusFilter, setInviteStatusFilter] = useState('');
 
   const showDomainField = isSuperAdmin || filterRole === 'admin' || filterRole === 'recruiter';
   const sf = (k, v) => {
@@ -483,7 +484,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const isCandidates = filterRole === 'candidate';
 
   const hasBasicFilters = !!(search || skillsSel.length || locsSel.length || availFilter);
-  const hasAdvFilters   = !!(clientFilter || taFilter || jobRoleFilter.length || certFilter || companyFilter || expMin || expMax);
+  const hasAdvFilters   = !!(clientFilter || taFilter || jobRoleFilter.length || certFilter || companyFilter || expMin || expMax || inviteStatusFilter);
   const hasFilters      = hasBasicFilters || hasAdvFilters;
 
   // ── filter logic ──
@@ -493,7 +494,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const clearAll = () => {
     setSearch(''); setSkillsSel([]); setLocsSel([]); setAvailFilter('');
     setClientFilter(''); setTaFilter(''); setJobRoleFilter([]); setCertFilter('');
-    setCompanyFilter(''); setExpMin(''); setExpMax('');
+    setCompanyFilter(''); setExpMin(''); setExpMax(''); setInviteStatusFilter('');
     setSelectedIds(new Set());
   };
 
@@ -516,6 +517,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         currentCompany: companyFilter,
         expMin,
         expMax,
+        inviteStatus: inviteStatusFilter,
         recruiterId: recruiterView ? recruiterId : undefined,
       };
       const res = await api.getUsers(params);
@@ -541,14 +543,14 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     setActiveTab('users');
   }, [
     filterRole, recruiterId, search, skillsSel, locsSel, availFilter, 
-    clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax
+    clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter
   ]);
 
   // Handle data loading (triggered by pagination or filters)
   useEffect(() => {
     load(pagination.page, pagination.limit);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax]);
+  }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter]);
 
   // Auto-open detail drawer if coming from notification deep-link
   useEffect(() => {
@@ -916,6 +918,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 {certFilter && <Chip label={certFilter === 'Yes' ? '✓ Certified' : '✗ Not Certified'} onRemove={() => setCertFilter('')} />}
                 {companyFilter && <Chip label={`🏭 ${companyFilter}`} onRemove={() => setCompanyFilter('')} />}
                 {(expMin || expMax) && <Chip label={`🎓 ${expMin || '0'}–${expMax || '∞'} yrs`} onRemove={() => { setExpMin(''); setExpMax(''); }} />}
+                {inviteStatusFilter && <Chip label={inviteStatusFilter === 'sent' ? '📩 Sent' : '📧 Not Sent'} onRemove={() => setInviteStatusFilter('')} />}
               </div>
             )}
 
@@ -974,6 +977,11 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                       <input type="number" placeholder="Max" value={expMax} onChange={e => setExpMax(e.target.value)} min={0} max={50}
                         style={{ width: '100%', padding: '7px 8px', borderRadius: 20, border: `1.5px solid ${expMax ? '#0176D3' : '#e2e8f0'}`, background: expMax ? 'rgba(1,118,211,0.04)' : '#fff', color: '#181818', fontSize: 13, outline: 'none', boxSizing: 'border-box', textAlign: 'center' }} />
                     </div>
+                  </FilterCard>
+
+                  <FilterCard label="Invite Status" icon="📩">
+                    <PillSelect fullWidth value={inviteStatusFilter} onChange={setInviteStatusFilter} placeholder="All Status"
+                      options={[{ value: 'sent', label: 'Invite Sent' }, { value: 'pending', label: 'Pending Invite' }]} />
                   </FilterCard>
 
                 </div>
@@ -1067,6 +1075,9 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                         <span style={{ background: 'rgba(46,132,74,0.08)', color: '#2E844A', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(46,132,74,0.2)', whiteSpace: 'nowrap' }}>
                           {u.availability === 'Immediate' ? '🟢 Now' : `🕐 ${u.availability}`}
                         </span>
+                      )}
+                      {u.accountRequestSent && (
+                        <span style={{ background: '#E0F2FE', color: '#0369A1', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(1,118,211,0.2)', whiteSpace: 'nowrap' }}>📩 Invite Sent</span>
                       )}
                     </div>
 

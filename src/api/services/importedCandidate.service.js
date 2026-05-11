@@ -1,27 +1,33 @@
 'use strict';
-import { get, post, del } from '../client.js';
+import { req } from '../client.js';
 
 export const importedCandidateService = {
   /**
    * Get paginated imported candidates
    * @param {Object} params { page, limit, status, search }
    */
-  getImportedCandidates: (params) => get('/imported-candidates', params),
+  getImportedCandidates: (params) => {
+    const q = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+    });
+    return req('GET', `/imported-candidates?${q.toString()}`);
+  },
 
   /**
    * Bulk import raw rows from Excel/CSV
    * @param {Array} rows Array of objects
    */
-  bulkImportRaw: (rows) => post('/imported-candidates/bulk', { rows }),
+  bulkImportRaw: (rows) => req('POST', '/imported-candidates/bulk', { rows }),
 
   /**
    * Trigger "Deep Scan" invites for selected IDs
    * @param {Array} ids Array of ImportedCandidate document IDs
    */
-  sendImportedInvites: (ids) => post('/imported-candidates/invite', { ids }),
+  sendImportedInvites: (ids) => req('POST', '/imported-candidates/invite', { ids }),
 
   /**
    * Clear the entire imported database for the tenant
    */
-  clearImportedDatabase: () => del('/imported-candidates'),
+  clearImportedDatabase: () => req('DELETE', '/imported-candidates'),
 };
