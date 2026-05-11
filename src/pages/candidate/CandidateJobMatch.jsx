@@ -5,7 +5,6 @@ import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
-import Field from '../../components/ui/Field.jsx';
 import { api } from '../../api/api.js';
 import { matchJobsToCandidate } from '../../api/matching.js';
 
@@ -23,6 +22,8 @@ export default function CandidateJobMatch({ user }) {
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
   const [assessments, setAssessments] = useState({}); // jobId → assessment (null = none, obj = found)
+  const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all" });
+  const [sortBy, setSortBy] = useState("match"); // match, newest, urgency
 
   useEffect(() => {
     api.getPublicJobs().then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
@@ -32,29 +33,47 @@ export default function CandidateJobMatch({ user }) {
     }).catch(() => { });
   }, [user.id]);
 
-  const run = async (currentQuery = query) => {
+  const run = async (currentQuery = query, currentFilters = filters) => {
     setLoad(true);
     try {
       const profileRes = await api.getUser(user.id);
       const profile = profileRes.data || profileRes;
-      setResults(matchJobsToCandidate(profile, jobs, currentQuery));
+      
+      let matched = matchJobsToCandidate(profile, jobs, currentQuery);
+      
+      // Apply Advanced Filters
+      if (currentFilters.location) {
+        matched = matched.filter(r => r.job.location?.toLowerCase().includes(currentFilters.location.toLowerCase()));
+      }
+      if (currentFilters.type !== 'all') {
+        matched = matched.filter(r => r.job.jobType === currentFilters.type || (currentFilters.type === 'remote' && r.job.location?.toLowerCase().includes('remote')));
+      }
+      if (currentFilters.urgency !== 'all') {
+        matched = matched.filter(r => r.job.urgency === currentFilters.urgency);
+      }
+
+      // Apply Advanced Sorting
+      if (sortBy === 'newest') {
+        matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
+      } else if (sortBy === 'urgency') {
+        const order = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        matched.sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
+      }
+
+      setResults(matched);
     } catch (e) { setToast(`❌ Matching failed: ${e.message}`); }
     setLoad(false);
   };
 
-  // Auto-run when jobs are loaded
+  // Auto-run when jobs, filters, or sortBy changes
   useEffect(() => {
-    if (jobs.length > 0) {
-      run(query);
-    }
-  }, [jobs]);
+    if (jobs.length > 0) run(query, filters);
+  }, [jobs, filters, sortBy]);
 
-  // Debounced search
+  // Debounced search for query only
   useEffect(() => {
     if (jobs.length === 0) return;
-    const timer = setTimeout(() => {
-      run(query);
-    }, 400);
+    const timer = setTimeout(() => run(query, filters), 400);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -80,25 +99,67 @@ export default function CandidateJobMatch({ user }) {
     <div style={{ animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader 
-        title="Job Match" 
-        subtitle="Intelligent profile matching to find roles that best fit your skills and experience" 
+        title="Job Match & Career Explorer" 
+        subtitle="Our deterministic matching engine analyzes your profile against every open position to find your perfect next role." 
       />
 
-      <div style={{ ...card, marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Field
-            value={query}
-            onChange={v => setQuery(v)}
-            placeholder="Search by role, skill, or location..."
-            style={{ flex: 1 }}
-          />
-          <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
-            {loading ? <><Spinner /> Matching…</> : "🔍 Refresh Match"}
+      <div style={{ ...card, marginBottom: 24, padding: '24px' }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 18, color: '#94A3B8' }}>🔍</span>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by role, skill (e.g. .NET, React), or description..."
+              style={{ width: '100%', padding: '10px 14px 10px 42px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 14, outline: 'none', transition: 'border-color 0.2s' }}
+              onFocus={e => e.target.style.borderColor = '#0176D3'}
+              onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+            />
+          </div>
+          <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, padding: '0 24px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, height: 44 }}>
+            {loading ? <Spinner /> : "Match Now"}
           </button>
         </div>
-        {jobs.length > 0 && <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0, fontWeight: 500 }}>
-          Analyzing {jobs.length} open positions · Using deterministic Talent Match heuristics
-        </p>}
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F8FAFC', padding: '6px 12px', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>📍 Location:</span>
+            <input 
+              value={filters.location}
+              onChange={e => setFilters(p => ({ ...p, location: e.target.value }))}
+              placeholder="City or Remote"
+              style={{ border: 'none', background: 'transparent', fontSize: 13, outline: 'none', width: 120, color: '#1E293B' }}
+            />
+          </div>
+
+          <select 
+            value={filters.type}
+            onChange={e => setFilters(p => ({ ...p, type: e.target.value }))}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+          >
+            <option value="all">💼 All Job Types</option>
+            <option value="full-time">Full-time</option>
+            <option value="remote">Remote Only</option>
+            <option value="contract">Contract</option>
+          </select>
+
+          <select 
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+          >
+            <option value="match">📊 Sort by Match Score</option>
+            <option value="newest">📅 Sort by Newest</option>
+            <option value="urgency">⚡ Sort by Urgency</option>
+          </select>
+
+          <button 
+            onClick={() => { setQuery(""); setFilters({ location: "", type: "all", urgency: "all" }); }}
+            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Clear Filters
+          </button>
+        </div>
       </div>
 
       {results.length === 0 && !loading && jobs.length > 0 && (
