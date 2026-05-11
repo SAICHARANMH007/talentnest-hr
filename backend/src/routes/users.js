@@ -678,4 +678,71 @@ router.post('/merge', authenticate, allowRoles('super_admin'), asyncHandler(asyn
   res.json({ success: true, message: 'Users merged successfully', data: userService.normalize(merged) });
 }));
 
+// POST /api/users/invite-guests — Send marketing invite to unregistered candidates
+router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const { emails } = req.body;
+  if (!emails || !Array.isArray(emails)) throw new AppError('emails array is required', 400);
+
+  const { sendEmailWithRetry, templates } = require('../utils/email');
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+
+  const results = { sent: 0, failed: 0, errors: [] };
+
+  for (const email of emails) {
+    try {
+      const candidate = await Candidate.findOne({ email: email.toLowerCase().trim(), deletedAt: null }).lean();
+      if (!candidate) continue;
+
+      const link = `${FRONTEND_URL}/signup?email=${encodeURIComponent(candidate.email)}`;
+      const tpl = templates.guestAccountInvite(candidate.name || 'Candidate', candidate.email, link, {
+        orgName: 'TalentNest HR',
+      });
+
+      await sendEmailWithRetry(candidate.email, tpl.subject, tpl.html);
+      
+      // Track that we sent the invite
+      await Candidate.updateMany({ email: candidate.email }, { $set: { accountInviteSentAt: new Date() } });
+      
+      results.sent++;
+    } catch (err) {
+      results.failed++;
+      results.errors.push({ email, error: err.message });
+    }
+  }
+
+  res.json({ success: true, message: \`Invites sent successfully to \${results.sent} candidates.\`, results });
+}));
+
+// GET /api/users/unsubscribe — One-click unsubscribe from marketing emails
+router.get('/unsubscribe', asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).send('Email is required.');
+
+  // Update both User and Candidate models to reflect unsubscription
+  // Assuming we use interestStatus: 'not_interested' or a new field 'unsubscribed'
+  // For safety, let's just mark interestStatus = 'not_interested' on Candidate.
+  await Candidate.updateMany({ email: email.toLowerCase().trim() }, { $set: { interestStatus: 'not_interested' } });
+  
+  res.send(\`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Unsubscribed</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+        h1 { color: #032D60; font-size: 24px; margin-bottom: 10px; }
+        p { color: #64748B; font-size: 15px; margin-bottom: 0; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Unsubscribed Successfully</h1>
+        <p>You will no longer receive marketing emails from TalentNest HR.</p>
+      </div>
+    </body>
+    </html>
+  \`);
+}));
+
 module.exports = router;

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
-import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
@@ -13,31 +12,128 @@ const STAGE_COLOR = {
 };
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
-// Expanded row showing all jobs the candidate applied for
-function CandidateAppsRow({ candidate, onClose }) {
+function GuestUserModal({ candidate, onClose, onRefresh }) {
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({});
+
+  useEffect(() => {
+    if (candidate) {
+      setFormData({
+        name: candidate.name || '',
+        email: candidate.email || '',
+        phone: candidate.phone || '',
+        title: candidate.title || '',
+        currentCompany: candidate.currentCompany || '',
+        experience: candidate.experience || '',
+        location: candidate.location || '',
+        availability: candidate.availability || '',
+        skills: Array.isArray(candidate.skills) ? candidate.skills.join(', ') : candidate.skills || '',
+      });
+    }
+  }, [candidate]);
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        ...formData,
+        skills: typeof formData.skills === 'string' ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) : formData.skills,
+      };
+      // Guest users might have multiple Candidate records for the same email (if they applied multiple times).
+      // We update all of them so data stays consistent.
+      for (const cid of candidate.candidateIds) {
+        await api.updateCandidate(cid, payload);
+      }
+      setEditMode(false);
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save candidate data.');
+    }
+    setSaving(false);
+  };
+
+  if (!candidate) return null;
+
   return (
-    <div style={{ padding:'16px 20px', background:'#F8FAFC', borderTop:'1px solid #E2E8F0' }}>
-      <div style={{ fontSize:11, fontWeight:800, color:'#0176D3', letterSpacing:1, textTransform:'uppercase', marginBottom:12 }}>
-        All Applications — {candidate.applications?.length || 0} job{candidate.applications?.length !== 1 ? 's' : ''}
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:10 }}>
-        {(candidate.applications || []).map(app => (
-          <div key={app.id} style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'12px 14px' }}>
-            <div style={{ fontWeight:700, fontSize:13, color:'#0A1628', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{app.jobTitle}</div>
-            {app.jobCompany && <div style={{ fontSize:11, color:'#64748B', marginBottom:6 }}>{app.jobCompany}{app.location ? ` · ${app.location}` : ''}</div>}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-              <span style={{ fontSize:11, fontWeight:700, color: STAGE_COLOR[app.stage] || '#64748B', background:`${STAGE_COLOR[app.stage] || '#64748B'}14`, padding:'2px 8px', borderRadius:20 }}>{app.stage}</span>
-              <span style={{ fontSize:11, color:'#94A3B8' }}>{fmtDate(app.appliedAt)}</span>
-            </div>
-            {app.appliedFrom?.lat && app.appliedFrom?.lng && (
-              <a href={`https://www.google.com/maps?q=${app.appliedFrom.lat},${app.appliedFrom.lng}`}
-                target="_blank" rel="noopener noreferrer"
-                style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#059669', marginTop:6, textDecoration:'none', fontWeight:600 }}>
-                📍 {app.appliedFrom.city || 'View location'}
-              </a>
+    <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(10,22,40,0.5)', backdropFilter:'blur(4px)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#fff', width:'100%', maxWidth:700, borderRadius:16, display:'flex', flexDirection:'column', maxHeight:'90vh', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' }}>
+        
+        {/* Header */}
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#0A1628' }}>Guest User Profile</div>
+            <div style={{ fontSize:13, color:'#64748B', marginTop:4 }}>{candidate.email}</div>
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            {!editMode ? (
+              <button onClick={() => setEditMode(true)} style={{ ...btnG, padding:'8px 16px' }}>Edit Record</button>
+            ) : (
+              <button onClick={handleSave} disabled={saving} style={{ ...btnP, padding:'8px 16px' }}>{saving ? 'Saving...' : 'Save Changes'}</button>
+            )}
+            <button onClick={onClose} style={{ ...btnG, padding:'8px 12px', background:'#F1F5F9', border:'none' }}>✕</button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div style={{ padding:'24px', overflowY:'auto', flex:1 }}>
+          <div style={{ marginBottom:30 }}>
+            <div style={{ fontSize:12, fontWeight:800, color:'#0176D3', textTransform:'uppercase', letterSpacing:1, marginBottom:16 }}>Profile Information</div>
+            
+            {editMode ? (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Name</label><input name="name" value={formData.name} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Email</label><input name="email" value={formData.email} disabled style={{ ...inp, width:'100%', opacity:0.6 }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Phone</label><input name="phone" value={formData.phone} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Title</label><input name="title" value={formData.title} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Company</label><input name="currentCompany" value={formData.currentCompany} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Location</label><input name="location" value={formData.location} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Experience (Years)</label><input type="number" name="experience" value={formData.experience} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Availability</label><input name="availability" value={formData.availability} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+                <div style={{ gridColumn:'1 / -1' }}><label style={{ fontSize:11, fontWeight:700, color:'#64748B', display:'block', marginBottom:6 }}>Skills (comma separated)</label><input name="skills" value={formData.skills} onChange={handleChange} style={{ ...inp, width:'100%' }} /></div>
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+                {/* Show ONLY filled data */}
+                {Object.entries(formData).map(([k, v]) => {
+                  if (!v || v.length === 0) return null;
+                  const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                  return (
+                    <div key={k}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:0.5 }}>{label}</div>
+                      <div style={{ fontSize:14, color:'#0A1628', fontWeight:600, marginTop:4 }}>{v}</div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
-        ))}
+
+          <div>
+            <div style={{ fontSize:12, fontWeight:800, color:'#0176D3', textTransform:'uppercase', letterSpacing:1, marginBottom:16 }}>Application Pipeline ({candidate.applications?.length || 0})</div>
+            {candidate.applications?.length > 0 ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {candidate.applications.map(app => (
+                  <div key={app.id} style={{ border:'1px solid #E2E8F0', borderRadius:10, padding:'14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:14, color:'#0A1628' }}>{app.jobTitle}</div>
+                      {app.jobCompany && <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{app.jobCompany}</div>}
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <span style={{ fontSize:11, fontWeight:700, color: STAGE_COLOR[app.stage] || '#64748B', background:`${STAGE_COLOR[app.stage] || '#64748B'}14`, padding:'4px 10px', borderRadius:20 }}>{app.stage}</span>
+                      <div style={{ fontSize:11, color:'#94A3B8', marginTop:6 }}>Applied: {fmtDate(app.appliedAt)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize:13, color:'#94A3B8' }}>No applications found.</div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -51,7 +147,16 @@ export default function SuperAdminUnregisteredCandidates() {
   const [page, setPage]         = useState(1);
   const [pagination, setPagination] = useState({ total:0, pages:1 });
   const [toast, setToast]       = useState('');
-  const [expanded, setExpanded] = useState(null); // email of expanded row
+  const [selectedCandidates, setSelectedCandidates] = useState(new Set());
+  
+  // Modals & Assignments
+  const [activeModalCandidate, setActiveModalCandidate] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [recruiters, setRecruiters] = useState([]);
+  const [selectedJob, setSelectedJob] = useState('');
+  const [selectedRecruiter, setSelectedRecruiter] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
   const LIMIT = 50;
 
   const load = useCallback(async () => {
@@ -61,9 +166,19 @@ export default function SuperAdminUnregisteredCandidates() {
       const data = Array.isArray(r?.data) ? r.data : [];
       setRows(data);
       setPagination(r?.pagination || { total: data.length, pages: 1 });
+      
+      // Load dropdowns if not loaded
+      if (jobs.length === 0) {
+        const [j, rec] = await Promise.all([
+          api.getJobs({ limit: 200, status: 'active' }),
+          api.getUsersList({ role: 'recruiter', limit: 200 })
+        ]);
+        setJobs(Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
+        setRecruiters(Array.isArray(rec?.data) ? rec.data : (Array.isArray(rec) ? rec : []));
+      }
     } catch { setRows([]); }
     setLoading(false);
-  }, [page, search]);
+  }, [page, search, jobs.length]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -71,14 +186,86 @@ export default function SuperAdminUnregisteredCandidates() {
     e.preventDefault();
     setSearch(searchInput.trim());
     setPage(1);
+    setSelectedCandidates(new Set());
+  };
+
+  const toggleSelect = (email) => {
+    const next = new Set(selectedCandidates);
+    if (next.has(email)) next.delete(email);
+    else next.add(email);
+    setSelectedCandidates(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCandidates.size === rows.length) setSelectedCandidates(new Set());
+    else setSelectedCandidates(new Set(rows.map(r => r.email)));
+  };
+
+  const handleAssignJob = async () => {
+    if (!selectedJob) return alert('Select a job first');
+    setAssigning(true);
+    try {
+      // Collect all raw candidate IDs for selected emails
+      const cids = [];
+      rows.forEach(r => { if (selectedCandidates.has(r.email)) cids.push(...r.candidateIds); });
+      
+      await api.assignCandidatesToJob(selectedJob, cids);
+      setToast(`Successfully assigned to job.`);
+      setSelectedCandidates(new Set());
+      setSelectedJob('');
+    } catch (err) {
+      alert('Failed to assign to job.');
+    }
+    setAssigning(false);
+  };
+
+  const handleAssignRecruiter = async () => {
+    if (!selectedRecruiter) return alert('Select a recruiter first');
+    setAssigning(true);
+    try {
+      // Collect all raw candidate IDs for selected emails
+      const cids = [];
+      rows.forEach(r => { if (selectedCandidates.has(r.email)) cids.push(...r.candidateIds); });
+      
+      for (const cid of cids) {
+        await api.assignCandidate(cid, selectedRecruiter);
+      }
+      setToast(`Successfully assigned recruiter.`);
+      setSelectedCandidates(new Set());
+      setSelectedRecruiter('');
+    } catch (err) {
+      alert('Failed to assign recruiter.');
+    }
+    setAssigning(false);
+  };
+
+  const handleInviteGuests = async () => {
+    setAssigning(true);
+    try {
+      const emails = Array.from(selectedCandidates);
+      await api.inviteGuestCandidates(emails);
+      setToast(`Marketing invite sent to ${emails.length} candidates.`);
+      setSelectedCandidates(new Set());
+    } catch (err) {
+      alert('Failed to send invites.');
+    }
+    setAssigning(false);
   };
 
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
+      {activeModalCandidate && (
+        <GuestUserModal 
+          candidate={activeModalCandidate} 
+          onClose={() => setActiveModalCandidate(null)} 
+          onRefresh={load} 
+        />
+      )}
+      
       <PageHeader
         title="👤 Guest Applicants"
-        subtitle="Candidates who applied without a TalentNest account — deduplicated by email"
+        subtitle="Imported and career-page applicants without a platform account"
         action={
           <div style={{ fontSize:13, color:'#64748B', fontWeight:600 }}>
             {pagination.total} unique candidate{pagination.total !== 1 ? 's' : ''}
@@ -86,102 +273,110 @@ export default function SuperAdminUnregisteredCandidates() {
         }
       />
 
-      {/* Info banner */}
       <div style={{ ...card, background:'rgba(1,118,211,0.05)', border:'1px solid rgba(1,118,211,0.2)', padding:'12px 18px', marginBottom:20, display:'flex', alignItems:'flex-start', gap:12 }}>
         <span style={{ fontSize:18, flexShrink:0 }}>ℹ️</span>
         <div style={{ fontSize:13, color:'#0176D3', lineHeight:1.6 }}>
-          These candidates applied via career pages but have not created a TalentNest account yet.
-          Each row shows ONE candidate even if they applied to multiple jobs — all their applications are listed inside.
-          Once a candidate creates an account, they move to <strong>Registered Users</strong> automatically.
+          These are unregistered candidates (e.g., from Bulk Import or Career Pages). Tap any row to view and edit their data. Use checkboxes to assign multiple candidates to a Job or Recruiter at once.
         </div>
       </div>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap' }}>
-        <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
-          placeholder="Search by name, email, phone, title…"
-          style={{ ...inp, flex:1, minWidth:220, padding:'10px 14px', fontSize:14 }} />
-        <button type="submit" style={{ ...btnP, padding:'10px 20px' }}>Search</button>
-        {search && (
-          <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
-            style={{ ...btnG, padding:'10px 16px' }}>Clear</button>
+      <div style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap', justifyContent:'space-between' }}>
+        <form onSubmit={handleSearch} style={{ display:'flex', gap:10, flex:1, minWidth:300 }}>
+          <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
+            placeholder="Advanced Search (name, email, phone...)"
+            style={{ ...inp, flex:1, padding:'10px 14px', fontSize:14 }} />
+          <button type="submit" style={{ ...btnP, padding:'10px 20px' }}>Search</button>
+          {search && (
+            <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
+              style={{ ...btnG, padding:'10px 16px' }}>Clear</button>
+          )}
+        </form>
+
+        {selectedCandidates.size > 0 && (
+          <div style={{ display:'flex', gap:10, alignItems:'center', background:'#F8FAFC', padding:'6px 12px', borderRadius:8, border:'1px solid #E2E8F0' }}>
+            <span style={{ fontSize:12, fontWeight:700, color:'#0176D3' }}>{selectedCandidates.size} Selected</span>
+            
+            <select value={selectedJob} onChange={e => setSelectedJob(e.target.value)} style={{ ...inp, padding:'6px 10px', fontSize:12, minWidth:150 }}>
+              <option value="">-- Assign to Job --</option>
+              {jobs.map(j => <option key={j._id} value={j._id}>{j.title}</option>)}
+            </select>
+            <button onClick={handleAssignJob} disabled={assigning || !selectedJob} style={{ ...btnP, padding:'6px 12px', fontSize:12 }}>Assign</button>
+            
+            <div style={{ width:1, height:20, background:'#CBD5E1', margin:'0 4px' }} />
+            
+            <select value={selectedRecruiter} onChange={e => setSelectedRecruiter(e.target.value)} style={{ ...inp, padding:'6px 10px', fontSize:12, minWidth:150 }}>
+              <option value="">-- Assign to Recruiter --</option>
+              {recruiters.map(r => <option key={r._id} value={r._id}>{r.name || r.email}</option>)}
+            </select>
+            <button onClick={handleAssignRecruiter} disabled={assigning || !selectedRecruiter} style={{ ...btnG, padding:'6px 12px', fontSize:12 }}>Assign</button>
+
+            <div style={{ width:1, height:20, background:'#CBD5E1', margin:'0 4px' }} />
+
+            <button onClick={handleInviteGuests} disabled={assigning} style={{ ...btnP, padding:'6px 12px', fontSize:12, background:'linear-gradient(135deg,#7c3aed,#6d28d9)' }}>
+              {assigning ? 'Sending...' : 'Request Account Creation ✉️'}
+            </button>
+          </div>
         )}
-      </form>
+      </div>
 
       {loading ? (
         <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner /></div>
       ) : rows.length === 0 ? (
         <div style={{ ...card, textAlign:'center', padding:60, color:'#94A3B8' }}>
           <div style={{ fontSize:40, marginBottom:12 }}>👤</div>
-          <div style={{ fontWeight:700, fontSize:15 }}>{search ? 'No results found' : 'No unregistered applicants yet'}</div>
-          <div style={{ fontSize:13, marginTop:6 }}>When candidates apply without creating an account, they appear here.</div>
+          <div style={{ fontWeight:700, fontSize:15 }}>{search ? 'No results found' : 'No guest applicants yet'}</div>
         </div>
       ) : (
         <div style={{ ...card, overflow:'hidden', padding:0 }}>
-          {/* Table header */}
-          <div style={{ background:'#F8FAFC', borderBottom:'1px solid #E2E8F0', display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 80px', gap:0 }}>
-            {['Candidate','Email / Phone','Title / Company','Applied','Jobs',''].map(h => (
-              <div key={h} style={{ padding:'10px 14px', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.8 }}>{h}</div>
+          <div style={{ background:'#F8FAFC', borderBottom:'1px solid #E2E8F0', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr', gap:0 }}>
+            <div style={{ padding:'12px 14px', display:'flex', alignItems:'center' }}>
+              <input type="checkbox" checked={selectedCandidates.size === rows.length && rows.length > 0} onChange={toggleSelectAll} style={{ width:16, height:16, cursor:'pointer' }} />
+            </div>
+            {['Candidate','Email / Phone','Title / Company','Jobs'].map(h => (
+              <div key={h} style={{ padding:'12px 14px', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.8 }}>{h}</div>
             ))}
           </div>
 
-          {/* Rows */}
           {rows.map(row => (
-            <div key={row.email} style={{ borderBottom:'1px solid #F1F5F9' }}>
-              <div
-                style={{ display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 80px', gap:0, cursor:'pointer', transition:'background 0.15s' }}
-                onClick={() => setExpanded(prev => prev === row.email ? null : row.email)}
-                onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
-                onMouseLeave={e => e.currentTarget.style.background=''}>
-                {/* Name */}
-                <div style={{ padding:'12px 14px' }}>
-                  <div style={{ fontWeight:800, fontSize:13, color:'#0A1628' }}>{row.name || '—'}</div>
-                  <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
-                    {row.source === 'career_page' ? '🌐 Career Page' : row.source || 'Guest'}
-                  </div>
-                </div>
-                {/* Email/Phone */}
-                <div style={{ padding:'12px 14px' }}>
-                  <div style={{ fontSize:12, color:'#374151' }}>{row.email}</div>
-                  <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{row.phone || '—'}</div>
-                </div>
-                {/* Title/Company */}
-                <div style={{ padding:'12px 14px' }}>
-                  <div style={{ fontSize:12, color:'#374151' }}>{row.title || '—'}</div>
-                  <div style={{ fontSize:11, color:'#64748B', marginTop:2 }}>{row.currentCompany || '—'}</div>
-                </div>
-                {/* First applied */}
-                <div style={{ padding:'12px 14px', fontSize:12, color:'#64748B' }}>{fmtDate(row.firstAppliedAt)}</div>
-                {/* Job count */}
-                <div style={{ padding:'12px 14px' }}>
-                  <span style={{ background:'rgba(1,118,211,0.1)', color:'#0176D3', fontWeight:800, fontSize:12, padding:'3px 10px', borderRadius:20 }}>
-                    {row.jobCount} job{row.jobCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                {/* Expand toggle */}
-                <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <span style={{ color:'#94A3B8', fontSize:14, fontWeight:700 }}>
-                    {expanded === row.email ? '▲' : '▼'}
-                  </span>
-                </div>
+            <div key={row.email} style={{ borderBottom:'1px solid #F1F5F9', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr', gap:0, transition:'background 0.15s' }}
+                 onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
+                 onMouseLeave={e => e.currentTarget.style.background=''}>
+              
+              <div style={{ padding:'12px 14px', display:'flex', alignItems:'center' }}>
+                <input type="checkbox" checked={selectedCandidates.has(row.email)} onChange={() => toggleSelect(row.email)} style={{ width:16, height:16, cursor:'pointer' }} />
               </div>
-              {/* Expanded applications */}
-              {expanded === row.email && (
-                <CandidateAppsRow candidate={row} onClose={() => setExpanded(null)} />
-              )}
+
+              {/* Clickable row for modal */}
+              <div style={{ padding:'12px 14px', cursor:'pointer' }} onClick={() => setActiveModalCandidate(row)}>
+                <div style={{ fontWeight:800, fontSize:13, color:'#0A1628' }}>{row.name || '—'}</div>
+                <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>{row.source === 'career_page' ? '🌐 Career Page' : row.source || 'Guest'}</div>
+              </div>
+
+              <div style={{ padding:'12px 14px', cursor:'pointer' }} onClick={() => setActiveModalCandidate(row)}>
+                <div style={{ fontSize:12, color:'#374151' }}>{row.email}</div>
+                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>{row.phone || '—'}</div>
+              </div>
+
+              <div style={{ padding:'12px 14px', cursor:'pointer' }} onClick={() => setActiveModalCandidate(row)}>
+                <div style={{ fontSize:12, color:'#374151' }}>{row.title || '—'}</div>
+                <div style={{ fontSize:11, color:'#64748B', marginTop:2 }}>{row.currentCompany || '—'}</div>
+              </div>
+
+              <div style={{ padding:'12px 14px', cursor:'pointer' }} onClick={() => setActiveModalCandidate(row)}>
+                <span style={{ background:'rgba(1,118,211,0.1)', color:'#0176D3', fontWeight:800, fontSize:12, padding:'3px 10px', borderRadius:20 }}>
+                  {row.jobCount} job{row.jobCount !== 1 ? 's' : ''}
+                </span>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Pagination */}
       {pagination.pages > 1 && (
         <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:12, marginTop:20 }}>
-          <button onClick={() => setPage(p => p - 1)} disabled={page === 1}
-            style={{ ...btnG, padding:'8px 16px', opacity: page === 1 ? 0.4 : 1 }}>← Prev</button>
+          <button onClick={() => setPage(p => p - 1)} disabled={page === 1} style={{ ...btnG, padding:'8px 16px', opacity: page === 1 ? 0.4 : 1 }}>← Prev</button>
           <span style={{ fontSize:13, color:'#64748B' }}>Page {page} of {pagination.pages} · {pagination.total} total</span>
-          <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.pages}
-            style={{ ...btnG, padding:'8px 16px', opacity: page >= pagination.pages ? 0.4 : 1 }}>Next →</button>
+          <button onClick={() => setPage(p => p + 1)} disabled={page >= pagination.pages} style={{ ...btnG, padding:'8px 16px', opacity: page >= pagination.pages ? 0.4 : 1 }}>Next →</button>
         </div>
       )}
     </div>

@@ -174,48 +174,62 @@ class UserService {
       preferredLocation: c.preferredLocation|| undefined,
     });
 
+    const Candidate = require('../models/Candidate');
     for (const c of candidates) {
       if (!c.email) { stats.skipped++; continue; }
       const email = c.email.toLowerCase().trim();
 
       try {
-        let user = await User.findOne({ email, tenantId: finalTenantId }).setOptions({ includeDeleted: true });
+        let candidateDoc = await Candidate.findOne({ email, tenantId: finalTenantId }).setOptions({ includeDeleted: true });
+        let userDoc = await User.findOne({ email, tenantId: finalTenantId }).setOptions({ includeDeleted: true });
 
-        if (user) {
-          // Restore soft-deleted or update existing candidate with new data
+        // If either exists, we update the existing record
+        if (candidateDoc || userDoc) {
           const fields = buildFields(c, email);
-          const update = { $set: {} };
-          if (user.deletedAt) { update.$set.deletedAt = null; update.$set.isActive = true; }
-          // Only overwrite non-empty string fields if the candidate doesn't already have them
-          for (const [k, v] of Object.entries(fields)) {
-            if (v !== undefined && !user[k]) update.$set[k] = v;
+          
+          if (candidateDoc) {
+            const update = { $set: {} };
+            if (candidateDoc.deletedAt) { update.$set.deletedAt = null; }
+            for (const [k, v] of Object.entries(fields)) {
+              if (v !== undefined && !candidateDoc[k]) update.$set[k] = v;
+            }
+            if (Object.keys(update.$set).length > 0) {
+              await Candidate.findByIdAndUpdate(candidateDoc._id, update);
+            }
+            inserted.push(candidateDoc);
           }
-          // Ensure orgName is set if missing
-          if (!user.orgName) {
-            const finalOrgName = c.orgName || c.organisation || orgName;
-            update.$set.orgName = finalOrgName;
-            update.$set.organisation = finalOrgName;
+
+          if (userDoc) {
+            const update = { $set: {} };
+            if (userDoc.deletedAt) { update.$set.deletedAt = null; update.$set.isActive = true; }
+            for (const [k, v] of Object.entries(fields)) {
+              if (v !== undefined && !userDoc[k]) update.$set[k] = v;
+            }
+            if (!userDoc.orgName) {
+              const finalOrgName = c.orgName || c.organisation || orgName;
+              update.$set.orgName = finalOrgName;
+              update.$set.organisation = finalOrgName;
+            }
+            if (Object.keys(update.$set).length > 0) {
+              await User.findByIdAndUpdate(userDoc._id, update);
+            }
+            if (!candidateDoc) inserted.push(userDoc);
           }
-          if (Object.keys(update.$set).length > 0) {
-            await User.findByIdAndUpdate(user._id, update);
-          }
-          inserted.push(user);
+          
           stats.updated++;
           continue;
         }
 
-        const newUser = await User.create({
+        // If they don't exist anywhere, create a Guest User (Candidate ONLY)
+        const newCandidate = await Candidate.create({
           ...Object.fromEntries(Object.entries(buildFields(c, email)).filter(([, v]) => v !== undefined)),
           email,
-          passwordHash: bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10),
-          role: 'candidate',
-          tenantId: finalTenantId, addedBy,
-          orgName: c.orgName || c.organisation || orgName,
-          organisation: c.organisation || c.orgName || orgName,
-          isActive: true,
+          tenantId: finalTenantId,
+          addedBy,
+          source: c.source || 'bulk_import',
         });
 
-        inserted.push(newUser);
+        inserted.push(newCandidate);
         stats.created++;
       } catch (err) {
         stats.errors.push(`${email}: ${err.message}`);

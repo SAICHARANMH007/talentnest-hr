@@ -213,6 +213,37 @@ const templates = {
         </div>
       `, 'Password Reset Notification', { orgName, ...opts })
     };
+  },
+
+  /**
+   * Guest Marketing Invite (Request to Create Account)
+   */
+  guestAccountInvite: (name, email, link, opts = {}) => {
+    return {
+      subject: `Claim Your Profile on TalentNest HR — Accelerate Your Career`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Hi ${name} 👋</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+          We noticed you've been applying to exciting roles through our partners. <strong>TalentNest HR</strong> is a premier job board and recruitment stack where thousands of top companies actively look for talent like you.
+        </p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+          By claiming your free account, you can:
+        </p>
+        <ul style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 24px;padding-left:20px">
+          <li style="margin-bottom:8px">Get discovered by top recruiters instantly.</li>
+          <li style="margin-bottom:8px">Track all your applications in one unified dashboard.</li>
+          <li style="margin-bottom:8px">Receive AI-matched job recommendations directly in your inbox.</li>
+        </ul>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0154A4);color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(1,118,211,0.35)">
+            Claim My Free Profile →
+          </a>
+        </div>
+        <p style="text-align:center;margin-top:40px;margin-bottom:0">
+          <a href="${BACKEND_URL}/api/users/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9ca3af;font-size:10px;text-decoration:underline;">Unsubscribe from these emails</a>
+        </p>
+      `, 'Claim Your TalentNest Profile', opts)
+    };
   }
 };
 
