@@ -484,13 +484,9 @@ export default function RecruiterPipeline({ user }) {
   const [recruiter, setRecruiter] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
-  const [reviewModal, setReviewModal] = useState(null); // { assessmentId, submissionId }
   const [stageFilter, setSF] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
-  const [intApp, setIntApp] = useState(null);
-  const [rejApp, setRejApp] = useState(null);
-  const [offerApp, setOfferApp] = useState(null);
 
   useEffect(() => {
     api.getJobs({ recruiterId: user.id, limit: 100 }).then(j => {
@@ -821,10 +817,10 @@ export default function RecruiterPipeline({ user }) {
                     onMoveStage={moveStage}
                     onAnyStage={setAnyStage}
                     onViewDetail={setDetApp}
-                    onInterview={setIntApp}
-                    onReject={setRejApp}
+                    onInterview={(app) => navigate(`/app/forms/interview?appId=${app.id}`)}
+                    onReject={(app) => navigate(`/app/forms/reject?appId=${app.id}`)}
                     onPark={handlePark}
-                    onOffer={setOfferApp}
+                    onOffer={(app) => navigate(`/app/forms/offer?appId=${app.id}`)}
                     onToast={setToast}
                     onRefresh={refresh}
                     assessmentId={assessmentData?.id}
