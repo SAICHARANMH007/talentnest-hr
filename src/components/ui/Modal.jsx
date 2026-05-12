@@ -89,13 +89,15 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
 
         {/* Scrollable content */}
         <div className="tn-modal-body" style={{ 
-          padding: "28px", 
+          padding: "24px 20px", 
           overflowY: "auto", 
           flex: 1, 
           minHeight: 0, 
           WebkitOverflowScrolling: "touch", 
           overscrollBehavior: 'contain',
-          background: '#F8FAFF' 
+          background: '#F8FAFF',
+          /* Extra bottom padding to ensure content isn't buried under sticky footer on mobile */
+          paddingBottom: '40px'
         }}>
           {children}
         </div>
@@ -104,7 +106,8 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
         {footer && (
           <div className="tn-modal-footer tn-form-actions" style={{ 
             flexShrink: 0, 
-            padding: "16px 28px", 
+            padding: "16px 20px", 
+            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             borderTop: "1px solid rgba(0,0,0,0.06)", 
             background: "#fff", 
             borderRadius: "0 0 24px 24px", 

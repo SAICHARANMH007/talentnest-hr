@@ -59,37 +59,62 @@ function JobShareBar({ job }) {
 
   return (
     <div style={{
-      borderTop: '2px solid #EEF2FF',
-      padding: '12px 28px',
+      borderTop: '1px solid rgba(0,0,0,0.05)',
+      padding: '14px 28px',
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
+      gap: 12,
       flexWrap: 'wrap',
-      background: 'linear-gradient(135deg,#F8FAFF,#EEF2FF)',
+      background: '#FAFBFF',
     }}>
-      <span style={{ fontSize: 12, fontWeight: 800, color: '#6366F1', letterSpacing: '0.3px', flexShrink: 0 }}>🔗 Share this job:</span>
-      <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#25D366', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-        💬 WhatsApp
-      </a>
-      <a href={liUrl} target="_blank" rel="noopener noreferrer"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#0A66C2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-        💼 LinkedIn
-      </a>
-      <a href={twUrl} target="_blank" rel="noopener noreferrer"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#1DA1F2', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-        🐦 Twitter
-      </a>
-      <button onClick={copyLink}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: copied ? '#10B981' : '#6366F1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', flexShrink: 0, transition: 'background 0.2s' }}>
-        {copied ? '✓ Copied!' : '🔗 Copy Link'}
-      </button>
-      {typeof navigator.share === 'function' && (
-        <button onClick={shareNative}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 20, background: '#F59E0B', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', flexShrink: 0 }}>
-          ↗ More
+      <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Spread the word:</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {[
+          { label: 'WhatsApp', icon: '💬', color: '#25D366', url: `https://wa.me/?text=${waText}` },
+          { label: 'LinkedIn', icon: '💼', color: '#0A66C2', url: liUrl },
+          { label: 'Twitter', icon: '🐦', color: '#1DA1F2', url: twUrl }
+        ].map(s => (
+          <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer"
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              padding: '6px 14px', 
+              borderRadius: 12, 
+              background: '#fff', 
+              border: '1.5px solid #E2E8F0',
+              color: '#1E293B', 
+              fontSize: 12, 
+              fontWeight: 700, 
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.color = s.color; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#1E293B'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            <span style={{ fontSize: 14 }}>{s.icon}</span> {s.label}
+          </a>
+        ))}
+        <button onClick={copyLink}
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: 6, 
+            padding: '6px 14px', 
+            borderRadius: 12, 
+            background: copied ? '#10B981' : '#fff', 
+            border: `1.5px solid ${copied ? '#10B981' : '#E2E8F0'}`,
+            color: copied ? '#fff' : '#1E293B', 
+            fontSize: 12, 
+            fontWeight: 700, 
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+          }}>
+          {copied ? '✓ Copied' : '🔗 Copy Link'}
         </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -310,7 +335,7 @@ export default function CareersPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100vh', background: '#F7F8FC' }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100vh', minHeight: '100dvh', background: '#F7F8FC', overflowX: 'hidden' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <MarketingNav active="careers" />
 

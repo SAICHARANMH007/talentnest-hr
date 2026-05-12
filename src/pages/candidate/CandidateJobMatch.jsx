@@ -21,13 +21,19 @@ export default function CandidateJobMatch({ user }) {
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
-  const [assessments, setAssessments] = useState({}); // jobId → assessment (null = none, obj = found)
+  const [assessments, setAssessments] = useState({}); // jobId → assessment
   const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all", department: "all", industry: "all" });
   const [sortBy, setSortBy] = useState("match"); // match, newest, urgency
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
 
   useEffect(() => {
     api.getPublicJobs('?limit=200').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
-    // load already-applied jobs for this candidate via the /mine endpoint
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });
@@ -41,27 +47,16 @@ export default function CandidateJobMatch({ user }) {
       
       let matched = matchJobsToCandidate(profile, jobs, currentQuery);
       
-      // Apply Advanced Filters
-      if (currentFilters.location) {
-        matched = matched.filter(r => r.job.location?.toLowerCase().includes(currentFilters.location.toLowerCase()));
-      }
-      if (currentFilters.type !== 'all') {
-        matched = matched.filter(r => r.job.jobType === currentFilters.type || (currentFilters.type === 'remote' && r.job.location?.toLowerCase().includes('remote')));
-      }
-      if (currentFilters.department !== 'all') {
-        matched = matched.filter(r => r.job.department?.toLowerCase().includes(currentFilters.department.toLowerCase()));
-      }
-      if (currentFilters.industry !== 'all') {
-        matched = matched.filter(r => r.job.industry?.toLowerCase().includes(currentFilters.industry.toLowerCase()));
-      }
-      if (currentFilters.urgency !== 'all') {
-        matched = matched.filter(r => r.job.urgency === currentFilters.urgency);
-      }
+      // Advanced Filters
+      if (currentFilters.location) matched = matched.filter(r => r.job.location?.toLowerCase().includes(currentFilters.location.toLowerCase()));
+      if (currentFilters.type !== 'all') matched = matched.filter(r => r.job.jobType === currentFilters.type || (currentFilters.type === 'remote' && r.job.location?.toLowerCase().includes('remote')));
+      if (currentFilters.department !== 'all') matched = matched.filter(r => r.job.department?.toLowerCase().includes(currentFilters.department.toLowerCase()));
+      if (currentFilters.industry !== 'all') matched = matched.filter(r => r.job.industry?.toLowerCase().includes(currentFilters.industry.toLowerCase()));
+      if (currentFilters.urgency !== 'all') matched = matched.filter(r => r.job.urgency === currentFilters.urgency);
 
-      // Apply Advanced Sorting
-      if (sortBy === 'newest') {
-        matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
-      } else if (sortBy === 'urgency') {
+      // Sorting
+      if (sortBy === 'newest') matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
+      else if (sortBy === 'urgency') {
         const order = { 'High': 3, 'Medium': 2, 'Low': 1 };
         matched.sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
       }
@@ -71,12 +66,7 @@ export default function CandidateJobMatch({ user }) {
     setLoad(false);
   };
 
-  // Auto-run when jobs, filters, or sortBy changes
-  useEffect(() => {
-    if (jobs.length > 0) run(query, filters);
-  }, [jobs, filters, sortBy]);
-
-  // Debounced search for query only
+  useEffect(() => { if (jobs.length > 0) run(query, filters); }, [jobs, filters, sortBy]);
   useEffect(() => {
     if (jobs.length === 0) return;
     const timer = setTimeout(() => run(query, filters), 400);
@@ -130,25 +120,26 @@ export default function CandidateJobMatch({ user }) {
         
         <form 
           onSubmit={e => { e.preventDefault(); run(query, filters); }}
-          style={{ maxWidth: 700, margin: '0 auto', position: 'relative', display: 'flex', gap: 10 }}
+          style={{ maxWidth: 800, margin: '0 auto', position: 'relative', display: 'flex', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}
         >
           <div style={{ position: 'relative', flex: 1 }}>
-            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 18 }}>🔍</span>
+            <span style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', color: '#0176D3', fontSize: 20 }}>🔍</span>
             <input 
               value={query} 
               onChange={e => setQuery(e.target.value)} 
-              placeholder="Search by role, skills (e.g. .NET, React), or company…"
+              placeholder="Search by role, skills, or job details…"
               style={{ 
                 width: '100%', 
                 boxSizing: 'border-box', 
-                padding: '16px 20px 16px 48px', 
-                borderRadius: 16, 
+                padding: '18px 24px 18px 54px', 
+                borderRadius: 18, 
                 border: 'none', 
                 fontSize: 16, 
                 outline: 'none', 
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
                 background: '#fff',
-                color: '#1E293B'
+                color: '#1E293B',
+                fontWeight: 500
               }} 
             />
           </div>
@@ -159,20 +150,18 @@ export default function CandidateJobMatch({ user }) {
               background: 'linear-gradient(135deg,#00C2CB,#0891B2)', 
               color: '#fff', 
               border: 'none', 
-              borderRadius: 16, 
-              padding: '0 32px', 
-              fontWeight: 800, 
-              fontSize: 15, 
+              borderRadius: 18, 
+              padding: isMobile ? '16px' : '0 40px', 
+              fontWeight: 900, 
+              fontSize: 16, 
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0,194,203,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-              opacity: loading ? 0.7 : 1
+              boxShadow: '0 8px 20px rgba(0,194,203,0.4)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              opacity: loading ? 0.7 : 1,
+              whiteSpace: 'nowrap'
             }}
           >
-            {loading ? '...' : 'Search Jobs'}
+            {loading ? <Spinner size={20} /> : 'Search Positions'}
           </button>
         </form>
       </div>
@@ -180,7 +169,6 @@ export default function CandidateJobMatch({ user }) {
       {/* ── Filters & Sorting Bar ── */}
       <div style={{ ...card, marginBottom: 24, padding: '16px 20px' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          
           <div style={{ flex: '1 1 180px', position: 'relative' }}>
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}>📍</span>
             <input 
@@ -190,80 +178,35 @@ export default function CandidateJobMatch({ user }) {
               style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: '#F8FAFC' }}
             />
           </div>
-
           <select 
             value={filters.department}
             onChange={e => setFilters(p => ({ ...p, department: e.target.value }))}
-            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, background: '#F8FAFC' }}
           >
             <option value="all">🏢 All Departments</option>
-            {[...new Set(jobs.map(j => j.department).filter(Boolean))].sort().map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
+            {[...new Set(jobs.map(j => j.department).filter(Boolean))].sort().map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-
-          <select 
-            value={filters.industry}
-            onChange={e => setFilters(p => ({ ...p, industry: e.target.value }))}
-            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
-          >
-            <option value="all">🏭 All Industries</option>
-            {[...new Set(jobs.map(j => j.industry).filter(Boolean))].sort().map(i => (
-              <option key={i} value={i}>{i}</option>
-            ))}
-          </select>
-
-          <select 
-            value={filters.type}
-            onChange={e => setFilters(p => ({ ...p, type: e.target.value }))}
-            style={{ flex: '1 1 140px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
-          >
-            <option value="all">💼 All Job Types</option>
-            <option value="full-time">Full-time</option>
-            <option value="remote">Remote Only</option>
-            <option value="contract">Contract</option>
-          </select>
-
           <select 
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            style={{ flex: '1 1 180px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+            style={{ flex: '1 1 180px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, background: '#F8FAFC' }}
           >
             <option value="match">📊 Sort by Match Score</option>
             <option value="newest">📅 Sort by Newest</option>
             <option value="urgency">⚡ Sort by Urgency</option>
           </select>
-
-      {/* ── Search Status / Results Count ── */}
-      {(query || filters.location !== "" || filters.department !== "all" || filters.industry !== "all" || filters.type !== "all") && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, padding: '0 4px' }}>
-          <div style={{ color: '#64748B', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', display: 'inline-block' }} />
-            <span>Showing <b style={{ color: '#1E293B' }}>{results.length}</b> matches {query && <>for "<b style={{ color: '#0176D3' }}>{query}</b>"</>}</span>
-          </div>
-          <button 
-            onClick={() => { setQuery(""); setFilters({ location: "", type: "all", urgency: "all", department: "all", industry: "all" }); }}
-            style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#475569', cursor: 'pointer' }}
-          >
-            Clear All
-          </button>
         </div>
-      )}
+      </div>
 
+      {/* ── Search Status ── */}
       {results.length === 0 && !loading && jobs.length > 0 && (
-        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginBottom: 6 }}>No matches found</p>
-          <p style={{ fontSize: 13 }}>Try adjusting your search or updating your profile to see more roles.</p>
+        <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
+          <p style={{ color: '#706E6B' }}>No matches found. Try adjusting your search.</p>
         </div>
       )}
-      {loading && (
-        <div style={{ ...card, textAlign: 'center', padding: '24px 20px', color: '#706E6B', border: '1.5px dashed rgba(1,118,211,0.2)', marginBottom: 12 }}>
-          <Spinner size={24} />
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#3E3E3C', marginTop: 8 }}>Searching for best matches...</p>
-        </div>
-      )}
+      {loading && <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>}
 
+      {/* ── Results List ── */}
       {results.map((r, i) => {
         const isOpen = expanded === r.jobId;
         const isApplied = applied.has(String(r.jobId));
@@ -272,9 +215,7 @@ export default function CandidateJobMatch({ user }) {
 
         return (
           <div key={r.jobId} style={{ ...card, marginBottom: 12, border: `1px solid ${r.matchScore >= 80 ? 'rgba(34,197,94,0.3)' : 'rgba(1,118,211,0.25)'}` }}>
-
-            {/* ── Header row ── */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => toggleExpand(r.jobId)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ color: "#706E6B", fontSize: 11, fontWeight: 700 }}>#{i + 1}</span>
@@ -286,36 +227,27 @@ export default function CandidateJobMatch({ user }) {
                 <div style={{ color: "#0176D3", fontSize: 12, marginTop: 3 }}>
                   {j.companyName || j.company} · {j.location}{j.experience ? ` · ${j.experience}` : ''}
                 </div>
-                <p style={{ color: "#706E6B", fontSize: 12, marginTop: 6, marginBottom: 0, lineHeight: '1.5' }}>{r.reasoning}</p>
+                <p style={{ color: "#706E6B", fontSize: 12, marginTop: 6, marginBottom: 0 }}>{r.reasoning}</p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
-                <button
-                  onClick={() => toggleExpand(r.jobId)}
-                  style={{ ...btnG, padding: "6px 14px", fontSize: 12 }}
-                >
-                  {isOpen ? '▲ Hide' : '▼ View Details'}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <button onClick={() => toggleExpand(r.jobId)} style={{ ...btnG, padding: "6px 14px", fontSize: 12 }}>
+                  {isOpen ? '▲ Hide' : '▼ Details'}
                 </button>
-                {isApplied ? (
-                  <button disabled style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: 0.5, cursor: 'not-allowed' }}>
-                    ✓ Applied
-                  </button>
-                ) : (
-                  <button onClick={() => apply(r.jobId)} style={{ ...btnP, padding: "6px 14px", fontSize: 12 }}>
-                    Apply Now
-                  </button>
-                )}
+                <button onClick={() => apply(r.jobId)} disabled={isApplied} style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: isApplied ? 0.5 : 1 }}>
+                  {isApplied ? '✓ Applied' : 'Apply Now'}
+                </button>
               </div>
             </div>
 
-            {/* ── Skill match badges ── */}
+            {/* skill highlights */}
             {(r.highlights || []).length > 0 && (
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
                 {r.highlights.map((h, k) => <Badge key={k} label={`✓ ${h}`} color="#014486" />)}
               </div>
             )}
 
-            {/* ── Expanded job details ── */}
+            {/* expanded details */}
             {isOpen && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #FAFAF9' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 14 }}>
@@ -332,15 +264,6 @@ export default function CandidateJobMatch({ user }) {
                   ))}
                 </div>
 
-                {j.skills && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ color: '#0176D3', fontSize: 11, marginBottom: 8, fontWeight: 600 }}>REQUIRED SKILLS</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)).map(s => <Badge key={s} label={s.trim()} color="#0176D3" />)}
-                    </div>
-                  </div>
-                )}
-
                 {j.description && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ color: '#0176D3', fontSize: 11, marginBottom: 6, fontWeight: 600 }}>JOB DESCRIPTION</div>
@@ -349,42 +272,20 @@ export default function CandidateJobMatch({ user }) {
                 )}
 
                 {assessments[r.jobId] && (
-                  <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+                  <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 10, padding: '12px 16px' }}>
                     <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>📝 ASSESSMENT REQUIRED</div>
-                    <p style={{ color: '#3E3E3C', fontSize: 13, margin: '0 0 10px' }}>{assessments[r.jobId].title || 'Skills Assessment'} · {assessments[r.jobId].questions?.length || '?'} questions</p>
-                    <button
-                      onClick={() => { navigate(`/app/assessment/${assessments[r.jobId].id || assessments[r.jobId]._id}`); }}
-                      style={{ ...btnP, padding: '7px 18px', fontSize: 12, background: '#0176D3' }}
-                    >
-                      📝 Take Assessment
-                    </button>
+                    <p style={{ color: '#3E3E3C', fontSize: 13, margin: '0 0 10px' }}>{assessments[r.jobId].title || 'Skills Assessment'}</p>
+                    <button onClick={() => navigate(`/app/assessment/${assessments[r.jobId].id || assessments[r.jobId]._id}`)} style={{ ...btnP, fontSize: 12 }}>Take Assessment</button>
                   </div>
                 )}
-                <div style={{ paddingTop: 14, borderTop: '1px solid #F3F2F2', display: 'flex', gap: 10 }}>
-                  {isApplied ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: '#2E844A', fontSize: 13, fontWeight: 600 }}>✓ You've already applied</span>
-                      <span style={{ color: '#706E6B', fontSize: 12 }}>— check My Applications for status</span>
-                    </div>
-                  ) : (
-                    <button onClick={() => apply(r.jobId)} style={{ ...btnP, padding: '9px 24px' }}>
-                      Apply for {j.title}
-                    </button>
-                  )}
-                  <button onClick={() => toggleExpand(r.jobId)} style={{ ...btnG, padding: '9px 16px' }}>
-                    ▲ Collapse
-                  </button>
-                </div>
               </div>
             )}
           </div>
         );
       })}
-    <style>{`
-        @keyframes tn-fadein {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+
+      <style>{`
+        @keyframes tn-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );

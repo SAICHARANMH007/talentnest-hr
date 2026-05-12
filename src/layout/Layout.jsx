@@ -382,17 +382,16 @@ function NotificationBell({ userRole, compact = false }) {
               left: 0,
               right: 0,
               width: '100vw',
-              maxHeight: '85dvh',
+              maxHeight: '75dvh',
               background: '#fff',
-              borderRadius: '20px 20px 0 0',
-              zIndex: 99999,
-              boxShadow: '0 -8px 48px rgba(0,0,0,0.3)',
+              borderRadius: '24px 24px 0 0',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+              zIndex: 10001,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
               animation: 'notifSlideUp 0.3s cubic-bezier(0.32,0.72,0,1) both',
               paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
-              /* Force escape any stacking context */
               transform: 'translateZ(0)',
             } : {
               /* ── DESKTOP: floating dropdown ── */
@@ -460,7 +459,7 @@ function NotificationBell({ userRole, compact = false }) {
           </div>
 
           {/* Panel body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0', WebkitOverflowScrolling: 'touch' }}>
             {loading ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: '#706E6B', fontSize: 13 }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
