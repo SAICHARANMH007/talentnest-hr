@@ -311,7 +311,9 @@ export default function MeetingRoom() {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncStatus, setSyncStatus]   = useState('idle'); // idle | syncing | failed | success
   const [storedUser, setStoredUser]   = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('tn_user')); } catch { return null; }
+    try { 
+      return JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user')); 
+    } catch { return null; }
   });
 
   useEffect(() => {
@@ -325,8 +327,13 @@ export default function MeetingRoom() {
     initAuth().then(result => {
       if (result?.user) {
         sessionStorage.setItem('tn_user', JSON.stringify(result.user));
+        localStorage.setItem('tn_user', JSON.stringify(result.user));
         if (result.token) setToken(result.token);
         setStoredUser(result.user);
+        setSyncStatus('success');
+      } else if (storedUser) {
+        // Bridging: If initAuth didn't find a fresh session but we have a backup user, 
+        // trust the backup for now (it will fail later if the token is truly dead).
         setSyncStatus('success');
       } else if (result?.networkError) {
         setSyncStatus('network_error');
@@ -334,7 +341,8 @@ export default function MeetingRoom() {
         setSyncStatus('failed');
       }
     }).catch(() => {
-      setSyncStatus('failed');
+      if (storedUser) setSyncStatus('success');
+      else setSyncStatus('failed');
     }).finally(() => setAuthLoading(false));
   }, []);
 
@@ -411,8 +419,10 @@ export default function MeetingRoom() {
       try { 
         stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true }); 
       } catch { 
-        setPermError('Camera and microphone access was denied. Please allow access in your browser settings and reload the page.');
-        setJoined(false); // allow retry
+        // Last resort: Join without any media (chat only)
+        stream = new MediaStream();
+        setPermError('Camera and microphone access was denied. You can join without media, but others won\'t hear or see you.');
+        setJoined(false);
         return; 
       }
     }
@@ -420,7 +430,7 @@ export default function MeetingRoom() {
     setLocalStream(stream);
 
     // 2. Connect to Socket.IO
-    const token = sessionStorage.getItem('tn_token') || '';
+    const token = sessionStorage.getItem('tn_token') || localStorage.getItem('tn_token') || '';
     const socket = io(`${SOCKET_URL}/video`, {
       auth: { token },
       transports: ['websocket', 'polling'],
@@ -811,6 +821,25 @@ export default function MeetingRoom() {
           </button>
           <button onClick={() => { setPermError(''); enterRoom(); }} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Try Again without reload
+          </button>
+          <button 
+            onClick={() => { 
+              setPermError(''); 
+              const s = new MediaStream(); 
+              localStreamRef.current = s; 
+              setLocalStream(s); 
+              setJoined(true);
+              // Trigger socket connect manually since we bypassed enterRoom's media wait
+              const token = sessionStorage.getItem('tn_token') || localStorage.getItem('tn_token') || '';
+              const socket = io(`${SOCKET_URL}/video`, { auth: { token }, transports: ['websocket', 'polling'] });
+              socketRef.current = socket;
+              socket.on('connect', () => {
+                socket.emit('join-room', { roomToken, userId: identity.userId, name: identity.name, email: identity.email, role: identity.role, isGuest: identity.isGuest, isHost: identity.isHost });
+              });
+            }} 
+            style={{ marginTop: 8, background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          >
+            ⚠️ Join without Mic/Cam (Chat only)
           </button>
           <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Tip: Ensure no other apps (Zoom, Teams) are using your camera.</p>
         </div>

@@ -24,9 +24,11 @@ export const setToken  = (t) => {
   clearCache(); // prevent stale data between users/impersonation
   if (t) {
     sessionStorage.setItem(TOKEN_KEY, t);
+    localStorage.setItem(TOKEN_KEY, t); // Backup for cross-tab sessions (e.g. meetings)
     localStorage.setItem('tn_logged_in', 'true');
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem('tn_logged_in');
   }
 };
@@ -34,6 +36,7 @@ export const clearToken = () => {
   _accessToken = null;
   clearCache();
   sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem('tn_logged_in');
 };
 export const getToken  = () => _accessToken;
@@ -76,10 +79,12 @@ const _refreshPath = '/auth/refresh';
  * Returns { token, user } | { networkError: true } | null (force logout).
  */
 export async function initAuth() {
-  // Fast path: token still valid in sessionStorage — restore without hitting network.
-  // This is the common case on page refresh (token is 15 min, refresh is instant).
-  const stored = sessionStorage.getItem(TOKEN_KEY);
-  const storedUser = (() => { try { return JSON.parse(sessionStorage.getItem('tn_user')); } catch { return null; } })();
+  // Fast path: token still valid in sessionStorage or localStorage — restore immediately.
+  const stored = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  const storedUser = (() => { 
+    try { return JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user')); } 
+    catch { return null; } 
+  })();
   if (tokenIsValid(stored) && storedUser) {
     _accessToken = stored;
     return { token: stored, user: storedUser };

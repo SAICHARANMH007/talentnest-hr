@@ -6,7 +6,10 @@ export const authService = {
     const data = await req('POST', '/auth/login', { email, password }, false);
     if (data.token) {
       setToken(data.token); // in-memory only — never sessionStorage
-      if (data.user) sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+      if (data.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+        localStorage.setItem('tn_user', JSON.stringify(data.user));
+      }
       logAudit('Login', 'Auth', `${data.user?.name} logged in as ${data.user?.role}`, 'info', data.user);
     }
     return data; // { token, user }
@@ -16,7 +19,10 @@ export const authService = {
     const data = await req('POST', '/auth/register', payload, false);
     if (data.token) {
       setToken(data.token);
-      if (data.user) sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+      if (data.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+        localStorage.setItem('tn_user', JSON.stringify(data.user));
+      }
     }
     return data;
   },
@@ -25,7 +31,10 @@ export const authService = {
     const data = await req('POST', '/auth/google', { credential, role }, false);
     if (data.token) {
       setToken(data.token);
-      if (data.user) sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+      if (data.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+        localStorage.setItem('tn_user', JSON.stringify(data.user));
+      }
     }
     return data;
   },
@@ -47,7 +56,10 @@ export const authService = {
     const data = await req('POST', '/auth/verify-otp', { email, otp }, false);
     if (data.token) {
       setToken(data.token);
-      if (data.user) sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+      if (data.user) {
+        sessionStorage.setItem('tn_user', JSON.stringify(data.user));
+        localStorage.setItem('tn_user', JSON.stringify(data.user));
+      }
     }
     return data;
   },
@@ -57,5 +69,6 @@ export const authService = {
     try { await req('POST', '/auth/logout'); } catch {}
     clearToken();
     sessionStorage.removeItem('tn_user');
+    localStorage.removeItem('tn_user');
   },
 };
