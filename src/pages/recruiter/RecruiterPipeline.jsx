@@ -486,6 +486,7 @@ export default function RecruiterPipeline({ user }) {
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
   const [reviewModal, setReviewModal] = useState(null); // { assessmentId, submissionId }
   const [stageFilter, setSF] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [intApp, setIntApp] = useState(null);
   const [rejApp, setRejApp] = useState(null);
@@ -657,8 +658,30 @@ export default function RecruiterPipeline({ user }) {
             <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Select Job to View Applicants</label>
             <select value={selJob} onChange={e => loadApps(e.target.value)} style={inp}>
               <option value="">— Choose a job —</option>
-              {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.company} ({j.applicantsCount} applicants)</option>)}
+              {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.company} ({j.applicantsCount || 0} applicants)</option>)}
             </select>
+          </div>
+          <div style={{ display: 'flex', gap: 6, background: '#F1F5F9', padding: 4, borderRadius: 10 }}>
+            {['active', 'parked', 'all'].map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  background: statusFilter === s ? '#fff' : 'transparent',
+                  color: statusFilter === s ? '#0176D3' : '#64748B',
+                  boxShadow: statusFilter === s ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+                }}
+              >
+                {s}
+              </button>
+            ))}
           </div>
           {selJob && (
             <button
@@ -673,9 +696,9 @@ export default function RecruiterPipeline({ user }) {
         </div>
         {selectedJob && (
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Badge label={selectedJob.status} color="#2E844A" />
-            <Badge label={`⚡ ${selectedJob.urgency}`} color={selectedJob.urgency === 'High' ? '#BA0517' : '#A07E00'} />
-            <span style={{ color: '#706E6B', fontSize: 12 }}>{selectedJob.location} · {selectedJob.experience}</span>
+            <Badge label={selectedJob.status || 'Active'} color="#2E844A" />
+            <Badge label={`⚡ ${selectedJob.urgency || 'Normal'}`} color={selectedJob.urgency === 'High' ? '#BA0517' : '#A07E00'} />
+            <span style={{ color: '#706E6B', fontSize: 12 }}>{selectedJob.location || 'Remote'} · {selectedJob.experience || 'Any'} exp</span>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
               {(Array.isArray(selectedJob.skills) ? selectedJob.skills : []).map(s => <Badge key={s} label={s.trim()} color="#0176D3" />)}
             </div>

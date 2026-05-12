@@ -57,32 +57,47 @@ function expYears(c) {
 }
 
 function matchCandidate(c, filters) {
-  const { designation, skills, location, expMin, expMax } = filters;
-  if (!designation && !skills && !location && expMin === '' && expMax === '') return true;
+  const { designation, skills, location, expMin, expMax, minCTC, maxCTC, availability } = filters;
+  
+  if (!designation && !skills && !location && expMin === '' && expMax === '' && !minCTC && !maxCTC && !availability) return true;
 
   const title    = (c.title || c.currentRole || '').toLowerCase();
   const loc      = (c.location || '').toLowerCase();
-  const skillStr = (Array.isArray(c.skills) ? c.skills.join(',') : (c.skills || '')).toLowerCase();
+  const prefLoc  = (c.preferredLocation || '').toLowerCase();
+  const skillsArr = Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim().toLowerCase());
+  const skillStr = skillsArr.join(' ');
   const summary  = (c.summary || '').toLowerCase();
-  const exp      = expYears(c);
+  const avail    = (c.availability || '').toLowerCase();
+  
+  const workHistory = parseJ(c.workHistory);
+  const historyStr = workHistory.map(w => `${w.title} ${w.company} ${w.description}`).join(' ').toLowerCase();
+  
+  const globalData = `${title} ${skillStr} ${summary} ${historyStr} ${loc} ${prefLoc}`;
 
-  if (designation) {
-    const kw = designation.toLowerCase();
-    if (!title.includes(kw) && !summary.includes(kw)) return false;
-  }
+  if (designation && !globalData.includes(designation.toLowerCase().trim())) return false;
   if (skills) {
-    const kwds = skills.toLowerCase().split(/[,\s]+/).filter(Boolean);
-    if (!kwds.some(k => skillStr.includes(k) || title.includes(k))) return false;
+    const kwds = skills.toLowerCase().split(/[,\s]+/).filter(k => k.length > 1);
+    if (kwds.length > 0 && !kwds.some(k => globalData.includes(k))) return false;
   }
   if (location) {
-    if (!loc.includes(location.toLowerCase())) return false;
+    const lMatch = location.toLowerCase().trim();
+    if (!loc.includes(lMatch) && !prefLoc.includes(lMatch)) return false;
   }
-  if (expMin !== '') {
-    if (exp < parseFloat(expMin)) return false;
-  }
-  if (expMax !== '') {
-    if (exp > parseFloat(expMax)) return false;
-  }
+
+  // Experience
+  const exp = expYears(c);
+  if (expMin !== '' && exp < parseFloat(expMin)) return false;
+  if (expMax !== '' && exp > parseFloat(expMax)) return false;
+
+  // CTC (Salary) Logic
+  const currentCTC = parseFloat(c.currentCTC) || 0;
+  const expectedCTC = parseFloat(c.expectedCTC) || 0;
+  if (minCTC && expectedCTC < parseFloat(minCTC)) return false;
+  if (maxCTC && expectedCTC > parseFloat(maxCTC)) return false;
+
+  // Availability
+  if (availability && !avail.includes(availability.toLowerCase())) return false;
+
   return true;
 }
 
@@ -156,12 +171,12 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
             {c.phone && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>📞 {c.phone}</span>}
           </div>
 
-          {/* Email */}
-          {c.email && (
-            <div style={{ color: '#64748B', fontSize: 11, marginTop: 4, opacity: 0.8 }}>
-              ✉ {c.email}
-            </div>
-          )}
+          {/* Email & Placement Meta */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+            <div style={{ color: '#64748B', fontSize: 11, opacity: 0.8 }}>✉ {c.email}</div>
+            {c.expectedCTC && <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700 }}>💰 {c.expectedCTC} Expected</div>}
+            {c.availability && <div style={{ color: '#2E844A', fontSize: 11, fontWeight: 700 }}>⚡ {c.availability}</div>}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -322,7 +337,10 @@ export default function RecruiterCandidates({ user }) {
     location: '',
     expMin: '',
     expMax: '',
-    roles: [], // multi-select role categories
+    minCTC: '',
+    maxCTC: '',
+    availability: '',
+    roles: [], 
   });
   const sf = (k, v) => setFilters(p => ({ ...p, [k]: v }));
   const toggleRoleFilter = (r) => setFilters(p => ({ ...p, roles: p.roles.includes(r) ? p.roles.filter(x => x !== r) : [...p.roles, r] }));
@@ -397,7 +415,7 @@ export default function RecruiterCandidates({ user }) {
   };
 
   const reset = () => {
-    setFilters({ designation: '', skills: '', location: '', expMin: '', expMax: '', roles: [] });
+    setFilters({ designation: '', skills: '', location: '', expMin: '', expMax: '', minCTC: '', maxCTC: '', availability: '', roles: [] });
     setOnlineOnly(false);
     setResults(allCandidates);
     setSearched(true);
@@ -466,11 +484,25 @@ export default function RecruiterCandidates({ user }) {
             <FormRow cols={2}>
               <Field label="Designation / Title" value={filters.designation} onChange={v => sf('designation', v)} placeholder="e.g. React Developer" />
               <Field label="Skills (comma-separated)" value={filters.skills} onChange={v => sf('skills', v)} placeholder="e.g. React, Node.js, SQL" />
-              <Field label="Location" value={filters.location} onChange={v => sf('location', v)} placeholder="e.g. Hyderabad" />
+              <Field label="Location / Pref. Location" value={filters.location} onChange={v => sf('location', v)} placeholder="e.g. Hyderabad" />
               <FormRow cols={2} gap={8} style={{ alignItems: 'end' }}>
-                <Field label="Min Exp (yrs)" type="number" min="0" max="50" value={filters.expMin} onChange={v => sf('expMin', v)} placeholder="0" />
-                <Field label="Max Exp (yrs)" type="number" min="0" max="50" value={filters.expMax} onChange={v => sf('expMax', v)} placeholder="30" />
+                <Field label="Min Exp (yrs)" type="number" min="0" value={filters.expMin} onChange={v => sf('expMin', v)} placeholder="0" />
+                <Field label="Max Exp (yrs)" type="number" min="0" value={filters.expMax} onChange={v => sf('expMax', v)} placeholder="30" />
               </FormRow>
+              <FormRow cols={2} gap={8} style={{ alignItems: 'end' }}>
+                <Field label="Expected CTC (Min)" type="number" value={filters.minCTC} onChange={v => sf('minCTC', v)} placeholder="LPA" />
+                <Field label="Expected CTC (Max)" type="number" value={filters.maxCTC} onChange={v => sf('maxCTC', v)} placeholder="LPA" />
+              </FormRow>
+              <div>
+                <label style={{ fontSize: 11, color: '#3E3E3C', marginBottom: 4, display: 'block', fontWeight: 600 }}>Availability / Notice Period</label>
+                <select value={filters.availability} onChange={e => sf('availability', e.target.value)} style={{ width: '100%', padding: '9px 12px', background: '#fff', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 13 }}>
+                  <option value="">Any Availability</option>
+                  <option value="immediate">Immediate Joiner</option>
+                  <option value="15 days">15 Days</option>
+                  <option value="30 days">30 Days</option>
+                  <option value="serving">Serving Notice</option>
+                </select>
+              </div>
             </FormRow>
 
             {/* Role category multi-select */}

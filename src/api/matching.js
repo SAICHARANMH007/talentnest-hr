@@ -1,4 +1,10 @@
-export { parseFile, parseJD } from '../utils/fileParser.js';
+const TECH_WEIGHTS = {
+  // Tier 1: Core Languages/Frameworks (Highest Value)
+  'react': 1.5, 'node': 1.5, 'java': 1.5, 'python': 1.5, 'aws': 1.5, 'azure': 1.5, 'kubernetes': 1.5,
+  '.net': 1.4, 'golang': 1.4, 'typescript': 1.4, 'angular': 1.4, 'vue': 1.4,
+  // Tier 2: Databases/Major Tools
+  'mongo': 1.2, 'postgres': 1.2, 'sql': 1.2, 'redis': 1.2, 'docker': 1.2,
+};
 
 const normalizeTech = s => String(s || '').toLowerCase().trim()
   .replace(/dot\s*net/g, '.net')
@@ -10,7 +16,7 @@ const normalizeTech = s => String(s || '').toLowerCase().trim()
 const toSkillArr = skills => (Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s=>s.trim()) : [])).map(s => normalizeTech(s)).filter(Boolean);
 
 /**
- * matchCandidatesToJob — Deterministic Heuristics (RegEx-based)
+ * matchCandidatesToJob — Enhanced Deterministic Matching Engine
  */
 export function matchCandidatesToJob(job, candidates) {
   const jobSkills = toSkillArr(job.skills);
@@ -23,51 +29,70 @@ export function matchCandidatesToJob(job, candidates) {
     const candLoc    = normalizeTech(c.location);
     const candTitle  = normalizeTech(c.currentTitle || c.title);
 
-    // 1. Skill Match (Weight: 50%)
-    const matched = [];
-    if (jobSkills.length > 0) {
-      jobSkills.forEach(js => {
-        if (candSkills.some(cs => cs === js || cs.includes(js) || js.includes(cs))) matched.push(js);
-      });
-    }
-    const skillScore = jobSkills.length > 0 ? (matched.length / jobSkills.length) * 50 : 25;
+    // 1. Intelligent Skill Match (Weight: 50%)
+    let matchedWeight = 0;
+    let totalWeight = 0;
+    const highlights = [];
 
-    // 2. Experience Match (Weight: 25%)
+    jobSkills.forEach(js => {
+      const weight = TECH_WEIGHTS[js] || 1.0;
+      totalWeight += weight;
+      if (candSkills.some(cs => cs === js || cs.includes(js) || js.includes(cs))) {
+        matchedWeight += weight;
+        if (highlights.length < 3) highlights.push(js.charAt(0).toUpperCase() + js.slice(1));
+      }
+    });
+
+    const skillScore = totalWeight > 0 ? (matchedWeight / totalWeight) * 50 : 25;
+
+    // 2. Experience Calibration (Weight: 25%)
     const candExp = parseFloat(c.experience || 0);
     let expScore = 0;
     if (expRange) {
-      if (candExp >= expRange.min && candExp <= expRange.max + 2) expScore = 25;
-      else if (candExp > expRange.max + 2) expScore = 20;
-      else expScore = Math.max(0, 25 - (expRange.min - candExp) * 5);
+      const diff = candExp - expRange.min;
+      if (diff >= 0 && candExp <= expRange.max + 1) expScore = 25;
+      else if (diff > 1) expScore = 20; // Overqualified
+      else expScore = Math.max(0, 25 - Math.abs(diff) * 6);
     } else expScore = 15;
 
-    // 3. Location & Remote Match (Weight: 10%)
+    // 3. Location & Availability (Weight: 10%)
     let locScore = 0;
-    if (jobLoc.includes('remote') || candLoc.includes('remote')) locScore = 10;
+    const isRemoteFriendly = jobLoc.includes('remote') || candLoc.includes('remote');
+    if (isRemoteFriendly) locScore = 10;
     else if (jobLoc && candLoc && (jobLoc.includes(candLoc) || candLoc.includes(jobLoc))) locScore = 10;
-    else if (!jobLoc || !candLoc) locScore = 5;
+    else locScore = 5;
 
-    // 4. Title/Role Match (Weight: 15%)
+    // 4. Role Fit (Weight: 15%)
     let titleScore = 0;
+    const jWords = jobTitle.split(/\s+/).filter(w => w.length > 2);
     if (jobTitle && candTitle) {
-      const jWords = jobTitle.split(/\s+/);
-      const matchedWords = jWords.filter(w => w.length > 2 && candTitle.includes(w));
-      titleScore = Math.min(15, (matchedWords.length / jWords.length) * 15);
-      if (titleScore === 0 && candTitle) titleScore = 5;
-    } else {
-      titleScore = 5;
+      if (candTitle.includes(jobTitle) || jobTitle.includes(candTitle)) titleScore = 15;
+      else {
+        const matchCount = jWords.filter(w => candTitle.includes(w)).length;
+        titleScore = (matchCount / Math.max(1, jWords.length)) * 12;
+      }
     }
 
-    const matchScore = Math.round(Math.min(100, skillScore + expScore + locScore + titleScore));
-    const recommendation = matchScore >= 80 ? 'Exceptional Match' : matchScore >= 60 ? 'Strong Match' : matchScore >= 40 ? 'Good Match' : 'Possible Match';
-    const highlights = matched.slice(0, 3).map(s => s.charAt(0).toUpperCase() + s.slice(1));
+    const rawScore = skillScore + expScore + locScore + titleScore;
+    const matchScore = Math.round(Math.min(99, rawScore)); // Caps at 99 for realism
     
-    let reasoning = '';
-    if (matched.length > 0) reasoning += `Matches ${matched.length}/${jobSkills.length} skills. `;
-    if (candExp) reasoning += `${candExp} yrs exp. `;
-    if (locScore === 10) reasoning += `Location match. `;
+    // Intelligent Reason Generation
+    let reasons = [];
+    if (matchedWeight / totalWeight > 0.7) reasons.push(`Strong alignment with ${jobSkills.length} required technologies.`);
+    if (expScore === 25) reasons.push(`Experience level matches ideal profile (${expRange.min}-${expRange.max}y).`);
+    if (titleScore >= 12) reasons.push(`Currently serving in a similar ${jWords?.[0] || 'technical'} role.`);
+    if (isRemoteFriendly) reasons.push(`Compatible with remote-first workflow.`);
 
-    return { candidateId: c._id || c.id, matchScore, recommendation, reasoning: reasoning.trim(), highlights, candidate: c };
+    const recommendation = matchScore >= 85 ? 'Exceptional Match' : matchScore >= 70 ? 'Strong Match' : matchScore >= 50 ? 'Good Match' : 'Possible Match';
+
+    return { 
+      candidateId: c._id || c.id, 
+      matchScore, 
+      recommendation, 
+      reasoning: reasons.length > 0 ? reasons.join(' ') : 'Profile shows general compatibility with role requirements.',
+      highlights, 
+      candidate: c 
+    };
   }).sort((a, b) => b.matchScore - a.matchScore);
 }
 
@@ -83,77 +108,57 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
     const jobLoc    = normalizeTech(j.location);
     const jobTitle  = normalizeTech(j.title);
 
-    // 1. Skill Match (Weight: 40%)
-    const matched = [];
+    // Skill Scoring
+    let matchedWeight = 0;
+    let totalWeight = 0;
+    const highlights = [];
     jobSkills.forEach(js => {
-      if (candSkills.some(cs => cs === js || cs.includes(js) || js.includes(cs))) matched.push(js);
+      const weight = TECH_WEIGHTS[js] || 1.0;
+      totalWeight += weight;
+      if (candSkills.some(cs => cs === js || cs.includes(js) || js.includes(cs))) {
+        matchedWeight += weight;
+        if (highlights.length < 3) highlights.push(js.charAt(0).toUpperCase() + js.slice(1));
+      }
     });
-    let skillScore = jobSkills.length > 0 ? (matched.length / jobSkills.length) * 40 : 20;
 
-    // 2. Experience Match (Weight: 20%)
+    let skillScore = totalWeight > 0 ? (matchedWeight / totalWeight) * 40 : 20;
+
+    // Experience
     const candExp = parseFloat(candidate.experience || 0);
     let expScore = 0;
     if (expRange) {
-      if (candExp >= expRange.min && candExp <= expRange.max + 2) expScore = 20;
-      else if (candExp > expRange.max + 2) expScore = 15;
-      else expScore = Math.max(0, 20 - (expRange.min - candExp) * 5);
+      if (candExp >= expRange.min && candExp <= expRange.max + 1) expScore = 20;
+      else expScore = Math.max(0, 20 - Math.abs(candExp - expRange.min) * 4);
     } else expScore = 10;
 
-    // 3. Location Match (Weight: 15%)
-    let locScore = 0;
-    if (jobLoc.includes('remote') || candLoc.includes('remote')) locScore = 15;
-    else if (jobLoc && candLoc && (jobLoc.includes(candLoc) || candLoc.includes(jobLoc))) locScore = 15;
-    else if (!jobLoc || !candLoc) locScore = 5;
+    // Location
+    let locScore = (jobLoc.includes('remote') || candLoc.includes('remote')) ? 15 : (jobLoc && candLoc && jobLoc.includes(candLoc) ? 15 : 5);
 
-    // 4. Title/Role Match (Weight: 25%)
-    let titleScore = 0;
-    if (jobTitle && candTitle) {
-      const jWords = jobTitle.split(/\s+/);
-      const matchedWords = jWords.filter(w => w.length > 1 && candTitle.includes(w));
-      titleScore = Math.min(25, (matchedWords.length / Math.max(1, jWords.length)) * 25);
-    } else {
-      titleScore = 5;
-    }
+    // Title
+    let titleScore = (jobTitle && candTitle && (candTitle.includes(jobTitle) || jobTitle.includes(candTitle))) ? 25 : 5;
 
-    // 5. Global Deep Search Bonus (Crucial for Priority)
+    // Global Deep Search Bonus
     let qBonus = 0;
     if (q) {
-      const qLower = q.toLowerCase();
-      const jobData = [
-        j.title,
-        j.companyName,
-        j.company,
-        j.description,
-        j.requirements,
-        j.benefits,
-        j.location,
-        j.department,
-        j.industry,
-        j.jobType,
-        ...(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',')),
-        ...(j.tags || [])
-      ].map(s => String(s || '').toLowerCase()).join(' ');
-
-      if (normalizeTech(j.title).includes(q)) qBonus = 50;
-      else if (jobSkills.some(s => s === q || s.includes(q))) qBonus = 40;
-      else if (jobData.includes(qLower)) qBonus = 30;
-      
-      // If there is a query but NO match at all in the entire job string, hide it
-      if (qBonus === 0 && !jobData.includes(qLower)) return null;
+      const jobData = [j.title, j.companyName, j.description, j.location, ...(Array.isArray(j.skills) ? j.skills : [])].join(' ').toLowerCase();
+      if (jobTitle.includes(q)) qBonus = 50;
+      else if (jobData.includes(q)) qBonus = 30;
+      if (qBonus === 0) return null;
     }
 
     const baseScore = skillScore + expScore + locScore + titleScore;
     const matchScore = q ? Math.min(100, Math.round((baseScore * 0.6) + qBonus)) : Math.round(baseScore);
     
-    const recommendation = matchScore >= 80 ? 'Exceptional Match' : matchScore >= 60 ? 'Strong Match' : matchScore >= 40 ? 'Good Match' : 'Possible Match';
-    const highlights = matched.slice(0, 3).map(s => s.charAt(0).toUpperCase() + s.slice(1));
+    const recommendation = matchScore >= 80 ? 'Exceptional Match' : matchScore >= 60 ? 'Strong Match' : 'Good Match';
     
-    let reasoning = '';
-    if (qBonus >= 40) reasoning += `Strong match for your search "${query}". `;
-    else if (qBonus >= 30) reasoning += `Matched keyword in job details. `;
-    if (matched.length > 0) reasoning += `Matches ${matched.length}/${jobSkills.length} profile skills. `;
-
-    return { jobId: j._id || j.id, matchScore, recommendation, reasoning: reasoning.trim() || `Profile matches this role.`, highlights, job: j };
+    return { 
+      jobId: j._id || j.id, 
+      matchScore, 
+      recommendation, 
+      reasoning: `Matched via Smart Engine with ${highlights.length} key skill overlaps.`,
+      highlights, 
+      job: j 
+    };
   }).filter(Boolean).sort((a, b) => b.matchScore - a.matchScore);
 }
 
@@ -163,4 +168,3 @@ function parseExpRange(str) {
   if (!m) return null;
   return { min: parseInt(m[1]), max: parseInt(m[2] || m[1]) + 3 };
 }
-
