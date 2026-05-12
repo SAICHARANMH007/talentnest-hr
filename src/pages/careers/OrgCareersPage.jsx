@@ -87,7 +87,7 @@ export default function OrgCareersPage() {
   );
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100vh', background: '#F7F8FC' }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100dvh', background: '#F7F8FC' }}>
       {applying && <PublicApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
 
       {/* Full Marketing nav — only for TalentNest HR's own career page */}
@@ -130,23 +130,77 @@ export default function OrgCareersPage() {
         </div>
       </div>}
 
-      {/* Filter pills */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 20px', display: 'flex', gap: 8, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-        {['All', 'High', 'Medium', 'Low'].map(u => (
-          <button key={u} onClick={() => setUrgency(u)}
-            style={{ padding: '6px 16px', borderRadius: 50, border: '1.5px solid', borderColor: urgency === u ? accentColor : '#E2E8F0', background: urgency === u ? accentColor : '#fff', color: urgency === u ? '#fff' : '#64748B', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-            {u === 'All' ? '🌐 All' : URGENCY_LABEL[u]}
-          </button>
-        ))}
-        {locations.length > 1 && (
-          <select value={location} onChange={e => setLocation(e.target.value)}
-            style={{ padding: '6px 14px', border: '1.5px solid #E2E8F0', borderRadius: 50, fontSize: 12, color: '#64748B', background: '#F7F8FC', outline: 'none' }}>
-            {locations.map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
-          </select>
-        )}
-        <span style={{ marginLeft: 'auto', color: '#64748B', fontSize: 12, whiteSpace: 'nowrap' }}>
-          <b style={{ color: accentColor }}>{filtered.length}</b> role{filtered.length !== 1 ? 's' : ''} found
-        </span>
+      {/* Filter pills — professional scrollable row */}
+      <div style={{ 
+        background: '#fff', 
+        borderBottom: '1px solid #E2E8F0', 
+        padding: '14px 20px', 
+        display: 'flex', 
+        gap: 10, 
+        alignItems: 'center', 
+        overflowX: 'auto', 
+        position: 'sticky',
+        top: isMainOrg && !embed ? 66 : (embed ? -1 : 0),
+        zIndex: 110,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        <style>{`.filter-row::-webkit-scrollbar { display: none; }`}</style>
+        <div className="filter-row" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {['All', 'High', 'Medium', 'Low'].map(u => (
+            <button key={u} onClick={() => setUrgency(u)}
+              style={{ 
+                padding: '8px 18px', 
+                borderRadius: 50, 
+                border: '1.5px solid', 
+                borderColor: urgency === u ? (URGENCY_COLOR[u] || accentColor) : '#E2E8F0', 
+                background: urgency === u ? (URGENCY_COLOR[u] || accentColor) : '#fff', 
+                color: urgency === u ? '#fff' : '#64748B', 
+                fontWeight: 700, 
+                fontSize: 13, 
+                cursor: 'pointer', 
+                whiteSpace: 'nowrap', 
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: urgency === u ? `0 4px 12px ${URGENCY_COLOR[u] || accentColor}33` : 'none'
+              }}>
+              {u === 'All' ? '🌐 All Urgency' : (u === 'High' ? '🔥 Emergency' : (u === 'Medium' ? '⚡ High' : '🌱 Low'))}
+            </button>
+          ))}
+          
+          <div style={{ width: 1, height: 24, background: '#E2E8F0', margin: '0 4px' }} />
+
+          {locations.length > 1 && (
+            <div style={{ position: 'relative' }}>
+              <select value={location} onChange={e => setLocation(e.target.value)}
+                style={{ 
+                  padding: '8px 32px 8px 16px', 
+                  border: '1.5px solid #E2E8F0', 
+                  borderRadius: 50, 
+                  fontSize: 13, 
+                  fontWeight: 600,
+                  color: location === 'All' ? '#64748B' : accentColor, 
+                  background: '#F8FAFC', 
+                  outline: 'none',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none'
+                }}>
+                {locations.map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 10 }}>▼</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginLeft: 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', paddingRight: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+          <b style={{ color: '#1E293B' }}>{filtered.length}</b> roles found
+        </div>
       </div>
 
       {/* Job listings */}

@@ -333,12 +333,14 @@ export default function CandidateExploreJobs({ user }) {
     if (locFilter && j.location !== locFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return (
-      j.title?.toLowerCase().includes(q) ||
-      j.company?.toLowerCase().includes(q) ||
-      j.location?.toLowerCase().includes(q) ||
-      (Array.isArray(j.skills) ? j.skills.join(',') : (j.skills || '')).toLowerCase().includes(q)
-    );
+    const haystack = [
+      j.title, j.company, j.location, j.description, j.requirements, j.benefits,
+      j.department, j.industry, j.jobType,
+      ...(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',')),
+      ...(j.tags || [])
+    ].map(s => String(s || '').toLowerCase()).join(' ');
+    
+    return haystack.includes(q);
   });
 
   const savedCount = Object.keys(saved).length;
@@ -350,56 +352,89 @@ export default function CandidateExploreJobs({ user }) {
         action={<button onClick={() => setShowAlerts(true)} style={{ ...btnP, fontSize: 12, padding: '7px 14px' }}>🔔 Job Alerts</button>} />
 
       {/* Filters row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24, alignItems: 'center' }}>
-        <input
-          placeholder="Search by title, company, location, skills…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: '1 1 280px', minWidth: 200, maxWidth: 440, padding: '10px 16px',
-            background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)',
-            borderRadius: 12, color: '#181818', fontSize: 13, outline: 'none', boxSizing: 'border-box',
-          }}
-        />
-        {allTypes.length > 0 && (
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: typeFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
-          >
-            <option value="">All Types</option>
-            {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
-        <select
-          value={urgencyFilter}
-          onChange={e => setUrgencyFilter(e.target.value)}
-          style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: urgencyFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+      <form 
+        onSubmit={e => { e.preventDefault(); /* filtered is reactive, but button provides feedback */ }}
+        style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24, alignItems: 'center' }}
+      >
+        <div style={{ flex: '1 1 280px', minWidth: 200, maxWidth: 520, position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }}>🔍</span>
+          <input
+            placeholder="Search by title, company, location, skills…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 16px 10px 40px',
+              background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)',
+              borderRadius: 12, color: '#181818', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+        
+        <button 
+          type="submit"
+          style={{ ...btnP, padding: '10px 24px', fontSize: 13 }}
         >
-          <option value="">All Urgency</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-        </select>
-        {allLocations.length > 0 && (
+          Search Jobs
+        </button>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {allTypes.length > 0 && (
+            <select
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+              style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: typeFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="">All Types</option>
+              {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
           <select
-            value={locFilter}
-            onChange={e => setLocFilter(e.target.value)}
-            style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: locFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+            value={urgencyFilter}
+            onChange={e => setUrgencyFilter(e.target.value)}
+            style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: urgencyFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
           >
-            <option value="">All Locations</option>
-            {allLocations.map(l => <option key={l} value={l}>{l}</option>)}
+            <option value="">All Urgency</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
           </select>
-        )}
-        {(search || typeFilter || urgencyFilter || locFilter) && (
-          <button
+          {allLocations.length > 0 && (
+            <select
+              value={locFilter}
+              onChange={e => setLocFilter(e.target.value)}
+              style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: locFilter ? '#0176D3' : '#706E6B', fontSize: 13, outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="">All Locations</option>
+              {allLocations.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          )}
+          {(search || typeFilter || urgencyFilter || locFilter) && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setTypeFilter(''); setUrgencyFilter(''); setLocFilter(''); }}
+              style={{ background: 'none', border: 'none', color: '#BA0517', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+      </form>
+
+      {/* ── Search Status / Results Count ── */}
+      {(search || typeFilter || urgencyFilter || locFilter) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '0 4px' }}>
+          <div style={{ color: '#64748B', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', display: 'inline-block' }} />
+            <span>Showing <b style={{ color: '#1E293B' }}>{filtered.length}</b> roles {search && <>for "<b style={{ color: '#0176D3' }}>{search}</b>"</>}</span>
+          </div>
+          <button 
             onClick={() => { setSearch(''); setTypeFilter(''); setUrgencyFilter(''); setLocFilter(''); }}
-            style={{ background: 'none', border: 'none', color: '#BA0517', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#475569', cursor: 'pointer' }}
           >
-            ✕ Clear
+            Clear All
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && <p style={{ color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 

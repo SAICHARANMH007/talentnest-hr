@@ -239,19 +239,7 @@
     /* sr-only: visually hidden but readable by all bots and screen readers (B3/A2) */
     .sr-only,.sr-content{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   </style>
-  <!-- Google AdSense — deferred until after page load to prevent FCP/LCP regression.
-       The async attribute prevents parser blocking but the script still executes on
-       the main thread. Loading after 'load' event ensures it never competes with
-       critical rendering path (fixes FCP regression from 4.7s → 6.6s). -->
-  <script>
-    window.addEventListener('load', function() {
-      var s = document.createElement('script');
-      s.async = true;
-      s.crossOrigin = 'anonymous';
-      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3445070093658955';
-      document.head.appendChild(s);
-    });
-  </script>
+  <!-- Adsense temporarily disabled for investor review to ensure clean UI -->
 </head>
   <body>
     <!-- Loading screen — hidden once React mounts -->

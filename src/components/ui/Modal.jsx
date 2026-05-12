@@ -35,7 +35,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
           maxWidth: width || (wide ? '940px' : '640px'), 
           display: "flex", 
           flexDirection: "column",
-          maxHeight: 'min(92dvh, 900px)',
+          maxHeight: 'min(90dvh, 900px)',
           position: "relative", 
           overflow: "hidden", 
           borderRadius: 24,

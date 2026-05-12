@@ -128,26 +128,53 @@ export default function CandidateJobMatch({ user }) {
           Searching across <strong style={{ color: '#00C2CB' }}>{jobs.length}</strong> active opportunities
         </p>
         
-        <div style={{ maxWidth: 600, margin: '0 auto', position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 18 }}>🔍</span>
-          <input 
-            value={query} 
-            onChange={e => setQuery(e.target.value)} 
-            placeholder="Search by role, skills (e.g. .NET, React), or company…"
+        <form 
+          onSubmit={e => { e.preventDefault(); run(query, filters); }}
+          style={{ maxWidth: 700, margin: '0 auto', position: 'relative', display: 'flex', gap: 10 }}
+        >
+          <div style={{ position: 'relative', flex: 1 }}>
+            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 18 }}>🔍</span>
+            <input 
+              value={query} 
+              onChange={e => setQuery(e.target.value)} 
+              placeholder="Search by role, skills (e.g. .NET, React), or company…"
+              style={{ 
+                width: '100%', 
+                boxSizing: 'border-box', 
+                padding: '16px 20px 16px 48px', 
+                borderRadius: 16, 
+                border: 'none', 
+                fontSize: 16, 
+                outline: 'none', 
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                background: '#fff',
+                color: '#1E293B'
+              }} 
+            />
+          </div>
+          <button 
+            type="submit"
+            disabled={loading}
             style={{ 
-              width: '100%', 
-              boxSizing: 'border-box', 
-              padding: '16px 20px 16px 48px', 
-              borderRadius: 16, 
+              background: 'linear-gradient(135deg,#00C2CB,#0891B2)', 
+              color: '#fff', 
               border: 'none', 
-              fontSize: 16, 
-              outline: 'none', 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              background: '#fff',
-              color: '#1E293B'
-            }} 
-          />
-        </div>
+              borderRadius: 16, 
+              padding: '0 32px', 
+              fontWeight: 800, 
+              fontSize: 15, 
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0,194,203,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            {loading ? '...' : 'Search Jobs'}
+          </button>
+        </form>
       </div>
 
       {/* ── Filters & Sorting Bar ── */}
@@ -207,14 +234,21 @@ export default function CandidateJobMatch({ user }) {
             <option value="urgency">⚡ Sort by Urgency</option>
           </select>
 
+      {/* ── Search Status / Results Count ── */}
+      {(query || filters.location !== "" || filters.department !== "all" || filters.industry !== "all" || filters.type !== "all") && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, padding: '0 4px' }}>
+          <div style={{ color: '#64748B', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0176D3', display: 'inline-block' }} />
+            <span>Showing <b style={{ color: '#1E293B' }}>{results.length}</b> matches {query && <>for "<b style={{ color: '#0176D3' }}>{query}</b>"</>}</span>
+          </div>
           <button 
             onClick={() => { setQuery(""); setFilters({ location: "", type: "all", urgency: "all", department: "all", industry: "all" }); }}
-            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', padding: '0 8px' }}
+            style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#475569', cursor: 'pointer' }}
           >
-            Reset
+            Clear All
           </button>
         </div>
-      </div>
+      )}
 
       {results.length === 0 && !loading && jobs.length > 0 && (
         <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
@@ -223,10 +257,10 @@ export default function CandidateJobMatch({ user }) {
           <p style={{ fontSize: 13 }}>Try adjusting your search or updating your profile to see more roles.</p>
         </div>
       )}
-      {jobs.length === 0 && loading && (
-        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
-          <Spinner size={32} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginTop: 12 }}>Loading open positions...</p>
+      {loading && (
+        <div style={{ ...card, textAlign: 'center', padding: '24px 20px', color: '#706E6B', border: '1.5px dashed rgba(1,118,211,0.2)', marginBottom: 12 }}>
+          <Spinner size={24} />
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#3E3E3C', marginTop: 8 }}>Searching for best matches...</p>
         </div>
       )}
 

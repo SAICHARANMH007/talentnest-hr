@@ -139,10 +139,10 @@ function NotificationBell({ userRole, compact = false }) {
       const left   = Math.max(8, Math.min(rect.left, window.innerWidth - panelW - 8));
       // On mobile, if panel would go off the bottom, show it above the button
       const spaceBelow = window.innerHeight - rect.bottom - 8;
-      const maxH  = Math.min(520, window.innerHeight - 120);
+      const maxH  = Math.min(520, window.innerHeight - 140);
       const top   = spaceBelow >= Math.min(300, maxH)
-        ? rect.bottom + 8                        // enough space below
-        : Math.max(8, rect.top - Math.min(480, maxH) - 8); // show above
+        ? rect.bottom + 8
+        : Math.max(8, rect.top - Math.min(480, maxH) - 8);
       setPos({ top, left });
     }
     setOpen(true);
@@ -267,10 +267,10 @@ function NotificationBell({ userRole, compact = false }) {
       {/* Detail drill-down modal */}
       {detail && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.65)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', zIndex: 100000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
           onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
         >
-          <div style={{ background: '#fff', borderRadius: isMobile ? '20px 20px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, maxHeight: isMobile ? '92vh' : 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: isMobile ? 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'env(safe-area-inset-bottom,0px)' : 0 }}>
+          <div style={{ background: '#fff', borderRadius: isMobile ? '24px 24px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, maxHeight: isMobile ? '90dvh' : 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: isMobile ? 'notifSlideUp 0.3s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'max(16px, env(safe-area-inset-bottom, 16px))' : 0 }}>
             {/* Modal header */}
             <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -372,8 +372,9 @@ function NotificationBell({ userRole, compact = false }) {
           )}
 
           {/* Panel container */}
-          <div
-            data-notif-panel="true"
+          {open && createPortal(
+            <div
+              data-notif-panel="true"
             style={isMobile ? {
               /* ── MOBILE: bottom-sheet ── */
               position: 'fixed',
@@ -381,7 +382,7 @@ function NotificationBell({ userRole, compact = false }) {
               left: 0,
               right: 0,
               width: '100vw',
-              maxHeight: '82vh',
+              maxHeight: '85dvh',
               background: '#fff',
               borderRadius: '20px 20px 0 0',
               zIndex: 99999,
@@ -389,8 +390,8 @@ function NotificationBell({ userRole, compact = false }) {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              animation: 'notifSlideUp 0.22s cubic-bezier(0.32,0.72,0,1) both',
-              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+              animation: 'notifSlideUp 0.3s cubic-bezier(0.32,0.72,0,1) both',
+              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
               /* Force escape any stacking context */
               transform: 'translateZ(0)',
             } : {
@@ -535,7 +536,7 @@ function NotificationBell({ userRole, compact = false }) {
               </button>
             </div>
           )}
-        </div>
+        </div>, document.body)}
         </>
       )}
     </>

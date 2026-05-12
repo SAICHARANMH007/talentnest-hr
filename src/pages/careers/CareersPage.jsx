@@ -431,25 +431,50 @@ export default function CareersPage() {
       </section>
 
       {/* ── FILTER BAR ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: isMobile ? '10px 0' : '16px 0', position: 'sticky', top: isMobile ? 60 : 70, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', transition: 'padding 0.2s' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: isMobile ? '12px 0' : '16px 0', position: 'sticky', top: isMobile ? 66 : 66, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', transition: 'all 0.2s' }}>
         <div className="tn-container">
-          <div style={{ display: 'flex', gap: isMobile ? 8 : 10, flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'center', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 4 : 0, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: isMobile ? 10 : 12, flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'center', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 6 : 0, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {/* Urgency filter pills */}
-            {['All', 'High', 'Medium', 'Low'].map(u => (
-              <button key={u} onClick={() => setUrgencyFilter(u)} style={{ padding: '8px 18px', borderRadius: 50, border: '1.5px solid', borderColor: urgencyFilter === u ? '#0176D3' : '#E2E8F0', background: urgencyFilter === u ? 'linear-gradient(135deg,#0176D3,#014486)' : 'transparent', color: urgencyFilter === u ? '#fff' : '#64748B', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
-                {u === 'All' ? 'All Urgency' : `⚡ ${u}`}
-              </button>
-            ))}
+            {['All', 'High', 'Medium', 'Low'].map(u => {
+              const active = urgencyFilter === u;
+              const color = u === 'High' ? '#BA0517' : u === 'Medium' ? '#F59E0B' : u === 'Low' ? '#10B981' : '#0176D3';
+              return (
+                <button 
+                  key={u} 
+                  onClick={() => setUrgencyFilter(u)} 
+                  style={{ 
+                    padding: '8px 20px', 
+                    borderRadius: 100, 
+                    border: '1px solid', 
+                    borderColor: active ? color : '#E2E8F0', 
+                    background: active ? color : '#F8FAFF', 
+                    color: active ? '#fff' : '#475569', 
+                    fontWeight: 700, 
+                    fontSize: 13, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s ease', 
+                    whiteSpace: 'nowrap',
+                    boxShadow: active ? `0 4px 12px ${color}33` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {u === 'All' ? 'All Priority' : <><span style={{ fontSize: 14 }}>{u === 'High' ? '🔥' : u === 'Medium' ? '⚡' : '🌱'}</span> {u}</>}
+                </button>
+              );
+            })}
             <select
               value={locationFilter}
               onChange={e => setLocationFilter(e.target.value)}
-              style={{ padding: '8px 14px', border: '1.5px solid #E2E8F0', borderRadius: 50, fontSize: 13, color: '#64748B', background: '#F7F8FC', outline: 'none', cursor: 'pointer' }}
+              style={{ padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: 100, fontSize: 13, fontWeight: 600, color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer', minWidth: 140, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
             >
-              {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? 'All Locations' : l}</option>)}
+              {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
             </select>
-            <span style={{ marginLeft: isMobile ? 0 : 'auto', color: '#64748B', fontSize: isMobile ? 11 : 13, whiteSpace: 'nowrap', paddingRight: isMobile ? 12 : 0 }}>
-              <b style={{ color: '#0176D3' }}>{filtered.length}</b> roles found
-            </span>
+            <div style={{ marginLeft: isMobile ? 0 : 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', paddingRight: isMobile ? 12 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+              <b style={{ color: '#1E293B' }}>{filtered.length}</b> positions found
+            </div>
           </div>
         </div>
       </div>

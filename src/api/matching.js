@@ -115,29 +115,43 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
       titleScore = 5;
     }
 
-    // 5. Query Bonus (Crucial for Priority)
+    // 5. Global Deep Search Bonus (Crucial for Priority)
     let qBonus = 0;
     if (q) {
-      if (jobTitle.includes(q)) qBonus = 40; // Heavy weight for title query
-      else if (jobSkills.some(s => s === q || s.includes(q))) qBonus = 30;
-      else if (normalizeTech(j.description).includes(q)) qBonus = 20; // Search description too
-      else if (jobLoc.includes(q)) qBonus = 15;
-      else if ((j.companyName || j.company || '').toLowerCase().includes(q)) qBonus = 10;
+      const qLower = q.toLowerCase();
+      const jobData = [
+        j.title,
+        j.companyName,
+        j.company,
+        j.description,
+        j.requirements,
+        j.benefits,
+        j.location,
+        j.department,
+        j.industry,
+        j.jobType,
+        ...(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',')),
+        ...(j.tags || [])
+      ].map(s => String(s || '').toLowerCase()).join(' ');
+
+      if (normalizeTech(j.title).includes(q)) qBonus = 50;
+      else if (jobSkills.some(s => s === q || s.includes(q))) qBonus = 40;
+      else if (jobData.includes(qLower)) qBonus = 30;
+      
+      // If there is a query but NO match at all in the entire job string, hide it
+      if (qBonus === 0 && !jobData.includes(qLower)) return null;
     }
 
     const baseScore = skillScore + expScore + locScore + titleScore;
-    const matchScore = q ? Math.min(100, Math.round(baseScore + qBonus)) : Math.round(baseScore);
+    const matchScore = q ? Math.min(100, Math.round((baseScore * 0.6) + qBonus)) : Math.round(baseScore);
     
-    // Loosen filter: only hide if query is provided AND it's a total mismatch
-    if (q && qBonus === 0 && matchScore < 30) return null;
-
     const recommendation = matchScore >= 80 ? 'Exceptional Match' : matchScore >= 60 ? 'Strong Match' : matchScore >= 40 ? 'Good Match' : 'Possible Match';
     const highlights = matched.slice(0, 3).map(s => s.charAt(0).toUpperCase() + s.slice(1));
     
     let reasoning = '';
-    if (qBonus >= 30) reasoning += `Matches your search "${query}". `;
-    if (matched.length > 0) reasoning += `Matches ${matched.length}/${jobSkills.length} skills. `;
-    if (titleScore > 15) reasoning += `Role alignment. `;
+    if (qBonus >= 40) reasoning += `Strong match for your search "${query}". `;
+    else if (qBonus >= 30) reasoning += `Matched keyword in job details. `;
+    if (matched.length > 0) reasoning += `Matches ${matched.length}/${jobSkills.length} profile skills. `;
 
     return { jobId: j._id || j.id, matchScore, recommendation, reasoning: reasoning.trim() || `Profile matches this role.`, highlights, job: j };
   }).filter(Boolean).sort((a, b) => b.matchScore - a.matchScore);
