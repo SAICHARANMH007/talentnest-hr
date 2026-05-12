@@ -50,7 +50,7 @@ export default function RecruiterAIMatch({ user }) {
         } else throw e;
       }
       if(!appId) throw new Error("Could not find or create application");
-      await api.updateStage(appId,"shortlisted","Shortlisted via AI match");
+      await api.updateStage(appId,"shortlisted","Shortlisted via Smart match");
       setToast("✅ Shortlisted successfully! Candidate added to pipeline.");
       setResults(prev=>prev.map(r=>r.candidate?.id===candidateId?{...r,_shortlisted:true}:r));
     } catch(e) { setToast(`Shortlist failed: ${e.message}`); }
@@ -62,7 +62,7 @@ export default function RecruiterAIMatch({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={()=>setToast("")}/>
-      <PageHeader title="AI Candidate Matching" subtitle="Instantly rank your best candidates for any job"/>
+      <PageHeader title="Advanced Candidate Matching" subtitle="Instantly rank your best candidates for any job"/>
       <div style={{...card,marginBottom:20}}>
         <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
           <div style={{flex:1,minWidth:200}}>
@@ -84,7 +84,7 @@ export default function RecruiterAIMatch({ user }) {
       </div>
       {!loading && results.length===0 && selJob && (
         <div style={{...card,textAlign:"center",padding:40}}>
-          <p style={{color:"#9E9D9B",fontSize:14,margin:0}}>Click "Match Candidates" to run AI analysis</p>
+          <p style={{color:"#9E9D9B",fontSize:14,margin:0}}>Click "Refresh Match" to run smart matching analysis</p>
         </div>
       )}
       {results.map((r,i)=>(

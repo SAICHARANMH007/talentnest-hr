@@ -30,7 +30,6 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
-  height: -webkit-fill-available;
 }
 
 body {
@@ -40,8 +39,7 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
-  min-height: -webkit-fill-available;
-  overscroll-behavior-y: none;
+  min-height: 100dvh;
 }
 
 /* ── Performance Animations ── */
@@ -216,8 +214,9 @@ body {
 /* Two-col content+sidebar layout (Contact, ServiceDetail, etc.) */
 .mkt-split          { display: grid; grid-template-columns: minmax(0,40fr) minmax(0,60fr); gap: 48px; align-items: start; }
 .mkt-split-reverse  { display: grid; grid-template-columns: minmax(0,60fr) minmax(0,40fr); gap: 48px; align-items: start; }
-/* Hero grid (landing page) */
-.mkt-hero-grid      { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+/* Hero grid (landing page) - minmax(0,1fr) prevents text overflow blocking */
+.mkt-hero-grid      { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: clamp(32px, 5vw, 64px); align-items: center; }
+.mkt-hero-grid > div { min-width: 0; }
 /* Form row (2 inputs side by side) */
 .mkt-form-row       { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
@@ -229,7 +228,7 @@ body {
 @media (max-width: 640px) {
   .mkt-form-row { grid-template-columns: 1fr; }
   /* Marketing page body padding accounts for fixed nav */
-  .mkt-page { padding-top: 66px; }
+  .mkt-page { padding-top: 66px; background-color: var(--mkt-section-bg); }
   /* Footer grid: ensure single column on tiny screens */
   .mkt-page footer .container > div { gap: 40px 20px !important; }
 }

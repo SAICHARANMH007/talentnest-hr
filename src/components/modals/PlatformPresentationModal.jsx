@@ -4,7 +4,7 @@ import { btnP, btnG, Z } from '../../constants/styles.js';
 const TOUR_STEPS = {
   candidate: [
     { id: 'dashboard', title: "Your Control Center", desc: "View your daily snapshot, application status, and upcoming tasks here." },
-    { id: 'job-match', title: "AI Talent Match", desc: "Discover jobs tailored to your skills using our Gemini matching engine." },
+    { id: 'job-match', title: "Smart Talent Match", desc: "Discover jobs tailored to your skills using our matching engine." },
     { id: 'applications', title: "Application Tracker", desc: "Monitor your journey from 'Applied' to 'Hired' in real-time." },
     { id: 'profile', title: "Resume Builder", desc: "Keep your profile 100% complete to stand out to top recruiters." }
   ],

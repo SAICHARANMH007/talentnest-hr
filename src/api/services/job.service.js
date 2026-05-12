@@ -35,7 +35,7 @@ export const jobService = {
   async getOrgPublicJobs(orgSlug)          { return req('GET', `/jobs/public/org/${orgSlug}`, null, false); },
   async updateCareerListing(publish, unpublish, orgId) { return req('PATCH', '/jobs/career-listing', { publish: publish || [], unpublish: unpublish || [], orgId: orgId || undefined }); },
 
-  // AI Matching (computed via Gemini logic - maintained for compatibility)
+  // Smart Matching (computed via matching logic - maintained for compatibility)
   async getMatchedJobs(candidateId) {
     const [user, res] = await Promise.all([
       req('GET', `/users/${candidateId}`),

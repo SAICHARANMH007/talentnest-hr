@@ -13,7 +13,7 @@ const SECTIONS = [
     heading: '🔍 Job Discovery',
     items: [
       { icon:'🗂️', name:'Browse all jobs on the platform', detail:'See every active job from every company on TalentNest HR — IT, non-IT, startups, corporates, staffing. Filter by role, type, location, work mode, urgency, and salary.' },
-      { icon:'🤖', name:'AI match score before you apply', detail:'Every job shows your percentage fit — based on your skills, experience, and location versus the role requirements. Know your chances before you spend time applying.' },
+      { icon:'🎯', name:'Smart Match Score before you apply', detail:'Every job shows your percentage fit — based on your skills, experience, and location versus the role requirements. Know your chances before you spend time applying.' },
       { icon:'🔔', name:'Job alerts — never miss a role', detail:'Set alerts by job title, skills, and preferred location. When a matching job goes live, you get an alert by email or in the platform. Check once, get notified automatically.' },
       { icon:'📍', name:'Location-based job discovery', detail:'Allow your location once and JobTrack surfaces roles near you first, prioritises local opportunities, and shows proximity-aware job alerts.' },
     ],
@@ -43,7 +43,16 @@ const SECTIONS = [
       { icon:'✅', name:'Complete your pre-boarding checklist', detail:'Once hired, a checklist appears in your Onboarding section — Aadhaar, PAN, salary slips, experience letter, background verification consent, bank details, IT setup, compliance training. Upload each from your phone.' },
       { icon:'🧩', name:'Take skills assessments for jobs', detail:'Some roles require a skills assessment at apply time. Complete it inside JobTrack — your score is sent to the recruiter alongside your application automatically.' },
       { icon:'👤', name:'Build your candidate profile', detail:'Name, phone, email, current title, skills, work experience, preferred location, notice period, current CTC, expected CTC, LinkedIn URL, resume upload, and video resume. Recruiters search this profile.' },
-      { icon:'🎬', name:'Upload a video resume', detail:'Record a short video introducing yourself and your skills. Attach it to your profile. Stand out from text-only applications, especially for client-facing and leadership roles.' },
+    ],
+  },
+  {
+    heading: '🛠️ Candidate Career Tools',
+    items: [
+      { icon:'📝', name:'Built-in Resume Builder', detail:'Create a professional, ATS-friendly resume directly in JobTrack. Choose templates, add your skills, and export to PDF in one click — ready for any application.' },
+      { icon:'📱', name:'Mobile-first candidate dashboard', detail:'Manage your entire career search from your phone. Optimized for mobile viewports, ensuring you never miss a recruiter message or interview invite.' },
+      { icon:'🎬', name:'Record and attach video resumes', detail:'Stand out from the crowd by recording a 60-second video introduction. Attach it to your profile so recruiters can see your communication skills and personality.' },
+      { icon:'🏅', name:'BGV document vault', detail:'Upload and store your compliance documents (ID, Education, Experience) in a secure vault. Share them with hiring teams for instant verification once hired.' },
+      { icon:'🔒', name:'Privacy & Visibility controls', detail:'Choose who can see your profile. Set your visibility to Public, Private, or Incognito. You have total control over your career data.' },
     ],
   },
 ];

@@ -75,7 +75,7 @@ export default function CandidateAIMatch({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast("")} />
-      <PageHeader title="AI Job Search" subtitle="Your resume powers the search" />
+      <PageHeader title="Smart Job Search" subtitle="Your profile powers the matching engine" />
 
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 10 }}>
@@ -86,11 +86,11 @@ export default function CandidateAIMatch({ user }) {
             style={{ flex: 1 }}
           />
           <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
-            {loading ? <><Spinner /> Matching…</> : "🤖 Refresh Match"}
+            {loading ? <><Spinner /> Matching…</> : "📊 Refresh Match"}
           </button>
         </div>
         {jobs.length > 0 && <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-          Searching across {jobs.length} open positions · Real-time AI matching based on your profile
+          Searching across {jobs.length} open positions · Real-time smart matching based on your profile
         </p>}
       </div>
 

@@ -165,7 +165,7 @@ ${heroHtml('⚙️','DEVELOPER PLAYBOOK','Developer Playbook','Everything a deve
       <div class="card"><div class="card-icon">⚛️</div><h4>React 18 + Vite</h4><p>Frontend SPA with lazy-loaded routes, code splitting, 9 manual chunks</p></div>
       <div class="card"><div class="card-icon">🟢</div><h4>Node.js + Express</h4><p>REST API server, JWT auth, role-based middleware, Mongoose ODM</p></div>
       <div class="card"><div class="card-icon">🍃</div><h4>MongoDB Atlas</h4><p>Cloud DB in prod. JSON file fallback locally when no MONGODB_URI</p></div>
-      <div class="card"><div class="card-icon">🤖</div><h4>Google Gemini AI</h4><p>gemini-2.0-flash for resume parsing, JD parsing, AI job matching</p></div>
+      <div class="card"><div class="card-icon">🧠</div><h4>Smart Matching Engine</h4><p>Proprietary matching for resume parsing, JD parsing, and candidate ranking</p></div>
       <div class="card"><div class="card-icon">📧</div><h4>Resend API</h4><p>Transactional email — invites, stage changes, interview scheduling</p></div>
       <div class="card"><div class="card-icon">🚀</div><h4>Railway + Vercel</h4><p>Backend on Railway (port 8080), Frontend on Vercel (Vite build)</p></div>
     </div>
@@ -177,7 +177,7 @@ ${heroHtml('⚙️','DEVELOPER PLAYBOOK','Developer Playbook','Everything a deve
     <ul class="check">
       <li>Node.js 18+ and npm 9+</li>
       <li>MongoDB Atlas account (or use local fallback)</li>
-      <li>Google Gemini API key (for AI features)</li>
+      <li>Advanced Matching API key (for smart features)</li>
       <li>Resend API key (optional — emails log to console in dev)</li>
     </ul>
     <h3>Step-by-step</h3>
@@ -196,7 +196,7 @@ ${heroHtml('⚙️','DEVELOPER PLAYBOOK','Developer Playbook','Everything a deve
 │   ├── api/
 │   │   ├── api.js           # All API calls + 401 interceptor
 │   │   ├── config.js        # API_BASE_URL from VITE_API_URL
-│   │   └── gemini.js        # Gemini AI integration
+│   │   └── matching.js      # Advanced matching integration
 │   ├── components/
 │   │   ├── shared/          # Reusable business components
 │   │   └── ui/              # Generic UI primitives
@@ -304,7 +304,7 @@ router.<span class="fn">get</span>(<span class="s">'/protected'</span>, auth, <s
       <div class="card"><h4>users.js</h4><p>CRUD, /me, invite flow, resend-invite, bulk-import</p></div>
       <div class="card"><h4>jobs.js</h4><p>CRUD, public jobs, job candidates, assign recruiter</p></div>
       <div class="card"><h4>applications.js</h4><p>apply, stage updates, notes, feedback, withdraw</p></div>
-      <div class="card"><h4>dashboard.js</h4><p>stats, pipeline health, analytics, AI matched jobs, funnels</p></div>
+      <div class="card"><h4>dashboard.js</h4><p>stats, pipeline health, analytics, smart matched jobs, funnels</p></div>
       <div class="card"><h4>orgs.js</h4><p>CRUD, invite-admin (token flow), plan update</p></div>
       <div class="card"><h4>platform.js</h4><p>config, security, feature flags, DB backup</p></div>
       <div class="card"><h4>assessments.js</h4><p>create/edit/delete, start, submit, review submissions</p></div>
@@ -404,7 +404,7 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
 
   <div class="section" id="overview">
     <h2><span class="icon" style="background:#dbeafe">🌐</span>Platform Overview</h2>
-    <p>TalentNest HR is a full-featured Applicant Tracking System (ATS) with Talent Match scoring, assessment tools, and pipeline management.</p>
+    <p>TalentNest HR is a full-featured Applicant Tracking System (ATS) with Advanced Matching scoring, assessment tools, and pipeline management.</p>
     <table>
       <tr><th>Role</th><th>Who</th><th>What they do</th><th>Nav Items</th></tr>
       <tr><td><span class="badge badge-blue">Candidate</span></td><td>Job seekers</td><td>Apply to jobs, track applications, take assessments</td><td>5 pages</td></tr>
@@ -435,8 +435,8 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
   <div class="section" id="recruiter">
     <h2><span class="icon" style="background:#dcfce7">🧑‍💻</span>Recruiter Guide</h2>
     <h3>Daily Workflow</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Post a Job</h4><p>My Jobs → "+ Post Job" → upload JD (Gemini auto-fills fields) or fill manually → submit for admin approval</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add Candidates</h4><p>Add Candidate → upload resume (Gemini parses it) → review auto-filled profile → "Add Candidate" sends invitation email</p></div></div>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Post a Job</h4><p>My Jobs → "+ Post Job" → upload JD (Automated parsing auto-fills fields) or fill manually → submit for admin approval</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Add Candidates</h4><p>Add Candidate → upload resume (Smart parsing extracts data) → review auto-filled profile → "Add Candidate" sends invitation email</p></div></div>
     <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Manage Pipeline</h4><p>Pipeline (Kanban) → drag cards or use stage buttons → schedule interviews → add notes → send offers</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Run Assessments</h4><p>Assessments → select job → view submissions → review scores → mark pass/fail with feedback</p></div></div>
     <h3>Pipeline Stages</h3>
@@ -482,7 +482,7 @@ ${heroHtml('👥','ALL USERS PLAYBOOK','All Users Playbook','Your complete guide
   <div class="section" id="tips">
     <h2><span class="icon" style="background:#ccfbf1">💡</span>Pro Tips</h2>
     <div class="cards">
-      <div class="card"><div class="card-icon">⚡</div><h4>Use Gemini Parsing</h4><p>Upload resumes / JDs — Gemini fills 90% of fields automatically</p></div>
+      <div class="card"><div class="card-icon">⚡</div><h4>Use Smart Parsing</h4><p>Upload resumes / JDs — system fills 90% of fields automatically</p></div>
       <div class="card"><div class="card-icon">🎯</div><h4>Tag Candidates</h4><p>Use pipeline tags (Top Talent, Budget Fit, Culture Fit) for quick filtering</p></div>
       <div class="card"><div class="card-icon">📧</div><h4>Bulk Outreach</h4><p>Select candidates → Invite → pick template → personalise with tokens like [name]</p></div>
       <div class="card"><div class="card-icon">📊</div><h4>Drill Down</h4><p>In Analytics, click any KPI card to see the actual records behind the number</p></div>
@@ -535,7 +535,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
   <div class="section" id="value">
     <h2><span class="icon" style="background:#fef3c7">⭐</span>Value Proposition</h2>
     <div class="cards">
-      <div class="card"><div class="card-icon">🤖</div><h4>Talent Match Powered</h4><p>Gemini AI parses resumes, matches candidates to jobs, and ranks by fit score — saving hours per hire</p></div>
+      <div class="card"><div class="card-icon">🧠</div><h4>Smart Match Powered</h4><p>Automated engine parses resumes, matches candidates to jobs, and ranks by fit score — saving hours per hire</p></div>
       <div class="card"><div class="card-icon">📊</div><h4>Full Pipeline</h4><p>Visual Kanban board from Applied to Hired with interview scheduling, assessments, and offer letters</p></div>
       <div class="card"><div class="card-icon">🏢</div><h4>Multi-Org</h4><p>One platform for multiple clients — super admin manages all orgs, each isolated with their own data</p></div>
       <div class="card"><div class="card-icon">📧</div><h4>Automated Emails</h4><p>Stage changes, interview invites, and offers sent automatically via Resend — zero manual follow-up</p></div>
@@ -549,7 +549,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
     <table>
       <tr><th>Plan</th><th>Price</th><th>Jobs</th><th>Recruiters</th><th>Key Features</th></tr>
       <tr><td><span class="badge badge-teal">Free</span></td><td>₹0</td><td>5</td><td>1</td><td>Basic pipeline, job board</td></tr>
-      <tr><td><span class="badge badge-amber">Trial</span></td><td>14 days</td><td>20</td><td>3</td><td>AI matching, bulk email, assessments</td></tr>
+      <tr><td><span class="badge badge-amber">Trial</span></td><td>14 days</td><td>20</td><td>3</td><td>Smart matching, bulk email, assessments</td></tr>
       <tr><td><span class="badge badge-blue">Starter</span></td><td>Contact Sales</td><td>50</td><td>5</td><td>Everything in Trial + advanced reports</td></tr>
       <tr><td><span class="badge badge-purple">Growth</span></td><td>Contact Sales</td><td>Unlimited</td><td>20</td><td>API access, calendar sync, candidate ranking</td></tr>
       <tr><td><span class="badge" style="background:#1e293b;color:#f0f4f8">Enterprise</span></td><td>Custom</td><td>Unlimited</td><td>Unlimited</td><td>White-label, SSO, dedicated support</td></tr>
@@ -559,7 +559,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
   <div class="section" id="demo">
     <h2><span class="icon" style="background:#ccfbf1">🎬</span>Demo Script (15 minutes)</h2>
     <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Hook (2 min)</h4><p>"How many hours does your team spend this week manually tracking candidate statuses?" → Show the pain → introduce TalentNest HR</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Gemini Resume Parsing (3 min)</h4><p>Upload a sample resume → show Gemini extracting name, skills, experience, education in seconds → "Your recruiters never type candidate details again"</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Smart Resume Parsing (3 min)</h4><p>Upload a sample resume → show automated extraction of name, skills, experience, education in seconds → "Your recruiters never type candidate details again"</p></div></div>
     <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Kanban Pipeline (4 min)</h4><p>Show a job's pipeline → move a candidate to Interview → system auto-sends the interview email → no manual follow-up</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Analytics (3 min)</h4><p>Click the Admin Analytics → show KPIs → click a card to drill into real candidate records → "Your manager gets this dashboard every Monday"</p></div></div>
     <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Close (3 min)</h4><p>"We can have you live in 24 hours. Which team would you start with?" → Trial offer → schedule onboarding call</p></div></div>
@@ -570,7 +570,7 @@ ${heroHtml('💼','SALES PLAYBOOK','Sales Playbook','Everything you need to pitc
     <table>
       <tr><th>Objection</th><th>Response</th></tr>
       <tr><td>"We use spreadsheets and they work fine"</td><td>Ask: "How long does it take to find out which candidates are in which stage across all your jobs?" — Pipeline view answers in 2 seconds</td></tr>
-      <tr><td>"It looks complicated"</td><td>Show the Add Candidate flow — upload resume, AI fills everything, click submit. "That's all your recruiter ever does"</td></tr>
+      <tr><td>"It looks complicated"</td><td>Show the Add Candidate flow — upload resume, Smart Match fills everything, click submit. "That's all your recruiter ever does"</td></tr>
       <tr><td>"We don't have budget right now"</td><td>Start on the free tier — no credit card. Show ROI: "One hire made 2 weeks faster pays for the platform"</td></tr>
       <tr><td>"We already have an ATS"</td><td>"Great — what's your Talent Match score? Can your recruiters see candidate fit % before they pick up the phone?"</td></tr>
       <tr><td>"Is our data safe?"</td><td>MongoDB Atlas encrypted at rest, JWT auth, no plain-text passwords, Railway/Vercel SOC 2 compliant hosting</td></tr>
@@ -895,12 +895,12 @@ ${heroHtml('🧪','TESTER PLAYBOOK','Tester Playbook','Daily test loop, manual t
       <tr><td>J05</td><td>Candidate withdraws from Applied stage</td><td>Application removed from recruiter pipeline</td><td>Original</td></tr>
       <tr><td>J06</td><td>Recruiter moves candidate → Selected (Hired)</td><td>Stage = "selected", notification sent</td><td>Original</td></tr>
       <tr><td>J07</td><td>Admin → Jobs page loads — shows job list</td><td>Jobs visible with title, status, applicant count (not empty)</td><td>${todayShort}</td></tr>
-      <tr><td>J08</td><td>Recruiter → Jobs page loads own jobs</td><td>Only assigned jobs visible, not all org jobs</td><td>${todayShort}</td></tr>
+        <td>J08</td><td>Recruiter → Jobs page loads own jobs</td><td>Only assigned jobs visible, not all org jobs</td><td>${todayShort}</td></tr>
       <tr><td>J09</td><td>Admin → Job Approval page loads pending jobs</td><td>Jobs with status "pending" visible; approve button works</td><td>${todayShort}</td></tr>
       <tr><td>J10</td><td>Candidate → Explore Jobs loads job list</td><td>Approved active jobs visible; no Access Denied error</td><td>${todayShort}</td></tr>
       <tr><td>J11</td><td>Candidate → Explore Jobs — applied jobs show badge</td><td>Jobs candidate already applied to show "Applied ✓"</td><td>${todayShort}</td></tr>
     </table>
-    <h3>Candidate Profile &amp; AI Match — Updated ${todayShort}</h3>
+    <h3>Candidate Profile & Smart Match — Updated ${todayShort}</h3>
     <table>
       <tr><th>#</th><th>Test Case</th><th>Expected Result</th><th>Added</th></tr>
       <tr><td>CP01</td><td>Candidate → My Profile page loads</td><td>Profile data shows — no "Route not found" error</td><td>${todayShort}</td></tr>
@@ -1066,7 +1066,7 @@ Prod:    https://talentnest-hr-production.up.railway.app/api</pre>
       <li>Recruiter → Jobs page shows assigned jobs (not empty)</li>
       <li>Candidate → Explore Jobs shows jobs, no 403 Access Denied</li>
       <li>Candidate → My Profile loads without "Route not found"</li>
-      <li>Candidate → Talent Match Search matching works without error</li>
+      <li>Candidate → Advanced Matching works without error</li>
       <li>Admin → Users → Candidates tab shows candidates</li>
       <li>Admin → Users → Recruiters tab shows recruiters</li>
       <li>Admin → Analytics shows real KPI counts (not zeros)</li>
@@ -1269,7 +1269,7 @@ ${heroHtml('🌐','PLATFORM PLAYBOOK','Platform Playbook','Complete feature matr
     <h2><span class="icon" style="background:#dbeafe">🗂️</span>Feature Matrix</h2>
     <table>
       <tr><th>Feature</th><th>Free</th><th>Trial</th><th>Starter</th><th>Growth</th><th>Enterprise</th></tr>
-      <tr><td>AI Job Matching</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Advanced Matching</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
       <tr><td>Bulk Email Outreach</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
       <tr><td>Custom Pipeline Stages</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
       <tr><td>Job Approval Workflow</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
@@ -1278,7 +1278,7 @@ ${heroHtml('🌐','PLATFORM PLAYBOOK','Platform Playbook','Complete feature matr
       <tr><td>Advanced Reporting</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
       <tr><td>API Access</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
       <tr><td>Google Calendar Sync</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
-      <tr><td>AI Candidate Ranking</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Candidate Ranking</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
       <tr><td>White-Label Branding</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td></tr>
       <tr><td>SSO (SAML/OAuth)</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td></tr>
     </table>
@@ -1309,7 +1309,7 @@ ${heroHtml('🌐','PLATFORM PLAYBOOK','Platform Playbook','Complete feature matr
     <h2><span class="icon" style="background:#fef3c7">🚩</span>Feature Flags</h2>
     <p>Feature flags are set per-plan by the super admin in Security → Feature Flags. They can be overridden per-org.</p>
     <div class="cards">
-      <div class="card"><h4>aiJobMatch</h4><p>Gemini-powered candidate-job matching. Enabled for all paid plans.</p></div>
+      <div class="card"><h4>advancedMatching</h4><p>Gemini-powered candidate-job matching. Enabled for all paid plans.</p></div>
       <div class="card"><h4>bulkEmail</h4><p>Send outreach emails to multiple candidates at once.</p></div>
       <div class="card"><h4>customPipeline</h4><p>Org can edit their hiring pipeline stages in Org Settings.</p></div>
       <div class="card"><h4>apiAccess</h4><p>REST API key access for third-party integrations. Growth+ only.</p></div>
@@ -1402,8 +1402,8 @@ ${heroHtml('📖','USER PLAYBOOK','User Playbook','Step-by-step guide for every 
     <h2><span class="icon" style="background:#dcfce7">🎓</span>For Candidates</h2>
     <h3>Your 5-Step Journey</h3>
     <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Register &amp; Log In</h4><p>Select "Job Seeker" → enter your details → you're in! No email verification needed.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Build Your Profile</h4><p>Click "My Profile" → complete all 7 sections. The more complete your profile, the higher your AI match score.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Find Jobs</h4><p>"Explore Jobs" shows all active openings. "AI Job Search" uses your skills to find the best matches.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Build Your Profile</h4><p>Click "My Profile" → complete all 7 sections. The more complete your profile, the higher your smart match score.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Find Jobs</h4><p>"Explore Jobs" shows all active openings. "Advanced Matching" uses your skills to find the best matches.</p></div></div>
     <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Apply &amp; Track</h4><p>"My Applications" shows every application with live stage updates, interview details, and assessment status.</p></div></div>
     <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Take Assessments</h4><p>If assigned, complete your assessment from "My Applications". Results are shared with the recruiter.</p></div></div>
     <h3>Application Stages — What They Mean</h3>
@@ -1465,7 +1465,7 @@ ${heroHtml('📖','USER PLAYBOOK','User Playbook','Step-by-step guide for every 
       <tr><td>I forgot my password</td><td>Click "Forgot Password" on the login page — enter your email to receive a reset link</td></tr>
       <tr><td>Can I apply to multiple jobs?</td><td>Yes — you can apply to any active job. Each application is tracked independently</td></tr>
       <tr><td>Can I withdraw an application?</td><td>Yes — in "My Applications", you can withdraw if your application is in Applied or Screening stage</td></tr>
-      <tr><td>How is my AI match score calculated?</td><td>Gemini compares your skills with the job's required skills. More matching skills = higher score</td></tr>
+      <tr><td>How is my smart match score calculated?</td><td>System compares your skills with the job's required skills. More matching skills = higher score</td></tr>
       <tr><td>Who can see my resume?</td><td>Only recruiters and admins in organisations you've applied to</td></tr>
     </table>
     <div class="alert alert-green">📞 Need help? Email us at <strong>hr@talentnesthr.com</strong> or call <strong>+91 79955 35539</strong></div>
@@ -1514,7 +1514,7 @@ ${heroHtml('🔍','SYSTEM AUDIT REPORT','TalentNest HR — Full System Audit','M
       <tr><td>Admin pages</td><td>AdminAnalytics, AdminDashboard, AdminJobs, AdminUsers, AdminJobApproval, OrgSettings, OutreachTracker, ContactLeads, EmailLogsPage</td><td><span class="badge badge-green">All Reviewed</span></td></tr>
       <tr><td>SuperAdmin pages</td><td>SuperAdminSecurity, SuperAdminPermissions, SuperAdminOrgs, SuperAdminPlatform, SuperAdminPlaybooks, SuperAdminCandidateImport</td><td><span class="badge badge-green">All Reviewed</span></td></tr>
       <tr><td>Recruiter pages</td><td>RecruiterJobs, RecruiterCandidates (AdminUsers), RecruiterPipeline, RecruiterAssessments</td><td><span class="badge badge-green">Reviewed</span></td></tr>
-      <tr><td>Candidate pages</td><td>CandidateDashboard, CandidateExploreJobs, CandidateProfile, CandidateAIMatch, CandidateApplications</td><td><span class="badge badge-blue">Spot-checked</span></td></tr>
+      <tr><td>Candidate pages</td><td>CandidateDashboard, CandidateExploreJobs, CandidateProfile, CandidateAdvancedMatching, CandidateApplications</td><td><span class="badge badge-blue">Spot-checked</span></td></tr>
       <tr><td>API client</td><td>src/api/api.js — all ~60 methods</td><td><span class="badge badge-green">Reviewed</span></td></tr>
       <tr><td>Data models</td><td>User.js, Org.js, Job.js, Application.js, Assessment.js + others</td><td><span class="badge badge-green">Reviewed</span></td></tr>
     </table>
@@ -1530,7 +1530,7 @@ ${heroHtml('🔍','SYSTEM AUDIT REPORT','TalentNest HR — Full System Audit','M
       <tr><td><code>users.js</code></td><td>GET /users, /count, /candidates, /me, /:id — POST, PATCH, DELETE</td><td><span class="badge badge-green">✓ Fixed</span></td><td>ADDED: /count, /candidates. FIXED: lean() strips id virtual — now adds id manually.</td></tr>
       <tr><td><code>jobs.js</code></td><td>GET /jobs, /public, /:id — POST, PATCH, DELETE + assign-recruiter + /:id/candidates</td><td><span class="badge badge-green">✓ OK</span></td><td>Role-scoped: recruiter sees assigned jobs only. All CRUD present.</td></tr>
       <tr><td><code>applications.js</code></td><td>GET, POST /applications + POST /applications/public + stage/interview/notes updates</td><td><span class="badge badge-green">✓ OK</span></td><td>POST /public added ${todayShort} — no auth, guest apply from LandingPage/CareersPage. Finds/creates candidate by email, 409 on duplicate, sends confirmation email.</td></tr>
-      <tr><td><code>dashboard.js</code></td><td>GET /stats, /pipeline-health, /analytics, /recruiter-leaderboard, /ai-matched-jobs</td><td><span class="badge badge-green">✓ OK</span></td><td>All aggregation endpoints present and registered.</td></tr>
+      <tr><td><code>dashboard.js</code></td><td>GET /stats, /pipeline-health, /analytics, /recruiter-leaderboard, /advanced-matched-jobs</td><td><span class="badge badge-green">✓ OK</span></td><td>All aggregation endpoints present and registered.</td></tr>
       <tr><td><code>orgs.js</code></td><td>GET /orgs, /:id — POST, PATCH, DELETE + invite-admin + plan update</td><td><span class="badge badge-green">✓ OK</span></td><td>invite-admin uses secure token email (no plain password).</td></tr>
       <tr><td><code>platform.js</code></td><td>GET /config, PATCH /security, PATCH /flags, GET /backup</td><td><span class="badge badge-green">✓ OK</span></td><td>super_admin only. DB backup endpoint returns live data export.</td></tr>
       <tr><td><code>assessments.js</code></td><td>Full CRUD + /start, /submit, /review, /submissions</td><td><span class="badge badge-green">✓ OK</span></td><td>Complete assessment lifecycle covered.</td></tr>
@@ -2828,7 +2828,7 @@ ${heroHtml(form.icon,'CUSTOM PLAYBOOK',form.title, form.desc || 'Custom playbook
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {[
             { id: 'investor',  title: 'Investor Pitch Deck',  icon: '📈', color: '#0176D3', desc: 'Full vision, scalability, and market metrics for investors.' },
-            { id: 'recruiter', title: 'Recruiter Playbook',   icon: '🎯', color: '#10B981', desc: 'The ultimate guide for recruiter efficiency and AI matching.' },
+            { id: 'recruiter', title: 'Recruiter Playbook',   icon: '🎯', color: '#10B981', desc: 'The ultimate guide for recruiter efficiency and smart matching.' },
             { id: 'candidate', title: 'Candidate Roadmap',    icon: '🚀', color: '#7C3AED', desc: 'A user manual for candidates to maximize their success.' },
             { id: 'technical', title: 'AI Technical Paper',   icon: '🛡️', color: '#BA0517', desc: 'Technical details on our bot-masking & AI security layer.' },
           ].map(deck => (

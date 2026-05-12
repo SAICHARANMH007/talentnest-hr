@@ -8,7 +8,7 @@ import { logAudit, getAuditLog } from '../../utils/audit.js';
 const glass = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24 };
 
 const FEATURE_FLAGS = [
-  { key: 'aiJobMatch',       label: 'AI Job Matching',        icon: '🤖', desc: 'Gemini-powered candidate-job matching' },
+  { key: 'aiJobMatch',       label: 'Smart Job Matching',        icon: '🤖', desc: 'Precision-powered candidate-job matching' },
   { key: 'bulkEmail',        label: 'Bulk Email',             icon: '📧', desc: 'Send emails to multiple candidates' },
   { key: 'customPipeline',   label: 'Custom Pipeline Stages', icon: '🔄', desc: 'Configure org-level pipeline stages' },
   { key: 'apiAccess',        label: 'API Access',             icon: '🔌', desc: 'REST API access for integrations' },
@@ -18,7 +18,7 @@ const FEATURE_FLAGS = [
   { key: 'jobApproval',      label: 'Job Approval Workflow',  icon: '✅', desc: 'Require admin approval before posting' },
   { key: 'screeningQ',       label: 'Screening Questions',    icon: '❓', desc: 'Attach questions to job applications' },
   { key: 'calendarSync',     label: 'Google Calendar Sync',   icon: '📅', desc: 'Sync interviews with Google Calendar' },
-  { key: 'candidateRanking', label: 'AI Candidate Ranking',   icon: '⭐', desc: 'Auto-rank candidates by fit score' },
+  { key: 'candidateRanking', label: 'Automated Candidate Ranking',   icon: '⭐', desc: 'Auto-rank candidates by fit score' },
   { key: 'sso',              label: 'Single Sign-On (SSO)',   icon: '🔐', desc: 'SAML/OAuth enterprise SSO' },
 ];
 

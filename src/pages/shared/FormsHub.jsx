@@ -19,7 +19,7 @@ export default function FormsHub({ user }) {
       roles: ['recruiter', 'admin', 'superadmin'],
       items: [
         { id: 'jobs/create', icon: '💼', name: 'Post a New Job', desc: 'Create a job listing, set screening questions, and define roles.', color: '#0176D3' },
-        { id: 'add-candidate', icon: '👤', name: 'Add Candidate', desc: 'Upload a resume for AI extraction or enter candidate details manually.', color: '#10B981' },
+        { id: 'add-candidate', icon: '👤', name: 'Add Candidate', desc: 'Upload a resume for automated extraction or enter candidate details manually.', color: '#10B981' },
         { id: 'forms/invite', icon: '📧', name: 'Invite Candidates', desc: 'Send personalized job invitation emails to selected candidates.', color: '#8B5CF6' },
         { id: 'forms/interview', icon: '📅', name: 'Schedule Interview', desc: 'Coordinate with interviewers and candidates for upcoming rounds.', color: '#F59E0B' },
         { id: 'forms/offer', icon: '📄', name: 'Generate Offer', desc: 'Create professional offer letters with custom salary/benefit clauses.', color: '#EF4444' },

@@ -251,7 +251,7 @@ function DetailPage({ request, onClose, onSaved }) {
         </div>
         {busy!=='suggested' && suggested.length===0 && (
           <div style={{ color:'#94A3B8', fontSize:12, marginBottom:16, padding:'12px 14px', background:'#F8FAFC', borderRadius:8 }}>
-            No AI-suggested candidates. Use the search below.
+            No suggested candidates. Use the search below.
           </div>
         )}
         {suggested.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(

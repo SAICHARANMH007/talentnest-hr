@@ -13,7 +13,7 @@ const SECTIONS = [
     heading: '🗂️ Pipeline & Candidate Management',
     items: [
       { icon:'📊', name:'Visual pipeline board', detail:'Every candidate in one view — Applied, Screening, Shortlisted, Interview R1, Interview R2, Offer, Hired, Rejected. Change a stage with one click.' },
-      { icon:'🤖', name:'AI match score on every candidate', detail:'Weighted scoring across skills, experience, and location before you even open a profile. Sort by match to call the best fits first.' },
+      { icon:'🎯', name:'Advanced Match Score on every candidate', detail:'Weighted scoring across skills, experience, and location before you even open a profile. Sort by match to call the best fits first.' },
       { icon:'🏊', name:'Talent pool', detail:'Candidate is great but not right for this role? Move them to the Talent Pool. They stay searchable and ready to be re-engaged when the right role opens.' },
       { icon:'📋', name:'Assigned candidates', detail:'See all candidates specifically assigned to you by your admin. Never lose track of who you are responsible for.' },
       { icon:'📁', name:'Full candidate profiles', detail:'Name, phone, email, skills, experience, CTC, notice period, LinkedIn, resume, video resume, work history, certifications — editable from the pipeline card.' },
@@ -47,6 +47,16 @@ const SECTIONS = [
       { icon:'📤', name:'Outreach tracker', detail:'Log every email, call, and message to a candidate. Full outreach history per candidate so your team never duplicates contact.' },
       { icon:'⬇️', name:'Export pipeline to Excel', detail:'One click — every candidate, every role, every contact detail, every stage — exported to a formatted Excel sheet.' },
       { icon:'🔗', name:'Job distribution', detail:'Distribute job postings to external job boards and track performance per channel — see which source sends the most applications.' },
+    ],
+  },
+  {
+    heading: '🛡️ Compliance & Enterprise Controls',
+    items: [
+      { icon:'🏅', name:'BGV Tracking & Verification', detail:'Send background verification requests to candidates. Track status of identity, address, and employment checks directly in their profile.' },
+      { icon:'⚙️', name:'Custom fields & configurations', detail:'Define custom fields for candidates and jobs that match your specific industry needs. Full control over data capture.' },
+      { icon:'👥', name:'Hiring Manager & Client sharing', detail:'Share specific candidate profiles or shortlists with external Hiring Managers or Clients for feedback without giving them full platform access.' },
+      { icon:'🔒', name:'Granular role-based access', detail:'Define exactly what recruiters, admins, and partners can see and do. Protect sensitive PII with precision permissioning.' },
+      { icon:'📝', name:'Full audit logging', detail:'Every action — from stage moves to data exports — is logged with timestamp and user ID for complete transparency and compliance.' },
     ],
   },
 ];

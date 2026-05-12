@@ -465,7 +465,7 @@ export default function TermsPage() {
       </section>
 
       {/* ── Content ── */}
-      <section style={{ padding: 'clamp(40px, 6vw, 80px) 24px clamp(60px, 10vw, 120px)' }}>
+      <section style={{ padding: 'clamp(40px, 6vw, 80px) 24px clamp(80px, 12vw, 140px)' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
 
           {/* Intro banner */}
@@ -524,7 +524,7 @@ export default function TermsPage() {
       </section>
 
       {/* Mobile TOC — floating pill at bottom */}
-      <div className="tn-toc-mobile" style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 500 }}>
+      <div className="tn-toc-mobile" style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', zIndex: 500 }}>
         <div style={{ background: 'rgba(3,45,96,0.95)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 100, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', whiteSpace: 'nowrap' }}>
           <span style={{ color: 'var(--mkt-accent)', fontSize: 12, fontWeight: 700 }}>⚖️ Section</span>
           <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 600 }}>

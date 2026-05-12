@@ -5,15 +5,18 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 
 const FEATURES = [
-  { icon: '🎯', title: 'AI Facial Recognition', desc: 'Accurately identifies employees in real time using advanced deep-learning facial recognition — even with masks, glasses, or lighting changes.' },
-  { icon: '⏱️', title: 'Automated Attendance', desc: 'Employees mark attendance with a glance. No punch cards, no PINs, no buddy-punching. 100% contactless and tamper-proof.' },
-  { icon: '🚪', title: 'Access Control Integration', desc: 'Grant or restrict building and room access based on facial identity. Integrate with existing door locks and security systems.' },
-  { icon: '📊', title: 'Real-Time HR Dashboard', desc: 'Live attendance reports, late arrivals, absenteeism trends, and work-hour summaries — all visible in one clean dashboard.' },
-  { icon: '🛡️', title: 'Anti-Spoofing Technology', desc: 'Liveness detection prevents photos or videos from fooling the system. Only a real, present face will be accepted.' },
-  { icon: '📱', title: 'Mobile & Multi-Device', desc: 'Deploy on tablets, kiosks, or smartphones. Works across multiple office locations with a single cloud-based admin panel.' },
-  { icon: '🔗', title: 'Payroll Integration', desc: 'Attendance data flows directly into your payroll system. Eliminate manual timesheet errors and salary disputes.' },
-  { icon: '🌐', title: 'Multi-Branch Support', desc: 'Manage employees across multiple locations from one platform. Consolidate attendance data from all branches in real time.' },
-  { icon: '📁', title: 'Employee Profile Management', desc: 'Centralized employee records — face data, department, designation, shift schedules, and leave balances in one place.' },
+  { icon: '🎯', title: 'Advanced Facial Recognition', desc: 'Secure, contactless attendance marking with 99.9% accuracy. Identifies employees in under 0.5 seconds, even with masks or lighting changes.' },
+  { icon: '📱', title: 'Mobile Attendance', desc: 'Clock in/out from anywhere with geofencing and facial verification. Perfect for field teams, remote workers, and multi-site operations.' },
+  { icon: '📍', title: 'Geofenced Locations', desc: 'Restrict attendance marking to specific office locations, project sites, or client offices. Real-time GPS verification included.' },
+  { icon: '⏱️', title: 'Automated Shift Management', desc: 'Manage complex shift patterns, night shifts, and rotations easily. System auto-calculates work hours and overtime accurately.' },
+  { icon: '💰', title: 'Automated Payroll Sync', desc: 'Sync attendance data directly with payroll. One-click salary processing with automated tax calculations and deduction management.' },
+  { icon: '👤', title: 'Employee Self-Service', desc: 'Employees can view payslips, request leaves, and update personal details through a secure mobile-friendly portal.' },
+  { icon: '🛡️', title: 'Liveness Detection', desc: 'Prevents spoofing attacks using photos or videos. Only a real, physically present face will be accepted by the system.' },
+  { icon: '🚪', title: 'Access Control Integration', desc: 'Integrate with turnstiles, electromagnetic locks, and physical security barriers to grant access based on identity.' },
+  { icon: '📊', title: 'Real-Time HR Analytics', desc: 'Live attendance reports, absenteeism trends, and workforce productivity metrics — all visible in one clean dashboard.' },
+  { icon: '🔗', title: 'Third-Party Integrations', desc: 'Connect with existing ERP, Accounting, or HR software via secure APIs to maintain a unified data ecosystem.' },
+  { icon: '🌐', title: 'Multi-Branch Support', desc: 'Manage employees across hundreds of locations from one centralized cloud-based admin panel with real-time sync.' },
+  { icon: '📁', title: 'Digital Document Vault', desc: 'Store employee contracts, ID proofs, and compliance documents securely. Access records instantly from the employee profile.' },
 ];
 
 const USECASES = [

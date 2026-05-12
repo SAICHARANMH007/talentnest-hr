@@ -340,7 +340,7 @@ export default function ApplicantsRecordsPage({ user }) {
           <Field label="Stage" value={filters.stage} onChange={v => updateFilter('stage', v)} placeholder="All stages" options={[{ value: '', label: 'All stages' }, ...DB_STAGES.map(s => ({ value: s, label: s }))]} />
           <Field label="Status" value={filters.status} onChange={v => updateFilter('status', v)} options={STATUS_OPTIONS} />
           <Field label="Source" value={filters.source} onChange={v => updateFilter('source', v)} options={SOURCE_OPTIONS} />
-          <Field label="AI Score >=" type="number" min="0" max="100" value={filters.minScore} onChange={v => updateFilter('minScore', v)} placeholder="Any" />
+          <Field label="Match Score >=" type="number" min="0" max="100" value={filters.minScore} onChange={v => updateFilter('minScore', v)} placeholder="Any" />
           <button onClick={clearFilters} style={{ ...btnG, minHeight: 46 }}>Clear</button>
         </div>
         <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 12, alignItems: 'end', marginTop: 12 }}>

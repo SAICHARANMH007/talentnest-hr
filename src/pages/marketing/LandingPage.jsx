@@ -199,7 +199,7 @@ export default function LandingPage() {
         {/* Grid */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 12vw, 120px) 24px clamp(60px, 10vw, 100px)', gap: 'clamp(32px, 8vw, 64px)' }}>
+        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: 'clamp(60px, 10vw, 100px) 24px', gap: 'clamp(24px, 4vw, 48px)' }}>
           {/* Left */}
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>

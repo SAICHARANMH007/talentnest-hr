@@ -40,13 +40,19 @@ const SECTIONS = [
     heading: '⚙️ Team, Org & Automation',
     items: [
       { icon:'🔐', name:'Secure team invite system', detail:'Invite recruiters and admins via a secure link. They set their own password — no plain-text passwords ever sent. Resend invite from the admin panel if needed.' },
-      { icon:'🤖', name:'Automation workflow rules', detail:'Set triggers: when a candidate reaches a specific stage, automatically send an email, a WhatsApp message, or a notification. Runs without manual action.' },
       { icon:'🏢', name:'Org settings + branding', detail:'Update your org name, logo, domain. Your logo appears on the career page and offer letters. Custom fields let you capture any data specific to your process.' },
-      { icon:'📊', name:'Custom fields', detail:'Add custom data fields to candidate profiles — anything your org needs to track beyond the defaults. Available across the pipeline.' },
-      { icon:'🔒', name:'Audit logs + 2FA security', detail:'Every action in the platform is logged — who changed what, when. Two-factor authentication available for all accounts. Session management for security.' },
+      { icon:'🔒', name:'Audit logs + Enterprise security', detail:'Every action in the platform is logged — who changed what, when. Session management, role-based access control (RBAC), and SOC-2 compliant logging.' },
       { icon:'💰', name:'Billing + plan management', detail:'View your current plan, usage, and invoices. Upgrade, downgrade, or contact the team — all from the billing panel.' },
-      { icon:'📬', name:'Candidate request system', detail:'Submit a staffing request to TalentNest HR when you need specialist sourcing. Track the status and see submitted candidates when the team responds.' },
-      { icon:'🧩', name:'Assessment builder', detail:'Create skills-based assessments for any role. Attach them to jobs so candidates complete them at apply time. Review scores and responses per candidate.' },
+    ],
+  },
+  {
+    heading: '🌐 Multi-tenant & Enterprise Scale',
+    items: [
+      { icon:'🏙️', name:'Manage Multiple Organisations', detail:'Perfect for staffing agencies or conglomerates. Manage multiple separate organisations with unique branding, pipelines, and users from one admin account.' },
+      { icon:'👥', name:'Bulk user provisioning', detail:'Provision dozens of recruiter accounts in seconds. Set default permissions, team assignments, and notification rules in bulk.' },
+      { icon:'📈', name:'Consolidated Org Analytics', detail:'Roll up data across multiple departments or sub-organisations to see your total hiring health, spend, and recruiter efficiency at scale.' },
+      { icon:'🛠️', name:'White-label career portals', detail:'Deploy fully-branded career portals for each of your clients or subsidiaries with their own logo, color scheme, and unique URL.' },
+      { icon:'📬', name:'Centralized candidate requests', detail:'Admins can review and approve staffing requests from across the entire organisation. Assign the best recruiters to high-priority mandates.' },
     ],
   },
 ];
