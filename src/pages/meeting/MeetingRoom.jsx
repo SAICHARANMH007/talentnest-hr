@@ -334,6 +334,7 @@ export default function MeetingRoom() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isAuthenticated = !!(storedUser?.id || storedUser?._id);
+  const isPossiblyLoggedIn = localStorage.getItem('tn_logged_in') === 'true';
 
   const [guestIdentity, setGuestIdentity] = useState(null);
   const [joined, setJoined] = useState(false);
@@ -702,19 +703,44 @@ export default function MeetingRoom() {
 
   const screenSharer = participantEntries.find(p => p.socketId === screenSharerId);
 
-  // ── Show auth loader while session is being restored ─────────────────────
+  // ── Show guest form only if NOT authenticated and NOT even trying to authenticate ──
   if (authLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 48, height: 48, border: '4px solid rgba(1,118,211,0.3)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 600 }}>Verifying session…</span>
+      <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
+        <div style={{ width: 50, height: 50, border: '3px solid rgba(1,118,211,0.1)', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 1s linear infinite' }} />
+        <div style={{ textAlign: 'center' }}>
+          <h3 style={{ color: '#fff', margin: '0 0 4px', fontSize: 18 }}>Restoring your session...</h3>
+          <p style={{ color: '#64748B', margin: 0, fontSize: 14 }}>Connecting to TalentNest secure meeting servers</p>
+        </div>
         <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  // ── Show guest form only if not authenticated and no guest identity ───────
   if (!isAuthenticated && !guestIdentity) {
+    // If localStorage says we are logged in, but initAuth failed (e.g. cold start), show a re-sync option instead of guest form
+    if (isPossiblyLoggedIn) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#fff', borderRadius: 24, padding: 40, maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontSize: 48, marginBottom: 20 }}>🔑</div>
+            <h2 style={{ color: '#0F172A', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Session Synchronization</h2>
+            <p style={{ color: '#64748B', lineHeight: 1.6, marginBottom: 24 }}>
+              We detected you are logged in, but your session needs a quick refresh to enter this meeting room as an interviewer.
+            </p>
+            <button onClick={() => window.location.reload()} style={{ ...btnP, width: '100%', padding: '14px' }}>
+              Refresh Session
+            </button>
+            <button 
+              onClick={() => setGuestIdentity({ name: 'Guest User', email: '', isGuest: true })} 
+              style={{ background: 'none', border: 'none', color: '#64748B', marginTop: 16, cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}
+            >
+              Continue as Guest instead
+            </button>
+          </div>
+        </div>
+      );
+    }
     return <GuestJoin roomToken={roomToken} onJoin={(g) => setGuestIdentity(g)} />;
   }
 
@@ -759,12 +785,18 @@ export default function MeetingRoom() {
 
   // ── Permission Error ──────────────────────────────────────────────────────
   if (permError) return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0F172A,#1E293B)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: 48, textAlign: 'center', maxWidth: 480 }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🎙️</div>
-        <h2 style={{ color: '#DC2626', marginBottom: 12 }}>Camera/Microphone Blocked</h2>
-        <p style={{ color: '#374151', lineHeight: 1.6 }}>{permError}</p>
-        <button onClick={() => window.location.reload()} style={{ marginTop: 24, background: '#0176D3', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Try Again</button>
+    <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: '#fff', borderRadius: 24, padding: 48, textAlign: 'center', maxWidth: 500, boxShadow: '0 25px 60px rgba(0,0,0,0.4)' }}>
+        <div style={{ fontSize: 64, marginBottom: 20 }}>📷</div>
+        <h2 style={{ color: '#E11D48', fontSize: 24, fontWeight: 800, marginBottom: 12 }}>Camera & Mic Blocked</h2>
+        <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: 32 }}>
+          TalentNest needs access to your camera and microphone to start the interview. 
+          Please click the <b>Lock Icon</b> 🔒 in your browser's address bar and set <b>Camera</b> and <b>Microphone</b> to <b>"Allow"</b>.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button onClick={() => window.location.reload()} style={{ ...btnP, padding: '16px' }}>I've enabled permissions — Reload</button>
+          <p style={{ fontSize: 12, color: '#94A3B8' }}>Tip: Make sure no other apps (Zoom, Teams, etc.) are using your camera.</p>
+        </div>
       </div>
     </div>
   );

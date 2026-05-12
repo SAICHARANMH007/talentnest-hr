@@ -94,7 +94,7 @@ export async function initAuth() {
   // Slow path: token missing or expired — ask the server for a new one via cookie.
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s for cold starts
     const res = await fetch(`${API_BASE_URL}${_refreshPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'TalentNest' },
