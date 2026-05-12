@@ -3,6 +3,8 @@ const crypto       = require('crypto');
 const CallRecord   = require('../models/CallRecord');
 const User         = require('../models/User');
 const Notification = require('../models/Notification');
+const VideoRoom    = require('../models/VideoRoom');
+const Application  = require('../models/Application');
 const mongoose     = require('mongoose');
 
 // Active calls and busy-status maps (cleared on restart — intentional, calls die on restart)
@@ -255,6 +257,44 @@ function setupCallSocket(io) {
           { $set: { endedAt: new Date(), duration, outcome: call.answeredAt ? 'answered' : 'failed' } }
         );
       } catch {}
+    });
+
+    // ── MEETING JOIN NOTIFICATIONS ──────────────────────────────────────────
+    socket.on('meeting:notify-join', async ({ roomToken, name, role }) => {
+      try {
+        const vRoom = await VideoRoom.findOne({ roomToken }).select('interviewId hostUserId tenantId').lean();
+        if (!vRoom) return;
+
+        const app = await Application.findById(vRoom.interviewId).select('candidateId jobId').populate('candidateId', 'name').lean();
+        if (!app) return;
+
+        // If Host joined, notify Candidate
+        if (role === 'host') {
+          const candidateUserId = app.candidateId?._id; // This assumes candidate has a User record with same ID or linked
+          // Actually, let's notify the candidate by looking up User by email if needed, 
+          // but for simplicity, we use the candidateId if it maps to a user.
+          // In TalentNest, candidates often have User records.
+          if (candidateUserId) {
+            deliverToUser(ns, candidateUserId, 'meeting:toast', {
+              title: 'Host Joined',
+              message: `${name} (Interviewer) is now in the meeting room.`,
+              link: `/meeting/${roomToken}`
+            });
+          }
+        } 
+        // If Candidate (or Guest) joined, notify Host
+        else {
+          if (vRoom.hostUserId) {
+            deliverToUser(ns, vRoom.hostUserId, 'meeting:toast', {
+              title: 'Participant Joined',
+              message: `${name} has joined the meeting.`,
+              link: `/meeting/${roomToken}`
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[CallSocket] meeting:notify-join error:', e.message);
+      }
     });
   });
 }

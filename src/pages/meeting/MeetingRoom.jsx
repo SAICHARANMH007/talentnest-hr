@@ -18,6 +18,56 @@ const ICE_SERVERS = [
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
+const btnP = { background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer' };
+const btnG = { background: '#1E293B', color: '#fff', border: '1px solid #334155', borderRadius: 10, padding: '10px 20px', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
+
+// ── Reschedule Modal ─────────────────────────────────────────────────────────
+function RescheduleModal({ onSave, onClose, initialDate }) {
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialDate) {
+      const d = new Date(initialDate);
+      setDate(d.toISOString().split('T')[0]);
+      setTime(d.toTimeString().slice(0, 5));
+    }
+  }, [initialDate]);
+
+  const handleSave = async () => {
+    if (!date || !time) return;
+    setSaving(true);
+    await onSave({ date, time });
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 24, padding: 32, width: '100%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+        <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Reschedule Interview</h3>
+        <p style={{ color: '#94A3B8', fontSize: 14, margin: '0 0 24px' }}>Choose a new date and time. Both parties will be notified via email.</p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div>
+            <label style={{ color: '#94A3B8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>DATE</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 10, background: '#1E293B', border: '1px solid #334155', color: '#fff', outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ color: '#94A3B8', fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>TIME</label>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 10, background: '#1E293B', border: '1px solid #334155', color: '#fff', outline: 'none' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnP, flex: 1, padding: 14 }}>{saving ? 'Updating...' : 'Update Schedule'}</button>
+          <button onClick={onClose} style={{ ...btnG, flex: 1, padding: 14 }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Participant Tile ─────────────────────────────────────────────────────────
 function VideoTile({ stream, name, isMuted, isCamOff, isLocal, isHost, onMute, onRemove, showControls }) {
   const vidRef = useRef(null);
@@ -166,34 +216,50 @@ function ChatPanel({ messages, onSend, typingUsers, roomToken, socket }) {
 }
 
 // ── Control Bar ──────────────────────────────────────────────────────────────
-function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, isRecording, isHost, onToggleMic, onToggleCam, onToggleScreen, onToggleChat, onToggleParticipants, onToggleRecording, onLeave, onEndMeeting }) {
+function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, isRecording, isHost, onToggleMic, onToggleCam, onToggleScreen, onToggleChat, onToggleParticipants, onToggleRecording, onLeave, onEndMeeting, onReschedule, onCopyLink }) {
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0F172A', borderTop: '1px solid #1E293B', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, zIndex: 100 }}>
-      <CtrlBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} active={micOn} onClick={onToggleMic} danger={!micOn} />
-      <CtrlBtn icon={camOn ? '📹' : '📵'} label={camOn ? 'Stop Video' : 'Start Video'} active={camOn} onClick={onToggleCam} danger={!camOn} />
-      <CtrlBtn icon={isSharingScreen ? '🛑' : '🖥️'} label={isSharingScreen ? 'Stop Share' : 'Share Screen'} active={isSharingScreen} onClick={onToggleScreen} />
-      <CtrlBtn icon="💬" label="Chat" active={chatOpen} onClick={onToggleChat} />
-      <CtrlBtn icon="👥" label="People" active={false} onClick={onToggleParticipants} />
-      {isHost && <CtrlBtn icon={isRecording ? '⏹️' : '⏺️'} label={isRecording ? 'Stop Rec' : 'Record'} active={isRecording} onClick={onToggleRecording} style={{ color: isRecording ? '#EF4444' : undefined }} />}
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, zIndex: 100 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <CtrlBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} active={micOn} onClick={onToggleMic} danger={!micOn} />
+        <CtrlBtn icon={camOn ? '📹' : '📵'} label={camOn ? 'Stop Video' : 'Start Video'} active={camOn} onClick={onToggleCam} danger={!camOn} />
+      </div>
+      
+      <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <CtrlBtn icon={isSharingScreen ? '🛑' : '🖥️'} label={isSharingScreen ? 'Stop Share' : 'Share'} active={isSharingScreen} onClick={onToggleScreen} />
+        <CtrlBtn icon="💬" label="Chat" active={chatOpen} onClick={onToggleChat} />
+        <CtrlBtn icon="👥" label="People" active={false} onClick={onToggleParticipants} />
+        {isHost && <CtrlBtn icon={isRecording ? '⏹️' : '⏺️'} label={isRecording ? 'Stop Rec' : 'Record'} active={isRecording} onClick={onToggleRecording} style={{ color: isRecording ? '#EF4444' : undefined }} />}
+        <CtrlBtn icon="🔗" label="Invite" onClick={onCopyLink} />
+        {isHost && <CtrlBtn icon="📅" label="Reschedule" onClick={onReschedule} />}
+      </div>
+
       <div style={{ flex: 1 }} />
       {isHost ? (
-        <CtrlBtn icon="📵" label="End Meeting" onClick={onEndMeeting} danger />
+        <button onClick={onEndMeeting} style={{ background: '#EF4444', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 16px rgba(239, 68, 68, 0.25)' }}>
+          <span style={{ fontSize: 18 }}>📵</span> End Meeting
+        </button>
       ) : (
-        <CtrlBtn icon="🚪" label="Leave" onClick={onLeave} danger />
+        <button onClick={onLeave} style={{ background: '#334155', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🚪</span> Leave Room
+        </button>
       )}
     </div>
   );
 }
 
-function CtrlBtn({ icon, label, active, onClick, danger }) {
+function CtrlBtn({ icon, label, active, onClick, danger, style }) {
   return (
     <button onClick={onClick} title={label} style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-      background: danger ? '#DC2626' : (active ? '#0176D3' : '#1E293B'),
-      border: 'none', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', color: '#fff', minWidth: 64,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+      background: danger ? 'rgba(220, 38, 38, 0.15)' : (active ? 'rgba(1, 118, 211, 0.15)' : 'rgba(255,255,255,0.05)'),
+      border: `1px solid ${danger ? '#EF4444' : (active ? '#0176D3' : 'rgba(255,255,255,0.1)')}`,
+      borderRadius: 14, padding: '10px 14px', cursor: 'pointer', color: danger ? '#EF4444' : (active ? '#38BDF8' : '#94A3B8'), minWidth: 64,
+      transition: 'all 0.2s', ...style
     }}>
       <span style={{ fontSize: 20 }}>{icon}</span>
-      <span style={{ fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</span>
     </button>
   );
 }
@@ -292,6 +358,7 @@ export default function MeetingRoom() {
   const [permError, setPermError] = useState('');
   const [toast, setToast] = useState('');
   const [takeoverRequest, setTakeoverRequest] = useState(null);
+  const [showReschedule, setShowReschedule] = useState(false);
 
   const socketRef = useRef(null);
   const peerConnsRef = useRef({}); // socketId -> RTCPeerConnection
@@ -308,9 +375,14 @@ export default function MeetingRoom() {
         email: storedUser.email, 
         role: isRecruiter ? 'interviewer' : 'candidate', 
         isGuest: false, 
-        isHost: isRecruiter // Recruiter/Admin is the host
+        isHost: isRecruiter 
       }
-    : (guestIdentity ? { ...guestIdentity } : null);
+    : (guestIdentity ? { 
+        ...guestIdentity, 
+        userId: `guest_${Math.random().toString(36).slice(2, 9)}`, 
+        role: 'candidate', 
+        isHost: false 
+      } : null);
 
   // ── Load Room Metadata ────────────────────────────────────────────────────
   useEffect(() => {
@@ -599,6 +671,26 @@ export default function MeetingRoom() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    showToast('Invite link copied to clipboard');
+  };
+
+  const handleReschedule = async ({ date, time }) => {
+    if (!roomMeta?.interviewId) return;
+    try {
+      const res = await api.scheduleInterview(roomMeta.interviewId, { date, time, format: 'video' });
+      if (res.success) {
+        showToast('Interview rescheduled successfully');
+        setShowReschedule(false);
+        // Sync local metadata
+        setRoomMeta(prev => ({ ...prev, scheduledAt: new Date(`${date}T${time}`) }));
+        // Notify others via chat
+        sendMessage(`📅 Interview rescheduled to ${new Date(`${date}T${time}`).toLocaleString('en-IN')}`);
+      } else showToast(res.message || 'Reschedule failed');
+    } catch (err) { showToast('Error rescheduling interview'); }
+  };
+
   // ── Build participant list from peers + local ────────────────────────────
   const participantEntries = [
     { socketId: socketRef.current?.id || 'local', stream: localStream, name: identity?.name || 'You', isLocal: true, isHost: identity?.isHost, isMuted: !micOn, isCamOff: !camOn },
@@ -706,7 +798,17 @@ export default function MeetingRoom() {
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', paddingBottom: 80 }}>
         {/* Video area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '12px', gap: 12, overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '12px', gap: 12, overflow: 'hidden', position: 'relative' }}>
+          {participantEntries.length === 1 && !meetingEnded && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,22,40,0.6)', borderRadius: 12, backdropFilter: 'blur(4px)' }}>
+               <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+               <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Waiting for others...</h3>
+               <p style={{ color: '#94A3B8', fontSize: 14 }}>The interview will begin once participants join.</p>
+               <button onClick={copyInviteLink} style={{ ...btnG, marginTop: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                 🔗 Copy Invite Link
+               </button>
+            </div>
+          )}
           {screenSharerId ? (
             // Screen share layout
             <div style={{ flex: 1, display: 'flex', gap: 12 }}>
@@ -767,7 +869,17 @@ export default function MeetingRoom() {
         onToggleRecording={toggleRecording}
         onLeave={leaveMeeting}
         onEndMeeting={endMeeting}
+        onReschedule={() => setShowReschedule(true)}
+        onCopyLink={copyInviteLink}
       />
+
+      {showReschedule && (
+        <RescheduleModal
+          initialDate={roomMeta?.scheduledAt}
+          onSave={handleReschedule}
+          onClose={() => setShowReschedule(false)}
+        />
+      )}
 
       {/* Toast */}
       {toast && (

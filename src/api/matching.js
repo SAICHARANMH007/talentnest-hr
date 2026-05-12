@@ -168,3 +168,52 @@ function parseExpRange(str) {
   if (!m) return null;
   return { min: parseInt(m[1]), max: parseInt(m[2] || m[1]) + 3 };
 }
+
+/**
+ * parseJD — Simple deterministic JD parser
+ * Extracts key fields from raw text using pattern matching.
+ */
+export function parseJD(text) {
+  const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const result = {
+    title: '', location: '', skills: '', experience: '', 
+    description: text?.slice(0, 2000), // full text as fallback
+    salary: '', department: '', education: '',
+    employmentType: 'Full-Time', workMode: 'Onsite'
+  };
+
+  if (!lines.length) return result;
+
+  // 1. Title Heuristic (usually first non-empty line if short)
+  if (lines[0].length < 60) result.title = lines[0];
+
+  // 2. Pattern Matching
+  const content = text.toLowerCase();
+  
+  // Experience
+  const expMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:years|yrs|yexp)/i) || text.match(/(\d+)\+\s*(?:years|yrs|yexp)/i);
+  if (expMatch) result.experience = expMatch[0];
+
+  // Skills (common keywords)
+  const allTech = Object.keys(TECH_WEIGHTS);
+  const foundSkills = allTech.filter(t => content.includes(t));
+  if (foundSkills.length) {
+    result.skills = foundSkills.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+  }
+
+  // Location
+  const locs = ['Hyderabad', 'Bangalore', 'Mumbai', 'Pune', 'Delhi', 'Noida', 'Gurgaon', 'Chennai', 'Remote'];
+  const foundLoc = locs.find(l => content.includes(l.toLowerCase()));
+  if (foundLoc) result.location = foundLoc;
+
+  // Employment Type
+  if (content.includes('contract')) result.employmentType = 'Contract';
+  else if (content.includes('intern')) result.employmentType = 'Internship';
+  else if (content.includes('freelance')) result.employmentType = 'Freelance';
+
+  // Work Mode
+  if (content.includes('remote') || content.includes('work from home') || content.includes('wfh')) result.workMode = 'Remote';
+  else if (content.includes('hybrid')) result.workMode = 'Hybrid';
+
+  return result;
+}

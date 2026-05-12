@@ -335,7 +335,7 @@ export default function CareersPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100vh', minHeight: '100dvh', background: '#F7F8FC', overflowX: 'hidden' }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100dvh', background: '#F7F8FC', overflowX: 'hidden' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <MarketingNav active="careers" />
 

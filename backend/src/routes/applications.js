@@ -1174,6 +1174,13 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
         hostUserId: String(req.user._id || req.user.id),
         status: 'scheduled',
       });
+    } else {
+      // Sync existing room with new schedule
+      vRoom.scheduledAt = scheduledAt;
+      vRoom.validFrom   = new Date(scheduledAt.getTime() - 15 * 60 * 1000);
+      vRoom.validUntil  = new Date(scheduledAt.getTime() + 4 * 60 * 60 * 1000);
+      vRoom.status      = 'scheduled'; // reset to scheduled if it was live/ended
+      await vRoom.save();
     }
     nativeJoinLink = `${frontendBase}/meeting/${vRoom.roomToken}`;
   } catch (e) {
