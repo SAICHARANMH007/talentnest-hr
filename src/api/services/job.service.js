@@ -39,7 +39,7 @@ export const jobService = {
   async getMatchedJobs(candidateId) {
     const [user, res] = await Promise.all([
       req('GET', `/users/${candidateId}`),
-      req('GET', '/jobs/public', null, false),
+      req('GET', '/jobs/public?limit=200', null, false),
     ]);
     const jobsList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
     const cs = Array.isArray(user.skills) ? user.skills.map(s => s.trim().toLowerCase()) : [];

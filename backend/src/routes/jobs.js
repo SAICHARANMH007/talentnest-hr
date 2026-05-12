@@ -47,7 +47,7 @@ const guard = [authMiddleware, tenantGuard];
 // ── PUBLIC — optimised for high traffic (millions of requests) ───────────────
 // Only select fields needed by the public job board — reduces payload ~60%.
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
-const PUBLIC_JOB_FIELDS = 'title company companyName department location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
 
 // ── PUBLIC: fetch one job by ID (for shared links — no auth) ─────────────────
 router.get('/public/single/:id', asyncHandler(async (req, res) => {
@@ -65,7 +65,7 @@ router.get('/public/single/:id', asyncHandler(async (req, res) => {
 router.get('/public', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
-  const requestedLimit = parseInt(req.query.limit) || 20;
+  const requestedLimit = parseInt(req.query.limit) || 100;
   const limit = Math.min(requestedLimit, 200); // Production Standard: Cap public fetch to 200 to prevent DOS
   const { page, skip } = getPagination(req, { limit });
   // Career portal: show active jobs that are approved OR have no approvalStatus field
@@ -83,9 +83,11 @@ router.get('/public', asyncHandler(async (req, res) => {
     const sr = { $regex: escRe(req.query.search), $options: 'i' };
     filter.$or = [{ title: sr }, { description: sr }, { company: sr }, { companyName: sr }, { skills: sr }];
   }
-  if (req.query.urgency   && req.query.urgency   !== 'All') filter.urgency  = req.query.urgency;
-  if (req.query.location  && req.query.location  !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
-  if (req.query.jobType   && req.query.jobType   !== 'All') filter.jobType  = req.query.jobType;
+  if (req.query.urgency   && req.query.urgency   !== 'All') filter.urgency    = req.query.urgency;
+  if (req.query.department && req.query.department !== 'All') filter.department = { $regex: escRe(req.query.department), $options: 'i' };
+  if (req.query.industry   && req.query.industry   !== 'All') filter.industry   = { $regex: escRe(req.query.industry), $options: 'i' };
+  if (req.query.location   && req.query.location   !== 'All') filter.location   = { $regex: escRe(req.query.location), $options: 'i' };
+  if (req.query.jobType    && req.query.jobType    !== 'All') filter.jobType    = req.query.jobType;
   if (req.query.company   && req.query.company   !== 'All') {
     filter.$or = filter.$or || [];
     filter.$or.push({ company: { $regex: escRe(req.query.company), $options: 'i' } });
@@ -130,6 +132,8 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   }
   if (req.query.status) filter.status = req.query.status;
   if (req.query.urgency && req.query.urgency !== 'All') filter.urgency = req.query.urgency;
+  if (req.query.department && req.query.department !== 'All') filter.department = { $regex: escRe(req.query.department), $options: 'i' };
+  if (req.query.industry && req.query.industry !== 'All') filter.industry = { $regex: escRe(req.query.industry), $options: 'i' };
   if (req.query.location && req.query.location !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
   
   if (req.query.search) {

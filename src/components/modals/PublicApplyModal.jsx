@@ -34,7 +34,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
   const [error, setError] = useState('');
   const [createAccount, setCreateAccount] = useState(false); // inline account creation
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | banner | asking | granted | denied
@@ -164,7 +164,6 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
     if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions to create your account.'); return; }
     if (createAccount) {
       if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
     }
     const screeningAnswers = questions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }));
 
@@ -313,7 +312,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         ) : (
           <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
             Your application for <b>{job.title}</b> at <b>{job.company || job.companyName || orgName || 'TalentNest HR'}</b> has been received.
-            The recruiting team will be in touch within 48 hours.
+            The recruiting team will review your profile and get in touch shortly.
           </p>
         )}
         <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.03))', border:'1px solid rgba(1,118,211,0.2)', borderRadius:10, padding:'14px 18px', marginTop:14, textAlign:'left' }}>
@@ -336,13 +335,13 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
       title={`Apply — ${job.title} @ ${job.company || job.companyName || orgName || 'TalentNest HR'}`}
       onClose={onClose}
       footer={
-        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-          <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 2, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15 }}>
+        <div style={{ display: 'flex', gap: 10, width: '100%', flexDirection: window.innerWidth < 480 ? 'column' : 'row' }}>
+          <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 2, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15, order: window.innerWidth < 480 ? 1 : 2 }}>
             {submitting
               ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
               : '🚀 Submit Application'}
           </button>
-          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minHeight: 48 }}>Cancel</button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minHeight: 48, order: window.innerWidth < 480 ? 2 : 1 }}>Cancel</button>
         </div>
       }
     >
@@ -402,21 +401,21 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         <Field label="Email Address *" value={form.email} onChange={v => { sf('email', v); setPrefillState(null); setUserEditedFields(new Set()); }} onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
         <Field label={isHighlighted('name') ? '✅ Full Name *' : 'Full Name *'} value={form.name} onChange={v => handlePrefillFieldChange('name', v)} placeholder="Jane Smith" inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
         <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" type="tel" />
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
           <Field label="Current Title *" value={form.title} onChange={v => handlePrefillFieldChange('title', v)} placeholder="e.g. Developer" inputStyle={isHighlighted('title') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
           <Field label="Current Company *" value={form.currentCompany} onChange={v => handlePrefillFieldChange('currentCompany', v)} placeholder="e.g. TCS" inputStyle={isHighlighted('currentCompany') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Experience *</label>
-            <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'8px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA' }}>
+            <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '15px' }}>
               <option value="">Select…</option>
               {['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => <option key={y} value={y}>{y} yrs</option>)}
             </select>
           </div>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Availability *</label>
-            <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'8px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA' }}>
+            <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '15px' }}>
               <option value="">Select…</option>
               {['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => <option key={a} value={a}>{a}</option>)}
             </select>
@@ -424,17 +423,18 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         </div>
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} />
         <div style={{ background: 'rgba(1,118,211,0.05)', borderRadius: 12, padding: '14px' }}>
-          <label style={{ display: 'flex', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
-            <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontSize: '15px', fontWeight: 700, padding: '4px 0' }}>
+            <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} style={{ width: 18, height: 18 }} />
             Create a free account to track application
           </label>
           {createAccount && (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create Password" style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #ddd' }} />
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm Password" style={{ width: '100%', padding: '10px', borderRadius: 8, border: confirmPassword && password !== confirmPassword ? '1px solid #BA0517' : '1px solid #ddd' }} />
-              {confirmPassword && password !== confirmPassword && <p style={{ color: '#BA0517', fontSize: 11, marginTop: -4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
-              <label style={{ display: 'flex', gap: 10, fontSize: 11 }}>
-                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} />
+              <div style={{ position: 'relative' }}>
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Create Password" style={{ width: '100%', padding: '12px 40px 12px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: '15px' }} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>{showPassword ? '🙈' : '👁️'}</button>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '14px', padding: '4px 0' }}>
+                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} style={{ width: 18, height: 18 }} />
                 I agree to the Terms & Privacy Policy
               </label>
             </div>

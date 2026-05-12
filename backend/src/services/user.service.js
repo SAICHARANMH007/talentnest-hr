@@ -172,6 +172,8 @@ class UserService {
       candidateStatus  : c.candidateStatus  || undefined,
       additionalDetails: c.additionalDetails|| undefined,
       preferredLocation: c.preferredLocation|| undefined,
+      industry         : c.industry         || undefined,
+      department       : c.department       || undefined,
     });
 
     const Candidate = require('../models/Candidate');
@@ -282,7 +284,7 @@ class UserService {
     }
 
     // Move any missing profile data from duplicate to primary
-    const fieldsToSync = ['phone', 'location', 'title', 'summary', 'skills', 'photoUrl', 'linkedinUrl', 'resumeUrl'];
+    const fieldsToSync = ['phone', 'location', 'title', 'summary', 'skills', 'photoUrl', 'linkedinUrl', 'resumeUrl', 'industry', 'department'];
     let modified = false;
     fieldsToSync.forEach(f => {
       if (!primary[f] && duplicate[f]) {

@@ -244,7 +244,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Body */}
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: 'clamp(32px,5vw,56px) clamp(16px,5vw,24px)', display: 'grid', gridTemplateColumns: '1fr clamp(200px,28%,280px)', gap: 32, alignItems: 'start' }}>
+      <div className="tn-job-detail-grid" style={{ maxWidth: 860, margin: '0 auto', padding: 'clamp(32px,5vw,56px) clamp(16px,5vw,24px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 32, alignItems: 'start' }}>
 
         {/* Left: description */}
         <div style={{ minWidth: 0 }}>
@@ -308,6 +308,26 @@ export default function JobDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* WHY TALENTNEST SECTION */}
+      <section style={{ background: '#fff', borderTop: '1px solid #E2E8F0', padding: '60px 0' }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0A1628', marginBottom: 32, textAlign: 'center' }}>Why apply through <span className="tn-gradient-text">TalentNest?</span></h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+            {[
+              { t: 'Live Tracking', d: 'Never wonder about your status. Get WhatsApp & email alerts on every stage move.', i: '📡' },
+              { t: 'Direct Chat', d: 'Connect directly with hiring managers and recruiters via real-time messaging.', i: '💬' },
+              { t: 'One-Click Apply', d: 'Your profile is saved. Apply to matching roles in seconds from any device.', i: '⚡' }
+            ].map(item => (
+              <div key={item.t} style={{ background: '#F8FAFC', padding: 24, borderRadius: 20, border: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 24, marginBottom: 16 }}>{item.i}</div>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', marginBottom: 8 }}>{item.t}</h3>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, margin: 0 }}>{item.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Apply modal */}
       {applying && <PublicApplyModal job={job} onClose={() => setApplying(false)} />}

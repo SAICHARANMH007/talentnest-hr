@@ -20,7 +20,7 @@ const SERVICES = {
     },
     whyUs: [
       { icon: '🔍', title: 'Technical Pre-Screening', desc: 'Every candidate completes a live coding assessment or system design review before reaching you. We eliminate resume inflation at the source.' },
-      { icon: '⚡', title: '5-Day Delivery Guarantee', desc: 'You receive your first curated shortlist within 5 business days of intake. Urgent roles can be fast-tracked to 48 hours.' },
+      { icon: '⚡', title: 'Rapid Delivery Guarantee', desc: 'You receive your first curated shortlist within 5 business days of intake. Urgent roles are fast-tracked for immediate attention.' },
       { icon: '🎯', title: 'Zero-Noise Pipeline', desc: 'We never send candidates we would not hire ourselves. Every submission is intentional, relevant, and ready to interview immediately.' },
     ],
     process: [
@@ -57,7 +57,7 @@ const SERVICES = {
       { num: '20+', label: 'IT Placements Made' },
     ],
     faqs: [
-      { q: 'How quickly can you find a software engineer?', a: 'For most roles we deliver a shortlist within 5 business days. For urgent or high-volume needs, we offer a 48-hour fast-track option.' },
+      { q: 'How quickly can you find a software engineer?', a: 'For most roles we deliver a shortlist within 5 business days. For urgent or high-volume needs, we offer a rapid fast-track option.' },
       { q: 'Do you handle both contract and permanent IT roles?', a: 'Yes — we place engineers on full-time, contract, C2H, and C2C arrangements depending on your hiring structure.' },
       { q: 'What if the candidate does not pass probation?', a: 'We offer a 30-day free replacement guarantee on all permanent placements. For contract roles, we can swap within 5 business days.' },
       { q: 'Can you build an entire team, not just one role?', a: 'Absolutely. We have delivered full engineering squads (5–20 people) for product launches, platform migrations, and startup scaling initiatives.' },
@@ -109,7 +109,7 @@ const SERVICES = {
       { icon: '🤝', title: 'Dedicated Security Recruiter', desc: 'One specialist owns your account from intake to placement. They speak your language — SIEM, SOAR, zero-trust, MITRE ATT&CK.' },
     ],
     stats: [
-      { num: '48 Hrs', label: 'Emergency IR Deployment' },
+      { num: 'Rapid', label: 'Emergency IR Deployment' },
       { num: '100%', label: 'Credential Verification' },
       { num: '45-Day', label: 'Replacement Guarantee' },
       { num: '15+', label: 'Security Placements' },

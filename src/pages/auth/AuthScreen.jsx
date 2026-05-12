@@ -397,7 +397,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [mode, setMode]         = useState(prefill?.mode === 'register' ? 'register' : 'login');
   const [email, setEmail]       = useState(prefill?.email || '');
   const [pw, setPw]             = useState(prefill?.password || '');
-  const [confirmPw, setConfirmPw] = useState('');
   const [name, setName]               = useState(prefill?.name || '');
   const [phone, setPhone]             = useState('');
   const [title, setTitle]             = useState('');
@@ -449,7 +448,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     if (mode === 'register') {
       if (!name) return setToast('❌ Full name is required');
       if (!phone) return setToast('❌ Mobile number is required');
-      if (pw !== confirmPw) return setToast('❌ Passwords do not match');
       if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw))
         return setToast('❌ Password must be 8+ characters with 1 uppercase letter and 1 number');
       if (!agreed) return setToast('❌ Please accept the terms to continue');
@@ -601,21 +599,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {mode === 'register' && <PasswordStrength pw={pw} />}
           </div>
 
-          {mode === 'register' && (
-            <div>
-              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
-              <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
-              {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
-            </div>
-          )}
-
-          {mode === 'register' && (
-            <div>
-              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
-              <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, borderColor: confirmPw && pw !== confirmPw ? '#BA0517' : '' }} />
-              {confirmPw && pw !== confirmPw && <p style={{ color: '#BA0517', fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠️ Passwords do not match</p>}
-            </div>
-          )}
 
           {mode === 'register' && (
             <>
@@ -849,15 +832,13 @@ function ForgotPasswordForm({ onBack }) {
 // ── Reset Password Form (shown when ?token=...&email=... in URL) ──────────────
 function ResetPasswordForm({ token, email: initEmail, onBack }) {
   const [pw, setPw]           = useState('');
-  const [pw2, setPw2]         = useState('');
   const [showPw, setShowPw]   = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone]       = useState(false);
   const [toast, setToast]     = useState('');
 
   const submit = async () => {
-    if (!pw || !pw2) return setToast('❌ Both fields required');
-    if (pw !== pw2) return setToast('❌ Passwords do not match');
+    if (!pw) return setToast('❌ Password required');
     if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw))
       return setToast('❌ Min 8 chars, one uppercase, one number');
     setLoading(true);
@@ -892,10 +873,6 @@ function ResetPasswordForm({ token, email: initEmail, onBack }) {
               </button>
             </div>
             <PasswordStrength pw={pw} />
-            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', margin: '14px 0 6px' }}>CONFIRM PASSWORD *</label>
-            <input type="password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" style={{ ...INP, marginBottom: 4, borderColor: pw2 && pw !== pw2 ? '#BA0517' : '' }} />
-            {pw2 && pw !== pw2 && <p style={{ color: '#BA0517', fontSize: 11, margin: '0 0 12px', fontWeight: 600 }}>⚠️ Passwords do not match</p>}
-            {pw2 && pw === pw2 && <p style={{ color: '#2E844A', fontSize: 11, margin: '0 0 12px', fontWeight: 600 }}>✓ Passwords match</p>}
             <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', opacity: loading ? 0.7 : 1 }}>
               {loading ? <><Spinner /> Updating…</> : '🔒 Set New Password'}
             </button>

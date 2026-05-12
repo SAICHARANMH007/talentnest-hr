@@ -69,7 +69,10 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
       { email: { $regex: _s, $options: 'i' } },
       { title: { $regex: _s, $options: 'i' } },
       { currentCompany: { $regex: _s, $options: 'i' } },
-      { jobRole: { $regex: _s, $options: 'i' } }
+      { jobRole: { $regex: _s, $options: 'i' } },
+      { industry: { $regex: _s, $options: 'i' } },
+      { department: { $regex: _s, $options: 'i' } }
+
     ];
     
     if (filter.$or) {
@@ -107,6 +110,16 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
   if (req.query.jobRole) {
     const roles = Array.isArray(req.query.jobRole) ? req.query.jobRole : req.query.jobRole.split(',').filter(Boolean);
     if (roles.length > 0) filter.jobRole = { $in: roles.map(r => new RegExp(escRe(r), 'i')) };
+  }
+  
+  if (req.query.industry) {
+    const industries = Array.isArray(req.query.industry) ? req.query.industry : req.query.industry.split(',').filter(Boolean);
+    if (industries.length > 0) filter.industry = { $in: industries.map(i => new RegExp(escRe(i), 'i')) };
+  }
+
+  if (req.query.department) {
+    const depts = Array.isArray(req.query.department) ? req.query.department : req.query.department.split(',').filter(Boolean);
+    if (depts.length > 0) filter.department = { $in: depts.map(d => new RegExp(escRe(d), 'i')) };
   }
 
   // Certifications filter

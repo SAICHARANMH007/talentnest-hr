@@ -467,6 +467,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [expMin, setExpMin]               = useState('');
   const [expMax, setExpMax]               = useState('');
   const [inviteStatusFilter, setInviteStatusFilter] = useState('');
+  const [industryFilter, setIndustryFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
 
   const showDomainField = isSuperAdmin || filterRole === 'admin' || filterRole === 'recruiter';
   const sf = (k, v) => {
@@ -480,11 +482,13 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const allClients = [...new Set(users.map(u => u.client).filter(Boolean))].sort();
   const allTAs     = [...new Set(users.map(u => u.ta).filter(Boolean))].sort();
   const allRoles   = [...new Set(users.map(u => u.jobRole).filter(Boolean))].sort();
+  const allIndustries = [...new Set(users.map(u => u.industry).filter(Boolean))].sort();
+  const allDepartments = [...new Set(users.map(u => u.department).filter(Boolean))].sort();
 
   const isCandidates = filterRole === 'candidate';
 
   const hasBasicFilters = !!(search || skillsSel.length || locsSel.length || availFilter);
-  const hasAdvFilters   = !!(clientFilter || taFilter || jobRoleFilter.length || certFilter || companyFilter || expMin || expMax || inviteStatusFilter);
+  const hasAdvFilters   = !!(clientFilter || taFilter || jobRoleFilter.length || certFilter || companyFilter || expMin || expMax || inviteStatusFilter || industryFilter || departmentFilter);
   const hasFilters      = hasBasicFilters || hasAdvFilters;
 
   // ── filter logic ──
@@ -495,6 +499,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     setSearch(''); setSkillsSel([]); setLocsSel([]); setAvailFilter('');
     setClientFilter(''); setTaFilter(''); setJobRoleFilter([]); setCertFilter('');
     setCompanyFilter(''); setExpMin(''); setExpMax(''); setInviteStatusFilter('');
+    setIndustryFilter(''); setDepartmentFilter('');
     setSelectedIds(new Set());
   };
 
@@ -518,6 +523,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         expMin,
         expMax,
         inviteStatus: inviteStatusFilter,
+        industry: industryFilter,
+        department: departmentFilter,
         recruiterId: recruiterView ? recruiterId : undefined,
       };
       const res = await api.getUsers(params);
@@ -543,14 +550,15 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     setActiveTab('users');
   }, [
     filterRole, recruiterId, search, skillsSel, locsSel, availFilter, 
-    clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter
+    clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter,
+    industryFilter, departmentFilter
   ]);
 
   // Handle data loading (triggered by pagination or filters)
   useEffect(() => {
     load(pagination.page, pagination.limit);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter]);
+  }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter, industryFilter, departmentFilter]);
 
   // Auto-open detail drawer if coming from notification deep-link
   useEffect(() => {
@@ -919,6 +927,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 {companyFilter && <Chip label={`🏭 ${companyFilter}`} onRemove={() => setCompanyFilter('')} />}
                 {(expMin || expMax) && <Chip label={`🎓 ${expMin || '0'}–${expMax || '∞'} yrs`} onRemove={() => { setExpMin(''); setExpMax(''); }} />}
                 {inviteStatusFilter && <Chip label={inviteStatusFilter === 'sent' ? '📩 Sent' : '📧 Not Sent'} onRemove={() => setInviteStatusFilter('')} />}
+                {industryFilter && <Chip label={`🏭 ${industryFilter}`} onRemove={() => setIndustryFilter('')} />}
+                {departmentFilter && <Chip label={`🏢 ${departmentFilter}`} onRemove={() => setDepartmentFilter('')} />}
               </div>
             )}
 
@@ -929,7 +939,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                   <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: '0.8px' }}>⚙️ ADVANCED FILTERS</span>
                   <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(1,118,211,0.25) 0%, transparent 100%)' }} />
                   {hasAdvFilters && (
-                    <button onClick={() => { setClientFilter(''); setTaFilter(''); setJobRoleFilter([]); setCertFilter(''); setCompanyFilter(''); setExpMin(''); setExpMax(''); }}
+                    <button onClick={() => { setClientFilter(''); setTaFilter(''); setJobRoleFilter([]); setCertFilter(''); setCompanyFilter(''); setExpMin(''); setExpMax(''); setIndustryFilter(''); setDepartmentFilter(''); }}
                       style={{ background: 'none', border: 'none', color: '#BA0517', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
                       ✕ Clear
                     </button>
@@ -977,6 +987,16 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                       <input type="number" placeholder="Max" value={expMax} onChange={e => setExpMax(e.target.value)} min={0} max={50}
                         style={{ width: '100%', padding: '7px 8px', borderRadius: 20, border: `1.5px solid ${expMax ? '#0176D3' : '#e2e8f0'}`, background: expMax ? 'rgba(1,118,211,0.04)' : '#fff', color: '#181818', fontSize: 13, outline: 'none', boxSizing: 'border-box', textAlign: 'center' }} />
                     </div>
+                  </FilterCard>
+
+                  <FilterCard label="Industry" icon="🏭">
+                    <PillSelect fullWidth value={industryFilter} onChange={setIndustryFilter} placeholder="All Industries"
+                      options={allIndustries.map(i => ({ value: i, label: i }))} />
+                  </FilterCard>
+
+                  <FilterCard label="Department" icon="🏢">
+                    <PillSelect fullWidth value={departmentFilter} onChange={setDepartmentFilter} placeholder="All Depts"
+                      options={allDepartments.map(d => ({ value: d, label: d }))} />
                   </FilterCard>
 
                   <FilterCard label="Invite Status" icon="📩">

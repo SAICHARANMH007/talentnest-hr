@@ -22,11 +22,11 @@ export default function CandidateJobMatch({ user }) {
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
   const [assessments, setAssessments] = useState({}); // jobId → assessment (null = none, obj = found)
-  const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all" });
+  const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all", department: "all", industry: "all" });
   const [sortBy, setSortBy] = useState("match"); // match, newest, urgency
 
   useEffect(() => {
-    api.getPublicJobs().then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
+    api.getPublicJobs('?limit=200').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
     // load already-applied jobs for this candidate via the /mine endpoint
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
@@ -47,6 +47,12 @@ export default function CandidateJobMatch({ user }) {
       }
       if (currentFilters.type !== 'all') {
         matched = matched.filter(r => r.job.jobType === currentFilters.type || (currentFilters.type === 'remote' && r.job.location?.toLowerCase().includes('remote')));
+      }
+      if (currentFilters.department !== 'all') {
+        matched = matched.filter(r => r.job.department?.toLowerCase().includes(currentFilters.department.toLowerCase()));
+      }
+      if (currentFilters.industry !== 'all') {
+        matched = matched.filter(r => r.job.industry?.toLowerCase().includes(currentFilters.industry.toLowerCase()));
       }
       if (currentFilters.urgency !== 'all') {
         matched = matched.filter(r => r.job.urgency === currentFilters.urgency);
@@ -103,39 +109,87 @@ export default function CandidateJobMatch({ user }) {
         subtitle="Our deterministic matching engine analyzes your profile against every open position to find your perfect next role." 
       />
 
-      <div style={{ ...card, marginBottom: 24, padding: '24px' }}>
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 14, top: 11, fontSize: 18, color: '#94A3B8' }}>🔍</span>
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search by role, skill (e.g. .NET, React), or description..."
-              style={{ width: '100%', padding: '10px 14px 10px 42px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 14, outline: 'none', transition: 'border-color 0.2s' }}
-              onFocus={e => e.target.style.borderColor = '#0176D3'}
-              onBlur={e => e.target.style.borderColor = '#E2E8F0'}
-            />
-          </div>
-          <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, padding: '0 24px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, height: 44 }}>
-            {loading ? <Spinner /> : "Match Now"}
-          </button>
+      {/* ── Search Hero Section ── */}
+      <div style={{ 
+        background: 'linear-gradient(135deg,#032D60,#0176D3)', 
+        padding: '40px 24px', 
+        borderRadius: 20, 
+        textAlign: 'center', 
+        position: 'relative', 
+        overflow: 'hidden',
+        marginBottom: 24,
+        boxShadow: '0 10px 30px rgba(1,118,211,0.2)'
+      }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+        <h2 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+          Find Your Next Great Role
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, margin: '0 0 24px' }}>
+          Searching across <strong style={{ color: '#00C2CB' }}>{jobs.length}</strong> active opportunities
+        </p>
+        
+        <div style={{ maxWidth: 600, margin: '0 auto', position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', fontSize: 18 }}>🔍</span>
+          <input 
+            value={query} 
+            onChange={e => setQuery(e.target.value)} 
+            placeholder="Search by role, skills (e.g. .NET, React), or company…"
+            style={{ 
+              width: '100%', 
+              boxSizing: 'border-box', 
+              padding: '16px 20px 16px 48px', 
+              borderRadius: 16, 
+              border: 'none', 
+              fontSize: 16, 
+              outline: 'none', 
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              background: '#fff',
+              color: '#1E293B'
+            }} 
+          />
         </div>
+      </div>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F8FAFC', padding: '6px 12px', borderRadius: 10, border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>📍 Location:</span>
+      {/* ── Filters & Sorting Bar ── */}
+      <div style={{ ...card, marginBottom: 24, padding: '16px 20px' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          
+          <div style={{ flex: '1 1 180px', position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}>📍</span>
             <input 
               value={filters.location}
               onChange={e => setFilters(p => ({ ...p, location: e.target.value }))}
-              placeholder="City or Remote"
-              style={{ border: 'none', background: 'transparent', fontSize: 13, outline: 'none', width: 120, color: '#1E293B' }}
+              placeholder="All Locations"
+              style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: '#F8FAFC' }}
             />
           </div>
 
           <select 
+            value={filters.department}
+            onChange={e => setFilters(p => ({ ...p, department: e.target.value }))}
+            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+          >
+            <option value="all">🏢 All Departments</option>
+            {[...new Set(jobs.map(j => j.department).filter(Boolean))].sort().map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          <select 
+            value={filters.industry}
+            onChange={e => setFilters(p => ({ ...p, industry: e.target.value }))}
+            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+          >
+            <option value="all">🏭 All Industries</option>
+            {[...new Set(jobs.map(j => j.industry).filter(Boolean))].sort().map(i => (
+              <option key={i} value={i}>{i}</option>
+            ))}
+          </select>
+
+          <select 
             value={filters.type}
             onChange={e => setFilters(p => ({ ...p, type: e.target.value }))}
-            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+            style={{ flex: '1 1 140px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
           >
             <option value="all">💼 All Job Types</option>
             <option value="full-time">Full-time</option>
@@ -146,7 +200,7 @@ export default function CandidateJobMatch({ user }) {
           <select 
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
+            style={{ flex: '1 1 180px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B', background: '#F8FAFC', outline: 'none' }}
           >
             <option value="match">📊 Sort by Match Score</option>
             <option value="newest">📅 Sort by Newest</option>
@@ -154,10 +208,10 @@ export default function CandidateJobMatch({ user }) {
           </select>
 
           <button 
-            onClick={() => { setQuery(""); setFilters({ location: "", type: "all", urgency: "all" }); }}
-            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+            onClick={() => { setQuery(""); setFilters({ location: "", type: "all", urgency: "all", department: "all", industry: "all" }); }}
+            style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', padding: '0 8px' }}
           >
-            Clear Filters
+            Reset
           </button>
         </div>
       </div>

@@ -60,7 +60,7 @@ const SECTIONS = [
       '• Service Delivery: To operate, maintain, and improve the Platform; to match candidates with relevant job opportunities; to facilitate recruitment workflows between candidates and employer organisations.',
       '• Account Management: To create and manage your user account; to authenticate your identity; to enforce security policies including two-factor authentication.',
       '• Communication: To send transactional notifications (e.g., application updates, interview invitations, offer letters); to respond to support enquiries; to send platform-related service announcements.',
-      '• Analytics & Improvement: To generate anonymised and aggregated analytics reports; to understand platform usage patterns; to improve our matching algorithms and AI features; to conduct internal research and product development.',
+      '• Analytics & Improvement: To generate anonymised and aggregated analytics reports; to understand platform usage patterns; to improve our matching algorithms and platform features; to conduct internal research and product development.',
       '• Legal Compliance: To comply with applicable laws, regulations, court orders, and governmental requests; to enforce our Terms; to protect our legal rights and the rights of other users.',
       '• Fraud Prevention & Security: To detect, investigate, and prevent fraudulent transactions, abuse, or illegal activity; to monitor for security vulnerabilities; to protect the integrity of the Platform.',
       'We do not process your Personal Data for any purpose incompatible with those listed above without your prior consent.',
@@ -76,7 +76,7 @@ const SECTIONS = [
       '• Contractual Necessity: Processing necessary to perform the contract we have with you (i.e., to provide the Service you registered for).',
       '• Legitimate Interests: Processing necessary for our legitimate business interests, including platform security, fraud prevention, and product improvement, where such interests are not overridden by your rights.',
       '• Legal Obligation: Processing necessary to comply with Indian law (including the Information Technology Act, 2000 and rules thereunder), as well as applicable international regulations including GDPR where applicable.',
-      '• Consent: Where we rely on your consent (e.g., for optional profile visibility features, marketing communications, or AI-powered matching), you may withdraw consent at any time by contacting us or adjusting your account settings. Withdrawal of consent does not affect the lawfulness of processing before withdrawal.',
+      '• Consent: Where we rely on your consent (e.g., for optional profile visibility features, marketing communications, or specialized matching), you may withdraw consent at any time by contacting us or adjusting your account settings. Withdrawal of consent does not affect the lawfulness of processing before withdrawal.',
     ],
   },
   {
@@ -123,21 +123,8 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'ai-processing',
-    number: '09',
-    icon: '🤖',
-    title: 'AI & Automated Processing',
-    content: [
-      'TalentNest HR uses Google Gemini AI (Gemini 2.0 Flash) to power our AI-assisted matching and screening features. By using AI features, you acknowledge that:',
-      '• AI Match Scoring: Your profile data (skills, experience, qualifications) is processed by our AI system to generate a compatibility score between your profile and job requirements. This score is advisory only and does not constitute a final hiring decision.',
-      '• Data sent to Google Gemini: When you use AI-powered features, limited profile data (skills, job title, experience summary — never government IDs, financial data, or SPDI) is transmitted to Google\'s API under our data processing agreement with Google, which prohibits use of this data for model training.',
-      '• Automated Decisions: We do not make legally significant automated decisions (hire/reject) solely based on AI scoring. Human recruiters retain final decision-making authority. You have the right to request human review of any AI-generated assessment.',
-      '• Opt-Out: You may opt out of AI matching features at any time from your Profile Settings. Opting out will not affect your ability to apply for jobs manually.',
-    ],
-  },
-  {
     id: 'user-rights',
-    number: '10',
+    number: '09',
     icon: '🛡️',
     title: 'Your Data Rights',
     content: [
@@ -154,7 +141,7 @@ const SECTIONS = [
   },
   {
     id: 'cookies',
-    number: '11',
+    number: '10',
     icon: '🍪',
     title: 'Cookies & Tracking Technologies',
     content: [
@@ -168,7 +155,7 @@ const SECTIONS = [
   },
   {
     id: 'security',
-    number: '12',
+    number: '11',
     icon: '🔐',
     title: 'Information Security',
     content: [
@@ -183,7 +170,7 @@ const SECTIONS = [
   },
   {
     id: 'accounts',
-    number: '13',
+    number: '12',
     icon: '👤',
     title: 'User Accounts & Responsibilities',
     content: [
@@ -198,7 +185,7 @@ const SECTIONS = [
   },
   {
     id: 'acceptable-use',
-    number: '14',
+    number: '13',
     icon: '⚠️',
     title: 'Acceptable Use Policy',
     content: [
@@ -216,7 +203,7 @@ const SECTIONS = [
   },
   {
     id: 'intellectual-property',
-    number: '15',
+    number: '14',
     icon: '©️',
     title: 'Intellectual Property',
     content: [
@@ -228,7 +215,7 @@ const SECTIONS = [
   },
   {
     id: 'third-party',
-    number: '16',
+    number: '15',
     icon: '🔗',
     title: 'Third-Party Services & Links',
     content: [
@@ -240,7 +227,7 @@ const SECTIONS = [
   },
   {
     id: 'payment',
-    number: '17',
+    number: '16',
     icon: '💳',
     title: 'Subscription & Payment Terms',
     content: [
@@ -255,19 +242,19 @@ const SECTIONS = [
   },
   {
     id: 'liability',
-    number: '18',
+    number: '17',
     icon: '🏛️',
     title: 'Disclaimers & Limitation of Liability',
     content: [
       'THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, TALENTNEST HR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.',
-      'We do not warrant that: (a) the Service will be uninterrupted, timely, secure, or error-free; (b) any defects will be corrected; (c) the results obtained from use of the Service will be accurate or reliable; (d) the AI matching scores will result in successful hiring outcomes.',
+      'We do not warrant that: (a) the Service will be uninterrupted, timely, secure, or error-free; (b) any defects will be corrected; (c) the results obtained from use of the Service will be accurate or reliable; (d) the matching scores will result in successful hiring outcomes.',
       'TO THE MAXIMUM EXTENT PERMITTED BY LAW, OUR TOTAL CUMULATIVE LIABILITY TO YOU FOR ANY AND ALL CLAIMS ARISING UNDER THESE TERMS SHALL NOT EXCEED THE GREATER OF: (A) INR 10,000; OR (B) THE TOTAL FEES PAID BY YOU TO US IN THE 12 MONTHS IMMEDIATELY PRECEDING THE CLAIM.',
       'IN NO EVENT SHALL TALENTNEST HR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, REVENUE, DATA, BUSINESS OPPORTUNITY, OR GOODWILL, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.',
     ],
   },
   {
     id: 'termination',
-    number: '19',
+    number: '18',
     icon: '🚪',
     title: 'Termination & Account Deletion',
     content: [
@@ -280,7 +267,7 @@ const SECTIONS = [
   },
   {
     id: 'governing-law',
-    number: '20',
+    number: '19',
     icon: '🌏',
     title: 'Governing Law, Disputes & Contact',
     content: [
@@ -458,12 +445,12 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.9rem, 2vw, 1.05rem)', margin: '0 0 24px' }}>
-            Effective Date: 16 April 2026 &nbsp;·&nbsp; Version 2.0 &nbsp;·&nbsp; 20 Sections
+            Effective Date: 16 April 2026 &nbsp;·&nbsp; Version 2.0 &nbsp;·&nbsp; 19 Sections
           </p>
           {/* Quick stats */}
           <div style={{ display: 'inline-flex', gap: 'clamp(16px, 4vw, 40px)', flexWrap: 'wrap', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 'clamp(14px, 3vw, 20px) clamp(20px, 4vw, 40px)' }}>
             {[
-              { label: 'Sections', value: '20' },
+              { label: 'Sections', value: '19' },
               { label: 'Data Categories', value: '8' },
               { label: 'Your Rights', value: '8' },
               { label: 'Jurisdiction', value: 'India' },

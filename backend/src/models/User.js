@@ -68,6 +68,8 @@ const userSchema = new mongoose.Schema({
   availability     : { type: String, trim: true },
   languages        : [{ type: String, trim: true }],
   industry         : { type: String, trim: true },
+  department       : { type: String, trim: true },
+
   currentCompany   : { type: String, trim: true },
   culture          : { type: String },
   projects         : { type: String },

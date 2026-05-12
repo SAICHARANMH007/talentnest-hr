@@ -27,6 +27,8 @@ const jobSchema = new mongoose.Schema({
   company    : { type: String, trim: true, default: '' },
   companyName: { type: String, trim: true, default: '' }, // alias kept for older frontend references
   department : { type: String, trim: true, default: '' },
+  industry   : { type: String, trim: true, default: '' },
+
 
   skills           : { type: [String], default: [] },
   niceToHaveSkills : { type: [String], default: [] },

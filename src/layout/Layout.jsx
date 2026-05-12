@@ -178,11 +178,20 @@ function NotificationBell({ userRole, compact = false }) {
   const TYPE_MAP = {
     application: 'pipeline', stage_update: 'pipeline', stage_change: 'pipeline',
     interview: 'interviews', offer: 'offers', system: 'analytics',
-    assessment_submitted: 'assessments', job_approved: 'jobs', job_rejected: 'jobs',
-    invite_interested: 'candidates',
+    assessment: 'assessments', assessment_submitted: 'assessments', assessment_reviewed: 'assessments',
+    job_approved: 'jobs', job_rejected: 'jobs',
+    invite_interested: 'candidates', invite: 'analytics', mention: 'analytics'
   };
-  const TYPE_ICONS  = { application:'📋', stage_update:'🔄', stage_change:'🔄', interview:'📅', offer:'🎉', system:'⚙️', assessment_submitted:'📊', job_approved:'✅', job_rejected:'❌', invite_interested:'🙋' };
-  const TYPE_LABELS = { application:'Application', stage_update:'Stage Update', stage_change:'Stage Update', interview:'Interview', offer:'Offer', system:'System', assessment_submitted:'Assessment', job_approved:'Approved', job_rejected:'Rejected', invite_interested:'Interest' };
+  const TYPE_ICONS  = { 
+    application:'📋', stage_update:'🔄', stage_change:'🔄', interview:'📅', offer:'🎉', system:'⚙️', 
+    assessment:'📝', assessment_submitted:'📊', assessment_reviewed:'⭐', 
+    job_approved:'✅', job_rejected:'❌', invite_interested:'🙋', invite:'📨', mention: '💬'
+  };
+  const TYPE_LABELS = { 
+    application:'Application', stage_update:'Stage Update', stage_change:'Stage Update', interview:'Interview', offer:'Offer', system:'System', 
+    assessment:'Assessment', assessment_submitted:'Assessment', assessment_reviewed:'Assessment Review', 
+    job_approved:'Approved', job_rejected:'Rejected', invite_interested:'Interest', invite:'Invitation', mention: 'Mention'
+  };
 
   // Open detail modal — mark read + store for display
   const openDetail = async (n) => {
@@ -214,6 +223,8 @@ function NotificationBell({ userRole, compact = false }) {
         .replace(/^\/recruiter\//, '/app/')
         .replace(/^\/admin\//, '/app/')
         .replace(/^\/hr\//, '/app/')
+        .replace(/^\/client\//, '/app/')
+        .replace(/^\/hiring_manager\//, '/app/')
         .replace(/^\/candidate\//, '/app/');
       navigate(normalized);
       return;
@@ -259,7 +270,7 @@ function NotificationBell({ userRole, compact = false }) {
           style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }}
           onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
         >
-          <div style={{ background: '#fff', borderRadius: isMobile ? '20px 20px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden', animation: isMobile ? 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'env(safe-area-inset-bottom,0px)' : 0 }}>
+          <div style={{ background: '#fff', borderRadius: isMobile ? '20px 20px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, maxHeight: isMobile ? '92vh' : 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: isMobile ? 'notifSlideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'env(safe-area-inset-bottom,0px)' : 0 }}>
             {/* Modal header */}
             <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -277,7 +288,7 @@ function NotificationBell({ userRole, compact = false }) {
             </div>
 
             {/* Modal body */}
-            <div style={{ padding: '20px 24px' }}>
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
               {(detail.body || detail.message) && (
                 <div style={{ background: '#F8FAFF', border: '1px solid #E8F0FE', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
                   <p style={{ color: '#374151', fontSize: 14, lineHeight: 1.7, margin: 0 }}>{detail.body || detail.message}</p>
@@ -370,7 +381,7 @@ function NotificationBell({ userRole, compact = false }) {
               left: 0,
               right: 0,
               width: '100vw',
-              maxHeight: '88vh',
+              maxHeight: '82vh',
               background: '#fff',
               borderRadius: '20px 20px 0 0',
               zIndex: 99999,

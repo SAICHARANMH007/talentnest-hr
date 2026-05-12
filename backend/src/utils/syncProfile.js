@@ -23,7 +23,7 @@ async function syncProfile(email, updates, tenantId) {
     'preferredLocation', 'availability', 'noticePeriodDays', 
     'candidateStatus', 'certifications', 'client', 'ta', 
     'clientSpoc', 'additionalDetails', 'orgName', 'organisation',
-    'assignedRecruiterId'
+    'assignedRecruiterId', 'industry', 'department'
   ];
 
   const payload = {};

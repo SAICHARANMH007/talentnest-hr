@@ -11,6 +11,9 @@ const candidateSchema = new mongoose.Schema({
   name : { type: String, trim: true },
   email: { type: String, lowercase: true, trim: true },
   phone: { type: String, trim: true },
+  industry: { type: String, trim: true },
+  department: { type: String, trim: true },
+
 
   // ── Core profile ────────────────────────────────────────────────────────────
   title          : { type: String, trim: true },     // current job title / designation

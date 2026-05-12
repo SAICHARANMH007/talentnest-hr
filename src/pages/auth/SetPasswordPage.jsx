@@ -74,9 +74,7 @@ export default function SetPasswordPage() {
   const [status,   setStatus]   = useState('loading'); // loading|valid|expired|invalid
   const [userData, setUserData] = useState(null);
   const [password, setPassword] = useState('');
-  const [confirm,  setConfirm]  = useState('');
   const [showPwd,  setShowPwd]  = useState(false);
-  const [showConf, setShowConf] = useState(false);
   const [error,    setError]    = useState('');
   const [saving,   setSaving]   = useState(false);
   const [done,     setDone]     = useState(false);
@@ -101,7 +99,6 @@ export default function SetPasswordPage() {
     if (!/[A-Z]/.test(password))         return setError('Password must contain at least one uppercase letter.');
     if (!/\d/.test(password))            return setError('Password must contain at least one number.');
     if (!/[^A-Za-z0-9]/.test(password))  return setError('Password must contain at least one special character.');
-    if (password !== confirm)             return setError('Passwords do not match.');
 
     setSaving(true);
     try {
@@ -230,26 +227,6 @@ export default function SetPasswordPage() {
 
           <StrengthBar password={password} />
 
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 5 }}>Confirm Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showConf ? 'text' : 'password'}
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                placeholder="Repeat your password"
-                style={{ ...inpStyle, paddingRight: 44, borderColor: confirm && confirm !== password ? '#ef4444' : '#e2e8f0' }}
-                required
-              />
-              <button type="button" onClick={() => setShowConf(!showConf)}
-                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>
-                {showConf ? '🙈' : '👁️'}
-              </button>
-            </div>
-            {confirm && confirm !== password && (
-              <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>Passwords do not match</div>
-            )}
-          </div>
 
           {error && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', fontSize: 13, marginBottom: 14 }}>

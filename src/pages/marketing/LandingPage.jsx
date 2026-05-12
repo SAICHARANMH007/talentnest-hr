@@ -55,13 +55,13 @@ const SERVICES = [
   { slug: 'non-it-staffing',    icon: '🏢', title: 'Non-IT Staffing',         desc: 'Finance, HR, operations, and executive roles across every business function.', accent: '#10B981' },
   { slug: 'permanent-staffing', icon: '🎯', title: 'Permanent Staffing',      desc: 'Direct hire with a 90-day replacement guarantee. Culture fit is non-negotiable.', accent: '#0369A1' },
   { slug: 'c2h',                icon: '🔄', title: 'Contract to Hire',        desc: 'Evaluate candidates on the job before making a permanent commitment.', accent: '#F59E0B' },
-  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',           desc: 'Faceify by RNIT: AI-powered facial recognition, attendance, and workforce management.', accent: '#7C3AED' },
+  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',           desc: 'Faceify by RNIT: Advanced facial recognition, attendance, and workforce management.', accent: '#7C3AED' },
 ];
 
 const HOW_IT_WORKS = [
   { step: '01', icon: '📝', title: 'Share Your Brief', desc: 'Tell us the role, skills needed, and timeline. Our intake takes under 5 minutes.' },
-  { step: '02', icon: '🎯', title: 'Smart Matching Engine', desc: 'Our system scans thousands of profiles and surfaces the best-fit candidates instantly.' },
-  { step: '03', icon: '👥', title: 'Curated Shortlist', desc: 'Receive 5–10 fully-vetted candidates with profiles and our written rationale.' },
+  { step: '02', icon: '🎯', title: 'Advanced Matching', desc: 'Our system scans thousands of profiles and surfaces the best-fit candidates for your review.' },
+  { step: '03', icon: '👥', title: 'Curated Shortlist', desc: 'Receive a selection of fully-vetted candidates with detailed profiles.' },
   { step: '04', icon: '🎯', title: 'Interview & Select', desc: 'We coordinate interviews, gather feedback, and manage offer negotiations.' },
   { step: '05', icon: '🚀', title: 'Onboard & Succeed', desc: 'Background checks, onboarding support, and 90-day check-ins included.' },
 ];
@@ -70,12 +70,12 @@ const STATS = [
   { key: 'clientsServed',   fallback: 3,  suffix: '+', label: 'Happy Clients' },
   { key: 'candidatesHired', fallback: 20, suffix: '+', label: 'Placements Done' },
   { key: 'satisfactionRate', fallback: 100, suffix: '%',   label: 'Client Satisfaction' },
-  { key: 'avgTimeToHire',   fallback: 48,  suffix: ' hrs', label: 'Avg. Time-to-Hire' },
+  { key: 'avgTimeToHire',   fallback: 72,  suffix: ' hrs', label: 'Avg. Time-to-Fill' },
 ];
 
 const TESTIMONIALS = [
   { name: 'Rajesh Kumar', role: 'CTO · FinTech Startup, Hyderabad', initials: 'RK', color: '#0176D3', text: 'TalentNest filled 3 senior engineering roles in under 72 hours. All 3 are still with us 18 months later. Exceptional quality.' },
-  { name: 'Priya Sharma', role: 'HR Director · Healthcare IT, Bangalore', initials: 'PS', color: '#10B981', text: 'We struggled for months to find a CISO. TalentNest delivered 6 qualified candidates within 48 hours. We hired within the week.' },
+  { name: 'Priya Sharma', role: 'HR Director · Healthcare IT, Bangalore', initials: 'PS', color: '#10B981', text: 'We struggled for months to find a CISO. TalentNest delivered 6 qualified candidates within record time. We hired within the week.' },
   { name: 'Amit Patel', role: 'Founder · E-commerce Platform, Mumbai', initials: 'AP', color: '#F59E0B', text: 'The HRMS platform transformed our hiring. What took weeks now takes days. The candidate matching is genuinely impressive.' },
 ];
 
@@ -92,36 +92,36 @@ const VALUE_PILLARS = [
   {
     icon: '🚀',
     title: 'Public Job Board & Portal',
-    desc: 'List your openings on India’s most specialized job board for tech and executive talent.',
-    points: ['High-intent candidate pool', 'AI-powered matching', 'Direct application tracking'],
+    desc: 'List your openings on India’s most specialized job board. Attract high-intent tech and executive talent with streamlined application tracking.',
+    points: ['Advanced candidate matching', 'Direct application tracking', 'High-intent tech talent pool'],
     accent: '#0176D3',
   },
   {
     icon: '⚙️',
     title: 'Complete Recruitment Stack',
-    desc: 'Jobs, pipeline, outreach, interviews, offers, and onboarding stay connected inside the platform.',
-    points: ['Unified ATS dashboard', 'Automated hiring workflows', 'Live pipeline visibility'],
+    desc: 'A unified workspace for jobs, pipelines, outreach, and interviews. Stop juggling tools and start hiring in record time.',
+    points: ['Automated hiring workflows', 'Unified ATS dashboard', 'Live pipeline visibility'],
     accent: '#00C2CB',
   },
   {
     icon: '🎯',
     title: 'Strategic Staffing Support',
-    desc: 'Our expert recruiters provide 48-hour shortlists and a 90-day replacement guarantee for critical roles.',
-    points: ['48-hour response cycle', '90-day replacement support', 'Expert industry sourcing'],
+    desc: 'Our expert recruiters provide rapid shortlist delivery and a 90-day replacement support for peace of mind.',
+    points: ['Rapid response cycle', '90-day replacement support', 'Expert industry sourcing'],
     accent: '#F59E0B',
   },
 ];
 
 const HERO_SPOTLIGHTS = [
-  { label: 'Smart screening', value: 'Fast match', tone: '#00C2CB' },
+  { label: 'Advanced screening', value: 'Quick match', tone: '#00C2CB' },
   { label: 'Recruiter-led review', value: 'Human signal', tone: '#FF6B35' },
   { label: 'Hiring visibility', value: 'Live pipeline', tone: '#38BDF8' },
 ];
 
 const HERO_VALUE_CARDS = [
   {
-    title: 'Shortlist in 48 hours',
-    desc: 'Submit a role brief and receive pre-screened, interview-ready profiles within two business days.',
+    title: 'Rapid Shortlist Delivery',
+    desc: 'Submit a role brief and receive pre-screened, interview-ready profiles tailored to your needs.',
     accent: '#00C2CB',
   },
   {
@@ -161,6 +161,12 @@ export default function LandingPage() {
 
   useEffect(() => {
     loadLiveData();
+    // SEO & Meta
+    document.title = "TalentNest HR | India's #1 Recruitment Stack & Job Board";
+    const meta = document.querySelector('meta[name="description"]') || document.createElement('meta');
+    meta.name = "description";
+    meta.content = "Transform your hiring with TalentNest. The leading job board for IT, Cybersecurity, and Executive roles. Rapid shortlists with a 90-day replacement guarantee.";
+    if (!document.querySelector('meta[name="description"]')) document.head.appendChild(meta);
   }, []);
 
   // Cycle highlighted job every 2.5 seconds for animation
@@ -227,8 +233,8 @@ export default function LandingPage() {
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                { icon: '⚡', text: '48hr Shortlist Delivery', color: '#00C2CB' },
-                { icon: '✓',  text: '90-Day Replacement Guarantee', color: '#34D399' },
+                { icon: '⚡', text: 'Rapid Shortlist Delivery', color: '#00C2CB' },
+                { icon: '✓',  text: '90-Day Replacement Support', color: '#34D399' },
                 { icon: '🔒', text: '100% Confidential', color: '#A78BFA' },
               ].map(p => (
                 <div key={p.text} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 100, padding: '7px 16px' }}>
@@ -423,7 +429,7 @@ export default function LandingPage() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20, marginBottom: 40 }}>
             {[
-              { emoji: '🎯', name: 'HireBoard',  role: 'For Recruiters', desc: 'Pipeline board, AI match scores, video interviews, offer letters — one screen.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)', to: '/products/hireboard' },
+              { emoji: '🎯', name: 'HireBoard',  role: 'For Recruiters', desc: 'Pipeline board, advanced match scores, video interviews, offer letters — one screen.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)', to: '/products/hireboard' },
               { emoji: '🏢', name: 'PeopleDesk', role: 'For HR Admins',  desc: 'Analytics, pre-boarding, background verification, org career page — total control.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)', to: '/products/peopledesk' },
               { emoji: '🚀', name: 'JobTrack',   role: 'For Job Seekers', desc: 'Browse jobs, track every application live, join interviews, sign offer from phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)', to: '/products/jobtrack' },
             ].map(p => (
@@ -455,6 +461,65 @@ export default function LandingPage() {
           onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
             Explore All Products →
           </Link>
+        </div>
+      </section>
+
+      {/* ── ADVANCED FEATURES SECTION ── */}
+      <section style={{ background: 'var(--mkt-section-bg)', padding: 'clamp(60px, 10vw, 120px) 0', borderTop: '1px solid var(--mkt-card-border)' }}>
+        <div className="tn-container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48, alignItems: 'center' }}>
+            <div className="mkt-reveal">
+              <SectionLabel>Process Automation</SectionLabel>
+              <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 900, color: 'var(--mkt-text-heading)', margin: '0 0 24px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+                Hiring that feels <span className="mkt-gradient-text">Seamless.</span>
+              </h2>
+              <p style={{ fontSize: 16, color: 'var(--mkt-text-muted)', lineHeight: 1.8, marginBottom: 32, fontWeight: 500 }}>
+                Stop manually reviewing hundreds of resumes. Our matching engine ranks candidates based on skill resonance, experience depth, and culture markers.
+              </p>
+              <div style={{ display: 'grid', gap: 20 }}>
+                {[
+                  { t: 'Automated Screening', d: 'Filter out unqualified applicants instantly with custom qualification criteria.' },
+                  { t: 'One-Click Interviews', d: 'Synced with your calendar. Send invites and gather feedback in a single flow.' },
+                  { t: 'Live Pipeline Health', d: 'Visual heatmaps of your hiring funnel to identify bottlenecks before they happen.' }
+                ].map(item => (
+                  <div key={item.t} style={{ display: 'flex', gap: 16 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--mkt-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0 }}>✓</div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--mkt-text-heading)', marginBottom: 4 }}>{item.t}</div>
+                      <div style={{ fontSize: 13, color: 'var(--mkt-text-muted)', lineHeight: 1.5 }}>{item.d}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mkt-reveal-delayed" style={{ position: 'relative' }}>
+              <div style={{ background: 'linear-gradient(135deg, rgba(1,118,211,0.1), rgba(0,194,203,0.1))', borderRadius: 32, padding: 40, border: '1px solid var(--mkt-card-border)', backdropFilter: 'blur(10px)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Hiring Efficiency</div>
+                  <Tag>+42% Faster</Tag>
+                </div>
+                <div style={{ display: 'grid', gap: 24 }}>
+                  {[
+                    { l: 'Sourcing Speed', v: 88, c: '#0176D3' },
+                    { l: 'Candidate Quality', v: 94, c: '#00C2CB' },
+                    { l: 'Cost Reduction', v: 76, c: '#10B981' }
+                  ].map(stat => (
+                    <div key={stat.l}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                        <span>{stat.l}</span>
+                        <span>{stat.v}%</span>
+                      </div>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${stat.v}%`, background: stat.c, borderRadius: 3, boxShadow: `0 0 12px ${stat.c}50` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Decorative elements */}
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'var(--mkt-accent)', opacity: 0.1, filter: 'blur(30px)' }} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -561,7 +626,7 @@ export default function LandingPage() {
             Ready to lead the <span style={{ color: 'var(--mkt-accent)' }}>Future of Work?</span>
           </h2>
           <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.25rem)', color: 'rgba(255,255,255,0.7)', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', lineHeight: 1.8, fontWeight: 500 }}>
-            Stop settling for volume. Start hiring for resonance. Your first shortlist of pre-vetted elite talent is just 48 hours away.
+            Stop settling for volume. Start hiring for resonance. Your first shortlist of pre-vetted elite talent is just a few clicks away.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg mkt-cta-btn" style={{ borderRadius: 14, padding: 'clamp(14px, 3vw, 20px) clamp(24px, 5vw, 48px)', fontSize: 'clamp(16px, 2vw, 18px)' }}>
