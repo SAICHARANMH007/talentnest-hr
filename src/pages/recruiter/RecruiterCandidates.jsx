@@ -102,7 +102,7 @@ function matchCandidate(c, filters) {
 }
 
 // ── CandidateCard ─────────────────────────────────────────────────────────────
-function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, onEditProfile, isOnline }) {
+function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, onEditProfile, isOnline, onPark }) {
   const isMobile  = useIsMobile();
   const [selJobs, setSelJobs]   = useState([]);
   const [dropOpen, setDropOpen] = useState(false);
@@ -183,6 +183,12 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
           <button onClick={() => onEditProfile(c)}
             style={{ ...btnP, padding: '8px 14px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
             ✏️ Edit
+          </button>
+          <button onClick={() => onPark?.(c)}
+            style={{ background: '#fff', border: '1.5px solid #F59E0B', color: '#F59E0B', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#F59E0B'; }}>
+            🅿️ Park
           </button>
           <button onClick={() => onViewResume(c)}
             style={{ ...btnG, padding: '8px 14px', fontSize: 12, borderRadius: 8, color: '#0176D3', borderColor: 'rgba(1,118,211,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -454,6 +460,26 @@ export default function RecruiterCandidates({ user }) {
     }
   };
 
+  const handlePark = async (candidate) => {
+    try {
+      // Find candidate's application to park it
+      const appsRes = await api.getApplications({ candidateId: candidate.id || candidate._id });
+      const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+      
+      if (apps.length === 0) {
+        setToast('⚠️ This candidate has no active application to park.');
+        return;
+      }
+
+      // Park the most recent application
+      const targetApp = apps[0];
+      await api.parkApplication(targetApp.id || targetApp._id);
+      setToast(`🅿️ ${candidate.name} moved to Talent Pool (Parked)`);
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+  };
+
   const hasFilters = filters.designation || filters.skills || filters.location || filters.expMin || filters.expMax || filters.roles.length > 0 || onlineOnly;
 
   return (
@@ -601,6 +627,7 @@ export default function RecruiterCandidates({ user }) {
                           onInvite={setInviteCandidate}
                           onEditProfile={(cand) => setDrawerCandidate({ role: 'candidate', ...cand, id: cand.id || cand._id?.toString(), _partial: true })}
                           isOnline={onlineIds.has(c.id || c._id?.toString())}
+                          onPark={handlePark}
                         />
                       </div>
                     </div>

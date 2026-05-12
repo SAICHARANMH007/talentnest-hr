@@ -187,7 +187,8 @@ const ASMT_RESULT = {
   pending: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  label: '⏳ Pending Review' },
 };
 
-function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment }) {
+function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment, onPark }) {
+  const navigate = useNavigate();
   const c = app.candidate;
   const s = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
   const nextActions = NEXT[app.stage] || [];
@@ -455,9 +456,27 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         {app.stage !== 'rejected' && app.stage !== 'selected' && (
           <button onClick={() => navigate(`/app/forms/reject?appId=${app.id}`)} style={{ ...btnD, padding: '7px 14px', fontSize: 12 }}>✕ Reject</button>
         )}
-        {app.stage !== 'rejected' && app.stage !== 'selected' && (
-          <button onClick={() => onPark?.(app)} style={{ background: '#fff', border: '1px solid #F59E0B', color: '#F59E0B', borderRadius: 4, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>🅿️ Park</button>
-        )}
+        <button 
+          onClick={() => onPark?.(app)} 
+          style={{ 
+            background: '#fff', 
+            border: '1.5px solid #F59E0B', 
+            color: '#F59E0B', 
+            borderRadius: 10, 
+            padding: '7px 14px', 
+            fontSize: 12, 
+            fontWeight: 800, 
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#F59E0B'; }}
+        >
+          🅿️ Park
+        </button>
       </div>
 
       {showFeedback && (

@@ -189,6 +189,20 @@ export default function RecruiterDashboard({ user }) {
     setDrillDown({ title: `${seg.label} (${items.length})`, items });
   };
 
+  const handlePark = async (appId, candName) => {
+    try {
+      await api.parkApplication(appId);
+      setApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'parked' } : a));
+      // If we are in drilldown, update it too
+      if (drillDown) {
+        setDrillDown(prev => ({ ...prev, items: prev.items.map(i => i.id === appId ? { ...i, status: 'parked' } : i) }));
+      }
+      alert(`🅿️ ${candName} moved to Talent Pool`);
+    } catch (e) {
+      alert(`❌ ${e.message}`);
+    }
+  };
+
   return (
     <ErrorReportBoundary componentName="RecruiterDashboard">
       <div>
@@ -420,6 +434,7 @@ export default function RecruiterDashboard({ user }) {
                   <div style={{ color:"#706E6B", fontSize:11, marginTop:1 }}>{a.jobId?.title || 'Job'} @ {a.jobId?.companyName || a.jobId?.company || 'Internal'}</div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); openDrawer(); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
+                <button onClick={(e) => { e.stopPropagation(); handlePark(a.id, candName); }} style={{ background: 'none', border: 'none', color: '#F59E0B', fontSize: 14, cursor: 'pointer', padding: 8 }} title="Park Candidate">🅿️</button>
                 <TimeAgo date={lastH?.movedAt||a.updatedAt||a.createdAt} />
               </div>
             );
@@ -454,8 +469,8 @@ export default function RecruiterDashboard({ user }) {
                       <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || candObj?.name || item.candidateName || 'Candidate'}</div>
                       <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{item._displaySub || `${item.jobId?.title || ''}`}</div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); openCandDrawer(); }} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 14, cursor: 'pointer', padding: 8 }}>✏️</button>
                     <span style={{ background:`${s.color}15`, color:s.color, border:`1px solid ${s.color}33`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{s.label}</span>
+                    <button onClick={(e) => { e.stopPropagation(); handlePark(item.id, item._displayName || candObj?.name || 'Candidate'); }} style={{ background:'none', border:'none', color:'#F59E0B', fontSize:14, cursor:'pointer', padding:8 }} title="Park Candidate">🅿️</button>
                   </div>
                 );
               })}
