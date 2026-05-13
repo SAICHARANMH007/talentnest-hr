@@ -66,7 +66,7 @@ router.get('/public', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
   const requestedLimit = parseInt(req.query.limit) || 100;
-  const limit = Math.min(requestedLimit, 1000); // Production Standard: Cap public fetch to 1000 to ensure full matching pool
+  const limit = Math.min(requestedLimit, 10000); // Production Standard: High-capacity pool for 100% result visibility
   const { page, skip } = getPagination(req, { limit });
   // Career portal: show active jobs that are non-deleted
   const filter = { status: 'active', deletedAt: null };

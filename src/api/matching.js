@@ -211,6 +211,13 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
           if (hasTitleMatch) qBonus = 40 + (matchRatio * 20);
           else if (hasSkillMatch) qBonus = 30 + (matchRatio * 20);
           else qBonus = 20 + (matchRatio * 20);
+        } else {
+          // 4. Raw Substring Fallback (matching Career Page behavior exactly)
+          const rawHaystack = `${j.title} ${j.companyName || j.company} ${j.description} ${(j.skills || []).join(' ')}`.toLowerCase();
+          const rawQ = query.toLowerCase();
+          if (rawHaystack.includes(rawQ)) {
+            qBonus = 15;
+          }
         }
       }
 
