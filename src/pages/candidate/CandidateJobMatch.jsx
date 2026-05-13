@@ -32,45 +32,54 @@ export default function CandidateJobMatch({ user }) {
     return () => window.removeEventListener('resize', h);
   }, []);
 
+  const [profile, setProfile] = useState(null);
+
   useEffect(() => {
     // Fetch the entire pool (10k cap) to ensure 100% coverage matching career page visibility
     api.getPublicJobs('?limit=10000').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });
+    api.getUser(user.id).then(r => setProfile(r.data || r)).catch(() => {});
   }, [user.id]);
 
-  const run = async (currentQuery = query, currentFilters = filters) => {
+  const run = (currentQuery = query, currentFilters = filters) => {
+    if (!jobs.length) return;
     setLoad(true);
     try {
-      const profileRes = await api.getUser(user.id);
-      const profile = profileRes.data || profileRes;
-      
-      let matched = matchJobsToCandidate(profile, jobs, currentQuery);
+      let matched = matchJobsToCandidate(profile || {}, jobs, currentQuery);
       
       // Advanced Filters
-      if (currentFilters.location) matched = matched.filter(r => r.job.location?.toLowerCase().includes(currentFilters.location.toLowerCase()));
-      if (currentFilters.type !== 'all') matched = matched.filter(r => r.job.jobType === currentFilters.type || (currentFilters.type === 'remote' && r.job.location?.toLowerCase().includes('remote')));
-      if (currentFilters.department !== 'all') matched = matched.filter(r => r.job.department?.toLowerCase().includes(currentFilters.department.toLowerCase()));
-      if (currentFilters.industry !== 'all') matched = matched.filter(r => r.job.industry?.toLowerCase().includes(currentFilters.industry.toLowerCase()));
-      if (currentFilters.urgency !== 'all') matched = matched.filter(r => r.job.urgency === currentFilters.urgency);
+      const qLocation = (currentFilters.location || '').toLowerCase();
+      if (qLocation) matched = matched.filter(r => (r.job.location || '').toLowerCase().includes(qLocation));
+      
+      if (currentFilters.type !== 'all') {
+        const type = currentFilters.type;
+        matched = matched.filter(r => r.job.jobType === type || (type === 'remote' && (r.job.location || '').toLowerCase().includes('remote')));
+      }
+      
+      if (currentFilters.department !== 'all') {
+        const dep = currentFilters.department.toLowerCase();
+        matched = matched.filter(r => (r.job.department || '').toLowerCase().includes(dep));
+      }
 
       // Sorting
       if (sortBy === 'newest') matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
       else if (sortBy === 'urgency') {
         const order = { 'High': 3, 'Medium': 2, 'Low': 1 };
         matched.sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
+      } else {
+        matched.sort((a, b) => b.matchScore - a.matchScore);
       }
 
       setResults(matched);
-    } catch (e) { setToast(`❌ Matching failed: ${e.message}`); }
+    } catch (e) { console.error(e); }
     setLoad(false);
   };
 
-  useEffect(() => { if (jobs.length > 0) run(query, filters); }, [jobs, filters, sortBy]);
+  useEffect(() => { run(query, filters); }, [jobs, filters, sortBy, profile]);
   useEffect(() => {
-    if (jobs.length === 0) return;
-    const timer = setTimeout(() => run(query, filters), 400);
+    const timer = setTimeout(() => run(query, filters), 300);
     return () => clearTimeout(timer);
   }, [query]);
 

@@ -208,15 +208,16 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
           const hasTitleMatch = matches.some(m => normalizedTitle.includes(m));
           const hasSkillMatch = matches.some(m => normalizedSkills.includes(m));
           
-          if (hasTitleMatch) qBonus = 40 + (matchRatio * 20);
-          else if (hasSkillMatch) qBonus = 30 + (matchRatio * 20);
-          else qBonus = 20 + (matchRatio * 20);
+          if (hasTitleMatch) qBonus = 50 + (matchRatio * 20);
+          else if (hasSkillMatch) qBonus = 40 + (matchRatio * 20);
+          else qBonus = 30 + (matchRatio * 20);
         } else {
           // 4. Raw Substring Fallback (matching Career Page behavior exactly)
-          const rawHaystack = `${j.title} ${j.companyName || j.company} ${j.description} ${(j.skills || []).join(' ')}`.toLowerCase();
-          const rawQ = query.toLowerCase();
-          if (rawHaystack.includes(rawQ)) {
-            qBonus = 15;
+          // We check the raw original fields for maximum inclusivity
+          const haystack = `${j.title} ${j.companyName || j.company} ${(j.skills || []).join(' ')} ${j.description || ''}`.toLowerCase();
+          const qLower = query.toLowerCase().trim();
+          if (haystack.includes(qLower)) {
+            qBonus = 20;
           }
         }
       }
