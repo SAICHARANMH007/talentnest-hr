@@ -16,9 +16,14 @@ export const normalizeTech = s => String(s || '').toLowerCase().trim()
   .replace(/javascript/g, 'js')
   .replace(/typescript/g, 'ts')
   .replace(/postgresql/g, 'postgres')
-  .replace(/springboot/g, 'spring');
+  .replace(/springboot/g, 'spring')
+  .replace(/[^a-z0-9.+#+]/g, ' '); // Keep dots for .net and #/+ for C#/C++
 
-export const toSkillArr = skills => (Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s=>s.trim()) : [])).map(s => normalizeTech(s)).filter(Boolean);
+export const toSkillArr = skills => {
+  if (Array.isArray(skills)) return skills.map(s => normalizeTech(s)).filter(Boolean);
+  if (typeof skills === 'string') return skills.split(/[,;|]/).map(s => normalizeTech(s.trim())).filter(Boolean);
+  return [];
+};
 
 /**
  * genericSearchMatch — Heuristic for multi-word, normalized keyword matching.
@@ -173,45 +178,39 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
     let qBonus = 0;
     if (q) {
       const normalizedTitle = normalizeTech(j.title);
-      const normalizedSkills = toSkillArr(j.skills);
+      const normalizedSkills = toSkillArr(j.skills).join(' ');
       const normalizedDesc = normalizeTech(j.description);
       const normalizedCompany = normalizeTech(j.companyName || j.company);
-      
-      const searchable = [normalizedTitle, ...normalizedSkills, normalizedDesc, normalizedCompany].join(' ');
+      const searchable = [normalizedTitle, normalizedSkills, normalizedDesc, normalizedCompany].join(' ');
 
-      // 1. Direct Normalized Match
-      if (searchable.includes(q)) {
-        if (normalizedTitle.includes(q)) qBonus = 50;
-        else if (normalizedSkills.includes(q)) qBonus = 40;
-        else qBonus = 30;
-      } 
-      // 2. Raw Fallback
-      else if (j.description?.toLowerCase().includes(query.toLowerCase()) || j.title?.toLowerCase().includes(query.toLowerCase())) {
-        qBonus = 25;
-      }
-      // 3. Multi-word Partial Match (Classic Naukri Heuristic)
-      else {
-        const words = q.split(/\s+/).filter(w => w.length > 2);
-        if (words.length > 0) {
-          // Check for technical synonyms in each word
-          const techMap = {
-            'dotnet': ['.net', 'dot net', 'dotnet'],
-            '.net': ['.net', 'dot net', 'dotnet'],
-            'react': ['react', 'reactjs', 'nextjs'],
-            'node': ['node', 'nodejs', 'express'],
-            'java': ['java', 'spring'],
-            'python': ['python', 'django', 'flask'],
-            'sql': ['sql', 'postgres', 'mysql']
-          };
+      const keywords = q.split(/\s+/).filter(k => k.length > 1);
+      if (keywords.length > 0) {
+        const techMap = {
+          'dotnet': ['.net', 'dot net', 'dotnet'],
+          '.net': ['.net', 'dot net', 'dotnet'],
+          'react': ['react', 'reactjs', 'nextjs'],
+          'node': ['node', 'nodejs', 'express'],
+          'java': ['java', 'spring'],
+          'python': ['python', 'django', 'flask'],
+          'sql': ['sql', 'postgres', 'mysql'],
+          'c#': ['c#', 'csharp', '.net'],
+          'c++': ['c++', 'cpp']
+        };
 
-          const matchCount = words.filter(w => {
-            const variants = techMap[w] || [w];
-            return variants.some(v => searchable.includes(v));
-          }).length;
+        const matches = keywords.filter(kw => {
+          const variants = techMap[kw] || [kw];
+          return variants.some(v => searchable.includes(v));
+        });
 
-          if (matchCount > 0) {
-            qBonus = (matchCount / words.length) * 35;
-          }
+        if (matches.length > 0) {
+          // Weighted bonus based on matches
+          const matchRatio = matches.length / keywords.length;
+          const hasTitleMatch = matches.some(m => normalizedTitle.includes(m));
+          const hasSkillMatch = matches.some(m => normalizedSkills.includes(m));
+          
+          if (hasTitleMatch) qBonus = 40 + (matchRatio * 20);
+          else if (hasSkillMatch) qBonus = 30 + (matchRatio * 20);
+          else qBonus = 20 + (matchRatio * 20);
         }
       }
 
