@@ -80,7 +80,8 @@ router.get('/public', asyncHandler(async (req, res) => {
     if (org) filter.tenantId = org._id;
   }
   if (req.query.search) {
-    const sr = { $regex: escRe(req.query.search), $options: 'i' };
+    const { expandSearch } = require('../utils/search');
+    const sr = { $regex: expandSearch(req.query.search), $options: 'i' };
     filter.$or = [{ title: sr }, { description: sr }, { company: sr }, { companyName: sr }, { skills: sr }];
   }
   if (req.query.urgency   && req.query.urgency   !== 'All') filter.urgency    = req.query.urgency;
@@ -137,7 +138,8 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   if (req.query.location && req.query.location !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
   
   if (req.query.search) {
-    const sr = { $regex: escRe(req.query.search), $options: 'i' };
+    const { expandSearch } = require('../utils/search');
+    const sr = { $regex: expandSearch(req.query.search), $options: 'i' };
     filter.$or = [{ title: sr }, { company: sr }, { skills: sr }];
   }
   

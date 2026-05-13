@@ -11,6 +11,7 @@ import PostJobForm from '../../components/shared/PostJobForm.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { SM } from '../../constants/stages.js';
 import { api } from '../../api/api.js';
+import { genericSearchMatch } from '../../api/matching.js';
 import AssessmentBuilder from '../../components/assessments/AssessmentBuilder.jsx';
 import JobDetailDrawer from '../../components/shared/JobDetailDrawer.jsx';
 import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
@@ -137,13 +138,9 @@ export default function RecruiterJobs({ user }) {
 
   const filteredJobs = jobs.filter(j => {
     if (search) {
-      const q = search.toLowerCase();
       const skillsStr = Array.isArray(j.skills) ? j.skills.join(', ') : (j.skills || '');
-      if (
-        !j.title?.toLowerCase().includes(q) &&
-        !j.company?.toLowerCase().includes(q) &&
-        !skillsStr.toLowerCase().includes(q)
-      ) return false;
+      const haystack = `${j.title} ${j.company} ${skillsStr}`;
+      if (genericSearchMatch(haystack, search) === 0) return false;
     }
     // Handle both backend 'active' and frontend 'Open' labels
     const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');

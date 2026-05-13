@@ -63,7 +63,8 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
   
   // Advanced Search (Name, Email, Title, Company)
   if (req.query.search) {
-    const _s = escRe(req.query.search);
+    const { expandSearch } = require('../utils/search');
+    const _s = expandSearch(req.query.search);
     const searchOr = [
       { name: { $regex: _s, $options: 'i' } },
       { email: { $regex: _s, $options: 'i' } },
@@ -72,7 +73,6 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
       { jobRole: { $regex: _s, $options: 'i' } },
       { industry: { $regex: _s, $options: 'i' } },
       { department: { $regex: _s, $options: 'i' } }
-
     ];
     
     if (filter.$or) {

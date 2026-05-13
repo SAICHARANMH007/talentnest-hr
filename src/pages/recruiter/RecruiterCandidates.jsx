@@ -11,6 +11,7 @@ import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { filterCandidates } from '../../api/matching.js';
 
 import { usePresence } from '../../hooks/usePresence.js';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
@@ -56,50 +57,6 @@ function expYears(c) {
   return isNaN(n) ? 0 : n;
 }
 
-function matchCandidate(c, filters) {
-  const { designation, skills, location, expMin, expMax, minCTC, maxCTC, availability } = filters;
-  
-  if (!designation && !skills && !location && expMin === '' && expMax === '' && !minCTC && !maxCTC && !availability) return true;
-
-  const title    = (c.title || c.currentRole || '').toLowerCase();
-  const loc      = (c.location || '').toLowerCase();
-  const prefLoc  = (c.preferredLocation || '').toLowerCase();
-  const skillsArr = Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s => s.trim().toLowerCase());
-  const skillStr = skillsArr.join(' ');
-  const summary  = (c.summary || '').toLowerCase();
-  const avail    = (c.availability || '').toLowerCase();
-  
-  const workHistory = parseJ(c.workHistory);
-  const historyStr = workHistory.map(w => `${w.title} ${w.company} ${w.description}`).join(' ').toLowerCase();
-  
-  const globalData = `${title} ${skillStr} ${summary} ${historyStr} ${loc} ${prefLoc}`;
-
-  if (designation && !globalData.includes(designation.toLowerCase().trim())) return false;
-  if (skills) {
-    const kwds = skills.toLowerCase().split(/[,\s]+/).filter(k => k.length > 1);
-    if (kwds.length > 0 && !kwds.some(k => globalData.includes(k))) return false;
-  }
-  if (location) {
-    const lMatch = location.toLowerCase().trim();
-    if (!loc.includes(lMatch) && !prefLoc.includes(lMatch)) return false;
-  }
-
-  // Experience
-  const exp = expYears(c);
-  if (expMin !== '' && exp < parseFloat(expMin)) return false;
-  if (expMax !== '' && exp > parseFloat(expMax)) return false;
-
-  // CTC (Salary) Logic
-  const currentCTC = parseFloat(c.currentCTC) || 0;
-  const expectedCTC = parseFloat(c.expectedCTC) || 0;
-  if (minCTC && expectedCTC < parseFloat(minCTC)) return false;
-  if (maxCTC && expectedCTC > parseFloat(maxCTC)) return false;
-
-  // Availability
-  if (availability && !avail.includes(availability.toLowerCase())) return false;
-
-  return true;
-}
 
 // ── CandidateCard ─────────────────────────────────────────────────────────────
 function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInvite, onToast, onEditProfile, isOnline, onPark }) {
@@ -410,8 +367,14 @@ export default function RecruiterCandidates({ user }) {
   }, [loading, allCandidates]);
 
   const applyFilters = (candidates, onlyOnline) => {
-    let res = candidates.filter(c => matchCandidate(c, filters) && roleMatch(c));
-    if (onlyOnline) res = res.filter(c => onlineIds.has(c.id || c._id?.toString()));
+    let res = filterCandidates(candidates, filters);
+    // Role category (custom heuristic)
+    if (filters.roles.length) {
+      res = res.filter(c => roleMatch(c));
+    }
+    if (onlyOnline) {
+      res = res.filter(c => onlineIds.has(c.id || c._id?.toString()));
+    }
     return res;
   };
 

@@ -33,7 +33,8 @@ export default function CandidateJobMatch({ user }) {
   }, []);
 
   useEffect(() => {
-    api.getPublicJobs('?limit=200').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
+    // Fetch a larger pool to ensure 100% coverage for the matching engine
+    api.getPublicJobs('?limit=1000').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });

@@ -149,7 +149,7 @@ function buildInviteHtml({ candidate, job, message, token, fromName, fromOrg }) 
 // ── POST /api/invites/talent-match ─── recruiter shortlists/shows interest from Talent Match ──
 router.post('/talent-match', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (req, res) => {
   try {
-    const { candidateId, jobId, action } = req.body; // action: 'shortlist' | 'interest'
+    const { candidateId, jobId, action } = req.body; // action: 'shortlist' | 'interest' | 'park'
     if (!candidateId || !jobId) return res.status(400).json({ error: 'candidateId and jobId required.' });
 
     const job = await Job.findById(jobId);
@@ -168,45 +168,52 @@ router.post('/talent-match', auth, allowRoles('admin', 'super_admin', 'recruiter
     }
 
     const stage = action === 'shortlist' ? 'Shortlisted' : 'Applied';
+    const status = action === 'park' ? 'parked' : 'active';
+    
     let app = await Application.findOne({ jobId, candidateId: candidateRecord._id });
     if (app) {
+      const updates = { status };
       if (action === 'shortlist' && app.currentStage !== 'Shortlisted') {
-        app.currentStage = 'Shortlisted';
+        updates.currentStage = 'Shortlisted';
         app.stageHistory.push({ stage: 'Shortlisted', movedBy: req.user._id, movedAt: new Date(), notes: 'Shortlisted via Talent Match' });
-        await app.save();
       }
+      await Application.findByIdAndUpdate(app._id, updates);
     } else {
       app = await Application.create({
         tenantId: job.tenantId, jobId, candidateId: candidateRecord._id,
-        source: 'talent_match', currentStage: stage,
-        stageHistory: [{ stage, movedBy: req.user._id, movedAt: new Date(), notes: `${action === 'shortlist' ? 'Shortlisted' : 'Interested'} via Talent Match` }],
+        source: 'talent_match', currentStage: stage, status,
+        stageHistory: [{ stage, movedBy: req.user._id, movedAt: new Date(), notes: `${action === 'shortlist' ? 'Shortlisted' : (action === 'park' ? 'Parked' : 'Interested')} via Talent Match` }],
       });
     }
 
-    let invite = await Invite.findOne({ candidateId, jobId });
-    const inviteStatus = action === 'shortlist' ? 'interested' : 'sent';
-    if (invite) {
-      await Invite.findByIdAndUpdate(invite.id, {
-        status: inviteStatus,
-        message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
-        sentBy: req.user._id, sentByName: req.user.name || '',
-      });
-    } else {
-      await Invite.create({
-        candidateId, jobId, tenantId: job.tenantId, token: randomUUID(),
-        status: inviteStatus, sentBy: req.user._id, sentByName: req.user.name || '',
-        message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
-        candidateName: candidateUser.name, candidateEmail: candidateUser.email, jobTitle: job.title, type: 'talent_match',
+    // Only send invites/notifications for active interest/shortlist, not for parking
+    if (action !== 'park') {
+      let invite = await Invite.findOne({ candidateId, jobId });
+      const inviteStatus = action === 'shortlist' ? 'interested' : 'sent';
+      if (invite) {
+        await Invite.findByIdAndUpdate(invite.id, {
+          status: inviteStatus,
+          message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
+          sentBy: req.user._id, sentByName: req.user.name || '',
+        });
+      } else {
+        await Invite.create({
+          candidateId, jobId, tenantId: job.tenantId, token: randomUUID(),
+          status: inviteStatus, sentBy: req.user._id, sentByName: req.user.name || '',
+          message: action === 'shortlist' ? 'Recruiter has shortlisted you!' : 'Recruiter has shown interest.',
+          candidateName: candidateUser.name, candidateEmail: candidateUser.email, jobTitle: job.title, type: 'talent_match',
+        });
+      }
+
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        userId: candidateId, tenantId: job.tenantId, type: 'invite',
+        title: action === 'shortlist' ? '⭐ Shortlisted!' : '🎯 New Interest',
+        message: `A recruiter has ${action === 'shortlist' ? 'shortlisted you' : 'shown interest'} for ${job.title}.`,
+        link: '/app/applications',
       });
     }
 
-    const Notification = require('../models/Notification');
-    await Notification.create({
-      userId: candidateId, tenantId: job.tenantId, type: 'invite',
-      title: action === 'shortlist' ? '⭐ Shortlisted!' : '🎯 New Interest',
-      message: `A recruiter has ${action === 'shortlist' ? 'shortlisted you' : 'shown interest'} for ${job.title}.`,
-      link: '/app/applications',
-    });
     res.json({ success: true, applicationId: app._id, action });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

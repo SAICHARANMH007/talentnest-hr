@@ -5,6 +5,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, btnP } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { genericSearchMatch } from '../../api/matching.js';
 import JobAlertsManager from '../../components/candidate/JobAlertsManager.jsx';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
@@ -331,17 +332,27 @@ export default function CandidateExploreJobs({ user }) {
     if (typeFilter && j.type !== typeFilter) return false;
     if (urgencyFilter && j.urgency !== urgencyFilter) return false;
     if (locFilter && j.location !== locFilter) return false;
+    
     if (!search) return true;
-    const q = search.toLowerCase();
+    
     const haystack = [
       j.title, j.company, j.location, j.description, j.requirements, j.benefits,
       j.department, j.industry, j.jobType,
       ...(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',')),
       ...(j.tags || [])
-    ].map(s => String(s || '').toLowerCase()).join(' ');
+    ].join(' ');
     
-    return haystack.includes(q);
+    const score = genericSearchMatch(haystack, search);
+    if (score > 0) {
+      j._searchScore = score; // store for sorting
+      return true;
+    }
+    return false;
   });
+
+  if (search) {
+    filtered.sort((a, b) => (b._searchScore || 0) - (a._searchScore || 0));
+  }
 
   const savedCount = Object.keys(saved).length;
 

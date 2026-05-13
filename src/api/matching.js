@@ -1,19 +1,51 @@
-const TECH_WEIGHTS = {
-  // Tier 1: Core Languages/Frameworks (Highest Value)
+// Tier 1: Core Languages/Frameworks (Highest Value)
+export const TECH_WEIGHTS = {
   'react': 1.5, 'node': 1.5, 'java': 1.5, 'python': 1.5, 'aws': 1.5, 'azure': 1.5, 'kubernetes': 1.5,
-  '.net': 1.4, 'golang': 1.4, 'typescript': 1.4, 'angular': 1.4, 'vue': 1.4,
+  '.net': 1.4, 'golang': 1.4, 'ts': 1.4, 'js': 1.4, 'angular': 1.4, 'vue': 1.4,
   // Tier 2: Databases/Major Tools
   'mongo': 1.2, 'postgres': 1.2, 'sql': 1.2, 'redis': 1.2, 'docker': 1.2,
 };
 
-const normalizeTech = s => String(s || '').toLowerCase().trim()
+export const normalizeTech = s => String(s || '').toLowerCase().trim()
+  .replace(/\.net\s*core/g, '.net')
   .replace(/dot\s*net/g, '.net')
   .replace(/dotnet/g, '.net')
-  .replace(/reactjs/g, 'react')
-  .replace(/nodejs/g, 'node')
-  .replace(/mongodb/g, 'mongo');
+  .replace(/react\.?js/g, 'react')
+  .replace(/node\.?js/g, 'node')
+  .replace(/mongo\.?db/g, 'mongo')
+  .replace(/javascript/g, 'js')
+  .replace(/typescript/g, 'ts')
+  .replace(/postgresql/g, 'postgres')
+  .replace(/springboot/g, 'spring');
 
-const toSkillArr = skills => (Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s=>s.trim()) : [])).map(s => normalizeTech(s)).filter(Boolean);
+export const toSkillArr = skills => (Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s=>s.trim()) : [])).map(s => normalizeTech(s)).filter(Boolean);
+
+/**
+ * genericSearchMatch — Heuristic for multi-word, normalized keyword matching.
+ * Returns a score from 0-100.
+ */
+export const genericSearchMatch = (haystack, query) => {
+  if (!query) return 100;
+  const q = normalizeTech(query);
+  const h = normalizeTech(haystack);
+  
+  // 1. Direct Normalized Match
+  if (h.includes(q)) return 100;
+
+  // 2. Multi-word Partial Match (Classic Naukri Heuristic)
+  const words = q.split(/\s+/).filter(w => w.length > 2);
+  if (words.length > 1) {
+    const matchCount = words.filter(w => h.includes(w)).length;
+    if (matchCount > 0) {
+      return (matchCount / words.length) * 80; // Max 80 for partial
+    }
+  }
+  
+  // 3. Raw Fallback for special chars or very short terms
+  if (haystack.toLowerCase().includes(query.toLowerCase())) return 50;
+
+  return 0;
+};
 
 /**
  * matchCandidatesToJob — Enhanced Deterministic Matching Engine
@@ -137,12 +169,52 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
     // Title
     let titleScore = (jobTitle && candTitle && (candTitle.includes(jobTitle) || jobTitle.includes(candTitle))) ? 25 : 5;
 
-    // Global Deep Search Bonus
+    // Global Deep Search Bonus (Naukri-style precision)
     let qBonus = 0;
     if (q) {
-      const jobData = [j.title, j.companyName, j.description, j.location, ...(Array.isArray(j.skills) ? j.skills : [])].join(' ').toLowerCase();
-      if (jobTitle.includes(q)) qBonus = 50;
-      else if (jobData.includes(q)) qBonus = 30;
+      const normalizedTitle = normalizeTech(j.title);
+      const normalizedSkills = toSkillArr(j.skills);
+      const normalizedDesc = normalizeTech(j.description);
+      const normalizedCompany = normalizeTech(j.companyName || j.company);
+      
+      const searchable = [normalizedTitle, ...normalizedSkills, normalizedDesc, normalizedCompany].join(' ');
+
+      // 1. Direct Normalized Match
+      if (searchable.includes(q)) {
+        if (normalizedTitle.includes(q)) qBonus = 50;
+        else if (normalizedSkills.includes(q)) qBonus = 40;
+        else qBonus = 30;
+      } 
+      // 2. Raw Fallback
+      else if (j.description?.toLowerCase().includes(query.toLowerCase()) || j.title?.toLowerCase().includes(query.toLowerCase())) {
+        qBonus = 25;
+      }
+      // 3. Multi-word Partial Match (Classic Naukri Heuristic)
+      else {
+        const words = q.split(/\s+/).filter(w => w.length > 2);
+        if (words.length > 0) {
+          // Check for technical synonyms in each word
+          const techMap = {
+            'dotnet': ['.net', 'dot net', 'dotnet'],
+            '.net': ['.net', 'dot net', 'dotnet'],
+            'react': ['react', 'reactjs', 'nextjs'],
+            'node': ['node', 'nodejs', 'express'],
+            'java': ['java', 'spring'],
+            'python': ['python', 'django', 'flask'],
+            'sql': ['sql', 'postgres', 'mysql']
+          };
+
+          const matchCount = words.filter(w => {
+            const variants = techMap[w] || [w];
+            return variants.some(v => searchable.includes(v));
+          }).length;
+
+          if (matchCount > 0) {
+            qBonus = (matchCount / words.length) * 35;
+          }
+        }
+      }
+
       if (qBonus === 0) return null;
     }
 
@@ -162,6 +234,55 @@ export function matchJobsToCandidate(candidate, jobs, query = '') {
   }).filter(Boolean).sort((a, b) => b.matchScore - a.matchScore);
 }
 
+/**
+ * filterCandidates — Robust search and filtering for Recruiter Talent Pool.
+ */
+export function filterCandidates(candidates, filters) {
+  const { designation, skills, location, expMin, expMax, minCTC, maxCTC, availability } = filters;
+  
+  return candidates.map(c => {
+    let score = 0;
+    let reasons = [];
+
+    // 1. Designation Search
+    if (designation) {
+      const s = genericSearchMatch(c.title || c.currentRole || '', designation);
+      if (s === 0) return null;
+      score += s * 0.4;
+    }
+
+    // 2. Skills Search
+    if (skills) {
+      const candSkills = toSkillArr(c.skills).join(' ');
+      const s = genericSearchMatch(candSkills, skills);
+      if (s === 0) return null;
+      score += s * 0.4;
+    }
+
+    // 3. Location
+    if (location) {
+      const candLoc = normalizeTech(c.location || '');
+      const prefLoc = normalizeTech(c.preferredLocation || '');
+      const locQ = normalizeTech(location);
+      if (!candLoc.includes(locQ) && !prefLoc.includes(locQ)) return null;
+      score += 20;
+    } else score += 20;
+
+    // 4. Numeric Filters (Hard Constraints)
+    const candExp = parseFloat(c.experience || 0);
+    if (expMin && candExp < parseFloat(expMin)) return null;
+    if (expMax && candExp > parseFloat(expMax)) return null;
+
+    const expectedCTC = parseFloat(c.expectedCTC) || 0;
+    if (minCTC && expectedCTC < parseFloat(minCTC)) return null;
+    if (maxCTC && expectedCTC > parseFloat(maxCTC)) return null;
+
+    if (availability && !normalizeTech(c.availability || '').includes(normalizeTech(availability))) return null;
+
+    return { ...c, _searchScore: score };
+  }).filter(Boolean).sort((a, b) => b._searchScore - a._searchScore);
+}
+
 function parseExpRange(str) {
   if (!str) return null;
   const m = str.match(/(\d+)\D+(\d+)/) || str.match(/(\d+)\+/);
@@ -169,49 +290,36 @@ function parseExpRange(str) {
   return { min: parseInt(m[1]), max: parseInt(m[2] || m[1]) + 3 };
 }
 
-/**
- * parseJD — Simple deterministic JD parser
- * Extracts key fields from raw text using pattern matching.
- */
 export function parseJD(text) {
   const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
   const result = {
     title: '', location: '', skills: '', experience: '', 
-    description: text?.slice(0, 2000), // full text as fallback
+    description: text?.slice(0, 2000), 
     salary: '', department: '', education: '',
     employmentType: 'Full-Time', workMode: 'Onsite'
   };
 
   if (!lines.length) return result;
-
-  // 1. Title Heuristic (usually first non-empty line if short)
   if (lines[0].length < 60) result.title = lines[0];
 
-  // 2. Pattern Matching
   const content = text.toLowerCase();
-  
-  // Experience
   const expMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:years|yrs|yexp)/i) || text.match(/(\d+)\+\s*(?:years|yrs|yexp)/i);
   if (expMatch) result.experience = expMatch[0];
 
-  // Skills (common keywords)
   const allTech = Object.keys(TECH_WEIGHTS);
   const foundSkills = allTech.filter(t => content.includes(t));
   if (foundSkills.length) {
     result.skills = foundSkills.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
   }
 
-  // Location
   const locs = ['Hyderabad', 'Bangalore', 'Mumbai', 'Pune', 'Delhi', 'Noida', 'Gurgaon', 'Chennai', 'Remote'];
   const foundLoc = locs.find(l => content.includes(l.toLowerCase()));
   if (foundLoc) result.location = foundLoc;
 
-  // Employment Type
   if (content.includes('contract')) result.employmentType = 'Contract';
   else if (content.includes('intern')) result.employmentType = 'Internship';
   else if (content.includes('freelance')) result.employmentType = 'Freelance';
 
-  // Work Mode
   if (content.includes('remote') || content.includes('work from home') || content.includes('wfh')) result.workMode = 'Remote';
   else if (content.includes('hybrid')) result.workMode = 'Hybrid';
 

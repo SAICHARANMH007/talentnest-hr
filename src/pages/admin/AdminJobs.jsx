@@ -13,6 +13,7 @@ import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM } from '../../constants/stages.js';
+import { genericSearchMatch } from '../../api/matching.js';
 import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
 
 const fInp = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box' };
