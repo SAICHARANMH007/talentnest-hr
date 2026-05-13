@@ -66,11 +66,10 @@ router.get('/public', asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
   const requestedLimit = parseInt(req.query.limit) || 100;
-  const limit = Math.min(requestedLimit, 200); // Production Standard: Cap public fetch to 200 to prevent DOS
+  const limit = Math.min(requestedLimit, 1000); // Production Standard: Cap public fetch to 1000 to ensure full matching pool
   const { page, skip } = getPagination(req, { limit });
-  // Career portal: show active jobs that are approved OR have no approvalStatus field
-  // (seeded/legacy jobs predate the approval workflow — treat them as approved)
-  const filter = { status: 'active', approvalStatus: { $nin: ['pending_approval', 'rejected'] }, deletedAt: null };
+  // Career portal: show active jobs that are non-deleted
+  const filter = { status: 'active', deletedAt: null };
 
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;

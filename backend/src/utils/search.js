@@ -44,21 +44,34 @@ function expandSearch(query) {
   if (!query) return '';
   let q = query.toLowerCase().trim();
   
-  // 1. Direct Synonym Match
+  // 1. Direct Synonym Match (e.g., "dot net" -> ".net|dotnet|dot net")
   if (SYNONYMS[q]) {
-    return SYNONYMS[q].map(s => esc(s)).join('|');
+    return `(${SYNONYMS[q].map(s => esc(s)).join('|')})`;
   }
 
-  // 2. Multi-word expansion
-  let words = q.split(/\s+/);
-  let expanded = words.map(w => {
-    if (SYNONYMS[w]) {
-      return `(${SYNONYMS[w].map(s => esc(s)).join('|')})`;
+  // 2. Multi-word phrases that might contain synonyms
+  // We'll check if the query contains any of the multi-word keys in SYNONYMS
+  let result = esc(q);
+  for (const [key, variants] of Object.entries(SYNONYMS)) {
+    if (key.includes(' ') && q.includes(key)) {
+      const escapedKey = esc(key);
+      const expandedVariants = `(${variants.map(s => esc(s)).join('|')})`;
+      result = result.replace(new RegExp(escapedKey, 'gi'), expandedVariants);
     }
-    return esc(w);
-  }).join('\\s*');
+  }
 
-  return expanded;
+  // 3. Fallback to individual word expansion if result hasn't changed much
+  if (result === esc(q)) {
+    let words = q.split(/\s+/);
+    result = words.map(w => {
+      if (SYNONYMS[w]) {
+        return `(${SYNONYMS[w].map(s => esc(s)).join('|')})`;
+      }
+      return esc(w);
+    }).join('\\s*');
+  }
+
+  return result;
 }
 
 module.exports = {
