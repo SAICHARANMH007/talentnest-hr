@@ -148,40 +148,41 @@ export default function OrgCareersPage() {
         WebkitOverflowScrolling: 'touch'
       }}>
         <style>{`.filter-row::-webkit-scrollbar { display: none; }`}</style>
-        <div className="filter-row" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="filter-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
           {['All', 'High', 'Medium', 'Low'].map(u => (
             <button key={u} onClick={() => setUrgency(u)}
               style={{ 
-                padding: '8px 18px', 
+                padding: '8px 16px', 
                 borderRadius: 50, 
                 border: '1.5px solid', 
                 borderColor: urgency === u ? (URGENCY_COLOR[u] || accentColor) : '#E2E8F0', 
                 background: urgency === u ? (URGENCY_COLOR[u] || accentColor) : '#fff', 
                 color: urgency === u ? '#fff' : '#64748B', 
                 fontWeight: 700, 
-                fontSize: 13, 
+                fontSize: 12, 
                 cursor: 'pointer', 
                 whiteSpace: 'nowrap', 
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
+                flexShrink: 0,
                 boxShadow: urgency === u ? `0 4px 12px ${URGENCY_COLOR[u] || accentColor}33` : 'none'
               }}>
-              {u === 'All' ? '🌐 All Urgency' : (u === 'High' ? '🔥 Emergency' : (u === 'Medium' ? '⚡ High' : '🌱 Low'))}
+              {u === 'All' ? 'All' : (u === 'High' ? '🔥 High' : (u === 'Medium' ? '⚡ Med' : '🌱 Low'))}
             </button>
           ))}
           
-          <div style={{ width: 1, height: 24, background: '#E2E8F0', margin: '0 4px' }} />
+          <div style={{ width: 1, height: 20, background: '#E2E8F0', margin: '0 4px', flexShrink: 0 }} />
 
           {locations.length > 1 && (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
               <select value={location} onChange={e => setLocation(e.target.value)}
                 style={{ 
-                  padding: '8px 32px 8px 16px', 
+                  padding: '8px 28px 8px 12px', 
                   border: '1.5px solid #E2E8F0', 
                   borderRadius: 50, 
-                  fontSize: 13, 
+                  fontSize: 12, 
                   fontWeight: 600,
                   color: location === 'All' ? '#64748B' : accentColor, 
                   background: '#F8FAFC', 
@@ -190,16 +191,11 @@ export default function OrgCareersPage() {
                   appearance: 'none',
                   WebkitAppearance: 'none'
                 }}>
-                {locations.map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
+                {locations.map(l => <option key={l} value={l}>{l === 'All' ? 'All Locations' : l}</option>)}
               </select>
-              <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 10 }}>▼</span>
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 9 }}>▼</span>
             </div>
           )}
-        </div>
-
-        <div style={{ marginLeft: 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', paddingRight: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-          <b style={{ color: '#1E293B' }}>{filtered.length}</b> roles found
         </div>
       </div>
 
