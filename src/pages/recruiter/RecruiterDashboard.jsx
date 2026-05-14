@@ -181,8 +181,24 @@ export default function RecruiterDashboard({ user }) {
       </div>
       {/* ── Graph Row ─────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap:16, marginBottom:20 }}>
-        <div style={{ ...card }}>
-          <AreaChart data={[]} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle={`${sd.appsLast30 || 0} new in last 30 days`} />
+        {/* Monthly summary card — replaces empty AreaChart (no trend data in stats API) */}
+        <div style={{ ...card, display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1 }}>📊 THIS MONTH</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            {[
+              { label:'New Applications', value: sd.appsLast30 || 0,   color:'#0176D3', icon:'📥' },
+              { label:'Hired This Month', value: sd.hiredLast30 || 0,  color:'#2E844A', icon:'🎉' },
+              { label:'Active in Pipeline', value: activeApps,         color:'#F59E0B', icon:'⚡' },
+              { label:'Conversion Rate',   value: `${conversionRate}%`,color:'#8b5cf6', icon:'📈' },
+            ].map(m => (
+              <div key={m.label} style={{ background:`${m.color}08`, border:`1px solid ${m.color}22`, borderRadius:10, padding:'10px 12px' }}>
+                <div style={{ fontSize:16 }}>{m.icon}</div>
+                <div style={{ color:m.color, fontSize:18, fontWeight:900, marginTop:4 }}>{m.value}</div>
+                <div style={{ color:'#706E6B', fontSize:10, marginTop:2, fontWeight:600 }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => navigate('/app/pipeline')} style={{ ...btnG, padding:'7px 14px', fontSize:12, marginTop:'auto' }}>View Full Pipeline →</button>
         </div>
         <div style={{ ...card }}>
           {appsPerJob.length > 0 ? (
