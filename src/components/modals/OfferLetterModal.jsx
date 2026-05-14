@@ -89,7 +89,11 @@ function calcCTC(annualCTC, variablePct = 10, isMetro = true) {
 function OfferLetterDoc({ data, ctc, ref: docRef }) {
   const { candidate: c, job: j, form: f } = data;
   const today = new Date();
-  const refNo = `TNH/${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(Math.floor(Math.random()*9000)+1000)}`;
+  // Stable ref number for this modal session — generated once, never changes on re-render
+  const [refNo] = useState(() => {
+    const seq = String(1000 + (Date.now() % 9000)).padStart(4, '0');
+    return `TNH/${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${seq}`;
+  });
   const dateStr = today.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
   const rows = [
     ['Basic Salary (40% of CTC)',       fmt(ctc.monthly.basic),   fmt(ctc.annual.basic)],

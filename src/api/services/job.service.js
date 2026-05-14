@@ -7,14 +7,16 @@ export const jobService = {
       const rid = recruiterIdOrOpts;
       return req('GET', `/jobs?limit=10000000${rid ? `&recruiterId=${rid}` : ''}`);
     }
-    const { recruiterId, limit, page, status, search, platform } = recruiterIdOrOpts;
+    const { recruiterId, limit, page, status, search, platform, urgency, location } = recruiterIdOrOpts;
     const p = new URLSearchParams();
     if (recruiterId) p.set('recruiterId', recruiterId);
     p.set('limit', String(limit || 10000000));
-    if (page)        p.set('page',   String(page));
-    if (status)      p.set('status', status);
-    if (search)      p.set('search', search);
+    if (page)        p.set('page',     String(page));
+    if (status)      p.set('status',   status);
+    if (search)      p.set('search',   search);
     if (platform)    p.set('platform', 'true');
+    if (urgency)     p.set('urgency',  urgency);
+    if (location)    p.set('location', location);
     return req('GET', `/jobs?${p.toString()}`);
   },
   async getJob(id)                    { return req('GET', `/jobs/${id}`); },
@@ -50,7 +52,7 @@ export const jobService = {
         return {
           ...j,
           jobId: (j._id || j.id || '').toString() || undefined,
-          matchScore: Math.min(99, 50 + ov * 14 + Math.floor(Math.random() * 8))
+          matchScore: Math.min(99, 50 + ov * 14)
         };
       })
       .filter(j => j.jobId)

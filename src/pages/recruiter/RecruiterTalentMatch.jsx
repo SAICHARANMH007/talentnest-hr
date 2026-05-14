@@ -21,7 +21,7 @@ export default function RecruiterTalentMatch({ user }) {
 
   useEffect(() => {
     const jobParam = searchParams.get('job');
-    api.getJobs(user.id)
+    api.getJobs({ recruiterId: user.id, limit: 200 })
       .then(j => {
         const list = Array.isArray(j) ? j : (j?.data || []);
         setJobs(list);

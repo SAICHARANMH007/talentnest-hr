@@ -45,7 +45,7 @@ async function createAndInviteUser({ name, email, phone, jobTitle, role, orgId, 
     jobTitle: jobTitle || '',
     role,
     orgId,
-    password: bcrypt.hashSync(TEMP_PWD, 12),
+    passwordHash: bcrypt.hashSync(TEMP_PWD, 12),
     resetPasswordToken: tokenHash,
     resetPasswordExpires: expiry,
     isActive: false,
@@ -53,7 +53,6 @@ async function createAndInviteUser({ name, email, phone, jobTitle, role, orgId, 
     mustChangePassword: true,
     invitedBy,
     invitedAt: new Date(),
-    temporaryPassword: useTemporaryPassword ? TEMP_PWD : null,
   });
 
   const org = await Organization.findById(orgId).select('name').lean();

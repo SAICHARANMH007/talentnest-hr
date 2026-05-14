@@ -72,7 +72,7 @@ app.use(cors({
     if (origin.endsWith('.vercel.app')) return cb(null, true);
     if (origin.endsWith('.railway.app') || origin.endsWith('.up.railway.app')) return cb(null, true);
     if (origin.endsWith('.onrender.com')) return cb(null, true);
-    if (origin.endsWith('talentnesthr.com')) return cb(null, true);
+    if (origin === 'https://talentnesthr.com' || origin === 'https://www.talentnesthr.com') return cb(null, true);
     if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true);
     cb(new Error('CORS: origin not allowed'));
   },
@@ -120,8 +120,8 @@ app.use('/api/', (req, res, next) => {
   if (CSRF_SAFE_METHODS.has(req.method)) return next();
   if (CSRF_EXEMPT_PATHS.has(req.path)) return next();
   if (req.headers['x-requested-with'] === 'TalentNest') return next();
-  // Allow Swagger UI and Postman in development only
-  if (!IS_PROD && (req.headers['user-agent']?.includes('swagger') || req.headers['user-agent']?.includes('PostmanRuntime'))) return next();
+  // Allow requests with dev bypass header (Postman/curl: set X-Dev-Bypass: 1 in non-prod)
+  if (!IS_PROD && req.headers['x-dev-bypass'] === '1') return next();
   return res.status(403).json({ success: false, error: 'CSRF validation failed. Request rejected.' });
 });
 
@@ -817,7 +817,7 @@ const io = new IOServer(httpServer, {
   cors: {
     origin: (origin, cb) => {
       if (!origin || origin.startsWith('http://localhost:')) return cb(null, true);
-      if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.endsWith('talentnesthr.com')) return cb(null, true);
+      if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin === 'https://talentnesthr.com' || origin === 'https://www.talentnesthr.com') return cb(null, true);
       if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true);
       cb(new Error('Socket CORS: origin not allowed'));
     },

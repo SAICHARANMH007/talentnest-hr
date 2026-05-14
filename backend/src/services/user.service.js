@@ -60,14 +60,13 @@ class UserService {
       mustChangePassword: true,
       invitedBy: addedBy,
       invitedAt: new Date(),
-      temporaryPassword: useTemporaryPassword ? TEMP_PWD : null,
       orgName: finalOrgName,
       organisation: finalOrgName,
       ...metadata
     };
 
     if (useTemporaryPassword) {
-      payload.password = bcrypt.hashSync(TEMP_PWD, 12);
+      payload.passwordHash = bcrypt.hashSync(TEMP_PWD, 12);
     }
 
     if (user && user.deletedAt) {

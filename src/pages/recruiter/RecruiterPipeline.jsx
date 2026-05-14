@@ -506,6 +506,7 @@ export default function RecruiterPipeline({ user }) {
   const [stageFilter, setSF] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
+  const [movingAppId, setMovingAppId] = useState(null);
 
   useEffect(() => {
     api.getJobs({ recruiterId: user.id, limit: 100 }).then(j => {
@@ -521,12 +522,6 @@ export default function RecruiterPipeline({ user }) {
   }, [user.id]);
 
   const loadApps = async (jid, pg = 1) => {
-    if (jid !== selJob) {
-      setSelJob(jid);
-      setSelectedIds([]);
-      setSF('all');
-      setPagination(p => ({ ...p, page: 1 }));
-    }
     setAssessmentData(null);
     if (!jid) { setApps([]); return; }
     setLoad(true);
@@ -576,10 +571,18 @@ export default function RecruiterPipeline({ user }) {
     if (newStage === 'rejected') { navigate(`/app/forms/reject?appId=${app.id}`); return; }
     if (newStage === 'interview_scheduled') { navigate(`/app/forms/interview?appId=${app.id}`); return; }
     if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
-    await api.updateStage(app.id, newStage);
-    setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
-    triggerHiredModal(app, app.id, newStage);
-    refresh();
+    if (movingAppId) return; // prevent double-click
+    setMovingAppId(app.id);
+    try {
+      await api.updateStage(app.id, newStage);
+      setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
+      triggerHiredModal(app, app.id, newStage);
+      refresh();
+    } catch (e) {
+      setToast(`❌ Failed to update stage: ${e.message}`);
+    } finally {
+      setMovingAppId(null);
+    }
   };
 
   const setAnyStage = async (app, newStage) => {
@@ -587,10 +590,18 @@ export default function RecruiterPipeline({ user }) {
     if (newStage === 'rejected') { navigate(`/app/forms/reject?appId=${app.id}`); return; }
     if (newStage === 'interview_scheduled') { navigate(`/app/forms/interview?appId=${app.id}`); return; }
     if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
-    await api.updateStage(app.id, newStage);
-    setToast(`✅ Funnel updated → ${SM[newStage]?.label || newStage}`);
-    triggerHiredModal(app, app.id, newStage);
-    refresh();
+    if (movingAppId) return; // prevent double-click
+    setMovingAppId(app.id);
+    try {
+      await api.updateStage(app.id, newStage);
+      setToast(`✅ Funnel updated → ${SM[newStage]?.label || newStage}`);
+      triggerHiredModal(app, app.id, newStage);
+      refresh();
+    } catch (e) {
+      setToast(`❌ Failed to update stage: ${e.message}`);
+    } finally {
+      setMovingAppId(null);
+    }
   };
 
   // Bulk actions
@@ -671,7 +682,7 @@ export default function RecruiterPipeline({ user }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1 }}>
             <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Select Job to View Applicants</label>
-            <select value={selJob} onChange={e => loadApps(e.target.value)} style={inp}>
+            <select value={selJob} onChange={e => { const v = e.target.value; setSelJob(v); setSelectedIds([]); setSF('all'); setPagination(p => ({ ...p, page: 1 })); }} style={inp}>
               <option value="">— Choose a job —</option>
               {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.company} ({j.applicantsCount || 0} applicants)</option>)}
             </select>
@@ -723,9 +734,22 @@ export default function RecruiterPipeline({ user }) {
 
       {!selJob && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#706E6B' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-          <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>Select a job to view applicants</p>
-          <p style={{ fontSize: 13, margin: 0 }}>Choose a job posting above to see all applicants and manage the hiring pipeline.</p>
+          {jobs.length === 0 ? (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🗂️</div>
+              <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px', color: '#0F172A' }}>No jobs assigned yet</p>
+              <p style={{ fontSize: 13, margin: '0 0 20px' }}>You don't have any jobs assigned to you. Ask your admin to assign a job or create one.</p>
+              <button onClick={() => navigate('/app/jobs')} style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                📋 Go to Jobs
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+              <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>Select a job to view applicants</p>
+              <p style={{ fontSize: 13, margin: 0 }}>Choose a job posting above to see all applicants and manage the hiring pipeline.</p>
+            </>
+          )}
         </div>
       )}
 
@@ -803,15 +827,15 @@ export default function RecruiterPipeline({ user }) {
                             onMoveStage={moveStage}
                             onAnyStage={setAnyStage}
                             onViewDetail={setDetApp}
-                            onInterview={setIntApp}
-                            onReject={setRejApp}
+                            onInterview={(a) => navigate(`/app/forms/interview?appId=${a.id}`)}
+                            onReject={(a) => navigate(`/app/forms/reject?appId=${a.id}`)}
                             onPark={handlePark}
-                            onOffer={setOfferApp}
+                            onOffer={(a) => navigate(`/app/forms/offer?appId=${a.id}`)}
                             onToast={setToast}
                             onRefresh={refresh}
                             assessmentId={assessmentData?.id}
                             submission={assessmentData?.submissionsMap?.[String(app.candidate?.id || app.candidate?._id || app.candidateId || '')]}
-                            onReviewAssessment={(aId, subId) => setReviewModal({ assessmentId: aId, submissionId: subId })}
+                            onReviewAssessment={(aId, subId) => navigate(`/app/review/${aId}/${subId}`)}
                           />
                         ))}
                       </div>

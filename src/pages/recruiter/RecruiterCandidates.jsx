@@ -322,7 +322,7 @@ export default function RecruiterCandidates({ user }) {
       try {
         const [cands, myJobs] = await Promise.all([
           api.getUsers('candidate'),
-          api.getJobs(user.id),
+          api.getJobs({ recruiterId: user.id, limit: 200 }),
         ]);
         const rawCands = Array.isArray(cands) ? cands : (Array.isArray(cands?.data) ? cands.data : []);
         // Deduplicate candidates by ID to prevent ghost/duplicate items

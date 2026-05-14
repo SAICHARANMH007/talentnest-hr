@@ -274,7 +274,7 @@ function AssignToJobModal({ count, onClose, onDone }) {
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    api.getJobs({ limit: 10000000 }).then(j => {
+    api.getJobs({ limit: 500, status: 'active' }).then(j => {
       const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
       // Normalize _id → id so toggleJob/checked work correctly with lean() results
       setJobs(arr

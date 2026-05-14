@@ -11,11 +11,12 @@ export const applicationService = {
     return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
   },
   async getApplications(opts = {}) {
-    const { jobId, candidateId, stage, limit = 50, page, recruiterId, platform, startDate, endDate, email } = opts;
+    const { jobId, candidateId, stage, status, limit = 50, page, recruiterId, platform, startDate, endDate, email } = opts;
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);
     if (candidateId) params.set('candidateId', candidateId);
     if (stage)       params.set('stage', stage);
+    if (status)      params.set('status', status);
     if (limit)       params.set('limit', String(limit));
     if (page)        params.set('page', String(page));
     if (recruiterId) params.set('recruiterId', recruiterId);

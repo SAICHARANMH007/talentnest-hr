@@ -13,7 +13,7 @@ import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import ErrorReportBoundary from '../../components/shared/ErrorReportBoundary.jsx';
-import { STAGES as MASTER_STAGES, SM } from '../../constants/stages.js';
+import { STAGES as MASTER_STAGES, SM, DB_TO_FRONTEND_STAGE, FRONTEND_TO_DB_STAGE } from '../../constants/stages.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
 function fmtDate(d) {
@@ -110,19 +110,7 @@ const STAGES      = MASTER_STAGES.map(s => s.id);
 const STAGE_LABELS = Object.fromEntries(MASTER_STAGES.map(s => [s.id, s.label]));
 const STAGE_COLORS = MASTER_STAGES.map(s => s.color);
 
-// Maps DB title-case currentStage values → frontend lowercase stage IDs
-const DB_TO_FRONTEND_STAGE = {
-  'Applied'          : 'applied',
-  'Screening'        : 'screening',
-  'Shortlisted'      : 'shortlisted',
-  'Interview Round 1': 'interview_scheduled',
-  'Interview Round 2': 'interview_completed',
-  'Offer'            : 'offer_extended',
-  'Hired'            : 'selected',
-  'Rejected'         : 'rejected',
-};
-// Reverse map: frontend stage ID → DB title-case stage name (for API queries)
-const FRONTEND_TO_DB_STAGE = Object.fromEntries(Object.entries(DB_TO_FRONTEND_STAGE).map(([k, v]) => [v, k]));
+// DB_TO_FRONTEND_STAGE and FRONTEND_TO_DB_STAGE imported from constants/stages.js
 
 const PERIODS = [
   { label: 'Last 7 days',  days: 7 },
