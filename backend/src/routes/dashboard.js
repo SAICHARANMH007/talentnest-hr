@@ -428,8 +428,9 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
   const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   // Step 1: Get recruiter's assigned jobs (fast — indexed on tenantId+assignedRecruiters)
+  // Select applicationCount (real field name on model; normalizeJob maps it to applicantsCount)
   const myJobs = await Job.find({ tenantId: tid, assignedRecruiters: uid, ...del })
-    .select('_id title company companyName location status applicantsCount urgency')
+    .select('_id title company companyName location status applicationCount urgency')
     .lean();
 
   const jobIds = myJobs.map(j => j._id);
@@ -445,11 +446,17 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
 
   const appFilter = { jobId: { $in: jobIds }, ...del };
 
-  // Step 2: One aggregation for all counts + pipeline breakdown
-  const [pipelineAgg, appsLast30, hiredLast30, recent, interestedInvites] = await Promise.all([
+  // Step 2: All counts in parallel — pipeline, per-job, trends, recent activity
+  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites] = await Promise.all([
+    // Stage breakdown (pipeline funnel)
     Application.aggregate([
       { $match: appFilter },
       { $group: { _id: '$currentStage', count: { $sum: 1 } } },
+    ]),
+    // Per-job application counts (accurate from Application collection, not stale Job.applicationCount)
+    Application.aggregate([
+      { $match: { ...appFilter, status: { $ne: 'withdrawn' } } },
+      { $group: { _id: '$jobId', count: { $sum: 1 } } },
     ]),
     Application.countDocuments({ ...appFilter, createdAt: { $gte: ago30 } }),
     Application.countDocuments({ ...appFilter, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
@@ -461,6 +468,10 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       .lean(),
     Application.countDocuments({ jobId: { $in: jobIds }, inviteStatus: 'interested', ...del }),
   ]);
+
+  // Build per-job count map
+  const perJobMap = {};
+  perJobAgg.forEach(r => { perJobMap[String(r._id)] = r.count; });
 
   // Build pipeline map
   const pipeline = {};
@@ -486,7 +497,12 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
     interestedInvites,
     pipeline,
     recent,
-    jobs            : myJobs,
+    // Normalise job objects: add applicantsCount (frontend name) from real aggregation
+    jobs: myJobs.map(j => ({
+      ...j,
+      id            : j._id.toString(),
+      applicantsCount: perJobMap[j._id.toString()] ?? j.applicationCount ?? 0,
+    })),
   }});
 }));
 

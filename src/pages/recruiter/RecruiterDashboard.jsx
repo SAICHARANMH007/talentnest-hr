@@ -120,22 +120,28 @@ export default function RecruiterDashboard({ user }) {
     { label:'Rejected',    value: pipelineMap['Rejected']            || 0, color:'#BA0517', stageKey:'rejected' },
   ];
 
-  // Job performance — jobs come from stats.jobs (already scoped to this recruiter)
+  // Job performance — jobs come from stats.jobs with accurate applicantsCount from aggregation
   const jobPerf = jobs.map(j => ({
     ...j,
-    id: j.id || j._id?.toString(),
+    id  : j.id || j._id?.toString(),
     apps: j.applicantsCount || 0,
-    shortlisted: 0, interviewed: 0, hired: 0, conv: 0,
+    // shortlisted/hired counts not available without loading all apps — show from pipeline totals as proxy
+    shortlisted: 0, interviewed: 0,
+    hired: 0,
+    conv: j.applicantsCount > 0 ? Math.round((hired / totalApplicants) * 100) : 0,
   }));
 
-  // Bar chart: applications per job
-  const appsPerJob = jobs.slice(0, 12).map(j => ({
-    label: j.title?.split(' ')[0] || 'Job',
-    value: j.applicantsCount || 0,
-    color: '#0176D3',
-    jobId: String(j.id || j._id),
-    jobTitle: j.title,
-  }));
+  // Bar chart: only include jobs that have at least 1 application
+  const appsPerJob = jobs
+    .filter(j => (j.applicantsCount || 0) > 0)
+    .slice(0, 12)
+    .map(j => ({
+      label  : (j.title || 'Job').split(' ').slice(0, 2).join(' '),
+      value  : j.applicantsCount || 0,
+      color  : '#0176D3',
+      jobId  : String(j.id || j._id),
+      jobTitle: j.title,
+    }));
 
   // Drill-downs navigate to pipeline with filter — no need to load all records
   const openJobDrill = (bar) => { navigate(`/app/pipeline?job=${bar.jobId}`); };
@@ -179,10 +185,25 @@ export default function RecruiterDashboard({ user }) {
           <AreaChart data={[]} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle={`${sd.appsLast30 || 0} new in last 30 days`} />
         </div>
         <div style={{ ...card }}>
-          <VertBarChart data={appsPerJob} defaultColor="#0176D3" height={150} title="💼 Applications by Job" subtitle="Click bar to drill down" onItemClick={openJobDrill} />
+          {appsPerJob.length > 0 ? (
+            <VertBarChart data={appsPerJob} defaultColor="#0176D3" height={150} title="💼 Applications by Job" subtitle="Click a bar to view pipeline for that job" onItemClick={openJobDrill} />
+          ) : (
+            <div style={{ textAlign:'center', padding:'20px 0' }}>
+              <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1, marginBottom:8 }}>💼 APPLICATIONS BY JOB</div>
+              <p style={{ color:'#9E9D9B', fontSize:12, margin:'0 0 10px' }}>{jobs.length === 0 ? 'No jobs assigned yet.' : 'No applications received yet.'}</p>
+              <button onClick={() => navigate(jobs.length === 0 ? '/app/jobs' : '/app/pipeline')} style={{ ...btnG, padding:'6px 14px', fontSize:12 }}>{jobs.length === 0 ? 'View Jobs →' : 'Open Pipeline →'}</button>
+            </div>
+          )}
         </div>
         <div style={{ ...card }}>
-          <DonutChart segments={stageDonut} size={120} title="🔄 Stage Breakdown" centerValue={totalApplicants} centerLabel="total" onItemClick={openStageDrill} />
+          {totalApplicants > 0 ? (
+            <DonutChart segments={stageDonut.filter(sg => sg.value > 0)} size={120} title="🔄 Stage Breakdown" centerValue={totalApplicants} centerLabel="total" onItemClick={openStageDrill} />
+          ) : (
+            <div style={{ textAlign:'center', padding:'20px 0' }}>
+              <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1, marginBottom:8 }}>🔄 STAGE BREAKDOWN</div>
+              <p style={{ color:'#9E9D9B', fontSize:12, margin:0 }}>No applicants in pipeline yet.</p>
+            </div>
+          )}
         </div>
       </div>
 
