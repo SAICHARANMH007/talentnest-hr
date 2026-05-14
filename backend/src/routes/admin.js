@@ -14,7 +14,7 @@ const { tenantGuard }    = require('../middleware/tenantGuard');
 const { evaluateWorkflows } = require('../services/workflowEngine');
 const { generateInviteToken, hashToken, getInviteExpiry } = require('../utils/inviteToken');
 const templates                             = require('../utils/emailTemplates');
-const { sendEmailWithRetry }                = require('../utils/email');
+const { sendEmailWithRetry, sendOrgEmail }  = require('../utils/email');
 const asyncHandler                          = require('../utils/asyncHandler');
 const AppError                              = require('../utils/AppError');
 const logger                                = require('../middleware/logger');
@@ -61,14 +61,15 @@ async function createAndInviteUser({ name, email, phone, jobTitle, role, orgId, 
 
   if (useTemporaryPassword) {
     const tpl = templates.tempPassword(name.trim(), cleanEmail, TEMP_PWD, emailOpts);
-    sendEmailWithRetry(cleanEmail, tpl.subject, tpl.html).catch(err =>
+    // sendOrgEmail uses the org's own Resend/SMTP config if configured, else platform default
+    sendOrgEmail(cleanEmail, tpl.subject, tpl.html, orgId).catch(err =>
       logger.error('Temp-password email failed', { to: cleanEmail, err: err.message })
     );
   } else {
     const inviterUser = await User.findById(invitedBy).select('name').lean();
     const link = buildInviteLink(rawToken, cleanEmail);
     const tpl  = templates.invite(name.trim(), role, orgName, link, inviterUser?.name || 'TalentNest Admin', emailOpts);
-    sendEmailWithRetry(cleanEmail, tpl.subject, tpl.html).catch(err =>
+    sendOrgEmail(cleanEmail, tpl.subject, tpl.html, orgId).catch(err =>
       logger.error('Invite email failed', { to: cleanEmail, err: err.message })
     );
   }
@@ -126,7 +127,7 @@ router.post('/resend-invite', authenticate, allowRoles('super_admin', 'admin'), 
   const link        = buildInviteLink(rawToken, user.email);
   const tpl         = templates.invite(user.name, user.role, org?.name || 'TalentNest HR', link, inviterUser?.name || 'TalentNest Admin', { orgId: user.orgId?.toString(), orgName: org?.name });
 
-  sendEmailWithRetry(user.email, tpl.subject, tpl.html).catch(err =>
+  sendOrgEmail(user.email, tpl.subject, tpl.html, user.orgId).catch(err =>
     logger.error('Resend invite email failed', { to: user.email, err: err.message })
   );
 

@@ -77,19 +77,21 @@ router.post('/test-smtp', authMiddleware, emailLimiter, async (req, res) => {
       const resolvedKey = apiKey || process.env.RESEND_API_KEY;
       if (!resolvedKey) return res.status(400).json({ success: false, error: 'No Resend API key configured. Add RESEND_API_KEY to server env or enter your own key.' });
       const fromEmail = user || FROM_EMAIL;
+      // Use the org's configured fromName so the test email arrives with their branding
+      const fromName  = req.body.fromName || 'TalentNest HR';
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${resolvedKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: `TalentNest HR <${fromEmail}>`,
-          to: [fromEmail],
-          subject: 'TalentNest HR — Email Connection Test',
-          html: '<p>Your Resend connection is working! Invite emails will now send reliably.</p>',
+          from   : `${fromName} <${fromEmail}>`,
+          to     : [fromEmail],
+          subject: `${fromName} — Email Connection Test`,
+          html   : `<p>Your email connection is working! Emails from your organisation will now appear as <strong>${fromName} &lt;${fromEmail}&gt;</strong>.</p>`,
         }),
       });
       const d = await r.json();
       if (!r.ok) return res.status(400).json({ success: false, error: d.message || JSON.stringify(d) });
-      return res.json({ success: true, message: 'Test email sent via Resend!' });
+      return res.json({ success: true, message: `Test email sent from "${fromName}" via Resend!` });
     }
 
     // ── SMTP test ─────────────────────────────────────────────────────────────
@@ -101,10 +103,11 @@ router.post('/test-smtp', authMiddleware, emailLimiter, async (req, res) => {
       tls: { rejectUnauthorized: false },
       connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 8000,
     });
+    const smtpFromName = req.body.fromName || 'TalentNest HR';
     await transporter.sendMail({
-      from: `"TalentNest HR" <${user}>`, to: user,
-      subject: 'TalentNest HR — Email Connection Test',
-      html: '<p>Your email connection is working correctly!</p>',
+      from: `"${smtpFromName}" <${user}>`, to: user,
+      subject: `${smtpFromName} — Email Connection Test`,
+      html: `<p>Your SMTP connection is working! Emails will appear from <strong>${smtpFromName} &lt;${user}&gt;</strong>.</p>`,
     });
     res.json({ success: true, message: 'Test email sent successfully.' });
   } catch (e) {

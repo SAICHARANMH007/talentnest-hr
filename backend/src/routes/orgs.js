@@ -294,6 +294,11 @@ router.patch('/:id', auth, async (req, res) => {
       }
     }
 
+    // Clear cached email config so the next email uses the newly saved settings
+    if (updates.settings?.emailSettings) {
+      try { require('../utils/email').clearOrgEmailCache(org._id); } catch {}
+    }
+
     logger.audit('Organization updated', req.user.id, org._id, { updates: Object.keys(updates) });
     res.json(normalize(org));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }

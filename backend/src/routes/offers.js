@@ -245,7 +245,7 @@ router.post('/:id/send', ...guard,
       </div>`;
 
     if (candidate?.email) {
-      await email.sendEmailWithRetry(candidate.email, `Offer Letter — ${job?.title || 'Position'} | ${d.companyName || 'TalentNest HR'}`, html).catch(() => {});
+      await email.sendOrgEmail(candidate.email, `Offer Letter — ${job?.title || 'Position'} | ${d.companyName || 'TalentNest HR'}`, html, req.user.tenantId).catch(() => {});
     }
 
     offer.status = 'sent';
@@ -309,7 +309,7 @@ router.post('/:id/sign', authMiddleware, asyncHandler(async (req, res) => {
   // Email signed copy to candidate
   if (candidate?.email) {
     const html = `<p>Dear ${candidate.name?.split(' ')[0] || 'there'},</p><p>Your offer letter has been signed successfully. Your signed copy is attached.</p><p>Welcome to the team! 🎉</p>`;
-    email.sendEmailWithRetry(candidate.email, `Signed Offer Letter — ${offer.templateData?.designation || 'Your Position'}`, html).catch(() => {});
+    email.sendOrgEmail(candidate.email, `Signed Offer Letter — ${offer.templateData?.designation || 'Your Position'}`, html, offer.tenantId).catch(() => {});
   }
 
   // Push notification to recruiter that offer was signed

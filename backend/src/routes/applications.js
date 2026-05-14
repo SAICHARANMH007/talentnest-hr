@@ -585,7 +585,7 @@ router.post('/invite', ...guard,
         message,
       });
       if (tpl) {
-        email.sendEmailWithRetry(candidate.email, tpl.subject, tpl.html).catch(e => console.warn("[Email] stage-change:", e.message));
+        email.sendOrgEmail(candidate.email, tpl.subject, tpl.html, app.tenantId).catch(e => console.warn("[Email] stage-change:", e.message));
       }
     }
 
@@ -1260,13 +1260,13 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     ? [{ filename: 'interview-invite.ics', content: Buffer.from(icalContent).toString('base64') }]
     : undefined;
 
-  // Send calendar invite to candidate
+  // Send calendar invite to candidate — uses org's email config if set
   if (candidate?.email) {
-    email.sendEmailWithRetry?.(candidate.email, `Interview Scheduled — ${job?.title || 'Position'} | ${orgName}`, inviteHtml, icalAttachment).catch(e => console.warn("[Email] candidate:", e.message));
+    email.sendOrgEmail(candidate.email, `Interview Scheduled — ${job?.title || 'Position'} | ${orgName}`, inviteHtml, req.user.tenantId, icalAttachment).catch(e => console.warn("[Email] candidate:", e.message));
   }
   // Send calendar invite to interviewer
   if (interviewerEmail) {
-    email.sendEmailWithRetry?.(interviewerEmail, `Interview Scheduled — ${candidate?.name || 'Candidate'} | ${job?.title || 'Position'}`, inviteHtml, icalAttachment).catch(e => console.warn("[Email] interviewer:", e.message));
+    email.sendOrgEmail(interviewerEmail, `Interview Scheduled — ${candidate?.name || 'Candidate'} | ${job?.title || 'Position'}`, inviteHtml, req.user.tenantId, icalAttachment).catch(e => console.warn("[Email] interviewer:", e.message));
   }
 
   // Backfill job/candidate names into the video room if we just created it

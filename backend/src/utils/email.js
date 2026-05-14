@@ -1,33 +1,119 @@
 'use strict';
-const logger = require('../middleware/logger');
+const logger     = require('../middleware/logger');
+const nodemailer = require('nodemailer');
 
-// attachments: [{ filename: string, content: string (base64) }]
-async function sendViaResend(to, subject, html, attachments) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM || 'hr@talentnesthr.com';
+// ── In-process org email config cache (5 min TTL) ────────────────────────────
+// Prevents a DB lookup on every single email. Safe because org email settings
+// change rarely. Cache is cleared on restart (acceptable for email config).
+const _orgConfigCache = new Map();
+const ORG_CACHE_TTL   = 5 * 60 * 1000;
+
+async function getOrgEmailConfig(tenantId) {
+  if (!tenantId) return null;
+  const tid    = String(tenantId);
+  const cached = _orgConfigCache.get(tid);
+  if (cached && Date.now() - cached.at < ORG_CACHE_TTL) return cached.cfg;
+  try {
+    // Lazy-require avoids circular dependency issues at module load time
+    const Organization = require('../models/Organization');
+    const org = await Organization.findById(tid).select('name settings').lean();
+    const es  = org?.settings?.emailSettings;
+    // Only treat as configured if the org actually set an API key or SMTP credentials
+    const hasKey = es?.apiKey && es.apiKey.trim().length > 8;
+    const cfg = hasKey ? { ...es, orgName: org.name } : null;
+    _orgConfigCache.set(tid, { cfg, at: Date.now() });
+    return cfg;
+  } catch { return null; }
+}
+
+// Clear a single org's cache entry (call after saving email settings)
+function clearOrgEmailCache(tenantId) {
+  if (tenantId) _orgConfigCache.delete(String(tenantId));
+}
+
+// ── Core send via Resend ──────────────────────────────────────────────────────
+async function sendViaResend(to, subject, html, attachments, orgConfig) {
+  const apiKey    = orgConfig?.apiKey   || process.env.RESEND_API_KEY;
+  const fromEmail = orgConfig?.fromEmail || process.env.RESEND_FROM || 'hr@talentnesthr.com';
+  const fromName  = orgConfig?.fromName  || orgConfig?.orgName || 'TalentNest HR';
+
   if (!apiKey) {
     console.log(`[Email DEV] To: ${to} | Subject: ${subject}`);
     return { id: 'dev-mode' };
   }
-  const body = { from: `TalentNest HR <${from}>`, to: Array.isArray(to) ? to : [to], subject, html };
+
+  const body = {
+    from   : `${fromName} <${fromEmail}>`,
+    to     : Array.isArray(to) ? to : [to],
+    subject,
+    html,
+  };
   if (attachments && attachments.length) body.attachments = attachments;
+
   const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
+    method : 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body   : JSON.stringify(body),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.message || JSON.stringify(d));
   return { id: d.id };
 }
 
-// attachments: [{ filename: string, content: string (base64) }]
-const sendEmailWithRetry = async (to, subject, html, attachments, maxRetries = 3) => {
-  // Support legacy callers that pass (to, subject, html, maxRetries)
+// ── Core send via SMTP (nodemailer) ───────────────────────────────────────────
+async function sendViaSmtp(to, subject, html, attachments, orgConfig) {
+  if (!orgConfig?.smtpHost || !orgConfig?.fromEmail || !orgConfig?.apiKey) {
+    throw new Error('SMTP config incomplete — smtpHost, fromEmail, and API Key / App Password are required.');
+  }
+  const fromName = orgConfig.fromName || orgConfig.orgName || 'TalentNest HR';
+  const transporter = nodemailer.createTransport({
+    host  : orgConfig.smtpHost,
+    port  : parseInt(orgConfig.smtpPort || '587', 10),
+    secure: parseInt(orgConfig.smtpPort, 10) === 465,
+    auth  : { user: orgConfig.fromEmail, pass: orgConfig.apiKey },
+    tls   : { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout  : 8000,
+    socketTimeout    : 10000,
+  });
+
+  const mailOptions = {
+    from   : `"${fromName}" <${orgConfig.fromEmail}>`,
+    to     : Array.isArray(to) ? to.join(',') : to,
+    subject,
+    html,
+  };
+  if (attachments && attachments.length) {
+    mailOptions.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content : Buffer.from(a.content, 'base64'),
+    }));
+  }
+  await transporter.sendMail(mailOptions);
+  return { id: `smtp-${Date.now()}` };
+}
+
+// ── Unified dispatcher — picks Resend or SMTP based on org config ─────────────
+async function sendWithConfig(to, subject, html, attachments, orgConfig) {
+  const provider = orgConfig?.provider || 'resend';
+  if (orgConfig && provider !== 'resend' && orgConfig.smtpHost) {
+    return sendViaSmtp(to, subject, html, attachments, orgConfig);
+  }
+  return sendViaResend(to, subject, html, attachments, orgConfig);
+}
+
+// ── sendEmailWithRetry — drop-in replacement, backward-compatible ─────────────
+// Existing callers: sendEmailWithRetry(to, subject, html)
+//                   sendEmailWithRetry(to, subject, html, maxRetries)
+//                   sendEmailWithRetry(to, subject, html, attachments, maxRetries)
+// New callers:      sendEmailWithRetry(to, subject, html, attachments, maxRetries, orgConfig)
+const sendEmailWithRetry = async (to, subject, html, attachments, maxRetries = 3, orgConfig = null) => {
+  // Legacy: (to, subject, html, maxRetries) — 4th param is number
   if (typeof attachments === 'number') { maxRetries = attachments; attachments = undefined; }
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const result = await sendViaResend(to, subject, html, attachments);
+      const result = await sendWithConfig(to, subject, html, attachments, orgConfig);
       logger.info(`Email sent to ${to}`, { subject, attempt });
       return result;
     } catch (err) {
@@ -41,43 +127,48 @@ const sendEmailWithRetry = async (to, subject, html, attachments, maxRetries = 3
   }
 };
 
-const templates = require('./emailTemplates');
+// ── sendOrgEmail — convenience wrapper that auto-fetches org email config ─────
+// Use this in routes where you have tenantId and want org-branded emails.
+// Falls back to platform default if the org hasn't configured their own settings.
+const sendOrgEmail = async (to, subject, html, tenantId, attachments) => {
+  const orgConfig = tenantId ? await getOrgEmailConfig(tenantId) : null;
+  return sendEmailWithRetry(to, subject, html, attachments, 3, orgConfig);
+};
 
-async function sendBatchViaResend(emails) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM || 'hr@talentnesthr.com';
-  
+// ── Batch send via Resend ─────────────────────────────────────────────────────
+async function sendBatchViaResend(emails, orgConfig) {
+  const apiKey    = orgConfig?.apiKey    || process.env.RESEND_API_KEY;
+  const fromEmail = orgConfig?.fromEmail || process.env.RESEND_FROM || 'hr@talentnesthr.com';
+  const fromName  = orgConfig?.fromName  || orgConfig?.orgName || 'TalentNest HR';
+
   if (!apiKey) {
     console.log(`[Email DEV] Batch sending ${emails.length} emails`);
     return { data: emails.map((_, i) => ({ id: `dev-mode-${i}` })) };
   }
 
-  // Map to Resend batch format
   const body = emails.map(e => ({
-    from: `TalentNest HR <${from}>`,
-    to: Array.isArray(e.to) ? e.to : [e.to],
+    from   : `${fromName} <${fromEmail}>`,
+    to     : Array.isArray(e.to) ? e.to : [e.to],
     subject: e.subject,
-    html: e.html,
-    ...(e.attachments && e.attachments.length ? { attachments: e.attachments } : {})
+    html   : e.html,
+    ...(e.attachments && e.attachments.length ? { attachments: e.attachments } : {}),
   }));
 
   const r = await fetch('https://api.resend.com/emails/batch', {
-    method: 'POST',
+    method : 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body   : JSON.stringify(body),
   });
-  
   const d = await r.json();
   if (!r.ok) throw new Error(d.message || JSON.stringify(d));
   return d;
 }
 
-const sendBatchEmailWithRetry = async (emails, maxRetries = 3) => {
+const sendBatchEmailWithRetry = async (emails, maxRetries = 3, orgConfig = null) => {
   if (!emails || !emails.length) return { data: [] };
-  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const result = await sendBatchViaResend(emails);
+      const result = await sendBatchViaResend(emails, orgConfig);
       logger.info(`Batch email sent to ${emails.length} recipients`, { attempt });
       return result;
     } catch (err) {
@@ -91,4 +182,13 @@ const sendBatchEmailWithRetry = async (emails, maxRetries = 3) => {
   }
 };
 
-module.exports = { sendEmailWithRetry, sendBatchEmailWithRetry, templates };
+const templates = require('./emailTemplates');
+
+module.exports = {
+  sendEmailWithRetry,
+  sendBatchEmailWithRetry,
+  sendOrgEmail,
+  getOrgEmailConfig,
+  clearOrgEmailCache,
+  templates,
+};

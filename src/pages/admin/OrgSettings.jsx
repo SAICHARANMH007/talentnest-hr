@@ -132,8 +132,8 @@ export default function OrgSettings({ user }) {
     if (!emailForm.fromEmail) { setError('Enter a From Email first'); return; }
     setTestingEmail(true);
     try {
-      await api.testSmtp(emailForm.smtpHost, emailForm.smtpPort, emailForm.fromEmail, emailForm.apiKey, emailForm.provider, emailForm.apiKey);
-      setSuccess('Test email sent! Check your inbox.');
+      await api.testSmtp(emailForm.smtpHost, emailForm.smtpPort, emailForm.fromEmail, emailForm.apiKey, emailForm.provider, emailForm.apiKey, emailForm.fromName);
+      setSuccess(`Test email sent from "${emailForm.fromName || 'TalentNest HR'}"! Check your inbox.`);
       setTimeout(() => setSuccess(''), 4000);
     } catch (e) { setError('Test failed: ' + e.message); }
     setTestingEmail(false);
