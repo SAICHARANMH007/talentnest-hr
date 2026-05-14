@@ -55,8 +55,9 @@ export default function CareerListingModal({ org, user, onClose }) {
   const activeOrg = isSuperAdminSelect ? selectedOrg : org;
   const orgSlug   = resolvedSlug || activeOrg?.slug || '';
   const careerUrl = orgSlug ? `${SITE_URL}/${orgSlug}/careers` : '';
+  // Modern JS widget embed — replaces outdated iframe
   const embedCode = orgSlug
-    ? `<iframe\n  src="${SITE_URL}/${orgSlug}/careers?embed=1"\n  width="100%"\n  height="820"\n  frameborder="0"\n  style="border:none;border-radius:12px;"\n  allow="*"\n></iframe>`
+    ? `<!-- TalentNest Career Widget -->\n<div id="tn-careers-widget" data-org="${orgSlug}"></div>\n<script>\n(function(){\n  var d=document,s=d.createElement('script');\n  s.src='${SITE_URL}/widget.js';\n  s.setAttribute('data-org','${orgSlug}');\n  s.setAttribute('data-container','tn-careers-widget');\n  s.setAttribute('data-theme','light');\n  s.async=true;\n  d.head.appendChild(s);\n})();\n</script>`
     : '';
 
   // When super admin switches org, update slug
@@ -187,7 +188,7 @@ export default function CareerListingModal({ org, user, onClose }) {
         {careerUrl && (
           <details style={{ marginTop: 12 }}>
             <summary style={{ fontSize: 11, color: '#64748B', cursor: 'pointer', fontWeight: 700, padding: '4px 0' }}>
-              <span style={{ color: '#0176D3' }}>📦</span> Developer Settings: Website Embed (iFrame)
+              <span style={{ color: '#0176D3' }}>⚡</span> Embed on Your Website — JavaScript Widget
             </summary>
             <div style={{ marginTop: 8, background: '#0F172A', borderRadius: 12, padding: '14px', position: 'relative', border: '1px solid #334155' }}>
               <pre style={{ color: '#7DD3FC', fontSize: 10, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>{embedCode}</pre>

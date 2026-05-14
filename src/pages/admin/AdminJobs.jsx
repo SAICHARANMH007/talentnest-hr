@@ -690,7 +690,11 @@ export default function AdminJobs({ user }) {
                     </p>
                     <div style={{ marginBottom:20 }}>
                        <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }}>Select Recruiter</label>
-                       <select id="assign-recruiter-sel" defaultValue={assigningJob.recruiterId || ''} style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, outline:'none', boxSizing:'border-box', background:'#F8FAFF' }}>
+                       <select
+                         value={assigningJob._selectedRecruiter || ''}
+                         onChange={e => setAssigningJob(prev => ({ ...prev, _selectedRecruiter: e.target.value }))}
+                         style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'1.5px solid #E2E8F0', fontSize:14, outline:'none', boxSizing:'border-box', background:'#F8FAFF' }}
+                       >
                          <option value="">— Select recruiter —</option>
                          {recruiterUsers.map(r => <option key={r.id} value={r.id}>{r.name} ({r.email})</option>)}
                        </select>
@@ -739,14 +743,20 @@ export default function AdminJobs({ user }) {
                 {assignTab === 'recruiter' ? (
                   <div style={{ display:'flex', gap:10 }}>
                     <button disabled={assigningLoading} onClick={async () => {
-                      const sel = document.getElementById('assign-recruiter-sel').value;
+                      const sel = assigningJob._selectedRecruiter || '';
                       if (!sel) return setToast('❌ Please select a recruiter');
                       setAssigningLoading(true);
-                      try { await api.assignRecruiterToJob(assigningJob.id, sel); setToast('✅ Recruiter assigned!'); load(); setAssigningJob(null); }
+                      try {
+                        await api.assignRecruiterToJob(assigningJob.id, sel);
+                        const recruiter = recruiterUsers.find(r => r.id === sel);
+                        setToast(`✅ ${recruiter?.name || 'Recruiter'} assigned to "${assigningJob.title}" — they will see this job immediately.`);
+                        load();
+                        setAssigningJob(null);
+                      }
                       catch (e) { setToast('❌ ' + e.message); }
                       setAssigningLoading(false);
                     }} style={{ ...btnP, flex:1, height:48, fontSize:14, justifyContent:'center', background:'linear-gradient(135deg,#032D60,#0176D3)', opacity: assigningLoading ? 0.7 : 1 }}>
-                      {assigningLoading ? '⚙️ Saving…' : '✓ Confirm Recruiter'}
+                      {assigningLoading ? '⚙️ Saving…' : '✓ Assign Recruiter to Job'}
                     </button>
                     <button onClick={() => setAssigningJob(null)} style={{ ...btnG, flex:1, height:48, fontSize:14, justifyContent:'center' }}>Cancel</button>
                   </div>

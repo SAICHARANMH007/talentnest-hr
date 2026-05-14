@@ -3,6 +3,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
@@ -50,26 +51,48 @@ function SearchPanel({ onSearch, loading }) {
 }
 
 // ── Candidate card ──────────────────────────────────────────────────────────
-function CandCard({ cand, selected, onToggle, matchScore }) {
+function CandCard({ cand, selected, onToggle, matchScore, onViewProfile, onPark, showActions = false }) {
   const isSelected = selected.has(String(cand._id || cand.id));
   return (
-    <div onClick={() => onToggle(String(cand._id || cand.id))}
-      style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${isSelected?'#1B4FD8':'#E2E8F0'}`, background:isSelected?'rgba(27,79,216,0.06)':'#fff', cursor:'pointer', marginBottom:8, transition:'all 0.15s' }}>
-      <div style={{ width:36, height:36, borderRadius:10, background: matchScore ? 'linear-gradient(135deg,#1B4FD8,#3B7FE8)' : '#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: matchScore?'#fff':'#706E6B', flexShrink:0 }}>
-        {(cand.name||'?')[0].toUpperCase()}
-      </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-          <div style={{ fontWeight:700, fontSize:13, color:'#0A1628' }}>{cand.name||'—'}</div>
-          {matchScore && <span style={{ background:'rgba(27,79,216,0.1)', color:'#1B4FD8', fontSize:10, fontWeight:800, padding:'2px 7px', borderRadius:20 }}>{matchScore}% match</span>}
-          {isSelected && <span style={{ color:'#1B4FD8', fontSize:16 }}>✓</span>}
+    <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${isSelected?'#1B4FD8':'#E2E8F0'}`, background:isSelected?'rgba(27,79,216,0.06)':'#fff', marginBottom:8, transition:'all 0.15s' }}>
+      <div onClick={() => onToggle(String(cand._id || cand.id))} style={{ cursor:'pointer', display:'flex', alignItems:'flex-start', gap:10, flex:1, minWidth:0 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background: matchScore ? 'linear-gradient(135deg,#1B4FD8,#3B7FE8)' : '#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: matchScore?'#fff':'#706E6B', flexShrink:0 }}>
+          {(cand.name||'?')[0].toUpperCase()}
         </div>
-        <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{cand.title||''}{cand.currentCompany?` · ${cand.currentCompany}`:''}</div>
-        <div style={{ color:'#94A3B8', fontSize:11, marginTop:2 }}>{cand.location||''}{cand.noticePeriod?` · ${cand.noticePeriod}`:''}  </div>
-        {Array.isArray(cand.skills) && cand.skills.length>0 && (
-          <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginTop:4 }}>
-            {cand.skills.slice(0,4).map(s=><span key={s} style={{ background:'rgba(27,79,216,0.07)', color:'#1B4FD8', fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:20 }}>{s}</span>)}
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:6 }}>
+            <div style={{ fontWeight:700, fontSize:13, color:'#0A1628' }}>{cand.name||'—'}</div>
+            <div style={{ display:'flex', gap:4, alignItems:'center', flexShrink:0 }}>
+              {matchScore && <span style={{ background:'rgba(27,79,216,0.1)', color:'#1B4FD8', fontSize:10, fontWeight:800, padding:'2px 7px', borderRadius:20 }}>{matchScore}% match</span>}
+              {isSelected && <span style={{ color:'#1B4FD8', fontSize:16 }}>✓</span>}
+            </div>
           </div>
+          <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{cand.title||''}{cand.currentCompany?` · ${cand.currentCompany}`:''}</div>
+          <div style={{ color:'#94A3B8', fontSize:11, marginTop:2 }}>
+            {cand.location||''}{cand.noticePeriod?` · ${cand.noticePeriod}`:''}{cand.expectedCTC?` · ${cand.expectedCTC} Expected`:''}
+          </div>
+          {Array.isArray(cand.skills) && cand.skills.length>0 && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginTop:4 }}>
+              {cand.skills.slice(0,5).map(s=><span key={s} style={{ background:'rgba(27,79,216,0.07)', color:'#1B4FD8', fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:20 }}>{s}</span>)}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Action buttons */}
+      <div style={{ display:'flex', gap:6, flexShrink:0, alignItems:'center' }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onViewProfile?.(cand); }}
+          title="View full profile"
+          style={{ background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.2)', borderRadius:8, color:'#0176D3', fontSize:10, fontWeight:700, padding:'5px 10px', cursor:'pointer' }}>
+          👤 Profile
+        </button>
+        {showActions && onPark && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onPark?.(cand); }}
+            title="Park this candidate"
+            style={{ background:'#fff', border:'1.5px solid #F59E0B', borderRadius:8, color:'#F59E0B', fontSize:10, fontWeight:800, padding:'5px 10px', cursor:'pointer' }}>
+            🅿️ Park
+          </button>
         )}
       </div>
     </div>
@@ -88,9 +111,26 @@ function DetailPage({ request, onClose, onSaved }) {
   const [newStatus,   setNewStatus]  = useState(request.status);
   const [toast,       setToast]      = useState('');
   const [busy,        setBusy]       = useState('');
+  const [profileUser, setProfileUser] = useState(null); // candidate to view in drawer
 
-  // Already-attached candidates (populated objects from the request)
-  const attached = Array.isArray(request.submittedCandidates) ? request.submittedCandidates : [];
+  // Deduplicate already-attached candidates by ID — prevent duplicates in display
+  const rawAttached = Array.isArray(request.submittedCandidates) ? request.submittedCandidates : [];
+  const attachedMap = new Map();
+  rawAttached.forEach(c => {
+    const id = String(c._id || c.id || c);
+    if (!attachedMap.has(id)) attachedMap.set(id, c);
+  });
+  const attached = Array.from(attachedMap.values());
+
+  const handlePark = async (cand) => {
+    try {
+      const appsRes = await api.getApplications({ candidateId: cand._id || cand.id, limit: 10 });
+      const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.data || []);
+      if (apps.length === 0) { setToast('⚠️ No active application found to park.'); return; }
+      await api.parkApplication(apps[0].id || apps[0]._id);
+      setToast(`🅿️ ${cand.name} moved to Talent Pool`);
+    } catch (e) { setToast(`❌ ${e.message}`); }
+  };
 
   useEffect(() => {
     setBusy('suggested');
@@ -145,6 +185,14 @@ function DetailPage({ request, onClose, onSaved }) {
   return (
     <div style={{ fontFamily:ff, animation:'tn-fadein 0.2s ease both' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
+      {profileUser && (
+        <UserDetailDrawer
+          user={profileUser}
+          isSuperAdmin={true}
+          onClose={() => setProfileUser(null)}
+          onUpdated={() => setProfileUser(null)}
+        />
+      )}
 
       {/* Back + title */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, flexWrap:'wrap' }}>
@@ -222,7 +270,19 @@ function DetailPage({ request, onClose, onSaved }) {
                       </div>
                     )}
                   </div>
-                  <span style={{ fontSize:10, fontWeight:700, color:'#059669', background:'rgba(16,185,129,0.1)', padding:'3px 10px', borderRadius:20, flexShrink:0 }}>✓ Attached</span>
+                  <div style={{ display:'flex', gap:6, flexShrink:0, alignItems:'center' }}>
+                    <button
+                      onClick={() => setProfileUser(c)}
+                      style={{ background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.2)', borderRadius:8, color:'#0176D3', fontSize:10, fontWeight:700, padding:'5px 10px', cursor:'pointer' }}>
+                      👤 Profile
+                    </button>
+                    <button
+                      onClick={() => handlePark(c)}
+                      style={{ background:'#fff', border:'1.5px solid #F59E0B', borderRadius:8, color:'#F59E0B', fontSize:10, fontWeight:800, padding:'5px 10px', cursor:'pointer' }}>
+                      🅿️ Park
+                    </button>
+                    <span style={{ fontSize:10, fontWeight:700, color:'#059669', background:'rgba(16,185,129,0.1)', padding:'3px 10px', borderRadius:20 }}>✓ Attached</span>
+                  </div>
                 </div>
               );
             })}
@@ -255,7 +315,7 @@ function DetailPage({ request, onClose, onSaved }) {
           </div>
         )}
         {suggested.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(
-          <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} matchScore={c.matchScore} />
+          <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} matchScore={c.matchScore} onViewProfile={setProfileUser} />
         ))}
 
         {/* Search */}
@@ -266,7 +326,7 @@ function DetailPage({ request, onClose, onSaved }) {
             <div>
               <div style={{ fontWeight:700, fontSize:13, color:'#374151', marginBottom:10 }}>Search Results ({searched.length})</div>
               {searched.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(
-                <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} />
+                <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} onViewProfile={setProfileUser} />
               ))}
             </div>
           )}
