@@ -335,13 +335,13 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
       title={`Apply — ${job.title} @ ${job.company || job.companyName || orgName || 'TalentNest HR'}`}
       onClose={onClose}
       footer={
-        <div style={{ display: 'flex', gap: 10, width: '100%', flexDirection: window.innerWidth < 480 ? 'column' : 'row' }}>
-          <button onClick={submit} disabled={submitting} className="btn btn-primary" style={{ flex: 2, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15, order: window.innerWidth < 480 ? 1 : 2 }}>
+        <div className="tn-apply-footer-btns" style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap' }}>
+          <button onClick={submit} disabled={submitting} className="btn btn-primary tn-apply-submit" style={{ flex: 2, minWidth: 160, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15 }}>
             {submitting
               ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
               : '🚀 Submit Application'}
           </button>
-          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minHeight: 48, order: window.innerWidth < 480 ? 2 : 1 }}>Cancel</button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minWidth: 100, minHeight: 48 }}>Cancel</button>
         </div>
       }
     >
@@ -408,14 +408,14 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Experience *</label>
-            <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '15px' }}>
+            <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
               <option value="">Select…</option>
               {['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => <option key={y} value={y}>{y} yrs</option>)}
             </select>
           </div>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Availability *</label>
-            <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '15px' }}>
+            <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
               <option value="">Select…</option>
               {['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => <option key={a} value={a}>{a}</option>)}
             </select>

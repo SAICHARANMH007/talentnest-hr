@@ -493,24 +493,25 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mkt-reveal-delayed" style={{ position: 'relative' }}>
-              <div style={{ background: 'linear-gradient(135deg, rgba(1,118,211,0.1), rgba(0,194,203,0.1))', borderRadius: 32, padding: 40, border: '1px solid var(--mkt-card-border)', backdropFilter: 'blur(10px)' }}>
+              {/* Always-dark panel so white text is visible on ALL themes (light/dark/mixed) */}
+              <div style={{ background: 'linear-gradient(135deg, #032D60 0%, #0176D3 60%, #014486 100%)', borderRadius: 32, padding: 40, border: '1px solid rgba(1,118,211,0.35)', boxShadow: '0 24px 60px rgba(1,118,211,0.25)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Hiring Efficiency</div>
                   <Tag>+42% Faster</Tag>
                 </div>
                 <div style={{ display: 'grid', gap: 24 }}>
                   {[
-                    { l: 'Sourcing Speed', v: 88, c: '#0176D3' },
-                    { l: 'Candidate Quality', v: 94, c: '#00C2CB' },
-                    { l: 'Cost Reduction', v: 76, c: '#10B981' }
+                    { l: 'Sourcing Speed', v: 88, c: '#38BDF8' },
+                    { l: 'Candidate Quality', v: 94, c: '#34D399' },
+                    { l: 'Cost Reduction', v: 76, c: '#A78BFA' }
                   ].map(stat => (
                     <div key={stat.l}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
                         <span>{stat.l}</span>
-                        <span>{stat.v}%</span>
+                        <span style={{ color: stat.c }}>{stat.v}%</span>
                       </div>
-                      <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${stat.v}%`, background: stat.c, borderRadius: 3, boxShadow: `0 0 12px ${stat.c}50` }} />
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${stat.v}%`, background: `linear-gradient(90deg, ${stat.c}cc, ${stat.c})`, borderRadius: 3, boxShadow: `0 0 12px ${stat.c}80` }} />
                       </div>
                     </div>
                   ))}
