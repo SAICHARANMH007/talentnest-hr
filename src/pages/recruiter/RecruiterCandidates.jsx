@@ -275,12 +275,18 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
   );
 }
 
+const PAGE_SIZE = 50; // candidates per page
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RecruiterCandidates({ user }) {
   const navigate = useNavigate();
-  const [allCandidates, setAllCandidates] = useState([]);
+  const [allCandidates, setAllCandidates] = useState([]); // current page(s) of loaded candidates
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [toast, setToast] = useState('');
   const [inviteCandidate, setInviteCandidate] = useState(null);
   const [searched, setSearched] = useState(false);
@@ -293,6 +299,7 @@ export default function RecruiterCandidates({ user }) {
   const [drawerCandidate, setDrawerCandidate] = useState(null);
   const { onlineUsers } = usePresence();
   const onlineIds = new Set(onlineUsers.map(u => String(u.id)));
+  const searchTimerRef = useRef(null);
 
   const [filters, setFilters] = useState({
     designation: '',
@@ -316,42 +323,56 @@ export default function RecruiterCandidates({ user }) {
     return filters.roles.some(r => (map[r]||[r.toLowerCase()]).some(kw => hay.includes(kw)));
   };
 
-  // load candidates + recruiter's jobs on mount — show all candidates immediately
+  // Build server-side query params from current filters
+  const buildServerParams = (page = 1) => {
+    const p = { role: 'candidate', limit: PAGE_SIZE, page, fullResponse: true };
+    if (filters.designation) p.search = filters.designation;
+    if (filters.skills)      p.skills = filters.skills;
+    if (filters.location)    p.location = [filters.location];
+    if (filters.expMin)      p.expMin = filters.expMin;
+    if (filters.expMax)      p.expMax = filters.expMax;
+    if (filters.minCTC)      p.minCTC = filters.minCTC;  // if backend supports
+    if (filters.maxCTC)      p.maxCTC = filters.maxCTC;
+    if (filters.availability) p.availability = filters.availability;
+    return p;
+  };
+
+  // Normalize a raw candidate array (dedup by ID)
+  const normalize = (raw) => {
+    const map = new Map();
+    (Array.isArray(raw) ? raw : []).forEach(item => {
+      const id = (item.id || item._id)?.toString();
+      if (id) map.set(id, { ...item, id });
+    });
+    return Array.from(map.values());
+  };
+
+  // Load candidates + jobs on mount
   useEffect(() => {
     (async () => {
       try {
-        const [cands, myJobs] = await Promise.all([
-          api.getUsers('candidate'),
+        const [res, myJobs] = await Promise.all([
+          api.getUsers(buildServerParams(1)),
           api.getJobs({ recruiterId: user.id, limit: 200 }),
         ]);
-        const rawCands = Array.isArray(cands) ? cands : (Array.isArray(cands?.data) ? cands.data : []);
-        // Deduplicate candidates by ID to prevent ghost/duplicate items
-        const cMap = new Map();
-        rawCands.forEach(item => {
-          const id = (item.id || item._id)?.toString();
-          if (id) cMap.set(id, { ...item, id });
-        });
-        const normalized = Array.from(cMap.values());
+        const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const pg = res?.pagination || {};
+        const normalized = normalize(rawCands);
         setAllCandidates(normalized);
-
-        // Normalize jobs and deduplicate them too
-        const rawJobs = Array.isArray(myJobs) ? myJobs : (Array.isArray(myJobs?.data) ? myJobs.data : []);
-        const jMap = new Map();
-        rawJobs.forEach(item => {
-          const id = (item.id || item._id)?.toString();
-          if (id) jMap.set(id, { ...item, id });
-        });
-        setJobs(Array.from(jMap.values()));
-
-        // Auto-show all candidates on load
         setResults(normalized);
+        setTotalCount(pg.total || normalized.length);
+        setHasMore((pg.page || 1) < (pg.pages || 1));
+        setCurrentPage(1);
         setSearched(true);
+
+        const rawJobs = Array.isArray(myJobs) ? myJobs : (Array.isArray(myJobs?.data) ? myJobs.data : []);
+        setJobs(normalize(rawJobs));
       } catch (e) {
         setToast('❌ ' + e.message);
       }
       setLoading(false);
     })();
-  }, [user.id]);
+  }, [user.id]); // eslint-disable-line
 
   // Auto-open detail modal if coming from notification deep-link
   useEffect(() => {
@@ -366,35 +387,77 @@ export default function RecruiterCandidates({ user }) {
     }
   }, [loading, allCandidates]);
 
-  const applyFilters = (candidates, onlyOnline) => {
-    let res = filterCandidates(candidates, filters);
-    // Role category (custom heuristic)
-    if (filters.roles.length) {
-      res = res.filter(c => roleMatch(c));
-    }
-    if (onlyOnline) {
-      res = res.filter(c => onlineIds.has(c.id || c._id?.toString()));
-    }
+  // Apply client-only filters (online, role category) on top of loaded results
+  const applyClientFilters = (candidates, onlyOnline) => {
+    let res = candidates;
+    if (filters.roles.length) res = res.filter(c => roleMatch(c));
+    if (onlyOnline) res = res.filter(c => onlineIds.has(String(c.id || c._id)));
     return res;
   };
 
+  // Debounced server search — fires 400ms after last filter change
   const search = () => {
-    setResults(applyFilters(allCandidates, onlineOnly));
-    setSearched(true);
+    clearTimeout(searchTimerRef.current);
+    setLoading(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await api.getUsers(buildServerParams(1));
+        const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const pg = res?.pagination || {};
+        const normalized = normalize(rawCands);
+        setAllCandidates(normalized);
+        setResults(applyClientFilters(normalized, onlineOnly));
+        setTotalCount(pg.total || normalized.length);
+        setHasMore((pg.page || 1) < (pg.pages || 1));
+        setCurrentPage(1);
+        setSearched(true);
+      } catch (e) { setToast('❌ ' + e.message); }
+      setLoading(false);
+    }, 400);
+  };
+
+  // Load next page and append
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const res = await api.getUsers(buildServerParams(nextPage));
+      const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const pg = res?.pagination || {};
+      const normalized = normalize(rawCands);
+      const merged = [...allCandidates, ...normalized.filter(n => !allCandidates.some(a => a.id === n.id))];
+      setAllCandidates(merged);
+      setResults(applyClientFilters(merged, onlineOnly));
+      setHasMore((pg.page || nextPage) < (pg.pages || 1));
+      setCurrentPage(nextPage);
+    } catch (e) { setToast('❌ ' + e.message); }
+    setLoadingMore(false);
   };
 
   const reset = () => {
+    clearTimeout(searchTimerRef.current);
     setFilters({ designation: '', skills: '', location: '', expMin: '', expMax: '', minCTC: '', maxCTC: '', availability: '', roles: [] });
     setOnlineOnly(false);
-    setResults(allCandidates);
-    setSearched(true);
+    setLoading(true);
+    api.getUsers(buildServerParams(1)).then(res => {
+      const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const pg = res?.pagination || {};
+      const normalized = normalize(rawCands);
+      setAllCandidates(normalized);
+      setResults(normalized);
+      setTotalCount(pg.total || normalized.length);
+      setHasMore((pg.page || 1) < (pg.pages || 1));
+      setCurrentPage(1);
+      setSearched(true);
+    }).catch(e => setToast('❌ ' + e.message)).finally(() => setLoading(false));
   };
 
-  // Re-apply online filter live as online status changes
+  // Re-apply online filter live without a server round-trip
   useEffect(() => {
     if (!searched) return;
-    setResults(applyFilters(allCandidates, onlineOnly));
-  }, [onlineIds]); // eslint-disable-line
+    setResults(applyClientFilters(allCandidates, onlineOnly));
+  }, [onlineIds, onlineOnly]); // eslint-disable-line
 
   const addToPipeline = async (candidate, jobId) => {
     try {
@@ -460,7 +523,7 @@ export default function RecruiterCandidates({ user }) {
 
       <PageHeader
         title="Talent Pool"
-        subtitle={`${allCandidates.length} candidate${allCandidates.length !== 1 ? 's' : ''} in pool · filter by designation, skills, location or experience`}
+        subtitle={`${totalCount > 0 ? `${totalCount.toLocaleString()} total` : allCandidates.length} candidate${totalCount !== 1 ? 's' : ''} · showing ${results.length} · filter by designation, skills, location or experience`}
       />
 
       {loading ? (
@@ -526,7 +589,7 @@ export default function RecruiterCandidates({ user }) {
               </button>
               {hasFilters && <button onClick={reset} style={btnG}>✕ Clear</button>}
               <span style={{ color: '#9E9D9B', fontSize: 12 }}>
-                {allCandidates.length} candidate{allCandidates.length !== 1 ? 's' : ''} in pool
+                {results.length} shown {totalCount > results.length ? `of ${totalCount.toLocaleString()} total` : ''}
               </span>
             </div>
           </div>
@@ -597,6 +660,19 @@ export default function RecruiterCandidates({ user }) {
                   );
                 })}
               </div>
+
+              {/* Load More — seamless infinite scroll trigger */}
+              {hasMore && (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <button
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 32px', fontSize: 14, fontWeight: 800, cursor: loadingMore ? 'wait' : 'pointer', opacity: loadingMore ? 0.7 : 1, boxShadow: '0 4px 14px rgba(1,118,211,0.3)' }}
+                  >
+                    {loadingMore ? <><Spinner /> Loading…</> : `Load More Candidates (${totalCount - results.length} remaining)`}
+                  </button>
+                </div>
+              )}
 
               {/* Bulk WhatsApp Modal */}
               {waModal && (

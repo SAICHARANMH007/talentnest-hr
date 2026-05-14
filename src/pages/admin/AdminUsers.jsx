@@ -554,10 +554,15 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     industryFilter, departmentFilter
   ]);
 
-  // Handle data loading (triggered by pagination or filters)
+  // Handle data loading — debounced 400ms so rapid filter changes collapse into one request
+  const loadTimerRef = useRef(null);
   useEffect(() => {
-    load(pagination.page, pagination.limit);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    clearTimeout(loadTimerRef.current);
+    loadTimerRef.current = setTimeout(() => {
+      load(pagination.page, pagination.limit);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 400);
+    return () => clearTimeout(loadTimerRef.current);
   }, [pagination.page, pagination.limit, filterRole, recruiterId, search, skillsSel, locsSel, availFilter, clientFilter, taFilter, jobRoleFilter, certFilter, companyFilter, expMin, expMax, inviteStatusFilter, industryFilter, departmentFilter]);
 
   // Auto-open detail drawer if coming from notification deep-link

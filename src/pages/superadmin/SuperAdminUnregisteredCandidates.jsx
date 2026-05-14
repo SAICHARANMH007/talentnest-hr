@@ -328,20 +328,23 @@ export default function SuperAdminUnregisteredCandidates() {
         </div>
       ) : (
         <div style={{ ...card, overflow:'hidden', padding:0 }}>
-          <div style={{ background:'#F8FAFC', borderBottom:'1px solid #E2E8F0', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr', gap:0 }}>
+          <div style={{ background:'#F8FAFC', borderBottom:'1px solid #E2E8F0', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr 1fr', gap:0 }}>
             <div style={{ padding:'12px 14px', display:'flex', alignItems:'center' }}>
               <input type="checkbox" checked={selectedCandidates.size === rows.length && rows.length > 0} onChange={toggleSelectAll} style={{ width:16, height:16, cursor:'pointer' }} />
             </div>
-            {['Candidate','Email / Phone','Title / Company','Jobs'].map(h => (
+            {['Candidate','Email / Phone','Title / Company','Jobs','Invite Status'].map(h => (
               <div key={h} style={{ padding:'12px 14px', fontSize:11, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:0.8 }}>{h}</div>
             ))}
           </div>
 
-          {rows.map(row => (
-            <div key={row.email} style={{ borderBottom:'1px solid #F1F5F9', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr', gap:0, transition:'background 0.15s' }}
+          {rows.map(row => {
+            const inviteSent = row.accountInviteSentAt || row.accountRequestSent;
+            const inviteDate = row.accountInviteSentAt ? new Date(row.accountInviteSentAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' }) : null;
+            return (
+            <div key={row.email} style={{ borderBottom:'1px solid #F1F5F9', display:'grid', gridTemplateColumns:'40px 2fr 1.5fr 1fr 1fr 1fr', gap:0, transition:'background 0.15s' }}
                  onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'}
                  onMouseLeave={e => e.currentTarget.style.background=''}>
-              
+
               <div style={{ padding:'12px 14px', display:'flex', alignItems:'center' }}>
                 <input type="checkbox" checked={selectedCandidates.has(row.email)} onChange={() => toggleSelect(row.email)} style={{ width:16, height:16, cursor:'pointer' }} />
               </div>
@@ -367,8 +370,25 @@ export default function SuperAdminUnregisteredCandidates() {
                   {row.jobCount} job{row.jobCount !== 1 ? 's' : ''}
                 </span>
               </div>
+
+              {/* Invite status column */}
+              <div style={{ padding:'12px 14px', display:'flex', alignItems:'center' }}>
+                {inviteSent ? (
+                  <div>
+                    <span style={{ background:'rgba(16,185,129,0.1)', color:'#059669', fontWeight:700, fontSize:10, padding:'3px 8px', borderRadius:20, display:'block', textAlign:'center' }}>
+                      📧 Invited
+                    </span>
+                    {inviteDate && <div style={{ fontSize:10, color:'#94A3B8', marginTop:3, textAlign:'center' }}>{inviteDate}</div>}
+                  </div>
+                ) : (
+                  <span style={{ background:'rgba(245,158,11,0.1)', color:'#A07E00', fontWeight:700, fontSize:10, padding:'3px 8px', borderRadius:20 }}>
+                    ⏳ Not Invited
+                  </span>
+                )}
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

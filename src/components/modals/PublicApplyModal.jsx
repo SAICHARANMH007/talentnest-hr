@@ -34,7 +34,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
   const [error, setError] = useState('');
   const [createAccount, setCreateAccount] = useState(false); // inline account creation
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | banner | asking | granted | denied
@@ -164,6 +166,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
     if (createAccount && !agreedTerms) { setError('Please accept the Terms & Conditions to create your account.'); return; }
     if (createAccount) {
       if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+      if (password !== confirmPassword) { setError('Passwords do not match. Please re-enter.'); return; }
     }
     const screeningAnswers = questions.map((q, i) => ({ question: q.question, answer: answers[i] || '' }));
 
@@ -428,14 +431,64 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             Create a free account to track application
           </label>
           {createAccount && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ position: 'relative' }}>
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Create Password" style={{ width: '100%', padding: '12px 40px 12px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: '15px' }} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>{showPassword ? '🙈' : '👁️'}</button>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Password */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' }}>Create Password *</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Min 8 characters"
+                    style={{ width: '100%', padding: '12px 42px 12px 12px', borderRadius: 8, border: '1.5px solid #DDDBDA', fontSize: '16px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.55, fontSize: 18 }}>
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {password && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {[{ ok: password.length >= 8, label: '8+ chars' }, { ok: /[A-Z]/.test(password), label: 'Uppercase' }, { ok: /[0-9]/.test(password), label: 'Number' }].map(c => (
+                      <span key={c.label} style={{ fontSize: 11, color: c.ok ? '#059669' : '#94A3B8', fontWeight: 700 }}>{c.ok ? '✓' : '○'} {c.label}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '14px', padding: '4px 0' }}>
-                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} style={{ width: 18, height: 18 }} />
-                I agree to the Terms & Privacy Policy
+              {/* Confirm Password */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' }}>Confirm Password *</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    style={{ width: '100%', padding: '12px 42px 12px 12px', borderRadius: 8, border: `1.5px solid ${confirmPassword && confirmPassword !== password ? '#BA0517' : '#DDDBDA'}`, fontSize: '16px', boxSizing: 'border-box', outline: 'none' }}
+                  />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.55, fontSize: 18 }}>
+                    {showConfirmPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {confirmPassword && confirmPassword === password && (
+                  <p style={{ color: '#059669', fontSize: 11, fontWeight: 700, margin: '4px 0 0' }}>✓ Passwords match</p>
+                )}
+                {confirmPassword && confirmPassword !== password && (
+                  <p style={{ color: '#BA0517', fontSize: 11, fontWeight: 700, margin: '4px 0 0' }}>✕ Passwords do not match</p>
+                )}
+              </div>
+              {/* T&C */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '13px', lineHeight: 1.5, cursor: 'pointer', padding: '6px 0' }}>
+                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+                  style={{ width: 17, height: 17, marginTop: 1, flexShrink: 0, accentColor: '#0176D3' }} />
+                <span style={{ color: '#374151' }}>
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'underline' }}>Privacy Policy</a>
+                </span>
               </label>
             </div>
           )}

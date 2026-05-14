@@ -416,6 +416,80 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
   }});
 }));
 
+/* GET /api/dashboard/recruiter-stats
+ * Lightweight stats endpoint for recruiter dashboard.
+ * Returns KPIs and recent activity via aggregation — no raw record dumps.
+ * Replaces limit:10000000 job + application fetches on RecruiterDashboard.
+ */
+router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute(30), asyncHandler(async (req, res) => {
+  const tid  = req.user.tenantId;
+  const uid  = req.user._id || req.user.id;
+  const del  = { deletedAt: null };
+  const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  // Step 1: Get recruiter's assigned jobs (fast — indexed on tenantId+assignedRecruiters)
+  const myJobs = await Job.find({ tenantId: tid, assignedRecruiters: uid, ...del })
+    .select('_id title company companyName location status applicantsCount urgency')
+    .lean();
+
+  const jobIds = myJobs.map(j => j._id);
+
+  // No jobs yet — return zeroed stats immediately
+  if (jobIds.length === 0) {
+    return res.json({ success: true, data: {
+      totalApplicants: 0, inInterview: 0, hired: 0, offerOut: 0, rejected: 0,
+      openJobs: 0, appsLast30: 0, hiredLast30: 0, conversionRate: 0,
+      pipeline: {}, recent: [], jobs: [],
+    }});
+  }
+
+  const appFilter = { jobId: { $in: jobIds }, ...del };
+
+  // Step 2: One aggregation for all counts + pipeline breakdown
+  const [pipelineAgg, appsLast30, hiredLast30, recent, interestedInvites] = await Promise.all([
+    Application.aggregate([
+      { $match: appFilter },
+      { $group: { _id: '$currentStage', count: { $sum: 1 } } },
+    ]),
+    Application.countDocuments({ ...appFilter, createdAt: { $gte: ago30 } }),
+    Application.countDocuments({ ...appFilter, currentStage: 'Hired', updatedAt: { $gte: ago30 } }),
+    Application.find(appFilter)
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .populate('jobId', 'title company companyName')
+      .populate('candidateId', 'name email title')
+      .lean(),
+    Application.countDocuments({ jobId: { $in: jobIds }, inviteStatus: 'interested', ...del }),
+  ]);
+
+  // Build pipeline map
+  const pipeline = {};
+  let total = 0;
+  pipelineAgg.forEach(p => { pipeline[p._id || 'Applied'] = p.count; total += p.count; });
+
+  const hired    = pipeline['Hired']    || 0;
+  const offerOut = pipeline['Offer']    || 0;
+  const rejected = pipeline['Rejected'] || 0;
+  const inInterview = (pipeline['Interview Round 1'] || 0) + (pipeline['Interview Round 2'] || 0);
+  const conversionRate = total > 0 ? Math.round((hired / total) * 100) : 0;
+
+  res.json({ success: true, data: {
+    totalApplicants : total,
+    inInterview,
+    hired,
+    offerOut,
+    rejected,
+    openJobs        : myJobs.filter(j => j.status === 'active').length,
+    appsLast30,
+    hiredLast30,
+    conversionRate,
+    interestedInvites,
+    pipeline,
+    recent,
+    jobs            : myJobs,
+  }});
+}));
+
 /* GET /api/dashboard/pipeline-health */
 router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const orgF  = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };

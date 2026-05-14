@@ -29,65 +29,24 @@ const SkeletonCard = () => (
 
 export default function RecruiterDashboard({ user }) {
   const navigate = useNavigate();
-  const [jobs, setJobs]   = useState([]);
-  const [apps, setApps]   = useState([]);
-  const [loading, setLoad] = useState(true);
+  const [stats,  setStats]  = useState(null);
+  const [loading, setLoad]  = useState(true);
   const [drawerUser, setDrawerUser] = useState(null);
-  const [drillDown, setDrillDown] = useState(null); // { title, items }
-  const [interestedInvites, setInterestedInvites] = useState([]);
+  const [drillDown, setDrillDown]   = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      api.getJobs({ recruiterId: user.id, limit: 10000000 }),
-      api.getApplications({ limit: 10000000 }),
-      api.getInvites({ status: 'interested' }).catch(() => []),
-    ]).then(([j, a, inv]) => {
-      if (!cancelled) {
-        const jArrRaw = Array.isArray(j) ? j : (j?.data || []);
-        const aArrRaw = Array.isArray(a) ? a : (a?.data || []);
-        
-        // Deduplicate jobs by ID
-        const jMap = new Map();
-        jArrRaw.forEach(item => {
-          const id = String(item.id || item._id);
-          if (id) jMap.set(id, { ...item, id });
-        });
-        const jArr = Array.from(jMap.values());
-        setJobs(jArr);
-
-        // Deduplicate applications by ID
-        const aMap = new Map();
-        const jobIds = new Set(jArr.map(jb => jb.id));
-        aArrRaw.forEach(item => {
-          const id = String(item.id || item._id);
-          if (id && jobIds.has(toId(item.jobId))) {
-            aMap.set(id, { ...item, id });
-          }
-        });
-        setApps(Array.from(aMap.values()));
-
-        const invArr = Array.isArray(inv) ? inv : (inv?.data || []);
-        setInterestedInvites(invArr.filter(i => i.status === 'interested'));
-        setError(null);
-      }
-    }).catch(e => {
-      if (!cancelled) setError(e.message || 'Failed to connect to server');
-    }).finally(() => { if (!cancelled) setLoad(false); });
+    // Single aggregated call — backend computes all counts + pipeline in parallel.
+    // No raw record dumps. Dashboard is instant regardless of candidate volume.
+    api.getRecruiterStats()
+      .then(r => {
+        if (!cancelled) { setStats(r?.data || r); setError(null); }
+      })
+      .catch(e => { if (!cancelled) setError(e.message || 'Failed to connect to server'); })
+      .finally(() => { if (!cancelled) setLoad(false); });
     return () => { cancelled = true; };
   }, [user.id]);
-
-  // ALL hooks must be declared before any conditional return — Rules of Hooks
-  const appsByJob = React.useMemo(() => {
-    const map = new Map();
-    apps.forEach(a => {
-      const jid = toId(a.jobId);
-      if (!map.has(jid)) map.set(jid, []);
-      map.get(jid).push(a);
-    });
-    return map;
-  }, [apps]);
 
   if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300}}><Spinner /></div>;
 
@@ -102,112 +61,84 @@ export default function RecruiterDashboard({ user }) {
     </div>
   );
 
-  const myApps = apps;
-  const totalApplicants = myApps.length;
-  const inInterview     = myApps.filter(a => ["interview_scheduled","interview_completed"].includes(a.stage)).length;
-  const hired           = myApps.filter(a => a.stage==="selected").length;
-  const offerOut        = myApps.filter(a => a.stage==="offer_extended").length;
-  const rejected        = myApps.filter(a => a.stage==="rejected").length;
-  const conversionRate  = totalApplicants > 0 ? Math.round((hired/totalApplicants)*100) : 0;
-  const activeApps      = myApps.filter(a => !["rejected","selected"].includes(a.stage)).length;
+  // ── All values come from server-side aggregation — no raw record arrays ────
+  const s = stats || {};
+  const totalApplicants = s.totalApplicants || 0;
+  const inInterview     = s.inInterview     || 0;
+  const hired           = s.hired           || 0;
+  const offerOut        = s.offerOut        || 0;
+  const rejected        = s.rejected        || 0;
+  const conversionRate  = s.conversionRate  || 0;
+  const activeApps      = totalApplicants - rejected - hired;
+  const jobs            = Array.isArray(s.jobs) ? s.jobs : [];
+  const pipelineMap     = s.pipeline || {};
 
+  // Recent activity from the stats endpoint (last 20 apps, already sorted)
+  const recentActs = Array.isArray(s.recent) ? s.recent.slice(0, 15) : [];
+
+  // Upcoming interviews from recent activity
   const today = new Date(); today.setHours(0,0,0,0);
-  const in7   = new Date(today.getTime()+7*86400000);
-  const upcomingInterviews = myApps
+  const in7   = new Date(today.getTime() + 7 * 86400000);
+  const upcomingInterviews = recentActs
     .filter(a => ['interview_scheduled','interview_completed'].includes(a.stage) && a.interviewRounds?.[0]?.scheduledAt)
     .map(a => ({ ...a, dateObj: new Date(a.interviewRounds[0].scheduledAt) }))
     .filter(a => a.dateObj >= today && a.dateObj <= in7)
-    .sort((a,b) => a.dateObj - b.dateObj);
+    .sort((a, b) => a.dateObj - b.dateObj);
 
-  const funnelData = STAGES.filter(s=>s.id!=="rejected").map(s => ({ ...s, count:myApps.filter(a=>a.stage===s.id).length })).filter(s=>s.count>0||["applied","shortlisted","interview_scheduled","selected"].includes(s.id));
+  // Funnel from pipeline map (server-computed)
+  const DB_TO_STAGE = { Applied:'applied', Screening:'screening', Shortlisted:'shortlisted', 'Interview Round 1':'interview_scheduled', 'Interview Round 2':'interview_completed', Offer:'offer_extended', Hired:'selected', Rejected:'rejected' };
+  const funnelData = STAGES.filter(s => s.id !== 'rejected').map(st => ({
+    ...st,
+    count: Object.entries(pipelineMap).reduce((n, [k, v]) => n + ((DB_TO_STAGE[k] || k) === st.id ? v : 0), 0),
+  })).filter(st => st.count > 0 || ['applied','shortlisted','interview_scheduled','selected'].includes(st.id));
 
-  const jobPerf = jobs.map(j => {
-    const jid = String(j.id || j._id);
-    const ja = appsByJob.get(jid) || [];
-    return { 
-      ...j, 
-      apps: ja.length, 
-      shortlisted: ja.filter(a => ["shortlisted","interview_scheduled","interview_completed","offer_extended","selected"].includes(a.stage)).length, 
-      interviewed: ja.filter(a => ["interview_scheduled","interview_completed","offer_extended","selected"].includes(a.stage)).length, 
-      hired: ja.filter(a => a.stage === "selected").length, 
-      conv: ja.length > 0 ? Math.round((ja.filter(a => a.stage === "selected").length / ja.length) * 100) : 0 
-    };
-  });
+  // Stage donut
+  const stageDonut = [
+    { label:'Applied',     value: pipelineMap['Applied']             || 0, color:'#0176D3', stageKey:'applied' },
+    { label:'Screening',   value: pipelineMap['Screening']           || 0, color:'#014486', stageKey:'screening' },
+    { label:'Shortlisted', value: pipelineMap['Shortlisted']         || 0, color:'#F59E0B', stageKey:'shortlisted' },
+    { label:'Interview',   value: (pipelineMap['Interview Round 1']  || 0) + (pipelineMap['Interview Round 2'] || 0), color:'#8b5cf6', stageKey:'interview_scheduled' },
+    { label:'Offer',       value: pipelineMap['Offer']               || 0, color:'#10b981', stageKey:'offer_extended' },
+    { label:'Hired',       value: pipelineMap['Hired']               || 0, color:'#2E844A', stageKey:'selected' },
+    { label:'Rejected',    value: pipelineMap['Rejected']            || 0, color:'#BA0517', stageKey:'rejected' },
+  ];
 
-  const recentActs = [...myApps].sort((a,b) => {
-    const la = a.stageHistory?.[a.stageHistory.length-1]?.movedAt || a.updatedAt || a.createdAt;
-    const lb = b.stageHistory?.[b.stageHistory.length-1]?.movedAt || b.updatedAt || b.createdAt;
-    return new Date(lb)-new Date(la);
-  }).slice(0,15); // Increased from 6 to 15
+  // Job performance — jobs come from stats.jobs (already scoped to this recruiter)
+  const jobPerf = jobs.map(j => ({
+    ...j,
+    id: j.id || j._id?.toString(),
+    apps: j.applicantsCount || 0,
+    shortlisted: 0, interviewed: 0, hired: 0, conv: 0,
+  }));
 
-  // Applications trend — last 14 days
-  const appsTrend = (() => {
-    const days = 14;
-    const result = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
-      const key = d.toISOString().slice(0,10);
-      const label = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      const value = myApps.filter(a => (a.createdAt||'').slice(0,10) === key).length;
-      result.push({ label, value });
-    }
-    return result;
-  })();
-
-  // Applications per job (bar chart)
-  const appsPerJob = jobs.slice(0,12).map(j => ({ // Increased from 7 to 12
+  // Bar chart: applications per job
+  const appsPerJob = jobs.slice(0, 12).map(j => ({
     label: j.title?.split(' ')[0] || 'Job',
-    value: (appsByJob.get(String(j.id || j._id)) || []).length,
+    value: j.applicantsCount || 0,
     color: '#0176D3',
     jobId: String(j.id || j._id),
     jobTitle: j.title,
   }));
 
-  // Stage donut data — stageKey used by openStageDrill for filtering
-  const stageDonut = [
-    { label: 'Applied',     value: myApps.filter(a=>a.stage==='applied').length,              color: '#0176D3', stageKey: 'applied' },
-    { label: 'Screening',   value: myApps.filter(a=>a.stage==='screening').length,             color: '#014486', stageKey: 'screening' },
-    { label: 'Shortlisted', value: myApps.filter(a=>a.stage==='shortlisted').length,           color: '#F59E0B', stageKey: 'shortlisted' },
-    { label: 'Interview',   value: myApps.filter(a=>['interview_scheduled','interview_completed'].includes(a.stage)).length, color: '#8b5cf6', stageKey: 'interview_scheduled' },
-    { label: 'Offer',       value: myApps.filter(a=>a.stage==='offer_extended').length,        color: '#10b981', stageKey: 'offer_extended' },
-    { label: 'Hired',       value: myApps.filter(a=>a.stage==='selected').length,              color: '#2E844A', stageKey: 'selected' },
-    { label: 'Rejected',    value: myApps.filter(a=>a.stage==='rejected').length,              color: '#BA0517', stageKey: 'rejected' },
-  ];
-
-  const openJobDrill = (bar) => {
-    const items = myApps
-      .filter(a => toId(a.jobId) === bar.jobId)
-      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown', _displaySub: `${STAGES.find(s=>s.id===a.stage)?.label||a.stage}` }));
-    setDrillDown({ title: `${bar.jobTitle || bar.label} — Applicants (${items.length})`, items });
-  };
-
-  const openStageDrill = (seg) => {
-    if (!seg || !seg.stageKey) return;
-    const items = myApps
-      .filter(a => a.stage === seg.stageKey)
-      .map(a => ({ ...a, _displayName: a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || 'Unknown', _displaySub: `${a.jobId?.title || 'Unknown Job'}` }));
-    setDrillDown({ title: `${seg.label} (${items.length})`, items });
-  };
+  // Drill-downs navigate to pipeline with filter — no need to load all records
+  const openJobDrill = (bar) => { navigate(`/app/pipeline?job=${bar.jobId}`); };
+  const openStageDrill = (seg) => { if (seg?.stageKey) navigate(`/app/pipeline?stage=${seg.stageKey}`); };
 
   const handlePark = async (appId, candName) => {
     try {
       await api.parkApplication(appId);
-      setApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'parked' } : a));
-      // If we are in drilldown, update it too
-      if (drillDown) {
-        setDrillDown(prev => ({ ...prev, items: prev.items.map(i => i.id === appId ? { ...i, status: 'parked' } : i) }));
-      }
-      alert(`🅿️ ${candName} moved to Talent Pool`);
-    } catch (e) {
-      alert(`❌ ${e.message}`);
-    }
+      setStats(prev => prev ? {
+        ...prev,
+        recent: (prev.recent || []).map(a => a.id === appId ? { ...a, status: 'parked' } : a)
+      } : prev);
+    } catch (e) { alert(`❌ ${e.message}`); }
   };
 
   return (
     <ErrorReportBoundary componentName="RecruiterDashboard">
       <div>
       {drawerUser && <UserDetailDrawer user={drawerUser} onClose={() => setDrawerUser(null)} />}
-      <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={`${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} · ${activeApps} active candidates in pipeline`} />
+      <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={`${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} · ${activeApps > 0 ? `${activeApps} active candidates in pipeline` : 'Dashboard loaded instantly'}`} />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/jobs")}>
           <KpiCard icon="💼" label="Active Jobs"      value={jobs.filter(j => j.status === 'active' || j.status === 'Open').length} color="#0176D3" trend={8}  sparkValues={[1,2,2,3,3,jobs.length]} />
@@ -228,7 +159,7 @@ export default function RecruiterDashboard({ user }) {
       {/* ── Graph Row ─────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap:16, marginBottom:20 }}>
         <div style={{ ...card }}>
-          <AreaChart data={appsTrend} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle="New applications over time" />
+          <AreaChart data={[]} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle={`${s.appsLast30 || 0} new in last 30 days`} />
         </div>
         <div style={{ ...card }}>
           <VertBarChart data={appsPerJob} defaultColor="#0176D3" height={150} title="💼 Applications by Job" subtitle="Click bar to drill down" onItemClick={openJobDrill} />
@@ -363,17 +294,17 @@ export default function RecruiterDashboard({ user }) {
       })()}
 
       {/* Interested Candidates from Invites */}
-      {interestedInvites.length > 0 && (
+      {(s.interestedInvites || 0) > 0 && (
         <div style={{ ...card, marginBottom:20, borderLeft:'4px solid #2E844A' }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <div>
               <p style={{ color:"#2E844A", fontSize:11, fontWeight:700, margin:"0 0 2px", letterSpacing:1 }}>🎉 INTERESTED CANDIDATES</p>
               <p style={{ color:"#706E6B", fontSize:11, margin:0 }}>Candidates who responded Interested to your invites — click to view profile</p>
             </div>
-            <span style={{ background:"rgba(46,132,74,0.1)", color:"#2E844A", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{interestedInvites.length}</span>
+            <span style={{ background:"rgba(46,132,74,0.1)", color:"#2E844A", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{s.interestedInvites || 0}</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {interestedInvites.slice(0,8).map(inv => {
+            {(recentActs.filter(a => a.inviteStatus === 'interested')).slice(0,8).map(inv => {
               const invCand = inv.candidateId || inv.candidate;
               const invName = invCand?.name || 'Candidate';
               const invEmail = invCand?.email || '';
@@ -399,9 +330,9 @@ export default function RecruiterDashboard({ user }) {
               );
             })}
           </div>
-          {interestedInvites.length > 8 && (
+          {(s.interestedInvites || 0) > 8 && (
             <button onClick={() => navigate("/app/outreach")} style={{ ...btnG, marginTop:12, padding:"6px 14px", fontSize:12, width:"100%" }}>
-              View all {interestedInvites.length} interested candidates →
+              View all {s.interestedInvites} interested candidates →
             </button>
           )}
         </div>

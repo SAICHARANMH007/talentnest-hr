@@ -12,18 +12,20 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
       className="tn-overlay"
       role="dialog"
       aria-modal="true"
-      style={{ 
-        position: "fixed", 
-        inset: 0, 
-        background: "rgba(5, 13, 26, 0.75)", 
-        backdropFilter: "blur(8px)", 
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(5, 13, 26, 0.75)",
+        backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
-        zIndex: Z.MODAL, 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        padding: '20px 16px',
-        paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))',
+        zIndex: Z.MODAL,
+        display: "flex",
+        // flex-start + overflow-y: auto means content is never hidden behind the top edge.
+        // margin: auto on the inner card still centres it vertically when there is room.
+        alignItems: "flex-start",
+        justifyContent: "center",
+        overflowY: "auto",
+        padding: 'max(20px, env(safe-area-inset-top, 20px)) 16px max(20px, env(safe-area-inset-bottom, 20px))',
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -35,13 +37,16 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
           maxWidth: width || (wide ? '940px' : '640px'), 
           display: "flex", 
           flexDirection: "column",
-          maxHeight: 'min(90dvh, 900px)',
-          position: "relative", 
-          overflow: "hidden", 
+          maxHeight: 'calc(100dvh - 40px)',
+          position: "relative",
+          overflow: "hidden",
           borderRadius: 24,
           boxShadow: '0 32px 64px rgba(0,0,0,0.35)',
           background: '#fff',
-          height: 'auto'
+          height: 'auto',
+          // margin: auto centres the modal vertically when the overlay has extra space,
+          // but lets it sit at the top when content is tall (no clipping at top).
+          margin: 'auto',
         }}
       >
         {/* Sticky header */}

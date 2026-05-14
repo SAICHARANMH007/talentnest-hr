@@ -101,6 +101,12 @@ candidateSchema.index({ email: 1, tenantId: 1, deletedAt: 1 });
 candidateSchema.index({ assignedRecruiterId: 1, tenantId: 1 }); // recruiter assignment queries
 candidateSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 }); // paginated list views
 candidateSchema.index({ skills: 1 });                           // AI match scoring
+// ── High-frequency search indexes (server-side search for RecruiterCandidates) ──
+candidateSchema.index({ tenantId: 1, title: 1, deletedAt: 1 });          // designation filter
+candidateSchema.index({ tenantId: 1, location: 1, deletedAt: 1 });       // location filter
+candidateSchema.index({ tenantId: 1, availability: 1, deletedAt: 1 });   // availability filter
+candidateSchema.index({ tenantId: 1, experience: 1, deletedAt: 1 });     // exp range filter
+candidateSchema.index({ tenantId: 1, updatedAt: -1, deletedAt: 1 });     // recently active (default sort)
 
 
 candidateSchema.set('toJSON', { virtuals: true });

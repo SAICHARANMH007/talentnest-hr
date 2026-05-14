@@ -262,7 +262,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
       if (statsObj.recent) {
         setRecentApps(statsObj.recent);
       } else {
-        api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
+        // Fallback: load only the last 100 for the activity feed — never dump all records
+        api.getApplications({ limit: 100, platform: platformWide }).then(unwrap).then(setRecentApps).catch(() => []);
       }
       
       setLoading(false);
@@ -275,12 +276,14 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       setTimeout(() => {
         // High-Capacity Job Scan (Rely on aggregated stats where possible)
-        api.getJobs({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
+        // Use server-computed job counts from stats — no raw record dump needed for KPIs
+        setJobCounts({
+          active: statsObj.openJobs  ?? 0,
+          total:  statsObj.totalJobs ?? 0,
+        });
+        // Load only the top 300 jobs for any chart/table that needs job details
+        api.getJobs({ limit: 300, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
-          setJobCounts({ 
-            active: statsObj.activeJobs ?? list.filter(j => ['active', 'open'].includes((j.status || '').toLowerCase())).length,
-            total: statsObj.totalJobs ?? list.length 
-          });
         }).catch(() => setAllJobs([]));
         
         // Use backend pipeline aggregation (Production Standard)
@@ -292,17 +295,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
           const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
           setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
         } else {
-          // Fallback
-          api.getApplications({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
-            setAllApps(list);
-            const pipe = {};
-            MASTER_STAGES.forEach(s => { pipe[s.id] = 0; });
-            list.forEach(a => {
-              const mapped = DB_TO_FRONTEND_STAGE[a.currentStage || a.stage] || 'applied';
-              if (pipe[mapped] !== undefined) pipe[mapped]++;
-            });
-            setLocalAppStats({ total: list.length, pipeline: pipe, last30: list.length });
-          }).catch(() => setAllApps([]));
+          // Fallback: build pipeline from stats counts — no record dump
+          const pipe = {};
+          MASTER_STAGES.forEach(st => { pipe[st.id] = 0; });
+          setLocalAppStats({ total: statsObj.applications || 0, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
         }
       }, 150);
 

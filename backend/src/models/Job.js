@@ -98,6 +98,7 @@ jobSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 });    // tenant pagi
 jobSchema.index({ careerPageSlug: 1 });                           // public career page
 jobSchema.index({ tenantId: 1, isPublic: 1, status: 1 });         // org career listing
 jobSchema.index({ assignedRecruiters: 1, status: 1 });            // recruiter job lists
+jobSchema.index({ tenantId: 1, assignedRecruiters: 1, deletedAt: 1 }); // recruiter stats endpoint
 
 // Keep company and companyName in sync so both field names always work
 jobSchema.pre('save', function (next) {
