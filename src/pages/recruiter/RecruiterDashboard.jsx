@@ -14,7 +14,7 @@ import TimeAgo from '../../components/misc/TimeAgo.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import ErrorReportBoundary from '../../components/shared/ErrorReportBoundary.jsx';
 import { STAGES, SM } from '../../constants/stages.js';
-import { btnG, card } from '../../constants/styles.js';
+import { btnP, btnG, card } from '../../constants/styles.js';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 
@@ -62,19 +62,37 @@ export default function RecruiterDashboard({ user }) {
   );
 
   // ── All values come from server-side aggregation — no raw record arrays ────
-  const s = stats || {};
-  const totalApplicants = s.totalApplicants || 0;
-  const inInterview     = s.inInterview     || 0;
-  const hired           = s.hired           || 0;
-  const offerOut        = s.offerOut        || 0;
-  const rejected        = s.rejected        || 0;
-  const conversionRate  = s.conversionRate  || 0;
+  const sd = stats || {};  // renamed from 's' to avoid shadowing in inner callbacks
+  const totalApplicants = sd.totalApplicants || 0;
+  const inInterview     = sd.inInterview     || 0;
+  const hired           = sd.hired           || 0;
+  const offerOut        = sd.offerOut        || 0;
+  const rejected        = sd.rejected        || 0;
+  const conversionRate  = sd.conversionRate  || 0;
   const activeApps      = totalApplicants - rejected - hired;
-  const jobs            = Array.isArray(s.jobs) ? s.jobs : [];
-  const pipelineMap     = s.pipeline || {};
+  const jobs            = Array.isArray(sd.jobs) ? sd.jobs : [];
+  const pipelineMap     = sd.pipeline || {};
 
-  // Recent activity from the stats endpoint (last 20 apps, already sorted)
-  const recentActs = Array.isArray(s.recent) ? s.recent.slice(0, 15) : [];
+  // DB stage name → frontend lowercase ID (the backend stats endpoint doesn't
+  // run normalizeApp on recent[], so we normalise here in the browser)
+  const DB_STAGE_MAP = {
+    Applied:'applied', Screening:'screening', Shortlisted:'shortlisted',
+    'Interview Round 1':'interview_scheduled', 'Interview Round 2':'interview_completed',
+    Offer:'offer_extended', Hired:'selected', Rejected:'rejected',
+  };
+  const normaliseApp = (a) => {
+    const stg = a.stage || DB_STAGE_MAP[a.currentStage] || (a.currentStage||'').toLowerCase().replace(/\s+/g,'_') || 'applied';
+    return {
+      ...a,
+      id       : a.id || a._id?.toString(),
+      stage    : stg,
+      candidate: a.candidate || (a.candidateId && typeof a.candidateId === 'object' ? a.candidateId : null),
+      job      : a.job       || (a.jobId      && typeof a.jobId      === 'object' ? a.jobId      : null),
+    };
+  };
+
+  // Recent activity — normalised so all subsequent code can use .stage and .candidate
+  const recentActs = Array.isArray(sd.recent) ? sd.recent.map(normaliseApp).slice(0, 15) : [];
 
   // Upcoming interviews from recent activity
   const today = new Date(); today.setHours(0,0,0,0);
@@ -85,11 +103,10 @@ export default function RecruiterDashboard({ user }) {
     .filter(a => a.dateObj >= today && a.dateObj <= in7)
     .sort((a, b) => a.dateObj - b.dateObj);
 
-  // Funnel from pipeline map (server-computed)
-  const DB_TO_STAGE = { Applied:'applied', Screening:'screening', Shortlisted:'shortlisted', 'Interview Round 1':'interview_scheduled', 'Interview Round 2':'interview_completed', Offer:'offer_extended', Hired:'selected', Rejected:'rejected' };
-  const funnelData = STAGES.filter(s => s.id !== 'rejected').map(st => ({
+  // Funnel from pipeline map (server-computed). Use 'st' not 's' to avoid shadow.
+  const funnelData = STAGES.filter(st => st.id !== 'rejected').map(st => ({
     ...st,
-    count: Object.entries(pipelineMap).reduce((n, [k, v]) => n + ((DB_TO_STAGE[k] || k) === st.id ? v : 0), 0),
+    count: Object.entries(pipelineMap).reduce((n, [k, v]) => n + ((DB_STAGE_MAP[k] || k) === st.id ? v : 0), 0),
   })).filter(st => st.count > 0 || ['applied','shortlisted','interview_scheduled','selected'].includes(st.id));
 
   // Stage donut
@@ -159,7 +176,7 @@ export default function RecruiterDashboard({ user }) {
       {/* ── Graph Row ─────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap:16, marginBottom:20 }}>
         <div style={{ ...card }}>
-          <AreaChart data={[]} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle={`${s.appsLast30 || 0} new in last 30 days`} />
+          <AreaChart data={[]} color="#0176D3" height={130} title="📈 Applications (14 days)" subtitle={`${sd.appsLast30 || 0} new in last 30 days`} />
         </div>
         <div style={{ ...card }}>
           <VertBarChart data={appsPerJob} defaultColor="#0176D3" height={150} title="💼 Applications by Job" subtitle="Click bar to drill down" onItemClick={openJobDrill} />
@@ -207,9 +224,9 @@ export default function RecruiterDashboard({ user }) {
                   <div style={{ flex:1 }}>
                     <div style={{ color:"#181818", fontWeight:600, fontSize:13 }}>{(a.candidateId||a.candidate)?.name}</div>
                     <div style={{ color:"#0176D3", fontSize:11 }}>{a.jobId?.title}</div>
-                    <div style={{ color:"#706E6B", fontSize:10 }}>{iv.type==="video"?"📹 Video":iv.type==="phone"?"📞 Phone":iv.type==="technical"?"💻 Technical":"🏢 In-Person"}</div>
+                    <div style={{ color:"#706E6B", fontSize:10 }}>{iv.format==="video"?"📹 Video":iv.format==="phone"?"📞 Phone":iv.format==="technical"?"💻 Technical":"🏢 In-Person"}</div>
                   </div>
-                  {iv.meetLink && <a href={iv.meetLink} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:"#0176D3", fontSize:11, textDecoration:"none" }}>🔗</a>}
+                  {(iv.videoLink || iv.meetLink) && <a href={iv.videoLink || iv.meetLink} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:"#0176D3", fontSize:11, textDecoration:"none" }}>🔗</a>}
                 </div>
                 );
               })}
@@ -263,7 +280,7 @@ export default function RecruiterDashboard({ user }) {
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
               {adminAssigned.slice(0,6).map(a => {
-                const s = SM[a.stage]||{color:"#0176D3",label:a.stage,icon:"•"};
+                const stg2 = SM[a.stage]||{color:"#0176D3",label:a.stage||'',icon:"•"};
                 const cand = a.candidateId || a.candidate;
                 return (
                   <div key={a.id} onClick={() => cand ? setDrawerUser({ role:'candidate', ...cand, id: cand.id||cand._id?.toString() }) : navigate("/app/candidates")} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"rgba(1,118,211,0.04)", borderRadius:10, border:"1px solid rgba(1,118,211,0.15)", cursor:"pointer", flexWrap:"wrap" }}
@@ -277,7 +294,7 @@ export default function RecruiterDashboard({ user }) {
                       <div style={{ color:"#706E6B",fontSize:11,marginTop:1 }}>{cand?.title||""}{a.jobId?.title ? ` · for ${a.jobId.title}` : ""}</div>
                     </div>
                     <div style={{ display:"flex",gap:6,alignItems:"center" }}>
-                      <span style={{ background:`${s.color}15`,color:s.color,border:`1px solid ${s.color}40`,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600 }}>{s.icon} {s.label}</span>
+                      <span style={{ background:`${stg2.color}15`,color:stg2.color,border:`1px solid ${stg2.color}40`,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600 }}>{stg2.icon} {stg2.label}</span>
                       <span style={{ background:"rgba(1,118,211,0.1)",color:"#0176D3",borderRadius:4,padding:"2px 7px",fontSize:10,fontWeight:600 }}>Admin</span>
                     </div>
                   </div>
@@ -294,14 +311,14 @@ export default function RecruiterDashboard({ user }) {
       })()}
 
       {/* Interested Candidates from Invites */}
-      {(s.interestedInvites || 0) > 0 && (
+      {(sd.interestedInvites || 0) > 0 && (
         <div style={{ ...card, marginBottom:20, borderLeft:'4px solid #2E844A' }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <div>
               <p style={{ color:"#2E844A", fontSize:11, fontWeight:700, margin:"0 0 2px", letterSpacing:1 }}>🎉 INTERESTED CANDIDATES</p>
               <p style={{ color:"#706E6B", fontSize:11, margin:0 }}>Candidates who responded Interested to your invites — click to view profile</p>
             </div>
-            <span style={{ background:"rgba(46,132,74,0.1)", color:"#2E844A", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{s.interestedInvites || 0}</span>
+            <span style={{ background:"rgba(46,132,74,0.1)", color:"#2E844A", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{sd.interestedInvites || 0}</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {(recentActs.filter(a => a.inviteStatus === 'interested')).slice(0,8).map(inv => {
@@ -330,9 +347,9 @@ export default function RecruiterDashboard({ user }) {
               );
             })}
           </div>
-          {(s.interestedInvites || 0) > 8 && (
+          {(sd.interestedInvites || 0) > 8 && (
             <button onClick={() => navigate("/app/outreach")} style={{ ...btnG, marginTop:12, padding:"6px 14px", fontSize:12, width:"100%" }}>
-              View all {s.interestedInvites} interested candidates →
+              View all {sd.interestedInvites} interested candidates →
             </button>
           )}
         </div>
@@ -346,7 +363,7 @@ export default function RecruiterDashboard({ user }) {
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {recentActs.map(a => {
             const lastH = a.stageHistory?.[a.stageHistory.length-1];
-            const s = SM[a.stage]||{color:"#0176D3",label:a.stage};
+            const stg = SM[a.stage]||{color:"#0176D3",label:a.stage||''};
             const candObj = a.candidateId || a.candidate;
             const candName = candObj?.name || a.candidateName || candObj?.email?.split('@')[0] || 'Unknown Candidate';
             const openDrawer = () => {
@@ -360,7 +377,7 @@ export default function RecruiterDashboard({ user }) {
                   <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                     <span style={{ color:"#181818", fontSize:12, fontWeight:600, whiteSpace:"nowrap" }}>{candName}</span>
                     <span style={{ color:"#9E9D9B", fontSize:11 }}>→</span>
-                    <span style={{ color:s.color, fontSize:11, fontWeight:500 }}>{s.label}</span>
+                    <span style={{ color:stg.color, fontSize:11, fontWeight:500 }}>{stg.label}</span>
                   </div>
                   <div style={{ color:"#706E6B", fontSize:11, marginTop:1 }}>{a.jobId?.title || 'Job'} @ {a.jobId?.companyName || a.jobId?.company || 'Internal'}</div>
                 </div>
@@ -385,7 +402,7 @@ export default function RecruiterDashboard({ user }) {
             <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch', padding:'12px clamp(12px,4vw,28px) 28px' }}>
               {drillDown.items.length === 0 && <p style={{ color:'#94A3B8', textAlign:'center', padding:'40px 0' }}>No records found.</p>}
               {drillDown.items.map((item, idx) => {
-                const s = SM[item.stage] || { color:'#0176D3', label: item.stage };
+                const stg3 = SM[item.stage] || { color:'#0176D3', label: item.stage || '' };
                 const rawCand = item.candidateId || item.candidate;
                 const candObj = rawCand && typeof rawCand === 'object'
                   ? { role:'candidate', ...rawCand, id: rawCand.id || rawCand._id?.toString() }
@@ -400,7 +417,7 @@ export default function RecruiterDashboard({ user }) {
                       <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || candObj?.name || item.candidateName || 'Candidate'}</div>
                       <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{item._displaySub || `${item.jobId?.title || ''}`}</div>
                     </div>
-                    <span style={{ background:`${s.color}15`, color:s.color, border:`1px solid ${s.color}33`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{s.label}</span>
+                    <span style={{ background:`${stg3.color}15`, color:stg3.color, border:`1px solid ${stg3.color}33`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{stg3.label}</span>
                     <button onClick={(e) => { e.stopPropagation(); handlePark(item.id, item._displayName || candObj?.name || 'Candidate'); }} style={{ background:'none', border:'none', color:'#F59E0B', fontSize:14, cursor:'pointer', padding:8 }} title="Park Candidate">🅿️</button>
                   </div>
                 );
