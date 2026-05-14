@@ -89,7 +89,7 @@ router.post('/platform-summary', auth, asyncHandler(async (req, res) => {
 
   if (docs.length) await Notification.insertMany(docs, { ordered: false });
 
-  const fresh = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(10000000).lean();
+  const fresh = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(200).lean();
   res.json(fresh.map(n => ({ ...n, id: n._id.toString(), body: n.body || n.message })));
 }));
 
