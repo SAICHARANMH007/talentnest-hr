@@ -385,7 +385,8 @@ router.post('/:id/assign', ...guard,
     if (!recruiterId) throw new AppError('recruiterId is required.', 400);
     const recruiterFilter = { _id: recruiterId, role: 'recruiter', deletedAt: null };
     if (req.user.role !== 'super_admin') recruiterFilter.tenantId = req.user.tenantId;
-    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId').lean();
+    // Select name so we can include it in candidate notifications
+    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name email').lean();
     if (!recruiter) throw new AppError('Recruiter not found.', 404);
 
     const assignFilter = { _id: req.params.id, deletedAt: null };
@@ -397,12 +398,36 @@ router.post('/:id/assign', ...guard,
     );
     if (!job) throw new AppError('Job not found.', 404);
 
+    // 1. Notify the recruiter about their new job assignment
     await Notification.create({
       userId: recruiterId, tenantId: job.tenantId, type: 'system',
-      title: 'New Job Assignment',
-      message: `You have been assigned to: ${job.title}`,
-      link: '/app/jobs',
+      title: '📋 New Job Assignment',
+      message: `You have been assigned to manage hiring for: ${job.title}. Check the Pipeline to see applicants.`,
+      link: '/app/pipeline',
     }).catch(() => {});
+
+    // 2. Notify ALL existing candidates who applied for this job that a recruiter is now assigned
+    try {
+      const apps = await Application.find({ jobId: job._id, deletedAt: null, status: { $ne: 'rejected' } })
+        .populate('candidateId', 'email')
+        .lean();
+
+      const notified = new Set();
+      for (const app of apps) {
+        const candEmail = app.candidateId?.email;
+        if (!candEmail || notified.has(candEmail)) continue;
+        notified.add(candEmail);
+        // Find the candidate's User account by email to deliver the notification
+        const candUser = await User.findOne({ email: candEmail.toLowerCase(), role: 'candidate', deletedAt: null }).select('_id').lean();
+        if (!candUser) continue;
+        await Notification.create({
+          userId: candUser._id, tenantId: job.tenantId, type: 'system',
+          title: '👤 Recruiter Assigned to Your Application',
+          message: `${recruiter.name} has been assigned to review applications for "${job.title}". They will be in touch soon.`,
+          link: '/app/applications',
+        }).catch(() => {});
+      }
+    } catch { /* non-critical — best effort */ }
 
     res.json({ success: true, data: normalizeJob(job) });
 }));

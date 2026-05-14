@@ -654,7 +654,13 @@ router.get('/mine', ...guard,
     const candidateIds = candidateDocs.map(c => c._id);
     const filter = { candidateId: { $in: candidateIds }, deletedAt: null };
     const [apps, total] = await Promise.all([
-      Application.find(filter).populate('jobId', 'title company companyName location jobType').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Application.find(filter)
+        .populate({
+          path: 'jobId',
+          select: 'title company companyName location jobType assignedRecruiters',
+          populate: { path: 'assignedRecruiters', select: 'name email phone title' },
+        })
+        .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Application.countDocuments(filter),
     ]);
     res.json(paginatedResponse(apps.map(normalizeApp), total, limit, page));

@@ -441,6 +441,30 @@ export default function CandidateApplications({ user }) {
                     {/* Pipeline Stepper */}
                     <ApplicationStepper app={a} />
 
+                    {/* Assigned Recruiter — shown when the job has a recruiter assigned */}
+                    {(() => {
+                      const recruiters = a.job?.assignedRecruiters || a.jobId?.assignedRecruiters || [];
+                      if (!recruiters.length || typeof recruiters[0] !== 'object') return null;
+                      const rec = recruiters[0];
+                      return (
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,68,134,0.03))', borderRadius: 10, border: '1px solid rgba(1,118,211,0.18)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                            {(rec.name || '?')[0].toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Your Recruiter</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>{rec.name}</div>
+                            {rec.title && <div style={{ fontSize: 11, color: '#64748B' }}>{rec.title}</div>}
+                          </div>
+                          {rec.email && (
+                            <a href={`mailto:${rec.email}`} style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, textDecoration: 'none', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', flexShrink: 0 }}>
+                              ✉ {rec.email}
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Interview details from interviews[] array */}
                     {(a.stage === 'interview_scheduled' || a.stage === 'interview_completed') && iv.scheduledAt && (
                       <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.3)' }}>
