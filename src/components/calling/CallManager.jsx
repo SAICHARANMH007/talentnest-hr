@@ -87,6 +87,7 @@ export default function CallManager({ user }) {
   const [callStartedAt, setCallStartedAt] = useState(null);
   const [meetingNotice, setMeetingNotice] = useState(null);
   const [endReason, setEndReason] = useState('');
+  const [accepting, setAccepting] = useState(false);
 
   const remoteAudioRef = useRef(null); // hidden <audio> element — plays remote audio for ALL call types
 
@@ -185,7 +186,7 @@ export default function CallManager({ user }) {
     }
   }, [remoteStream, callState, attachRemoteAudio]);
 
-  const { localStream, micOn, camOn, startLocalMedia, initiateCall,
+  const { localStream, micOn, camOn, permError, startLocalMedia, initiateCall,
     handleOffer, handleAnswer, handleIce, toggleMic, toggleCam, stopAll } = useWebRTC({
       video: callInfoRef.current?.callType === 'video',
       audio: true,
@@ -203,6 +204,17 @@ export default function CallManager({ user }) {
 
   // Keep localStream ref in sync
   useEffect(() => { localStreamRef2.current = localStream; }, [localStream]);
+
+  // ── Component-level derived values used throughout JSX ────────────────────
+  const isVideo      = callInfo?.callType === 'video';
+  const callMsg      = callInfo?.callMessage || '';
+  const isPoorNetwork = connectionState === 'failed' || connectionState === 'disconnected';
+  const MessageBubble = callMsg ? (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, padding: '6px 12px', maxWidth: 320 }}>
+      <span style={{ fontSize: 13, lineHeight: 1.3, flexShrink: 0 }}>💬</span>
+      <span style={{ fontSize: 12, color: '#fff', fontStyle: 'italic', lineHeight: 1.45, wordBreak: 'break-word' }}>"{callMsg}"</span>
+    </div>
+  ) : null;
 
   useRingSound(callState === 'incoming');
 
@@ -366,10 +378,11 @@ export default function CallManager({ user }) {
     unlockAudio(); // MUST run during user gesture — unlocks mobile audio output
     const cid = callInfoRef.current?.callId;
     if (!cid) return;
-    const isVideo = callInfoRef.current?.callType === 'video';
-    const stream = await startLocalMedia(isVideo); 
+    setAccepting(true);
+    const callIsVideo = callInfoRef.current?.callType === 'video';
+    const stream = await startLocalMedia(callIsVideo);
+    setAccepting(false);
     if (!stream) {
-      // If media fails, we can't answer properly. Show reason.
       const msg = permError || 'Could not access camera/microphone';
       socketRef.current?.emit('call:decline', { callId: cid, reason: msg });
       endCallInternal(msg);
@@ -378,7 +391,7 @@ export default function CallManager({ user }) {
     localStreamRef2.current = stream;
     _setCallState('active');
     socketRef.current?.emit('call:accept', { callId: cid });
-  }, [startLocalMedia, unlockAudio]);
+  }, [startLocalMedia, unlockAudio, permError]);
 
   const declineCall = useCallback(() => {
     socketRef.current?.emit('call:decline', { callId: callInfoRef.current?.callId });
@@ -496,8 +509,8 @@ export default function CallManager({ user }) {
               <button onClick={declineCall} style={{ background: '#DC2626', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                 📵 Decline
               </button>
-              <button onClick={acceptCall} style={{ background: '#16a34a', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>{callState === 'active' ? '⌛ Connecting...' : '📞 Accept'}</span>
+              <button onClick={acceptCall} disabled={accepting} style={{ background: accepting ? '#15803d' : '#16a34a', border: 'none', borderRadius: 24, padding: '10px 22px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: accepting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, opacity: accepting ? 0.85 : 1 }}>
+                <span>{accepting ? '⌛ Starting...' : '📞 Accept'}</span>
               </button>
             </div>
           </div>

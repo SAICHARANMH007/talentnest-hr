@@ -266,9 +266,14 @@ export default function MeetingRoom() {
   const screenStreamRef = useRef(null);
 
   const isRecruiter = storedUser?.role === 'recruiter' || storedUser?.role === 'admin' || storedUser?.role === 'super_admin';
+  // Stable guest userId — generated once when guestIdentity is first set, never changes on re-render
+  const guestUserIdRef = useRef(null);
+  if (guestIdentity && !guestUserIdRef.current) {
+    guestUserIdRef.current = `guest_${Date.now().toString(36)}`;
+  }
   const identity = isAuthenticated
     ? { userId: storedUser.id || storedUser._id, name: storedUser.name, role: isRecruiter ? 'interviewer' : 'candidate', isHost: isRecruiter }
-    : (guestIdentity ? { ...guestIdentity, userId: `guest_${Math.random().toString(36).slice(2, 9)}`, role: 'candidate', isHost: false } : null);
+    : (guestIdentity ? { ...guestIdentity, userId: guestUserIdRef.current, role: 'candidate', isHost: false } : null);
 
   useEffect(() => { api.getRoom(roomToken).then(r => setRoomMeta(r?.data || r)); }, [roomToken]);
   useEffect(() => { if (identity && !joined) enterRoom(); }, [identity, joined]);
@@ -349,9 +354,74 @@ export default function MeetingRoom() {
   const sendMessage = (text) => socketRef.current?.emit('send-message', { roomToken, text });
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
+  const handleEndMeeting = () => {
+    socketRef.current?.emit('end-meeting', { roomToken });
+    setMeetingEnded(true);
+    socketRef.current?.disconnect();
+  };
+
+  const handleLeave = () => {
+    socketRef.current?.disconnect();
+    setMeetingEnded(true);
+  };
+
+  const handleToggleScreen = async () => {
+    if (isSharingScreen) {
+      screenStreamRef.current?.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+      setIsSharingScreen(false);
+      socketRef.current?.emit('screen-share-stop', { roomToken });
+    } else {
+      try {
+        const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        screenStreamRef.current = screen;
+        setIsSharingScreen(true);
+        socketRef.current?.emit('screen-share-start', { roomToken });
+        screen.getVideoTracks()[0].onended = () => {
+          setIsSharingScreen(false);
+          screenStreamRef.current = null;
+          socketRef.current?.emit('screen-share-stop', { roomToken });
+        };
+      } catch { /* user cancelled */ }
+    }
+  };
+
+  const handleReschedule = async ({ date, time }) => {
+    try {
+      const scheduledAt = new Date(`${date}T${time}`).toISOString();
+      await api.updateInterview(roomMeta?.interviewId || roomMeta?._id, { scheduledAt });
+      setShowReschedule(false);
+      showToast('Meeting rescheduled! Participants will be notified.');
+    } catch { showToast('Could not reschedule. Please try from the Interviews page.'); setShowReschedule(false); }
+  };
+
   if (authLoading || syncStatus === 'syncing') return <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Syncing session...</div>;
   if (!isAuthenticated && !guestIdentity) return <GuestJoin roomToken={roomToken} onJoin={setGuestIdentity} />;
   if (meetingEnded) return <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><h2>Meeting Ended</h2></div>;
+
+  // Build the participant list for rendering — local user first, then remote peers
+  const localSocketId = socketRef.current?.id;
+  const participantEntries = [
+    {
+      socketId: localSocketId || 'local',
+      name: identity?.name || 'You',
+      stream: localStream,
+      isMuted: !micOn,
+      isCamOff: !camOn,
+      isLocal: true,
+      isHost: identity?.isHost || false,
+      role: identity?.role || 'candidate',
+    },
+    ...participants
+      .filter(p => p.socketId !== localSocketId)
+      .map(p => ({
+        ...p,
+        stream: peers[p.socketId]?.stream || null,
+        isMuted: false,
+        isCamOff: false,
+        isLocal: false,
+      })),
+  ];
 
   const numParticipants = participantEntries.length;
   const gridCols = numParticipants <= 1 ? 1 : numParticipants <= 2 ? 2 : numParticipants <= 4 ? 2 : 3;
@@ -374,14 +444,26 @@ export default function MeetingRoom() {
         {participantsOpen && <ParticipantsPanel participants={participants} localSocketId={socketRef.current?.id} isHost={identity.isHost} onClose={() => setParticipantsOpen(false)} />}
       </div>
 
-      <ControlBar 
-        micOn={micOn} camOn={camOn} chatOpen={chatOpen} participantsOpen={participantsOpen} isHost={identity.isHost}
-        onToggleMic={toggleMic} onToggleCam={toggleCam} 
+      <ControlBar
+        micOn={micOn} camOn={camOn} chatOpen={chatOpen} participantsOpen={participantsOpen}
+        isHost={identity?.isHost || false} isSharingScreen={isSharingScreen} isRecording={isRecording}
+        onToggleMic={toggleMic} onToggleCam={toggleCam}
+        onToggleScreen={handleToggleScreen}
         onToggleChat={() => { setChatOpen(!chatOpen); setParticipantsOpen(false); }}
         onToggleParticipants={() => { setParticipantsOpen(!participantsOpen); setChatOpen(false); }}
-        onLeave={() => { setMeetingEnded(true); socketRef.current?.disconnect(); }}
+        onToggleRecording={() => setIsRecording(r => !r)}
+        onLeave={handleLeave}
+        onEndMeeting={handleEndMeeting}
+        onReschedule={() => setShowReschedule(true)}
         onCopyLink={() => { navigator.clipboard.writeText(window.location.href); showToast('Link Copied!'); }}
       />
+      {showReschedule && (
+        <RescheduleModal
+          initialDate={roomMeta?.scheduledAt}
+          onSave={handleReschedule}
+          onClose={() => setShowReschedule(false)}
+        />
+      )}
       {toast && <div style={{ position: 'fixed', bottom: 120, left: '50%', transform: 'translateX(-50%)', background: '#334155', color: '#fff', padding: '8px 16px', borderRadius: 20 }}>{toast}</div>}
     </div>
   );
