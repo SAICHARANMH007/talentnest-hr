@@ -55,9 +55,20 @@ async function createAndInviteUser({ name, email, phone, jobTitle, role, orgId, 
     invitedAt: new Date(),
   });
 
-  const org = await Organization.findById(orgId).select('name').lean();
-  const orgName = org?.name || 'TalentNest HR';
-  const emailOpts = { orgId: orgId?.toString(), orgName };
+  const org = await Organization.findById(orgId).select('name settings website').lean();
+  const orgName   = org?.name || 'TalentNest HR';
+  const emailCfg  = org?.settings?.emailSettings || {};
+  // Pass branding settings to email templates so colors/footer reflect org config
+  const emailOpts = {
+    orgId        : orgId?.toString(),
+    orgName,
+    brandColor   : emailCfg.brandColor    || '#032D60',
+    accentColor  : emailCfg.accentColor   || '#0176D3',
+    headerSubtitle: emailCfg.headerSubtitle || 'PROFESSIONAL RECRUITMENT CLOUD',
+    footerText   : emailCfg.footerText    || '',
+    supportEmail : emailCfg.supportEmail  || emailCfg.fromEmail || '',
+    website      : emailCfg.website       || org?.website       || '',
+  };
 
   if (useTemporaryPassword) {
     const tpl = templates.tempPassword(name.trim(), cleanEmail, TEMP_PWD, emailOpts);

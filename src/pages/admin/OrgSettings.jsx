@@ -5,6 +5,113 @@ import LogoManager from '../../components/LogoManager.jsx';
 import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
 
+// ── Live email preview builder ────────────────────────────────────────────────
+// Mirrors the backend baseLayout() so what you see here = what is sent.
+function buildEmailPreview(ef, orgName, type = 'invite') {
+  const brand   = ef.brandColor  || '#032D60';
+  const accent  = ef.accentColor || '#0176D3';
+  const name    = ef.fromName    || orgName || 'Your Company';
+  const website = ef.website     || 'https://yourcompany.com';
+  const support = ef.supportEmail || ef.fromEmail || 'hr@yourcompany.com';
+  const sub     = ef.headerSubtitle || 'PROFESSIONAL RECRUITMENT CLOUD';
+  const footer  = ef.footerText  || '';
+
+  const BODIES = {
+    invite: `
+      <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Hi Sarah 👋</h2>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+        <strong>Alex Johnson</strong> has invited you to join <strong>${name}</strong> as <strong>Recruiter</strong>.<br>
+        Click the button below to set your password and access your account.
+      </p>
+      <div style="text-align:center;margin:32px 0">
+        <a href="#" style="display:inline-block;background:linear-gradient(135deg,${accent},${brand});color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.2)">
+          Set My Password &amp; Join →
+        </a>
+      </div>
+      <p style="color:#ef4444;font-size:12px;text-align:center;font-weight:600;margin:0">⏰ This link expires in 7 days.</p>`,
+
+    candidate: `
+      <h2 style="color:#032D60;font-size:20px;margin:0 0 18px;font-weight:800">Hi Rahul 👋</h2>
+      <p style="color:#374151;font-size:14px;margin:0 0 18px"><strong>Sarah</strong> from <strong>${name}</strong> has personally selected you for an exciting opportunity.</p>
+      <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:28px">
+        <div style="background:${accent};padding:20px 24px">
+          <div style="color:#fff;font-size:20px;font-weight:800;margin-bottom:4px">Senior React Developer</div>
+          <div style="color:rgba(255,255,255,0.8);font-size:13px">${name}</div>
+        </div>
+        <div style="padding:22px 24px;background:#f8fafc">
+          <div style="color:#374151;font-size:13px">📍 Hyderabad &nbsp; ⏱ Full-Time</div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <a href="#" style="display:inline-block;background:linear-gradient(135deg,${accent},${brand});color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700">
+          ✅ View Job &amp; Respond
+        </a>
+      </div>`,
+
+    offer: `
+      <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Congratulations, Rahul! 🎉</h2>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+        We're delighted to extend an offer for the position of <strong>Senior React Developer</strong> at <strong>${name}</strong>.
+      </p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin:0 0 24px">
+        <div style="color:#065f46;font-size:13px;font-weight:700;margin-bottom:8px">Offer Details</div>
+        <div style="color:#374151;font-size:13px;line-height:2">
+          💼 Role: Senior React Developer<br>
+          💰 CTC: ₹18 LPA<br>
+          📅 Start: 1st July 2025<br>
+          📍 Location: Hyderabad
+        </div>
+      </div>
+      <div style="text-align:center">
+        <a href="#" style="display:inline-block;background:linear-gradient(135deg,${accent},${brand});color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700">
+          📄 View &amp; Sign Offer Letter →
+        </a>
+      </div>`,
+
+    interview: `
+      <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Interview Confirmed ✅</h2>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
+        Your interview for <strong>Senior React Developer</strong> at <strong>${name}</strong> has been scheduled.
+      </p>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px 24px;margin:0 0 24px">
+        <div style="color:#92400e;font-size:13px;font-weight:700;margin-bottom:8px">Interview Details</div>
+        <div style="color:#374151;font-size:13px;line-height:2">
+          📅 Date: Wednesday, 25 June 2025<br>
+          ⏰ Time: 11:00 AM IST<br>
+          📹 Format: Video Call<br>
+          👤 Interviewer: Alex Johnson
+        </div>
+      </div>
+      <div style="text-align:center">
+        <a href="#" style="display:inline-block;background:linear-gradient(135deg,${accent},${brand});color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700">
+          🔗 Join Interview →
+        </a>
+      </div>`,
+  };
+
+  const body = BODIES[type] || BODIES.invite;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:16px;background:#f4f6f8;font-family:'Segoe UI',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10)">
+  <div style="background:linear-gradient(135deg,${brand} 0%,${accent} 100%);padding:28px 36px;text-align:center">
+    <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.5px">${name}</div>
+    <div style="color:rgba(255,255,255,0.65);font-size:10px;margin-top:4px;letter-spacing:1.5px">${sub}</div>
+  </div>
+  <div style="padding:32px 36px">${body}</div>
+  <div style="background:#f8fafc;padding:18px 36px;border-top:1px solid #e2e8f0;text-align:center">
+    <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0">
+      ${footer || `You are receiving this email as part of your ${name} account activity.`}<br>
+      <a href="${website}" style="color:${accent}">${website.replace(/^https?:\/\//, '')}</a>
+      ${support ? ` · <a href="mailto:${support}" style="color:${accent}">${support}</a>` : ''}
+    </p>
+  </div>
+</div>
+</body></html>`;
+}
+
 const glass = { background: '#FFFFFF', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24 };
 
 function extractCompanyName(url) {
@@ -24,9 +131,21 @@ export default function OrgSettings({ user }) {
   const [newStage, setNewStage] = useState('');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [emailForm, setEmailForm] = useState({ fromName: '', fromEmail: '', provider: 'resend', apiKey: '', smtpHost: '', smtpPort: '587' });
+  const [emailForm, setEmailForm] = useState({
+    fromName: '', fromEmail: '', provider: 'resend', apiKey: '',
+    smtpHost: '', smtpPort: '587',
+    // Branding
+    brandColor: '#032D60', accentColor: '#0176D3',
+    supportEmail: '', website: '',
+    headerSubtitle: 'PROFESSIONAL RECRUITMENT CLOUD',
+    footerText: '',
+    // Sending domain
+    sendingDomain: '',
+  });
   const [savingEmail, setSavingEmail] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewType, setPreviewType] = useState('invite'); // invite | candidate | offer | interview
 
   // Pipeline Templates
   const [templates, setTemplates]       = useState({ presets: [], custom: [] });
@@ -47,7 +166,14 @@ export default function OrgSettings({ user }) {
         setOrg(o);
         setForm({ name: o.name || '', domain: o.domain || '', industry: o.industry || '', size: o.size || '' });
         setStages(o.settings?.pipelineStages || ['applied','screening','shortlisted','interview_scheduled','offer_extended','selected','rejected']);
-        if (o.settings?.emailSettings) setEmailForm(prev => ({...prev, ...o.settings.emailSettings}));
+        if (o.settings?.emailSettings) setEmailForm(prev => ({
+          ...prev,
+          ...o.settings.emailSettings,
+          // Pre-fill branding defaults from org if not set
+          fromName: o.settings.emailSettings.fromName || o.name || '',
+          supportEmail: o.settings.emailSettings.supportEmail || '',
+          website: o.settings.emailSettings.website || o.website || o.domain || '',
+        }));
       }
       // Load pipeline templates
       try {
@@ -246,29 +372,125 @@ export default function OrgSettings({ user }) {
           </div>
         </div>
 
-        {/* Email Settings */}
+        {/* Email Settings — fully editable + live preview */}
         <div style={glass}>
-          <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Email Settings</h3>
-          <p style={{ color: '#9E9D9B', fontSize: 12, marginBottom: 16 }}>Configure how emails are sent from your organisation — application updates, interview invites, offers.</p>
-          <FormRow cols={2}>
-            <Field label="From Name" value={emailForm.fromName} onChange={v => setEmailForm(p => ({...p, fromName: v}))} placeholder="TalentNest HR" />
-            <Field label="From Email" type="email" value={emailForm.fromEmail} onChange={v => setEmailForm(p => ({...p, fromEmail: v}))} placeholder="hr@yourcompany.com" />
-            <Field label="Email Provider" value={emailForm.provider} onChange={v => setEmailForm(p => ({...p, provider: v}))}
-              options={[{value:'resend',label:'Resend (recommended)'},{value:'smtp',label:'Custom SMTP'},{value:'gmail',label:'Gmail SMTP'},{value:'zoho',label:'Zoho Mail'},{value:'outlook',label:'Outlook / Office 365'}]} />
-            <Field label="API Key / App Password" type="password" value={emailForm.apiKey} onChange={v => setEmailForm(p => ({...p, apiKey: v}))} placeholder="re_xxxxxxxx or app password" />
-            {emailForm.provider !== 'resend' && <>
-              <Field label="SMTP Host" value={emailForm.smtpHost} onChange={v => setEmailForm(p => ({...p, smtpHost: v}))} placeholder="smtp.yourprovider.com" />
-              <Field label="SMTP Port" value={emailForm.smtpPort} onChange={v => setEmailForm(p => ({...p, smtpPort: v}))} placeholder="587" />
-            </>}
-          </FormRow>
-          <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-            <button onClick={saveEmailSettings} disabled={savingEmail} style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 10, color: '#0176D3', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: savingEmail ? 'not-allowed' : 'pointer', opacity: savingEmail ? 0.6 : 1 }}>
-              {savingEmail ? 'Saving…' : '💾 Save Email Settings'}
-            </button>
-            <button onClick={testEmail} disabled={testingEmail} style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, color: '#10b981', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: testingEmail ? 'not-allowed' : 'pointer', opacity: testingEmail ? 0.6 : 1 }}>
-              {testingEmail ? '⏳ Sending…' : '📧 Send Test Email'}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>📧 Email Settings</h3>
+              <p style={{ color: '#9E9D9B', fontSize: 12, margin: 0 }}>
+                Configure sending credentials, branding and preview how every email looks before it goes out.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowEmailPreview(p => !p)}
+              style={{ background: showEmailPreview ? '#0176D3' : 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 10, color: showEmailPreview ? '#fff' : '#0176D3', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer', flexShrink: 0 }}
+            >
+              {showEmailPreview ? '✕ Close Preview' : '👁 Preview Email'}
             </button>
           </div>
+
+          <div style={{ display: showEmailPreview ? 'grid' : 'block', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            {/* ── Left: Form ── */}
+            <div>
+              {/* Section: Sending */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>📤 Sending</div>
+                <FormRow cols={2}>
+                  <Field label="From Name" value={emailForm.fromName} onChange={v => setEmailForm(p => ({...p, fromName: v}))} placeholder={form.name || 'Acme Corp HR'} />
+                  <Field label="From Email" type="email" value={emailForm.fromEmail} onChange={v => setEmailForm(p => ({...p, fromEmail: v}))} placeholder="hr@yourcompany.com" />
+                  <Field label="Email Provider" value={emailForm.provider} onChange={v => setEmailForm(p => ({...p, provider: v}))}
+                    options={[
+                      {value:'resend',  label:'Resend (recommended)'},
+                      {value:'smtp',    label:'Custom SMTP'},
+                      {value:'gmail',   label:'Gmail SMTP'},
+                      {value:'zoho',    label:'Zoho Mail'},
+                      {value:'outlook', label:'Outlook / Office 365'},
+                    ]} />
+                  <Field label="API Key / App Password" type="password" value={emailForm.apiKey} onChange={v => setEmailForm(p => ({...p, apiKey: v}))} placeholder={emailForm.provider === 'resend' ? 're_xxxxxxxxxxxxxxxx' : 'App password'} />
+                  {emailForm.provider !== 'resend' && <>
+                    <Field label="SMTP Host" value={emailForm.smtpHost} onChange={v => setEmailForm(p => ({...p, smtpHost: v}))} placeholder="smtp.yourprovider.com" />
+                    <Field label="SMTP Port" value={emailForm.smtpPort} onChange={v => setEmailForm(p => ({...p, smtpPort: v}))} placeholder="587" />
+                  </>}
+                  {emailForm.provider === 'resend' && (
+                    <Field
+                      label="Sending Domain (optional)"
+                      value={emailForm.sendingDomain}
+                      onChange={v => setEmailForm(p => ({...p, sendingDomain: v}))}
+                      placeholder="mail.yourcompany.com"
+                      hint="Verify your domain in Resend dashboard then enter it here for full white-label delivery."
+                    />
+                  )}
+                </FormRow>
+              </div>
+
+              {/* Section: Branding */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>🎨 Email Branding</div>
+                <FormRow cols={2}>
+                  <Field label="Support Email (in footer)" type="email" value={emailForm.supportEmail} onChange={v => setEmailForm(p => ({...p, supportEmail: v}))} placeholder={emailForm.fromEmail || 'support@yourcompany.com'} />
+                  <Field label="Website (in footer)" value={emailForm.website} onChange={v => setEmailForm(p => ({...p, website: v}))} placeholder="https://yourcompany.com" />
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Header Background Color</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={emailForm.brandColor || '#032D60'} onChange={e => setEmailForm(p => ({...p, brandColor: e.target.value}))} style={{ width: 44, height: 36, borderRadius: 8, border: '1.5px solid #E2E8F0', padding: 2, cursor: 'pointer' }} />
+                      <input value={emailForm.brandColor || '#032D60'} onChange={e => setEmailForm(p => ({...p, brandColor: e.target.value}))} style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', fontFamily: 'monospace' }} placeholder="#032D60" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Button / Accent Color</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={emailForm.accentColor || '#0176D3'} onChange={e => setEmailForm(p => ({...p, accentColor: e.target.value}))} style={{ width: 44, height: 36, borderRadius: 8, border: '1.5px solid #E2E8F0', padding: 2, cursor: 'pointer' }} />
+                      <input value={emailForm.accentColor || '#0176D3'} onChange={e => setEmailForm(p => ({...p, accentColor: e.target.value}))} style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', fontFamily: 'monospace' }} placeholder="#0176D3" />
+                    </div>
+                  </div>
+                  <Field label="Header Subtitle (under company name)" value={emailForm.headerSubtitle} onChange={v => setEmailForm(p => ({...p, headerSubtitle: v}))} placeholder="PROFESSIONAL RECRUITMENT CLOUD" />
+                  <Field label="Custom Footer Text (optional)" value={emailForm.footerText} onChange={v => setEmailForm(p => ({...p, footerText: v}))} placeholder="© 2025 Acme Corp. All rights reserved." />
+                </FormRow>
+              </div>
+            </div>
+
+            {/* ── Right: Live Preview ── */}
+            {showEmailPreview && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  👁 Live Preview
+                  {['invite','candidate','offer','interview'].map(t => (
+                    <button key={t} onClick={() => setPreviewType(t)}
+                      style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, border: `1px solid ${previewType === t ? '#0176D3' : '#E2E8F0'}`, background: previewType === t ? '#0176D3' : '#fff', color: previewType === t ? '#fff' : '#64748B', cursor: 'pointer', fontWeight: 700, textTransform: 'capitalize' }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden', background: '#f4f6f8' }}>
+                  <iframe
+                    srcDoc={buildEmailPreview(emailForm, form.name || 'Your Company', previewType)}
+                    style={{ width: '100%', height: 520, border: 'none', display: 'block' }}
+                    title="Email Preview"
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+                <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(1,118,211,0.05)', borderRadius: 8, border: '1px solid rgba(1,118,211,0.15)' }}>
+                  <div style={{ fontSize: 11, color: '#475569', fontWeight: 700 }}>From: <span style={{ color: '#0176D3' }}>{emailForm.fromName || form.name || 'Your Company'} &lt;{emailForm.fromEmail || 'hr@yourcompany.com'}&gt;</span></div>
+                  <div style={{ fontSize: 11, color: '#475569', fontWeight: 700, marginTop: 2 }}>Subject: <span style={{ color: '#181818', fontWeight: 400 }}>{previewType === 'invite' ? `You've been invited to ${emailForm.fromName || form.name || 'Your Company'}` : previewType === 'offer' ? `Offer Letter — Senior Developer | ${emailForm.fromName || form.name}` : previewType === 'interview' ? `Interview Scheduled — ${emailForm.fromName || form.name}` : `Exclusive Invite: Senior Developer — We think you're a great fit`}</span></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={saveEmailSettings} disabled={savingEmail} style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: savingEmail ? 'not-allowed' : 'pointer', opacity: savingEmail ? 0.6 : 1 }}>
+              {savingEmail ? '⏳ Saving…' : '💾 Save Email Settings'}
+            </button>
+            <button onClick={testEmail} disabled={testingEmail || !emailForm.fromEmail} style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, color: '#10b981', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: (testingEmail || !emailForm.fromEmail) ? 'not-allowed' : 'pointer', opacity: (testingEmail || !emailForm.fromEmail) ? 0.6 : 1 }} title={!emailForm.fromEmail ? 'Enter From Email first' : ''}>
+              {testingEmail ? '⏳ Sending…' : '📧 Send Test Email to ' + (emailForm.fromEmail || '—')}
+            </button>
+          </div>
+
+          {emailForm.provider === 'resend' && !emailForm.apiKey && (
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, fontSize: 12, color: '#A07E00' }}>
+              ⚠️ No API key set — emails will send via TalentNest's shared Resend account. Add your own key to send from your domain and see your company name on all emails.
+            </div>
+          )}
         </div>
 
         <button

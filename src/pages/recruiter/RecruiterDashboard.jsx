@@ -248,9 +248,9 @@ export default function RecruiterDashboard({ user }) {
           </table>
         </div>
       </div>
-      {/* Admin-Assigned Candidates Section */}
+      {/* Admin-Assigned Candidates Section — from recent 20 apps in stats */}
       {(() => {
-        const adminAssigned = myApps.filter(a => a.addedBy && String(a.addedBy) !== String(user.id));
+        const adminAssigned = recentActs.filter(a => a.addedBy && String(a.addedBy) !== String(user.id));
         if (adminAssigned.length === 0) return null;
         return (
           <div style={{ ...card, marginBottom:20, borderLeft:'4px solid #0176D3' }}>

@@ -11,9 +11,14 @@ const BACKEND_URL  = process.env.BACKEND_URL
  * @param {object} opts      - { orgId, logoUrl, orgName, supportEmail, website }
  */
 function baseLayout(bodyHtml, title = 'TalentNest HR', opts = {}) {
-  const orgName     = opts.orgName     || 'TalentNest HR';
-  const supportEmail= opts.supportEmail|| 'hr@talentnesthr.com';
-  const website     = opts.website     || 'https://www.talentnesthr.com';
+  const orgName      = opts.orgName       || 'TalentNest HR';
+  const supportEmail = opts.supportEmail  || 'hr@talentnesthr.com';
+  const website      = opts.website       || 'https://www.talentnesthr.com';
+  // Org-configurable brand colors (set in OrgSettings → Email → Branding)
+  const brandColor   = opts.brandColor    || '#032D60';
+  const accentColor  = opts.accentColor   || '#0176D3';
+  const headerSub    = opts.headerSubtitle|| 'PROFESSIONAL RECRUITMENT CLOUD';
+  const customFooter = opts.footerText    || '';
 
   // Build logo HTML — prefer passed logoUrl (base64 or URL), fallback to public image endpoint
   let logoHtml;
@@ -33,16 +38,16 @@ function baseLayout(bodyHtml, title = 'TalentNest HR', opts = {}) {
 <title>${title}</title></head>
 <body style="margin:0;padding:0;background:#f4f6f8;font-family:'Segoe UI',Arial,sans-serif">
 <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10)">
-  <div style="background:linear-gradient(135deg,#032D60 0%,#0176D3 100%);padding:32px 40px;text-align:center">
+  <div style="background:linear-gradient(135deg,${brandColor} 0%,${accentColor} 100%);padding:32px 40px;text-align:center">
     ${logoHtml}
     <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">${orgName}</div>
-    <div style="color:rgba(255,255,255,0.65);font-size:11px;margin-top:4px;letter-spacing:1.5px">PROFESSIONAL RECRUITMENT CLOUD</div>
+    <div style="color:rgba(255,255,255,0.65);font-size:11px;margin-top:4px;letter-spacing:1.5px">${headerSub}</div>
   </div>
   <div style="padding:36px 40px">${bodyHtml}</div>
   <div style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center">
     <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0">
-      You are receiving this system email as part of your ${orgName} account activity.<br>
-      <a href="${website}" style="color:#0176D3">${website.replace(/^https?:\/\//, '')}</a> · <a href="mailto:${supportEmail}" style="color:#0176D3">${supportEmail}</a>
+      ${customFooter || `You are receiving this system email as part of your ${orgName} account activity.`}<br>
+      <a href="${website}" style="color:${accentColor}">${website.replace(/^https?:\/\//, '')}</a> · <a href="mailto:${supportEmail}" style="color:${accentColor}">${supportEmail}</a>
     </p>
   </div>
 </div></body></html>`;
