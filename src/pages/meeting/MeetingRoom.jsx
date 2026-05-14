@@ -264,6 +264,9 @@ export default function MeetingRoom() {
   const peerConnsRef = useRef({});
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
+  // Stable own socket ID — set on connect, used to filter participantEntries correctly.
+  // socketRef.current?.id is undefined before connect fires; this ref is always reliable.
+  const mySocketIdRef = useRef(null);
 
   const isRecruiter = storedUser?.role === 'recruiter' || storedUser?.role === 'admin' || storedUser?.role === 'super_admin';
   // Stable guest userId — generated once when guestIdentity is first set, never changes on re-render
@@ -295,22 +298,43 @@ export default function MeetingRoom() {
     const socket = io(`${SOCKET_URL}/video`, { auth: { token }, transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    // Helper: emit join-room with current identity. Called on connect AND reconnect.
+    const doJoin = () => {
+      mySocketIdRef.current = socket.id;
       socket.emit('join-room', { roomToken, ...identity });
-    });
+    };
+
+    socket.on('connect', doJoin);
+
+    // Re-emit join-room on reconnect so the guest re-appears after a brief disconnect
+    socket.on('reconnect', doJoin);
 
     socket.on('room-state', ({ participants: pList, chatMessages: msgs }) => {
       setParticipants(pList);
       setChatMessages(msgs || []);
-      pList.forEach(p => { if (p.socketId !== socket.id) initiateCall(socket, p.socketId, stream); });
+      // Call every OTHER participant in the room (not ourselves)
+      pList.forEach(p => {
+        if (p.socketId !== socket.id) initiateCall(socket, p.socketId, stream);
+      });
     });
 
-    socket.on('user-joined', (p) => { setParticipants(prev => [...prev, p]); showToast(`${p.name} joined`); });
+    socket.on('user-joined', (p) => {
+      setParticipants(prev => {
+        // Prevent duplicates
+        if (prev.some(x => x.socketId === p.socketId)) return prev;
+        return [...prev, p];
+      });
+      showToast(`${p.name} joined`);
+    });
+
     socket.on('user-left', ({ socketId, name }) => {
       setParticipants(p => p.filter(x => x.socketId !== socketId));
       setPeers(pr => { const n = { ...pr }; delete n[socketId]; return n; });
-      if (peerConnsRef.current[socketId]) { peerConnsRef.current[socketId].close(); delete peerConnsRef.current[socketId]; }
-      showToast(`${name} left`);
+      if (peerConnsRef.current[socketId]) {
+        peerConnsRef.current[socketId].close();
+        delete peerConnsRef.current[socketId];
+      }
+      showToast(`${name || 'A participant'} left`);
     });
 
     socket.on('offer', async ({ from, offer }) => {
@@ -330,6 +354,20 @@ export default function MeetingRoom() {
     });
     socket.on('new-message', (m) => setChatMessages(prev => [...prev, m]));
     socket.on('meeting-ended', () => setMeetingEnded(true));
+
+    // Handle server-side errors (room ended, too early, etc.)
+    socket.on('error', ({ code, message }) => {
+      if (code === 'ROOM_ENDED') {
+        setMeetingEnded(true);
+      } else {
+        showToast(`⚠️ ${message || 'Could not join room'}`);
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      showToast('⚠️ Connection lost — retrying…');
+      console.warn('[MeetingRoom] connect_error', err.message);
+    });
   };
 
   const createPeerConn = (socket, sid, stream) => {
@@ -399,8 +437,10 @@ export default function MeetingRoom() {
   if (!isAuthenticated && !guestIdentity) return <GuestJoin roomToken={roomToken} onJoin={setGuestIdentity} />;
   if (meetingEnded) return <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}><h2>Meeting Ended</h2></div>;
 
-  // Build the participant list for rendering — local user first, then remote peers
-  const localSocketId = socketRef.current?.id;
+  // Build the participant list for rendering — local user first, then remote peers.
+  // Use mySocketIdRef (set in connect handler) not socketRef.current?.id
+  // because socket.id is undefined until after the connect event fires.
+  const localSocketId = mySocketIdRef.current || socketRef.current?.id;
   const participantEntries = [
     {
       socketId: localSocketId || 'local',
