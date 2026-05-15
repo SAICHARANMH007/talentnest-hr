@@ -8,12 +8,18 @@ import { SOCKET_BASE_URL } from '../../api/config.js';
 // ── Config ───────────────────────────────────────────────────────────────────
 const SOCKET_URL = SOCKET_BASE_URL;
 const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
+  // Multiple STUN servers for reliability
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'stun:stun.nextcloud.com:443' },
+  // FreeSWITCH public TURN — free, reliable
+  { urls: 'turn:freestun.net:3479',     username: 'free', credential: 'free' },
+  { urls: 'turn:freestun.net:5350',     username: 'free', credential: 'free' },
+  { urls: 'turns:freestun.net:5350',    username: 'free', credential: 'free' },
+  // Open Relay Metered — fallback
+  { urls: 'turn:openrelay.metered.ca:80',             username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443',            username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
@@ -284,43 +290,65 @@ export default function MeetingRoom() {
   const enterRoom = async () => {
     if (joined) return;
     setJoined(true);
+
+    // ── Step 1: Request camera + mic with clear fallback chain ───────────────
     let stream;
+    // Try video + audio first (ideal case)
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (e) {
-      try { stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true }); } 
-      catch { stream = new MediaStream(); setPermError('Media blocked. Joined via chat.'); }
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+    } catch {
+      // Camera blocked or not available — try audio only
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        setPermError('Camera not available — audio only.');
+      } catch {
+        // Both blocked — join chat only
+        stream = new MediaStream();
+        setPermError('Camera & mic blocked. Check browser permissions and refresh.');
+      }
     }
     localStreamRef.current = stream;
     setLocalStream(stream);
 
+    // ── Step 2: Connect socket ───────────────────────────────────────────────
     const token = sessionStorage.getItem('tn_token') || localStorage.getItem('tn_token') || '';
-    const socket = io(`${SOCKET_URL}/video`, { auth: { token }, transports: ['websocket', 'polling'] });
+    const socket = io(`${SOCKET_URL}/video`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+    });
     socketRef.current = socket;
 
-    // Helper: emit join-room with current identity. Called on connect AND reconnect.
+    // Snapshot identity at join-time so the closure is always correct
+    const joinIdentity = identity;
+
     const doJoin = () => {
       mySocketIdRef.current = socket.id;
-      socket.emit('join-room', { roomToken, ...identity });
+      socket.emit('join-room', { roomToken, ...joinIdentity });
     };
 
-    socket.on('connect', doJoin);
-
-    // Re-emit join-room on reconnect so the guest re-appears after a brief disconnect
+    socket.on('connect',   doJoin);
     socket.on('reconnect', doJoin);
 
+    // ── Step 3: Room events ──────────────────────────────────────────────────
     socket.on('room-state', ({ participants: pList, chatMessages: msgs }) => {
       setParticipants(pList);
       setChatMessages(msgs || []);
-      // Call every OTHER participant in the room (not ourselves)
+      // Initiate a call to every participant already in the room (not ourselves)
       pList.forEach(p => {
-        if (p.socketId !== socket.id) initiateCall(socket, p.socketId, stream);
+        if (p.socketId !== socket.id) {
+          initiateCall(socket, p.socketId);
+        }
       });
     });
 
     socket.on('user-joined', (p) => {
       setParticipants(prev => {
-        // Prevent duplicates
         if (prev.some(x => x.socketId === p.socketId)) return prev;
         return [...prev, p];
       });
@@ -337,31 +365,41 @@ export default function MeetingRoom() {
       showToast(`${name || 'A participant'} left`);
     });
 
+    // ── Step 4: WebRTC signalling ────────────────────────────────────────────
     socket.on('offer', async ({ from, offer }) => {
-      const pc = createPeerConn(socket, from, stream);
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('answer', { to: from, answer });
+      // CRITICAL: always read localStreamRef.current — never use a stale closure variable
+      const pc = createPeerConn(socket, from);
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('answer', { to: from, answer });
+      } catch (err) {
+        console.error('[WebRTC] offer handling failed:', err);
+      }
     });
+
     socket.on('answer', async ({ from, answer }) => {
       const pc = peerConnsRef.current[from];
-      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      if (pc) {
+        try { await pc.setRemoteDescription(new RTCSessionDescription(answer)); }
+        catch (err) { console.error('[WebRTC] answer handling failed:', err); }
+      }
     });
+
     socket.on('ice-candidate', ({ from, candidate }) => {
       const pc = peerConnsRef.current[from];
-      if (pc && candidate) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-    });
-    socket.on('new-message', (m) => setChatMessages(prev => [...prev, m]));
-    socket.on('meeting-ended', () => setMeetingEnded(true));
-
-    // Handle server-side errors (room ended, too early, etc.)
-    socket.on('error', ({ code, message }) => {
-      if (code === 'ROOM_ENDED') {
-        setMeetingEnded(true);
-      } else {
-        showToast(`⚠️ ${message || 'Could not join room'}`);
+      if (pc && candidate) {
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
       }
+    });
+
+    socket.on('new-message',   (m) => setChatMessages(prev => [...prev, m]));
+    socket.on('meeting-ended', ()  => setMeetingEnded(true));
+
+    socket.on('error', ({ code, message }) => {
+      if (code === 'ROOM_ENDED') setMeetingEnded(true);
+      else showToast(`⚠️ ${message || 'Could not join room'}`);
     });
 
     socket.on('connect_error', (err) => {
@@ -370,25 +408,108 @@ export default function MeetingRoom() {
     });
   };
 
-  const createPeerConn = (socket, sid, stream) => {
+  // Create or return an existing RTCPeerConnection for a remote peer.
+  // Always reads localStreamRef.current so tracks are always current.
+  const createPeerConn = (socket, sid) => {
     if (peerConnsRef.current[sid]) return peerConnsRef.current[sid];
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    const pc = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+    });
     peerConnsRef.current[sid] = pc;
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
-    pc.onicecandidate = ({ candidate }) => candidate && socket.emit('ice-candidate', { to: sid, candidate });
-    pc.ontrack = (e) => setPeers(prev => ({ ...prev, [sid]: { stream: e.streams[0] } }));
+
+    // Add ALL current local tracks — use ref, never a stale closure
+    const currentStream = localStreamRef.current;
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => pc.addTrack(t, currentStream));
+    }
+
+    // Trickle ICE — send candidates as soon as they arrive
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) socket.emit('ice-candidate', { to: sid, candidate });
+    };
+
+    // When remote tracks arrive, update peers state → VideoTile shows video
+    pc.ontrack = (e) => {
+      const remoteStream = e.streams?.[0];
+      if (remoteStream) {
+        setPeers(prev => ({ ...prev, [sid]: { stream: remoteStream } }));
+      }
+    };
+
+    // Auto-restart ICE if connection fails
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'failed') {
+        console.warn('[WebRTC] connection failed with', sid, '— attempting ICE restart');
+        pc.restartIce?.();
+        // Re-offer after a brief delay so ICE restart completes
+        setTimeout(async () => {
+          try {
+            if (pc.signalingState === 'stable') {
+              const offer = await pc.createOffer({ iceRestart: true });
+              await pc.setLocalDescription(offer);
+              socket.emit('offer', { to: sid, offer });
+            }
+          } catch { /* ignore if connection was already cleaned up */ }
+        }, 2000);
+      }
+      if (state === 'disconnected') {
+        showToast('⚠️ Connection unstable — attempting to reconnect…');
+      }
+    };
+
     return pc;
   };
 
-  const initiateCall = async (socket, sid, stream) => {
-    const pc = createPeerConn(socket, sid, stream);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socket.emit('offer', { to: sid, offer });
+  // Initiate a call to a remote peer (late-joiner calls early-joiner)
+  const initiateCall = async (socket, sid) => {
+    const pc = createPeerConn(socket, sid);
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { to: sid, offer });
+    } catch (err) {
+      console.error('[WebRTC] initiateCall failed:', err);
+    }
   };
 
-  const toggleMic = () => { const t = localStreamRef.current?.getAudioTracks()[0]; if (t) { t.enabled = !micOn; setMicOn(!micOn); } };
-  const toggleCam = () => { const t = localStreamRef.current?.getVideoTracks()[0]; if (t) { t.enabled = !camOn; setCamOn(!camOn); } };
+  const toggleMic = () => {
+    const t = localStreamRef.current?.getAudioTracks()[0];
+    if (t) { t.enabled = !micOn; setMicOn(!micOn); }
+  };
+
+  const toggleCam = async () => {
+    const existingTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (existingTrack) {
+      // Track exists — just toggle enabled
+      existingTrack.enabled = !camOn;
+      setCamOn(!camOn);
+    } else if (!camOn) {
+      // No track and user wants to turn ON — request camera now
+      try {
+        const camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        const camTrack  = camStream.getVideoTracks()[0];
+        if (camTrack && localStreamRef.current) {
+          localStreamRef.current.addTrack(camTrack);
+          // Replace track in all active peer connections so remote sees video
+          Object.values(peerConnsRef.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) sender.replaceTrack(camTrack);
+            else pc.addTrack(camTrack, localStreamRef.current);
+          });
+          setCamOn(true);
+          setPermError('');
+          setLocalStream(new MediaStream(localStreamRef.current.getTracks())); // trigger re-render
+        }
+      } catch {
+        showToast('⚠️ Could not access camera. Check browser permissions.');
+      }
+    }
+  };
   const sendMessage = (text) => socketRef.current?.emit('send-message', { roomToken, text });
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
@@ -470,7 +591,37 @@ export default function MeetingRoom() {
     <div style={{ minHeight: '100vh', background: '#0A1628', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: '#0F172A', padding: '12px 24px', borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ color: '#0176D3', fontWeight: 900 }}>TalentNest Room</span>
-        {permError && <span style={{ color: '#EF4444', fontSize: 12 }}>⚠️ {permError}</span>}
+        {permError && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '6px 12px' }}>
+            <span style={{ color: '#EF4444', fontSize: 12 }}>⚠️ {permError}</span>
+            <button
+              onClick={async () => {
+                try {
+                  const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                  localStreamRef.current?.getTracks().forEach(t => t.stop());
+                  localStreamRef.current = s;
+                  setLocalStream(s);
+                  setPermError('');
+                  setCamOn(true);
+                  setMicOn(true);
+                  // Restart ICE for all existing connections with new tracks
+                  Object.entries(peerConnsRef.current).forEach(([sid, pc]) => {
+                    s.getTracks().forEach(t => {
+                      const sender = pc.getSenders().find(send => send.track?.kind === t.kind);
+                      if (sender) sender.replaceTrack(t);
+                      else pc.addTrack(t, s);
+                    });
+                  });
+                } catch {
+                  showToast('Still blocked. Click the camera icon in your browser address bar and allow permissions, then refresh.');
+                }
+              }}
+              style={{ fontSize: 11, background: '#EF4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
+            >
+              🔄 Retry Camera
+            </button>
+          </div>
+        )}
         <span style={{ color: '#94A3B8', fontSize: 13 }}>{participants.length} Active</span>
       </div>
 
