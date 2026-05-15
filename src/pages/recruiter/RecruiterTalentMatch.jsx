@@ -135,8 +135,8 @@ export default function RecruiterTalentMatch({ user }) {
         </div>
       )}
       <PageHeader 
-        title="AI-Powered Talent Match" 
-        subtitle="Rank your best internal and external candidates instantly using high-precision heuristics."
+        title="Talent Match"
+        subtitle="Rank your best internal and external candidates instantly using our smart matching engine."
       />
 
       <div style={{ ...card, marginBottom: 24, padding: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)', border: '1px solid #e0e8f5' }}>
@@ -167,7 +167,7 @@ export default function RecruiterTalentMatch({ user }) {
               opacity: (!selJob || loading) ? 0.6 : 1 
             }}
           >
-            {loading ? <><Spinner /> Matching...</> : <><span style={{fontSize:18}}>🎯</span> Run AI Analysis</>}
+            {loading ? <><Spinner /> Matching...</> : <><span style={{fontSize:18}}>🎯</span> Run Analysis</>}
           </button>
         </div>
         
@@ -191,7 +191,7 @@ export default function RecruiterTalentMatch({ user }) {
         <div style={{ ...card, textAlign: "center", padding: '80px 40px', borderStyle: 'dashed' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔎</div>
           <h3 style={{ color: "#181818", margin: '0 0 8px 0' }}>Analysis Required</h3>
-          <p style={{ color: "#706E6B", fontSize: 14, margin: 0 }}>Click "Run AI Analysis" to start matching candidates from the database.</p>
+          <p style={{ color: "#706E6B", fontSize: 14, margin: 0 }}>Click "Run Analysis" to find the best matching candidates from the database.</p>
         </div>
       )}
 
