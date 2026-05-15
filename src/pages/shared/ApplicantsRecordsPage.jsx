@@ -591,9 +591,12 @@ export default function ApplicantsRecordsPage({ user }) {
                             {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
                           </select>
                         ) : (
-                          // Recruiter sees their own name — confirm it's their assignment
-                          <span style={{ fontSize: 12, color: r.assignedRecruiters ? '#0176D3' : '#94A3B8', fontWeight: r.assignedRecruiters ? 700 : 400 }}>
-                            {r.assignedRecruiters || 'Unassigned'}
+                          // Recruiter login: backend scopes ALL rows to their own jobs,
+                          // so they are always the recruiter. Show their name directly.
+                          // r.assignedRecruiters fills from backend nested populate;
+                          // user?.name is the bulletproof fallback.
+                          <span style={{ fontSize: 12, color: '#0176D3', fontWeight: 700 }}>
+                            {r.assignedRecruiters || user?.name || 'You'}
                           </span>
                         )}
                       </td>
