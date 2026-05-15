@@ -4,8 +4,9 @@ import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import { btnP, card, inp } from '../../constants/styles.js';
+import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { matchCandidatesToJob } from '../../api/matching.js';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
@@ -21,6 +22,7 @@ export default function RecruiterTalentMatch({ user }) {
   const [actionLoading, setActionLoading] = useState({});
   const [jobsLoading, setJobsLoad] = useState(true);
   const [profileCandidate, setProfileCandidate] = useState(null);
+  const [resumeCandidate, setResumeCandidate] = useState(null); // shown in inline modal
 
   useEffect(() => {
     const jobParam = searchParams.get('job');
@@ -98,6 +100,36 @@ export default function RecruiterTalentMatch({ user }) {
           onClose={() => setProfileCandidate(null)}
           onUpdated={() => setProfileCandidate(null)}
         />
+      )}
+
+      {/* ── Inline Resume Modal — uses data already in memory, no fetch needed ── */}
+      {resumeCandidate && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.78)', backdropFilter:'blur(8px)', zIndex:10001, display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'20px 16px' }}>
+          <div style={{ width:'100%', maxWidth:900, margin:'auto 0', borderRadius:20, overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.35)' }}>
+            {/* Toolbar */}
+            <div style={{ background:'#032D60', padding:'12px 20px', display:'flex', alignItems:'center', gap:12 }}>
+              <button
+                onClick={() => setResumeCandidate(null)}
+                style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}
+              >
+                ✕ Close
+              </button>
+              <div style={{ flex:1, color:'#fff', fontWeight:700, fontSize:15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                📋 Resume — {resumeCandidate.name || 'Candidate'}
+              </div>
+              <button
+                onClick={() => window.print()}
+                style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}
+              >
+                🖨️ Print / Save PDF
+              </button>
+            </div>
+            {/* Resume content */}
+            <div style={{ background:'#F3F2F2', padding:'24px 16px 40px' }}>
+              <ResumeCard candidate={resumeCandidate} />
+            </div>
+          </div>
+        </div>
       )}
       <PageHeader 
         title="AI-Powered Talent Match" 
@@ -265,14 +297,7 @@ export default function RecruiterTalentMatch({ user }) {
 
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => {
-                          const cid = r.candidate.id || r.candidate?._id;
-                          if (cid) {
-                            navigate(`/app/resume/${cid}`);
-                          } else {
-                            setToast("No resume available for this candidate");
-                          }
-                        }}
+                        onClick={() => setResumeCandidate(r.candidate)}
                         style={{ flex: 1, height: 40, background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.15)', color: '#0176D3', fontSize: 11, borderRadius: 10, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
                         onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#0176D3'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFF'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.15)'; }}
