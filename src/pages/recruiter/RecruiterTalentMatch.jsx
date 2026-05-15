@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { btnP, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -11,6 +12,7 @@ import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
 export default function RecruiterTalentMatch({ user }) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState("");
   const [results, setResults] = useState([]);
@@ -18,6 +20,7 @@ export default function RecruiterTalentMatch({ user }) {
   const [toast, setToast] = useState("");
   const [actionLoading, setActionLoading] = useState({});
   const [jobsLoading, setJobsLoad] = useState(true);
+  const [profileCandidate, setProfileCandidate] = useState(null);
 
   useEffect(() => {
     const jobParam = searchParams.get('job');
@@ -89,6 +92,13 @@ export default function RecruiterTalentMatch({ user }) {
   return (
     <div style={{ paddingBottom: 60, animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
+      {profileCandidate && (
+        <UserDetailDrawer
+          user={profileCandidate}
+          onClose={() => setProfileCandidate(null)}
+          onUpdated={() => setProfileCandidate(null)}
+        />
+      )}
       <PageHeader 
         title="AI-Powered Talent Match" 
         subtitle="Rank your best internal and external candidates instantly using high-precision heuristics."
@@ -255,7 +265,14 @@ export default function RecruiterTalentMatch({ user }) {
 
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => r.candidate.resumeUrl ? window.open(r.candidate.resumeUrl, '_blank') : setToast("No resume uploaded")}
+                        onClick={() => {
+                          const cid = r.candidate.id || r.candidate?._id;
+                          if (cid) {
+                            navigate(`/app/resume/${cid}`);
+                          } else {
+                            setToast("No resume available for this candidate");
+                          }
+                        }}
                         style={{ flex: 1, height: 40, background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.15)', color: '#0176D3', fontSize: 11, borderRadius: 10, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
                         onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#0176D3'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFF'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.15)'; }}
@@ -263,8 +280,10 @@ export default function RecruiterTalentMatch({ user }) {
                         📄 VIEW RESUME
                       </button>
                       <button
-                        onClick={() => window.open(`/app/profile?id=${r.candidate.id || r.candidate?._id}`, '_blank')}
+                        onClick={() => setProfileCandidate({ ...r.candidate, role: 'candidate', id: r.candidate.id || r.candidate?._id })}
                         style={{ flex: 1, height: 40, background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.15)', color: '#0176D3', fontSize: 11, borderRadius: 10, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#0176D3'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFF'; e.currentTarget.style.borderColor = 'rgba(1,118,211,0.15)'; }}
                       >
                         👤 PROFILE
                       </button>
