@@ -93,4 +93,55 @@ router.get('/:roomToken/transcript', authenticate, allowRoles('admin', 'super_ad
   res.json({ success: true, data: { chatMessages: room.chatMessages, startedAt: room.startedAt, endedAt: room.endedAt, participants: room.participants } });
 }));
 
+// GET /api/video-rooms/turn-credentials
+// Returns time-limited TURN credentials for the caller's session.
+// Uses HMAC-SHA1 with a shared secret (same secret configured in coturn).
+// Credentials expire after 1 hour — coturn validates and rejects expired ones.
+// This endpoint works for both authenticated users AND guests (no auth required —
+// the credentials themselves are time-limited so abuse risk is minimal).
+router.get('/turn-credentials', asyncHandler(async (req, res) => {
+  const turnSecret = process.env.TURN_SECRET;
+  const turnHost   = process.env.TURN_HOST;   // e.g. "turn.yourdomain.com"
+  const turnPort   = process.env.TURN_PORT || '3478';
+
+  // If TURN server not configured yet, return the public fallback servers
+  // so existing calls keep working during transition.
+  if (!turnSecret || !turnHost) {
+    return res.json({
+      success: true,
+      iceServers: [
+        { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        { urls: 'turn:freestun.net:3479',  username: 'free', credential: 'free' },
+        { urls: 'turn:freestun.net:5350',  username: 'free', credential: 'free' },
+        { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      ],
+      source: 'fallback',
+    });
+  }
+
+  // HMAC-SHA1 credential generation — industry standard (RFC 5766 + coturn convention)
+  const ttl       = 3600; // 1 hour in seconds
+  const timestamp = Math.floor(Date.now() / 1000) + ttl;
+  const username  = `${timestamp}:talentnest`;          // any string after colon
+  const hmac      = crypto.createHmac('sha1', turnSecret);
+  hmac.update(username);
+  const credential = hmac.digest('base64');
+
+  const iceServers = [
+    // STUN (no auth needed)
+    { urls: [`stun:${turnHost}:${turnPort}`] },
+    { urls: 'stun:stun.l.google.com:19302' },
+    // TURN UDP
+    { urls: `turn:${turnHost}:${turnPort}`,           username, credential },
+    // TURN TCP (fallback for firewalls that block UDP)
+    { urls: `turn:${turnHost}:${turnPort}?transport=tcp`, username, credential },
+    // TURNS (TLS — most secure, best firewall penetration)
+    { urls: `turns:${turnHost}:5349`,                 username, credential },
+  ];
+
+  res.json({ success: true, iceServers, username, ttl, source: 'self-hosted' });
+}));
+
 module.exports = router;

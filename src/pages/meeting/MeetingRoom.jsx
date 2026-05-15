@@ -7,20 +7,16 @@ import { SOCKET_BASE_URL } from '../../api/config.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const SOCKET_URL = SOCKET_BASE_URL;
-const ICE_SERVERS = [
-  // Multiple STUN servers for reliability
+
+// ICE servers are fetched dynamically from your own backend before every call.
+// Static fallback used only if the fetch fails.
+const STATIC_FALLBACK_ICE = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-  { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: 'stun:stun.nextcloud.com:443' },
-  // FreeSWITCH public TURN — free, reliable
   { urls: 'turn:freestun.net:3479',     username: 'free', credential: 'free' },
   { urls: 'turn:freestun.net:5350',     username: 'free', credential: 'free' },
-  { urls: 'turns:freestun.net:5350',    username: 'free', credential: 'free' },
-  // Open Relay Metered — fallback
-  { urls: 'turn:openrelay.metered.ca:80',             username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',            username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
 const btnP = { background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer' };
@@ -270,8 +266,8 @@ export default function MeetingRoom() {
   const peerConnsRef = useRef({});
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
+  const iceServersRef = useRef(STATIC_FALLBACK_ICE); // replaced by dynamic creds on mount
   // Stable own socket ID — set on connect, used to filter participantEntries correctly.
-  // socketRef.current?.id is undefined before connect fires; this ref is always reliable.
   const mySocketIdRef = useRef(null);
 
   const isRecruiter = storedUser?.role === 'recruiter' || storedUser?.role === 'admin' || storedUser?.role === 'super_admin';
@@ -285,6 +281,25 @@ export default function MeetingRoom() {
     : (guestIdentity ? { ...guestIdentity, userId: guestUserIdRef.current, role: 'candidate', isHost: false } : null);
 
   useEffect(() => { api.getRoom(roomToken).then(r => setRoomMeta(r?.data || r)); }, [roomToken]);
+
+  // Fetch TURN credentials from YOUR OWN backend before joining.
+  // If your coturn server is configured (TURN_HOST + TURN_SECRET env vars on Render),
+  // this returns self-hosted credentials. If not yet configured, returns free fallback servers.
+  useEffect(() => {
+    api.getTurnCredentials()
+      .then(r => {
+        const servers = r?.iceServers || r?.data?.iceServers;
+        if (Array.isArray(servers) && servers.length > 0) {
+          iceServersRef.current = servers;
+          console.log('[TURN] Using credentials from:', r?.source || 'server');
+        }
+      })
+      .catch(() => {
+        // Keep static fallback — join still works
+        console.warn('[TURN] Could not fetch credentials, using fallback servers');
+      });
+  }, []);
+
   useEffect(() => { if (identity && !joined) enterRoom(); }, [identity, joined]);
 
   const enterRoom = async () => {
@@ -414,7 +429,7 @@ export default function MeetingRoom() {
     if (peerConnsRef.current[sid]) return peerConnsRef.current[sid];
 
     const pc = new RTCPeerConnection({
-      iceServers: ICE_SERVERS,
+      iceServers: iceServersRef.current,   // dynamic creds from your own backend
       iceTransportPolicy: 'all',
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
