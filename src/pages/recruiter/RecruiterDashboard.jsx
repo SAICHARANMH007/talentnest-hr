@@ -170,24 +170,36 @@ export default function RecruiterDashboard({ user }) {
       </div>
       {/* ── Graph Row ─────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(min(280px,100%),1fr))', gap:16, marginBottom:20 }}>
-        {/* Monthly summary card — replaces empty AreaChart (no trend data in stats API) */}
-        <div style={{ ...card, display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1 }}>📊 THIS MONTH</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            {[
-              { label:'New Applications', value: sd.appsLast30 || 0,   color:'#0176D3', icon:'📥' },
-              { label:'Hired This Month', value: sd.hiredLast30 || 0,  color:'#2E844A', icon:'🎉' },
-              { label:'Active in Pipeline', value: activeApps,         color:'#F59E0B', icon:'⚡' },
-              { label:'Conversion Rate',   value: `${conversionRate}%`,color:'#8b5cf6', icon:'📈' },
-            ].map(m => (
-              <div key={m.label} style={{ background:`${m.color}08`, border:`1px solid ${m.color}22`, borderRadius:10, padding:'10px 12px' }}>
-                <div style={{ fontSize:16 }}>{m.icon}</div>
-                <div style={{ color:m.color, fontSize:18, fontWeight:900, marginTop:4 }}>{m.value}</div>
-                <div style={{ color:'#706E6B', fontSize:10, marginTop:2, fontWeight:600 }}>{m.label}</div>
-              </div>
-            ))}
+        {/* Application Velocity — 14-day trend scoped to recruiter's assigned jobs */}
+        <div style={{ ...card, display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1 }}>Application Velocity</div>
+              <div style={{ color:'#9E9D9B', fontSize:10, marginTop:2 }}>Candidates joining pipeline — Last 14 days</div>
+            </div>
+            {Array.isArray(sd.trendData) && sd.trendData.length > 0 && (() => {
+              const todayVal = sd.trendData[sd.trendData.length - 1]?.value ?? 0;
+              const yestVal  = sd.trendData[sd.trendData.length - 2]?.value ?? 0;
+              return (
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:'#0176D3', lineHeight:1 }}>{todayVal}</div>
+                  <div style={{ fontSize:10, color:'#94A3B8', marginTop:2 }}>today{yestVal > 0 ? ` · ${yestVal} yesterday` : ''}</div>
+                </div>
+              );
+            })()}
           </div>
-          <button onClick={() => navigate('/app/pipeline')} style={{ ...btnG, padding:'7px 14px', fontSize:12, marginTop:'auto' }}>View Full Pipeline →</button>
+          {Array.isArray(sd.trendData) && sd.trendData.some(d => d.value > 0) ? (
+            <AreaChart data={sd.trendData} color="#0176D3" height={160} onItemClick={() => navigate('/app/applicants')} />
+          ) : (
+            <div style={{ height:120, display:'flex', alignItems:'center', justifyContent:'center', color:'#CBD5E1', flexDirection:'column', gap:8 }}>
+              <span style={{ fontSize:28 }}>📈</span>
+              <span style={{ fontSize:12, fontWeight:600 }}>No applications in last 14 days</span>
+            </div>
+          )}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4 }}>
+            <p style={{ color:'#94A3B8', fontSize:10, margin:0 }}>Click chart to open applicant records</p>
+            <button onClick={() => navigate('/app/applicants')} style={{ ...btnG, padding:'5px 12px', fontSize:11 }}>Open Applicants</button>
+          </div>
         </div>
         <div style={{ ...card }}>
           {appsPerJob.length > 0 ? (

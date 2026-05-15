@@ -450,8 +450,14 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
 
   const appFilter = { jobId: { $in: jobIds }, ...del };
 
+  // 14-day window for application velocity trend (in IST)
+  const TZ14 = 'Asia/Kolkata';
+  const cutoff14 = new Date();
+  cutoff14.setDate(cutoff14.getDate() - 14);
+  cutoff14.setHours(0, 0, 0, 0);
+
   // Step 2: All counts in parallel — pipeline, per-job, trends, recent activity
-  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites] = await Promise.all([
+  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites, trendAgg] = await Promise.all([
     // Stage breakdown (pipeline funnel)
     Application.aggregate([
       { $match: appFilter },
@@ -471,6 +477,12 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       .populate('candidateId', 'name email title')
       .lean(),
     Application.countDocuments({ jobId: { $in: jobIds }, inviteStatus: 'interested', ...del }),
+    // 14-day application velocity trend scoped to recruiter's jobs
+    Application.aggregate([
+      { $match: { ...appFilter, createdAt: { $gte: cutoff14 } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ14 } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
   ]);
 
   // Build per-job count map
@@ -488,6 +500,18 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
   const inInterview = (pipeline['Interview Round 1'] || 0) + (pipeline['Interview Round 2'] || 0);
   const conversionRate = total > 0 ? Math.round((hired / total) * 100) : 0;
 
+  // Build 14-day trend array (same format as /dashboard/trends)
+  const trendMap = {};
+  trendAgg.forEach(r => { trendMap[r._id] = r.count; });
+  const trendData = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key   = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
+    trendData.push({ date: key, label, value: trendMap[key] || 0 });
+  }
+
   res.json({ success: true, data: {
     totalApplicants : total,
     inInterview,
@@ -501,6 +525,7 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
     interestedInvites,
     pipeline,
     recent,
+    trendData, // 14-day application velocity scoped to recruiter's jobs
     // Normalise job objects: add applicantsCount (frontend name) from real aggregation
     jobs: myJobs.map(j => ({
       ...j,
