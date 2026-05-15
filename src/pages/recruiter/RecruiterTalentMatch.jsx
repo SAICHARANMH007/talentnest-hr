@@ -243,11 +243,51 @@ export default function RecruiterTalentMatch({ user }) {
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📅 <span style={{ color: '#1E293B' }}>{r.candidate.experience || 0} Yrs</span></span>
                     </div>
 
-                    <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.6, margin: '0 0 18px 0', padding: '16px', background: '#f8fbff', borderRadius: 14, border: '1px solid rgba(1,118,211,0.08)', position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: -10, left: 16, background: '#fff', padding: '0 8px', color: '#0176D3', fontSize: 11, fontWeight: 800, borderRadius: 6, border: '1px solid rgba(1,118,211,0.1)' }}>MATCH ANALYSIS</div>
-                      {r.reasoning}
+                    {/* ── Match Analysis Panel ── */}
+                    <div style={{ margin: '0 0 16px 0', borderRadius: 14, border: '1px solid rgba(1,118,211,0.12)', overflow: 'hidden' }}>
+                      {/* Header row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,68,134,0.04))' }}>
+                        <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 0.8 }}>🎯 MATCH ANALYSIS</span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          {r.confidenceLevel && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: r.confidenceLevel === 'High' ? 'rgba(5,150,105,0.12)' : r.confidenceLevel === 'Medium' ? 'rgba(245,158,11,0.12)' : 'rgba(100,116,139,0.12)', color: r.confidenceLevel === 'High' ? '#059669' : r.confidenceLevel === 'Medium' ? '#A07E00' : '#64748B' }}>
+                              {r.confidenceLevel === 'High' ? '● ' : '◐ '}{r.confidenceLevel} Confidence
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Score bar */}
+                      <div style={{ padding: '10px 14px', background: '#fff' }}>
+                        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                          {r.matchVector && Object.entries(r.matchVector).filter(([,v]) => v > 0).map(([k, v]) => {
+                            const VCOL = { skills:'#0176D3', experience:'#7c3aed', location:'#F59E0B', title:'#059669', careerLevel:'#e11d48', domain:'#06b6d4', ctcFit:'#10b981', portfolio:'#f97316', synergy:'#8b5cf6', recency:'#94a3b8' };
+                            return (
+                              <div key={k} title={`${k}: ${v}pts`} style={{ height: 5, borderRadius: 3, flex: v, background: VCOL[k] || '#0176D3', minWidth: 4 }} />
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {(r.matchInsights || []).filter(ins => ins.score > 0).map((ins, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#F8FAFF', border: '1px solid rgba(1,118,211,0.1)', borderRadius: 8, padding: '4px 10px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.4 }}>{ins.vector}</span>
+                              <span style={{ fontSize: 10, color: '#64748B' }}>·</span>
+                              <span style={{ fontSize: 11, color: '#0F172A' }}>{ins.signal}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Missing skills warning */}
+                        {r.missingSkills && r.missingSkills.length > 0 && (
+                          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(186,5,23,0.04)', borderRadius: 8, border: '1px solid rgba(186,5,23,0.1)' }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#BA0517' }}>GAPS:</span>
+                            {r.missingSkills.map(s => (
+                              <span key={s} style={{ fontSize: 10, fontWeight: 700, color: '#BA0517', background: 'rgba(186,5,23,0.08)', padding: '1px 7px', borderRadius: 20 }}>{s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
+                    {/* Matched skill tags */}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {(r.highlights || []).map((h, j) => (
                         <span key={j} style={{ background: 'rgba(1,118,211,0.05)', color: '#0176D3', padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, border: '1px solid rgba(1,118,211,0.12)', transition: 'all 0.2s' }}
