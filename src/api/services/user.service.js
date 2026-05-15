@@ -74,7 +74,8 @@ export const userService = {
   
   // Bulk & Advanced
   async bulkImportCandidates(candidates) { return req('POST', '/users/bulk-import', { candidates }); },
-  async inviteGuestCandidates(emails)    { return req('POST', '/users/invite-guests', { emails }); },
+  // accepts [{email, name}] array (new) or [email, ...] strings (legacy)
+  async inviteGuestCandidates(candidates) { return req('POST', '/users/invite-guests', { candidates }); },
   async bulkUpdateTA(body)              { return req('PATCH', '/users/bulk-ta', body); },
   async markReachOut(id, note)          { return req('PATCH', `/users/${id}/reach-out`, { note }); },
   async assignCandidate(id, recruiterId) { return req('PATCH', `/users/${id}/assign`, { recruiterId }); },

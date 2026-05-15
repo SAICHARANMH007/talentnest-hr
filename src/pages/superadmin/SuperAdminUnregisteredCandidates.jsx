@@ -242,12 +242,16 @@ export default function SuperAdminUnregisteredCandidates() {
   const handleInviteGuests = async () => {
     setAssigning(true);
     try {
-      const emails = Array.from(selectedCandidates);
-      const res = await api.inviteGuestCandidates(emails);
-      setToast(res.message || `Marketing invites processed.`);
+      // Send {email, name} pairs — backend uses name directly, no DB lookup needed
+      const candidates = rows
+        .filter(r => selectedCandidates.has(r.email))
+        .map(r => ({ email: r.email, name: r.name || 'Candidate' }));
+      const res = await api.inviteGuestCandidates(candidates);
+      setToast(res.message || `Invites sent to ${candidates.length} candidate${candidates.length !== 1 ? 's' : ''}.`);
       setSelectedCandidates(new Set());
+      load(); // Refresh to show updated 'Invite Status' column
     } catch (err) {
-      alert('Failed to send invites.');
+      setToast(`❌ Failed to send invites: ${err.message || 'Unknown error'}`);
     }
     setAssigning(false);
   };

@@ -322,7 +322,9 @@ export default function ApplicantsRecordsPage({ user }) {
       ? 'Applicants on jobs assigned to you'
       : 'Organisation applicant records';
 
-  // Stage counts from loaded rows (scoped to recruiter's jobs by backend)
+  // Stage counts from loaded rows. The backend sends up to 1000 rows per page.
+  // We show these counts + percentages relative to the loaded set, with
+  // the full DB total shown separately so there's no confusion.
   const stageCounts = useMemo(() => {
     const map = {};
     DB_STAGES.forEach(s => { map[s] = 0; });
@@ -330,7 +332,12 @@ export default function ApplicantsRecordsPage({ user }) {
     return map;
   }, [rows]);
 
-  const totalRows = rows.length;
+  const totalRows = rows.length; // loaded rows on this page
+  // stageCountsTotal = sum of all stage counts (should equal totalRows)
+  const stageCountsTotal = useMemo(
+    () => Object.values(stageCounts).reduce((a, b) => a + b, 0),
+    [stageCounts]
+  );
 
   return (
     <div>
@@ -344,16 +351,24 @@ export default function ApplicantsRecordsPage({ user }) {
         )}
       />
 
-      {/* ── Stage distribution chart — visible to all roles, scoped to role's data ── */}
+      {/* ── Stage distribution chart — scoped to role's data by backend ── */}
       {!loading && totalRows > 0 && (
         <div style={{ ...card, marginBottom: 16, padding: '18px 20px' }}>
-          <div style={{ fontWeight: 800, fontSize: 12, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>
-            📊 Pipeline Stage Overview — {total} total applicant{total !== 1 ? 's' : ''}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ fontWeight: 800, fontSize: 12, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              📊 Pipeline Stage Overview
+            </div>
+            <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>
+              Showing <span style={{ color:'#0176D3', fontWeight:800 }}>{stageCountsTotal.toLocaleString()}</span> loaded
+              {total > stageCountsTotal ? <> of <span style={{ color:'#0176D3', fontWeight:800 }}>{total.toLocaleString()}</span> total</> : null}
+              {' '}· click a tile to filter
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px,1fr))', gap: 10 }}>
             {DB_STAGES.map(s => {
               const count = stageCounts[s] || 0;
-              const pct   = totalRows > 0 ? Math.round((count / totalRows) * 100) : 0;
+              // % relative to loaded rows so the bars add up to 100%
+              const pct   = stageCountsTotal > 0 ? Math.round((count / stageCountsTotal) * 100) : 0;
               const color = stageColor(s);
               return (
                 <div

@@ -728,69 +728,74 @@ router.post('/merge', authenticate, allowRoles('super_admin'), asyncHandler(asyn
   res.json({ success: true, message: 'Users merged successfully', data: userService.normalize(merged) });
 }));
 
-// POST /api/users/invite-guests — Send marketing invite to unregistered candidates
+// POST /api/users/invite-guests — Send account-creation invite to unregistered (guest) candidates
+// Accepts: { candidates: [{email, name}, ...] }  (new format — name from frontend)
+//       OR: { emails: ['a@b.com', ...] }          (legacy format — name looked up from DB)
 router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const { emails } = req.body;
-  if (!emails || !Array.isArray(emails)) throw new AppError('emails array is required', 400);
-
-  const { sendBatchEmailWithRetry, templates } = require('../utils/email');
+  const { sendBatchEmailWithRetry, sendOrgEmail, templates } = require('../utils/email');
   const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const results = { sent: 0, failed: 0, skipped: 0 };
 
-  const results = { sent: 0, failed: 0, errors: [] };
+  // ── Normalise input: support both {candidates:[{email,name}]} and legacy {emails:[...]} ──
+  let toSend = []; // [{email, name}]
 
-  try {
-    // 1. Fetch all candidates
-    const candidates = await Candidate.find({ 
-      email: { $in: emails.map(e => e.toLowerCase().trim()) }, 
-      deletedAt: null,
-      interestStatus: { $ne: 'not_interested' }
-    }).lean();
-
-    // 2. Prepare email payloads
-    const emailPayloads = candidates.map(candidate => {
-      const link = `${FRONTEND_URL}/signup?email=${encodeURIComponent(candidate.email)}`;
-      const tpl = templates.guestAccountInvite(candidate.name || 'Candidate', candidate.email, link, {
-        orgName: 'TalentNest HR',
-      });
-      return {
-        to: candidate.email,
-        subject: tpl.subject,
-        html: tpl.html,
-      };
-    });
-
-    if (emailPayloads.length === 0) {
-      return res.json({ success: true, message: 'No valid candidates found or all are unsubscribed.', results });
-    }
-
-    // 3. Process in batches of 100 (Resend limit per batch request)
-    const BATCH_LIMIT = 100;
-    const sentEmails = [];
-
-    for (let i = 0; i < emailPayloads.length; i += BATCH_LIMIT) {
-      const chunk = emailPayloads.slice(i, i + BATCH_LIMIT);
-      try {
-        await sendBatchEmailWithRetry(chunk);
-        results.sent += chunk.length;
-        sentEmails.push(...chunk.map(c => c.to));
-      } catch (err) {
-        results.failed += chunk.length;
-        results.errors.push({ error: err.message, chunk: chunk.map(c => c.to) });
-      }
-    }
-
-    // 4. Update sent tracking for successful emails
-    if (sentEmails.length > 0) {
-      await Candidate.updateMany(
-        { email: { $in: sentEmails } }, 
-        { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } }
-      );
-    }
-
-    res.json({ success: true, message: `Invites processed. Sent: ${results.sent}, Failed: ${results.failed}.`, results });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message, results });
+  if (Array.isArray(req.body.candidates) && req.body.candidates.length > 0) {
+    // New format — names provided directly, no DB lookup needed
+    toSend = req.body.candidates
+      .filter(c => c && c.email && c.email.includes('@'))
+      .map(c => ({ email: c.email.toLowerCase().trim(), name: c.name || 'Candidate' }));
+  } else if (Array.isArray(req.body.emails) && req.body.emails.length > 0) {
+    // Legacy format — look up names from Candidate collection as best-effort
+    const emailList = req.body.emails.map(e => e.toLowerCase().trim()).filter(Boolean);
+    const found = await Candidate.find({ email: { $in: emailList }, deletedAt: null }).select('email name').lean();
+    const nameMap = new Map(found.map(c => [c.email.toLowerCase(), c.name]));
+    toSend = emailList.map(email => ({ email, name: nameMap.get(email) || 'Candidate' }));
   }
+
+  if (toSend.length === 0) {
+    return res.json({ success: true, message: 'No valid email addresses provided.', results });
+  }
+
+  // Deduplicate by email
+  const seen = new Set();
+  toSend = toSend.filter(c => { if (seen.has(c.email)) { results.skipped++; return false; } seen.add(c.email); return true; });
+
+  // Build email payloads — personalised for each candidate
+  const orgName = req.tenant?.name || 'TalentNest HR';
+  const emailPayloads = toSend.map(({ email, name }) => {
+    const link = `${FRONTEND_URL}/login?email=${encodeURIComponent(email)}&ref=guest_invite`;
+    const tpl  = templates.guestAccountInvite(name, email, link, { orgName });
+    return { to: email, subject: tpl.subject, html: tpl.html };
+  });
+
+  // Send in batches of 100 (Resend batch limit)
+  const sentEmails = [];
+  const BATCH_LIMIT = 100;
+  for (let i = 0; i < emailPayloads.length; i += BATCH_LIMIT) {
+    const chunk = emailPayloads.slice(i, i + BATCH_LIMIT);
+    try {
+      await sendBatchEmailWithRetry(chunk);
+      results.sent += chunk.length;
+      sentEmails.push(...chunk.map(c => c.to));
+    } catch (err) {
+      results.failed += chunk.length;
+      logger.error('Guest invite batch failed', { error: err.message });
+    }
+  }
+
+  // Mark sent in Candidate collection (best-effort — don't fail if not found there)
+  if (sentEmails.length > 0) {
+    await Candidate.updateMany(
+      { email: { $in: sentEmails }, deletedAt: null },
+      { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } }
+    ).catch(() => {});
+  }
+
+  const msg = results.failed > 0
+    ? `Sent ${results.sent}, failed ${results.failed}. Check your Resend API key or email config.`
+    : `✅ ${results.sent} invite email${results.sent !== 1 ? 's' : ''} sent successfully!`;
+
+  res.json({ success: true, message: msg, results });
 }));
 
 // GET /api/users/unsubscribe — One-click unsubscribe from marketing emails
