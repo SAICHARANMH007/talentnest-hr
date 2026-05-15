@@ -20,11 +20,30 @@ export default function ResumeViewPage({ user }) {
   useEffect(() => {
     if (!candidateId) return;
     setLoading(true);
-    // Try Candidate model first, fall back to User model
-    api.getCandidate(candidateId)
-      .then(c => setCandidate(c || null))
-      .catch(() => api.getUser(candidateId).then(u => setCandidate(u?.data || u || null)).catch(() => {}))
-      .finally(() => setLoading(false));
+    // .finally() fires when the OUTER promise settles (on .catch start, NOT after inner async call).
+    // Use async/await so setLoading(false) only runs after BOTH attempts complete.
+    (async () => {
+      let data = null;
+
+      // Step 1: try Candidate model (used when pipeline opens resume by candidateId)
+      try {
+        const c = await api.getCandidate(candidateId);
+        // Only use if it returned a real document (has _id or id)
+        if (c && (c._id || c.id)) data = c;
+      } catch { /* not found in Candidate model — try User model next */ }
+
+      // Step 2: fallback — try User model (used when candidates page opens resume by userId)
+      if (!data) {
+        try {
+          const u = await api.getUser(candidateId);
+          const uData = u?.data || u;
+          if (uData && (uData._id || uData.id)) data = uData;
+        } catch { /* both models miss — show not found */ }
+      }
+
+      setCandidate(data);
+      setLoading(false);
+    })();
   }, [candidateId]);
 
   const handlePrint = () => window.print();

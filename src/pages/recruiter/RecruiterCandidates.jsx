@@ -8,6 +8,7 @@ import Field from '../../components/ui/Field.jsx';
 import FormRow from '../../components/ui/FormRow.jsx';
 import InviteModal from '../../components/shared/InviteModal.jsx';
 import BulkWhatsAppModal from '../../components/shared/BulkWhatsAppModal.jsx';
+import AddCandidateForm from '../../components/shared/AddCandidateForm.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import { btnP, btnG, btnD, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -297,6 +298,7 @@ export default function RecruiterCandidates({ user }) {
   const [waSending, setWaSending] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [drawerCandidate, setDrawerCandidate] = useState(null);
+  const [showAddCandidate, setShowAddCandidate] = useState(false);
   const { onlineUsers } = usePresence();
   const onlineIds = new Set(onlineUsers.map(u => String(u.id)));
   const searchTimerRef = useRef(null);
@@ -521,9 +523,54 @@ export default function RecruiterCandidates({ user }) {
         />
       )}
 
+      {/* ── Add Candidate inline modal ── */}
+      {showAddCandidate && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:10001, display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'24px 16px' }}>
+          <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:860, margin:'auto 0', boxShadow:'0 32px 64px rgba(0,0,0,0.25)', overflow:'hidden' }}>
+            <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', padding:'16px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ color:'rgba(255,255,255,0.7)', fontSize:10, fontWeight:800, letterSpacing:1.5, textTransform:'uppercase' }}>Talent Pool</div>
+                <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>+ Add New Candidate</h3>
+              </div>
+              <button onClick={() => setShowAddCandidate(false)} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+            </div>
+            <div style={{ padding:'24px', overflowY:'auto', maxHeight:'calc(90vh - 80px)' }}>
+              <AddCandidateForm
+                addedBy={user}
+                onSuccess={() => {
+                  setShowAddCandidate(false);
+                  setToast('✅ Candidate added to pool!');
+                  // Refresh the candidate list
+                  setLoading(true);
+                  api.getUsers(buildServerParams(1)).then(res => {
+                    const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+                    const pg = res?.pagination || {};
+                    const normalized = normalize(rawCands);
+                    setAllCandidates(normalized);
+                    setResults(normalized);
+                    setTotalCount(pg.total || normalized.length);
+                    setHasMore((pg.page || 1) < (pg.pages || 1));
+                    setCurrentPage(1);
+                    setSearched(true);
+                  }).catch(() => {}).finally(() => setLoading(false));
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Talent Pool"
         subtitle={`${totalCount > 0 ? `${totalCount.toLocaleString()} total` : allCandidates.length} candidate${totalCount !== 1 ? 's' : ''} · showing ${results.length} · filter by designation, skills, location or experience`}
+        action={
+          <button
+            onClick={() => setShowAddCandidate(true)}
+            style={{ background:'linear-gradient(135deg,#0176D3,#014486)', color:'#fff', border:'none', borderRadius:10, padding:'10px 18px', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6, boxShadow:'0 4px 12px rgba(1,118,211,0.3)' }}
+          >
+            + Add Candidate
+          </button>
+        }
       />
 
       {loading ? (
