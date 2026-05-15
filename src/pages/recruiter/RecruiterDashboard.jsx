@@ -8,7 +8,6 @@ import RingProgress from '../../components/charts/RingProgress.jsx';
 import HorizBar from '../../components/charts/HorizBar.jsx';
 import AreaChart from '../../components/charts/AreaChart.jsx';
 import VertBarChart from '../../components/charts/VertBarChart.jsx';
-import DonutChart from '../../components/charts/DonutChart.jsx';
 import ActivityDot from '../../components/misc/ActivityDot.jsx';
 import TimeAgo from '../../components/misc/TimeAgo.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
@@ -109,16 +108,6 @@ export default function RecruiterDashboard({ user }) {
     count: Object.entries(pipelineMap).reduce((n, [k, v]) => n + ((DB_STAGE_MAP[k] || k) === st.id ? v : 0), 0),
   })).filter(st => st.count > 0 || ['applied','shortlisted','interview_scheduled','selected'].includes(st.id));
 
-  // Stage donut
-  const stageDonut = [
-    { label:'Applied',     value: pipelineMap['Applied']             || 0, color:'#0176D3', stageKey:'applied' },
-    { label:'Screening',   value: pipelineMap['Screening']           || 0, color:'#014486', stageKey:'screening' },
-    { label:'Shortlisted', value: pipelineMap['Shortlisted']         || 0, color:'#F59E0B', stageKey:'shortlisted' },
-    { label:'Interview',   value: (pipelineMap['Interview Round 1']  || 0) + (pipelineMap['Interview Round 2'] || 0), color:'#8b5cf6', stageKey:'interview_scheduled' },
-    { label:'Offer',       value: pipelineMap['Offer']               || 0, color:'#10b981', stageKey:'offer_extended' },
-    { label:'Hired',       value: pipelineMap['Hired']               || 0, color:'#2E844A', stageKey:'selected' },
-    { label:'Rejected',    value: pipelineMap['Rejected']            || 0, color:'#BA0517', stageKey:'rejected' },
-  ];
 
   // Job performance — jobs come from stats.jobs with accurate applicantsCount from aggregation
   const jobPerf = jobs.map(j => ({
@@ -211,13 +200,33 @@ export default function RecruiterDashboard({ user }) {
             </div>
           )}
         </div>
+        {/* Top Jobs by applicant volume — unique, not a duplicate of FunnelChart */}
         <div style={{ ...card }}>
-          {totalApplicants > 0 ? (
-            <DonutChart segments={stageDonut.filter(sg => sg.value > 0)} size={120} title="🔄 Stage Breakdown" centerValue={totalApplicants} centerLabel="total" onItemClick={openStageDrill} />
-          ) : (
+          <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1, marginBottom:12 }}>🏆 TOP JOBS BY APPLICANTS</div>
+          {jobs.length === 0 ? (
             <div style={{ textAlign:'center', padding:'20px 0' }}>
-              <div style={{ color:'#0176D3', fontSize:11, fontWeight:700, letterSpacing:1, marginBottom:8 }}>🔄 STAGE BREAKDOWN</div>
-              <p style={{ color:'#9E9D9B', fontSize:12, margin:0 }}>No applicants in pipeline yet.</p>
+              <p style={{ color:'#9E9D9B', fontSize:12, margin:'0 0 10px' }}>No jobs assigned yet.</p>
+              <button onClick={() => navigate('/app/jobs')} style={{ ...btnG, padding:'6px 14px', fontSize:12 }}>View Jobs →</button>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {jobs.slice(0,5).sort((a,b) => (b.applicantsCount||0)-(a.applicantsCount||0)).map(j => {
+                const count = j.applicantsCount || 0;
+                const maxCount = Math.max(...jobs.map(x => x.applicantsCount||0), 1);
+                const pct = Math.round((count/maxCount)*100);
+                return (
+                  <div key={j.id||j._id} onClick={() => navigate(`/app/pipeline?job=${j.id||j._id}`)} style={{ cursor:'pointer' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, fontSize:12 }}>
+                      <span style={{ color:'#181818', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'75%' }}>{j.title}</span>
+                      <span style={{ color:'#0176D3', fontWeight:800, flexShrink:0 }}>{count}</span>
+                    </div>
+                    <div style={{ height:5, background:'#F1F5F9', borderRadius:3, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#0176D3,#00C2CB)', borderRadius:3, transition:'width 0.6s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <button onClick={() => navigate('/app/applicants')} style={{ ...btnG, padding:'6px 14px', fontSize:12, marginTop:4 }}>All Applicant Records →</button>
             </div>
           )}
         </div>

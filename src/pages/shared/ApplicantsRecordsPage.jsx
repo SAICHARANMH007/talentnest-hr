@@ -322,6 +322,16 @@ export default function ApplicantsRecordsPage({ user }) {
       ? 'Applicants on jobs assigned to you'
       : 'Organisation applicant records';
 
+  // Stage counts from loaded rows (scoped to recruiter's jobs by backend)
+  const stageCounts = useMemo(() => {
+    const map = {};
+    DB_STAGES.forEach(s => { map[s] = 0; });
+    rows.forEach(r => { if (r.stage && map[r.stage] !== undefined) map[r.stage]++; });
+    return map;
+  }, [rows]);
+
+  const totalRows = rows.length;
+
   return (
     <div>
       <PageHeader
@@ -333,6 +343,46 @@ export default function ApplicantsRecordsPage({ user }) {
           </button>
         )}
       />
+
+      {/* ── Stage distribution chart — visible to all roles, scoped to role's data ── */}
+      {!loading && totalRows > 0 && (
+        <div style={{ ...card, marginBottom: 16, padding: '18px 20px' }}>
+          <div style={{ fontWeight: 800, fontSize: 12, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>
+            📊 Pipeline Stage Overview — {total} total applicant{total !== 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px,1fr))', gap: 10 }}>
+            {DB_STAGES.map(s => {
+              const count = stageCounts[s] || 0;
+              const pct   = totalRows > 0 ? Math.round((count / totalRows) * 100) : 0;
+              const color = stageColor(s);
+              return (
+                <div
+                  key={s}
+                  onClick={() => updateFilter('stage', filters.stage === s ? '' : s)}
+                  style={{
+                    background: filters.stage === s ? `${color}15` : '#F8FAFC',
+                    border: `1.5px solid ${filters.stage === s ? color : '#E2E8F0'}`,
+                    borderRadius: 10, padding: '10px 10px 8px',
+                    cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 18, fontWeight: 900, color, lineHeight: 1 }}>{count}</div>
+                  <div style={{ fontSize: 9, color: '#64748B', fontWeight: 700, margin: '4px 0 6px', textTransform: 'uppercase', letterSpacing: 0.5 }}>{s}</div>
+                  <div style={{ height: 4, background: '#E2E8F0', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.5s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94A3B8', marginTop: 3 }}>{pct}%</div>
+                </div>
+              );
+            })}
+          </div>
+          {filters.stage && (
+            <div style={{ marginTop: 10, fontSize: 11, color: '#0176D3', fontWeight: 700 }}>
+              Filtered: {filters.stage} — <span onClick={() => updateFilter('stage', '')} style={{ cursor: 'pointer', textDecoration: 'underline' }}>Clear filter</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ ...card, marginBottom: 16 }}>
         <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.4fr) repeat(4, minmax(140px, 1fr)) auto', gap: 12, alignItems: 'end' }}>
