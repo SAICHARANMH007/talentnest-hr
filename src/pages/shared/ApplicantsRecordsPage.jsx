@@ -334,9 +334,8 @@ export default function ApplicantsRecordsPage({ user }) {
       ? 'Applicants on jobs assigned to you'
       : 'Organisation applicant records';
 
-  // Stage counts from loaded rows. The backend sends up to 1000 rows per page.
-  // We show these counts + percentages relative to the loaded set, with
-  // the full DB total shown separately so there's no confusion.
+  // Stage counts from loaded rows — now the backend returns ALL rows (cap removed),
+  // so these counts match the actual totals in the database.
   const stageCounts = useMemo(() => {
     const map = {};
     DB_STAGES.forEach(s => { map[s] = 0; });
@@ -371,9 +370,7 @@ export default function ApplicantsRecordsPage({ user }) {
               📊 Pipeline Stage Overview
             </div>
             <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>
-              Showing <span style={{ color:'#0176D3', fontWeight:800 }}>{stageCountsTotal.toLocaleString()}</span> loaded
-              {total > stageCountsTotal ? <> of <span style={{ color:'#0176D3', fontWeight:800 }}>{total.toLocaleString()}</span> total</> : null}
-              {' '}· click a tile to filter
+              <span style={{ color:'#0176D3', fontWeight:800 }}>{total.toLocaleString()}</span> total applicants · click a tile to filter
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px,1fr))', gap: 10 }}>
