@@ -94,54 +94,70 @@ router.get('/:roomToken/transcript', authenticate, allowRoles('admin', 'super_ad
 }));
 
 // GET /api/video-rooms/turn-credentials
-// Returns time-limited TURN credentials for the caller's session.
-// Uses HMAC-SHA1 with a shared secret (same secret configured in coturn).
-// Credentials expire after 1 hour — coturn validates and rejects expired ones.
-// This endpoint works for both authenticated users AND guests (no auth required —
-// the credentials themselves are time-limited so abuse risk is minimal).
+// Returns time-limited TURN/ICE credentials for this session.
+//
+// Priority order (first configured wins):
+//   1. Metered.ca free account  — set METERED_APP_NAME + METERED_API_KEY
+//   2. Self-hosted coturn        — set TURN_HOST + TURN_SECRET
+//   3. Free public fallback      — works out-of-the-box, no config needed
+//
+// No auth required — credentials are time-limited (1h) so guests can fetch them.
 router.get('/turn-credentials', asyncHandler(async (req, res) => {
-  const turnSecret = process.env.TURN_SECRET;
-  const turnHost   = process.env.TURN_HOST;   // e.g. "turn.yourdomain.com"
-  const turnPort   = process.env.TURN_PORT || '3478';
 
-  // If TURN server not configured yet, return the public fallback servers
-  // so existing calls keep working during transition.
-  if (!turnSecret || !turnHost) {
-    return res.json({
-      success: true,
-      iceServers: [
-        { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-        { urls: 'stun:stun.cloudflare.com:3478' },
-        { urls: 'turn:freestun.net:3479',  username: 'free', credential: 'free' },
-        { urls: 'turn:freestun.net:5350',  username: 'free', credential: 'free' },
-        { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      ],
-      source: 'fallback',
-    });
+  // ── Option 1: Metered.ca (free account — recommended) ──────────────────────
+  // Sign up free at app.metered.ca → create app → copy App Name + API Key
+  // Add to Render env vars: METERED_APP_NAME=yourapname  METERED_API_KEY=yourkey
+  if (process.env.METERED_APP_NAME && process.env.METERED_API_KEY) {
+    try {
+      const meteredUrl = `https://${process.env.METERED_APP_NAME}.metered.live/api/v1/turn/credentials?apiKey=${process.env.METERED_API_KEY}`;
+      const resp = await fetch(meteredUrl, { signal: AbortSignal.timeout(5000) });
+      if (resp.ok) {
+        const iceServers = await resp.json();
+        if (Array.isArray(iceServers) && iceServers.length > 0) {
+          // Metered returns plain array — wrap it
+          return res.json({ success: true, iceServers, source: 'metered' });
+        }
+      }
+    } catch { /* fall through to next option */ }
   }
 
-  // HMAC-SHA1 credential generation — industry standard (RFC 5766 + coturn convention)
-  const ttl       = 3600; // 1 hour in seconds
-  const timestamp = Math.floor(Date.now() / 1000) + ttl;
-  const username  = `${timestamp}:talentnest`;          // any string after colon
-  const hmac      = crypto.createHmac('sha1', turnSecret);
-  hmac.update(username);
-  const credential = hmac.digest('base64');
+  // ── Option 2: Self-hosted coturn (own VPS, free tier Oracle/Fly.io etc.) ───
+  // Add to Render env vars: TURN_HOST=your.vps.ip  TURN_SECRET=your_secret
+  const turnSecret = process.env.TURN_SECRET;
+  const turnHost   = process.env.TURN_HOST;
+  const turnPort   = process.env.TURN_PORT || '3478';
 
-  const iceServers = [
-    // STUN (no auth needed)
-    { urls: [`stun:${turnHost}:${turnPort}`] },
-    { urls: 'stun:stun.l.google.com:19302' },
-    // TURN UDP
-    { urls: `turn:${turnHost}:${turnPort}`,           username, credential },
-    // TURN TCP (fallback for firewalls that block UDP)
-    { urls: `turn:${turnHost}:${turnPort}?transport=tcp`, username, credential },
-    // TURNS (TLS — most secure, best firewall penetration)
-    { urls: `turns:${turnHost}:5349`,                 username, credential },
-  ];
+  if (turnSecret && turnHost) {
+    const ttl       = 3600;
+    const timestamp = Math.floor(Date.now() / 1000) + ttl;
+    const username  = `${timestamp}:talentnest`;
+    const hmac      = crypto.createHmac('sha1', turnSecret);
+    hmac.update(username);
+    const credential = hmac.digest('base64');
 
-  res.json({ success: true, iceServers, username, ttl, source: 'self-hosted' });
+    const iceServers = [
+      { urls: [`stun:${turnHost}:${turnPort}`] },
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: `turn:${turnHost}:${turnPort}`,                  username, credential },
+      { urls: `turn:${turnHost}:${turnPort}?transport=tcp`,    username, credential },
+      { urls: `turns:${turnHost}:5349`,                        username, credential },
+    ];
+    return res.json({ success: true, iceServers, source: 'self-hosted' });
+  }
+
+  // ── Option 3: Free public fallback (no config needed, works immediately) ───
+  return res.json({
+    success: true,
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'turn:freestun.net:3479',     username: 'free', credential: 'free' },
+      { urls: 'turn:freestun.net:5350',     username: 'free', credential: 'free' },
+      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    ],
+    source: 'fallback',
+  });
 }));
 
 module.exports = router;
