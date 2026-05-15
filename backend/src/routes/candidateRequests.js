@@ -217,59 +217,276 @@ router.post('/:id/attach-candidates', ...guard, allowRoles('super_admin'), async
   res.json({ success: true, data: { ...populated, id: populated._id?.toString() } });
 }));
 
-// GET /api/candidate-requests/:id/suggested-candidates — matching engine suggestions
+// GET /api/candidate-requests/:id/suggested-candidates
+// 3-Tier Candidate Suggestion Engine — Industry Standard
+//
+// Tier 1 — Pipeline Intelligence: candidates similar to those already winning in the pipeline
+//           for this specific job (shortlisted / interviewing).
+// Tier 2 — Similar Role Applicants: candidates who applied for similar jobs (same title/skills)
+//           but NOT this specific job.
+// Tier 3 — Full Database Match: entire platform scored against role title + extracted skills.
+//
+// Every tier excludes:
+//   - Candidates already attached to this request (submittedCandidates)
+//   - Candidates who already applied to the linked job (cr.jobId)
+//   - Duplicates (deduped by _id across all tiers)
 router.get('/:id/suggested-candidates', ...guard, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const { findSuggestedCandidates } = require('../utils/candidateMatchingEngine');
-  const Candidate = require('../models/Candidate');
+  const Candidate  = require('../models/Candidate');
+  const Application = require('../models/Application');
+  const Job        = require('../models/Job');
+  const { calculateTalentMatchScore } = require('../utils/matchScore');
 
-  const cr = await CandidateRequest.findById(req.params.id).lean();
+  // ── Load the request ─────────────────────────────────────────────────────
+  const cr = await CandidateRequest.findById(req.params.id)
+    .populate('submittedCandidates', '_id')
+    .lean();
   if (!cr) throw new AppError('Request not found.', 404);
 
-  // Extract skills from the requirements text (simple word-boundary extraction)
-  // CandidateRequest has no structured skills field — parse from requirements freetext
-  const COMMON_SKILLS = [
+  const roleTitle   = (cr.roleTitle   || '').trim();
+  const reqText     = ((cr.roleTitle || '') + ' ' + (cr.requirements || '')).toLowerCase();
+
+  // ── Extract skills from freetext requirements ────────────────────────────
+  const SKILL_KEYWORDS = [
     'react','angular','vue','node','nodejs','python','java','golang','ruby','php','swift','kotlin',
     'typescript','javascript','sql','mysql','postgresql','mongodb','redis','aws','gcp','azure','docker',
-    'kubernetes','terraform','ansible','jenkins','ci/cd','git','graphql','rest','api','machine learning',
-    'ai','data science','analytics','excel','powerbi','tableau','sap','salesforce','recruitment','hr',
-    'talent acquisition','sourcing','screening','interviewing','leadership','management','product',
-    'design','ux','ui','figma','scrum','agile','jira','testing','qa','devops','linux','networking',
+    'kubernetes','terraform','ansible','jenkins','git','graphql','machine learning','ai','data science',
+    'analytics','excel','powerbi','tableau','sap','salesforce','recruitment','hr','talent acquisition',
+    'sourcing','screening','leadership','management','product','design','ux','ui','figma','scrum',
+    'agile','jira','testing','qa','devops','linux','networking','c#','dotnet','.net','flutter','dart',
   ];
-  const reqText = ((cr.roleTitle || '') + ' ' + (cr.requirements || '')).toLowerCase();
-  const extractedSkills = COMMON_SKILLS.filter(s => reqText.includes(s));
+  const extractedSkills = SKILL_KEYWORDS.filter(s => reqText.includes(s));
 
+  // Build a job-like snapshot for scoring
   const jobSnapshot = {
-    title          : cr.roleTitle || '',
-    skills         : extractedSkills.length > 0 ? extractedSkills : [],
-    experienceLevel: '',
-    location       : '',
-    jobType        : '',
+    title : roleTitle,
+    skills: extractedSkills,
   };
 
-  // findSuggestedCandidates needs candidates to match against — pass excludeTenantId = null
-  // so SA sees candidates from all orgs
-  let candidates = [];
-  try {
-    candidates = await findSuggestedCandidates(jobSnapshot, null);
-  } catch {}
+  // ── IDs to exclude from all results ─────────────────────────────────────
+  const excludeIds = new Set(
+    (cr.submittedCandidates || []).map(c => (c._id || c).toString())
+  );
 
-  // If matching engine returns nothing (empty skills → no signal), fall back to
-  // top recent candidates across the platform
-  if (!candidates.length) {
-    const recent = await Candidate.find({ deletedAt: null })
-      .select('_id name email title currentCompany skills experience location noticePeriodDays availability')
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
-    candidates = recent.map(c => ({
-      ...c,
-      id: c._id?.toString(),
-      skills: Array.isArray(c.skills) ? c.skills : [],
-      matchScore: 0,
-    }));
+  // Also exclude candidates who already applied to the linked job
+  let alreadyAppliedIds = new Set();
+  if (cr.jobId) {
+    const apps = await Application.find({ jobId: cr.jobId, deletedAt: null })
+      .select('candidateId').lean();
+    apps.forEach(a => { if (a.candidateId) alreadyAppliedIds.add(a.candidateId.toString()); });
+    alreadyAppliedIds.forEach(id => excludeIds.add(id));
   }
 
-  res.json({ success: true, data: candidates });
+  // Shared: normalise and deduplicate a candidate list
+  const CANDIDATE_SELECT = '_id name email title currentCompany skills experience location noticePeriodDays availability expectedCTC candidateStatus';
+
+  const normCandidate = (c, matchScore = 0, tier = 1) => ({
+    ...c,
+    id        : c._id?.toString(),
+    _id       : c._id?.toString(),
+    skills    : Array.isArray(c.skills) ? c.skills : [],
+    matchScore: Math.round(matchScore),
+    _tier     : tier,
+  });
+
+  const seen   = new Set(excludeIds); // track all IDs added so far
+  const results = [];
+
+  const addIfNew = (c, matchScore, tier) => {
+    const id = c._id?.toString() || c.id?.toString();
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    results.push(normCandidate(c, matchScore, tier));
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TIER 1 — Pipeline Intelligence
+  // Who is winning on the linked job's pipeline? Find candidates like them.
+  // ══════════════════════════════════════════════════════════════════════════
+  const WINNING_STAGES = ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'];
+  let tier1Count = 0;
+
+  if (cr.jobId) {
+    // Step 1a: Get winning candidates on the linked job
+    const winningApps = await Application.find({
+      jobId         : cr.jobId,
+      currentStage  : { $in: WINNING_STAGES },
+      deletedAt     : null,
+    })
+      .select('candidateId')
+      .limit(20)
+      .lean();
+
+    const winnerCandIds = [...new Set(winningApps.map(a => a.candidateId?.toString()).filter(Boolean))];
+
+    if (winnerCandIds.length > 0) {
+      const winners = await Candidate.find({ _id: { $in: winnerCandIds }, deletedAt: null })
+        .select(CANDIDATE_SELECT)
+        .lean();
+
+      // Build a "typical winner" profile by aggregating skills across all winners
+      const allWinnerSkills = [...new Set(
+        winners.flatMap(w => Array.isArray(w.skills) ? w.skills : [])
+      )];
+      const winnerTitles = [...new Set(winners.map(w => (w.title || '').split(' ')[0]).filter(Boolean))];
+      const avgExp = winners.length > 0
+        ? winners.reduce((s, w) => s + (parseFloat(w.experience) || 0), 0) / winners.length
+        : null;
+
+      // Enhanced job snapshot incorporating winner traits
+      const t1Snapshot = {
+        title : winnerTitles[0] || roleTitle,
+        skills: [...new Set([...extractedSkills, ...allWinnerSkills.slice(0, 10)])],
+        experience: avgExp ? `${Math.max(0, Math.round(avgExp) - 1)}-${Math.round(avgExp) + 2}` : '',
+      };
+
+      // Step 1b: Find platform candidates similar to winners (excluding already applied)
+      const skillRegexes = t1Snapshot.skills.slice(0, 8).map(s =>
+        new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+      );
+
+      const tier1Query = {
+        deletedAt: null,
+        _id      : { $nin: [...seen].map(id => { try { return new (require('mongoose').Types.ObjectId)(id); } catch { return null; } }).filter(Boolean) },
+        $or: [
+          ...(skillRegexes.length > 0 ? [{ skills: { $in: skillRegexes } }] : []),
+          ...(winnerTitles.length > 0 ? [{ title: { $regex: winnerTitles[0], $options: 'i' } }] : []),
+        ],
+      };
+
+      if (tier1Query.$or.length === 0) delete tier1Query.$or;
+
+      if (tier1Query.$or) {
+        const t1Cands = await Candidate.find(tier1Query)
+          .select(CANDIDATE_SELECT)
+          .limit(200)
+          .lean();
+
+        t1Cands
+          .map(c => ({ c, score: calculateTalentMatchScore(t1Snapshot, c).score }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 15)
+          .forEach(({ c, score }) => { addIfNew(c, score, 1); tier1Count++; });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TIER 2 — Similar Role Applicants
+  // Candidates who applied to similar jobs (same title keywords or skills)
+  // but NOT to this specific job.
+  // ══════════════════════════════════════════════════════════════════════════
+  let tier2Count = 0;
+
+  if (roleTitle) {
+    const titleWords = roleTitle.split(/\s+/).filter(w => w.length > 3);
+    const titleRegexes = titleWords.slice(0, 3).map(w =>
+      new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    );
+
+    const similarJobQuery = { deletedAt: null, status: { $in: ['active', 'closed'] } };
+    if (titleRegexes.length > 0) {
+      similarJobQuery.$or = [
+        { title: { $in: titleRegexes } },
+        ...(extractedSkills.length > 0 ? [{ skills: { $in: extractedSkills.slice(0, 5) } }] : []),
+      ];
+    } else if (extractedSkills.length > 0) {
+      similarJobQuery.skills = { $in: extractedSkills.slice(0, 5) };
+    }
+
+    // Exclude the linked job itself
+    if (cr.jobId) similarJobQuery._id = { $ne: cr.jobId };
+
+    const similarJobs = await Job.find(similarJobQuery).select('_id').limit(50).lean();
+    const similarJobIds = similarJobs.map(j => j._id);
+
+    if (similarJobIds.length > 0) {
+      // Candidates who applied to those similar jobs
+      const similarApps = await Application.find({
+        jobId    : { $in: similarJobIds },
+        deletedAt: null,
+        currentStage: { $in: ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired', 'Applied', 'Screening'] },
+      })
+        .select('candidateId')
+        .limit(300)
+        .lean();
+
+      const similarCandIds = [...new Set(
+        similarApps.map(a => a.candidateId?.toString()).filter(id => id && !seen.has(id))
+      )];
+
+      if (similarCandIds.length > 0) {
+        const t2Cands = await Candidate.find({
+          _id      : { $in: similarCandIds.slice(0, 200) },
+          deletedAt: null,
+        })
+          .select(CANDIDATE_SELECT)
+          .lean();
+
+        t2Cands
+          .map(c => ({ c, score: calculateTalentMatchScore(jobSnapshot, c).score }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 15)
+          .forEach(({ c, score }) => { addIfNew(c, score, 2); tier2Count++; });
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TIER 3 — Full Database Match
+  // Score the entire platform against this role. Only runs if we still need
+  // more candidates (< 10 total so far).
+  // ══════════════════════════════════════════════════════════════════════════
+  let tier3Count = 0;
+
+  if (results.length < 10) {
+    const t3Query = { deletedAt: null };
+
+    // Focus query using available signals
+    if (extractedSkills.length > 0) {
+      const skillRe = extractedSkills.slice(0, 6).map(s =>
+        new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+      );
+      t3Query.$or = [
+        { skills: { $in: skillRe } },
+      ];
+    }
+    if (roleTitle) {
+      const firstWord = roleTitle.split(' ')[0];
+      if (!t3Query.$or) t3Query.$or = [];
+      t3Query.$or.push({ title: { $regex: firstWord, $options: 'i' } });
+    }
+    if (!t3Query.$or || t3Query.$or.length === 0) {
+      delete t3Query.$or; // no signals — will match everyone; limit handles it
+    }
+
+    const t3Cands = await Candidate.find(t3Query)
+      .select(CANDIDATE_SELECT)
+      .sort({ updatedAt: -1 })
+      .limit(500)
+      .lean();
+
+    const MIN_SCORE = extractedSkills.length > 0 ? 20 : 0;
+
+    t3Cands
+      .filter(c => !seen.has(c._id?.toString()))
+      .map(c => ({ c, score: calculateTalentMatchScore(jobSnapshot, c).score }))
+      .filter(({ score }) => score >= MIN_SCORE)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 20 - results.length) // fill up to 20 total
+      .forEach(({ c, score }) => { addIfNew(c, score, 3); tier3Count++; });
+  }
+
+  // Sort final results: tier 1 first, then by score descending within each tier
+  results.sort((a, b) => {
+    if (a._tier !== b._tier) return a._tier - b._tier;
+    return b.matchScore - a.matchScore;
+  });
+
+  res.json({
+    success: true,
+    data   : results,
+    meta   : { tier1: tier1Count, tier2: tier2Count, tier3: tier3Count, total: results.length },
+  });
 }));
 
 // DELETE /api/candidate-requests/:id — cancel

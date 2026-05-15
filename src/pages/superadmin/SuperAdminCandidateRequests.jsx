@@ -311,12 +311,38 @@ function DetailPage({ request, onClose, onSaved }) {
         </div>
         {busy!=='suggested' && suggested.length===0 && (
           <div style={{ color:'#94A3B8', fontSize:12, marginBottom:16, padding:'12px 14px', background:'#F8FAFC', borderRadius:8 }}>
-            No suggested candidates. Use the search below.
+            No matching candidates found in the platform database. Use the search below to find candidates manually.
           </div>
         )}
-        {suggested.filter(c=>!attachedIds.has(String(c._id||c.id))).map(c=>(
-          <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} matchScore={c.matchScore} onViewProfile={setProfileUser} />
-        ))}
+
+        {/* Tier labels for context */}
+        {busy!=='suggested' && suggested.filter(c=>!attachedIds.has(String(c._id||c.id))).length > 0 && (() => {
+          const TIER_INFO = {
+            1: { label:'🏆 Pipeline Match', desc:'Similar to candidates winning in the pipeline', color:'#059669', bg:'rgba(5,150,105,0.08)', border:'rgba(5,150,105,0.2)' },
+            2: { label:'🎯 Similar Role', desc:'Applied to similar jobs in the platform', color:'#0176D3', bg:'rgba(1,118,211,0.06)', border:'rgba(1,118,211,0.2)' },
+            3: { label:'🔍 Database Match', desc:'Matched from entire candidate database', color:'#7c3aed', bg:'rgba(124,58,237,0.06)', border:'rgba(124,58,237,0.2)' },
+          };
+          const visible = suggested.filter(c=>!attachedIds.has(String(c._id||c.id)));
+          const tiers = [...new Set(visible.map(c=>c._tier||3))].sort();
+          return tiers.map(tier => {
+            const ti = TIER_INFO[tier] || TIER_INFO[3];
+            const tierCands = visible.filter(c=>(c._tier||3)===tier);
+            return (
+              <div key={tier} style={{ marginBottom:16 }}>
+                <div style={{ background:ti.bg, border:`1px solid ${ti.border}`, borderRadius:8, padding:'8px 12px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <span style={{ fontSize:12, fontWeight:800, color:ti.color }}>{ti.label}</span>
+                    <span style={{ fontSize:11, color:'#64748B', marginLeft:8 }}>{ti.desc}</span>
+                  </div>
+                  <span style={{ fontSize:11, fontWeight:700, color:ti.color }}>{tierCands.length} candidate{tierCands.length!==1?'s':''}</span>
+                </div>
+                {tierCands.map(c=>(
+                  <CandCard key={c.id||c._id} cand={c} selected={newlySelected} onToggle={toggleNew} matchScore={c.matchScore} onViewProfile={setProfileUser} />
+                ))}
+              </div>
+            );
+          });
+        })()}
 
         {/* Search */}
         <div style={{ marginTop:20, borderTop:'1px solid #F1F5F9', paddingTop:20 }}>
