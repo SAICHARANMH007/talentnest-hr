@@ -131,6 +131,8 @@ export default function OrgSettings({ user }) {
   const [newStage, setNewStage] = useState('');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  // Team members for org chart
+  const [teamMembers, setTeamMembers] = useState([]);
   const [emailForm, setEmailForm] = useState({
     fromName: '', fromEmail: '', provider: 'resend', apiKey: '',
     smtpHost: '', smtpPort: '587',
@@ -179,6 +181,15 @@ export default function OrgSettings({ user }) {
       try {
         const tr = await api.getPipelineTemplates();
         if (tr?.data) setTemplates(tr.data);
+      } catch {}
+      // Load team members for org chart (admins + recruiters in this org)
+      try {
+        const orgId = o.id || o._id;
+        if (orgId) {
+          const members = await api.getUsers({ orgId, limit: 200 });
+          const list = Array.isArray(members?.data) ? members.data : (Array.isArray(members) ? members : []);
+          setTeamMembers(list.filter(m => ['admin','super_admin','recruiter','hiring_manager'].includes(m.role)));
+        }
       } catch {}
     } catch {}
     setLoading(false);
@@ -287,6 +298,92 @@ export default function OrgSettings({ user }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Logo Upload — uses LogoManager which properly calls uploadOrgLogo API + updates LogoContext */}
         <LogoManager />
+
+        {/* ── Org Chart ─────────────────────────────────────────────────────── */}
+        {teamMembers.length > 0 && (() => {
+          const admins    = teamMembers.filter(m => m.role === 'admin' || m.role === 'super_admin');
+          const recruiters = teamMembers.filter(m => m.role === 'recruiter');
+          const managers  = teamMembers.filter(m => m.role === 'hiring_manager');
+
+          const ROLE_COLOR = { admin:'#0176D3', super_admin:'#7c3aed', recruiter:'#059669', hiring_manager:'#F59E0B' };
+          const ROLE_LABEL = { admin:'Admin', super_admin:'Super Admin', recruiter:'Recruiter', hiring_manager:'Hiring Manager' };
+
+          const MemberCard = ({ m }) => (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, minWidth:100 }}>
+              <div style={{ width:48, height:48, borderRadius:'50%', background:`linear-gradient(135deg,${ROLE_COLOR[m.role]||'#0176D3'},${ROLE_COLOR[m.role]||'#0176D3'}99)`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:18, boxShadow:`0 4px 12px ${ROLE_COLOR[m.role]||'#0176D3'}40`, border:`2px solid ${ROLE_COLOR[m.role]||'#0176D3'}` }}>
+                {(m.name||'?')[0].toUpperCase()}
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:12, fontWeight:800, color:'#0A1628', maxWidth:110, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.name||'—'}</div>
+                <div style={{ fontSize:9, fontWeight:700, color:ROLE_COLOR[m.role]||'#0176D3', textTransform:'uppercase', letterSpacing:0.5, marginTop:1 }}>{ROLE_LABEL[m.role]||m.role}</div>
+                <div style={{ fontSize:10, color:'#94A3B8', marginTop:1, maxWidth:110, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.email}</div>
+                <div style={{ marginTop:4 }}>
+                  <span style={{ fontSize:9, padding:'2px 7px', borderRadius:20, background: m.isActive ? 'rgba(5,150,105,0.1)' : 'rgba(186,5,23,0.1)', color: m.isActive ? '#059669' : '#BA0517', fontWeight:700 }}>
+                    {m.isActive ? '● Active' : '○ Pending'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+
+          return (
+            <div style={glass}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+                <div>
+                  <h3 style={{ color:'#181818', fontWeight:700, fontSize:15, margin:'0 0 2px' }}>🏢 Organisation Chart</h3>
+                  <p style={{ color:'#9E9D9B', fontSize:12, margin:0 }}>{org?.name} · {teamMembers.length} team member{teamMembers.length!==1?'s':''}</p>
+                </div>
+                <span style={{ fontSize:11, color:'#64748B', background:'#F1F5F9', padding:'4px 10px', borderRadius:20, fontWeight:600 }}>
+                  {admins.length} Admin{admins.length!==1?'s':''} · {recruiters.length} Recruiter{recruiters.length!==1?'s':''}
+                </span>
+              </div>
+
+              {/* Org top: Admins */}
+              {admins.length > 0 && (
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:'#0176D3' }} />
+                    Admin{admins.length!==1?'s':''}
+                  </div>
+                  <div style={{ display:'flex', gap:24, flexWrap:'wrap', paddingLeft:8 }}>
+                    {admins.map(m => <MemberCard key={m.id||m._id} m={m} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Connector line */}
+              {admins.length > 0 && recruiters.length > 0 && (
+                <div style={{ borderLeft:'2px dashed #E2E8F0', marginLeft:32, height:24, marginBottom:0 }} />
+              )}
+
+              {/* Recruiters */}
+              {recruiters.length > 0 && (
+                <div style={{ marginBottom: managers.length ? 24 : 0 }}>
+                  <div style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:'#059669' }} />
+                    Recruiter{recruiters.length!==1?'s':''}
+                  </div>
+                  <div style={{ display:'flex', gap:24, flexWrap:'wrap', paddingLeft:8 }}>
+                    {recruiters.map(m => <MemberCard key={m.id||m._id} m={m} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Hiring Managers */}
+              {managers.length > 0 && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:'#F59E0B' }} />
+                    Hiring Manager{managers.length!==1?'s':''}
+                  </div>
+                  <div style={{ display:'flex', gap:24, flexWrap:'wrap', paddingLeft:8 }}>
+                    {managers.map(m => <MemberCard key={m.id||m._id} m={m} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div style={glass}>
           <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 16px' }}>Organisation Profile</h3>
