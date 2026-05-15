@@ -945,11 +945,11 @@ router.patch('/:id/stage', ...guard,
           </div>
           <div style="background:#fff;padding:28px 32px;border-radius:0 0 16px 16px;border:1px solid #e2e8f0;border-top:none;">
             <p style="color:#374151;font-size:15px;line-height:1.7;">${tpl.body}</p>
-            <a href="${FRONTEND_URL}/app" style="display:inline-block;background:${tpl.color};color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;margin-top:8px;">View Application →</a>
+            <a href="${FRONTEND_URL}/app/applications" style="display:inline-block;background:${tpl.color};color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;margin-top:8px;">View My Application →</a>
             <p style="color:#9ca3af;font-size:12px;margin-top:24px;">You are receiving this email because you applied through TalentNest HR.</p>
           </div>
         </div>`;
-        email.sendEmailWithRetry?.(candidate.email, tpl.subject, html).catch(e => console.warn("[Email] candidate:", e.message));
+        email.sendOrgEmail(candidate.email, tpl.subject, html, app.tenantId).catch(e => console.warn("[Email] stage-change:", e.message));
       }
     }
 

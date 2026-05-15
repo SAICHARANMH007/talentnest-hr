@@ -110,7 +110,8 @@ export default function CandidateBackgroundVerification({ user }) {
     try {
       await api.deleteBgvDocument(docId);
       setToast('✅ Document removed');
-      setDocs(prev => prev.filter(d => d.id !== docId));
+      // Reload full list so BGV status banner and count stay accurate
+      load();
     } catch (e) { setToast(`❌ ${e.message}`); }
   };
 
@@ -253,11 +254,27 @@ export default function CandidateBackgroundVerification({ user }) {
             {preview.loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner size={32} /></div>
             ) : preview.fileUrl ? (
-              preview.mimeType?.includes('pdf')
-                ? <iframe src={preview.fileUrl} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: 8 }} title="Document Preview" />
-                : <img src={preview.fileUrl} alt="Document" style={{ maxWidth: '100%', borderRadius: 8 }} />
+              <>
+                {preview.mimeType?.includes('pdf') ? (
+                  /* <embed> renders PDFs inline in browser — <iframe> often triggers download */
+                  <embed src={preview.fileUrl} type="application/pdf" style={{ width: '100%', height: '70vh', borderRadius: 8 }} />
+                ) : preview.mimeType?.includes('image') ? (
+                  <img src={preview.fileUrl} alt="Document" style={{ maxWidth: '100%', borderRadius: 8, display: 'block', margin: '0 auto' }} />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#706E6B' }}>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
+                    <p>This file type cannot be previewed in the browser.</p>
+                  </div>
+                )}
+                {/* Download fallback — always available */}
+                <div style={{ marginTop: 12, textAlign: 'right' }}>
+                  <a href={preview.fileUrl} download="bgv-document" style={{ fontSize: 12, color: '#0176D3', fontWeight: 700, textDecoration: 'none', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '6px 14px' }}>
+                    ⬇ Download
+                  </a>
+                </div>
+              </>
             ) : (
-              <div style={{ textAlign: 'center', padding: 40, color: '#706E6B' }}>Unable to preview this document.</div>
+              <div style={{ textAlign: 'center', padding: 40, color: '#706E6B' }}>Unable to load document.</div>
             )}
           </div>
         </div>

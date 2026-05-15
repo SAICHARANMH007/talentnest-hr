@@ -76,6 +76,15 @@ function CandidateRow({ row, onVerify }) {
     setVerifying('');
   };
 
+  const handleDelete = async (docId, docName) => {
+    if (!window.confirm(`Delete "${docName}"? This cannot be undone.`)) return;
+    try {
+      await api.deleteBgvDocument(docId);
+      setToast('✅ Document deleted');
+      onVerify(); // refresh parent so row counts update
+    } catch (e) { setToast(`❌ ${e.message}`); }
+  };
+
   return (
     <div style={{ border:`1px solid ${allVerified ? 'rgba(16,185,129,0.3)' : '#E2E8F0'}`, borderRadius:14, overflow:'hidden', background:rowBg, marginBottom:12 }}>
       <Toast msg={toast} onClose={()=>setToast('')} />
@@ -146,9 +155,9 @@ function CandidateRow({ row, onVerify }) {
                       )}
                     </div>
                     <span style={{ fontSize:11, fontWeight:700, color:st.text, background:st.bg, padding:'3px 10px', borderRadius:20, flexShrink:0 }}>{st.icon} {st.label}</span>
-                    <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                    <div style={{ display:'flex', gap:6, flexShrink:0, flexWrap:'wrap' }}>
                       <button onClick={() => handlePreview(doc.id)}
-                        style={{ ...btnG, fontSize:11, padding:'5px 12px' }}>Preview</button>
+                        style={{ ...btnG, fontSize:11, padding:'5px 12px' }}>👁 Preview</button>
                       {doc.status !== 'verified' && (
                         <button onClick={() => handleVerify(doc.id, 'verified')}
                           disabled={!!isVerifying}
@@ -168,6 +177,13 @@ function CandidateRow({ row, onVerify }) {
                           disabled={!!isVerifying}
                           style={{ background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:8, color:'#F59E0B', fontSize:11, fontWeight:700, padding:'5px 12px', cursor:'pointer' }}>
                           Review
+                        </button>
+                      )}
+                      {/* Admin can delete any non-verified document */}
+                      {doc.status !== 'verified' && (
+                        <button onClick={() => handleDelete(doc.id, doc.docName)}
+                          style={{ ...btnD, fontSize:11, padding:'5px 12px', opacity:0.85 }}>
+                          🗑 Delete
                         </button>
                       )}
                     </div>
@@ -191,11 +207,25 @@ function CandidateRow({ row, onVerify }) {
             {preview.loading ? (
               <div style={{ display:'flex', justifyContent:'center', padding:40 }}><Spinner size={32} /></div>
             ) : preview.fileUrl ? (
-              preview.mimeType?.includes('pdf')
-                ? <iframe src={preview.fileUrl} style={{ width:'100%', height:'70vh', border:'none', borderRadius:8 }} title="Preview" />
-                : <img src={preview.fileUrl} alt="Document" style={{ maxWidth:'100%', borderRadius:8 }} />
+              <>
+                {preview.mimeType?.includes('pdf') ? (
+                  <embed src={preview.fileUrl} type="application/pdf" style={{ width:'100%', height:'70vh', borderRadius:8 }} />
+                ) : preview.mimeType?.includes('image') ? (
+                  <img src={preview.fileUrl} alt="Document" style={{ maxWidth:'100%', borderRadius:8, display:'block', margin:'0 auto' }} />
+                ) : (
+                  <div style={{ textAlign:'center', padding:40, color:'#706E6B' }}>
+                    <div style={{ fontSize:40, marginBottom:12 }}>📄</div>
+                    <p>File type cannot be previewed in browser.</p>
+                  </div>
+                )}
+                <div style={{ marginTop:10, textAlign:'right' }}>
+                  <a href={preview.fileUrl} download="bgv-document" style={{ fontSize:12, color:'#0176D3', fontWeight:700, textDecoration:'none', background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.2)', borderRadius:8, padding:'5px 14px' }}>
+                    ⬇ Download
+                  </a>
+                </div>
+              </>
             ) : (
-              <div style={{ textAlign:'center', padding:40, color:'#706E6B' }}>Unable to preview this document.</div>
+              <div style={{ textAlign:'center', padding:40, color:'#706E6B' }}>Unable to load document.</div>
             )}
           </div>
         </div>
