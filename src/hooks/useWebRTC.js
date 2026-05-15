@@ -75,27 +75,23 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
   // even though the hook was initialized with video:false (callInfoRef was null)
   const startLocalMedia = useCallback(async (wantVideo) => {
     const useVideo = wantVideo !== undefined ? wantVideo : video;
-    const constraints = {
-      video: useVideo ? {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      } : false,
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1, // Force mono for maximum cross-platform compatibility (prevents silent stereo tracks)
-        // Legacy flags for older Chrome/Windows driver compatibility
-        googEchoCancellation: true,
-        googAutoGainControl: true,
-        googNoiseSuppression: true,
-        googHighpassFilter: true,
-      }
+
+    // Stop any existing stream first — prevents "device busy" errors on reconnect/retry
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+
+    const audioConstraints = {
+      echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1,
     };
 
+    // Attempt 1: request the full quality stream (video+audio or audio-only)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: useVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } : false,
+        audio: audioConstraints,
+      });
       localStreamRef.current = stream;
       setLocalStream(stream);
       setPermError('');
@@ -103,24 +99,41 @@ export default function useWebRTC({ video = true, audio = true, onRemoteStream, 
       setCamOn(useVideo); camOnRef.current = useVideo;
       return stream;
     } catch (e) {
-      console.warn('[WebRTC] getUserMedia error:', e.name);
-      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-        setPermError('Camera/microphone access denied. Please allow access in browser settings.');
-      } else {
-        try {
-          // Fallback to basic audio if video or high-res audio fails
-          const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-          localStreamRef.current = stream;
-          setLocalStream(stream);
-          setMicOn(true);  micOnRef.current = true;
-          setCamOn(false); camOnRef.current = false;
-          return stream;
-        } catch {
-          setPermError('Could not access microphone. Please check permissions.');
-        }
-      }
-      return null;
+      console.warn('[WebRTC] getUserMedia attempt 1 failed:', e.name, e.message);
     }
+
+    // Attempt 2: video failed or permission denied — try audio-only fallback.
+    // Critical: for video calls, this means the call continues as audio-only
+    // rather than failing completely. The caller/callee will see each other's
+    // avatar instead of video but can still talk.
+    if (useVideo) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: audioConstraints });
+        localStreamRef.current = stream;
+        setLocalStream(stream);
+        setPermError('Camera unavailable — audio only.');
+        setMicOn(true);  micOnRef.current = true;
+        setCamOn(false); camOnRef.current = false;
+        return stream;
+      } catch (e2) {
+        console.warn('[WebRTC] getUserMedia attempt 2 (audio-only) failed:', e2.name);
+      }
+    }
+
+    // Attempt 3: even audio failed — last resort basic audio
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+      setPermError('Limited media access — check browser permissions.');
+      setMicOn(true);  micOnRef.current = true;
+      setCamOn(false); camOnRef.current = false;
+      return stream;
+    } catch {
+      setPermError('Microphone access denied. Please allow permissions and retry.');
+    }
+
+    return null;
   }, [video, audio]);
 
   // ── Create peer connection ────────────────────────────────────────────────

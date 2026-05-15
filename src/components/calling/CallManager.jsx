@@ -361,13 +361,14 @@ export default function CallManager({ user }) {
     _setCallInfo({ callId: null, peerId: toUserId, peerName: toName, callType, callMessage: callMessage || '' });
     _setCallState('outgoing');
     
-    // START MEDIA IMMEDIATELY for the caller so it's ready when recipient accepts
+    // START MEDIA — request video for video calls, fall back to audio if camera unavailable.
+    // Never abort the call just because camera is unavailable — audio-only is better than no call.
     const stream = await startLocalMedia(callType === 'video');
     if (!stream) {
-      endCallInternal('Media access denied');
-      return;
+      // Even audio completely failed — still try to connect (other side might hear us once ICE resolves)
+      console.warn('[Call] No local media available — proceeding with empty stream');
     }
-    localStreamRef2.current = stream;
+    localStreamRef2.current = stream || new MediaStream();
 
     socketRef.current.emit('call:initiate', { toUserId, callType, toName, callMessage: callMessage || '' });
     clearTimeout(ringTimer.current);
@@ -466,7 +467,13 @@ export default function CallManager({ user }) {
   return (
     <>
       {audioEl}
-      
+      {/* Define keyframes once — pulse-dot used in outgoing screen, ring animations in incoming */}
+      <style>{`
+        @keyframes pulse-dot { 0%,80%,100%{transform:scale(0);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+        @keyframes ring-pulse { 0%,100%{opacity:1} 50%{opacity:0.9} }
+        @keyframes ring-shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-15deg)} 75%{transform:rotate(15deg)} }
+      `}</style>
+
       {callState === 'idle' && MeetingBanner}
 
       {callState === 'incoming' && (
