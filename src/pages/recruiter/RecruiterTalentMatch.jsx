@@ -8,7 +8,7 @@ import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
-import { matchCandidatesToJob } from '../../api/matching.js';
+import { matchCandidatesToJob, enrichWithPlatformSignals } from '../../api/matching.js';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
 export default function RecruiterTalentMatch({ user }) {
@@ -47,13 +47,16 @@ export default function RecruiterTalentMatch({ user }) {
         api.getUsers("candidate")
       ]);
       const job = jobRes?.data || jobRes;
-      const cands = Array.isArray(candsRes) ? candsRes : (candsRes?.data || []);
-      if (!cands.length) {
+      const rawCands = Array.isArray(candsRes) ? candsRes : (candsRes?.data || []);
+      if (!rawCands.length) {
         setToast("No candidates found in the system.");
         setLoad(false);
         return;
       }
-      setResults(matchCandidatesToJob(job, cands));
+      // Tier B: enrich candidates with platform behavioral signals before scoring
+      const { req: apiReq } = await import('../../api/client.js');
+      const enriched = await enrichWithPlatformSignals(rawCands, apiReq);
+      setResults(matchCandidatesToJob(job, enriched));
     } catch (e) {
       setToast(`Matching failed: ${e.message}`);
     }

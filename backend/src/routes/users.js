@@ -830,4 +830,46 @@ router.get('/unsubscribe', asyncHandler(async (req, res) => {
   `);
 }));
 
+// GET /api/users/platform-signals?ids=id1,id2,...
+// Returns aggregated platform stats for a list of candidate IDs.
+// Used by the matching engine to inject behavioral signals into scoring.
+// No auth required for public candidate records — results contain no PII.
+router.get('/platform-signals', asyncHandler(async (req, res) => {
+  const { ids } = req.query;
+  if (!ids) return res.json({ success: true, data: [] });
+  const Application = require('../models/Application');
+  const Candidate   = require('../models/Candidate');
+
+  const idList = String(ids).split(',').slice(0, 100).map(id => id.trim()).filter(Boolean);
+  if (!idList.length) return res.json({ success: true, data: [] });
+
+  // Try matching by User ID → find linked Candidate records → aggregate Applications
+  const validIds = idList.map(id => { try { return new mongoose.Types.ObjectId(id); } catch { return null; } }).filter(Boolean);
+  if (!validIds.length) return res.json({ success: true, data: [] });
+
+  // Aggregate application stats per candidateId
+  const stats = await Application.aggregate([
+    { $match: { candidateId: { $in: validIds }, deletedAt: null } },
+    { $group: {
+        _id: '$candidateId',
+        totalApps     : { $sum: 1 },
+        shortlisted   : { $sum: { $cond: [{ $in: ['$currentStage', ['Shortlisted','Interview Round 1','Interview Round 2','Offer','Hired']] }, 1, 0] } },
+        interviewCleared: { $sum: { $cond: [{ $in: ['$currentStage', ['Interview Round 2','Offer','Hired']] }, 1, 0] } },
+        hired         : { $sum: { $cond: [{ $eq: ['$currentStage','Hired'] }, 1, 0] } },
+        lastActive    : { $max: '$updatedAt' },
+    }},
+  ]);
+
+  const data = stats.map(s => ({
+    candidateId     : s._id.toString(),
+    totalApps       : s.totalApps,
+    shortlisted     : s.shortlisted,
+    interviewCleared: s.interviewCleared,
+    hired           : s.hired,
+    lastActive      : s.lastActive,
+  }));
+
+  res.json({ success: true, data });
+}));
+
 module.exports = router;
