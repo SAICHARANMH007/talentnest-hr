@@ -432,6 +432,49 @@ router.post('/:id/assign', ...guard,
     res.json({ success: true, data: normalizeJob(job) });
 }));
 
+// PATCH /api/jobs/:id/replace-recruiter
+// Replace the entire assignedRecruiters list for a job with a single new recruiter.
+// Used by admin when changing the recruiter from the Applicant Records table.
+// After replacing, ALL applications for this job automatically appear under the new recruiter.
+router.patch('/:id/replace-recruiter', ...guard,
+  allowRoles('admin', 'super_admin'),
+  asyncHandler(async (req, res) => {
+    const { recruiterId } = req.body;
+    if (!recruiterId) throw new AppError('recruiterId is required.', 400);
+
+    const recruiterFilter = { _id: recruiterId, role: 'recruiter', deletedAt: null };
+    if (req.user.role !== 'super_admin') recruiterFilter.tenantId = req.user.tenantId;
+    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name').lean();
+    if (!recruiter) throw new AppError('Recruiter not found.', 404);
+
+    const jobFilter = { _id: req.params.id, deletedAt: null };
+    jobFilter.tenantId = req.user.role === 'super_admin' ? recruiter.tenantId : req.user.tenantId;
+
+    // Replace the full assignedRecruiters list — this makes the new recruiter see
+    // all existing applications without touching each individual application record.
+    const job = await Job.findOneAndUpdate(
+      jobFilter,
+      { $set: { assignedRecruiters: [recruiter._id] } },
+      { new: true }
+    );
+    if (!job) throw new AppError('Job not found.', 404);
+
+    // Notify the new recruiter
+    await Notification.create({
+      userId: recruiter._id, tenantId: job.tenantId, type: 'system',
+      title: '📋 Job Assigned to You',
+      message: `You are now managing "${job.title}". All existing applicants are in your pipeline.`,
+      link: '/app/pipeline',
+    }).catch(() => {});
+
+    logger.audit('Recruiter replaced on job', req.user._id, req.user.tenantId, {
+      jobId: job._id, newRecruiterId: recruiterId, jobTitle: job.title,
+    });
+
+    res.json({ success: true, data: normalizeJob(job) });
+  })
+);
+
 router.post('/:id/assign-candidates', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { candidateIds } = req.body;
   if (!Array.isArray(candidateIds)) throw new AppError('candidateIds array required.', 400);

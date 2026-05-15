@@ -228,7 +228,11 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
         .map(r => (typeof r === 'object' ? (r._id || r.id) : r)?.toString())
         .filter(Boolean)
     : [];
-  const assignedRecruiterId = (candidate?.assignedRecruiterId || user?.assignedRecruiterId)?.toString?.() || '';
+  // Use job's first assigned recruiter as the primary recruiter ID for the dropdown.
+  // Falls back to Candidate.assignedRecruiterId (candidate-level assignment).
+  const assignedRecruiterId =
+    assignedRecruiterIds[0] ||
+    (candidate?.assignedRecruiterId || user?.assignedRecruiterId)?.toString?.() || '';
   return {
     recordType: app ? 'Application' : (candidate?._id ? 'Candidate Profile' : 'Candidate Account'),
     applicationId: app?._id?.toString() || '',
@@ -974,7 +978,11 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
 
   const [apps, total, tenantMap] = await Promise.all([
     Application.find(filter)
-      .populate({ path: 'jobId', select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters' })
+      .populate({
+        path: 'jobId',
+        select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters',
+        populate: { path: 'assignedRecruiters', select: 'name email' }, // nested populate for recruiter names
+      })
       .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId assignedRecruiterId createdAt' })
       .sort({ createdAt: -1 })
       .skip(skip)

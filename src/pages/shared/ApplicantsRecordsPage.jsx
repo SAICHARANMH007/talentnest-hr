@@ -287,30 +287,42 @@ export default function ApplicantsRecordsPage({ user }) {
   };
 
   const assignRecruiter = async (row, recruiterId) => {
-    const targetId = row.userId || row.candidateId;
-    if (!targetId) {
-      setToast('This applicant has no candidate profile to assign.');
-      return;
-    }
     const key = rowKey(row);
     setAssigning(key);
+    const recruiter = recruitersById.get(recruiterId);
+    const recruiterName = recruiter?.name || recruiter?.email || '';
     try {
-      const res = await api.assignCandidate(targetId, recruiterId || null);
-      const sync = res?.data?.assignmentSync || res?.assignmentSync;
-      const recruiter = recruitersById.get(recruiterId);
-      setRows(prev => prev.map(r => rowKey(r) === key ? {
-        ...r,
-        assignedRecruiterId: recruiterId || '',
-        assignedRecruiterIds: recruiterId ? [...new Set([...(r.assignedRecruiterIds || []), recruiterId])] : (r.assignedRecruiterIds || []),
-        assignedRecruiters: recruiterId
-          ? (recruiter?.name || recruiter?.email || r.assignedRecruiters || 'Assigned')
-          : r.assignedRecruiters,
-      } : r));
+      // 1. If this row has a jobId, update the job's assignedRecruiters.
+      //    This makes ALL existing and future applicants for that job visible
+      //    to the new recruiter without touching individual application records.
+      if (row.jobId && recruiterId && (user?.role === 'admin' || user?.role === 'super_admin')) {
+        await api.replaceJobRecruiter(row.jobId, recruiterId);
+      }
+
+      // 2. Also update the candidate-level assignment for per-candidate tracking.
+      const targetId = row.userId || row.candidateId;
+      if (targetId) {
+        await api.assignCandidate(targetId, recruiterId || null);
+      }
+
+      // 3. Update all rows that share the same jobId so the entire job's applicants
+      //    show the new recruiter immediately without a page reload.
+      setRows(prev => prev.map(r => {
+        const sameJob = row.jobId && r.jobId && String(r.jobId) === String(row.jobId);
+        if (!sameJob && rowKey(r) !== key) return r;
+        return {
+          ...r,
+          assignedRecruiterId : recruiterId || '',
+          assignedRecruiterIds: recruiterId ? [recruiterId] : [],
+          assignedRecruiters  : recruiterId ? recruiterName : '',
+        };
+      }));
+
       setToast(recruiterId
-        ? `Recruiter assigned${sync?.jobCount ? ` and synced to ${sync.jobCount} job${sync.jobCount === 1 ? '' : 's'}` : ''}.`
-        : 'Recruiter assignment cleared for the candidate.');
+        ? `✅ ${recruiterName} is now the recruiter for "${row.jobTitle || 'this job'}" — all applicants updated.`
+        : 'Recruiter assignment cleared.');
     } catch (e) {
-      setToast('Recruiter assignment failed: ' + e.message);
+      setToast('❌ Recruiter assignment failed: ' + e.message);
     } finally {
       setAssigning('');
     }
@@ -567,19 +579,22 @@ export default function ApplicantsRecordsPage({ user }) {
                         <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 3 }}>{r.source || 'platform'}</div>
                       </td>
 
-                      {/* Recruiter */}
+                      {/* Recruiter — admin/super_admin can change via dropdown; recruiter sees name */}
                       <td style={{ padding: '11px 12px' }} onClick={e => e.stopPropagation()}>
-                        {canManage ? (
+                        {(user?.role === 'admin' || user?.role === 'super_admin') ? (
                           <select
-                            value={r.assignedRecruiterId || ''}
+                            value={r.assignedRecruiterIds?.[0] || r.assignedRecruiterId || ''}
                             onChange={e => assignRecruiter(r, e.target.value)}
                             disabled={assigning === rowKey(r)}
-                            style={{ width: '100%', fontSize: 12, border: '1px solid #E2E8F0', borderRadius: 8, padding: '5px 8px', color: r.assignedRecruiterId ? '#0176D3' : '#94A3B8', background: '#fff', cursor: 'pointer' }}>
+                            style={{ width: '100%', fontSize: 12, border: `1px solid ${r.assignedRecruiterId || r.assignedRecruiterIds?.length ? 'rgba(1,118,211,0.3)' : '#E2E8F0'}`, borderRadius: 8, padding: '5px 8px', color: (r.assignedRecruiterId || r.assignedRecruiterIds?.length) ? '#0176D3' : '#94A3B8', background: '#fff', cursor: 'pointer' }}>
                             <option value="">Unassigned</option>
                             {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
                           </select>
                         ) : (
-                          <span style={{ fontSize: 12, color: '#64748B' }}>{r.assignedRecruiters || '—'}</span>
+                          // Recruiter sees their own name — confirm it's their assignment
+                          <span style={{ fontSize: 12, color: r.assignedRecruiters ? '#0176D3' : '#94A3B8', fontWeight: r.assignedRecruiters ? 700 : 400 }}>
+                            {r.assignedRecruiters || 'Unassigned'}
+                          </span>
                         )}
                       </td>
 
