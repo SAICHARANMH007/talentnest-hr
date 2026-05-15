@@ -74,6 +74,7 @@ const AdminClients = lazy(() => import('./pages/admin/AdminClients.jsx'));
 const AdminAutomation = lazy(() => import('./pages/admin/AdminAutomation.jsx'));
 const AdminOnboarding = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
+const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
 const CandidateJobAlerts = lazy(() => import('./pages/candidate/CandidateJobAlerts.jsx'));
 
@@ -582,6 +583,7 @@ export default function App() {
             <Route path="custom-fields" element={<AdminCustomFields />} />
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
           </>
