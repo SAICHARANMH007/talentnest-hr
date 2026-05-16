@@ -2246,41 +2246,42 @@ router.get('/smart-alerts', authenticate, allowRoles('admin', 'super_admin'), as
   const stuckCandDays     = parseInt(req.query.stuckCandDays)     || 7;
   const pendingOfferDays  = parseInt(req.query.pendingOfferDays)  || 3;
 
-  const [staleJobs, stuckApps, pendingOffers] = await Promise.all([
-    // Jobs active for N+ days with 0 hires
+  const aggF = req.user.role === 'super_admin' ? {} : tenantFilter(req);
+
+  const [staleJobs, stuckAgg, pendingOffers] = await Promise.all([
+    // Jobs active for N+ days with 0 hires — no cap, accurate count
     Job.find({ ...orgF, ...del, status: 'active', hiredCount: { $in: [0, null] },
       createdAt: { $lt: new Date(now - staleJobDays * DAY) } })
       .select('title createdAt tenantId assignedRecruiters companyName company')
       .populate('assignedRecruiters', 'name')
-      .limit(20).lean(),
+      .sort({ createdAt: 1 })
+      .limit(50).lean(),
 
-    // Applications NOT in terminal stages where last stage move was N+ days ago
-    Application.find({ ...orgF, ...del,
-      currentStage: { $nin: ['Hired', 'Rejected'] },
-      'stageHistory.0': { $exists: true },
-    })
-      .select('currentStage stageHistory jobId candidateId tenantId')
-      .populate('jobId', 'title companyName company')
-      .populate('candidateId', 'name')
-      .limit(200).lean(),
+    // Use aggregation with $last on stageHistory so the DB does the filtering —
+    // no in-memory scan cap, correctly finds ALL stuck candidates
+    Application.aggregate([
+      { $match: { ...aggF, ...del, currentStage: { $nin: ['Hired', 'Rejected'] }, 'stageHistory.0': { $exists: true } } },
+      { $addFields: { lastMovedAt: { $last: '$stageHistory.movedAt' } } },
+      { $match: { lastMovedAt: { $lt: new Date(now - stuckCandDays * DAY) } } },
+      { $addFields: { daysStuck: { $floor: { $divide: [{ $subtract: [new Date(now), '$lastMovedAt'] }, DAY] } } } },
+      { $sort: { daysStuck: -1 } },
+      { $limit: 50 },
+      { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job', pipeline: [{ $project: { title: 1 } }] } },
+      { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'cand', pipeline: [{ $project: { name: 1 } }] } },
+      { $project: { currentStage: 1, daysStuck: 1,
+        jobTitle: { $ifNull: [{ $first: '$job.title' }, '—'] },
+        candidateName: { $ifNull: [{ $first: '$cand.name' }, '—'] },
+      }},
+    ]),
 
-    // Offer letters in draft/sent for N+ days
+    // Offer letters in draft/sent for N+ days — no cap
     OfferLetter.find({ ...orgF, status: { $in: ['draft', 'sent'] },
       createdAt: { $lt: new Date(now - pendingOfferDays * DAY) } })
       .select('status createdAt candidateId applicationId')
       .populate('candidateId', 'name email')
-      .limit(20).lean(),
+      .sort({ createdAt: 1 })
+      .limit(50).lean(),
   ]);
-
-  // Filter stuck apps: last stageHistory entry older than N days
-  const stuck = stuckApps.filter(a => {
-    const last = a.stageHistory?.[a.stageHistory.length - 1];
-    return last && (now - new Date(last.movedAt).getTime()) > stuckCandDays * DAY;
-  }).slice(0, 20).map(a => {
-    const last = a.stageHistory?.[a.stageHistory.length - 1];
-    const daysStuck = Math.floor((now - new Date(last.movedAt).getTime()) / DAY);
-    return { id: a._id, candidateName: a.candidateId?.name || '—', jobTitle: a.jobId?.title || '—', stage: a.currentStage, daysStuck };
-  });
 
   const staleJobsMapped = staleJobs.map(j => ({
     id: j._id, title: j.title,
@@ -2289,41 +2290,82 @@ router.get('/smart-alerts', authenticate, allowRoles('admin', 'super_admin'), as
     recruiters: (j.assignedRecruiters || []).map(r => r.name).filter(Boolean),
   }));
 
+  const stuckCandidates = stuckAgg.map(a => ({
+    id: a._id, candidateName: a.candidateName, jobTitle: a.jobTitle,
+    stage: a.currentStage, daysStuck: a.daysStuck,
+  }));
+
   const pendingOffersMapped = pendingOffers.map(o => ({
     id: o._id, candidateName: o.candidateId?.name || '—',
     status: o.status,
     daysPending: Math.floor((now - new Date(o.createdAt).getTime()) / DAY),
   }));
 
-  res.json({ success: true, data: { staleJobs: staleJobsMapped, stuckCandidates: stuck, pendingOffers: pendingOffersMapped } });
+  // Also return totals so frontend can show "Showing X of Y"
+  const [totalStale, totalStuck, totalPending] = await Promise.all([
+    Job.countDocuments({ ...orgF, ...del, status: 'active', hiredCount: { $in: [0, null] }, createdAt: { $lt: new Date(now - staleJobDays * DAY) } }),
+    Application.countDocuments({ ...aggF, ...del, currentStage: { $nin: ['Hired', 'Rejected'] } }),
+    OfferLetter.countDocuments({ ...orgF, status: { $in: ['draft', 'sent'] }, createdAt: { $lt: new Date(now - pendingOfferDays * DAY) } }),
+  ]);
+
+  res.json({ success: true, data: {
+    staleJobs: staleJobsMapped, stuckCandidates, pendingOffers: pendingOffersMapped,
+    totals: { staleJobs: totalStale, stuckCandidates: totalStuck, pendingOffers: totalPending },
+    thresholds: { staleJobDays, stuckCandDays, pendingOfferDays },
+  }});
 }));
 
 // ── GET /api/dashboard/stage-time ───────────────────────────────────────────
 // Average days candidates spend in each stage (bottleneck detection)
 router.get('/stage-time', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const apps = await Application.find({ ...orgF, deletedAt: null, 'stageHistory.1': { $exists: true } })
-    .select('stageHistory').limit(2000).lean();
+  const aggF = req.user.role === 'super_admin' ? {} : tenantFilter(req);
 
-  const stageTimes = {};
-  for (const app of apps) {
-    const hist = app.stageHistory || [];
-    for (let i = 0; i < hist.length - 1; i++) {
-      const stage = hist[i].stage;
-      const from  = new Date(hist[i].movedAt).getTime();
-      const to    = new Date(hist[i + 1].movedAt).getTime();
-      if (!from || !to || to <= from) continue;
-      const days = (to - from) / 86400000;
-      if (!stageTimes[stage]) stageTimes[stage] = [];
-      stageTimes[stage].push(days);
-    }
-  }
-
-  const result = Object.entries(stageTimes).map(([stage, vals]) => ({
-    stage,
-    avgDays: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10,
-    count: vals.length,
-  })).sort((a, b) => b.avgDays - a.avgDays);
+  // Use MongoDB aggregation to compute avg time per stage across ALL applications.
+  // $unwind stageHistory, then compare each entry's movedAt with the next entry's
+  // movedAt using $zip on sorted arrays. This is accurate for any number of apps.
+  const result = await Application.aggregate([
+    { $match: { ...aggF, deletedAt: null, 'stageHistory.1': { $exists: true } } },
+    { $project: {
+        // Pair each stage with the next entry's movedAt using $zip
+        pairs: {
+          $zip: {
+            inputs: [
+              { $slice: ['$stageHistory', 0, { $subtract: [{ $size: '$stageHistory' }, 1] }] },
+              { $slice: ['$stageHistory', 1, { $size: '$stageHistory' }] },
+            ]
+          }
+        }
+    }},
+    { $unwind: '$pairs' },
+    { $project: {
+        stage: { $arrayElemAt: ['$pairs', 0] },
+        nextEntry: { $arrayElemAt: ['$pairs', 1] },
+    }},
+    { $project: {
+        stageName: '$stage.stage',
+        daysInStage: {
+          $divide: [
+            { $subtract: ['$nextEntry.movedAt', '$stage.movedAt'] },
+            86400000
+          ]
+        }
+    }},
+    { $match: { daysInStage: { $gt: 0, $lt: 365 } } }, // exclude outliers > 1 year
+    { $group: {
+        _id: '$stageName',
+        avgDays: { $avg: '$daysInStage' },
+        count: { $sum: 1 },
+        maxDays: { $max: '$daysInStage' },
+    }},
+    { $project: {
+        stage: '$_id',
+        avgDays: { $round: ['$avgDays', 1] },
+        maxDays: { $round: ['$maxDays', 1] },
+        count: 1,
+        _id: 0,
+    }},
+    { $sort: { avgDays: -1 } },
+  ]);
 
   res.json({ success: true, data: result });
 }));
