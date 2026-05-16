@@ -249,6 +249,7 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
   // IndexNow ping — fire-and-forget, never block the response
   if (job.status === 'active') {
     pingIndexNow(job).catch(() => {});
+    require('./jobAlerts').notifyMatchingAlerts(job).catch(() => {});
   }
 }));
 
@@ -375,6 +376,7 @@ router.patch('/:id/approve', ...guard, allowRoles('admin', 'super_admin'), async
   try { require('./distribution').logJobPublished(job); } catch {}
   try { require('./feed').invalidateFeedCache(); } catch {}
   pingIndexNow(job).catch(() => {});
+  require('./jobAlerts').notifyMatchingAlerts(job).catch(() => {});
 
   logger.audit('Job approved', req.user.id, req.user.tenantId, { jobId: job._id });
   res.json({ success: true, data: normalizeJob(job) });

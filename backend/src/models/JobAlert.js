@@ -6,10 +6,14 @@ const jobAlertSchema = new mongoose.Schema({
   email    : { type: String, required: true },
   tenantId : { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null }, // null = cross-tenant
 
-  keywords : { type: [String], default: [] }, // e.g. ['React', 'Node.js']
-  location : { type: String, default: '' },
-  jobType  : { type: String, default: '' },   // Full-Time, Remote, etc.
-  frequency: { type: String, enum: ['daily', 'weekly'], default: 'daily' },
+  keywords      : { type: [String], default: [] }, // e.g. ['React', 'Node.js']
+  location      : { type: String, default: '' },
+  jobType       : { type: String, default: '' },   // Full-Time, Remote, etc.
+  industry      : { type: String, default: '' },   // e.g. 'Information Technology'
+  department    : { type: String, default: '' },   // e.g. 'Engineering & Technology'
+  experienceMin : { type: Number, default: null },  // min years (null = any)
+  experienceMax : { type: Number, default: null },  // max years (null = any)
+  frequency     : { type: String, enum: ['daily', 'weekly', 'instant'], default: 'daily' },
 
   isActive       : { type: Boolean, default: true },
   lastSentAt     : { type: Date, default: null },

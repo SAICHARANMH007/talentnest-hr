@@ -89,42 +89,45 @@ export default function CandidateDashboard({ user }) {
     .sort((a,b) => new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt))
     .slice(0, 3);
 
-  // Weighted profile strength
-  // Each entry has primary field key + optional alias keys (backend may use either)
+  // Weighted profile strength — total = 100
+  // Video Resume is excluded intentionally; numeric 0 (fresher) counts as filled
   const PROFILE_WEIGHTS = [
-    { f:"name",       aliases:[],                         w:15, label:"Full Name" },
-    { f:"title",      aliases:["jobRole","currentRole"],  w:12, label:"Job Title / Role" },
-    { f:"skills",     aliases:[],                         w:12, label:"Skills" },
-    { f:"phone",      aliases:[],                         w:10, label:"Phone" },
-    { f:"summary",    aliases:["bio"],                    w:10, label:"Summary / Bio" },
-    { f:"experience", aliases:["experienceYears"],        w:10, label:"Years of Experience" },
-    { f:"location",   aliases:[],                         w:8,  label:"Location" },
-    { f:"linkedinUrl",aliases:["linkedin"],               w:6,  label:"LinkedIn" },
-    { f:"education",  aliases:["workHistory"],            w:7,  label:"Education / Work History" },
-    { f:"certifications", aliases:[],                     w:5,  label:"Certifications" },
-    { f:"avatarUrl",  aliases:["avatar","profilePic"],    w:5,  label:"Profile Photo" },
+    { f:"name",       aliases:[],                        w:15, label:"Full Name" },
+    { f:"title",      aliases:["jobRole","currentRole"], w:12, label:"Job Title / Role" },
+    { f:"skills",     aliases:[],                        w:12, label:"Skills" },
+    { f:"summary",    aliases:["bio"],                   w:10, label:"Summary / Bio" },
+    { f:"experience", aliases:["experienceYears"],       w:10, label:"Years of Experience" },
+    { f:"phone",      aliases:[],                        w:8,  label:"Phone" },
+    { f:"location",   aliases:[],                        w:8,  label:"Location" },
+    { f:"resumeUrl",  aliases:[],                        w:8,  label:"Resume" },
+    { f:"industry",   aliases:[],                        w:7,  label:"Industry" },
+    { f:"linkedinUrl",aliases:["linkedin"],              w:5,  label:"LinkedIn" },
+    { f:"department", aliases:[],                        w:5,  label:"Department" },
   ];
   const src = profile || user; // fallback to JWT user if profile not yet loaded
   const getField = (x) => {
     const keys = [x.f, ...(x.aliases || [])];
     for (const k of keys) {
       const val = src?.[k];
-      if (val !== undefined && val !== null && val !== '') {
-        if (Array.isArray(val)) return val.length > 0 ? val : null;
-        return String(val).trim() !== '' ? val : null;
-      }
+      if (val === undefined || val === null || val === '') continue;
+      // numeric 0 is valid (fresher with 0 years experience)
+      if (typeof val === 'number') return true;
+      if (Array.isArray(val)) return val.length > 0;
+      return String(val).trim() !== '';
     }
-    return null;
+    return false;
   };
   const totalWeight = PROFILE_WEIGHTS.reduce((s,x)=>s+x.w,0);
   const earnedWeight = PROFILE_WEIGHTS.reduce((s,x) => s + (getField(x) ? x.w : 0), 0);
   const profilePct = Math.round((earnedWeight / totalWeight) * 100);
   const firstMissing = PROFILE_WEIGHTS.find(x => !getField(x));
 
-  const profileFields = ["name","title","skills","location","summary","phone","experience"];
+  const profileFields = ["name","title","skills","location","summary","phone","experience","resumeUrl","industry","department"];
   const filledFields  = profileFields.filter(f => {
     const val = (profile || user)?.[f];
-    return val && String(val).trim() !== "" && (!Array.isArray(val) || val.length > 0);
+    if (val === undefined || val === null || val === '') return false;
+    if (typeof val === 'number') return true;
+    return String(val).trim() !== "" && (!Array.isArray(val) || val.length > 0);
   });
   const activeApps    = apps.filter(a => !["rejected","selected"].includes(a.stage)).length;
   const appliedCount  = apps.length;
@@ -147,6 +150,50 @@ export default function CandidateDashboard({ user }) {
     <div style={{ animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} />
+
+      {/* ── Profile Completion Banner — shown until profile is 100% ── */}
+      {profilePct < 100 && (
+        <div style={{
+          background: profilePct < 50
+            ? 'linear-gradient(135deg,rgba(186,5,23,0.06),rgba(186,5,23,0.02))'
+            : profilePct < 80
+            ? 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(245,158,11,0.03))'
+            : 'linear-gradient(135deg,rgba(1,118,211,0.07),rgba(1,118,211,0.02))',
+          border: `1px solid ${profilePct < 50 ? 'rgba(186,5,23,0.25)' : profilePct < 80 ? 'rgba(245,158,11,0.35)' : 'rgba(1,118,211,0.25)'}`,
+          borderRadius: 14, padding: '16px 20px', marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>{profilePct < 50 ? '⚠️' : profilePct < 80 ? '🔶' : '✨'}</span>
+                <span style={{ fontWeight: 800, fontSize: 14, color: profilePct < 50 ? '#BA0517' : profilePct < 80 ? '#B45309' : '#0176D3' }}>
+                  Your profile is {profilePct}% complete
+                </span>
+                <span style={{ fontSize: 11, color: '#706E6B' }}>
+                  — {firstMissing ? `Add your ${firstMissing.label} to improve` : 'Almost there!'}
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, marginBottom: 10, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${profilePct}%`, borderRadius: 3, background: profilePct < 50 ? '#BA0517' : profilePct < 80 ? '#F59E0B' : '#0176D3', transition: 'width 0.5s ease' }} />
+              </div>
+              <p style={{ fontSize: 12, color: '#374151', margin: 0, lineHeight: 1.6 }}>
+                {profilePct < 50
+                  ? '🚀 A complete profile gets up to 5× more views from recruiters on our job board. Freshers — add your skills, summary, and industry to stand out immediately.'
+                  : profilePct < 80
+                  ? '💡 You\'re getting there! Complete your profile to unlock smarter job matches and get discovered by recruiters searching for your skills.'
+                  : '🎯 Almost complete! Fill the remaining fields to maximise your visibility across all active job postings on TalentNest.'}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/app/profile')}
+              style={{ background: profilePct < 50 ? '#BA0517' : profilePct < 80 ? '#F59E0B' : '#0176D3', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              Complete Profile →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Location permission banner — shown once if permission not yet granted */}
       {locBanner && (

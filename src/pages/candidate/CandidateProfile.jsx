@@ -232,7 +232,7 @@ export default function CandidateProfile({ user }) {
           portfolio: d.portfolio||'', availability: d.availability||'Immediate',
           summary: d.summary||'', skills: Array.isArray(d.skills) ? d.skills.join(', ') : (d.skills||''),
           languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages||''),
-          industry: d.industry||'', department: d.department||'', experience: String(d.experience||''),
+          industry: d.industry||'', department: d.department||'', experience: d.experience != null ? String(d.experience) : '',
           currentCompany: d.currentCompany||'', culture: d.culture||'',
           projects: d.projects||'', achievements: d.achievements||'', volunteering: d.volunteering||'',
           relevantExperience: d.relevantExperience||'', preferredLocation: d.preferredLocation||'',
@@ -376,7 +376,14 @@ export default function CandidateProfile({ user }) {
             <div className="form-grid-2">
               <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
               <Field label="Current Company" value={form.currentCompany} onChange={v=>sf('currentCompany',v)} placeholder="Acme Corp"/>
-              <Field label="Total Experience (years)" value={form.experience} onChange={v=>sf('experience',v)} type="number" placeholder="5" min="0" max="60"/>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>TOTAL EXPERIENCE</label>
+                <select value={form.experience} onChange={e=>sf('experience',e.target.value)} style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #D1D5DB', fontSize:13, background:'#fff' }}>
+                  <option value="">— Select —</option>
+                  <option value="0">Fresher (0 years)</option>
+                  {[1,2,3,4,5,6,7,8,9,10,12,15,18,20,25,30].map(y => <option key={y} value={String(y)}>{y} year{y>1?'s':''}</option>)}
+                </select>
+              </div>
               <Field label="Relevant Experience" value={form.relevantExperience} onChange={v=>sf('relevantExperience',v)} placeholder="4 years Java / 3 years AWS"/>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>INDUSTRY *</label>

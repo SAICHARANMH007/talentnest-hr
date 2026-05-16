@@ -6,8 +6,9 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Dropdown from '../../components/ui/Dropdown.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 
-const EMPTY = { keywords: '', location: '', jobType: '', frequency: 'daily' };
+const EMPTY = { keywords: '', location: '', jobType: '', industry: '', department: '', experienceMin: '', experienceMax: '', frequency: 'daily' };
 
 export default function CandidateJobAlerts() {
   const [alerts, setAlerts]   = useState([]);
@@ -35,7 +36,16 @@ export default function CandidateJobAlerts() {
     setSaving(true);
     try {
       const keywords = form.keywords.split(',').map(k => k.trim()).filter(Boolean);
-      await api.createJobAlert({ keywords, location: form.location, jobType: form.jobType, frequency: form.frequency });
+      await api.createJobAlert({
+        keywords,
+        location: form.location,
+        jobType: form.jobType,
+        industry: form.industry,
+        department: form.department,
+        experienceMin: form.experienceMin !== '' ? Number(form.experienceMin) : null,
+        experienceMax: form.experienceMax !== '' ? Number(form.experienceMax) : null,
+        frequency: form.frequency,
+      });
       setForm(EMPTY);
       setToast('✅ Job alert created! You\'ll receive email digests when matching jobs are posted.');
       load();
@@ -74,6 +84,39 @@ export default function CandidateJobAlerts() {
             <Field label="Location" value={form.location} onChange={v => sf('location', v)} placeholder="Hyderabad, Mumbai, Remote…" />
             <Dropdown label="Job Type" value={form.jobType} onChange={v => sf('jobType', v)}
               options={['', 'Full-Time', 'Part-Time', 'Contract', 'Remote', 'Internship']} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Industry</label>
+              <select value={form.industry} onChange={e => sf('industry', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #DDDBDA', background: '#fff', fontSize: 13 }}>
+                <option value="">All industries</option>
+                {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Department</label>
+              <select value={form.department} onChange={e => sf('department', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #DDDBDA', background: '#fff', fontSize: 13 }}>
+                <option value="">All departments</option>
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Min Experience (years)</label>
+              <select value={form.experienceMin} onChange={e => sf('experienceMin', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #DDDBDA', background: '#fff', fontSize: 13 }}>
+                <option value="">Any</option>
+                <option value="0">Fresher (0)</option>
+                {[1,2,3,4,5,6,7,8,10,12,15].map(y => <option key={y} value={y}>{y} yr{y>1?'s':''}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Max Experience (years)</label>
+              <select value={form.experienceMax} onChange={e => sf('experienceMax', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #DDDBDA', background: '#fff', fontSize: 13 }}>
+                <option value="">Any</option>
+                {[1,2,3,4,5,6,7,8,10,12,15,20].map(y => <option key={y} value={y}>{y} yr{y>1?'s':''}</option>)}
+              </select>
+            </div>
             <Dropdown label="Email Frequency" value={form.frequency} onChange={v => sf('frequency', v)}
               options={['daily', 'weekly']} />
           </div>
@@ -103,7 +146,8 @@ export default function CandidateJobAlerts() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {alerts.map(alert => {
               const id = alert.id || alert._id?.toString();
-              const label = [alert.keywords?.join(', '), alert.location, alert.jobType].filter(Boolean).join(' · ') || 'All jobs';
+              const expRange = [alert.experienceMin != null ? `${alert.experienceMin}yr` : '', alert.experienceMax != null ? `${alert.experienceMax}yr` : ''].filter(Boolean).join('–');
+              const label = [alert.keywords?.join(', '), alert.location, alert.jobType, alert.industry, alert.department, expRange ? `Exp: ${expRange}` : ''].filter(Boolean).join(' · ') || 'All jobs';
               return (
                 <div key={id} style={{ background: alert.isActive ? '#F3F2F2' : '#fafafa', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, border: `1px solid ${alert.isActive ? '#e5e7eb' : '#e2e8f0'}`, opacity: alert.isActive ? 1 : 0.65 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
