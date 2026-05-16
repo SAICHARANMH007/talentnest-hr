@@ -1614,18 +1614,22 @@ router.get('/funnel/export', authenticate, allowRoles('admin', 'super_admin'), a
 router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
   const { startDate, endDate } = req.query;
-  const dateRange = buildDateRange(startDate, endDate);
+
+  // Only apply date filter when the caller explicitly passes both dates.
+  // Without dates this returns all-time data so the total matches the KPI
+  // card which also counts all-time applications + imported candidates.
+  const dateFilter = (startDate && endDate) ? { createdAt: buildDateRange(startDate, endDate) } : {};
 
   const [appRaw, impRaw] = await Promise.all([
     Application.aggregate([
-      { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
+      { $match: { ...tf, ...dateFilter, deletedAt: null } },
       { $group: {
           _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] } },
           count: { $sum: 1 }
       }},
     ]),
     ImportedCandidate.aggregate([
-      { $match: { ...tf, createdAt: dateRange } },
+      { $match: { ...tf, ...dateFilter } },
       { $group: {
           _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'bulk_import' ] } },
           count: { $sum: 1 }

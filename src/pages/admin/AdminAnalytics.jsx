@@ -338,7 +338,9 @@ export default function AdminAnalytics({ user, onNavigate }) {
   );
 
   const funnelSection     = useSection(useCallback(() => api.getFunnel({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
-  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  // Source breakdown uses all-time data — not date-windowed — so it matches
+  // the KPI total (which also counts all-time applications and importedCandidates).
+  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown({ platform: platformWide }), [platformWide]));
   const tthSection        = useSection(useCallback(() => api.getTimeToHire({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
   const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
   const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
