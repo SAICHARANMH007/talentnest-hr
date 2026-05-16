@@ -172,8 +172,21 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
   const { title, description, skills, niceToHaveSkills, recruiterId, ...rest } = req.body;
   if (!title || !description) throw new AppError('title and description are required.', 400);
   const assignedRecruiters = [];
-  if (req.user.role === 'recruiter') assignedRecruiters.push(req.user.id);
-  else if (recruiterId) assignedRecruiters.push(recruiterId);
+  if (req.user.role === 'recruiter') {
+    assignedRecruiters.push(req.user.id);
+  } else if (recruiterId) {
+    assignedRecruiters.push(recruiterId);
+  } else {
+    // Admin created job with no recruiter specified — check if org has any active recruiters.
+    // If not, auto-assign the admin so the job is never orphaned (admin acts as recruiter).
+    const hasRecruiter = await User.exists({
+      tenantId: req.user.tenantId,
+      role: 'recruiter',
+      isActive: true,
+      deletedAt: null,
+    });
+    if (!hasRecruiter) assignedRecruiters.push(req.user.id);
+  }
   const baseSlug  = slugify(title);
   const slugCount = await Job.countDocuments({ tenantId: req.user.tenantId, careerPageSlug: { $regex: `^${baseSlug}` } });
   const careerPageSlug = slugCount === 0 ? baseSlug : `${baseSlug}-${slugCount}`;
@@ -209,7 +222,7 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
         userId: a._id, tenantId: req.user.tenantId, type: 'job_approval_request',
         title: 'Job Pending Approval',
         message: `${recruiterName} submitted "${title.trim()}" for your approval.`,
-        link: '/app/admin/job-approvals',
+        link: '/app/job-approvals',
         metadata: { jobId: job._id },
       }).catch(() => {})
     ));

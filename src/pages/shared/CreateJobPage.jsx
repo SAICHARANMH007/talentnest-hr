@@ -21,7 +21,11 @@ export default function CreateJobPage({ user, onBack, onSuccess }) {
     if (eu && !/^https?:\/\//i.test(eu)) { setToast('❌ External URL must start with http:// or https://'); return; }
     setSaving(true);
     try {
-      await api.createJob({ ...form, externalUrl: eu, recruiterId: user?.id });
+      // Only pass recruiterId for recruiters — admins don't self-assign as recruiter.
+      // Backend auto-assigns admin when org has no recruiters.
+      const payload = { ...form, externalUrl: eu };
+      if (user?.role === 'recruiter') payload.recruiterId = user.id;
+      await api.createJob(payload);
       setToast('✅ Job posted successfully!');
       formRef.current?.reset?.();
       setTimeout(() => { if (onSuccess) onSuccess(); }, 1200);

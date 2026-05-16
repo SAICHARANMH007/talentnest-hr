@@ -30,7 +30,7 @@ export const jobService = {
   async replaceJobRecruiter(jobId, recruiterId)     { return req('PATCH', `/jobs/${jobId}/replace-recruiter`, { recruiterId }); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
-  async getPendingApprovalJobs()      { return req('GET', '/jobs/pending-approval'); },
+  async getPendingApprovalJobs()      { return req('GET', `/jobs/pending-approval?_t=${Date.now()}`); },
   async approveJob(id, action, reason) { return req('PATCH', `/jobs/${id}/approve`, { action, ...(reason ? { reason } : {}) }); },
   async approveJobNew(id)             { return req('PATCH', `/jobs/${id}/approve`, {}); },
   async rejectJob(id, note)           { return req('PATCH', `/jobs/${id}/reject`, { note: note || '' }); },
