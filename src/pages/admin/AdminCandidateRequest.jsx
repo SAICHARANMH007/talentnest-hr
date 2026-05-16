@@ -43,6 +43,7 @@ export default function AdminCandidateRequest({ user }) {
   const [submitting,setSubmitting]= useState(false);
   const [detail,           setDetail]           = useState(null);
   const [selectedCandidate,setSelectedCandidate] = useState(null); // candidate detail modal
+  const [selectedRequest,  setSelectedRequest]   = useState(null); // which request owns the selected candidate
   const [addingToPipeline, setAddingToPipeline]  = useState(false);
   const [jobs,             setJobs]              = useState([]); // active jobs for selector
 
@@ -90,8 +91,14 @@ export default function AdminCandidateRequest({ user }) {
     }
   };
 
+  const openCandidate = (candidate, request) => {
+    setSelectedCandidate(candidate);
+    setSelectedRequest(request);
+  };
+
   const handleAddToPipeline = async () => {
-    const jobId = detail?.jobId?._id || detail?.jobId?.id || detail?.jobId;
+    const req = selectedRequest || detail;
+    const jobId = req?.jobId?._id || req?.jobId?.id || req?.jobId;
     const cid   = selectedCandidate?.id || selectedCandidate?._id?.toString();
     if (!jobId) { setToast('❌ This request has no linked job. Please link a job first.'); return; }
     if (!cid)   { setToast('❌ Cannot identify candidate ID.'); return; }
@@ -99,7 +106,7 @@ export default function AdminCandidateRequest({ user }) {
     try {
       await api.applyToJob(jobId, cid);
       setToast(`✅ ${selectedCandidate.name} added to job pipeline!`);
-      setSelectedCandidate(null);
+      setSelectedCandidate(null); setSelectedRequest(null);
     } catch (e) {
       const msg = e.message || '';
       if (msg.toLowerCase().includes('already')) {
@@ -203,10 +210,10 @@ export default function AdminCandidateRequest({ user }) {
           return (
             <Modal
               title={`👤 ${c.name}`}
-              onClose={() => setSelectedCandidate(null)}
+              onClose={() => setSelectedCandidate(null); setSelectedRequest(null)}
               footer={
                 <div style={{ display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
-                  <button onClick={() => setSelectedCandidate(null)} style={btnG}>Close</button>
+                  <button onClick={() => setSelectedCandidate(null); setSelectedRequest(null)} style={btnG}>Close</button>
                   {hasLinkedJob ? (
                     <button onClick={handleAddToPipeline} disabled={addingToPipeline} style={{ ...btnP, minWidth:160 }}>
                       {addingToPipeline ? 'Adding…' : '➕ Add to Pipeline'}
@@ -338,7 +345,13 @@ export default function AdminCandidateRequest({ user }) {
                         {r.submittedCandidates.map(c => {
                           const cid = c.id || c._id?.toString();
                           return (
-                            <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderRadius: 10, padding: '10px 14px', border: '1px solid #E2E8F0' }}>
+                            <div
+                              key={cid}
+                              onClick={() => openCandidate(c, r)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderRadius: 10, padding: '10px 14px', border: '1px solid #E2E8F0', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = '#0176D3'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(1,118,211,0.1)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; }}
+                            >
                               <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
                                 {(c.name || '?')[0].toUpperCase()}
                               </div>
@@ -356,6 +369,7 @@ export default function AdminCandidateRequest({ user }) {
                                   </div>
                                 )}
                               </div>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', padding: '3px 10px', borderRadius: 20, flexShrink: 0 }}>View Profile →</span>
                             </div>
                           );
                         })}
@@ -368,6 +382,60 @@ export default function AdminCandidateRequest({ user }) {
           </div>
         )}
       </div>
+
+      {/* ── Candidate Detail Modal (from list view) ── */}
+      {selectedCandidate && (() => {
+        const c = selectedCandidate;
+        const req = selectedRequest || detail;
+        const hasLinkedJob = !!(req?.jobId?._id || req?.jobId?.id || (typeof req?.jobId === 'string' && req.jobId));
+        const skillsArr = Array.isArray(c.skills) ? c.skills : (typeof c.skills === 'string' ? c.skills.split(',').map(s=>s.trim()).filter(Boolean) : []);
+        return (
+          <Modal
+            title={`👤 ${c.name}`}
+            onClose={() => { setSelectedCandidate(null); setSelectedRequest(null); }}
+            footer={
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
+                <button onClick={() => { setSelectedCandidate(null); setSelectedRequest(null); }} style={btnG}>Close</button>
+                {hasLinkedJob
+                  ? <button onClick={handleAddToPipeline} disabled={addingToPipeline} style={{ ...btnP, minWidth:160 }}>{addingToPipeline ? 'Adding…' : '➕ Add to Pipeline'}</button>
+                  : <span style={{ fontSize:12, color:'#94A3B8', alignSelf:'center' }}>No linked job — cannot add to pipeline</span>
+                }
+              </div>
+            }
+          >
+            <div style={{ display:'flex', gap:16, alignItems:'flex-start', marginBottom:16, flexWrap:'wrap' }}>
+              <div style={{ width:52, height:52, borderRadius:16, background:'linear-gradient(135deg,#0176D3,#014486)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:900, fontSize:20, flexShrink:0 }}>
+                {(c.name||'?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:900, fontSize:17, color:'#0A1628' }}>{c.name}</div>
+                {c.title && <div style={{ fontSize:13, color:'#0176D3', fontWeight:700, marginTop:2 }}>{c.title}{c.currentCompany ? ` @ ${c.currentCompany}` : ''}</div>}
+                <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginTop:4, fontSize:12, color:'#64748B' }}>
+                  {c.location && <span>📍 {c.location}</span>}
+                  {c.experience && <span>💼 {c.experience}y exp</span>}
+                </div>
+              </div>
+              <span style={{ fontSize:11, fontWeight:700, color:'#059669', background:'rgba(5,150,105,0.08)', padding:'5px 12px', borderRadius:20 }}>✓ TalentNest Verified</span>
+            </div>
+            <div style={{ background:'#F8FAFF', borderRadius:10, padding:'10px 14px', marginBottom:14, display:'flex', gap:20, flexWrap:'wrap' }}>
+              {c.email && <div><span style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block' }}>EMAIL</span><span style={{ fontSize:13 }}>{c.email}</span></div>}
+              {c.phone && <div><span style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block' }}>PHONE</span><span style={{ fontSize:13 }}>📞 {c.phone}</span></div>}
+              {c.currentCTC && <div><span style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block' }}>CURRENT CTC</span><span style={{ fontSize:13 }}>{c.currentCTC}</span></div>}
+              {c.expectedCTC && <div><span style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block' }}>EXPECTED CTC</span><span style={{ fontSize:13 }}>{c.expectedCTC}</span></div>}
+            </div>
+            {c.summary && <div style={{ fontSize:13, color:'#374151', lineHeight:1.7, marginBottom:14 }}>{c.summary}</div>}
+            {skillsArr.length > 0 && (
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+                {skillsArr.map(s => <span key={s} style={{ background:'rgba(1,118,211,0.08)', color:'#0176D3', fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>{s}</span>)}
+              </div>
+            )}
+            <div style={{ borderTop:'1px solid #F1F5F9', paddingTop:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#706E6B', textTransform:'uppercase', letterSpacing:0.5, marginBottom:10 }}>Resume</div>
+              <ResumeCard candidate={c} />
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* New Request Modal */}
       {showForm && (

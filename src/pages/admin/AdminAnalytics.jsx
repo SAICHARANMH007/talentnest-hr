@@ -281,8 +281,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
           active: statsObj.openJobs  ?? 0,
           total:  statsObj.totalJobs ?? 0,
         });
-        // Load only the top 300 jobs for any chart/table that needs job details
-        api.getJobs({ limit: 300, platform: platformWide }).then(unwrap).then(list => {
+        // Load all jobs for chart/table detail (no cap — admins see everything)
+        api.getJobs({ limit: 10000000, platform: platformWide }).then(unwrap).then(list => {
           setAllJobs(list);
         }).catch(() => setAllJobs([]));
         
@@ -1002,7 +1002,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         <div style={glassPanel}>
           <h3 style={sectionTitle}>Recruiter Leaderboard</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {(leaderboard || []).slice(0, 6).map((r, i) => (
+            {(leaderboard || []).map((r, i) => (
               <div key={r.recruiterId || r._id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, border: '1px solid #E2E8F0', background: '#F8FAFC' }}>
                 <div style={{ width: 24, fontWeight: 900, color: '#CBD5E1' }}>{String(i + 1).padStart(2, '0')}</div>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: '#0176D3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>{(r.name || '?')[0]}</div>

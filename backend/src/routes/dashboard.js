@@ -339,7 +339,7 @@ router.get('/public', asyncHandler(async (_req, res) => {
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────
 
 /* GET /api/dashboard/stats */
-router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(15), asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user.role === 'super_admin';
   const platformWide = isSuperAdmin && req.query.platform === 'true';
   const tenantScope  = { tenantId: req.user.tenantId };
@@ -538,7 +538,7 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
 }));
 
 /* GET /api/dashboard/pipeline-health */
-router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(15), asyncHandler(async (req, res) => {
   const orgF  = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
   const stages = ['Applied', 'Screening', 'Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'];
 
@@ -594,7 +594,7 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
    Shows ONLY active, non-deleted recruiters (not admins).
    Uses per-recruiter job lookup — same pattern as recruiter-performance which is accurate.
 */
-router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(15), asyncHandler(async (req, res) => {
   const tf   = tenantFilter(req); // ObjectId-safe filter for aggregations
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
 
@@ -641,7 +641,7 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
 }));
 
 /* GET /api/dashboard/top-skills */
-router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
+router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(30), asyncHandler(async (req, res) => {
   const match = req.user.role === 'super_admin'
     ? { role: 'candidate', skills: { $exists: true, $ne: [] } }
     : { role: 'candidate', tenantId: req.user.tenantId, skills: { $exists: true, $ne: [] } };
@@ -655,7 +655,7 @@ router.get('/top-skills', authenticate, allowRoles('admin', 'super_admin'), cach
 }));
 
 /* GET /api/dashboard/availability-pool */
-router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
+router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(30), asyncHandler(async (req, res) => {
   const base = req.user.role === 'super_admin' ? { role: 'candidate' } : { role: 'candidate', tenantId: req.user.tenantId };
   const [total, raw] = await Promise.all([
     User.countDocuments(base),
@@ -674,7 +674,7 @@ router.get('/availability-pool', authenticate, allowRoles('admin', 'super_admin'
 }));
 
 /* GET /api/dashboard/jobs-breakdown */
-router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(15), asyncHandler(async (req, res) => {
   const match = req.user.role === 'super_admin' ? { status: 'active' } : { tenantId: req.user.tenantId, status: 'active' };
   const raw = await Job.aggregate([{ $match: match }, { $group: { _id: '$urgency', count: { $sum: 1 } } }]);
   const map = { high: 0, medium: 0, low: 0 };
@@ -683,7 +683,7 @@ router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), 
 }));
 
 /* GET /api/dashboard/analytics */
-router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(15), asyncHandler(async (req, res) => {
   const platformWide = req.user.role === 'super_admin' && req.query.platform === 'true';
   const orgF  = platformWide ? {} : { tenantId: req.user.tenantId };
   // aggF uses ObjectId for aggregation — raw $match does not auto-cast strings to ObjectId
@@ -694,29 +694,30 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
   if (endDate)   dateFilter.$lte = new Date(endDate);
   const dateF = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
+  const del = { deletedAt: null };
   const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg, revenueAgg] = await Promise.all([
-    Application.countDocuments({ ...orgF, ...dateF }),
-    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
-    Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
+    Application.countDocuments({ ...orgF, ...dateF, ...del }),
+    Application.countDocuments({ ...orgF, ...dateF, ...del, currentStage: 'Hired' }),
+    Application.countDocuments({ ...orgF, ...dateF, ...del, currentStage: 'Rejected' }),
     Application.aggregate([
-      { $match: { ...aggF, ...dateF } },
+      { $match: { ...aggF, ...dateF, ...del } },
       { $group: { _id: '$currentStage', count: { $sum: 1 } } },
     ]),
     Application.aggregate([
-      { $match: { ...aggF, ...dateF } },
+      { $match: { ...aggF, ...dateF, ...del } },
       { $group: { _id: '$source', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     Application.aggregate([
-      { $match: { ...aggF, ...dateF } },
+      { $match: { ...aggF, ...dateF, ...del } },
       { $group: { _id: '$jobId', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }, { $limit: 5 },
+      { $sort: { count: -1 } }, { $limit: 10 },
       { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
       { $unwind: '$job' },
       { $project: { title: '$job.title', count: 1 } },
     ]),
     Application.aggregate([
-      { $match: { ...aggF, currentStage: 'Hired' } },
+      { $match: { ...aggF, ...del, currentStage: 'Hired' } },
       { $project: {
           daysToHire: { $divide: [{ $subtract: ['$updatedAt', '$createdAt'] }, 86400000] },
         },

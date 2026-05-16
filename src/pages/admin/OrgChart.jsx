@@ -97,6 +97,7 @@ export default function OrgChart({ user }) {
   const [redistributing, setRedistributing] = useState(false);
   const [redistResult,   setRedistResult]   = useState(null);
   const [classifying,    setClassifying]    = useState(false);
+  const [refreshKey,     setRefreshKey]     = useState(0); // bump to force full reload
 
   useEffect(() => {
     setLoading(true); setError('');
@@ -137,7 +138,7 @@ export default function OrgChart({ user }) {
       });
       setRecruiters(enriched);
     }).catch(e => setError(e.message)).finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]); // refreshKey bump forces full reload + bypasses all caches
 
   if (loading) {
     return (
@@ -172,18 +173,9 @@ export default function OrgChart({ user }) {
     try {
       const r = await api.redistributeJobs();
       setRedistResult(r);
-      setToast(`✅ ${r.total} jobs redistributed across ${recruiters.length} recruiters`);
-      // Refresh recruiter stats
-      api.getRecruiterLeaderboard().then(lb => {
-        const lbArr = Array.isArray(lb) ? lb : (Array.isArray(lb?.data) ? lb.data : []);
-        const lbMap = {};
-        lbArr.forEach(e => { const id = e.recruiterId?.toString() || e.id?.toString() || ''; if (id) lbMap[id] = e; });
-        setRecruiters(prev => prev.map(r => {
-          const rid = r._id?.toString() || r.id?.toString() || '';
-          const lb = lbMap[rid] || {};
-          return { ...r, _jobCount: lb.jobs ?? r._jobCount, _appCount: lb.candidates ?? r._appCount, _hired: lb.hired ?? r._hired };
-        }));
-      }).catch(() => {});
+      setToast(`✅ ${r.total} jobs redistributed across ${recruiters.length} recruiters — refreshing stats…`);
+      // Wait 1.5s for server-side cache to update, then reload all org data fresh
+      setTimeout(() => setRefreshKey(k => k + 1), 1500);
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
