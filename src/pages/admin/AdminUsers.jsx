@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
+import AddCandidateForm from '../../components/shared/AddCandidateForm.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Dropdown from '../../components/ui/Dropdown.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -429,6 +430,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [users, setUsers]         = useState([]);
   const [loading, setLoad]        = useState(true);
   const [showModal, setShow]      = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm]           = useState({ name: '', email: '', role: filterRole || 'candidate', domain: '' });
   const [toast, setToast]         = useState('');
   const [expandedRec, setExpandedRec] = useState(null);
@@ -767,6 +769,31 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         </Modal>
       )}
 
+      {/* ── Add Candidate full-form overlay (candidates view only) ── */}
+      {showAddForm && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.72)', backdropFilter:'blur(8px)', zIndex:10001, display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'24px 16px' }}>
+          <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:860, margin:'auto 0', boxShadow:'0 32px 64px rgba(0,0,0,0.25)', overflow:'hidden' }}>
+            <div style={{ background:'linear-gradient(135deg,#032D60,#0176D3)', padding:'16px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ color:'rgba(255,255,255,0.7)', fontSize:10, fontWeight:800, letterSpacing:1.5, textTransform:'uppercase' }}>Candidates</div>
+                <h3 style={{ color:'#fff', margin:0, fontSize:16, fontWeight:800 }}>+ Add New Candidate</h3>
+              </div>
+              <button onClick={() => setShowAddForm(false)} style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'#fff', width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+            </div>
+            <div style={{ padding:'24px', overflowY:'auto', maxHeight:'calc(90vh - 80px)' }}>
+              <AddCandidateForm
+                addedBy={user}
+                onSuccess={() => {
+                  setShowAddForm(false);
+                  setToast('✅ Candidate added successfully!');
+                  load();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader title={pageTitle} subtitle={pageSubtitle} action={
         !recruiterView && (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -779,7 +806,10 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                 URL.revokeObjectURL(url);
               } catch { setToast('❌ Export failed'); }
             }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>⬇ Export</button>
-            <button onClick={() => { setShow(true); loadOrgs(); }} style={btnP}>+ Add {lbl}</button>
+            {isCandidates
+              ? <button onClick={() => setShowAddForm(true)} style={btnP}>+ Add Candidate</button>
+              : <button onClick={() => { setShow(true); loadOrgs(); }} style={btnP}>+ Add {lbl}</button>
+            }
           </div>
         )
       } />

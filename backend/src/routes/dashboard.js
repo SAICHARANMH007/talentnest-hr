@@ -752,7 +752,9 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
 */
 router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const WINDOW = 30; // days to show on the chart
+  // aggF uses ObjectId for aggregation — raw $match does not auto-cast strings to ObjectId
+  const aggF = req.user.role === 'super_admin' ? {} : tenantFilter(req);
+  const WINDOW = 30;
   const TZ = 'Asia/Kolkata';
 
   const cutoff = new Date();
@@ -760,7 +762,7 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   cutoff.setHours(0, 0, 0, 0);
 
   const raw = await Application.aggregate([
-    { $match: { ...orgF, createdAt: { $gte: cutoff } } },
+    { $match: { ...aggF, createdAt: { $gte: cutoff } } },
     { $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ } },
         count: { $sum: 1 },
