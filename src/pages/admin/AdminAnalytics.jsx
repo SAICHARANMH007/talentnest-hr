@@ -290,7 +290,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
         if (statsObj.pipeline) {
           const pipe = {};
           MASTER_STAGES.forEach(s => {
-            pipe[s.id] = statsObj.pipeline[s.id] || statsObj.pipeline[s.label] || 0;
+            // DB stores title-case stage names like 'Interview Round 1', 'Offer', etc.
+            // Use FRONTEND_TO_DB_STAGE for correct key lookup, fall back to label then id
+            const dbKey = FRONTEND_TO_DB_STAGE[s.id] || s.label;
+            pipe[s.id] = statsObj.pipeline[dbKey] || statsObj.pipeline[s.label] || statsObj.pipeline[s.id] || 0;
           });
           const pipeSum = Object.values(pipe).reduce((a, b) => a + b, 0);
           setLocalAppStats({ total: pipeSum, pipeline: pipe, last30: statsObj.appsLast30 || 0 });
@@ -591,7 +594,8 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [allCandidates, allApps]);
 
   const topJobs = useMemo(() => {
-    if (analyticsData?.topJobs) {
+    // Primary: analytics endpoint (date-filtered)
+    if (analyticsData?.topJobs?.length > 0) {
       return analyticsData.topJobs.map(j => ({
         label: j.title,
         value: j.applications,
@@ -599,8 +603,21 @@ export default function AdminAnalytics({ user, onNavigate }) {
         id: j.jobId,
       }));
     }
+    // Fallback: compute from allJobs (Phase 3 data — all-time, no date filter)
+    if (allJobs?.length > 0) {
+      return [...allJobs]
+        .sort((a, b) => (b.applicationCount || b.applicantsCount || 0) - (a.applicationCount || a.applicantsCount || 0))
+        .slice(0, 5)
+        .filter(j => (j.applicationCount || j.applicantsCount || 0) > 0)
+        .map(j => ({
+          label: j.title || j.companyName || 'Untitled Job',
+          value: j.applicationCount || j.applicantsCount || 0,
+          color: '#0176D3',
+          id: j._id || j.id,
+        }));
+    }
     return [];
-  }, [analyticsData]);
+  }, [analyticsData, allJobs]);
 
   const trends = useMemo(() => trendData, [trendData]);
 
@@ -977,7 +994,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
           <div style={{ color: '#9E9D9B', fontSize: 10, marginBottom: 8 }}>Click a bar to see applicants</div>
           {topJobs.length > 0
             ? <VertBarChart data={topJobs} height={260} showValues onItemClick={openJobBarDrill} />
-            : <ChartPlaceholder loading={loading || !analyticsData} label="Top Performance Jobs" height={260} />
+            : <ChartPlaceholder loading={loading} label="Top Performance Jobs" height={260} />
           }
         </div>
 

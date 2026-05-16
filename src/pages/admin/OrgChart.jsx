@@ -99,20 +99,24 @@ export default function OrgChart({ user }) {
       api.getMyOrg().catch(() => null),
       api.getUsers({ role: 'admin',     limit: 200 }).catch(() => []),
       api.getUsers({ role: 'recruiter', limit: 200 }).catch(() => []),
-      api.getJobs({ limit: 10000 }).catch(() => []),
+      // Fetch active jobs only — matches recruiter card counts and KPI tile
+      api.getJobs({ limit: 10000, status: 'active' }).catch(() => []),
     ]).then(([orgData, adminData, recruiterData, jobData]) => {
       setOrg(orgData);
       setAdmins(Array.isArray(adminData) ? adminData : []);
 
-      // Enrich recruiters with job/applicant counts
-      const jobArr = Array.isArray(jobData) ? jobData : (jobData?.data || []);
+      // Normalise job array (handles paginated and flat responses)
+      const jobArr = Array.isArray(jobData) ? jobData : (Array.isArray(jobData?.data) ? jobData.data : []);
       setJobs(jobArr);
 
       const enriched = (Array.isArray(recruiterData) ? recruiterData : []).map(r => {
         const rid = r._id?.toString() || r.id;
         const myJobs = jobArr.filter(j => {
           const ars = j.assignedRecruiters || j.assignedRecruiterIds || [];
-          return ars.some(ar => (ar?._id?.toString() || ar?.id || ar?.toString()) === rid);
+          return ars.some(ar => {
+            const arId = ar?._id?.toString() || ar?.id?.toString() || ar?.toString() || '';
+            return arId === rid;
+          });
         });
         return { ...r, _jobCount: myJobs.length, _appCount: myJobs.reduce((s, j) => s + (j.applicationCount || 0), 0) };
       });
@@ -243,11 +247,11 @@ export default function OrgChart({ user }) {
       {(admins.length > 0 || recruiters.length > 0) && (
         <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginTop:8 }}>
           {[
-            { label:'Total Members',   value: totalUsers,                  color:'#0176D3' },
-            { label:'Admins',          value: admins.length,               color:'#7C3AED' },
-            { label:'Recruiters',      value: recruiters.length,           color:'#059669' },
-            { label:'Active Members',  value: [...admins,...recruiters].filter(u=>u.isActive!==false).length, color:'#34d399' },
-            { label:'Total Jobs',      value: jobs.length,                  color:'#F59E0B' },
+            { label:'Total Members',   value: totalUsers,                                                            color:'#0176D3' },
+            { label:'Admins',          value: admins.length,                                                         color:'#7C3AED' },
+            { label:'Recruiters',      value: recruiters.length,                                                     color:'#059669' },
+            { label:'Active Members',  value: [...admins,...recruiters].filter(u => u.isActive === true || u.isActive === undefined).length, color:'#34d399' },
+            { label:'Active Jobs',     value: jobs.length,                                                           color:'#F59E0B' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...card, flex:'1 1 130px', textAlign:'center', padding:'14px 10px', borderTop:`3px solid ${color}` }}>
               <div style={{ fontWeight:900, fontSize:22, color:'#0A1628' }}>{value}</div>
