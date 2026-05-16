@@ -46,21 +46,21 @@ function PersonCard({ user: u, isCurrentUser }) {
       <div style={{ fontSize:11, color:'#94A3B8', marginBottom:8, wordBreak:'break-all' }}>{u.email}</div>
       {/* Role badge */}
       <span style={{ fontSize:10, fontWeight:800, color:'#fff', background:rc.badge, padding:'2px 10px', borderRadius:20, letterSpacing:0.3 }}>{rc.label}</span>
-      {/* Stats row */}
-      {(u._jobCount !== undefined || u._appCount !== undefined) && (
-        <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:10, flexWrap:'wrap' }}>
-          {u._jobCount !== undefined && (
-            <div style={{ textAlign:'center' }}>
-              <div style={{ fontWeight:900, fontSize:16, color:'#0A1628' }}>{u._jobCount}</div>
-              <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600, textTransform:'uppercase' }}>Jobs</div>
-            </div>
-          )}
-          {u._appCount !== undefined && (
-            <div style={{ textAlign:'center' }}>
-              <div style={{ fontWeight:900, fontSize:16, color:'#0A1628' }}>{u._appCount}</div>
-              <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600, textTransform:'uppercase' }}>Applicants</div>
-            </div>
-          )}
+      {/* Stats row — only shown on recruiter cards (leaderboard data) */}
+      {u.role === 'recruiter' && (
+        <div style={{ display:'flex', gap:10, justifyContent:'center', marginTop:10, flexWrap:'wrap' }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontWeight:900, fontSize:15, color:'#0A1628' }}>{u._jobCount ?? 0}</div>
+            <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600, textTransform:'uppercase' }}>Jobs</div>
+          </div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontWeight:900, fontSize:15, color:'#0176D3' }}>{u._appCount ?? 0}</div>
+            <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600, textTransform:'uppercase' }}>Applicants</div>
+          </div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontWeight:900, fontSize:15, color:'#059669' }}>{u._hired ?? 0}</div>
+            <div style={{ fontSize:9, color:'#94A3B8', fontWeight:600, textTransform:'uppercase' }}>Hired</div>
+          </div>
         </div>
       )}
     </div>
@@ -99,9 +99,11 @@ export default function OrgChart({ user }) {
       api.getMyOrg().catch(() => null),
       api.getUsers({ role: 'admin',     limit: 200 }).catch(() => []),
       api.getUsers({ role: 'recruiter', limit: 200 }).catch(() => []),
-      // Fetch active jobs only — matches recruiter card counts and KPI tile
+      // Active jobs — used for KPI tile count only
       api.getJobs({ limit: 10000, status: 'active' }).catch(() => []),
-    ]).then(([orgData, adminData, recruiterData, jobData]) => {
+      // Leaderboard — server-side aggregation of actual applications per recruiter (accurate counts)
+      api.getRecruiterLeaderboard().catch(() => []),
+    ]).then(([orgData, adminData, recruiterData, jobData, leaderboard]) => {
       setOrg(orgData);
       setAdmins(Array.isArray(adminData) ? adminData : []);
 
@@ -109,16 +111,24 @@ export default function OrgChart({ user }) {
       const jobArr = Array.isArray(jobData) ? jobData : (Array.isArray(jobData?.data) ? jobData.data : []);
       setJobs(jobArr);
 
+      // Build a leaderboard lookup: recruiterId → { jobs, candidates, hired }
+      const lbArr = Array.isArray(leaderboard) ? leaderboard : (Array.isArray(leaderboard?.data) ? leaderboard.data : []);
+      const lbMap = {};
+      lbArr.forEach(entry => {
+        const id = entry.recruiterId?.toString() || entry._id?.toString() || entry.id?.toString() || '';
+        if (id) lbMap[id] = entry;
+      });
+
+      // Enrich each recruiter with accurate stats from the leaderboard aggregation
       const enriched = (Array.isArray(recruiterData) ? recruiterData : []).map(r => {
-        const rid = r._id?.toString() || r.id;
-        const myJobs = jobArr.filter(j => {
-          const ars = j.assignedRecruiters || j.assignedRecruiterIds || [];
-          return ars.some(ar => {
-            const arId = ar?._id?.toString() || ar?.id?.toString() || ar?.toString() || '';
-            return arId === rid;
-          });
-        });
-        return { ...r, _jobCount: myJobs.length, _appCount: myJobs.reduce((s, j) => s + (j.applicationCount || 0), 0) };
+        const rid = r._id?.toString() || r.id?.toString() || '';
+        const lb  = lbMap[rid] || {};
+        return {
+          ...r,
+          _jobCount: lb.jobs       ?? 0,
+          _appCount: lb.candidates ?? 0,
+          _hired:    lb.hired      ?? 0,
+        };
       });
       setRecruiters(enriched);
     }).catch(e => setError(e.message)).finally(() => setLoading(false));
