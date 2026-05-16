@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import { card, btnG, btnP } from '../../constants/styles.js';
-import { api } from '../../api/api.js';
+import { api, clearCache } from '../../api/api.js';
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 const ROLE_COLOR = {
@@ -174,8 +174,10 @@ export default function OrgChart({ user }) {
       const r = await api.redistributeJobs();
       setRedistResult(r);
       setToast(`✅ ${r.total} jobs redistributed across ${recruiters.length} recruiters — refreshing stats…`);
-      // Wait 1.5s for server-side cache to update, then reload all org data fresh
-      setTimeout(() => setRefreshKey(k => k + 1), 1500);
+      // Clear ALL client-side caches so leaderboard/jobs fetch fresh data
+      clearCache();
+      // Wait 2s for server-side cache (15s TTL) to begin expiring, then reload
+      setTimeout(() => setRefreshKey(k => k + 1), 2000);
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
