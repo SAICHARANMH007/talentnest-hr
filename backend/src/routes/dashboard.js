@@ -341,11 +341,13 @@ router.get('/public', asyncHandler(async (_req, res) => {
 /* GET /api/dashboard/stats */
 router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user.role === 'super_admin';
-  // platform=true → super_admin sees ALL orgs; default scopes to own org for accurate numbers
   const platformWide = isSuperAdmin && req.query.platform === 'true';
   const tenantScope  = { tenantId: req.user.tenantId };
   const orgF  = platformWide ? {} : tenantScope;
   const candF = platformWide ? { role: 'candidate' } : { role: 'candidate', ...tenantScope };
+  // aggF uses ObjectId for aggregation pipelines — Mongoose .find()/.countDocuments() auto-cast
+  // strings, but raw .aggregate() does NOT. Without this, $match returns 0 docs for non-super_admin.
+  const aggF  = platformWide ? {} : tenantFilter(req);
 
   const del = { deletedAt: null };
   const [candidates, recruiters, openJobs, applications, hired, pipelineAgg, recentApps, revenueAgg] = await Promise.all([
@@ -355,7 +357,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     Application.countDocuments({ ...orgF, ...del }),
     Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
     Application.aggregate([
-      { $match: { ...orgF, ...del } },
+      { $match: { ...aggF, ...del } },
       { $group: { _id: '$currentStage', count: { $sum: 1 } } }
     ]),
     Application.find({ ...orgF, ...del })
@@ -365,7 +367,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
       .populate(CANDIDATE_APPLICANT_POPULATE)
       .lean(),
     PaymentRecord.aggregate([
-      { $match: { ...orgF, status: 'captured' } },
+      { $match: { ...aggF, status: 'captured' } },
       { $group: { _id: null, total: { $sum: '$amountINR' } } }
     ])
   ]);
@@ -588,51 +590,48 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
   }});
 }));
 
-/* GET /api/dashboard/recruiter-leaderboard */
-router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(120), asyncHandler(async (req, res) => {
+/* GET /api/dashboard/recruiter-leaderboard
+   Shows ONLY active, non-deleted recruiters (not admins).
+   Uses per-recruiter job lookup — same pattern as recruiter-performance which is accurate.
+*/
+router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
+  const tf   = tenantFilter(req); // ObjectId-safe filter for aggregations
   const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
-  const recruiters = await User.find({ ...orgF, role: { $in: ['recruiter', 'admin'] } }).select('_id name photoUrl').lean();
+
+  // Only active, non-deleted recruiters (excludes admins — they are not recruiters)
+  const recruiters = await User.find({
+    ...orgF,
+    role: 'recruiter',
+    isActive: true,
+    deletedAt: null,
+  }).select('_id name photoUrl').lean();
 
   if (!recruiters.length) return res.json({ success: true, data: [] });
 
-  // Single aggregation: group applications by (jobId, stage) then join jobs to get assignedRecruiters
-  const [jobStats, appStats] = await Promise.all([
-    // Per-recruiter: how many active/closed jobs they're assigned to (excludes deleted)
-    Job.aggregate([
-      { $match: { ...orgF, status: { $in: ['active', 'closed'] }, deletedAt: null } },
-      { $unwind: '$assignedRecruiters' },
-      { $group: { _id: '$assignedRecruiters', jobs: { $sum: 1 } } },
-    ]),
-    // Per-recruiter: total candidates and hires (excludes soft-deleted applications)
-    Application.aggregate([
-      { $match: { ...orgF, deletedAt: null } },
-      { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
-      { $unwind: '$job' },
-      { $match: { 'job.deletedAt': null } },
-      { $unwind: '$job.assignedRecruiters' },
-      { $group: {
-          _id: '$job.assignedRecruiters',
-          candidates: { $sum: 1 },
-          hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } },
-        },
-      },
-    ]),
-  ]);
+  // Per-recruiter stats — same approach as /recruiter-performance (proven accurate)
+  const board = await Promise.all(recruiters.map(async (r) => {
+    const myJobIds = (await Job.find({
+      assignedRecruiters: r._id,
+      ...(req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId }),
+      deletedAt: null,
+    }).select('_id').lean()).map(j => j._id);
 
-  const jobMap = {};
-  jobStats.forEach(r => { jobMap[String(r._id)] = r.jobs; });
-  const appMap = {};
-  appStats.forEach(r => { appMap[String(r._id)] = { candidates: r.candidates, hired: r.hired }; });
+    const [candidates, hired] = await Promise.all([
+      Application.countDocuments({ jobId: { $in: myJobIds }, deletedAt: null }),
+      Application.countDocuments({ jobId: { $in: myJobIds }, deletedAt: null, currentStage: 'Hired' }),
+    ]);
 
-  const board = recruiters.map(r => {
-    const rid = String(r._id);
-    const { candidates = 0, hired = 0 } = appMap[rid] || {};
     return {
-      rank: 0, recruiterId: r._id, name: r.name, photoUrl: r.photoUrl,
-      jobs: jobMap[rid] || 0, candidates, hired,
-      conversion: candidates > 0 ? `${Math.round((hired / candidates) * 100)}%` : '0%',
+      rank       : 0,
+      recruiterId: r._id,
+      name       : r.name,
+      photoUrl   : r.photoUrl,
+      jobs       : myJobIds.length,
+      candidates,
+      hired,
+      conversion : candidates > 0 ? `${Math.round((hired / candidates) * 100)}%` : '0%',
     };
-  });
+  }));
 
   board.sort((a, b) => b.hired - a.hired || b.candidates - a.candidates);
   board.forEach((r, i) => r.rank = i + 1);
@@ -684,29 +683,30 @@ router.get('/jobs-breakdown', authenticate, allowRoles('admin', 'super_admin'), 
 /* GET /api/dashboard/analytics */
 router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cacheRoute(60), asyncHandler(async (req, res) => {
   const platformWide = req.user.role === 'super_admin' && req.query.platform === 'true';
-  const orgF = platformWide ? {} : { tenantId: req.user.tenantId };
+  const orgF  = platformWide ? {} : { tenantId: req.user.tenantId };
+  // aggF uses ObjectId for aggregation — raw $match does not auto-cast strings to ObjectId
+  const aggF  = platformWide ? {} : tenantFilter(req);
   const { startDate, endDate } = req.query;
   const dateFilter = {};
   if (startDate) dateFilter.$gte = new Date(startDate);
   if (endDate)   dateFilter.$lte = new Date(endDate);
   const dateF = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
-  // Compute avgTimeToHire via aggregation — avoids fetching all hired docs to Node memory
   const [totalApps, hiredApps, rejectedApps, byStage, bySource, topJobs, timeAgg, revenueAgg] = await Promise.all([
     Application.countDocuments({ ...orgF, ...dateF }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Hired' }),
     Application.countDocuments({ ...orgF, ...dateF, currentStage: 'Rejected' }),
     Application.aggregate([
-      { $match: { ...orgF, ...dateF } },
+      { $match: { ...aggF, ...dateF } },
       { $group: { _id: '$currentStage', count: { $sum: 1 } } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, ...dateF } },
+      { $match: { ...aggF, ...dateF } },
       { $group: { _id: '$source', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, ...dateF } },
+      { $match: { ...aggF, ...dateF } },
       { $group: { _id: '$jobId', count: { $sum: 1 } } },
       { $sort: { count: -1 } }, { $limit: 5 },
       { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
@@ -714,7 +714,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       { $project: { title: '$job.title', count: 1 } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, currentStage: 'Hired' } },
+      { $match: { ...aggF, currentStage: 'Hired' } },
       { $project: {
           daysToHire: { $divide: [{ $subtract: ['$updatedAt', '$createdAt'] }, 86400000] },
         },
@@ -722,7 +722,7 @@ router.get('/analytics', authenticate, allowRoles('admin', 'super_admin'), cache
       { $group: { _id: null, avg: { $avg: '$daysToHire' }, count: { $sum: 1 } } },
     ]),
     PaymentRecord.aggregate([
-      { $match: { ...orgF, ...dateF, status: 'captured' } },
+      { $match: { ...aggF, ...dateF, status: 'captured' } },
       { $group: { _id: null, total: { $sum: '$amountINR' } } }
     ]),
   ]);

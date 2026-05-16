@@ -60,7 +60,12 @@ router.get('/', authenticate, allowRoles('admin','super_admin'), asyncHandler(as
     : { tenantId: req.user.tenantId };
   
   if (req.query.role) filter.role = req.query.role;
-  
+
+  // Active/deleted filters — always exclude soft-deleted users by default
+  filter.deletedAt = null;
+  if (req.query.isActive === 'true')  filter.isActive = true;
+  if (req.query.isActive === 'false') filter.isActive = false;
+
   // Advanced Search (Name, Email, Title, Company)
   if (req.query.search) {
     const { expandSearch } = require('../utils/search');
