@@ -604,4 +604,57 @@ router.get('/:id/matching-candidates', ...guard, allowRoles('admin', 'super_admi
   res.json({ success: true, data: candidates });
 }));
 
+// POST /api/jobs/redistribute
+// Distribute all active jobs in the org equally across active recruiters (round-robin).
+// Admin-only. Returns per-recruiter assignment counts.
+router.post('/redistribute', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tid = req.user.tenantId;
+  const orgFilter = req.user.role === 'super_admin' ? {} : { tenantId: tid };
+
+  // 1. Get all active recruiters in the org
+  const recruiters = await User.find({
+    ...orgFilter,
+    role: 'recruiter',
+    isActive: true,
+    deletedAt: null,
+  }).select('_id name').lean();
+
+  if (!recruiters.length) throw new AppError('No active recruiters found in this organisation.', 400);
+
+  // 2. Get all active (and draft) jobs to redistribute
+  const jobs = await Job.find({
+    ...orgFilter,
+    status: { $in: ['active', 'draft'] },
+    deletedAt: null,
+  }).select('_id').lean();
+
+  if (!jobs.length) throw new AppError('No jobs found to redistribute.', 400);
+
+  // 3. Round-robin assignment
+  const counts = {};
+  recruiters.forEach(r => { counts[r._id.toString()] = 0; });
+
+  const bulkOps = jobs.map((job, i) => {
+    const recruiter = recruiters[i % recruiters.length];
+    counts[recruiter._id.toString()]++;
+    return {
+      updateOne: {
+        filter: { _id: job._id },
+        update: { $set: { assignedRecruiters: [recruiter._id] } },
+      },
+    };
+  });
+
+  await Job.bulkWrite(bulkOps);
+
+  const summary = recruiters.map(r => ({
+    recruiterId: r._id,
+    name       : r.name,
+    jobsAssigned: counts[r._id.toString()] || 0,
+  }));
+
+  logger.audit('Jobs redistributed', req.user.id, tid, { total: jobs.length, recruiters: recruiters.length });
+  res.json({ success: true, total: jobs.length, summary });
+}));
+
 module.exports = router;

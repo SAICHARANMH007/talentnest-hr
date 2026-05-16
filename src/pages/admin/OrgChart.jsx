@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
-import { card, btnG } from '../../constants/styles.js';
+import Toast from '../../components/ui/Toast.jsx';
+import { card, btnG, btnP } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
@@ -86,12 +87,15 @@ function HConnector({ count }) {
 }
 
 export default function OrgChart({ user }) {
-  const [org,       setOrg]       = useState(null);
-  const [admins,    setAdmins]    = useState([]);
-  const [recruiters,setRecruiters]= useState([]);
-  const [jobs,      setJobs]      = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState('');
+  const [org,            setOrg]            = useState(null);
+  const [admins,         setAdmins]         = useState([]);
+  const [recruiters,     setRecruiters]     = useState([]);
+  const [jobs,           setJobs]           = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState('');
+  const [toast,          setToast]          = useState('');
+  const [redistributing, setRedistributing] = useState(false);
+  const [redistResult,   setRedistResult]   = useState(null);
 
   useEffect(() => {
     setLoading(true); setError('');
@@ -161,12 +165,62 @@ export default function OrgChart({ user }) {
   const orgPlan    = org?.plan || 'starter';
   const totalUsers = admins.length + recruiters.length;
 
+  const handleRedistribute = async () => {
+    if (!window.confirm(`Redistribute all active jobs equally across ${recruiters.length} recruiter${recruiters.length !== 1 ? 's' : ''}?\n\nThis will reassign every job in round-robin order. Existing assignments will be replaced.`)) return;
+    setRedistributing(true); setRedistResult(null);
+    try {
+      const r = await api.redistributeJobs();
+      setRedistResult(r);
+      setToast(`✅ ${r.total} jobs redistributed across ${recruiters.length} recruiters`);
+      // Refresh recruiter stats
+      api.getRecruiterLeaderboard().then(lb => {
+        const lbArr = Array.isArray(lb) ? lb : (Array.isArray(lb?.data) ? lb.data : []);
+        const lbMap = {};
+        lbArr.forEach(e => { const id = e.recruiterId?.toString() || e.id?.toString() || ''; if (id) lbMap[id] = e; });
+        setRecruiters(prev => prev.map(r => {
+          const rid = r._id?.toString() || r.id?.toString() || '';
+          const lb = lbMap[rid] || {};
+          return { ...r, _jobCount: lb.jobs ?? r._jobCount, _appCount: lb.candidates ?? r._appCount, _hired: lb.hired ?? r._hired };
+        }));
+      }).catch(() => {});
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+    setRedistributing(false);
+  };
+
   return (
     <div>
+      <Toast msg={toast} onClose={() => setToast('')} />
       <PageHeader
         title="🏢 Org Chart"
         subtitle={`${orgName} · ${totalUsers} member${totalUsers !== 1 ? 's' : ''}`}
+        action={
+          recruiters.length > 0 && (
+            <button onClick={handleRedistribute} disabled={redistributing} style={{ ...btnP, opacity: redistributing ? 0.7 : 1 }}>
+              {redistributing ? 'Redistributing…' : '⚖️ Redistribute Jobs Equally'}
+            </button>
+          )
+        }
       />
+
+      {/* Redistribution result */}
+      {redistResult && (
+        <div style={{ ...card, marginBottom:20, background:'rgba(5,150,105,0.06)', border:'1px solid rgba(5,150,105,0.2)' }}>
+          <div style={{ fontWeight:800, fontSize:13, color:'#059669', marginBottom:10 }}>
+            ✅ {redistResult.total} jobs distributed equally across {redistResult.summary?.length} recruiters
+          </div>
+          <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            {(redistResult.summary || []).map(s => (
+              <div key={s.recruiterId} style={{ background:'#fff', borderRadius:10, padding:'8px 16px', border:'1px solid #D1FAE5', fontSize:13 }}>
+                <span style={{ fontWeight:700, color:'#0A1628' }}>{s.name}</span>
+                <span style={{ color:'#059669', fontWeight:800, marginLeft:8 }}>{s.jobsAssigned} jobs</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setRedistResult(null)} style={{ ...btnG, marginTop:10, fontSize:12 }}>Dismiss</button>
+        </div>
+      )}
 
       {/* Legend */}
       <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:24 }}>

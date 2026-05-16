@@ -28,6 +28,7 @@ export const jobService = {
   async getJobCandidates(jobId)       { return req('GET', `/jobs/${jobId}/candidates`); },
   async assignRecruiterToJob(jobId, recruiterId)    { return req('POST',  `/jobs/${jobId}/assign`,            { recruiterId }); },
   async replaceJobRecruiter(jobId, recruiterId)     { return req('PATCH', `/jobs/${jobId}/replace-recruiter`, { recruiterId }); },
+  async redistributeJobs()                          { return req('POST',  '/jobs/redistribute', {}); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
   async getPendingApprovalJobs()      { return req('GET', `/jobs/pending-approval?_t=${Date.now()}`); },
