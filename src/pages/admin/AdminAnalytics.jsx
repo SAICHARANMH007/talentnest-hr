@@ -495,7 +495,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         placements:      hiredCount,
         placementsLast30: last30Hired,
         revenue:         serverStats?.revenue || 0,
-        fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : (serverStats.fillRate || 0),
+        fillRate:        serverStats.fillRate ?? (totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : 0),
         avgTimeToHire:   serverStats.avgTimeToHire || 0,
       };
     }
