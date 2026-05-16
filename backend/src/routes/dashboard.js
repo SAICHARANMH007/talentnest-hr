@@ -396,7 +396,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
   const hiredJobIds = hired > 0
     ? await Application.distinct('jobId', { ...orgF, currentStage: 'Hired', ...del })
     : [];
-  const fillRate = totalJobs > 0 ? Math.round((hiredJobIds.length / totalJobs) * 100) : 0;
+  const fillRate = totalJobs > 0 ? parseFloat(((hiredJobIds.length / totalJobs) * 100).toFixed(1)) : 0;
 
   const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
 
@@ -857,6 +857,15 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
 
   const pipeline = [
     { $match: baseMatch },
+    { $sort: { updatedAt: -1 } },
+    {
+      $group: {
+        _id: { $ifNull: ["$userId", { $ifNull: [{ $toLower: "$email" }, "$_id"] }] },
+        primary: { $first: "$$ROOT" },
+        allCandidateIds: { $push: "$_id" }
+      }
+    },
+    { $replaceRoot: { newRoot: { $mergeObjects: ["$primary", { allCandidateIds: "$allCandidateIds" }] } } },
     { $sort: { createdAt: -1 } },
     {
       $facet: {
@@ -875,7 +884,7 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
           {
             $lookup: {
               from: 'applications',
-              let: { candEmail: '$email', candId: '$_id' },
+              let: { candEmail: '$email', candIds: '$allCandidateIds' },
               pipeline: [
                 {
                   $lookup: {
@@ -890,7 +899,7 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
                   $match: {
                     $expr: {
                       $or: [
-                        { $eq: ['$candidateId', '$$candId'] },
+                        { $in: ['$candidateId', '$$candIds'] },
                         { $and: [
                           { $ne: ['$$candEmail', null] },
                           { $eq: ['$candInfo.email', '$$candEmail'] }
@@ -1547,7 +1556,7 @@ router.get('/funnel', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   const { startDate, endDate, jobId } = req.query;
   const dateRange = buildDateRange(startDate, endDate);
 
-  const match = { ...tf, createdAt: dateRange };
+  const match = { ...tf, createdAt: dateRange, deletedAt: null };
   if (jobId) match.jobId = new mongoose.Types.ObjectId(jobId);
 
   const raw = await Application.aggregate([
@@ -1607,7 +1616,7 @@ router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin')
   const dateRange = buildDateRange(startDate, endDate);
 
   const raw = await Application.aggregate([
-    { $match: { ...tf, createdAt: dateRange } },
+    { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
     { $group: {
         _id: {
           $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] }
@@ -1789,12 +1798,14 @@ router.get('/offer-acceptance', authenticate, allowRoles('admin', 'super_admin')
       ...tf,
       'stageHistory.stage': 'Offer',
       createdAt: dateRange,
+      deletedAt: null
     }),
     Application.countDocuments({
       ...tf,
       currentStage: 'Hired',
       'stageHistory.stage': 'Offer',
       createdAt: dateRange,
+      deletedAt: null
     }),
   ]);
 
@@ -1902,10 +1913,10 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
 
     const [jobsAssigned, candidatesAdded, shortlisted, offers, hired] = await Promise.all([
       myJobIds.length,
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Shortlisted' }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Offer' }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, currentStage: 'Hired' }),
+      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, deletedAt: null }),
+      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Shortlisted', deletedAt: null }),
+      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Offer', deletedAt: null }),
+      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, currentStage: 'Hired', deletedAt: null }),
     ]);
 
     // Avg days Applied → Shortlisted
