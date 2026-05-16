@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { api, downloadBlob } from '../../api/api.js';
+import { api, downloadBlob, clearCache } from '../../api/api.js';
 import { req } from '../../api/client.js';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -34,6 +34,7 @@ const glassPanel = {
 
 const skeletonStyles = `
 @keyframes tn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 .tn-skeleton {
   background: linear-gradient(90deg, #f8f9fa 25%, #eef0f2 50%, #f8f9fa 75%);
   background-size: 200% 100%;
@@ -241,7 +242,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [drillPage, setDrillPage] = useState(1);
   const DRILL_PAGE_SIZE = 40;
 
+  const [refreshing, setRefreshing] = useState(false);
   const unwrap = (r) => Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+
+  // Force-refresh: wipe client cache and reload all data sources fresh
+  const forceRefresh = useCallback(() => {
+    setRefreshing(true);
+    clearCache(); // wipes the 10s client-side GET cache for every endpoint
+    load();
+    setTimeout(() => setRefreshing(false), 3000);
+  }, [load]);
 
   // ── Core data load ────────────────────────────────────────────────────────
   const load = useCallback(() => {
@@ -899,6 +909,14 @@ export default function AdminAnalytics({ user, onNavigate }) {
           <p style={{ color: '#706E6B', fontSize: 14, margin: 0 }}>Unified Intelligence Platform · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={forceRefresh}
+            disabled={refreshing}
+            title="Clear all caches and reload every KPI fresh from the database"
+            style={{ padding: '7px 16px', borderRadius: 10, border: '2px solid #E2E8F0', background: refreshing ? '#F8FAFC' : '#fff', color: '#0176D3', fontSize: 12, fontWeight: 800, cursor: refreshing ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: refreshing ? 0.7 : 1, display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+            {refreshing ? 'Refreshing…' : 'Refresh Data'}
+          </button>
           {onNavigate && (
             <button
               onClick={() => onNavigate('candidate-requests')}
