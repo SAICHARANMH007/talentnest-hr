@@ -609,10 +609,12 @@ router.get('/recruiter-leaderboard', authenticate, allowRoles('admin', 'super_ad
   if (!recruiters.length) return res.json({ success: true, data: [] });
 
   // Per-recruiter stats — same approach as /recruiter-performance (proven accurate)
+  // Only count active/closed jobs (not draft/pending_approval seeded jobs with no applicants)
   const board = await Promise.all(recruiters.map(async (r) => {
     const myJobIds = (await Job.find({
       assignedRecruiters: r._id,
       ...(req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId }),
+      status: { $in: ['active', 'closed'] },
       deletedAt: null,
     }).select('_id').lean()).map(j => j._id);
 
