@@ -95,7 +95,7 @@ class AuthService {
 
     // ── Refresh Token (long-lived) ─────────────────────────────────────────────
     let refreshTokenString;
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     if (reuseRefreshToken && req.signedCookies?.tn_refresh_token) {
       refreshTokenString = req.signedCookies.tn_refresh_token;
@@ -143,7 +143,7 @@ class AuthService {
       secure: IS_PROD,
       sameSite: IS_PROD ? 'None' : 'Lax',
       signed: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days — prevents frequent logouts
     });
 
     const ROLE_REDIRECT = {

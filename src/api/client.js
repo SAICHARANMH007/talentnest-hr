@@ -24,7 +24,7 @@ export const setToken  = (t) => {
   clearCache(); // prevent stale data between users/impersonation
   if (t) {
     sessionStorage.setItem(TOKEN_KEY, t);
-    localStorage.setItem(TOKEN_KEY, t); // Backup for cross-tab sessions (e.g. meetings)
+    localStorage.setItem(TOKEN_KEY, t); // Backup for cross-tab and browser-reopen sessions
     localStorage.setItem('tn_logged_in', 'true');
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
@@ -34,15 +34,20 @@ export const setToken  = (t) => {
 };
 export const clearToken = () => {
   _accessToken = null;
+  _401firing   = false;
   clearCache();
   sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem('tn_user');
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('tn_user');
   localStorage.removeItem('tn_logged_in');
 };
 export const getToken  = () => _accessToken;
 
 // Global 401 handler — modules can subscribe to force-logout
-let _on401 = null;
+// _401firing prevents multiple parallel failed requests from each triggering logout
+let _on401     = null;
+let _401firing = false;
 export function set401Handler(fn) { _on401 = fn; }
 
 // In-flight deduplication: parallel GET calls to the same URL share one fetch
@@ -81,9 +86,10 @@ const _refreshPath = '/auth/refresh';
 export async function initAuth() {
   // Fast path: token still valid in sessionStorage or localStorage — restore immediately.
   const stored = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-  const storedUser = (() => { 
-    try { return JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user')); } 
-    catch { return null; } 
+  // tn_user stored in both session and local so browser-reopen / new-tab restores session
+  const storedUser = (() => {
+    try { return JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user')); }
+    catch { return null; }
   })();
   if (tokenIsValid(stored) && storedUser) {
     _accessToken = stored;
@@ -193,25 +199,32 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'TalentNest' },
           credentials: 'include',
-        }).then(r => r.json());
+        }).then(r => r.json()).finally(() => { _refreshing = null; });
       }
 
       const refreshRes = await _refreshing;
-      _refreshing = null;
 
-      if (refreshRes.token) {
+      if (refreshRes?.token) {
         _accessToken = refreshRes.token;
         sessionStorage.setItem(TOKEN_KEY, refreshRes.token);
-        if (refreshRes.user) sessionStorage.setItem('tn_user', JSON.stringify(refreshRes.user));
+        localStorage.setItem(TOKEN_KEY, refreshRes.token);
+        if (refreshRes.user) {
+          const u = JSON.stringify(refreshRes.user);
+          sessionStorage.setItem('tn_user', u);
+          localStorage.setItem('tn_user', u);
+        }
         return _doReq(method, path, body, auth, true);
       }
     } catch {
       _refreshing = null;
     }
 
-    _accessToken = null;
-    sessionStorage.removeItem('tn_user');
-    if (_on401) _on401();
+    // Refresh failed — fire logout exactly once even if N parallel requests hit this path
+    if (!_401firing) {
+      _401firing   = true;
+      _accessToken = null;
+      if (_on401) _on401();
+    }
     throw new Error('Session expired. Please log in again.');
   }
 

@@ -315,7 +315,9 @@ export default function App() {
       initAuth().then(result => {
         if (result?.user) {
           // Happy path: refresh token exchanged for fresh access token
-          sessionStorage.setItem('tn_user', JSON.stringify(result.user));
+          const uJson = JSON.stringify(result.user);
+          sessionStorage.setItem('tn_user', uJson);
+          localStorage.setItem('tn_user', uJson); // persist across browser-reopen
           setUser(result.user);
           window.dispatchEvent(new CustomEvent('tn_auth_ready', { detail: { user: result.user } }));
         } else if (result?.networkError) {
@@ -418,7 +420,9 @@ export default function App() {
   const ROLE_DEFAULT = { super_admin: 'analytics', admin: 'analytics', recruiter: 'dashboard', candidate: 'dashboard', client: 'dashboard', hiring_manager: 'dashboard' };
 
   const auth = (u, token) => {
-    sessionStorage.setItem('tn_user', JSON.stringify(u));
+    const uJson = JSON.stringify(u);
+    sessionStorage.setItem('tn_user', uJson);
+    localStorage.setItem('tn_user', uJson); // survives browser close/reopen
     // Persist access token so page refresh doesn't log the user out
     if (token) setApiToken(token);
     setUser(u);
@@ -441,6 +445,9 @@ export default function App() {
     sessionStorage.removeItem('tn_token');
     sessionStorage.removeItem('tn_impersonate_token');
     sessionStorage.removeItem('tn_sa_backup');
+    localStorage.removeItem('tn_user');
+    localStorage.removeItem('tn_token');
+    localStorage.removeItem('tn_logged_in');
     setUser(null);
     api.logout().catch(() => {});   // clears HTTP-only refresh cookie on server
     navigate('/login', { replace: true });
