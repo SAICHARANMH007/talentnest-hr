@@ -999,7 +999,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             ? <ChartPlaceholder loading label="Hiring Pipeline" height={180} />
             : <>
                 <DonutChart segments={stageBreakdown} size={160} title="Hiring Pipeline"
-                  centerValue={stageBreakdown.reduce((s, x) => s + (x.value || 0), 0) || stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
+                  centerValue={stats.totalCandidates || stats.totalApps} centerLabel="TOTAL" onItemClick={openStageDrill} />
                 <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, margin: '8px 0 0' }}>Click segment to drill down</p>
               </>
           }

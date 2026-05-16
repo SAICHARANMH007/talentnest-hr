@@ -77,10 +77,11 @@ function tenantFilter(req) {
 }
 
 async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
-  const [candidateDocs, userDocs, appDocs] = await Promise.all([
+  const [candidateDocs, userDocs, appDocs, importedDocs] = await Promise.all([
     Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email phone name userId').lean(),
     User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email phone name').lean(),
     Application.find({ deletedAt: null, ...candidateFilter }).select('candidateId candidateEmail candidatePhone candidateName email').lean(),
+    ImportedCandidate.find({ ...candidateFilter }).select('_id email phone name status').lean(),
   ]);
 
   const keys = new Set();
@@ -115,17 +116,10 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
     }
   });
 
-  // 3. Process applications (only if they have a valid identifier)
-  appDocs.forEach(d => {
-    let k = getCandidateKey(d.candidateEmail || d.email, d.candidatePhone, d.candidateName);
-    if (!k && d.candidateId && candToKey.has(String(d.candidateId))) {
-      k = candToKey.get(String(d.candidateId));
-    }
-    if (k) {
-      keys.add(k);
-    } else if (d.candidateId) {
-      keys.add(`cand:${d.candidateId}`);
-    }
+  // 4. Process imported candidates
+  importedDocs.forEach(d => {
+    const k = getCandidateKey(d.email, d.phone, d.name) || `imp:${d._id}`;
+    keys.add(k);
   });
   
   return keys.size;
@@ -1341,12 +1335,12 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), asyncHandl
   const myJobs = await Job.find({ assignedRecruiters: req.user._id }).select('_id').lean();
   const ids    = myJobs.map(j => j._id);
   const [total, inInterview, offerExtended, hired] = await Promise.all([
-    Application.countDocuments({ jobId: { $in: ids } }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Interview Round 1' }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Offer' }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Hired' }),
+    Application.countDocuments({ jobId: { $in: ids }, deletedAt: null }),
+    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Interview Round 1', deletedAt: null }),
+    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Offer', deletedAt: null }),
+    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Hired', deletedAt: null }),
   ]);
-  const active = await Application.countDocuments({ jobId: { $in: ids }, currentStage: { $in: STAGES_ACTIVE } });
+  const active = await Application.countDocuments({ jobId: { $in: ids }, currentStage: { $in: STAGES_ACTIVE }, deletedAt: null });
   res.json({ success: true, data: {
     jobsPosted: myJobs.length, totalApplicants: total,
     inInterview, offerExtended, hired,
@@ -1396,10 +1390,10 @@ router.get('/job-performance', authenticate, allowRoles('recruiter'), asyncHandl
   const myJobs = await Job.find({ assignedRecruiters: req.user._id }).lean();
   const rows = await Promise.all(myJobs.map(async job => {
     const [total, shortlisted, interviewed, hired] = await Promise.all([
-      Application.countDocuments({ jobId: job._id }),
-      Application.countDocuments({ jobId: job._id, currentStage: { $in: ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'] } }),
-      Application.countDocuments({ jobId: job._id, currentStage: { $in: ['Interview Round 2', 'Offer', 'Hired'] } }),
-      Application.countDocuments({ jobId: job._id, currentStage: 'Hired' }),
+      Application.countDocuments({ jobId: job._id, deletedAt: null }),
+      Application.countDocuments({ jobId: job._id, currentStage: { $in: ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired'] }, deletedAt: null }),
+      Application.countDocuments({ jobId: job._id, currentStage: { $in: ['Interview Round 2', 'Offer', 'Hired'] }, deletedAt: null }),
+      Application.countDocuments({ jobId: job._id, currentStage: 'Hired', deletedAt: null }),
     ]);
     return {
       jobId: job._id, title: job.title,
@@ -1582,7 +1576,7 @@ router.get('/funnel', authenticate, allowRoles('admin', 'super_admin'), asyncHan
 router.get('/funnel/export', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
   const { startDate, endDate, jobId } = req.query;
-  const match = { ...tf, createdAt: buildDateRange(startDate, endDate) };
+  const match = { ...tf, createdAt: buildDateRange(startDate, endDate), deletedAt: null };
   if (jobId) match.jobId = new mongoose.Types.ObjectId(jobId);
 
   const raw = await Application.aggregate([
