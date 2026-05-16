@@ -15,7 +15,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import KpiCard from '../../components/charts/KpiCard.jsx';
-import RingProgress from '../../components/charts/RingProgress.jsx';
+
 import HorizBar from '../../components/charts/HorizBar.jsx';
 import InterviewCountdown from '../../components/misc/InterviewCountdown.jsx';
 import { STAGES } from '../../constants/stages.js';
@@ -357,28 +357,6 @@ export default function CandidateDashboard({ user }) {
             <button onClick={() => navigate("/app/job-match")} style={{ ...btnP, padding:"7px 16px", fontSize:12, marginTop:4 }}>🎯 Find matching jobs</button>
           </div>
         )}
-        <div style={{ ...card, cursor:"pointer" }} onClick={() => navigate("/app/profile")}>
-          <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:"0 0 14px", letterSpacing:1 }}>PROFILE SCORE</p>
-          <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap: isMobile ? "wrap" : "nowrap" }}>
-            <div style={{ display:"flex", justifyContent:"center", width: isMobile ? "100%" : "auto" }}>
-              <RingProgress pct={profilePct} color={profilePct>=80?"#2E844A":profilePct>=60?"#A07E00":"#BA0517"} size={isMobile ? 80 : 72} />
-            </div>
-            <div style={{ flex:1, width: isMobile ? "100%" : "auto" }}>
-              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr", gap:"4px 12px" }}>
-                {profileFields.map(f => {
-                  const filled = profile?.[f] && String(profile[f]).trim() !== "";
-                  return (
-                    <div key={f} style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ color:filled?"#3BA755":"#9E9D9B", fontSize:12 }}>{filled?"✓":"○"}</span>
-                      <span style={{ color:filled?"#374151":"#9E9D9B", fontSize:12, textTransform:"capitalize" }}>{f}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          {profilePct < 100 && <button onClick={e => { e.stopPropagation(); navigate("/app/profile"); }} style={{ ...btnG, width:"100%", marginTop:12, padding:"10px 0", fontSize:12, textAlign:"center" }}>✏️ Complete Profile →</button>}
-        </div>
       </div>
       {apps.length > 0 && (
         <div style={{ ...card, marginBottom:20 }}>
