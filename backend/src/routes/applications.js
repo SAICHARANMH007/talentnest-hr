@@ -150,7 +150,7 @@ router.post('/prefill', asyncHandler(async (req, res) => {
 
   // Search for any user with this email (admin, recruiter, or candidate)
   const user = await User.findOne({ email: emailLower, deletedAt: null })
-    .select('name phone title currentCompany experience availability').lean();
+    .select('name phone title currentCompany experience availability industry department').lean();
 
   if (user) {
     return res.json({
@@ -159,13 +159,13 @@ router.post('/prefill', asyncHandler(async (req, res) => {
       isRegisteredUser: true,
       hasPhone: !!(user.phone && user.phone.trim()),
       profile: {
-        // Only safe, non-sensitive professional fields
         name:           user.name           || '',
         title:          user.title          || '',
         currentCompany: user.currentCompany || '',
         experience:     user.experience     != null ? String(user.experience) : '',
         availability:   user.availability   || '',
-        // phone intentionally omitted — never expose to unauthenticated callers
+        industry:       user.industry       || '',
+        department:     user.department     || '',
       },
     });
   }
@@ -173,7 +173,7 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   // Fallback: check Candidate collection (recruiter-added, no account yet)
   const candidate = await Candidate.findOne({ email: emailLower, deletedAt: null })
     .sort({ updatedAt: -1 })
-    .select('name phone title currentCompany experience availability').lean();
+    .select('name phone title currentCompany experience availability industry department').lean();
 
   if (candidate) {
     return res.json({
@@ -187,6 +187,8 @@ router.post('/prefill', asyncHandler(async (req, res) => {
         currentCompany: candidate.currentCompany || '',
         experience:     candidate.experience     != null ? String(candidate.experience) : '',
         availability:   candidate.availability   || '',
+        industry:       candidate.industry       || '',
+        department:     candidate.department     || '',
       },
     });
   }

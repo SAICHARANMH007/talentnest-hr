@@ -123,11 +123,17 @@ export default function CareersPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { companySlug } = useParams();
+  // Extract stable primitive values — URLSearchParams creates a new object
+  // reference on every render, so using the object itself as a useEffect dep
+  // causes the data-fetch to re-run on every render (white screen / slowness).
+  const jobParam     = searchParams.get('job')     || '';
+  const searchParam  = searchParams.get('search')  || '';
+  const companyParam = searchParams.get('company') || '';
   const [brand, setBrand] = useState(null); // { name, logoUrl, brandColor }
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const initialCompanyFilter = searchParams.get('company') || '';
-  const initialSearch = searchParams.get('search') || '';
+  const initialCompanyFilter = companyParam;
+  const initialSearch = searchParam;
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isLoggedIn, setIsLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
   
@@ -275,7 +281,6 @@ export default function CareersPage() {
           });
 
           // Auto-highlight + open job from shared/invite link (?job=<id>)
-          const jobParam = searchParams.get('job');
           if (jobParam) {
             const found = arr.find(j => String(j._id || j.id) === jobParam || String(j.id) === jobParam);
             if (found) {
@@ -303,11 +308,13 @@ export default function CareersPage() {
       .finally(() => {
         if (active) { setLoading(false); setLoadingMore(false); }
       });
-  }, [companySlug, debouncedSearch, urgencyFilter, locationFilter, page, searchParams]);
+  }, [companySlug, debouncedSearch, urgencyFilter, locationFilter, page, jobParam]);
 
   const baseLocs = ['Delhi NCR', 'Bangalore', 'Mumbai', 'Kolkata', 'Hyderabad', 'Pune', 'Chennai', 'Noida', 'Gurgaon', 'Ahmedabad', 'Bhubaneswar', 'Kochi', 'Remote', 'Hybrid'];
-  const fetchedLocs = jobs.map(j => j.location).filter(Boolean);
-  const locations = ['All', ...new Set([...baseLocs, ...fetchedLocs])];
+  const locations = React.useMemo(() => {
+    const fetchedLocs = jobs.map(j => j.location).filter(Boolean);
+    return ['All', ...new Set([...baseLocs, ...fetchedLocs])];
+  }, [jobs]);
 
   const filtered = jobs;
 

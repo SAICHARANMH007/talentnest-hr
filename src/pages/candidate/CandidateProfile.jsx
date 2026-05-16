@@ -271,6 +271,23 @@ export default function CandidateProfile({ user }) {
       });
       const d = res?.data || res;
       setProfile(d);
+      // Keep tn_user in sessionStorage/localStorage in sync so PublicApplyModal
+      // auto-populates industry, department and other profile fields correctly.
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user') || '{}');
+        const updated = JSON.stringify({
+          ...stored,
+          title: d.title || stored.title,
+          currentCompany: d.currentCompany || stored.currentCompany,
+          experience: d.experience ?? stored.experience,
+          availability: d.availability || stored.availability,
+          industry: d.industry || stored.industry,
+          department: d.department || stored.department,
+          phone: d.phone || stored.phone,
+        });
+        sessionStorage.setItem('tn_user', updated);
+        localStorage.setItem('tn_user', updated);
+      } catch { /* non-critical */ }
       setToast('✅ Profile saved!');
     } catch(e) { setToast('❌ ' + e.message); }
     setSaving(false);

@@ -95,7 +95,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             ['title', p.title],
             ['currentCompany', p.currentCompany],
             ['experience', p.experience],
-            ['availability', p.availability]
+            ['availability', p.availability],
+            ['industry', p.industry],
+            ['department', p.department],
           ];
 
           for (const [key, val] of fields) {
