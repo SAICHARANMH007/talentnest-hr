@@ -16,6 +16,7 @@ const AppError        = require('../utils/AppError');
 const logger          = require('../middleware/logger');
 const { calculateTalentMatchScore } = require('../utils/matchScore');
 const { classifyJob }               = require('../utils/classifyJob');
+const { invalidatePrefix }          = require('../middleware/cache');
 
 /** Escape regex special chars to prevent ReDoS on user-supplied search strings */
 function escRe(s) { return String(s).slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -757,9 +758,14 @@ router.post('/redistribute', ...guard, allowRoles('admin', 'super_admin'), async
 
   await Job.bulkWrite(bulkOps);
 
+  // Bust server-side cache for ALL dashboard endpoints for this tenant so
+  // the leaderboard, stats, and analytics return fresh data immediately.
+  // Cache keys are: `tenantId:userId:url` — prefix on tenantId clears all.
+  invalidatePrefix(String(tid));
+
   const summary = recruiters.map(r => ({
-    recruiterId: r._id,
-    name       : r.name,
+    recruiterId : r._id,
+    name        : r.name,
     jobsAssigned: counts[r._id.toString()] || 0,
   }));
 

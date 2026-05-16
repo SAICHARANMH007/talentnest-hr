@@ -174,10 +174,10 @@ export default function OrgChart({ user }) {
       const r = await api.redistributeJobs();
       setRedistResult(r);
       setToast(`✅ ${r.total} jobs redistributed across ${recruiters.length} recruiters — refreshing stats…`);
-      // Clear ALL client-side caches so leaderboard/jobs fetch fresh data
+      // Clear client-side cache; server cache is busted by redistribute endpoint
       clearCache();
-      // Wait 2s for server-side cache (15s TTL) to begin expiring, then reload
-      setTimeout(() => setRefreshKey(k => k + 1), 2000);
+      // Reload immediately — server cache already invalidated
+      setTimeout(() => setRefreshKey(k => k + 1), 500);
     } catch (e) {
       setToast(`❌ ${e.message}`);
     }
