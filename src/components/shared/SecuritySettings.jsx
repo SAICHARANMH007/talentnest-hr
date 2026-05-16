@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../api/api.js';
+import { useNavigate } from 'react-router-dom';
+import { api, clearToken } from '../../api/api.js';
 
 const S = {
   card: { background: '#fff', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 16, padding: 24, marginBottom: 20 },
@@ -33,12 +34,16 @@ function Toggle({ on, onChange, disabled }) {
 }
 
 export default function SecuritySettings({ user }) {
+  const navigate = useNavigate();
   const [twoFA, setTwoFA]       = useState(user?.twoFactorEnabled || false);
   const [toggling, setToggling] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [terminatingId, setTerminatingId] = useState('');
   const [terminatingAll, setTerminatingAll] = useState(false);
+  const [logoutAllLoading, setLogoutAllLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [toast, setToast] = useState('');
 
   useEffect(() => { loadSessions(); }, []);
@@ -85,6 +90,24 @@ export default function SecuritySettings({ user }) {
     setTimeout(() => setToast(''), 3000);
   };
 
+  const handleLogoutAll = async () => {
+    setLogoutAllLoading(true);
+    try {
+      await api.terminateAllSessions();
+      clearToken();
+      navigate('/login');
+    } catch (e) { setToast('❌ ' + e.message); setLogoutAllLoading(false); }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await api.deleteMyAccount();
+      clearToken();
+      navigate('/login');
+    } catch (e) { setToast('❌ ' + e.message); setDeleteLoading(false); }
+  };
+
   const otherSessions = sessions.filter(s => !s.isCurrent);
 
   return (
@@ -115,6 +138,19 @@ export default function SecuritySettings({ user }) {
             💡 Add a phone number to your profile to receive OTP via SMS instead of email.
           </div>
         )}
+      </div>
+
+      {/* Logout from all devices */}
+      <div style={{ ...S.card, border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.03)' }}>
+        <h3 style={S.h3}>🔓 Logout from All Devices</h3>
+        <p style={S.sub}>Signs you out of every browser and device, including this one. Use this if you think your account may be compromised.</p>
+        <button
+          onClick={handleLogoutAll}
+          disabled={logoutAllLoading}
+          style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, color: '#B45309', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: 'pointer' }}
+        >
+          {logoutAllLoading ? 'Signing out…' : '🔓 Logout from All Devices'}
+        </button>
       </div>
 
       {/* Active Sessions */}
@@ -167,6 +203,38 @@ export default function SecuritySettings({ user }) {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+      {/* Delete account — danger zone */}
+      <div style={{ ...S.card, border: '1px solid rgba(186,5,23,0.25)', background: 'rgba(186,5,23,0.02)' }}>
+        <h3 style={{ ...S.h3, color: '#BA0517' }}>⚠️ Delete My Account</h3>
+        <p style={S.sub}>Your profile, applications, and data will be deactivated immediately. This cannot be undone. Contact support to restore your account.</p>
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            style={{ ...S.btn, fontSize: 13, padding: '10px 20px' }}
+          >
+            Delete My Account
+          </button>
+        ) : (
+          <div style={{ background: 'rgba(186,5,23,0.06)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 10, padding: '14px 16px' }}>
+            <p style={{ color: '#BA0517', fontWeight: 700, fontSize: 13, margin: '0 0 12px' }}>Are you sure? This will deactivate your account immediately.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                style={{ background: '#BA0517', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 20px', cursor: 'pointer' }}
+              >
+                {deleteLoading ? 'Deleting…' : 'Yes, Delete My Account'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ ...S.btnSecondary, padding: '10px 20px' }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>

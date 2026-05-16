@@ -196,6 +196,8 @@ export const platformService = {
   async getSessions()                        { return req('GET',    '/auth/sessions'); },
   async terminateSession(id)                 { return req('DELETE', `/auth/sessions/${id}`); },
   async terminateOtherSessions()             { return req('DELETE', '/auth/sessions/others'); },
+  async terminateAllSessions()               { return req('DELETE', '/auth/sessions/all'); },
+  async deleteMyAccount()                    { return req('DELETE', '/auth/account'); },
 
   // Custom Fields
   async getCustomFields(entity)              { return req('GET',    `/custom-fields${entity ? `?entity=${entity}` : ''}`); },

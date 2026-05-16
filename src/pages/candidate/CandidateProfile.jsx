@@ -609,6 +609,12 @@ export default function CandidateProfile({ user }) {
           >
             📋 Preview Resume
           </button>
+          <a
+            href="/app/settings/security"
+            style={{ ...btnG, display:'flex', alignItems:'center', justifyContent:'center', gap:6, width: isMobile ? '100%' : 'auto', minHeight: 46, fontSize: isMobile ? 14 : 13, textDecoration:'none', color:'#706E6B', borderColor:'#E2E8F0' }}
+          >
+            🛡️ Security & Privacy
+          </a>
         </div>
       )}
     </div>

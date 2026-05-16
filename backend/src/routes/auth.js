@@ -742,10 +742,31 @@ router.delete('/sessions/others', authMiddleware, asyncHandler(async (req, res) 
   res.json({ success: true, message: `${count} other session(s) terminated.` });
 }));
 
+// ── DELETE /api/auth/sessions/all — terminate every session including current
+// Must be declared BEFORE /sessions/:id so Express doesn't treat "all" as an ID.
+router.delete('/sessions/all', authMiddleware, asyncHandler(async (req, res) => {
+  const userId = req.user._id || req.user.id;
+  await RefreshToken.deleteMany({ userId });
+  res.clearCookie('tn_refresh_token', { httpOnly: true, sameSite: 'None', secure: true });
+  logger.audit('All sessions terminated', userId, req.user.tenantId, { reason: 'user_request' });
+  res.json({ success: true, message: 'Signed out from all devices.' });
+}));
+
 // ── DELETE /api/auth/sessions/:id ─────────────────────────────────────────────
 router.delete('/sessions/:id', authMiddleware, asyncHandler(async (req, res) => {
   await authService.terminateSession(req.user._id || req.user.id, req.params.id);
   res.json({ success: true, message: 'Session terminated.' });
+}));
+
+// ── DELETE /api/auth/account — soft-delete the caller's own account
+router.delete('/account', authMiddleware, asyncHandler(async (req, res) => {
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, { $set: { isActive: false, deletedAt: new Date() } });
+  // Terminate all sessions so no other device remains logged in
+  await RefreshToken.deleteMany({ userId });
+  res.clearCookie('tn_refresh_token', { httpOnly: true, sameSite: 'None', secure: true });
+  logger.audit('Account soft-deleted', userId, req.user.tenantId, { email: req.user.email });
+  res.json({ success: true, message: 'Account deleted.' });
 }));
 
 // ── POST /api/auth/reset-password (legacy body token) ────────────────────────
