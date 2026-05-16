@@ -15,6 +15,7 @@ const asyncHandler    = require('../utils/asyncHandler');
 const AppError        = require('../utils/AppError');
 const logger          = require('../middleware/logger');
 const { calculateTalentMatchScore } = require('../utils/matchScore');
+const { classifyJob }               = require('../utils/classifyJob');
 
 /** Escape regex special chars to prevent ReDoS on user-supplied search strings */
 function escRe(s) { return String(s).slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -171,6 +172,20 @@ router.get('/:id', ...guard, asyncHandler(async (req, res) => {
 router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), checkPlanLimits('jobs'), asyncHandler(async (req, res) => {
   const { title, description, skills, niceToHaveSkills, recruiterId, ...rest } = req.body;
   if (!title || !description) throw new AppError('title and description are required.', 400);
+
+  // Require industry and department — auto-fill from classifier if not provided
+  let industry   = (rest.industry   || '').trim();
+  let department = (rest.department || '').trim();
+  if (!industry || !department) {
+    const classified = classifyJob(title, description);
+    if (!industry)   industry   = classified.industry;
+    if (!department) department = classified.department;
+  }
+  // Still missing after classification → return validation error
+  if (!industry)   throw new AppError('Industry is required for this job posting.', 400);
+  if (!department) throw new AppError('Department is required for this job posting.', 400);
+  rest.industry   = industry;
+  rest.department = department;
   const assignedRecruiters = [];
   if (req.user.role === 'recruiter') {
     assignedRecruiters.push(req.user.id);
@@ -602,6 +617,46 @@ router.get('/:id/matching-candidates', ...guard, allowRoles('admin', 'super_admi
 
   const candidates = await findSuggestedCandidates(jobSnapshot, { limit: 50 });
   res.json({ success: true, data: candidates });
+}));
+
+// POST /api/jobs/bulk-classify
+// Auto-detect and fill industry + department for ALL jobs using their title and description.
+// Processes every job where either field is blank — safe to run multiple times.
+router.post('/bulk-classify', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const orgFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+  // Fetch all jobs missing industry or department (or both)
+  const jobs = await Job.find({
+    ...orgFilter,
+    deletedAt: null,
+    $or: [
+      { industry:   { $in: [null, ''] } },
+      { department: { $in: [null, ''] } },
+    ],
+  }).select('_id title description industry department').lean();
+
+  if (!jobs.length) {
+    return res.json({ success: true, updated: 0, message: 'All jobs already have industry and department set.' });
+  }
+
+  const bulkOps = [];
+  let updated = 0;
+
+  for (const job of jobs) {
+    const { industry, department } = classifyJob(job.title, job.description);
+    const setFields = {};
+    if (!job.industry   && industry)   { setFields.industry   = industry; }
+    if (!job.department && department) { setFields.department = department; }
+    if (Object.keys(setFields).length > 0) {
+      bulkOps.push({ updateOne: { filter: { _id: job._id }, update: { $set: setFields } } });
+      updated++;
+    }
+  }
+
+  if (bulkOps.length > 0) await Job.bulkWrite(bulkOps);
+
+  logger.audit('Jobs bulk-classified', req.user.id, req.user.tenantId, { scanned: jobs.length, updated });
+  res.json({ success: true, scanned: jobs.length, updated, skipped: jobs.length - updated });
 }));
 
 // POST /api/jobs/redistribute

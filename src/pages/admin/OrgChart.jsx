@@ -96,6 +96,7 @@ export default function OrgChart({ user }) {
   const [toast,          setToast]          = useState('');
   const [redistributing, setRedistributing] = useState(false);
   const [redistResult,   setRedistResult]   = useState(null);
+  const [classifying,    setClassifying]    = useState(false);
 
   useEffect(() => {
     setLoading(true); setError('');
@@ -189,6 +190,18 @@ export default function OrgChart({ user }) {
     setRedistributing(false);
   };
 
+  const handleClassify = async () => {
+    if (!window.confirm('Auto-fill Industry & Department for all jobs that are missing them?\n\nThis uses keyword detection from each job\'s title and description. Existing values are never overwritten.')) return;
+    setClassifying(true);
+    try {
+      const r = await api.bulkClassifyJobs();
+      setToast(`✅ Scanned ${r.scanned} jobs — updated ${r.updated}, skipped ${r.skipped} (already set)`);
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+    setClassifying(false);
+  };
+
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
@@ -196,11 +209,16 @@ export default function OrgChart({ user }) {
         title="🏢 Org Chart"
         subtitle={`${orgName} · ${totalUsers} member${totalUsers !== 1 ? 's' : ''}`}
         action={
-          recruiters.length > 0 && (
-            <button onClick={handleRedistribute} disabled={redistributing} style={{ ...btnP, opacity: redistributing ? 0.7 : 1 }}>
-              {redistributing ? 'Redistributing…' : '⚖️ Redistribute Jobs Equally'}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button onClick={handleClassify} disabled={classifying} style={{ ...btnG, opacity: classifying ? 0.7 : 1, fontSize:12 }}>
+              {classifying ? '⏳ Classifying…' : '🏷️ Auto-Classify Jobs'}
             </button>
-          )
+            {recruiters.length > 0 && (
+              <button onClick={handleRedistribute} disabled={redistributing} style={{ ...btnP, opacity: redistributing ? 0.7 : 1 }}>
+                {redistributing ? 'Redistributing…' : '⚖️ Redistribute Jobs Equally'}
+              </button>
+            )}
+          </div>
         }
       />
 

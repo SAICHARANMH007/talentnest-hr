@@ -84,6 +84,10 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const skillList = (Array.isArray(form.skills) ? form.skills : (form.skills || '').split(',').map(s => s.trim()).filter(Boolean));
 
   const handleSave = () => {
+    if (!form.title?.trim())    { alert('Job title is required.');          return; }
+    if (!form.description?.trim()) { alert('Job description is required.'); return; }
+    if (!form.industry?.trim()) { alert('Please select an Industry for this job.'); return; }
+    if (!form.department?.trim()) { alert('Please select a Department for this job.'); return; }
     const eu = (form.externalUrl || '').trim();
     const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
     const payload = {
