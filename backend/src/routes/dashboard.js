@@ -2078,6 +2078,8 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
       source:         { $first: '$source' },
       createdAt:      { $min: '$createdAt' },
       candidateIds:   { $push: '$_id' },
+      accountInviteSentAt: { $max: '$accountInviteSentAt' },
+      accountRequestSent:  { $max: '$accountRequestSent' },
     }},
     { $sort: { createdAt: -1 } },
   ]);
@@ -2141,6 +2143,8 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
     jobCount:       (appsByEmail[g._id] || []).length,
     applications:   appsByEmail[g._id]  || [],
     candidateIds:   g.candidateIds.map(String),
+    accountInviteSentAt: g.accountInviteSentAt || null,
+    accountRequestSent:  g.accountRequestSent  || false,
   }));
 
   res.json({
