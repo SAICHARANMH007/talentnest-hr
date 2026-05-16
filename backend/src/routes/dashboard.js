@@ -8,6 +8,7 @@ const Organization    = require('../models/Organization');
 const Job             = require('../models/Job');
 const Candidate       = require('../models/Candidate');
 const Application     = require('../models/Application');
+const ImportedCandidate = require('../models/ImportedCandidate');
 const { authenticate } = require('../middleware/auth');
 const { allowRoles }  = require('../middleware/rbac');
 const asyncHandler    = require('../utils/asyncHandler');
@@ -539,11 +540,11 @@ router.get('/pipeline-health', authenticate, allowRoles('admin', 'super_admin'),
   // Compute stage counts AND avg time-to-hire in one aggregation
   const [stageAgg, timeAgg] = await Promise.all([
     Application.aggregate([
-      { $match: orgF },
+      { $match: { ...orgF, deletedAt: null } },
       { $group: { _id: '$currentStage', count: { $sum: 1 } } },
     ]),
     Application.aggregate([
-      { $match: { ...orgF, currentStage: 'Hired' } },
+      { $match: { ...orgF, currentStage: 'Hired', deletedAt: null } },
       {
         $project: {
           daysToHire: {
@@ -759,7 +760,7 @@ router.get('/trends', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   cutoff.setHours(0, 0, 0, 0);
 
   const raw = await Application.aggregate([
-    { $match: { ...aggF, createdAt: { $gte: cutoff } } },
+    { $match: { ...aggF, createdAt: { $gte: cutoff }, deletedAt: null } },
     { $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ } },
         count: { $sum: 1 },
@@ -1609,16 +1610,38 @@ router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin')
   const { startDate, endDate } = req.query;
   const dateRange = buildDateRange(startDate, endDate);
 
-  const raw = await Application.aggregate([
-    { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
-    { $group: {
-        _id: {
-          $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] }
-        },
-        count: { $sum: 1 }
-    }},
-    { $sort: { count: -1 } },
+  const [appRaw, candRaw, impRaw] = await Promise.all([
+    Application.aggregate([
+      { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
+      { $group: {
+          _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] } },
+          count: { $sum: 1 }
+      }},
+    ]),
+    Candidate.aggregate([
+      { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
+      { $group: {
+          _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] } },
+          count: { $sum: 1 }
+      }},
+    ]),
+    ImportedCandidate.aggregate([
+      { $match: { ...tf, createdAt: dateRange } },
+      { $group: {
+          _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'bulk_import' ] } },
+          count: { $sum: 1 }
+      }},
+    ])
   ]);
+
+  const sourceMap = {};
+  [...appRaw, ...candRaw, ...impRaw].forEach(r => {
+    const src = r._id || 'direct';
+    sourceMap[src] = (sourceMap[src] || 0) + r.count;
+  });
+
+  const raw = Object.entries(sourceMap).map(([src, count]) => ({ _id: src, count }));
+  raw.sort((a, b) => b.count - a.count);
 
   const total = raw.reduce((s, r) => s + r.count, 0);
   const data = raw.map(r => ({
@@ -1859,7 +1882,7 @@ router.get('/dropout-analysis/export', authenticate, allowRoles('admin', 'super_
   const { startDate, endDate } = req.query;
 
   const rejectedApps = await Application.find({
-    ...tf, currentStage: 'Rejected', createdAt: buildDateRange(startDate, endDate),
+    ...tf, currentStage: 'Rejected', createdAt: buildDateRange(startDate, endDate), deletedAt: null,
   }).select('stageHistory rejectionReason').lean();
 
   const dropoutStage = {};
