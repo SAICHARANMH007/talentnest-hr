@@ -148,9 +148,11 @@ const INP = {
 const EyeIcon = ({ visible }) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748B" xmlns="http://www.w3.org/2000/svg" style={{ pointerEvents: 'none' }}>
     {visible ? (
-      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-    ) : (
+      /* Password is visible → show slashed eye (click to hide) */
       <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.39 2.7-3.13 3.44-5.04-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.03 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+    ) : (
+      /* Password is hidden → show open eye (click to reveal) */
+      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
     )}
   </svg>
 );
@@ -407,7 +409,9 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [loading, setLoading]   = useState(false);
   const [toast, setToast]       = useState('');
   const [loginError, setLoginError] = useState('');
-  const [showPw, setShowPw]     = useState(false);
+  const [showPw, setShowPw]           = useState(false);
+  const [confirmPw, setConfirmPw]     = useState('');
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [pending2FA, setPending2FA] = useState(null); // { email }
 
   // ── OTP Login (passwordless) ───────────────────────────────────────────────
@@ -521,6 +525,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
       if (!phone) return setToast('❌ Mobile number is required');
       if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw))
         return setToast('❌ Password must be 8+ characters with 1 uppercase letter and 1 number');
+      if (pw !== confirmPw) return setToast('❌ Passwords do not match');
       if (!agreed) return setToast('❌ Please accept the terms to continue');
     }
     setLoading(true);
@@ -756,7 +761,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
-                  <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#181818' : '#9CA3AF' }}>
+                  <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#FFFFFF' : '#9CA3AF' }}>
                     <option value="">Select…</option>
                     {['0','1','2','3','4','5','6','7','8','9','10','12','15','18','20','25'].map(y => (
                       <option key={y} value={y}>{y === '0' ? 'Fresher' : `${y} yr${y !== '1' ? 's' : ''}`}</option>
@@ -765,7 +770,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 </div>
                 <div>
                   <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>AVAILABILITY</label>
-                  <select value={availability} onChange={e => setAvailability(e.target.value)} style={{ ...INP, cursor: 'pointer', color: availability ? '#181818' : '#9CA3AF' }}>
+                  <select value={availability} onChange={e => setAvailability(e.target.value)} style={{ ...INP, cursor: 'pointer', color: availability ? '#FFFFFF' : '#9CA3AF' }}>
                     <option value="">Select…</option>
                     <option value="immediate">Immediate</option>
                     <option value="15 days">15 Days Notice</option>
@@ -795,6 +800,18 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             {mode === 'register' && <PasswordStrength pw={pw} />}
           </div>
 
+          {mode === 'register' && (
+            <div>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CONFIRM PASSWORD *</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showConfirmPw ? 'text' : 'password'} value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 44, borderColor: confirmPw && pw !== confirmPw ? '#EF4444' : '' }} autoComplete="new-password" />
+                <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, zIndex: 20 }}>
+                  <EyeIcon visible={showConfirmPw} />
+                </button>
+              </div>
+              {confirmPw && pw !== confirmPw && <p style={{ color: '#EF4444', fontSize: 12, marginTop: 5 }}>Passwords do not match</p>}
+            </div>
+          )}
 
           {mode === 'register' && (
             <>

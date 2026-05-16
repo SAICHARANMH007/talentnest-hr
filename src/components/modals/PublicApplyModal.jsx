@@ -16,14 +16,14 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
       const u = sessionStorage.getItem('tn_user');
       if (u) {
         const p = JSON.parse(u);
-        return { name: p.name || '', email: p.email || '', phone: p.phone || '', title: p.title || '', currentCompany: p.currentCompany || '', experience: p.experience != null ? String(p.experience) : '', availability: p.availability || '' };
+        return { name: p.name || '', email: p.email || '', phone: p.phone || '', title: p.title || '', currentCompany: p.currentCompany || '', experience: p.experience != null ? String(p.experience) : '', availability: p.availability || '', industry: p.industry || '', department: p.department || '' };
       }
     } catch {}
     return { name: '', email: '' };
   })();
 
   const questions = job.screeningQuestions || [];
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: '', department: '', coverLetter: '' });
+  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: prefill.industry || '', department: prefill.department || '', coverLetter: '' });
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
