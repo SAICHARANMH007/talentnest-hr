@@ -194,6 +194,7 @@ router.get('/candidates', authenticate, allowRoles('admin','super_admin','recrui
 router.get('/count', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
   const filter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
   if (req.query.role) filter.role = req.query.role;
+  filter.deletedAt = null; // match the same filter as the users list so counts are consistent
   const count = await User.countDocuments(filter);
   res.json({ success: true, count });
 }));

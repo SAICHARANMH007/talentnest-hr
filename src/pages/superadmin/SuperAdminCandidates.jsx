@@ -73,12 +73,16 @@ export default function SuperAdminCandidates() {
     try {
       const [allCount, regCount, appCount] = await Promise.all([
         api.getCandidateRecords({ limit: 1 }),
-        api.getCandidateRecords({ limit: 1, registeredOnly: true }),
+        // Count registered users directly from the User model so the number
+        // matches /app/candidates — using candidate-records with registeredOnly
+        // undercounts because it goes through the Candidate collection and misses
+        // users who registered but have no Candidate record yet.
+        api.getUserCount('candidate'),
         api.getCandidateRecords({ limit: 1, appliedOnly: true }),
       ]);
       setStats({
         total:    allCount?.pagination?.total   ?? 0,
-        platform: regCount?.pagination?.total   ?? 0,
+        platform: regCount?.count ?? regCount?.data?.count ?? 0,
         applied:  appCount?.pagination?.total   ?? 0,
       });
     } catch {}
