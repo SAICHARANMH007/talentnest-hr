@@ -225,6 +225,7 @@ export const platformService = {
   async updatePreBoardingByApplication(appId, data) { return req('PATCH', `/preboarding/by-application/${appId}`, data); },
   async addPreBoardingTask(id, data)         { return req('POST',   `/preboarding/${id}/tasks`, data); },
   async updatePreBoardingTask(id, taskId, data) { return req('PATCH', `/preboarding/${id}/tasks/${taskId}`, data); },
+  async deletePreBoardingDocument(id, taskId)   { return req('DELETE', `/preboarding/${id}/tasks/${taskId}/document`); },
   async sendPreBoardingWelcomeKit(id)        { return req('POST',   `/preboarding/${id}/send-welcome-kit`, {}); },
   async uploadPreBoardingDocument(id, taskId, file) {
     // Convert file to base64 FormData approach — use FileReader to get base64

@@ -101,11 +101,37 @@ export default function CandidateOnboarding({ user }) {
     } catch (e) { setToast('❌ ' + e.message); }
   };
 
-  const downloadFile = (fileUrl, fileName) => {
-    const a = document.createElement('a');
-    a.href = fileUrl;
-    a.download = fileName || 'document';
-    a.click();
+  const viewDoc = (fileUrl, fileName) => {
+    // fileUrl is a base64 data URI — convert to Blob URL so browser can display it inline
+    try {
+      const [meta, b64] = fileUrl.split(',');
+      const mime = meta.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+      const bytes = atob(b64);
+      const buf = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+      const blob = new Blob([buf], { type: mime });
+      const url  = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      // Revoke after 60s so memory is freed
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      // Fallback: open data URI directly
+      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const [deleting, setDeleting] = useState({});
+
+  const deleteDoc = async (taskId) => {
+    if (!pb || !window.confirm('Remove this uploaded document?')) return;
+    setDeleting(p => ({ ...p, [taskId]: true }));
+    try {
+      const r = await api.deletePreBoardingDocument(pb._id || pb.id, taskId);
+      const updated = r?.data || r;
+      setPbList(prev => prev.map((item, i) => i === pbIndex ? updated : item));
+      setToast('✅ Document removed.');
+    } catch (e) { setToast('❌ ' + (e.message || 'Could not remove document.')); }
+    setDeleting(p => ({ ...p, [taskId]: false }));
   };
 
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:80 }}><Spinner size={36} /></div>;
@@ -331,9 +357,20 @@ export default function CandidateOnboarding({ user }) {
                         </>
                       )}
                       {task.fileUrl && (
-                        <button onClick={()=>downloadFile(task.fileUrl,task.fileName)} style={{ ...btnG, padding:'6px 12px', fontSize:12 }}>
-                          ⬇️ View
-                        </button>
+                        <>
+                          <button onClick={()=>viewDoc(task.fileUrl, task.fileName)} style={{ ...btnG, padding:'6px 12px', fontSize:12 }}>
+                            👁 View
+                          </button>
+                          {vs !== 'verified' && (
+                            <button
+                              onClick={()=>deleteDoc(task._id)}
+                              disabled={deleting[task._id]}
+                              style={{ background:'rgba(186,5,23,0.08)', border:'1px solid rgba(186,5,23,0.25)', borderRadius:8, color:'#BA0517', fontWeight:600, fontSize:12, padding:'6px 12px', cursor:'pointer' }}
+                            >
+                              {deleting[task._id] ? '…' : '🗑 Delete'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

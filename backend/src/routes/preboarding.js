@@ -281,6 +281,35 @@ router.patch('/:id/tasks/:taskId', authenticate, asyncHandler(async (req, res) =
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
 }));
 
+// ── Delete (clear) an uploaded document — candidate removes their own upload ──
+router.delete('/:id/tasks/:taskId/document', authenticate, asyncHandler(async (req, res) => {
+  const pb = await PreBoarding.findOne({ _id: req.params.id, 'tasks._id': req.params.taskId });
+  if (!pb) throw new AppError('Task not found.', 404);
+
+  // Only the candidate who owns the record (or HR) can remove
+  const isHR = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const isOwner = pb.candidateEmail && pb.candidateEmail.toLowerCase() === req.user.email?.toLowerCase();
+  if (!isHR && !isOwner) throw new AppError('Not allowed.', 403);
+
+  const record = await PreBoarding.findOneAndUpdate(
+    { _id: req.params.id, 'tasks._id': req.params.taskId },
+    {
+      $set: {
+        'tasks.$.fileUrl'       : null,
+        'tasks.$.fileName'      : null,
+        'tasks.$.fileSize'      : null,
+        'tasks.$.fileUploadedAt': null,
+        'tasks.$.verifyStatus'  : 'not_uploaded',
+        'tasks.$.verifyNotes'   : '',
+        'tasks.$.completedAt'   : null,
+      },
+    },
+    { new: true }
+  ).lean();
+
+  res.json({ success: true, data: { ...record, id: record._id.toString() } });
+}));
+
 // ── Upload document for a task (Candidate) ────────────────────────────────────
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
