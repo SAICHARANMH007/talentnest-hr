@@ -245,14 +245,6 @@ export default function AdminAnalytics({ user, onNavigate }) {
   const [refreshing, setRefreshing] = useState(false);
   const unwrap = (r) => Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
 
-  // Force-refresh: wipe client cache and reload all data sources fresh
-  const forceRefresh = useCallback(() => {
-    setRefreshing(true);
-    clearCache(); // wipes the 10s client-side GET cache for every endpoint
-    load();
-    setTimeout(() => setRefreshing(false), 3000);
-  }, [load]);
-
   // ── Core data load ────────────────────────────────────────────────────────
   const load = useCallback(() => {
     setLoading(true);
@@ -330,6 +322,14 @@ export default function AdminAnalytics({ user, onNavigate }) {
   }, [period, platformWide]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Force-refresh: wipe client cache and reload all data sources fresh
+  const forceRefresh = useCallback(() => {
+    setRefreshing(true);
+    clearCache(); // wipes the 10s client-side GET cache for every endpoint
+    load();
+    setTimeout(() => setRefreshing(false), 3000);
+  }, [load]);
 
   // ── Advanced section fetchers (rebuild when dates change) ─────────────────
   const dateParams = useMemo(
