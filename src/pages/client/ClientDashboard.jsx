@@ -64,7 +64,7 @@ export default function ClientDashboard({ user }) {
             <KpiCard icon="⭐" label="Shortlisted"        value={shortlisted.length} color="#7C3AED" />
             <KpiCard icon="📄" label="Offers Extended"    value={offers.length}     color="#059669" />
             <KpiCard icon="🎊" label="Hired"              value={hired.length}      color="#2E844A" trend={hired.length > 0 ? 100 : 0} />
-            <KpiCard icon="🤖" label="Avg AI Score"       value={avgScore > 0 ? `${Math.round(avgScore)}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
+            <KpiCard icon="🎯" label="Avg Match Score"     value={avgScore > 0 ? `${Math.round(avgScore)}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>

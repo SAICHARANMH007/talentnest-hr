@@ -106,7 +106,7 @@ router.get('/thread/:userId', authenticate, asyncHandler(async (req, res) => {
       { fromUserId: myId,      toUserId: partnerId },
       { fromUserId: partnerId, toUserId: myId      },
     ]
-  }).sort({ createdAt: 1 }).limit(10000000).lean();
+  }).sort({ createdAt: 1 }).limit(2000).lean();
 
   // Mark as read
   await DirectMessage.updateMany(
@@ -121,7 +121,7 @@ router.get('/thread/:userId', authenticate, asyncHandler(async (req, res) => {
 router.get('/inbox', authenticate, asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const msgs = await DirectMessage.find({ toUserId: userId })
-    .sort({ createdAt: -1 }).limit(10000000).lean();
+    .sort({ createdAt: -1 }).limit(500).lean();
   await DirectMessage.updateMany(
     { toUserId: userId, readAt: null },
     { $set: { readAt: new Date() } }

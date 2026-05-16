@@ -99,7 +99,7 @@ export default function HiringManagerDashboard({ user }) {
         <KpiCard icon="📅" label="In Interview"        value={inInterview}    color="#F59E0B" />
         <KpiCard icon="🤝" label="Offers Extended"     value={offerCount}     color="#059669" />
         <KpiCard icon="🎊" label="Hired"               value={hiredCount}     color="#2E844A" />
-        <KpiCard icon="🤖" label="Avg AI Score"        value={avgScore > 0 ? `${avgScore}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
+        <KpiCard icon="🎯" label="Avg Match Score"      value={avgScore > 0 ? `${avgScore}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
       </div>
 
       {/* Two-col: stage donut + upcoming interviews */}
@@ -173,7 +173,7 @@ export default function HiringManagerDashboard({ user }) {
         </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ ...inp, width: 160 }}>
           <option value="recent">Sort: Recent</option>
-          <option value="score">Sort: AI Score</option>
+          <option value="score">Sort: Match Score</option>
           <option value="name">Sort: Name A–Z</option>
         </select>
         <span style={{ marginLeft: 'auto', color: '#706E6B', fontSize: 12 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
@@ -192,7 +192,7 @@ export default function HiringManagerDashboard({ user }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Candidate', 'Job', 'Stage', 'AI Score', 'Last Updated'].map(h => (
+                {['Candidate', 'Job', 'Stage', 'Match Score', 'Last Updated'].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid #F3F2F2' }}>
                     {h}
                   </th>

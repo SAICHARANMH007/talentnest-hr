@@ -197,7 +197,7 @@ router.post('/prefill', asyncHandler(async (req, res) => {
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
-          title, currentCompany, experience, availability,
+          title, currentCompany, experience, availability, industry, department,
           geoLat, geoLng, geoAccuracy, geoCity, geoCountry, geoDeclined } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
@@ -220,6 +220,8 @@ router.post('/public', asyncHandler(async (req, res) => {
       ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
       ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
       ...(availability   ? { availability }                        : {}),
+      ...(industry       ? { industry }                            : {}),
+      ...(department     ? { department }                          : {}),
     });
   } else {
     // Update fields that are newly provided or missing on existing candidate
@@ -229,6 +231,8 @@ router.post('/public', asyncHandler(async (req, res) => {
     if (!candidate.currentCompany && currentCompany?.trim()) updates.currentCompany = currentCompany.trim();
     if ((candidate.experience == null) && experience !== '' && experience !== undefined) updates.experience = Number(experience);
     if (!candidate.availability && availability)         updates.availability   = availability;
+    if (industry)                                          updates.industry       = industry;
+    if (department)                                        updates.department     = department;
     if (Object.keys(updates).length > 0) await Candidate.findByIdAndUpdate(candidate._id, { $set: updates });
     candidate = { ...candidate.toObject?.() || candidate, ...updates };
   }
@@ -887,6 +891,20 @@ router.patch('/:id/stage', ...guard,
       session.endSession();
     }
 
+    // Sync candidateStatus on the Candidate record so recruiters see up-to-date status
+    // without having to manually update it. Only update for meaningful stages.
+    const STAGE_TO_CANDIDATE_STATUS = {
+      'Shortlisted'      : 'Shortlisted',
+      'Interview Round 1': 'In Interview',
+      'Interview Round 2': 'In Final Interview',
+      'Offer'            : 'Offer Extended',
+      'Hired'            : 'Placed',
+    };
+    const newCandidateStatus = STAGE_TO_CANDIDATE_STATUS[stage];
+    if (newCandidateStatus) {
+      Candidate.findByIdAndUpdate(app.candidateId, { $set: { candidateStatus: newCandidateStatus } }).catch(() => {});
+    }
+
     // Send stage-change email to candidate
     const candidate = await Candidate.findById(app.candidateId).select('name email').lean();
     if (candidate?.email) {
@@ -1029,12 +1047,12 @@ router.patch('/:id/stage', ...guard,
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 
     // Notify all super_admins about significant stage movements (non-blocking)
-    const significantStages = ['shortlisted', 'offer_extended', 'selected', 'rejected'];
+    const significantStages = ['Shortlisted', 'Offer', 'Hired', 'Rejected'];
     if (significantStages.includes(stage)) {
       const cDoc = await Candidate.findById(app.candidateId).select('name').lean().catch(() => null);
       const jDoc = await Job.findById(app.jobId).select('title').lean().catch(() => null);
       if (cDoc && jDoc) {
-        const stageLabels = { shortlisted: 'Shortlisted', offer_extended: 'Offer Extended', selected: 'Hired 🎉', rejected: 'Rejected' };
+        const stageLabels = { Shortlisted: 'Shortlisted', Offer: 'Offer Extended', Hired: 'Hired 🎉', Rejected: 'Rejected' };
         notifyAllSuperAdmins(
           'stage_update',
           `${stageLabels[stage] || stage}: ${cDoc.name}`,

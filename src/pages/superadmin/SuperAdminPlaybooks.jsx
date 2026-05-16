@@ -1593,8 +1593,8 @@ ${heroHtml('🔍','SYSTEM AUDIT REPORT','TalentNest HR — Full System Audit','M
       <tr><th>Role</th><th>Landing Page</th><th>Nav Items</th><th>Status</th></tr>
       <tr><td>super_admin</td><td>analytics</td><td>Overview, Platform, Organisations, Billing, Security, Permissions, Import, Candidates, Recruiters, Admins, All Jobs, Assessments, Outreach, Contact, Mail Queue, 📚 Playbooks, Profile</td><td><span class="badge badge-green">✓ 17 items</span></td></tr>
       <tr><td>admin</td><td>analytics</td><td>Overview, Job Approvals, Add Candidate, Candidates, Outreach, Assessments, Contact, Mail Queue, Assignments, Recruiters, All Jobs, Org Settings, Billing, Profile</td><td><span class="badge badge-green">✓ 14 items</span></td></tr>
-      <tr><td>recruiter</td><td>dashboard</td><td>Dashboard, My Jobs, Add Candidate, My Candidates, Assigned to Me, AI Match, Pipeline, Assessments, Outreach, Mail Queue, Profile</td><td><span class="badge badge-green">✓ 11 items</span></td></tr>
-      <tr><td>candidate</td><td>dashboard</td><td>Dashboard, Explore Jobs, AI Job Search, My Applications, My Profile</td><td><span class="badge badge-green">✓ 5 items</span></td></tr>
+      <tr><td>recruiter</td><td>dashboard</td><td>Dashboard, My Jobs, Add Candidate, My Candidates, Assigned to Me, Talent Match, Pipeline, Assessments, Outreach, Mail Queue, Profile</td><td><span class="badge badge-green">✓ 11 items</span></td></tr>
+      <tr><td>candidate</td><td>dashboard</td><td>Dashboard, Explore Jobs, Smart Job Search, My Applications, My Profile</td><td><span class="badge badge-green">✓ 5 items</span></td></tr>
     </table>
   </div>
 
@@ -2125,7 +2125,7 @@ cd backend && npm install  <span class="c"># backend deps</span></pre></div></di
     <h4>🟢 Candidate Dashboard</h4>
     <ul class="check">
       <li>GET /api/applications?candidateId=me → My Applications list</li>
-      <li>GET /api/jobs?status=active → AI-matched job suggestions</li>
+      <li>GET /api/jobs?status=active → Smart-matched job suggestions</li>
       <li>GET /api/invites/mine → Pending recruiter invites</li>
       <li>GET /api/assessments/candidate/my → My Assessments</li>
       <li>Drills: click application → ApplicationDetailModal</li>

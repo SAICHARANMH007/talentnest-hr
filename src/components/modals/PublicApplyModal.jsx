@@ -5,7 +5,7 @@ import Spinner from '../ui/Spinner.jsx';
 import Field from '../ui/Field.jsx';
 import Modal from '../ui/Modal.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
-
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 import { getCompanyCareerUrl } from '../../utils/url.js';
 
 export default function PublicApplyModal({ job, orgName, onClose }) {
@@ -23,7 +23,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
   })();
 
   const questions = job.screeningQuestions || [];
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', coverLetter: '' });
+  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: '', department: '', coverLetter: '' });
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -156,6 +156,8 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
     if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
     if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
     if (!form.availability)           { setError('Please select your availability.'); return; }
+    if (!form.industry)               { setError('Please select your industry.'); return; }
+    if (!form.department)             { setError('Please select your department.'); return; }
     
     for (let i = 0; i < questions.length; i++) {
       if (questions[i].required && !answers[i]?.trim()) {
@@ -421,6 +423,22 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
               <option value="">Select…</option>
               {['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
+          <div>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Industry *</label>
+            <select value={form.industry} onChange={e => sf('industry', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border:'1px solid #DDDBDA', background:'#fff', fontSize:'16px' }}>
+              <option value="">— Select industry —</option>
+              {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Department *</label>
+            <select value={form.department} onChange={e => sf('department', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border:'1px solid #DDDBDA', background:'#fff', fontSize:'16px' }}>
+              <option value="">— Select department —</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
         </div>

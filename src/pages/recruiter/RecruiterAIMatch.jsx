@@ -83,8 +83,8 @@ export default function RecruiterAIMatch({ user }) {
   return (
     <div style={{ paddingBottom: 60 }}>
       <Toast msg={toast} onClose={() => setToast("")} />
-      <PageHeader 
-        title="AI-Powered Talent Matching" 
+      <PageHeader
+        title="Talent Match"
         subtitle="Our high-precision matching engine finds the best candidates based on skills, experience, and role alignment."
       />
 
@@ -123,7 +123,7 @@ export default function RecruiterAIMatch({ user }) {
         {!jobsLoading && jobs.length === 0 && (
           <div style={{ marginTop: 16, padding: "16px", background: "#fdf4f4", borderRadius: 12, border: "1px solid #facaca" }}>
             <p style={{ color: "#c23934", fontSize: 13, margin: 0 }}>
-              <b>No active jobs found.</b> Please post a job first to enable AI matching.
+              <b>No active jobs found.</b> Please post a job first to run talent matching.
             </p>
           </div>
         )}

@@ -156,8 +156,16 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     setChangingStage(true);
     try {
       await api.updateStage(appId, newStage);
+      // Re-fetch the application to get the fresh stageHistory from backend
+      const fresh = await api.getApplication(String(appId)).catch(() => null);
+      const freshHistory = fresh?.stageHistory || fresh?.data?.stageHistory;
       setCurrentStage(newStage);
-      setApp(prev => ({ ...prev, stage: newStage }));
+      setApp(prev => ({ ...prev, stage: newStage, stageHistory: freshHistory || prev.stageHistory }));
+      setAllFetchedApps(prev => prev.map(x =>
+        String(x.id || x._id) === String(appId)
+          ? { ...x, stage: newStage, stageHistory: freshHistory || x.stageHistory }
+          : x
+      ));
       setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
       onUpdated?.();
       if (newStage === 'selected') {
@@ -361,7 +369,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                               </div>
                               <Badge label={SM[appStage]?.label || appStage} color={SM[appStage]?.color || '#64748B'} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                               <select
                                 value={appStage}
                                 disabled={changingStage}
@@ -370,7 +378,14 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                   setChangingStage(true);
                                   try {
                                     await api.updateStage(appId, newStage);
-                                    setAllFetchedApps(prev => prev.map(x => String(x.id || x._id) === appId ? { ...x, stage: newStage } : x));
+                                    // Re-fetch to get fresh stageHistory
+                                    const fresh = await api.getApplication(appId).catch(() => null);
+                                    const freshHistory = fresh?.stageHistory || fresh?.data?.stageHistory;
+                                    setAllFetchedApps(prev => prev.map(x =>
+                                      String(x.id || x._id) === appId
+                                        ? { ...x, stage: newStage, stageHistory: freshHistory || x.stageHistory }
+                                        : x
+                                    ));
                                     if (appId === String(app?.id || app?._id)) setCurrentStage(newStage);
                                     setToast(`✅ Stage updated`);
                                     if (newStage === 'selected') setHiredModal({ appId, candidateName: form.name, jobTitle: a.jobTitle || a.job?.title });
@@ -380,8 +395,8 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                 style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid #DDDBDA`, fontSize: 11, fontWeight: 700 }}>
                                 {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
                               </select>
-                              <button onClick={() => setApp(a)} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>View History →</button>
                             </div>
+                            <StageHistory history={a.stageHistory} />
                           </div>
                         );
                       })}
