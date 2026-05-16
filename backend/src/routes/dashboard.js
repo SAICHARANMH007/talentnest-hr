@@ -2181,4 +2181,157 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
   });
 }));
 
+// ── GET /api/dashboard/smart-alerts ─────────────────────────────────────────
+// Returns actionable alerts: stale jobs, stuck candidates, pending offers
+router.get('/smart-alerts', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const OfferLetter = require('../models/OfferLetter');
+  const orgF   = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const del    = { deletedAt: null };
+  const now    = Date.now();
+  const DAY    = 86400000;
+
+  const staleJobDays      = parseInt(req.query.staleJobDays)      || 30;
+  const stuckCandDays     = parseInt(req.query.stuckCandDays)     || 7;
+  const pendingOfferDays  = parseInt(req.query.pendingOfferDays)  || 3;
+
+  const [staleJobs, stuckApps, pendingOffers] = await Promise.all([
+    // Jobs active for N+ days with 0 hires
+    Job.find({ ...orgF, ...del, status: 'active', hiredCount: { $in: [0, null] },
+      createdAt: { $lt: new Date(now - staleJobDays * DAY) } })
+      .select('title createdAt tenantId assignedRecruiters companyName company')
+      .populate('assignedRecruiters', 'name')
+      .limit(20).lean(),
+
+    // Applications NOT in terminal stages where last stage move was N+ days ago
+    Application.find({ ...orgF, ...del,
+      currentStage: { $nin: ['Hired', 'Rejected'] },
+      'stageHistory.0': { $exists: true },
+    })
+      .select('currentStage stageHistory jobId candidateId tenantId')
+      .populate('jobId', 'title companyName company')
+      .populate('candidateId', 'name')
+      .limit(200).lean(),
+
+    // Offer letters in draft/sent for N+ days
+    OfferLetter.find({ ...orgF, status: { $in: ['draft', 'sent'] },
+      createdAt: { $lt: new Date(now - pendingOfferDays * DAY) } })
+      .select('status createdAt candidateId applicationId')
+      .populate('candidateId', 'name email')
+      .limit(20).lean(),
+  ]);
+
+  // Filter stuck apps: last stageHistory entry older than N days
+  const stuck = stuckApps.filter(a => {
+    const last = a.stageHistory?.[a.stageHistory.length - 1];
+    return last && (now - new Date(last.movedAt).getTime()) > stuckCandDays * DAY;
+  }).slice(0, 20).map(a => {
+    const last = a.stageHistory?.[a.stageHistory.length - 1];
+    const daysStuck = Math.floor((now - new Date(last.movedAt).getTime()) / DAY);
+    return { id: a._id, candidateName: a.candidateId?.name || '—', jobTitle: a.jobId?.title || '—', stage: a.currentStage, daysStuck };
+  });
+
+  const staleJobsMapped = staleJobs.map(j => ({
+    id: j._id, title: j.title,
+    company: j.companyName || j.company || '—',
+    daysOpen: Math.floor((now - new Date(j.createdAt).getTime()) / DAY),
+    recruiters: (j.assignedRecruiters || []).map(r => r.name).filter(Boolean),
+  }));
+
+  const pendingOffersMapped = pendingOffers.map(o => ({
+    id: o._id, candidateName: o.candidateId?.name || '—',
+    status: o.status,
+    daysPending: Math.floor((now - new Date(o.createdAt).getTime()) / DAY),
+  }));
+
+  res.json({ success: true, data: { staleJobs: staleJobsMapped, stuckCandidates: stuck, pendingOffers: pendingOffersMapped } });
+}));
+
+// ── GET /api/dashboard/stage-time ───────────────────────────────────────────
+// Average days candidates spend in each stage (bottleneck detection)
+router.get('/stage-time', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+  const apps = await Application.find({ ...orgF, deletedAt: null, 'stageHistory.1': { $exists: true } })
+    .select('stageHistory').limit(2000).lean();
+
+  const stageTimes = {};
+  for (const app of apps) {
+    const hist = app.stageHistory || [];
+    for (let i = 0; i < hist.length - 1; i++) {
+      const stage = hist[i].stage;
+      const from  = new Date(hist[i].movedAt).getTime();
+      const to    = new Date(hist[i + 1].movedAt).getTime();
+      if (!from || !to || to <= from) continue;
+      const days = (to - from) / 86400000;
+      if (!stageTimes[stage]) stageTimes[stage] = [];
+      stageTimes[stage].push(days);
+    }
+  }
+
+  const result = Object.entries(stageTimes).map(([stage, vals]) => ({
+    stage,
+    avgDays: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10,
+    count: vals.length,
+  })).sort((a, b) => b.avgDays - a.avgDays);
+
+  res.json({ success: true, data: result });
+}));
+
+// ── GET /api/dashboard/offer-analytics ──────────────────────────────────────
+// Offer letter funnel: generated, sent, signed, declined
+router.get('/offer-analytics', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const OfferLetter = require('../models/OfferLetter');
+  const orgF = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+  const [total, sent, signed, declined, avgDays] = await Promise.all([
+    OfferLetter.countDocuments({ ...orgF }),
+    OfferLetter.countDocuments({ ...orgF, status: 'sent' }),
+    OfferLetter.countDocuments({ ...orgF, status: 'signed' }),
+    OfferLetter.countDocuments({ ...orgF, status: 'declined' }),
+    OfferLetter.aggregate([
+      { $match: { ...orgF, status: 'signed', signedAt: { $exists: true }, createdAt: { $exists: true } } },
+      { $project: { days: { $divide: [{ $subtract: ['$signedAt', '$createdAt'] }, 86400000] } } },
+      { $group: { _id: null, avg: { $avg: '$days' } } },
+    ]),
+  ]);
+
+  const acceptanceRate = (sent + signed) > 0 ? Math.round((signed / (sent + signed + declined)) * 100) : 0;
+  res.json({ success: true, data: {
+    total, sent, signed, declined,
+    pending: sent,
+    acceptanceRate,
+    avgDaysToSign: Math.round((avgDays[0]?.avg || 0) * 10) / 10,
+  }});
+}));
+
+// ── GET /api/dashboard/source-effectiveness ──────────────────────────────────
+// Per source: applications → shortlisted → hired counts and conversion rates
+router.get('/source-effectiveness', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const aggF = req.user.role === 'super_admin' ? {} : tenantFilter(req);
+  const del  = { deletedAt: null };
+
+  const rows = await Application.aggregate([
+    { $match: { ...aggF, ...del } },
+    { $group: {
+      _id          : '$source',
+      total        : { $sum: 1 },
+      shortlisted  : { $sum: { $cond: [{ $in: ['$currentStage', ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired']] }, 1, 0] } },
+      hired        : { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } },
+      rejected     : { $sum: { $cond: [{ $eq: ['$currentStage', 'Rejected'] }, 1, 0] } },
+    }},
+    { $sort: { total: -1 } },
+  ]);
+
+  const data = rows.map(r => ({
+    source          : r._id || 'direct',
+    applications    : r.total,
+    shortlisted     : r.shortlisted,
+    hired           : r.hired,
+    rejected        : r.rejected,
+    shortlistRate   : r.total > 0 ? Math.round((r.shortlisted / r.total) * 100) : 0,
+    hireRate        : r.total > 0 ? Math.round((r.hired / r.total) * 100) : 0,
+  }));
+
+  res.json({ success: true, data });
+}));
+
 module.exports = router;

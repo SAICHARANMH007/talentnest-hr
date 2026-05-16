@@ -118,6 +118,9 @@ export const platformService = {
 
   // Audit logs (super_admin)
   async getAuditLogs(qs)               { return req('GET', `/platform/audit-logs${qs ? `?${qs}` : ''}`); },
+  async getPlatformRevenue()           { return req('GET', '/platform/revenue'); },
+  async getOrgHealth()                 { return req('GET', '/platform/org-health'); },
+  async broadcastAnnouncement(data)    { return req('POST', '/platform/broadcast', data); },
 
   // Candidate requests
   async getCandidateRequests(qs)              { return req('GET', `/candidate-requests${qs ? `?${qs}` : ''}`); },

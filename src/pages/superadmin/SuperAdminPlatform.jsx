@@ -22,6 +22,10 @@ export default function SuperAdminPlatform({ onNavigate }) {
   const [deduping, setDeduping] = useState(false);
   const [dedupResult, setDedupResult] = useState('');
   const [toast, setToast] = useState('');
+  const [revenue,   setRevenue]   = useState(null);
+  const [orgHealth, setOrgHealth] = useState([]);
+  const [broadcast, setBroadcast] = useState({ subject: '', message: '', sending: false, result: null });
+  const [showBroadcast, setShowBroadcast] = useState(false);
 
   const runDedup = async () => {
     setDeduping(true); setDedupResult('');
@@ -78,6 +82,28 @@ export default function SuperAdminPlatform({ onNavigate }) {
       setUsers([]); 
     }).finally(() => setLoading(false));
   }, []);
+
+  // Load revenue and org health separately so they don't block the main page
+  useEffect(() => {
+    api.getPlatformRevenue().then(r => setRevenue(r?.data || null)).catch(() => {});
+    api.getOrgHealth().then(r => setOrgHealth(Array.isArray(r?.data) ? r.data : [])).catch(() => {});
+  }, []);
+
+  const sendBroadcast = async () => {
+    if (!broadcast.subject.trim() || !broadcast.message.trim()) {
+      setToast('❌ Subject and message are required.');
+      return;
+    }
+    setBroadcast(b => ({ ...b, sending: true, result: null }));
+    try {
+      const r = await api.broadcastAnnouncement({ subject: broadcast.subject, message: broadcast.message });
+      setBroadcast(b => ({ ...b, sending: false, result: r?.data, subject: '', message: '' }));
+      setToast(`✅ Sent to ${r?.data?.sent || 0} admins`);
+    } catch (e) {
+      setBroadcast(b => ({ ...b, sending: false }));
+      setToast('❌ ' + e.message);
+    }
+  };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}><Spinner /></div>;
 
@@ -300,7 +326,7 @@ export default function SuperAdminPlatform({ onNavigate }) {
       </div>
 
       {/* Quick Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 160px),1fr))', gap: 16, marginTop: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 160px),1fr))', gap: 16, marginTop: 20, marginBottom: 28 }}>
         {[
           { label: 'Active Orgs', value: orgs.filter(o => o.status === 'active').length, color: '#10b981', trend: 12 },
           { label: 'Trial Orgs', value: orgs.filter(o => o.plan === 'trial' || o.status === 'trial').length, color: '#F59E0B', trend: -5 },
@@ -309,6 +335,200 @@ export default function SuperAdminPlatform({ onNavigate }) {
         ].map(item => (
           <TrendCard key={item.label} {...item} variant="glass" icon="⚡" />
         ))}
+      </div>
+
+      {/* ── REVENUE ANALYTICS ─────────────────────────────────────────────────── */}
+      <div style={{ ...glass, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#10B981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>💰</div>
+          <div>
+            <h3 style={{ fontWeight: 700, color: '#0A1628', fontSize: 16, margin: 0 }}>Revenue Analytics</h3>
+            <p style={{ color: '#64748B', fontSize: 12, margin: 0 }}>Platform-wide payment and plan revenue</p>
+          </div>
+        </div>
+        {revenue ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'Total Revenue', value: `₹${(revenue.totalRevenue/100000).toFixed(1)}L`, color: '#10B981' },
+                { label: 'This Month (MRR)', value: `₹${(revenue.mrr/100000).toFixed(1)}L`, color: '#0176D3' },
+                { label: 'Total Payments', value: revenue.totalPayments, color: '#7c3aed' },
+                { label: 'Avg Payment', value: `₹${(revenue.avgPayment/100).toFixed(0)}`, color: '#F59E0B' },
+              ].map(k => (
+                <div key={k.label} style={{ background: `${k.color}0d`, border: `1px solid ${k.color}30`, borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: k.color }}>{k.value}</div>
+                  <div style={{ fontSize: 11, color: '#706E6B', marginTop: 4, fontWeight: 600 }}>{k.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* Plan Distribution */}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>Plan Distribution</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Object.entries(revenue.planDist || {}).map(([plan, count]) => (
+                  <div key={plan} style={{ background: (PLAN_COLORS[plan] || '#64748b') + '15', border: `1px solid ${PLAN_COLORS[plan] || '#64748b'}40`, borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: PLAN_COLORS[plan] || '#64748b' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: PLAN_COLORS[plan] || '#64748b' }}>{plan.toUpperCase()}</span>
+                    <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{count} orgs</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Monthly Trend */}
+            {revenue.monthlyTrend?.length > 0 && (
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>6-Month Revenue Trend</p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 80 }}>
+                  {revenue.monthlyTrend.map((m, i) => {
+                    const maxVal = Math.max(...revenue.monthlyTrend.map(x => x.value), 1);
+                    const h = Math.max(4, (m.value / maxVal) * 70);
+                    return (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: '100%', height: h, background: 'linear-gradient(180deg,#10B981,#059669)', borderRadius: '4px 4px 0 0', minHeight: 4 }} title={`₹${m.value}`} />
+                        <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 600 }}>{m.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: 32, color: '#94A3B8' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
+            <p style={{ margin: 0, fontSize: 13 }}>No payment records yet. Revenue data will appear here once payments are processed.</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── ORGANIZATION HEALTH ──────────────────────────────────────────────── */}
+      <div style={{ ...glass, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🏥</div>
+            <div>
+              <h3 style={{ fontWeight: 700, color: '#0A1628', fontSize: 16, margin: 0 }}>Organization Health Scores</h3>
+              <p style={{ color: '#64748B', fontSize: 12, margin: 0 }}>At-risk orgs sorted first — act before they churn</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 600 }}>
+            <span style={{ color: '#EF4444' }}>🔴 High Risk</span>
+            <span style={{ color: '#F59E0B' }}>🟡 Watch</span>
+            <span style={{ color: '#10B981' }}>🟢 Healthy</span>
+          </div>
+        </div>
+        {orgHealth.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC' }}>
+                  {['Organisation', 'Plan', 'Health', 'Active Jobs', 'Applications', 'Recruiters', 'Last Login'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {orgHealth.slice(0, 20).map(org => {
+                  const riskColor = org.risk === 'high' ? '#EF4444' : org.risk === 'medium' ? '#F59E0B' : '#10B981';
+                  const riskIcon  = org.risk === 'high' ? '🔴' : org.risk === 'medium' ? '🟡' : '🟢';
+                  return (
+                    <tr key={org.id} style={{ borderBottom: '1px solid #F1F5F9' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}>
+                      <td style={{ padding: '11px 12px', fontSize: 13, fontWeight: 600, color: '#0A1628' }}>{org.name}</td>
+                      <td style={{ padding: '11px 12px' }}>
+                        <span style={{ background: (PLAN_COLORS[org.plan] || '#64748b') + '20', color: PLAN_COLORS[org.plan] || '#64748b', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>
+                          {(org.plan || 'free').toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '11px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{riskIcon}</span>
+                          <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, minWidth: 60 }}>
+                            <div style={{ height: '100%', width: `${org.score}%`, background: riskColor, borderRadius: 3 }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: riskColor, minWidth: 28 }}>{org.score}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '11px 12px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{org.activeJobs}</td>
+                      <td style={{ padding: '11px 12px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{org.totalApps}</td>
+                      <td style={{ padding: '11px 12px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{org.recruiters}</td>
+                      <td style={{ padding: '11px 12px', fontSize: 12, color: org.daysSinceLogin > 30 ? '#EF4444' : org.daysSinceLogin > 14 ? '#F59E0B' : '#10B981', fontWeight: 600 }}>
+                        {org.daysSinceLogin >= 999 ? 'Never' : `${org.daysSinceLogin}d ago`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>Score: 0-100 based on jobs posted, applications received, recruiter logins, and activity recency.</p>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: 32, color: '#94A3B8' }}>
+            <Spinner size={24} />
+            <p style={{ margin: '12px 0 0', fontSize: 13 }}>Loading org health data…</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── BROADCAST ANNOUNCEMENT ───────────────────────────────────────────── */}
+      <div style={{ ...glass, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showBroadcast ? 20 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📢</div>
+            <div>
+              <h3 style={{ fontWeight: 700, color: '#0A1628', fontSize: 16, margin: 0 }}>Broadcast Announcement</h3>
+              <p style={{ color: '#64748B', fontSize: 12, margin: 0 }}>Send an email to all org admins on the platform</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowBroadcast(v => !v)}
+            style={{ background: showBroadcast ? '#F1F5F9' : 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: showBroadcast ? '#374151' : '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+          >
+            {showBroadcast ? 'Cancel' : '📢 Compose'}
+          </button>
+        </div>
+        {showBroadcast && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Subject *</label>
+              <input
+                value={broadcast.subject}
+                onChange={e => setBroadcast(b => ({ ...b, subject: e.target.value }))}
+                placeholder="e.g. Platform update: New features available"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Message *</label>
+              <textarea
+                value={broadcast.message}
+                onChange={e => setBroadcast(b => ({ ...b, message: e.target.value }))}
+                placeholder="Write your announcement here…"
+                rows={6}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>This will be sent as a branded email to all active org admins ({orgs.filter(o => o.status === 'active').length} orgs).</p>
+            </div>
+            {broadcast.result && (
+              <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#166534', fontWeight: 600 }}>
+                ✅ Sent to {broadcast.result.sent} admins · {broadcast.result.failed} failed · {broadcast.result.total} total
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={sendBroadcast}
+                disabled={broadcast.sending}
+                style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontWeight: 700, fontSize: 14, cursor: broadcast.sending ? 'not-allowed' : 'pointer', opacity: broadcast.sending ? 0.7 : 1 }}
+              >
+                {broadcast.sending ? '⏳ Sending…' : '📢 Send to All Admins'}
+              </button>
+              <button onClick={() => setShowBroadcast(false)} style={{ background: '#F1F5F9', color: '#374151', border: 'none', borderRadius: 10, padding: '12px 20px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
     </div>

@@ -47,6 +47,7 @@ const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAsses
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics.jsx'));
+const AdminInsights  = lazy(() => import('./pages/admin/AdminInsights.jsx'));
 const OrgSettings = lazy(() => import('./pages/admin/OrgSettings.jsx'));
 const AdminJobApproval = lazy(() => import('./pages/admin/AdminJobApproval.jsx'));
 const OutreachTracker = lazy(() => import('./pages/admin/OutreachTracker.jsx'));
@@ -581,6 +582,7 @@ export default function App() {
         {(rk === 'admin' || rk === 'superadmin') && (
           <>
             <Route path="analytics" element={<AdminAnalytics user={user} onNavigate={(p) => navigate(`/app/${p}`)} />} />
+            <Route path="insights" element={<AdminInsights user={user} />} />
             <Route path="jobs/:jobId/distribution" element={<Suspense fallback={<PageLoader />}><JobDistribution user={user} /></Suspense>} />
             <Route path="dashboard" element={<Navigate to="/app/analytics" replace />} />
             <Route path="job-approvals" element={<AdminJobApproval user={user} />} />

@@ -33,6 +33,10 @@ export const dashboardService = {
   async getAIMatchedJobs(limit = 10000000)      { return req('GET', `/dashboard/ai-matched-jobs?limit=${limit}`); },
   async getCandidateUpcomingInterviews() { return req('GET', '/dashboard/candidate-upcoming-interviews'); },
   async getTrends()                      { return req('GET', '/dashboard/trends'); },
+  async getSmartAlerts(params = {})      { return req('GET', `/dashboard/smart-alerts${qs(params)}`); },
+  async getStageTime()                   { return req('GET', '/dashboard/stage-time'); },
+  async getOfferAnalytics()              { return req('GET', '/dashboard/offer-analytics'); },
+  async getSourceEffectiveness()         { return req('GET', '/dashboard/source-effectiveness'); },
   async getApplicants(params = {})       { return req('GET', `/dashboard/applicants${qs(params)}`); },
   async getCandidateRecords(params = {}) { return req('GET', `/dashboard/candidate-records${qs(params)}`); },
 
