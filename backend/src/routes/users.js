@@ -766,11 +766,30 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
   const seen = new Set();
   toSend = toSend.filter(c => { if (seen.has(c.email)) { results.skipped++; return false; } seen.add(c.email); return true; });
 
-  // Build email payloads — personalised for each candidate
+  // Fetch application info per candidate so the email is personalised
   const orgName = req.tenant?.name || 'TalentNest HR';
+  const allEmails = toSend.map(c => c.email);
+  const appsByEmail = {};
+  try {
+    const Application = require('../models/Application');
+    const Job         = require('../models/Job');
+    const candDocs    = await Candidate.find({ email: { $in: allEmails }, deletedAt: null }).select('_id email').lean();
+    const candIdToEmail = new Map(candDocs.map(c => [String(c._id), c.email.toLowerCase()]));
+    const apps = await Application.find({ candidateId: { $in: candDocs.map(c => c._id) }, deletedAt: null })
+      .select('candidateId jobId currentStage').populate('jobId', 'title').lean();
+    for (const app of apps) {
+      const em = candIdToEmail.get(String(app.candidateId));
+      if (!em) continue;
+      if (!appsByEmail[em]) appsByEmail[em] = [];
+      appsByEmail[em].push({ title: app.jobId?.title || 'Role', stage: app.currentStage || 'Applied' });
+    }
+  } catch { /* non-critical — email still sends without app data */ }
+
+  // Build email payloads — personalised with application data
   const emailPayloads = toSend.map(({ email, name }) => {
-    const link = `${FRONTEND_URL}/login?email=${encodeURIComponent(email)}&ref=guest_invite`;
-    const tpl  = templates.guestAccountInvite(name, email, link, { orgName });
+    const link     = `${FRONTEND_URL}/login?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&ref=guest_invite`;
+    const appList  = appsByEmail[email.toLowerCase()] || [];
+    const tpl      = templates.guestAccountInvite(name, email, link, { orgName, applications: appList });
     return { to: email, subject: tpl.subject, html: tpl.html };
   });
 

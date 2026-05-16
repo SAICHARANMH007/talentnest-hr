@@ -224,30 +224,81 @@ const templates = {
    * Guest Marketing Invite (Request to Create Account)
    */
   guestAccountInvite: (name, email, link, opts = {}) => {
+    const apps     = Array.isArray(opts.applications) ? opts.applications : [];
+    const appCount = apps.length;
+    const firstName = (name || 'there').split(' ')[0];
+
+    // Build application list HTML — show up to 3 jobs they applied to
+    const appRowsHtml = appCount > 0 ? `
+      <div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin:0 0 22px">
+        <p style="color:#1E40AF;font-size:12px;font-weight:800;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.5px">
+          📋 Your Saved Application${appCount > 1 ? 's' : ''} (${appCount})
+        </p>
+        ${apps.slice(0, 3).map(a => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #DBEAFE">
+            <span style="font-size:13px;font-weight:600;color:#1E3A5F">${a.title}</span>
+            <span style="font-size:11px;font-weight:700;color:#0176D3;background:#EFF6FF;padding:2px 8px;border-radius:20px">${a.stage}</span>
+          </div>
+        `).join('')}
+        ${appCount > 3 ? `<p style="color:#64748B;font-size:11px;margin:8px 0 0">+${appCount - 3} more application${appCount - 3 > 1 ? 's' : ''}</p>` : ''}
+      </div>` : '';
+
+    const subjectLine = appCount > 0
+      ? `⚡ 1 step to track your ${appCount} application${appCount > 1 ? 's' : ''} — ${firstName}`
+      : `⚡ 1 step to activate your TalentNest account — ${firstName}`;
+
     return {
-      subject: `Claim Your Profile on TalentNest HR — Accelerate Your Career`,
+      subject: subjectLine,
       html: baseLayout(`
-        <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Hi ${name} 👋</h2>
+        <h2 style="color:#032D60;font-size:21px;margin:0 0 8px;font-weight:900;line-height:1.3">
+          Hi ${firstName} 👋 — your application${appCount > 1 ? 's are' : ' is'} waiting for you
+        </h2>
         <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
-          We noticed you've been applying to exciting roles through our partners. <strong>TalentNest HR</strong> is a premier job board and recruitment stack where thousands of top companies actively look for talent like you.
+          ${appCount > 0
+            ? `You applied for <strong>${appCount} role${appCount > 1 ? 's' : ''}</strong> through our platform and your application${appCount > 1 ? 's are' : ' is'} already saved. Create your free account in <strong>under 30 seconds</strong> to track them in real time.`
+            : `You previously applied through our platform and your application details are already saved. Create your free account in <strong>under 30 seconds</strong> to see your status.`
+          }
         </p>
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
-          By claiming your free account, you can:
-        </p>
-        <ul style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 24px;padding-left:20px">
-          <li style="margin-bottom:8px">Get discovered by top recruiters instantly.</li>
-          <li style="margin-bottom:8px">Track all your applications in one unified dashboard.</li>
-          <li style="margin-bottom:8px">Receive AI-matched job recommendations directly in your inbox.</li>
-        </ul>
-        <div style="text-align:center;margin:32px 0">
-          <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#0154A4);color:#fff;text-decoration:none;padding:15px 40px;border-radius:50px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(1,118,211,0.35)">
-            Claim My Free Profile →
-          </a>
+
+        ${appRowsHtml}
+
+        <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin:0 0 24px">
+          <p style="color:#166534;font-size:13px;font-weight:800;margin:0 0 10px">✅ It's just 1 step — here's what happens:</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div style="background:#0176D3;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px">1</div>
+              <span style="font-size:13px;color:#374151">Click the button below — your email is already pre-filled</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div style="background:#0176D3;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px">2</div>
+              <span style="font-size:13px;color:#374151">Set a password (takes 10 seconds)</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div style="background:#10B981;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px">✓</div>
+              <span style="font-size:13px;color:#374151"><strong>Done!</strong> All your applications link automatically — no re-entering data</span>
+            </div>
+          </div>
         </div>
-        <p style="text-align:center;margin-top:40px;margin-bottom:0">
+
+        <p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 8px">With your account you can:</p>
+        <ul style="color:#374151;font-size:13px;line-height:1.7;margin:0 0 28px;padding-left:20px">
+          <li style="margin-bottom:6px">See your real-time application status (Applied → Shortlisted → Hired)</li>
+          <li style="margin-bottom:6px">Get notified by email when recruiters move you through stages</li>
+          <li style="margin-bottom:6px">Chat directly with your recruiter</li>
+          <li style="margin-bottom:6px">Complete pre-boarding and accept your offer letter online</li>
+        </ul>
+
+        <div style="text-align:center;margin:28px 0">
+          <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:16px 44px;border-radius:12px;font-size:16px;font-weight:800;box-shadow:0 4px 16px rgba(1,118,211,0.35);letter-spacing:0.3px">
+            Create My Account →
+          </a>
+          <p style="color:#94A3B8;font-size:11px;margin:12px 0 0">Takes less than 30 seconds · Your email is pre-filled · No spam</p>
+        </div>
+
+        <p style="text-align:center;margin-top:36px;margin-bottom:0">
           <a href="${BACKEND_URL}/api/users/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9ca3af;font-size:10px;text-decoration:underline;">Unsubscribe from these emails</a>
         </p>
-      `, 'Claim Your TalentNest Profile', opts)
+      `, 'Create Your TalentNest Account', opts)
     };
   }
 };
