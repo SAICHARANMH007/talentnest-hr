@@ -2066,10 +2066,11 @@ router.get('/sla-compliance', authenticate, allowRoles('admin', 'super_admin'), 
 // Returns all guest applicants (no User account) deduplicated by email.
 // Each entry shows the merged candidate profile + all their applications grouped.
 router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const page   = Math.max(1, parseInt(req.query.page, 10)  || 1);
-  const limit  = Math.min(parseInt(req.query.limit, 10) || 100, 10000);
-  const skip   = (page - 1) * limit;
-  const search = String(req.query.search || '').trim().toLowerCase();
+  const page         = Math.max(1, parseInt(req.query.page, 10)  || 1);
+  const limit        = Math.min(parseInt(req.query.limit, 10) || 100, 10000);
+  const skip         = (page - 1) * limit;
+  const search       = String(req.query.search || '').trim().toLowerCase();
+  const uninvitedOnly = req.query.uninvitedOnly === 'true';
 
   // 1. Get all registered candidate emails so we can exclude them
   const registeredEmails = await User.find({ role: 'candidate', deletedAt: null })
@@ -2112,7 +2113,13 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
   ]);
 
   // Filter out any email that now has a registered account (safety check)
-  const unregistered = emailGroups.filter(g => !registeredEmails.has(g._id));
+  let unregistered = emailGroups.filter(g => !registeredEmails.has(g._id));
+
+  // Filter: uninvitedOnly — show only those who have never been sent an invite
+  if (uninvitedOnly) {
+    unregistered = unregistered.filter(g => !g.accountRequestSent && !g.accountInviteSentAt);
+  }
+
   const total = unregistered.length;
 
   // Paginate
@@ -2179,6 +2186,47 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
     data: rows,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
+}));
+
+// ── GET /api/dashboard/unregistered-stats ───────────────────────────────────
+// Invitation funnel stats: total / invited / converted to account / not invited
+router.get('/unregistered-stats', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  // 1. All candidate emails NOT yet registered
+  const registeredEmails = await User.find({ role: 'candidate', deletedAt: null })
+    .select('email').lean().then(us => new Set(us.map(u => u.email.toLowerCase())));
+
+  const matchStage = { deletedAt: null, $or: [{ userId: null }, { userId: { $exists: false } }] };
+  const emailGroups = await Candidate.aggregate([
+    { $match: matchStage },
+    { $group: {
+      _id:                { $toLower: '$email' },
+      accountRequestSent: { $max: '$accountRequestSent' },
+      accountInviteSentAt:{ $max: '$accountInviteSentAt' },
+    }},
+  ]);
+  const unregistered = emailGroups.filter(g => !registeredEmails.has(g._id));
+
+  const totalGuests   = unregistered.length;
+  const totalInvited  = unregistered.filter(g => g.accountRequestSent || g.accountInviteSentAt).length;
+  const notInvited    = totalGuests - totalInvited;
+
+  // Converted = candidates whose emails are now in the registered set AND had accountRequestSent=true
+  // We query the Candidate collection for emails that ARE in registeredEmails and had invite sent
+  const convertedAgg = await Candidate.aggregate([
+    { $match: { deletedAt: null, accountRequestSent: true } },
+    { $group: { _id: { $toLower: '$email' } } },
+  ]);
+  const convertedEmails = new Set(convertedAgg.map(c => c._id));
+  const converted = [...convertedEmails].filter(e => registeredEmails.has(e)).length;
+
+  const successRate = totalInvited > 0 ? Math.round((converted / totalInvited) * 100) : 0;
+  const failRate    = totalInvited > 0 ? Math.round(((totalInvited - converted) / totalInvited) * 100) : 0;
+
+  res.json({ success: true, data: {
+    totalGuests, totalInvited, notInvited, converted,
+    successRate, failRate,
+    pending: totalInvited - converted, // invited but not yet signed up
+  }});
 }));
 
 // ── GET /api/dashboard/smart-alerts ─────────────────────────────────────────

@@ -148,7 +148,10 @@ export default function SuperAdminUnregisteredCandidates() {
   const [pagination, setPagination] = useState({ total:0, pages:1 });
   const [toast, setToast]       = useState('');
   const [selectedCandidates, setSelectedCandidates] = useState(new Set());
-  
+  const [uninvitedOnly, setUninvitedOnly] = useState(false);
+  const [stats, setStats]       = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   // Modals & Assignments
   const [activeModalCandidate, setActiveModalCandidate] = useState(null);
   const [jobs, setJobs] = useState([]);
@@ -159,10 +162,19 @@ export default function SuperAdminUnregisteredCandidates() {
 
   const LIMIT = 50;
 
+  // Load stats once (not on every page change)
+  useEffect(() => {
+    setStatsLoading(true);
+    api.getUnregisteredStats()
+      .then(r => setStats(r?.data || null))
+      .catch(() => setStats(null))
+      .finally(() => setStatsLoading(false));
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.getUnregisteredCandidates({ page, limit: LIMIT, search });
+      const r = await api.getUnregisteredCandidates({ page, limit: LIMIT, search, ...(uninvitedOnly ? { uninvitedOnly: true } : {}) });
       const data = Array.isArray(r?.data) ? r.data : [];
       setRows(data);
       setPagination(r?.pagination || { total: data.length, pages: 1 });
@@ -178,7 +190,7 @@ export default function SuperAdminUnregisteredCandidates() {
       }
     } catch { setRows([]); }
     setLoading(false);
-  }, [page, search, jobs.length]);
+  }, [page, search, uninvitedOnly, jobs.length]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -250,6 +262,8 @@ export default function SuperAdminUnregisteredCandidates() {
       setToast(res.message || `Invites sent to ${candidates.length} candidate${candidates.length !== 1 ? 's' : ''}.`);
       setSelectedCandidates(new Set());
       load(); // Refresh to show updated 'Invite Status' column
+      // Refresh stats so the KPI cards update immediately after sending invites
+      api.getUnregisteredStats().then(r => setStats(r?.data || null)).catch(() => {});
     } catch (err) {
       setToast(`❌ Failed to send invites: ${err.message || 'Unknown error'}`);
     }
@@ -277,11 +291,74 @@ export default function SuperAdminUnregisteredCandidates() {
         }
       />
 
-      <div style={{ ...card, background:'rgba(1,118,211,0.05)', border:'1px solid rgba(1,118,211,0.2)', padding:'12px 18px', marginBottom:20, display:'flex', alignItems:'flex-start', gap:12 }}>
-        <span style={{ fontSize:18, flexShrink:0 }}>ℹ️</span>
-        <div style={{ fontSize:13, color:'#0176D3', lineHeight:1.6 }}>
-          These are unregistered candidates (e.g., from Bulk Import or Career Pages). Tap any row to view and edit their data. Use checkboxes to assign multiple candidates to a Job or Recruiter at once.
+      {/* ── INVITATION FUNNEL STATS ── */}
+      {statsLoading ? (
+        <div style={{ ...card, padding: '16px 24px', marginBottom: 20, display:'flex', gap:8, alignItems:'center' }}>
+          <Spinner size={18} /><span style={{ color:'#94A3B8', fontSize:13 }}>Loading invitation stats…</span>
         </div>
+      ) : stats && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12, marginBottom:20 }}>
+          {[
+            { label:'Total Guests', value: stats.totalGuests, color:'#0176D3', icon:'👥', sub:'without an account' },
+            { label:'Invites Sent', value: stats.totalInvited, color:'#7c3aed', icon:'📧', sub:'emails dispatched' },
+            { label:'Accounts Created', value: stats.converted, color:'#10B981', icon:'✅', sub:`${stats.successRate}% success rate` },
+            { label:'Awaiting Signup', value: stats.pending, color:'#F59E0B', icon:'⏳', sub:'invited, not signed up' },
+            { label:'Not Invited Yet', value: stats.notInvited, color:'#EF4444', icon:'🔴', sub:'no invite sent' },
+          ].map(k => (
+            <div key={k.label} style={{ background:'#fff', border:`1px solid ${k.color}25`, borderRadius:14, padding:'16px 18px', cursor: k.label === 'Not Invited Yet' ? 'pointer' : 'default', transition:'all 0.2s' }}
+              onClick={() => k.label === 'Not Invited Yet' && setUninvitedOnly(v => !v)}
+              onMouseEnter={e => { if(k.label === 'Not Invited Yet') e.currentTarget.style.borderColor = k.color; }}
+              onMouseLeave={e => { if(k.label === 'Not Invited Yet') e.currentTarget.style.borderColor = `${k.color}25`; }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                <span style={{ fontSize:20 }}>{k.icon}</span>
+                <div style={{ fontSize: 26, fontWeight:900, color: k.color }}>{k.value.toLocaleString()}</div>
+              </div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#374151' }}>{k.label}</div>
+              <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>{k.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Success rate progress bar */}
+      {stats && stats.totalInvited > 0 && (
+        <div style={{ ...card, padding:'14px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:16 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Invitation Conversion Rate</span>
+              <span style={{ fontSize:13, fontWeight:900, color: stats.successRate >= 50 ? '#10B981' : stats.successRate >= 25 ? '#F59E0B' : '#EF4444' }}>{stats.successRate}% created accounts</span>
+            </div>
+            <div style={{ height:8, background:'#F1F5F9', borderRadius:4, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${stats.successRate}%`, background:'linear-gradient(90deg,#10B981,#059669)', borderRadius:4, transition:'width 0.6s ease' }} />
+            </div>
+            <div style={{ display:'flex', gap:16, marginTop:8, fontSize:11, color:'#94A3B8' }}>
+              <span>✅ {stats.converted} converted</span>
+              <span>⏳ {stats.pending} awaiting</span>
+              <span>❌ {stats.failRate}% not converted yet</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FILTER TOGGLE ── */}
+      <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+        <button
+          onClick={() => { setUninvitedOnly(false); setPage(1); }}
+          style={{ padding:'8px 18px', borderRadius:20, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background: !uninvitedOnly ? '#0176D3' : '#F1F5F9', color: !uninvitedOnly ? '#fff' : '#374151', transition:'all 0.2s' }}
+        >
+          All Guests {!uninvitedOnly && stats ? `(${stats.totalGuests})` : ''}
+        </button>
+        <button
+          onClick={() => { setUninvitedOnly(true); setPage(1); setSelectedCandidates(new Set()); }}
+          style={{ padding:'8px 18px', borderRadius:20, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background: uninvitedOnly ? '#EF4444' : '#F1F5F9', color: uninvitedOnly ? '#fff' : '#374151', transition:'all 0.2s' }}
+        >
+          🔴 Not Invited Yet {uninvitedOnly && stats ? `(${stats.notInvited})` : ''}
+        </button>
+        {uninvitedOnly && (
+          <span style={{ fontSize:12, color:'#EF4444', fontWeight:600 }}>
+            Showing only candidates who have never received an invite — select all and send in bulk
+          </span>
+        )}
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap', justifyContent:'space-between' }}>
