@@ -303,24 +303,6 @@ export default function CandidateDashboard({ user }) {
         </div>
       )}
 
-      {/* ── Profile Strength Bar ── */}
-      <div
-        onClick={() => navigate("/app/profile")}
-        style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:12, padding:"12px 18px", marginBottom:20, cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}
-      >
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, flexWrap:"wrap", gap:4 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:profilePct>=80?"#2E844A":profilePct>=50?"#A07E00":"#BA0517" }}>
-            {profilePct>=80?"🟢":profilePct>=50?"🟡":"🔴"} Profile Strength — {profilePct}%
-          </span>
-          <span style={{ fontSize:11, color:"#706E6B" }}>
-            {profilePct===100 ? "✨ Perfect! You'll appear in top searches." : firstMissing ? `Add ${firstMissing.label} to boost →` : "Almost there!"}
-          </span>
-        </div>
-        <div style={{ background:"#F3F4F6", borderRadius:99, height:8, overflow:"hidden" }}>
-          <div style={{ width:`${profilePct}%`, height:"100%", borderRadius:99, background: profilePct>=80?"linear-gradient(90deg,#22c55e,#16a34a)":profilePct>=50?"linear-gradient(90deg,#f59e0b,#d97706)":"linear-gradient(90deg,#ef4444,#dc2626)", transition:"width 0.6s ease" }} />
-        </div>
-      </div>
-
       <div className="tn-kpi-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap: isMobile ? 8 : 12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/applications")}>
           <KpiCard icon="📋" label="Applications Sent"  value={appliedCount}  color="#0176D3" trend={12} sparkValues={[1,2,2,3,3,appliedCount]} />
