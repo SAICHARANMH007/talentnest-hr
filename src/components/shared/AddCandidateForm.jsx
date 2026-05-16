@@ -9,6 +9,7 @@ import ResumeCard from './ResumeCard.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { parseFile } from '../../api/matching.js';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 
 // Duplicate warning banner — defined outside component
 const DupWarning = ({ dupes, onIgnore }) => (
@@ -51,7 +52,7 @@ const EMP = {
   name: '', email: '', phone: '', title: '', skills: '',
   experience: '', location: '', summary: '', linkedin: '',
   education: '', currentCompany: '', currentCTC: '', expectedCTC: '',
-  projects: '', industry: '', culture: '', availability: '0',
+  projects: '', industry: '', department: '', culture: '', availability: '0',
 };
 
 /**
@@ -406,7 +407,22 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
           </ConfidenceWrapper>
 
           <Field label="Culture Tags" value={form.culture} onChange={v => sf('culture', v)} placeholder="collaborative, remote-friendly" />
-          <Field label="Industry" value={form.industry} onChange={v => sf('industry', v)} placeholder="FinTech, SaaS" />
+          <Dropdown
+            label="Industry *"
+            value={form.industry}
+            onChange={v => sf('industry', v)}
+            options={INDUSTRIES}
+            placeholder="Select Industry"
+            hint="The sector the candidate works in — used for smart job matching"
+          />
+          <Dropdown
+            label="Department *"
+            value={form.department}
+            onChange={v => sf('department', v)}
+            options={DEPARTMENTS}
+            placeholder="Select Department"
+            hint="The team/function the candidate belongs to — e.g. Engineering, Sales"
+          />
 
           <div style={{ gridColumn: 'span 2' }}>
             <Field label="Professional Summary" value={form.summary} onChange={v => sf('summary', v)} rows={3} />

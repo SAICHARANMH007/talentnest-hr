@@ -7,6 +7,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const parseJ = (s, fallback = []) => { if (Array.isArray(s)) return s; try { return JSON.parse(s || '[]'); } catch { return fallback; } };
@@ -211,7 +212,7 @@ export default function CandidateProfile({ user }) {
 
   const [form, setForm] = useState({
     name:'', email:'', phone:'', title:'', location:'', linkedinUrl:'', github:'', portfolio:'',
-    availability:'Immediate', summary:'', skills:'', languages:'', industry:'',
+    availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
     experience:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
     source:'', dateAdded:'', candidateStatus:'', additionalDetails:'',
@@ -231,7 +232,7 @@ export default function CandidateProfile({ user }) {
           portfolio: d.portfolio||'', availability: d.availability||'Immediate',
           summary: d.summary||'', skills: Array.isArray(d.skills) ? d.skills.join(', ') : (d.skills||''),
           languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages||''),
-          industry: d.industry||'', experience: String(d.experience||''),
+          industry: d.industry||'', department: d.department||'', experience: String(d.experience||''),
           currentCompany: d.currentCompany||'', culture: d.culture||'',
           projects: d.projects||'', achievements: d.achievements||'', volunteering: d.volunteering||'',
           relevantExperience: d.relevantExperience||'', preferredLocation: d.preferredLocation||'',
@@ -377,7 +378,22 @@ export default function CandidateProfile({ user }) {
               <Field label="Current Company" value={form.currentCompany} onChange={v=>sf('currentCompany',v)} placeholder="Acme Corp"/>
               <Field label="Total Experience (years)" value={form.experience} onChange={v=>sf('experience',v)} type="number" placeholder="5" min="0" max="60"/>
               <Field label="Relevant Experience" value={form.relevantExperience} onChange={v=>sf('relevantExperience',v)} placeholder="4 years Java / 3 years AWS"/>
-              <Field label="Industry / Domain" value={form.industry} onChange={v=>sf('industry',v)} placeholder="Information Technology"/>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>INDUSTRY *</label>
+                <select value={form.industry} onChange={e=>sf('industry',e.target.value)} style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #D1D5DB', fontSize:13, background:'#fff' }}>
+                  <option value="">— Select your industry —</option>
+                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+                <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>The sector you specialise in — helps match you to relevant jobs</div>
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>DEPARTMENT *</label>
+                <select value={form.department} onChange={e=>sf('department',e.target.value)} style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #D1D5DB', fontSize:13, background:'#fff' }}>
+                  <option value="">— Select your department —</option>
+                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <div style={{ fontSize:11, color:'#94A3B8', marginTop:3 }}>The team/function you work in — e.g. Engineering, Sales, Finance</div>
+              </div>
               <Field label="Preferred Work Location" value={form.preferredLocation} onChange={v=>sf('preferredLocation',v)} placeholder="Hyderabad / Remote / Any"/>
               <Field label="Current CTC" value={form.currentCTC} onChange={v=>sf('currentCTC',v)} placeholder="12 LPA"/>
               <Field label="Expected CTC" value={form.expectedCTC} onChange={v=>sf('expectedCTC',v)} placeholder="18 LPA"/>

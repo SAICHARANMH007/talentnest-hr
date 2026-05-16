@@ -6,9 +6,10 @@ import Spinner from '../ui/Spinner.jsx';
 import UploadZone from '../ui/UploadZone.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { parseJD } from '../../api/matching.js';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 
 const EMPTY = {
-  title: '', company: '', department: '', location: '',
+  title: '', company: '', department: '', industry: '', location: '',
   jobType: 'Full-Time', workMode: 'Onsite', experience: '',
   salaryMin: '', salaryMax: '', salaryType: 'CTC', salaryCurrency: 'INR',
   openings: '', applicationDeadline: '', urgency: 'Medium',
@@ -131,7 +132,12 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(200px,100%),1fr))', gap: 12 }}>
           <Field label="Job Title *"    value={form.title}      onChange={v => sf('title', v)}      placeholder="Senior Full-Stack Developer" />
           <Field label="Company *"      value={form.company}    onChange={v => sf('company', v)}    placeholder="Acme Technologies" />
-          <Field label="Department"     value={form.department} onChange={v => sf('department', v)} placeholder="Engineering / Product / HR…" />
+          <Dropdown label="Industry *"   value={form.industry}   onChange={v => sf('industry', v)}
+            options={INDUSTRIES} placeholder="Select Industry"
+            hint="The sector this role belongs to — helps candidates find relevant jobs" />
+          <Dropdown label="Department *" value={form.department} onChange={v => sf('department', v)}
+            options={DEPARTMENTS} placeholder="Select Department"
+            hint="The team/function within the company" />
           <Field label="Location"       value={form.location}   onChange={v => sf('location', v)}   placeholder="Hyderabad, Telangana" />
           <Dropdown label="Job Type"    value={form.jobType}    onChange={v => sf('jobType', v)}
             options={['Full-Time', 'Part-Time', 'Contract', 'C2H', 'C2C', 'Internship', 'Freelance']} />

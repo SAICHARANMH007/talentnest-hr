@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -61,6 +62,10 @@ export default function CandidateJobMatch({ user }) {
       if (currentFilters.department !== 'all') {
         const dep = currentFilters.department.toLowerCase();
         matched = matched.filter(r => (r.job.department || '').toLowerCase().includes(dep));
+      }
+      if (currentFilters.industry !== 'all') {
+        const ind = currentFilters.industry.toLowerCase();
+        matched = matched.filter(r => (r.job.industry || '').toLowerCase().includes(ind));
       }
 
       // Sorting
@@ -188,13 +193,21 @@ export default function CandidateJobMatch({ user }) {
               style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, outline: 'none', background: '#F8FAFC' }}
             />
           </div>
-          <select 
+          <select
             value={filters.department}
             onChange={e => setFilters(p => ({ ...p, department: e.target.value }))}
             style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, background: '#F8FAFC' }}
           >
             <option value="all">🏢 All Departments</option>
-            {[...new Set(jobs.map(j => j.department).filter(Boolean))].sort().map(d => <option key={d} value={d}>{d}</option>)}
+            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select
+            value={filters.industry}
+            onChange={e => setFilters(p => ({ ...p, industry: e.target.value }))}
+            style={{ flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid #E2E8F0', fontSize: 13, background: '#F8FAFC' }}
+          >
+            <option value="all">🏭 All Industries</option>
+            {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
           <select 
             value={sortBy}
