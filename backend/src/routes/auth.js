@@ -558,6 +558,34 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'A new OTP has been sent.' });
 }));
 
+// ── POST /api/auth/send-login-otp ────────────────────────────────────────────
+// Passwordless OTP login — step 1: check account exists, generate & send OTP.
+// Returns { exists: false } for unknown emails so the frontend can show
+// "Create Account" instead of revealing whether an account exists via an error.
+router.post('/send-login-otp', otpLimiter, asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email?.trim()) throw new AppError('Email is required.', 400);
+
+  const user = await User.findOne({ email: email.toLowerCase().trim(), deletedAt: null });
+
+  // Unknown email — return exists:false so the frontend shows "Create Account"
+  if (!user) return res.json({ success: true, exists: false });
+
+  if (!user.isActive) {
+    throw new AppError('This account has been deactivated. Please contact support.', 403);
+  }
+
+  const { channel } = await authService.generateAndSendOtp(user);
+  res.json({
+    success : true,
+    exists  : true,
+    channel,
+    hint    : channel === 'sms'
+      ? `OTP sent to phone ending in ${(user.phone || '').slice(-4)}`
+      : `OTP sent to ${email.toLowerCase().trim()}`,
+  });
+}));
+
 // ── POST /api/auth/impersonate ────────────────────────────────────────────────
 router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
   if (req.user.role !== 'super_admin')

@@ -110,7 +110,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CSRF_EXEMPT_PATHS = new Set([
   '/auth/login', '/auth/register', '/auth/google',
-  '/auth/verify-otp', '/auth/forgot-password', '/auth/reset-password',
+  '/auth/verify-otp', '/auth/send-login-otp', '/auth/forgot-password', '/auth/reset-password',
   '/auth/set-password', '/auth/verify-invite', '/auth/refresh', '/auth/verify-domain',
   '/applications/public', '/applications/prefill', '/leads', '/health',
   '/whatsapp/webhook',

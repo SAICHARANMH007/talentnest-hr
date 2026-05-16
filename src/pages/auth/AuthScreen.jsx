@@ -410,6 +410,77 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [showPw, setShowPw]     = useState(false);
   const [pending2FA, setPending2FA] = useState(null); // { email }
 
+  // ── OTP Login (passwordless) ───────────────────────────────────────────────
+  const [otpMode, setOtpMode]       = useState(false);   // toggle OTP vs password login
+  const [otpStep, setOtpStep]       = useState('email'); // 'email' | 'otp' | 'no-account'
+  const [otpEmail, setOtpEmail]     = useState('');
+  const [otpDigits, setOtpDigits]   = useState(['','','','','','']);
+  const [otpHint, setOtpHint]       = useState('');
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const otpRefs = [useRef(),useRef(),useRef(),useRef(),useRef(),useRef()];
+
+  useEffect(() => {
+    if (otpResendCooldown <= 0) return;
+    const t = setTimeout(() => setOtpResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [otpResendCooldown]);
+
+  const resetOtpMode = () => {
+    setOtpMode(false); setOtpStep('email');
+    setOtpEmail(''); setOtpDigits(['','','','','','']); setOtpHint(''); setOtpResendCooldown(0);
+    setLoginError(''); setToast('');
+  };
+
+  const handleSendLoginOtp = async () => {
+    if (!otpEmail.trim() || !/\S+@\S+\.\S+/.test(otpEmail)) {
+      setLoginError('Enter a valid email address.'); return;
+    }
+    setLoading(true); setLoginError('');
+    try {
+      const r = await api.sendLoginOtp(otpEmail.trim().toLowerCase());
+      if (!r.exists) { setOtpStep('no-account'); setLoading(false); return; }
+      setOtpHint(r.hint || '');
+      setOtpStep('otp');
+      setOtpResendCooldown(60);
+    } catch (e) { setLoginError(e.message || 'Failed to send OTP. Please try again.'); }
+    setLoading(false);
+  };
+
+  const handleOtpDigit = (idx, val, e) => {
+    if (!/^\d*$/.test(val)) return;
+    const d = [...otpDigits]; d[idx] = val.slice(-1); setOtpDigits(d);
+    if (val && idx < 5) otpRefs[idx + 1]?.current?.focus();
+    if (e.key === 'Backspace' && !val && idx > 0) otpRefs[idx - 1]?.current?.focus();
+  };
+
+  const handleVerifyLoginOtp = async () => {
+    const code = otpDigits.join('');
+    if (code.length < 6) { setLoginError('Enter all 6 digits.'); return; }
+    setLoading(true); setLoginError('');
+    try {
+      const d = await api.verifyOtp(otpEmail.trim().toLowerCase(), code);
+      if (d.requires2FA) { setPending2FA({ email: otpEmail }); setLoading(false); return; }
+      onAuth(d.user, d.token);
+      navigate('/app');
+    } catch (e) {
+      setLoginError(e.message || 'Invalid or expired OTP. Please try again.');
+      setOtpDigits(['','','','','','']);
+      otpRefs[0]?.current?.focus();
+    }
+    setLoading(false);
+  };
+
+  const handleResendLoginOtp = async () => {
+    if (otpResendCooldown > 0) return;
+    setLoading(true);
+    try {
+      await api.sendLoginOtp(otpEmail.trim().toLowerCase());
+      setOtpResendCooldown(60);
+      setToast('✅ New OTP sent!');
+    } catch (e) { setLoginError(e.message); }
+    setLoading(false);
+  };
+
   useEffect(() => {
     // Pre-warm the Railway backend on mount so cold-start latency
     // doesn't hit the user when they click Sign In / Create Account
@@ -499,6 +570,131 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     <div style={BG}>
       <div style={CARD}>
         <OtpScreen email={pending2FA.email} onVerified={(u, t) => { onAuth(u, t); }} onBack={() => setPending2FA(null)} />
+      </div>
+    </div>
+  );
+
+  // ── OTP Login mode (passwordless) ─────────────────────────────────────────
+  if (otpMode && mode === 'login') return (
+    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
+      <Toast msg={toast} onClose={() => setToast('')} />
+      <div style={CARD}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20 }}>
+              <Logo size="lg" variant="full" theme="dark" />
+            </div>
+          </div>
+          <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 900, margin: '0 0 6px' }}>
+            {otpStep === 'otp' ? '📱 Enter Your OTP' : otpStep === 'no-account' ? '🔍 No Account Found' : '🔐 Login with OTP'}
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>
+            {otpStep === 'otp' ? otpHint || 'A 6-digit code was sent to your registered contact'
+              : otpStep === 'no-account' ? `No account found for ${otpEmail}`
+              : 'No password needed — we\'ll send a code to your email'}
+          </p>
+        </div>
+
+        {loginError && (
+          <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#FF7676', fontSize: 13, marginBottom: 14 }}>
+            {loginError}
+          </div>
+        )}
+
+        {/* No account found */}
+        {otpStep === 'no-account' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
+              <p style={{ color: '#F59E0B', fontSize: 14, fontWeight: 700, margin: '0 0 6px' }}>No account with this email</p>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                <strong style={{ color: '#fff' }}>{otpEmail}</strong><br/>is not registered on TalentNest HR.
+              </p>
+            </div>
+            <button onClick={() => { resetOtpMode(); setMode('register'); setEmail(otpEmail); }} style={{ ...BTN_P, width: '100%', padding: '14px', fontSize: 15 }}>
+              🚀 Create a Free Account
+            </button>
+            <button onClick={() => { setOtpStep('email'); setLoginError(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', textAlign: 'center', padding: '8px 0' }}>
+              ← Try a different email
+            </button>
+          </div>
+        )}
+
+        {/* Email entry step */}
+        {otpStep === 'email' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>YOUR EMAIL ADDRESS</label>
+              <input type="email" value={otpEmail} autoFocus autoComplete="email"
+                onChange={e => { setOtpEmail(e.target.value); setLoginError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleSendLoginOtp()}
+                placeholder="you@example.com" style={INP}
+                onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }}
+                onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }}
+              />
+            </div>
+            <button onClick={handleSendLoginOtp} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '14px', opacity: loading ? 0.7 : 1 }}>
+              {loading ? <><Spinner /> Checking…</> : '📩 Send OTP to My Email'}
+            </button>
+            <button onClick={resetOtpMode} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', textAlign: 'center', padding: '8px 0' }}>
+              ← Back to Password Login
+            </button>
+          </div>
+        )}
+
+        {/* OTP entry step */}
+        {otpStep === 'otp' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center', margin: 0 }}>
+              Code sent to <strong style={{ color: '#fff' }}>{otpEmail}</strong>
+            </p>
+            {/* 6 individual digit boxes — large touch targets */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              {otpDigits.map((d, i) => (
+                <input key={i} ref={otpRefs[i]}
+                  type="tel" inputMode="numeric" maxLength={1} value={d}
+                  autoFocus={i === 0}
+                  onChange={e => handleOtpDigit(i, e.target.value, e)}
+                  onKeyDown={e => { if (e.key === 'Backspace' && !d && i > 0) { const nd=[...otpDigits]; nd[i-1]=''; setOtpDigits(nd); otpRefs[i-1]?.current?.focus(); } }}
+                  onPaste={e => {
+                    const p = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+                    if (!p) return;
+                    const nd = [...p.split('').concat(['','','','','','']).slice(0,6)];
+                    setOtpDigits(nd);
+                    otpRefs[Math.min(p.length, 5)]?.current?.focus();
+                    e.preventDefault();
+                  }}
+                  style={{ width: 48, height: 58, fontSize: 26, fontWeight: 900, textAlign: 'center',
+                    background: d ? '#0176D315' : '#0D1B2D',
+                    border: `2px solid ${d ? '#0176D3' : 'rgba(255,255,255,0.12)'}`,
+                    borderRadius: 12, color: '#fff', outline: 'none',
+                    boxSizing: 'border-box', fontFamily: 'monospace', caretColor: '#0176D3',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.2)'; }}
+                  onBlur={e => { e.target.style.borderColor = d ? '#0176D3' : 'rgba(255,255,255,0.12)'; e.target.style.boxShadow = 'none'; }}
+                />
+              ))}
+            </div>
+            <button onClick={handleVerifyLoginOtp} disabled={loading || otpDigits.join('').length < 6}
+              style={{ ...BTN_P, width: '100%', padding: '14px', opacity: loading || otpDigits.join('').length < 6 ? 0.6 : 1 }}>
+              {loading ? <><Spinner /> Verifying…</> : '✅ Verify & Sign In'}
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -4 }}>
+              <button onClick={() => { setOtpStep('email'); setOtpDigits(['','','','','','']); setLoginError(''); }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer', padding: 0 }}>
+                ← Change email
+              </button>
+              <button onClick={handleResendLoginOtp} disabled={otpResendCooldown > 0 || loading}
+                style={{ background: 'none', border: 'none', color: otpResendCooldown > 0 ? 'rgba(255,255,255,0.3)' : '#0176D3', fontSize: 13, cursor: otpResendCooldown > 0 ? 'default' : 'pointer', padding: 0, fontWeight: 600 }}>
+                {otpResendCooldown > 0 ? `Resend in ${otpResendCooldown}s` : 'Resend OTP'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={resetOtpMode} style={{ display: 'block', width: '100%', textAlign: 'center', background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 12, cursor: 'pointer', marginTop: 20, padding: '8px 0' }}>
+          ← Back to Password Login
+        </button>
       </div>
     </div>
   );
@@ -651,6 +847,19 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '13px 0', marginTop: 4, opacity: loading ? 0.7 : 1 }}>
             {loading ? <><Spinner /> Please wait…</> : mode === 'login' ? '→ Sign In' : '🚀 Create Account'}
           </button>
+
+          {/* OTP Login toggle — only shown on login mode */}
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={() => { setOtpMode(true); setOtpEmail(email); setLoginError(''); setToast(''); }}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%', padding: '11px 0', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(1,118,211,0.5)'; e.currentTarget.style.color = '#0176D3'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
+            >
+              📱 Login with OTP instead
+            </button>
+          )}
         </div>
 
         {GOOGLE_CLIENT_ID && (
