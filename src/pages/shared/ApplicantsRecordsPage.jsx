@@ -6,7 +6,9 @@ import Badge from '../../components/ui/Badge.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
+import Modal from '../../components/ui/Modal.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import JobRecruiterHistory from '../../components/shared/JobRecruiterHistory.jsx';
 import { card, btnP, btnG } from '../../constants/styles.js';
 import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
 
@@ -208,6 +210,7 @@ export default function ApplicantsRecordsPage({ user }) {
   const [selected, setSelected] = useState(null);
   const [editRow, setEditRow] = useState(null);
   const [assigning, setAssigning] = useState('');
+  const [historyJob, setHistoryJob] = useState(null); // { jobId, jobTitle }
 
   const canManage = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'recruiter';
 
@@ -579,14 +582,23 @@ export default function ApplicantsRecordsPage({ user }) {
                       {/* Recruiter — admin/super_admin can change via dropdown; recruiter sees name */}
                       <td style={{ padding: '11px 12px' }} onClick={e => e.stopPropagation()}>
                         {(user?.role === 'admin' || user?.role === 'super_admin') ? (
-                          <select
-                            value={r.assignedRecruiterIds?.[0] || r.assignedRecruiterId || ''}
-                            onChange={e => assignRecruiter(r, e.target.value)}
-                            disabled={assigning === rowKey(r)}
-                            style={{ width: '100%', fontSize: 12, border: `1px solid ${r.assignedRecruiterId || r.assignedRecruiterIds?.length ? 'rgba(1,118,211,0.3)' : '#E2E8F0'}`, borderRadius: 8, padding: '5px 8px', color: (r.assignedRecruiterId || r.assignedRecruiterIds?.length) ? '#0176D3' : '#94A3B8', background: '#fff', cursor: 'pointer' }}>
-                            <option value="">Unassigned</option>
-                            {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
-                          </select>
+                          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                            <select
+                              value={r.assignedRecruiterIds?.[0] || r.assignedRecruiterId || ''}
+                              onChange={e => assignRecruiter(r, e.target.value)}
+                              disabled={assigning === rowKey(r)}
+                              style={{ flex:1, fontSize: 12, border: `1px solid ${r.assignedRecruiterId || r.assignedRecruiterIds?.length ? 'rgba(1,118,211,0.3)' : '#E2E8F0'}`, borderRadius: 8, padding: '5px 8px', color: (r.assignedRecruiterId || r.assignedRecruiterIds?.length) ? '#0176D3' : '#94A3B8', background: '#fff', cursor: 'pointer' }}>
+                              <option value="">Unassigned</option>
+                              {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email || 'Recruiter'}</option>)}
+                            </select>
+                            {r.jobId && (
+                              <button
+                                title="View recruiter history for this job"
+                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                                style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:26, height:26, cursor:'pointer', fontSize:12, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
+                              >📋</button>
+                            )}
+                          </div>
                         ) : (
                           // Recruiter login: backend scopes ALL rows to their own jobs,
                           // so they are always the recruiter. Show their name directly.
@@ -749,6 +761,20 @@ export default function ApplicantsRecordsPage({ user }) {
       )}
       <CapLimitBanner total={total} fetched={rows.length} entity="applicant records" role={user?.role} />
       <Toast msg={toast} onClose={() => setToast('')} />
+
+      {/* ── Recruiter History Modal ── */}
+      {historyJob && (
+        <Modal
+          title={`📋 Recruiter History — ${historyJob.jobTitle}`}
+          onClose={() => setHistoryJob(null)}
+          footer={<button onClick={() => setHistoryJob(null)} style={{ ...btnG, width:'100%' }}>Close</button>}
+        >
+          <div style={{ color:'#64748B', fontSize:12, marginBottom:16 }}>
+            Full handoff trail for this job. Previous recruiters' contact details are shown so you can coordinate.
+          </div>
+          <JobRecruiterHistory jobId={historyJob.jobId} jobTitle={historyJob.jobTitle} />
+        </Modal>
+      )}
     </div>
   );
 }

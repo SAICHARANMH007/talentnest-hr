@@ -413,24 +413,40 @@ router.post('/:id/assign', ...guard,
     if (!recruiterId) throw new AppError('recruiterId is required.', 400);
     const recruiterFilter = { _id: recruiterId, role: 'recruiter', deletedAt: null };
     if (req.user.role !== 'super_admin') recruiterFilter.tenantId = req.user.tenantId;
-    // Select name so we can include it in candidate notifications
-    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name email').lean();
+    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name email phone').lean();
     if (!recruiter) throw new AppError('Recruiter not found.', 404);
 
     const assignFilter = { _id: req.params.id, deletedAt: null };
     assignFilter.tenantId = req.user.role === 'super_admin' ? recruiter.tenantId : req.user.tenantId;
+
+    // Append to recruiter history (only if not already in current assignedRecruiters)
+    const historyEntry = {
+      recruiterId   : recruiter._id,
+      recruiterName : recruiter.name || '',
+      recruiterEmail: recruiter.email || '',
+      recruiterPhone: recruiter.phone || '',
+      assignedAt    : new Date(),
+      removedAt     : null,
+      assignedBy    : req.user._id || req.user.id,
+      assignedByName: req.user.name || '',
+    };
+
     const job = await Job.findOneAndUpdate(
       assignFilter,
-      { $addToSet: { assignedRecruiters: recruiterId } },
+      {
+        $addToSet: { assignedRecruiters: recruiterId },
+        $push    : { recruiterHistory: historyEntry },
+      },
       { new: true }
     );
     if (!job) throw new AppError('Job not found.', 404);
 
-    // 1. Notify the recruiter about their new job assignment
+    // 1. Notify the recruiter — include applicant count so they know what to expect
+    const appCount = await Application.countDocuments({ jobId: job._id, deletedAt: null });
     await Notification.create({
       userId: recruiterId, tenantId: job.tenantId, type: 'system',
       title: '📋 New Job Assignment',
-      message: `You have been assigned to manage hiring for: ${job.title}. Check the Pipeline to see applicants.`,
+      message: `You have been assigned to "${job.title}". There ${appCount === 1 ? 'is' : 'are'} ${appCount} existing applicant${appCount !== 1 ? 's' : ''} in your pipeline ready to review.`,
       link: '/app/pipeline',
     }).catch(() => {});
 
@@ -472,31 +488,53 @@ router.patch('/:id/replace-recruiter', ...guard,
 
     const recruiterFilter = { _id: recruiterId, role: 'recruiter', deletedAt: null };
     if (req.user.role !== 'super_admin') recruiterFilter.tenantId = req.user.tenantId;
-    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name').lean();
+    const recruiter = await User.findOne(recruiterFilter).select('_id tenantId name email phone').lean();
     if (!recruiter) throw new AppError('Recruiter not found.', 404);
 
     const jobFilter = { _id: req.params.id, deletedAt: null };
     jobFilter.tenantId = req.user.role === 'super_admin' ? recruiter.tenantId : req.user.tenantId;
 
-    // Replace the full assignedRecruiters list — this makes the new recruiter see
-    // all existing applications without touching each individual application record.
+    // 1. Close all currently-active history entries (set removedAt = now)
+    await Job.updateOne(jobFilter, {
+      $set: { 'recruiterHistory.$[active].removedAt': new Date() },
+    }, {
+      arrayFilters: [{ 'active.removedAt': null }],
+    }).catch(() => {}); // non-fatal — history might be empty on legacy jobs
+
+    // 2. Replace assignedRecruiters + append new history entry
+    const appCount = await Application.countDocuments({ jobId: req.params.id, deletedAt: null });
+    const historyEntry = {
+      recruiterId   : recruiter._id,
+      recruiterName : recruiter.name || '',
+      recruiterEmail: recruiter.email || '',
+      recruiterPhone: recruiter.phone || '',
+      assignedAt    : new Date(),
+      removedAt     : null,
+      assignedBy    : req.user._id || req.user.id,
+      assignedByName: req.user.name || '',
+    };
+
     const job = await Job.findOneAndUpdate(
       jobFilter,
-      { $set: { assignedRecruiters: [recruiter._id] } },
+      {
+        $set : { assignedRecruiters: [recruiter._id] },
+        $push: { recruiterHistory: historyEntry },
+      },
       { new: true }
     );
     if (!job) throw new AppError('Job not found.', 404);
 
-    // Notify the new recruiter
+    // Notify new recruiter with full context
     await Notification.create({
       userId: recruiter._id, tenantId: job.tenantId, type: 'system',
-      title: '📋 Job Assigned to You',
-      message: `You are now managing "${job.title}". All existing applicants are in your pipeline.`,
-      link: '/app/pipeline',
+      title: '📋 Job Transferred to You',
+      message: `You are now managing "${job.title}". All ${appCount} existing applicant${appCount !== 1 ? 's' : ''} are in your pipeline. Check the job history to see previous recruiter details.`,
+      link: '/app/assigned-candidates',
     }).catch(() => {});
 
-    logger.audit('Recruiter replaced on job', req.user._id, req.user.tenantId, {
+    logger.audit('Recruiter replaced on job', req.user._id || req.user.id, req.user.tenantId, {
       jobId: job._id, newRecruiterId: recruiterId, jobTitle: job.title,
+      prevHistory: job.recruiterHistory?.length,
     });
 
     res.json({ success: true, data: normalizeJob(job) });
@@ -617,6 +655,23 @@ router.get('/:id/matching-candidates', ...guard, allowRoles('admin', 'super_admi
 
   const candidates = await findSuggestedCandidates(jobSnapshot, { limit: 50 });
   res.json({ success: true, data: candidates });
+}));
+
+// GET /api/jobs/:id/recruiter-history — full recruiter handoff trail for a job
+router.get('/:id/recruiter-history', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const job = await Job.findOne(filter).select('title recruiterHistory assignedRecruiters').lean();
+  if (!job) throw new AppError('Job not found.', 404);
+
+  // Sort history: active (removedAt=null) first, then by assignedAt desc
+  const history = (job.recruiterHistory || []).sort((a, b) => {
+    if (!a.removedAt && b.removedAt) return -1;
+    if (a.removedAt && !b.removedAt) return 1;
+    return new Date(b.assignedAt) - new Date(a.assignedAt);
+  });
+
+  res.json({ success: true, data: { jobTitle: job.title, history } });
 }));
 
 // POST /api/jobs/bulk-classify

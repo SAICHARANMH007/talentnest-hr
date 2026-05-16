@@ -857,12 +857,42 @@ const { startDistributionRetryJob } = require('./src/jobs/distributionRetry');
 connectDB()
   .then(() => seed())
   .then(() => {
-    // Only run demo seed if explicitly enabled OR NOT in production/Render
     const skipDemo = process.env.SKIP_DEMO_SEED === 'true' || IS_PROD || !!process.env.RENDER;
     if (!skipDemo) {
       return seedDemo();
     } else {
       console.log('ℹ️   Skipping demo seed (Production/Render environment)');
+    }
+  })
+  .then(async () => {
+    // ── Auto-classify jobs missing industry/department ─────────────────────
+    // Runs on every startup — fills blanks without overwriting existing values.
+    try {
+      const Job = require('./src/models/Job');
+      const { classifyJob } = require('./src/utils/classifyJob');
+      const blanks = await Job.find({
+        deletedAt: null,
+        $or: [{ industry: { $in: [null, ''] } }, { department: { $in: [null, ''] } }],
+      }).select('_id title description industry department').lean();
+
+      if (blanks.length > 0) {
+        const ops = [];
+        for (const job of blanks) {
+          const { industry, department } = classifyJob(job.title, job.description);
+          const set = {};
+          if (!job.industry   && industry)   set.industry   = industry;
+          if (!job.department && department) set.department = department;
+          if (Object.keys(set).length > 0) ops.push({ updateOne: { filter: { _id: job._id }, update: { $set: set } } });
+        }
+        if (ops.length > 0) {
+          await Job.bulkWrite(ops);
+          console.log(`✅  Auto-classified ${ops.length} jobs with missing industry/department`);
+        } else {
+          console.log('ℹ️   All jobs already have industry and department set');
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️  Job auto-classify skipped:', e.message);
     }
   })
   .then(() => {

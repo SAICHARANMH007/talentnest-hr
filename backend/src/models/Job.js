@@ -85,6 +85,19 @@ const jobSchema = new mongoose.Schema({
   isPublic: { type: Boolean, default: false }, // Opt-in to org career listing page
 
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+  // Full audit trail of every recruiter who has ever worked on this job.
+  // Never deleted — provides complete handoff history for admin/super_admin visibility.
+  recruiterHistory: [{
+    recruiterId   : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    recruiterName : { type: String, default: '' },
+    recruiterEmail: { type: String, default: '' },
+    recruiterPhone: { type: String, default: '' },
+    assignedAt    : { type: Date, default: Date.now },
+    removedAt     : { type: Date, default: null },   // null = currently active
+    assignedBy    : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedByName: { type: String, default: '' },
+  }],
 }, { timestamps: true });
 
 jobSchema.index({ tenantId: 1 });

@@ -57,7 +57,7 @@ const _inflight = new Map();
 // GET responses are cached for TTL_MS so navigating away and back is instant.
 // Mutations (POST/PATCH/DELETE) on the same path invalidate the cache entry.
 const _cache = new Map();
-const TTL_MS = 30_000; // 30 seconds — fresh enough for HR data
+const TTL_MS = 10_000; // 10 seconds — balances freshness with API load
 
 function cacheGet(key) {
   const entry = _cache.get(key);
