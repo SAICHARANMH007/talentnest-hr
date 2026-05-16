@@ -89,44 +89,62 @@ export default function CandidateDashboard({ user }) {
     .sort((a,b) => new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt))
     .slice(0, 3);
 
-  // Weighted profile strength — total = 100
-  // Video Resume is excluded intentionally; numeric 0 (fresher) counts as filled
+  // Weighted profile strength
+  // Video Resume excluded intentionally. Numeric 0 (fresher) counts as filled.
+  // workHistory only added to the weights for experienced candidates (experience > 0).
+  // totalWeight adapts so BOTH freshers (100pts base) and experienced (108pts) can hit 100%.
+  const src = profile || user;
+  const isExperienced = Number(src?.experience) > 0;
+
+  // Base 11 fields — always total 100 — every candidate needs these
+  const BASE_WEIGHTS = [
+    { f:"name",        aliases:[],                        w:14, label:"Full Name" },
+    { f:"title",       aliases:["jobRole","currentRole"], w:12, label:"Job Title / Role" },
+    { f:"skills",      aliases:[],                        w:12, label:"Skills" },
+    { f:"summary",     aliases:["bio"],                   w:10, label:"Summary / Bio" },
+    { f:"experience",  aliases:["experienceYears"],       w:10, label:"Years of Experience" },
+    { f:"phone",       aliases:[],                        w:8,  label:"Phone" },
+    { f:"location",    aliases:[],                        w:8,  label:"Location" },
+    { f:"resumeUrl",   aliases:[],                        w:8,  label:"Resume" },
+    { f:"industry",    aliases:[],                        w:7,  label:"Industry" },
+    { f:"linkedinUrl", aliases:["linkedin"],              w:5,  label:"LinkedIn" },
+    { f:"department",  aliases:[],                        w:6,  label:"Department" },
+  ]; // 14+12+12+10+10+8+8+8+7+5+6 = 100
+
+  // Experienced candidates also need work history (adds 8 to denominator)
   const PROFILE_WEIGHTS = [
-    { f:"name",       aliases:[],                        w:15, label:"Full Name" },
-    { f:"title",      aliases:["jobRole","currentRole"], w:12, label:"Job Title / Role" },
-    { f:"skills",     aliases:[],                        w:12, label:"Skills" },
-    { f:"summary",    aliases:["bio"],                   w:10, label:"Summary / Bio" },
-    { f:"experience", aliases:["experienceYears"],       w:10, label:"Years of Experience" },
-    { f:"phone",      aliases:[],                        w:8,  label:"Phone" },
-    { f:"location",   aliases:[],                        w:8,  label:"Location" },
-    { f:"resumeUrl",  aliases:[],                        w:8,  label:"Resume" },
-    { f:"industry",   aliases:[],                        w:7,  label:"Industry" },
-    { f:"linkedinUrl",aliases:["linkedin"],              w:5,  label:"LinkedIn" },
-    { f:"department", aliases:[],                        w:5,  label:"Department" },
+    ...BASE_WEIGHTS,
+    ...(isExperienced ? [{ f:"workHistory", aliases:[], w:8, label:"Work Experience", jsonArray:true }] : []),
   ];
-  const src = profile || user; // fallback to JWT user if profile not yet loaded
+
   const getField = (x) => {
     const keys = [x.f, ...(x.aliases || [])];
     for (const k of keys) {
       const val = src?.[k];
       if (val === undefined || val === null || val === '') continue;
-      // numeric 0 is valid (fresher with 0 years experience)
-      if (typeof val === 'number') return true;
+      if (typeof val === 'number') return true; // 0 (fresher) is valid
       if (Array.isArray(val)) return val.length > 0;
+      // JSON array strings (workHistory, educationList stored as JSON)
+      if (x.jsonArray) {
+        try { return JSON.parse(val).length > 0; } catch { return false; }
+      }
       return String(val).trim() !== '';
     }
     return false;
   };
-  const totalWeight = PROFILE_WEIGHTS.reduce((s,x)=>s+x.w,0);
+
+  const totalWeight  = PROFILE_WEIGHTS.reduce((s,x)=>s+x.w,0);
   const earnedWeight = PROFILE_WEIGHTS.reduce((s,x) => s + (getField(x) ? x.w : 0), 0);
-  const profilePct = Math.round((earnedWeight / totalWeight) * 100);
+  const profilePct   = Math.round((earnedWeight / totalWeight) * 100);
   const firstMissing = PROFILE_WEIGHTS.find(x => !getField(x));
 
-  const profileFields = ["name","title","skills","location","summary","phone","experience","resumeUrl","industry","department"];
+  const profileFields = ["name","title","skills","location","summary","phone","experience","resumeUrl","industry","department","linkedinUrl",
+    ...(isExperienced ? ["workHistory"] : [])];
   const filledFields  = profileFields.filter(f => {
     const val = (profile || user)?.[f];
     if (val === undefined || val === null || val === '') return false;
     if (typeof val === 'number') return true;
+    if (f === 'workHistory') { try { return JSON.parse(val).length > 0; } catch { return false; } }
     return String(val).trim() !== "" && (!Array.isArray(val) || val.length > 0);
   });
   const activeApps    = apps.filter(a => !["rejected","selected"].includes(a.stage)).length;
