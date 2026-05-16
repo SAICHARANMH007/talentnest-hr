@@ -349,7 +349,13 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     countUniqueCandidateProfiles(platformWide ? {} : tenantScope, platformWide ? { isActive: true } : { ...tenantScope, isActive: true }),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
-    Application.countDocuments({ ...orgF, ...del }),
+    (async () => {
+      const [apps, imps] = await Promise.all([
+        Application.countDocuments({ ...orgF, ...del }),
+        ImportedCandidate.countDocuments({ ...orgF })
+      ]);
+      return apps + imps;
+    })(),
     Application.countDocuments({ ...orgF, currentStage: 'Hired', ...del }),
     Application.aggregate([
       { $match: { ...aggF, ...del } },
@@ -1610,15 +1616,8 @@ router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin')
   const { startDate, endDate } = req.query;
   const dateRange = buildDateRange(startDate, endDate);
 
-  const [appRaw, candRaw, impRaw] = await Promise.all([
+  const [appRaw, impRaw] = await Promise.all([
     Application.aggregate([
-      { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
-      { $group: {
-          _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] } },
-          count: { $sum: 1 }
-      }},
-    ]),
-    Candidate.aggregate([
       { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
       { $group: {
           _id: { $toLower: { $ifNull: [ { $cond: [ { $eq: ["$source", ""] }, null, "$source" ] }, 'direct' ] } },
@@ -1635,7 +1634,7 @@ router.get('/source-breakdown', authenticate, allowRoles('admin', 'super_admin')
   ]);
 
   const sourceMap = {};
-  [...appRaw, ...candRaw, ...impRaw].forEach(r => {
+  [...appRaw, ...impRaw].forEach(r => {
     const src = r._id || 'direct';
     sourceMap[src] = (sourceMap[src] || 0) + r.count;
   });
