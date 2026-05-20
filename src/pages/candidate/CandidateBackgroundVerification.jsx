@@ -17,7 +17,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 
-const DOC_TYPES = [
+const DEFAULT_DOC_TYPES = [
   { value: 'aadhaar',          label: 'Aadhaar Card' },
   { value: 'pan',              label: 'PAN Card' },
   { value: 'passport',         label: 'Passport' },
@@ -57,6 +57,7 @@ export default function CandidateBackgroundVerification({ user }) {
   const [preview,   setPreview]   = useState(null);  // { docId, loading }
   const [showUpload,setShowUpload] = useState(false);
   const [form,      setForm]      = useState({ docType: 'aadhaar', docName: '' });
+  const [docTypes,  setDocTypes]  = useState(DEFAULT_DOC_TYPES);
   const fileRef = useRef(null);
 
   const load = async () => {
@@ -68,7 +69,22 @@ export default function CandidateBackgroundVerification({ user }) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.getCustomizations().then(r => {
+      const orgDocs = (r?.data?.documentTypes || []).map(d => d.name || d).filter(Boolean);
+      if (orgDocs.length > 0) {
+        const orgDocOptions = orgDocs.map(name => ({
+          value: name.toLowerCase().replace(/\s+/g, '_'),
+          label: name,
+        }));
+        // Merge: keep defaults not overridden, append org extras
+        const defaultKeys = new Set(DEFAULT_DOC_TYPES.map(d => d.value));
+        const extras = orgDocOptions.filter(d => !defaultKeys.has(d.value));
+        setDocTypes([...DEFAULT_DOC_TYPES, ...extras]);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleUpload = async () => {
     const file = fileRef.current?.files?.[0];
@@ -79,7 +95,7 @@ export default function CandidateBackgroundVerification({ user }) {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('docType', form.docType);
-      fd.append('docName', form.docName || DOC_TYPES.find(t => t.value === form.docType)?.label || 'Document');
+      fd.append('docName', form.docName || docTypes.find(t => t.value === form.docType)?.label || 'Document');
       await api.uploadBgvDocument(fd);
       setToast('✅ Document uploaded successfully!');
       setShowUpload(false);
@@ -172,13 +188,13 @@ export default function CandidateBackgroundVerification({ user }) {
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 4 }}>Document Type *</label>
               <select value={form.docType} onChange={e => setForm(f => ({ ...f, docType: e.target.value }))} style={{ ...inp, width: '100%' }}>
-                {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {docTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 4 }}>Custom Label (optional)</label>
               <input value={form.docName} onChange={e => setForm(f => ({ ...f, docName: e.target.value }))}
-                placeholder={DOC_TYPES.find(t => t.value === form.docType)?.label || ''}
+                placeholder={docTypes.find(t => t.value === form.docType)?.label || ''}
                 style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
             </div>
           </div>
