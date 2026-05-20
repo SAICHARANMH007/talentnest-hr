@@ -21,8 +21,15 @@ const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const logger             = require('../middleware/logger');
 const email              = require('../utils/email');
+const OrgCustomizations  = require('../models/OrgCustomizations');
 
 const guard = [authMiddleware, tenantGuard];
+
+/** Substitute {{VARIABLE}} placeholders in a template string with actual values. */
+function fillTemplate(tpl, vars) {
+  if (!tpl) return '';
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] || `{{${key}}}`);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,8 +41,9 @@ function normalizeOffer(offer) {
 
 /**
  * Generate a PDF buffer for a signed offer letter using pdfkit.
+ * @param {Object} orgTpl - OrgCustomizations.offerLetterTemplate (optional, falls back to defaults)
  */
-async function generateOfferPDF(offer, candidate, job) {
+async function generateOfferPDF(offer, candidate, job, orgTpl = {}) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     const doc = new PDFDocument({ margin: 60, size: 'A4' });
@@ -48,8 +56,19 @@ async function generateOfferPDF(offer, candidate, job) {
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
+    // Template variable map for {{placeholder}} substitution
+    const tplVars = {
+      designation: d.designation || job?.title || '',
+      companyName: d.companyName || 'TalentNest HR',
+      ctc: d.ctc || '',
+      joiningDate: d.joiningDate || '',
+      signatoryName: d.signatoryName || orgTpl.signatoryTitle || 'HR Manager',
+      supportEmail: 'hr@talentnesthr.com',
+      candidateName: d.candidateName || candidate?.name || 'Candidate',
+    };
+
     // ── Header ────────────────────────────────────────────────────────────────
-    doc.fontSize(20).fillColor('#0176D3').text('TalentNest HR', { align: 'left' });
+    doc.fontSize(20).fillColor('#0176D3').text(tplVars.companyName, { align: 'left' });
     doc.fontSize(9).fillColor('#706E6B').text('Floor 3, Brindavanam Block C, Miyapur, Hyderabad – 502033');
     doc.text('hr@talentnesthr.com  |  +91 79955 35539  |  www.talentnesthr.com');
     doc.moveDown(0.5);
@@ -70,45 +89,91 @@ async function generateOfferPDF(offer, candidate, job) {
 
     // ── Subject ───────────────────────────────────────────────────────────────
     doc.fontSize(12).fillColor('#032D60')
-      .text(`Subject: Offer of Employment — ${d.designation || job?.title || 'Position'}`, { underline: true });
+      .text(`Subject: Offer of Employment — ${tplVars.designation || 'Position'}`, { underline: true });
     doc.moveDown(1);
 
-    // ── Body ──────────────────────────────────────────────────────────────────
-    const firstName = (d.candidateName || candidate?.name || 'Candidate').split(' ')[0];
+    // ── Greeting & Intro ──────────────────────────────────────────────────────
+    const firstName = tplVars.candidateName.split(' ')[0];
     doc.fontSize(11).fillColor('#000').text(`Dear ${firstName},`, { lineGap: 4 });
     doc.moveDown(0.5);
-    doc.text(
-      `We are delighted to extend this offer of employment to you for the position of ${d.designation || job?.title || 'the position'} ` +
-      `at ${d.companyName || 'TalentNest HR'}. This offer is conditional upon the satisfactory completion of all pre-employment checks.`,
-      { lineGap: 4 }
-    );
+    const introText = orgTpl.introText
+      ? fillTemplate(orgTpl.introText, tplVars)
+      : `We are delighted to extend this offer of employment to you for the position of ${tplVars.designation || 'the position'} at ${tplVars.companyName}. This offer is conditional upon the satisfactory completion of all pre-employment checks.`;
+    doc.text(introText, { lineGap: 4 });
 
+    // ── Employment Details ────────────────────────────────────────────────────
     doc.moveDown(1);
     doc.fontSize(12).fillColor('#032D60').text('Employment Details', { underline: true });
     doc.moveDown(0.3);
     const details = [
-      ['Designation', d.designation || job?.title || '—'],
+      ['Designation', tplVars.designation || '—'],
       ['CTC (Annual)', d.ctc ? `₹ ${d.ctc}` : '—'],
       ['Date of Joining', d.joiningDate || '—'],
-      ['Company', d.companyName || '—'],
+      ['Company', tplVars.companyName],
     ];
     doc.fontSize(10).fillColor('#000');
     details.forEach(([label, value]) => {
       doc.text(`${label}: `, { continued: true }).fillColor('#0176D3').text(value).fillColor('#000');
     });
 
-    if (d.customClauses) {
+    // ── Compensation Text (from template) ────────────────────────────────────
+    if (orgTpl.compensationText) {
+      doc.moveDown(1);
+      doc.fontSize(12).fillColor('#032D60').text('Compensation', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).fillColor('#000').text(fillTemplate(orgTpl.compensationText, tplVars), { lineGap: 4 });
+    }
+
+    // ── Joining Instructions (from template) ─────────────────────────────────
+    if (orgTpl.joiningText) {
+      doc.moveDown(1);
+      doc.fontSize(12).fillColor('#032D60').text('Joining Instructions', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).fillColor('#000').text(fillTemplate(orgTpl.joiningText, tplVars), { lineGap: 4 });
+    }
+
+    // ── Terms & Conditions ────────────────────────────────────────────────────
+    const termsText = orgTpl.termsAndConditions || d.customClauses;
+    if (termsText) {
+      doc.moveDown(1);
+      doc.fontSize(12).fillColor('#032D60').text('Terms & Conditions', { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).fillColor('#000').text(fillTemplate(termsText, tplVars), { lineGap: 4 });
+    } else if (d.customClauses) {
       doc.moveDown(1);
       doc.fontSize(12).fillColor('#032D60').text('Special Terms & Conditions', { underline: true });
       doc.moveDown(0.3);
       doc.fontSize(10).fillColor('#000').text(d.customClauses, { lineGap: 4 });
     }
 
+    // ── Custom Additional Clauses (from template) ─────────────────────────────
+    if (orgTpl.customClauses) {
+      doc.moveDown(1);
+      doc.fontSize(10).fillColor('#444').text(fillTemplate(orgTpl.customClauses, tplVars), { lineGap: 4 });
+    }
+
+    // ── Closing (from template) ───────────────────────────────────────────────
     doc.moveDown(1.5);
-    doc.fontSize(11).text('Yours sincerely,');
+    const closingText = orgTpl.closingText
+      ? fillTemplate(orgTpl.closingText, tplVars)
+      : null;
+    if (closingText) {
+      doc.fontSize(10).fillColor('#000').text(closingText, { lineGap: 4 });
+      doc.moveDown(1);
+    }
+
+    // ── Signatory ─────────────────────────────────────────────────────────────
+    doc.fontSize(11).fillColor('#000').text('Yours sincerely,');
     doc.moveDown(1);
     doc.text(`${d.signatoryName || 'HR Manager'}`);
-    doc.fontSize(9).fillColor('#706E6B').text(`${d.signatoryDesignation || 'Human Resources'} | TalentNest HR`);
+    const sigTitle = orgTpl.signatoryTitle || d.signatoryDesignation || 'Human Resources';
+    doc.fontSize(9).fillColor('#706E6B').text(`${sigTitle} | ${tplVars.companyName}`);
+
+    // ── Footer note ───────────────────────────────────────────────────────────
+    if (orgTpl.footerNote) {
+      doc.moveDown(2);
+      doc.fontSize(8).fillColor('#9E9D9B').text(orgTpl.footerNote, { align: 'center' });
+    }
 
     // ── Acceptance block ──────────────────────────────────────────────────────
     if (offer.signatureData?.typedName) {
@@ -222,26 +287,32 @@ router.post('/:id/send', ...guard,
 
     if (offer.status === 'signed') throw new AppError('Offer already signed.', 400);
 
-    const [candidate, job] = await Promise.all([
+    const [candidate, job, orgCust] = await Promise.all([
       Candidate.findById(offer.candidateId).select('name email').lean(),
       Job.findById(app.jobId).select('title').lean(),
+      OrgCustomizations.getOrCreate(req.user.tenantId || req.user.orgId).catch(() => null),
     ]);
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     const offerLink = `${frontendUrl}/offer/${offer._id}`;
     const d = offer.templateData || {};
+    const orgTpl = orgCust?.offerLetterTemplate || {};
+    const tplVars = { designation: d.designation || job?.title || '', companyName: d.companyName || 'TalentNest HR', ctc: d.ctc || '', joiningDate: d.joiningDate || '', candidateName: candidate?.name || 'Candidate', signatoryName: d.signatoryName || orgTpl.signatoryTitle || 'HR Team', supportEmail: 'hr@talentnesthr.com' };
+    const introHtml = orgTpl.introText ? `<p>${fillTemplate(orgTpl.introText, tplVars)}</p>` : `<p>We are pleased to extend you an offer of employment for the role of <strong>${tplVars.designation || d.designation || job?.title}</strong> at <strong>${tplVars.companyName}</strong>.</p>`;
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#0176D3">📨 Your Offer Letter — ${job?.title || d.designation}</h2>
-        <p>Dear ${candidate?.name || 'Candidate'},</p>
-        <p>We are pleased to extend you an offer of employment for the role of <strong>${d.designation || job?.title}</strong> at <strong>${d.companyName || 'TalentNest HR'}</strong>.</p>
+        <h2 style="color:#0176D3">📨 Your Offer Letter — ${tplVars.designation || job?.title}</h2>
+        <p>Dear ${(candidate?.name || 'Candidate').split(' ')[0]},</p>
+        ${introHtml}
         ${d.ctc ? `<p>💰 <strong>CTC: ₹ ${d.ctc} per annum</strong></p>` : ''}
         ${d.joiningDate ? `<p>📅 <strong>Joining Date: ${d.joiningDate}</strong></p>` : ''}
         <p>Please review and sign your offer letter using the link below:</p>
         <a href="${offerLink}" style="display:inline-block;padding:12px 28px;background:#0176D3;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">View & Sign Offer Letter →</a>
         <p style="margin-top:16px;color:#706E6B;font-size:12px">This link is for your use only. Do not share it.</p>
-        <p>Best regards,<br>${d.signatoryName || 'HR Team'}<br>${d.companyName || 'TalentNest HR'}</p>
+        ${orgTpl.closingText ? `<p>${fillTemplate(orgTpl.closingText, tplVars)}</p>` : ''}
+        <p>Best regards,<br>${tplVars.signatoryName}<br>${tplVars.companyName}</p>
+        ${orgTpl.footerNote ? `<p style="font-size:10px;color:#9E9D9B">${orgTpl.footerNote}</p>` : ''}
       </div>`;
 
     if (candidate?.email) {
@@ -285,13 +356,14 @@ router.post('/:id/sign', authMiddleware, asyncHandler(async (req, res) => {
   offer.status   = 'signed';
 
   // Generate signed PDF
-  const [candidate, job, app] = await Promise.all([
+  const [candidate, job, app, signOrgCust] = await Promise.all([
     Candidate.findById(offer.candidateId).select('name email phone').lean(),
     Application.findById(offer.applicationId).then(a => a ? Job.findById(a.jobId).select('title').lean() : null),
     Application.findById(offer.applicationId).lean(),
+    OrgCustomizations.getOrCreate(offer.tenantId).catch(() => null),
   ]);
 
-  const pdfBuffer = await generateOfferPDF(offer, candidate, job);
+  const pdfBuffer = await generateOfferPDF(offer, candidate, job, signOrgCust?.offerLetterTemplate || {});
 
   // Store as base64 data URL (no external file storage needed)
   offer.signedDocUrl = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
@@ -446,7 +518,8 @@ router.get('/:id/pdf', authMiddleware, asyncHandler(async (req, res) => {
   }
 
   // If stored as URL, generate PDF on-the-fly
-  const pdfBuffer = await generateOfferPDF(offer, candidate, job);
+  const dlOrgCust = await OrgCustomizations.getOrCreate(offer.tenantId).catch(() => null);
+  const pdfBuffer = await generateOfferPDF(offer, candidate, job, dlOrgCust?.offerLetterTemplate || {});
   res.set({
     'Content-Type': 'application/pdf',
     'Content-Disposition': `attachment; filename="${filename}"`,
@@ -465,14 +538,15 @@ router.get('/:id/pdf/preview', ...guard, asyncHandler(async (req, res) => {
     throw new AppError('Access denied.', 403);
   }
 
-  const [candidate, job] = await Promise.all([
+  const [candidate, job, previewOrgCust] = await Promise.all([
     Candidate.findById(offer.candidateId).select('name').lean(),
     offer.applicationId
       ? Application.findById(offer.applicationId).then(a => a ? Job.findById(a.jobId).select('title').lean() : null)
       : null,
+    OrgCustomizations.getOrCreate(offer.tenantId).catch(() => null),
   ]);
 
-  const pdfBuffer = await generateOfferPDF(offer, candidate, job);
+  const pdfBuffer = await generateOfferPDF(offer, candidate, job, previewOrgCust?.offerLetterTemplate || {});
   const fname = `offer-${(offer.templateData?.candidateName || 'candidate').replace(/\s+/g, '-').toLowerCase()}.pdf`;
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${fname}"`, 'Content-Length': pdfBuffer.length });
   res.send(pdfBuffer);
