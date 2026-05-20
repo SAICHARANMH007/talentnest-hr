@@ -9,7 +9,8 @@ import ResumeCard from './ResumeCard.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { parseFile } from '../../api/matching.js';
-import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
+import { INDUSTRIES } from '../../constants/picklists.js';
+import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 // Duplicate warning banner — defined outside component
 const DupWarning = ({ dupes, onIgnore }) => (
@@ -139,6 +140,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
   const actorRole = addedBy?.role || '';
   const isSuperAdmin = actorRole === 'super_admin';
   const defaultTenantId = addedBy?.tenantId || addedBy?.orgId || '';
+  const { departments, sources } = useOrgOptions();
 
   const sf = (k, v) => { setForm(p => ({ ...p, [k]: v })); setDupChecked(false); setDupes([]); };
 
@@ -419,7 +421,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
             label="Department *"
             value={form.department}
             onChange={v => sf('department', v)}
-            options={DEPARTMENTS}
+            options={departments}
             placeholder="Select Department"
             hint="The team/function the candidate belongs to — e.g. Engineering, Sales"
           />

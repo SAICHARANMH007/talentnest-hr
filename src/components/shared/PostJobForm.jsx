@@ -6,7 +6,8 @@ import Spinner from '../ui/Spinner.jsx';
 import UploadZone from '../ui/UploadZone.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { parseJD } from '../../api/matching.js';
-import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
+import { INDUSTRIES } from '../../constants/picklists.js';
+import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 const EMPTY = {
   title: '', company: '', department: '', industry: '', location: '',
@@ -26,6 +27,7 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const [parsing, setParsing] = useState(false);
   const [newQ, setNewQ] = useState(EMPTY_Q);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const { departments, locations } = useOrgOptions();
 
   // Reset form when initialData changes (e.g. editing a different job)
   const prevInitRef = useRef(initialData);
@@ -140,9 +142,11 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
             options={INDUSTRIES} placeholder="Select Industry"
             hint="The sector this role belongs to — helps candidates find relevant jobs" />
           <Dropdown label="Department *" value={form.department} onChange={v => sf('department', v)}
-            options={DEPARTMENTS} placeholder="Select Department"
+            options={departments} placeholder="Select Department"
             hint="The team/function within the company" />
-          <Field label="Location"       value={form.location}   onChange={v => sf('location', v)}   placeholder="Hyderabad, Telangana" />
+          <Field label="Location"       value={form.location}   onChange={v => sf('location', v)}
+            placeholder="Hyderabad, Telangana"
+            options={locations.length ? locations.map(l => ({ value: l, label: l })) : undefined} />
           <Dropdown label="Job Type"    value={form.jobType}    onChange={v => sf('jobType', v)}
             options={['Full-Time', 'Part-Time', 'Contract', 'C2H', 'C2C', 'Internship', 'Freelance']} />
           <Dropdown label="Work Mode"   value={form.workMode}   onChange={v => sf('workMode', v)}

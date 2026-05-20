@@ -797,6 +797,21 @@ export default function Layout({ user, onLogout }) {
     }
   }, [user.orgId, user.tenantId]);
 
+  // Inject org brand colors as CSS variables so the whole app respects them
+  useEffect(() => {
+    if (!user.tenantId && !user.orgId) return;
+    api.getCustomizations().then(r => {
+      const bc = r?.data?.brandColors;
+      if (!bc) return;
+      const root = document.documentElement;
+      if (bc.primary)   root.style.setProperty('--tn-blue',    bc.primary);
+      if (bc.secondary) root.style.setProperty('--tn-navy',    bc.secondary);
+      if (bc.accent)    root.style.setProperty('--tn-teal',    bc.accent);
+      if (bc.bgCard)    root.style.setProperty('--tn-surface', bc.bgCard);
+      if (bc.bgPage)    root.style.setProperty('--tn-off',     bc.bgPage);
+    }).catch(() => {});
+  }, [user.tenantId, user.orgId]);
+
   useEffect(() => {
     if (rk === 'admin') {
       api.getBillingUsage().then(u => {
