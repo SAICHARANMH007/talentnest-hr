@@ -912,6 +912,24 @@ router.patch('/:id/stage', ...guard,
     if (candidate?.email) {
       const jobDoc = await Job.findById(app.jobId).select('title').lean();
       const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+
+      // Load org notification message overrides
+      let orgNotifMap = {};
+      try {
+        const OrgCustomizations = require('../models/OrgCustomizations');
+        const cust = await OrgCustomizations.findOne({ orgId: String(app.tenantId) }).select('notificationMessages').lean();
+        (cust?.notificationMessages || []).forEach(nm => { orgNotifMap[nm.trigger] = nm.message; });
+      } catch { /* fall back to defaults */ }
+
+      // Map stage name → notification trigger key
+      const STAGE_TO_TRIGGER = {
+        Shortlisted: 'Application Shortlisted',
+        'Interview Round 1': 'Interview Scheduled',
+        'Interview Round 2': 'Interview Scheduled',
+        'Technical Interview': 'Interview Scheduled',
+        Offer: 'Offer Extended',
+        Rejected: 'Application Rejected',
+      };
       const stageEmailMap = {
         Shortlisted: {
           subject: `🎉 You've been shortlisted for ${jobDoc?.title}`,
@@ -956,7 +974,11 @@ router.patch('/:id/stage', ...guard,
           body: `Hi <strong>${candidate.name}</strong>, thank you for your interest in the <strong>${jobDoc?.title}</strong> role. After careful consideration, we will not be moving forward at this time. We encourage you to apply for future openings.`,
         },
       };
-      const tpl = stageEmailMap[stage];
+      // Override body with org custom notification message if set
+      const rawTpl = stageEmailMap[stage];
+      const triggerKey = STAGE_TO_TRIGGER[stage];
+      const orgBody = triggerKey && orgNotifMap[triggerKey];
+      const tpl = rawTpl && orgBody ? { ...rawTpl, body: orgBody } : rawTpl;
       if (tpl) {
         const html = `<div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:560px;margin:0 auto;background:#f8fafc;padding:32px 20px;">
           <div style="background:linear-gradient(135deg,${tpl.color},#032D60);padding:28px 32px;border-radius:16px 16px 0 0;">
