@@ -11,8 +11,8 @@ import { STAGES, SM, NEXT } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
-const PRESET_TAGS = ['Top Talent', 'On Hold', 'Budget Fit', 'Overqualified', 'Culture Fit'];
-const TAG_COLORS = {
+const DEFAULT_PRESET_TAGS = ['Top Talent', 'On Hold', 'Budget Fit', 'Overqualified', 'Culture Fit'];
+const DEFAULT_TAG_COLORS = {
   'Top Talent': '#10b981',
   'On Hold': '#F59E0B',
   'Budget Fit': '#014486',
@@ -187,7 +187,7 @@ const ASMT_RESULT = {
   pending: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  label: '⏳ Pending Review' },
 };
 
-function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment, onPark }) {
+function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment, onPark, presetTags = DEFAULT_PRESET_TAGS, tagColors = DEFAULT_TAG_COLORS }) {
   const navigate = useNavigate();
   const c = app.candidate;
   const s = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
@@ -495,6 +495,8 @@ export default function RecruiterPipeline({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState('');
+  const [presetTags, setPresetTags] = useState(DEFAULT_PRESET_TAGS);
+  const [tagColors, setTagColors] = useState(DEFAULT_TAG_COLORS);
   const [apps, setApps] = useState([]);
   const [loading, setLoad] = useState(false);
   const [detailApp, setDetApp] = useState(null);
@@ -519,6 +521,17 @@ export default function RecruiterPipeline({ user }) {
       setJobs(Array.from(map.values()));
     }).catch(() => setJobs([]));
     api.getUser(user.id).then(r => setRecruiter(r?.data || r)).catch(() => {});
+    // Load org custom tags
+    api.getCustomizations().then(r => {
+      const orgTags = (r?.data?.tags || []).map(t => t.name || t).filter(Boolean);
+      if (orgTags.length > 0) {
+        const combined = Array.from(new Set([...DEFAULT_PRESET_TAGS, ...orgTags]));
+        const colorMap = { ...DEFAULT_TAG_COLORS };
+        (r?.data?.tags || []).forEach(t => { if (t.name && t.color) colorMap[t.name] = t.color; });
+        setPresetTags(combined);
+        setTagColors(colorMap);
+      }
+    }).catch(() => {});
   }, [user.id]);
 
   const loadApps = async (jid, pg = 1) => {
@@ -836,6 +849,8 @@ export default function RecruiterPipeline({ user }) {
                             assessmentId={assessmentData?.id}
                             submission={assessmentData?.submissionsMap?.[String(app.candidate?.id || app.candidate?._id || app.candidateId || '')]}
                             onReviewAssessment={(aId, subId) => navigate(`/app/review/${aId}/${subId}`)}
+                            presetTags={presetTags}
+                            tagColors={tagColors}
                           />
                         ))}
                       </div>
@@ -869,6 +884,8 @@ export default function RecruiterPipeline({ user }) {
                     assessmentId={assessmentData?.id}
                     submission={assessmentData?.submissionsMap?.[String(app.candidate?.id || app.candidate?._id || app.candidateId || '')]}
                     onReviewAssessment={(aId, subId) => navigate(`/app/review/${aId}/${subId}`)}
+                    presetTags={presetTags}
+                    tagColors={tagColors}
                   />
                 ))}
               </div>
