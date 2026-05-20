@@ -6,6 +6,7 @@ import Toast from '../ui/Toast.jsx';
 import { btnP, btnG, btnD } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { SM, STAGES } from '../../constants/stages.js';
+import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 const SF = {
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:10001, display:'flex', justifyContent:'flex-end' },
@@ -166,6 +167,7 @@ function MultiCandidatePicker({ availableCandidates, onAdd, adding }) {
 }
 
 export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobUpdated, onDelete }) {
+  const { isVisible } = useOrgOptions();
   const normJob = (j) => j ? { ...j, id: j.id || j._id?.toString() } : j;
   const [job, setJob] = useState(normJob(initialJob));
   const [candidates, setCandidates] = useState([]);
@@ -424,7 +426,7 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                 {[
                   ['Experience', job.experience],
                   ['Job Type', job.jobType || job.type],
-                  ['Salary', job.salary],
+                  ...(isVisible('salary') ? [['Salary', job.salary]] : []),
                   ['Deadline', job.applicationDeadline],
                 ].filter(([, v]) => v).map(([label, value]) => (
                   <div key={label} style={{ marginBottom: 8 }}>

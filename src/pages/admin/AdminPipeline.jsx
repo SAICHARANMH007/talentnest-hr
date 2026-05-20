@@ -47,10 +47,11 @@ const OFFER_STAGES = new Set(['offer_extended','offer_letter','offer_accepted'])
 const SCHED_EMPTY = { date: '', time: '', format: 'video', interviewerName: '', interviewerEmail: '', videoLink: '', notes: '' };
 
 export default function AdminPipeline({ user }) {
-  const { stages: orgStages } = useOrgOptions();
+  const { stages: orgStages, isVisible } = useOrgOptions();
   // Build SM (stage map by id) from org stages so custom colors/labels resolve correctly
   const activeStages = orgStages.length > 0 ? orgStages : STAGES;
   const activeSM     = Object.fromEntries(activeStages.map(s => [s.id, s]));
+  const showScore    = isVisible('candidate_score');
 
   const [apps,    setApps]    = useState([]);
   const [jobs,    setJobs]    = useState([]);
@@ -214,12 +215,14 @@ export default function AdminPipeline({ user }) {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#181818', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cName}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: scoreColor(score), flexShrink: 0, marginLeft: 4 }}>{score}%</div>
+                        {showScore && <div style={{ fontSize: 11, fontWeight: 700, color: scoreColor(score), flexShrink: 0, marginLeft: 4 }}>{score}%</div>}
                       </div>
                       {jTitle && <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jTitle}</div>}
-                      <div style={{ ...S.scoreBar, width: '100%', background: '#F3F2F2' }}>
-                        <div style={{ ...S.scoreBar, width: `${score}%`, background: scoreColor(score) }} />
-                      </div>
+                      {showScore && (
+                        <div style={{ ...S.scoreBar, width: '100%', background: '#F3F2F2' }}>
+                          <div style={{ ...S.scoreBar, width: `${score}%`, background: scoreColor(score) }} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

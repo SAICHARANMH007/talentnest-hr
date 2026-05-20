@@ -14,12 +14,13 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * stages overlays org colors/labels onto the default pipeline stages.
  */
 export function useOrgOptions() {
-  const [departments, setDepartments] = useState(DEPARTMENTS);
-  const [industries, setIndustries]   = useState(INDUSTRIES);
-  const [locations, setLocations]     = useState([]);
-  const [sources, setSources]         = useState([]);
-  const [stages, setStages]           = useState(STAGES);
-  const [loaded, setLoaded]           = useState(false);
+  const [departments, setDepartments]       = useState(DEPARTMENTS);
+  const [industries, setIndustries]         = useState(INDUSTRIES);
+  const [locations, setLocations]           = useState([]);
+  const [sources, setSources]               = useState([]);
+  const [stages, setStages]                 = useState(STAGES);
+  const [fieldVisibility, setFieldVisibility] = useState({});
+  const [loaded, setLoaded]                 = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,13 +84,19 @@ export function useOrgOptions() {
         });
         setStages(updated);
       }
+
+      // Field visibility map — undefined means ON (default visible)
+      setFieldVisibility(data.fieldVisibility || {});
     }
 
     load();
     return () => { cancelled = true; };
   }, []);
 
-  return { departments, industries, locations, sources, stages, loaded };
+  // Helper: returns true if feature is visible (defaults to true if not configured)
+  const isVisible = (key) => fieldVisibility[key] !== false;
+
+  return { departments, industries, locations, sources, stages, fieldVisibility, isVisible, loaded };
 }
 
 /** Call this after admin saves customizations to bust the cache. */
