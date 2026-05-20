@@ -8,6 +8,37 @@ const nodemailer = require('nodemailer');
 const _orgConfigCache = new Map();
 const ORG_CACHE_TTL   = 5 * 60 * 1000;
 
+// ── In-process org customization cache (5 min TTL) ───────────────────────────
+const _orgCustCache  = new Map();
+const CUST_CACHE_TTL = 5 * 60 * 1000;
+
+async function getOrgSignature(tenantId) {
+  if (!tenantId) return null;
+  const tid    = String(tenantId);
+  const cached = _orgCustCache.get(tid);
+  if (cached && Date.now() - cached.at < CUST_CACHE_TTL) return cached.sig;
+  try {
+    const OrgCustomizations = require('../models/OrgCustomizations');
+    const cust = await OrgCustomizations.findOne({ orgId: tid }).select('emailSignature').lean();
+    const sig  = cust?.emailSignature || null;
+    _orgCustCache.set(tid, { sig, at: Date.now() });
+    return sig;
+  } catch { return null; }
+}
+
+function buildSignatureHtml(sig) {
+  if (!sig) return '';
+  const parts = [];
+  if (sig.companyName) parts.push(`<strong>${sig.companyName}</strong>`);
+  if (sig.tagline)     parts.push(`<em>${sig.tagline}</em>`);
+  if (sig.supportEmail) parts.push(`<a href="mailto:${sig.supportEmail}">${sig.supportEmail}</a>`);
+  if (sig.phone)       parts.push(sig.phone);
+  if (sig.website)     parts.push(`<a href="${sig.website}" target="_blank">${sig.website}</a>`);
+  if (sig.linkedIn)    parts.push(`<a href="${sig.linkedIn}" target="_blank">LinkedIn</a>`);
+  if (!parts.length && !sig.footerNote) return '';
+  return `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0"><p style="font-size:11px;color:#706E6B;margin:0">${parts.join(' · ')}${sig.footerNote ? `<br><span>${sig.footerNote}</span>` : ''}</p>`;
+}
+
 async function getOrgEmailConfig(tenantId) {
   if (!tenantId) return null;
   const tid    = String(tenantId);
@@ -130,9 +161,15 @@ const sendEmailWithRetry = async (to, subject, html, attachments, maxRetries = 3
 // ── sendOrgEmail — convenience wrapper that auto-fetches org email config ─────
 // Use this in routes where you have tenantId and want org-branded emails.
 // Falls back to platform default if the org hasn't configured their own settings.
+// Also appends org email signature from OrgCustomizations.emailSignature.
 const sendOrgEmail = async (to, subject, html, tenantId, attachments) => {
-  const orgConfig = tenantId ? await getOrgEmailConfig(tenantId) : null;
-  return sendEmailWithRetry(to, subject, html, attachments, 3, orgConfig);
+  const [orgConfig, orgSig] = await Promise.all([
+    tenantId ? getOrgEmailConfig(tenantId) : Promise.resolve(null),
+    tenantId ? getOrgSignature(tenantId)   : Promise.resolve(null),
+  ]);
+  const sigHtml = buildSignatureHtml(orgSig);
+  const finalHtml = sigHtml ? `${html}${sigHtml}` : html;
+  return sendEmailWithRetry(to, subject, finalHtml, attachments, 3, orgConfig);
 };
 
 // ── Batch send via Resend ─────────────────────────────────────────────────────
