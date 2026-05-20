@@ -9,6 +9,7 @@ import HiredDetailsModal from '../../components/modals/HiredDetailsModal.jsx';
 import { STAGES, SM } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api, downloadBlob } from '../../api/api.js';
+import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 // ── Styles outside component ───────────────────────────────────────────────────
 const S = {
@@ -46,6 +47,11 @@ const OFFER_STAGES = new Set(['offer_extended','offer_letter','offer_accepted'])
 const SCHED_EMPTY = { date: '', time: '', format: 'video', interviewerName: '', interviewerEmail: '', videoLink: '', notes: '' };
 
 export default function AdminPipeline({ user }) {
+  const { stages: orgStages } = useOrgOptions();
+  // Build SM (stage map by id) from org stages so custom colors/labels resolve correctly
+  const activeStages = orgStages.length > 0 ? orgStages : STAGES;
+  const activeSM     = Object.fromEntries(activeStages.map(s => [s.id, s]));
+
   const [apps,    setApps]    = useState([]);
   const [jobs,    setJobs]    = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +105,7 @@ export default function AdminPipeline({ user }) {
         } catch { /* best-effort */ }
       }
       setApps(prev => prev.map(a => (a.id || a._id?.toString()) === appId ? { ...a, stage: newStage } : a));
-      setToast(`✅ Moved to ${SM[newStage]?.label || newStage}`);
+      setToast(`✅ Moved to ${activeSM[newStage]?.label || newStage}`);
       setStageDialog(null);
       // Trigger package/CTC collection when candidate is Hired
       if (newStage === 'selected') {
@@ -128,7 +134,7 @@ export default function AdminPipeline({ user }) {
   const onDragOver  = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
   const onDrop      = (e, stage) => { e.preventDefault(); if (dragId.current) { moveStage(dragId.current, stage); dragId.current = null; } };
 
-  const displayedStages = stageFilter ? [SM[stageFilter]].filter(Boolean) : STAGES;
+  const displayedStages = stageFilter ? [activeSM[stageFilter]].filter(Boolean) : activeStages;
   const filteredApps = stageFilter ? apps.filter(a => (a.stage || a.currentStage) === stageFilter) : apps;
 
   return (
@@ -162,7 +168,7 @@ export default function AdminPipeline({ user }) {
         </select>
         <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} style={{ ...inp, flex: '1 1 140px', maxWidth: 220 }}>
           <option value="">All Stages</option>
-          {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+          {activeStages.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
         </select>
         <button onClick={load} style={btnG}>↻ Refresh</button>
         <span style={{ marginLeft: 'auto', color: '#706E6B', fontSize: 13 }}>{filteredApps.length} applications</span>
@@ -248,7 +254,7 @@ export default function AdminPipeline({ user }) {
                   {INTERVIEW_STAGES.has(stageDialog.newStage) ? 'Schedule Interview' : 'Extend Offer'}
                 </div>
                 <div style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>
-                  {SM[stageDialog.newStage]?.icon} Moving to {SM[stageDialog.newStage]?.label || stageDialog.newStage}
+                  {activeSM[stageDialog.newStage]?.icon} Moving to {activeSM[stageDialog.newStage]?.label || stageDialog.newStage}
                 </div>
               </div>
               <button onClick={() => setStageDialog(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
@@ -278,7 +284,7 @@ export default function AdminPipeline({ user }) {
               )}
               {OFFER_STAGES.has(stageDialog.newStage) && (
                 <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, fontSize: 13, color: '#2E844A' }}>
-                  🎉 This will move the candidate to <strong>{SM[stageDialog.newStage]?.label || stageDialog.newStage}</strong>. An offer letter can be generated from the Offers section.
+                  🎉 This will move the candidate to <strong>{activeSM[stageDialog.newStage]?.label || stageDialog.newStage}</strong>. An offer letter can be generated from the Offers section.
                 </div>
               )}
               <Field label="Notes (optional)" value={schedForm.notes} onChange={v => sf('notes', v)} placeholder="Any notes for this stage move…" rows={2} />

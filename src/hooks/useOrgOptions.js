@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../constants/picklists.js';
+import { STAGES, DB_TO_FRONTEND_STAGE } from '../constants/stages.js';
 
 // Module-level cache so every component re-render doesn't re-fetch
 let _cache = null;
@@ -10,12 +11,14 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 /**
  * Returns merged dropdown options from org customizations + hardcoded defaults.
  * departments, locations, sources are extended with any org-specific entries.
+ * stages overlays org colors/labels onto the default pipeline stages.
  */
 export function useOrgOptions() {
   const [departments, setDepartments] = useState(DEPARTMENTS);
   const [industries, setIndustries]   = useState(INDUSTRIES);
   const [locations, setLocations]     = useState([]);
   const [sources, setSources]         = useState([]);
+  const [stages, setStages]           = useState(STAGES);
   const [loaded, setLoaded]           = useState(false);
 
   useEffect(() => {
@@ -55,13 +58,38 @@ export function useOrgOptions() {
       // Org sources
       const orgSrcs = (data.sources || []).map(s => s.name || s).filter(Boolean);
       setSources(orgSrcs);
+
+      // Org pipeline stages — overlay colors onto defaults, append custom stages
+      const orgStatuses = (data.pipelineStatuses || [])
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (orgStatuses.length > 0) {
+        const colorMap = {};
+        orgStatuses.forEach(os => {
+          const id = DB_TO_FRONTEND_STAGE[os.name]
+            || os.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+          colorMap[id] = { color: os.color, label: os.name };
+        });
+        const defaultIds = new Set(STAGES.map(s => s.id));
+        const updated = STAGES.map(s =>
+          colorMap[s.id] ? { ...s, color: colorMap[s.id].color || s.color } : s
+        );
+        orgStatuses.forEach(os => {
+          const id = DB_TO_FRONTEND_STAGE[os.name]
+            || os.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+          if (!defaultIds.has(id)) {
+            updated.push({ id, label: os.name, icon: '📌', color: os.color || '#706E6B' });
+          }
+        });
+        setStages(updated);
+      }
     }
 
     load();
     return () => { cancelled = true; };
   }, []);
 
-  return { departments, industries, locations, sources, loaded };
+  return { departments, industries, locations, sources, stages, loaded };
 }
 
 /** Call this after admin saves customizations to bust the cache. */

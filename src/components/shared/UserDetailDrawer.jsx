@@ -100,6 +100,9 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
     });
   }, [u]);
 
+  const [customFieldDefs, setCustomFieldDefs] = useState([]);
+  const [customFieldVals, setCustomFieldVals] = useState({});
+
   const [allFetchedApps, setAllFetchedApps] = useState([]);
 
   useEffect(() => {
@@ -107,6 +110,22 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       api.getOrgs().then(data => setOrgs(Array.isArray(data) ? data : [])).catch(() => setOrgs([]));
     }
   }, [isSuperAdmin]);
+
+  useEffect(() => {
+    let uid = u?.id || u?._id?.toString();
+    if (!uid && typeof u === 'string') uid = u;
+    if (!uid) return;
+    api.getCustomFields('candidate').then(res => {
+      const defs = Array.isArray(res) ? res : (res?.data || []);
+      setCustomFieldDefs(defs);
+      if (defs.length > 0) {
+        api.getCustomFieldValues('candidate', uid).then(vRes => {
+          const vals = vRes?.data?.values || vRes?.values || {};
+          setCustomFieldVals(typeof vals === 'object' && !Array.isArray(vals) ? vals : {});
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }, [u]);
 
   useEffect(() => {
     if (tab === 'pipeline' && u) {
@@ -144,6 +163,9 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         updated = res?.data || res;
       }
       
+      if (customFieldDefs.length > 0) {
+        await api.saveCustomFieldValues('candidate', uid, customFieldVals).catch(() => {});
+      }
       setToast('✅ Profile updated successfully');
       onUpdated?.(updated);
     } catch (e) { setToast(`❌ ${e.message}`); }
@@ -330,6 +352,38 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                       <Field label="Client SPOC"          value={form.clientSpoc}          onChange={v => sf('clientSpoc', v)} placeholder="Arun Mehta" />
                       <Field label="Candidate Status"     value={form.candidateStatus}     onChange={v => sf('candidateStatus', v)} placeholder="Active" />
                       <Field label="Certifications"       value={form.certifications}      onChange={v => sf('certifications', v)} placeholder="AWS, CKA" />
+                    </div>
+                  </div>
+                )}
+
+                {customFieldDefs.length > 0 && (
+                  <div style={{ marginTop: 14, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 800, color: '#475569', letterSpacing: 1 }}>🧩 CUSTOM FIELDS</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 10 }}>
+                      {customFieldDefs.map(def => {
+                        const val = customFieldVals[def._id || def.id] ?? '';
+                        if (def.type === 'select' || def.type === 'dropdown') {
+                          const opts = (def.options || []).map(o => ({ value: o, label: o }));
+                          return (
+                            <Field key={def._id || def.id} label={def.label || def.name}
+                              value={val} onChange={v => setCustomFieldVals(p => ({ ...p, [def._id || def.id]: v }))}
+                              options={[{ value: '', label: 'Select…' }, ...opts]} />
+                          );
+                        }
+                        if (def.type === 'boolean' || def.type === 'checkbox') {
+                          return (
+                            <label key={def._id || def.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#181818' }}>
+                              <input type="checkbox" checked={!!val} onChange={e => setCustomFieldVals(p => ({ ...p, [def._id || def.id]: e.target.checked }))} style={{ accentColor: '#0176D3', width: 15, height: 15 }} />
+                              {def.label || def.name}
+                            </label>
+                          );
+                        }
+                        return (
+                          <Field key={def._id || def.id} label={def.label || def.name}
+                            value={String(val)} type={def.type === 'number' ? 'number' : 'text'}
+                            onChange={v => setCustomFieldVals(p => ({ ...p, [def._id || def.id]: v }))} />
+                        );
+                      })}
                     </div>
                   </div>
                 )}

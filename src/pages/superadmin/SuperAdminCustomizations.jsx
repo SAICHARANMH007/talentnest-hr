@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
+import { clearOrgOptionsCache } from '../../hooks/useOrgOptions.js';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toggle from '../../components/ui/Toggle.jsx';
 import Toast from '../../components/ui/Toast.jsx';
@@ -132,6 +133,7 @@ function useCustomizations() {
     try {
       const r = await api.addCustomizationItem(section, item);
       setData(prev => ({ ...prev, [section]: [...(prev?.[section] || []), r?.data || item] }));
+      clearOrgOptionsCache();
       setToast('✅ Added.');
       return r?.data;
     } catch (e) { setToast('❌ ' + e.message); }
@@ -141,6 +143,7 @@ function useCustomizations() {
     try {
       await api.updateCustomizationItem(section, id, patch);
       setData(prev => ({ ...prev, [section]: prev[section].map(x => x._id === id ? { ...x, ...patch } : x) }));
+      clearOrgOptionsCache();
       setToast('✅ Updated.');
     } catch (e) { setToast('❌ ' + e.message); }
   };
@@ -149,6 +152,7 @@ function useCustomizations() {
     try {
       await api.deleteCustomizationItem(section, id);
       setData(prev => ({ ...prev, [section]: prev[section].filter(x => x._id !== id) }));
+      clearOrgOptionsCache();
       setToast('🗑️ Removed.');
     } catch (e) { setToast('❌ ' + e.message); }
   };
@@ -161,6 +165,7 @@ function useCustomizations() {
         Object.keys(patch).forEach(k => { next[k] = { ...(prev[k] || {}), ...patch[k] }; });
         return next;
       });
+      clearOrgOptionsCache();
       setToast('✅ Saved.');
       return r;
     } catch (e) { setToast('❌ ' + e.message); }
@@ -170,6 +175,7 @@ function useCustomizations() {
     try {
       await api.replaceCustomizationSection(section, items);
       setData(prev => ({ ...prev, [section]: items }));
+      clearOrgOptionsCache();
       setToast('✅ Saved.');
     } catch (e) { setToast('❌ ' + e.message); }
   };

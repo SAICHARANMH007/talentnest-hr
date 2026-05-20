@@ -53,7 +53,7 @@ const EMP = {
   name: '', email: '', phone: '', title: '', skills: '',
   experience: '', location: '', summary: '', linkedin: '',
   education: '', currentCompany: '', currentCTC: '', expectedCTC: '',
-  projects: '', industry: '', department: '', culture: '', availability: '0',
+  projects: '', industry: '', department: '', culture: '', availability: '0', source: '',
 };
 
 /**
@@ -425,6 +425,15 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
             placeholder="Select Department"
             hint="The team/function the candidate belongs to — e.g. Engineering, Sales"
           />
+          {sources.length > 0 && (
+            <Dropdown
+              label="Application Source"
+              value={form.source}
+              onChange={v => sf('source', v)}
+              options={[{ value: '', label: 'Select source…' }, ...sources.map(s => ({ value: s, label: s }))]}
+              hint="Where did this candidate come from?"
+            />
+          )}
 
           <div style={{ gridColumn: 'span 2' }}>
             <Field label="Professional Summary" value={form.summary} onChange={v => sf('summary', v)} rows={3} />
