@@ -135,15 +135,22 @@ function fmtDate(v) {
   return v ? new Date(v).toLocaleDateString('en-IN') : '';
 }
 
+// ── In-process org name cache (5-min TTL) — prevents a full Tenant+Org scan on every request ──
+let _orgMapCache = null;
+let _orgMapAt    = 0;
+const ORG_MAP_TTL = 5 * 60 * 1000;
 async function orgNameMap() {
+  if (_orgMapCache && Date.now() - _orgMapAt < ORG_MAP_TTL) return _orgMapCache;
   const [tenants, orgs] = await Promise.all([
     Tenant.find({}).select('name').lean(),
     Organization.find({}).select('name').lean(),
   ]);
-  return {
+  _orgMapCache = {
     ...Object.fromEntries(tenants.map(t => [String(t._id), t.name])),
     ...Object.fromEntries(orgs.map(o => [String(o._id), o.name])),
   };
+  _orgMapAt = Date.now();
+  return _orgMapCache;
 }
 
 async function buildApplicationFilters(req) {
@@ -979,51 +986,59 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   });
 }));
 
+/* GET /api/dashboard/applicants/summary
+   Fast aggregation — stage counts + total for current filters. No row data returned.
+   Called once per filter change; page navigation reuses these counts.
+*/
+async function buildSearchFilter(req, filter) {
+  const search = String(req.query.search || '').trim().toLowerCase();
+  if (!search) return filter;
+  const searchRe = { $regex: search, $options: 'i' };
+  const candFilter = { ...tenantFilter(req), deletedAt: null };
+  candFilter.$or = [{ name: searchRe }, { email: searchRe }, { phone: searchRe }];
+  const matchingCandidates = await Candidate.find(candFilter).select('_id').lean();
+  filter.$or = [
+    { candidateId: { $in: matchingCandidates.map(c => c._id) } },
+    { candidateName: searchRe }, { candidateEmail: searchRe },
+    { candidatePhone: searchRe }, { email: searchRe },
+  ];
+  return filter;
+}
+
+router.get('/applicants/summary', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const filter = await buildApplicationFilters(req);
+  await buildSearchFilter(req, filter);
+  const [total, stageBuckets] = await Promise.all([
+    Application.countDocuments(filter),
+    Application.aggregate([
+      { $match: filter },
+      { $group: { _id: '$currentStage', count: { $sum: 1 } } },
+    ]),
+  ]);
+  const stageCounts = Object.fromEntries(stageBuckets.map(b => [b._id || '', b.count]));
+  res.json({ success: true, total, stageCounts });
+}));
+
 /* GET /api/dashboard/applicants
-   Applicants are application rows only: one row per job application.
+   Returns one page of applicant rows (default 100/page). All records reachable via pagination.
 */
 router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 50000); // no practical cap — show all data
-  const skip = (page - 1) * limit;
-  const search = String(req.query.search || '').trim().toLowerCase();
-  
-  const filter = await buildApplicationFilters(req);
+  const PAGE_SIZE = 100;
+  const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(parseInt(req.query.limit, 10) || PAGE_SIZE, 500); // max 500/page — prevents OOM
+  const skip  = (page - 1) * limit;
 
-  // If search exists, we need to find candidates first because Application model doesn't store these fields directly
-  if (search) {
-    const searchRe = { $regex: search, $options: 'i' };
-    
-    // Find all matching candidates in this tenant (or all if super_admin)
-    const candFilter = { ...tenantFilter(req), deletedAt: null };
-    candFilter.$or = [
-      { name: searchRe },
-      { email: searchRe },
-      { phone: searchRe }
-    ];
-    
-    const matchingCandidates = await Candidate.find(candFilter).select('_id').lean();
-    const candidateIds = matchingCandidates.map(c => c._id);
-    
-    // Add to the application filter
-    filter.$or = [
-      { candidateId: { $in: candidateIds } },
-      // Keep these for backward compatibility if some old apps have them denormalized
-      { candidateName: searchRe },
-      { candidateEmail: searchRe },
-      { candidatePhone: searchRe },
-      { email: searchRe }
-    ];
-  }
+  const filter = await buildApplicationFilters(req);
+  await buildSearchFilter(req, filter);
 
   const [apps, total, tenantMap] = await Promise.all([
     Application.find(filter)
       .populate({
-        path: 'jobId',
-        select: 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters',
-        populate: { path: 'assignedRecruiters', select: 'name email' }, // nested populate for recruiter names
+        path    : 'jobId',
+        select  : 'title company companyName location tenantId department jobType salaryMin salaryMax salaryCurrency salaryType assignedRecruiters',
+        populate: { path: 'assignedRecruiters', select: 'name email' },
       })
-      .populate({ path: 'candidateId', select: 'name email phone title currentCompany location skills tenantId assignedRecruiterId createdAt' })
+      .populate(CANDIDATE_APPLICANT_POPULATE)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -1032,28 +1047,22 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
     orgNameMap(),
   ]);
 
-  const emails = [...new Set(apps.map(a => a.candidateId?.email || a.email).filter(Boolean).map(e => e.toLowerCase()))];
-  const users = emails.length
-    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('name email phone role tenantId createdAt').lean()
-    : [];
-  const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
-
   const rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
-    const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    const job       = app.jobId       && typeof app.jobId       === 'object' ? app.jobId       : {};
     return profileRow({
       candidate,
-      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      user   : {},
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
     });
   });
 
-  res.json({ 
-    success: true, 
-    data: rows, 
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) } 
+  res.json({
+    success   : true,
+    data      : rows,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 }));
 

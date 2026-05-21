@@ -38,7 +38,8 @@ export const dashboardService = {
   async getStageTime()                   { return req('GET', '/dashboard/stage-time'); },
   async getOfferAnalytics()              { return req('GET', '/dashboard/offer-analytics'); },
   async getSourceEffectiveness()         { return req('GET', '/dashboard/source-effectiveness'); },
-  async getApplicants(params = {})       { return req('GET', `/dashboard/applicants${qs(params)}`); },
+  async getApplicants(params = {})        { return req('GET', `/dashboard/applicants${qs(params)}`); },
+  async getApplicantsSummary(params = {}) { return req('GET', `/dashboard/applicants/summary${qs(params)}`); },
   async getCandidateRecords(params = {}) { return req('GET', `/dashboard/candidate-records${qs(params)}`); },
 
   // ── Advanced analytics endpoints (Task 3.2) ──────────────────────────────

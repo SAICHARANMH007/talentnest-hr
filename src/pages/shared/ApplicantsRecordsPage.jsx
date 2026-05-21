@@ -70,6 +70,8 @@ function fmtDate(v) {
   return v ? new Date(v).toLocaleDateString('en-IN') : '-';
 }
 
+const PAGE_SIZE = 100;
+
 function buildQuery(filters, limit = 10000000) {
   const q = new URLSearchParams();
   q.set('limit', String(limit));
@@ -198,17 +200,19 @@ export default function ApplicantsRecordsPage({ user }) {
     startDate: params.get('startDate') || '',
     endDate: params.get('endDate') || '',
   });
-  const [rows, setRows] = useState([]);
+  const [rows, setRows]         = useState([]);
   const [recruiters, setRecruiters] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs]         = useState([]);
+  const [total, setTotal]       = useState(0);
+  const [stageCounts, setStageCounts] = useState({});
+  const [page, setPage]         = useState(1);
+  const [pages, setPages]       = useState(1);
+  const [loading, setLoading]   = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [toast, setToast] = useState('');
+  const [toast, setToast]       = useState('');
   const [selected, setSelected] = useState(null);
-  const [editRow, setEditRow] = useState(null);
+  const [editRow, setEditRow]   = useState(null);
   const [assigning, setAssigning] = useState('');
   const [historyJob, setHistoryJob] = useState(null); // { jobId, jobTitle }
 
@@ -217,8 +221,8 @@ export default function ApplicantsRecordsPage({ user }) {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      canManage ? api.getUsers({ role: 'recruiter', limit: 10000000 }).catch(() => []) : Promise.resolve([]),
-      api.getJobs({ limit: 10000000 }).catch(() => []),
+      canManage ? api.getUsers({ role: 'recruiter', limit: 500 }).catch(() => []) : Promise.resolve([]),
+      api.getJobs({ limit: 500 }).catch(() => []),
     ]).then(([recruiterRes, jobRes]) => {
       if (!alive) return;
       setRecruiters(toArray(recruiterRes));
@@ -233,29 +237,46 @@ export default function ApplicantsRecordsPage({ user }) {
     return map;
   }, [recruiters]);
 
+  // Summary: total count + stage distribution — runs on filter change only (fast aggregation)
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const res = await api.getApplicantsSummary(filters);
+      setTotal(res?.total || 0);
+      setStageCounts(res?.stageCounts || {});
+    } catch { /* non-fatal — summary is display-only */ }
+    finally { setSummaryLoading(false); }
+  }, [filters]);
+
+  // Page data: just the current 100 rows
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getApplicants({ ...filters, page, limit: 10000000 });
+      const res = await api.getApplicants({ ...filters, page, limit: PAGE_SIZE });
       setRows(Array.isArray(res?.data) ? res.data : []);
-      setTotal(res?.pagination?.total || res?.total || 0);
       setPages(res?.pagination?.pages || 1);
     } catch (e) {
       setToast('Applicant records could not load: ' + e.message);
       setRows([]);
-      setTotal(0);
     } finally {
       setLoading(false);
     }
   }, [filters, page]);
 
+  // On filter change: reset page to 1, load both summary + first page in parallel
+  useEffect(() => {
+    setPage(1);
+    loadSummary();
+  }, [loadSummary]);                      // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On page change (or filter change after page resets to 1): load page data
   useEffect(() => { load(); }, [load]);
 
   const visibleRows = useMemo(() => rows, [rows]);
 
   const updateFilter = (key, value) => {
     setFilters(p => ({ ...p, [key]: value }));
-    setPage(1); // Reset to page 1 on filter change
+    // page reset happens in the loadSummary useEffect
   };
 
   const clearFilters = () => {
@@ -337,17 +358,7 @@ export default function ApplicantsRecordsPage({ user }) {
       ? 'Applicants on jobs assigned to you'
       : 'Organisation applicant records';
 
-  // Stage counts from loaded rows — now the backend returns ALL rows (cap removed),
-  // so these counts match the actual totals in the database.
-  const stageCounts = useMemo(() => {
-    const map = {};
-    DB_STAGES.forEach(s => { map[s] = 0; });
-    rows.forEach(r => { if (r.stage && map[r.stage] !== undefined) map[r.stage]++; });
-    return map;
-  }, [rows]);
-
-  const totalRows = rows.length; // loaded rows on this page
-  // stageCountsTotal = sum of all stage counts (should equal totalRows)
+  // stageCounts comes from the server summary aggregation (accurate across all pages)
   const stageCountsTotal = useMemo(
     () => Object.values(stageCounts).reduce((a, b) => a + b, 0),
     [stageCounts]
@@ -366,7 +377,7 @@ export default function ApplicantsRecordsPage({ user }) {
       />
 
       {/* ── Stage distribution chart — scoped to role's data by backend ── */}
-      {!loading && totalRows > 0 && (
+      {!summaryLoading && total > 0 && (
         <div style={{ ...card, marginBottom: 16, padding: '18px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap', gap: 6 }}>
             <div style={{ fontWeight: 800, fontSize: 12, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 }}>
