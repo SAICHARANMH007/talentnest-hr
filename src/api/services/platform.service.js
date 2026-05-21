@@ -187,12 +187,20 @@ export const platformService = {
     return uploadFormData('POST', `/candidates/${candidateId}/video`, formData);
   },
 
-  // Workflow Automation
+  // Workflow Automation — org custom rules
   async getWorkflowRules()                   { return req('GET',    '/admin/workflow-rules'); },
   async createWorkflowRule(data)             { return req('POST',   '/admin/workflow-rules', data); },
   async updateWorkflowRule(id, data)         { return req('PATCH',  `/admin/workflow-rules/${id}`, data); },
   async deleteWorkflowRule(id)               { return req('DELETE', `/admin/workflow-rules/${id}`); },
   async testWorkflowRule(id, eventData)      { return req('POST',   `/admin/workflow-rules/${id}/test`, { eventData }); },
+  // Workflow Automation — system templates (super_admin)
+  async getSystemWorkflowRules()             { return req('GET',    '/admin/workflow-rules/system'); },
+  async createSystemWorkflowRule(data)       { return req('POST',   '/admin/workflow-rules/system', data); },
+  async updateSystemWorkflowRule(id, data)   { return req('PATCH',  `/admin/workflow-rules/system/${id}`, data); },
+  async deleteSystemWorkflowRule(id)         { return req('DELETE', `/admin/workflow-rules/system/${id}`); },
+  // Workflow Automation — activate/deactivate system templates (admin)
+  async activateSystemAutomation(systemKey)  { return req('POST',   `/admin/workflow-rules/activate/${systemKey}`); },
+  async deactivateSystemAutomation(systemKey){ return req('DELETE',  `/admin/workflow-rules/deactivate/${systemKey}`); },
 
   // Security — 2FA + Sessions
   async toggle2FA()                          { return req('POST',   '/auth/2fa/toggle', {}); },

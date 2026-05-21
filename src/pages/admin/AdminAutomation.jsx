@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import Modal from '../../components/ui/Modal.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 
+// ── Constants ──────────────────────────────────────────────────────────────────
 const TRIGGER_EVENTS = [
   { value: 'stage_changed',        label: '📋 Stage Changed' },
   { value: 'candidate_applied',    label: '📥 Candidate Applied' },
@@ -41,13 +42,42 @@ const PIPELINE_STAGES = [
   'Offer','Hired','Rejected',
 ];
 
-const EMPTY_RULE = {
-  name    : '',
-  isActive: true,
-  trigger : { event: 'stage_changed', conditions: [] },
-  actions : [],
+const CATEGORIES = ['General','Communication','Pipeline','Assessment','Offer','Onboarding'];
+
+const CATEGORY_COLORS = {
+  General      : { bg: '#F3F4F6', color: '#374151' },
+  Communication: { bg: 'rgba(1,118,211,0.08)', color: '#0176D3' },
+  Pipeline     : { bg: 'rgba(16,185,129,0.08)', color: '#059669' },
+  Assessment   : { bg: 'rgba(245,158,11,0.08)', color: '#D97706' },
+  Offer        : { bg: 'rgba(139,92,246,0.08)', color: '#7C3AED' },
+  Onboarding   : { bg: 'rgba(236,72,153,0.08)', color: '#BE185D' },
 };
 
+const EMPTY_RULE = {
+  name: '', isActive: true,
+  trigger: { event: 'stage_changed', conditions: [] },
+  actions: [],
+};
+
+const EMPTY_SYSTEM_RULE = {
+  name: '', description: '', category: 'General', systemKey: '', isActive: true,
+  trigger: { event: 'stage_changed', conditions: [] },
+  actions: [],
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function getTriggerLabel(event) {
+  return TRIGGER_EVENTS.find(t => t.value === event)?.label || event;
+}
+
+function CategoryBadge({ cat }) {
+  const style = CATEGORY_COLORS[cat] || CATEGORY_COLORS.General;
+  return (
+    <span style={{ background: style.bg, color: style.color, borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>{cat}</span>
+  );
+}
+
+// ── Action Config Fields ───────────────────────────────────────────────────────
 function ActionConfigFields({ action, onChange }) {
   const set = (key, val) => onChange({ ...action, config: { ...action.config, [key]: val } });
   switch (action.type) {
@@ -82,109 +112,100 @@ function ActionConfigFields({ action, onChange }) {
           <input style={inp} placeholder="Message" value={action.config.message || ''} onChange={e => set('message', e.target.value)} />
         </div>
       );
-    default:
-      return null;
+    default: return null;
   }
 }
 
-// ── Rule Form Modal ────────────────────────────────────────────────────────────
-function RuleFormModal({ rule: initial, onClose, onSaved }) {
-  const [form, setForm]     = useState(initial || EMPTY_RULE);
+// ── Rule Form (shared by custom + system) ─────────────────────────────────────
+function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
+  const [form, setForm]     = useState(initial || (isSystem ? EMPTY_SYSTEM_RULE : EMPTY_RULE));
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
   const addCondition = () =>
     setForm(f => ({ ...f, trigger: { ...f.trigger, conditions: [...f.trigger.conditions, { field: 'stage', operator: 'equals', value: '' }] } }));
-
   const updateCondition = (i, cond) =>
-    setForm(f => {
-      const conditions = [...f.trigger.conditions];
-      conditions[i] = cond;
-      return { ...f, trigger: { ...f.trigger, conditions } };
-    });
-
+    setForm(f => { const c = [...f.trigger.conditions]; c[i] = cond; return { ...f, trigger: { ...f.trigger, conditions: c } }; });
   const removeCondition = (i) =>
-    setForm(f => {
-      const conditions = f.trigger.conditions.filter((_, idx) => idx !== i);
-      return { ...f, trigger: { ...f.trigger, conditions } };
-    });
-
+    setForm(f => ({ ...f, trigger: { ...f.trigger, conditions: f.trigger.conditions.filter((_, idx) => idx !== i) } }));
   const addAction = () =>
     setForm(f => ({ ...f, actions: [...f.actions, { type: 'send_email', config: {} }] }));
-
   const updateAction = (i, action) =>
-    setForm(f => {
-      const actions = [...f.actions];
-      actions[i] = action;
-      return { ...f, actions };
-    });
-
+    setForm(f => { const a = [...f.actions]; a[i] = action; return { ...f, actions: a }; });
   const removeAction = (i) =>
     setForm(f => ({ ...f, actions: f.actions.filter((_, idx) => idx !== i) }));
 
   const save = async () => {
     if (!form.name.trim()) { setError('Rule name is required.'); return; }
     if (!form.actions.length) { setError('Add at least one action.'); return; }
-    setSaving(true);
-    setError('');
+    if (isSystem && !form.systemKey.trim()) { setError('System key is required.'); return; }
+    setSaving(true); setError('');
     try {
-      const payload = {
-        name    : form.name.trim(),
-        isActive: form.isActive,
-        trigger : form.trigger,
-        actions : form.actions,
-      };
+      const id = form._id || form.id;
       let saved;
-      if (form._id) {
-        saved = await api.updateWorkflowRule(form._id, payload);
+      if (isSystem) {
+        const payload = { name: form.name.trim(), description: form.description, category: form.category, systemKey: form.systemKey.trim(), trigger: form.trigger, actions: form.actions, isActive: form.isActive };
+        saved = id ? await api.updateSystemWorkflowRule(id, payload) : await api.createSystemWorkflowRule(payload);
       } else {
-        saved = await api.createWorkflowRule(payload);
+        const payload = { name: form.name.trim(), isActive: form.isActive, trigger: form.trigger, actions: form.actions };
+        saved = id ? await api.updateWorkflowRule(id, payload) : await api.createWorkflowRule(payload);
       }
       onSaved(saved?.data || saved);
-    } catch (e) {
-      setError(e.message || 'Failed to save rule.');
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { setError(e.message || 'Failed to save rule.'); }
+    finally { setSaving(false); }
   };
 
   const footer = (
     <>
       <button onClick={save} disabled={saving} style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : 1 }}>
-        {saving ? <><Spinner /> Saving…</> : (form._id ? '💾 Update Rule' : '✅ Create Rule')}
+        {saving ? <><Spinner /> Saving…</> : (form._id || form.id) ? '💾 Update' : '✅ Create'}
       </button>
       <button onClick={onClose} style={btnG}>Cancel</button>
     </>
   );
 
   return (
-    <Modal title={form._id ? '✏️ Edit Workflow Rule' : '➕ New Workflow Rule'} onClose={onClose} wide footer={footer}>
+    <Modal title={(form._id || form.id) ? '✏️ Edit Automation Rule' : '➕ New Automation Rule'} onClose={onClose} wide footer={footer}>
       {error && <div style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', color: '#BA0517', fontSize: 13, marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Rule name */}
         <div>
           <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Rule Name *</label>
           <input style={inp} placeholder="e.g. Notify recruiter when candidate shortlisted" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
         </div>
-
-        {/* Trigger event */}
+        {isSystem && (
+          <>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>System Key * <span style={{ color: '#9E9D9B', fontWeight: 400 }}>(unique, snake_case)</span></label>
+                <input style={inp} placeholder="e.g. welcome_on_apply" value={form.systemKey} onChange={e => setForm(f => ({ ...f, systemKey: e.target.value }))} disabled={Boolean(form._id || form.id)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Category</label>
+                <select style={inp} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Description</label>
+              <textarea style={{ ...inp, resize: 'vertical' }} rows={2} placeholder="What does this automation do?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+          </>
+        )}
         <div>
           <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Trigger Event *</label>
           <select style={inp} value={form.trigger.event} onChange={e => setForm(f => ({ ...f, trigger: { ...f.trigger, event: e.target.value } }))}>
             {TRIGGER_EVENTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
-
-        {/* Conditions */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600 }}>Conditions (all must match)</label>
             <button onClick={addCondition} style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}>+ Add Condition</button>
           </div>
-          {form.trigger.conditions.length === 0 && (
-            <div style={{ color: '#9E9D9B', fontSize: 12, padding: '10px 14px', background: '#FAFAF9', borderRadius: 8 }}>No conditions — rule triggers on every event.</div>
-          )}
-          {form.trigger.conditions.map((cond, i) => (
+          {form.trigger.conditions.length === 0 ? (
+            <div style={{ color: '#9E9D9B', fontSize: 12, padding: '10px 14px', background: '#FAFAF9', borderRadius: 8 }}>No conditions — triggers on every event.</div>
+          ) : form.trigger.conditions.map((cond, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
               <select style={{ ...inp, flex: 1 }} value={cond.field} onChange={e => updateCondition(i, { ...cond, field: e.target.value })}>
                 {CONDITION_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
@@ -197,17 +218,14 @@ function RuleFormModal({ rule: initial, onClose, onSaved }) {
             </div>
           ))}
         </div>
-
-        {/* Actions */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600 }}>Actions *</label>
             <button onClick={addAction} style={{ ...btnP, fontSize: 11, padding: '4px 10px' }}>+ Add Action</button>
           </div>
-          {form.actions.length === 0 && (
+          {form.actions.length === 0 ? (
             <div style={{ color: '#9E9D9B', fontSize: 12, padding: '10px 14px', background: '#FAFAF9', borderRadius: 8 }}>No actions yet — add at least one.</div>
-          )}
-          {form.actions.map((action, i) => (
+          ) : form.actions.map((action, i) => (
             <div key={i} style={{ ...card, padding: 14, marginBottom: 10, border: '1px solid rgba(1,118,211,0.15)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <select style={{ ...inp, flex: 1 }} value={action.type} onChange={e => updateAction(i, { ...action, type: e.target.value, config: {} })}>
@@ -219,14 +237,10 @@ function RuleFormModal({ rule: initial, onClose, onSaved }) {
             </div>
           ))}
         </div>
-
-        {/* Active toggle */}
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#0176D3' }} />
           <span style={{ color: '#3E3E3C', fontSize: 13, fontWeight: 600 }}>Rule is Active</span>
         </label>
-
-        {/* Variable reference */}
         <div style={{ padding: '10px 14px', background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 8 }}>
           <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Available Variables</div>
           <div style={{ color: '#706E6B', fontSize: 11, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -240,66 +254,228 @@ function RuleFormModal({ rule: initial, onClose, onSaved }) {
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
-export default function AdminAutomation() {
-  const [rules, setRules]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [toast, setToast]       = useState('');
-  const [testing, setTesting]   = useState(null);
-  const [testResult, setTestResult] = useState(null);
+// ── Custom Rule Card ───────────────────────────────────────────────────────────
+function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, testing, testResult }) {
+  return (
+    <div style={{ ...card, border: `1px solid ${rule.isActive ? 'rgba(1,118,211,0.15)' : 'rgba(0,0,0,0.06)'}`, opacity: rule.isActive ? 1 : 0.65 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{rule.name}</span>
+            <span style={{ background: rule.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.06)', color: rule.isActive ? '#10B981' : '#9E9D9B', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+              {rule.isActive ? '● Active' : '○ Inactive'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Trigger: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(rule.trigger?.event)}</strong></span>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Conditions: <strong>{rule.trigger?.conditions?.length || 0}</strong></span>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Actions: <strong>{rule.actions?.length || 0}</strong></span>
+            {rule.triggerCount > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>Triggered: <strong>{rule.triggerCount}×</strong></span>}
+            {rule.lastTriggeredAt && <span style={{ color: '#706E6B', fontSize: 12 }}>Last: <strong>{new Date(rule.lastTriggeredAt).toLocaleDateString('en-IN')}</strong></span>}
+          </div>
+          {rule.actions?.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              {rule.actions.map((a, i) => (
+                <span key={i} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
+                  {ACTION_TYPES.find(t => t.value === a.type)?.label || a.type}
+                </span>
+              ))}
+            </div>
+          )}
+          {testResult && (
+            <div style={{ marginTop: 8, padding: '8px 12px', background: testResult.matched ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${testResult.matched ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 8 }}>
+              <span style={{ color: testResult.matched ? '#10B981' : '#F59E0B', fontSize: 12, fontWeight: 700 }}>
+                {testResult.matched ? '✅ Dry-run matched — rule would fire.' : '⚠️ Conditions did not match sample data.'}
+              </span>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button onClick={onToggle} style={{ background: rule.isActive ? 'rgba(186,5,23,0.08)' : 'rgba(16,185,129,0.08)', border: `1px solid ${rule.isActive ? '#fca5a5' : 'rgba(16,185,129,0.3)'}`, color: rule.isActive ? '#BA0517' : '#10B981', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            {rule.isActive ? 'Pause' : 'Resume'}
+          </button>
+          <button onClick={onTest} disabled={testing} style={{ ...btnG, fontSize: 12, padding: '6px 12px', opacity: testing ? 0.6 : 1 }}>
+            {testing ? <Spinner /> : '▶ Test'}
+          </button>
+          <button onClick={onEdit} style={{ ...btnP, fontSize: 12, padding: '6px 12px' }}>Edit</button>
+          <button onClick={onDelete} style={{ ...btnD, fontSize: 12, padding: '6px 12px' }}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── System Template Card (super_admin view) ────────────────────────────────────
+function SystemTemplateCard({ tpl, onEdit, onDelete }) {
+  return (
+    <div style={{ ...card, border: '1px solid rgba(139,92,246,0.15)', background: tpl.isActive ? '#FAFAFA' : '#F9F9F9', opacity: tpl.isActive ? 1 : 0.7 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{tpl.name}</span>
+            <CategoryBadge cat={tpl.category} />
+            <span style={{ background: tpl.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.06)', color: tpl.isActive ? '#059669' : '#9E9D9B', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>
+              {tpl.isActive ? '● Enabled' : '○ Disabled'}
+            </span>
+          </div>
+          {tpl.description && <p style={{ color: '#706E6B', fontSize: 12, margin: '0 0 8px', lineHeight: 1.5 }}>{tpl.description}</p>}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Trigger: <strong style={{ color: '#7C3AED' }}>{getTriggerLabel(tpl.trigger?.event)}</strong></span>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Key: <code style={{ background: '#F3F4F6', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>{tpl.systemKey}</code></span>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Actions: <strong>{tpl.actions?.length || 0}</strong></span>
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>🏢 Active in <strong>{tpl.orgCount || 0}</strong> org{tpl.orgCount !== 1 ? 's' : ''}</span>
+            {tpl.totalTriggers > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>⚡ <strong>{tpl.totalTriggers}</strong> total executions</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button onClick={onEdit} style={{ ...btnP, fontSize: 12, padding: '6px 12px', background: 'rgba(139,92,246,0.1)', color: '#7C3AED', border: '1px solid rgba(139,92,246,0.3)' }}>Edit</button>
+          <button onClick={onDelete} style={{ ...btnD, fontSize: 12, padding: '6px 12px' }}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Standard Automation Row (admin view) ───────────────────────────────────────
+function StandardAutomationRow({ tpl, onActivate, onDeactivate, toggling }) {
+  const activated = tpl.activated;
+  const copy = tpl.orgCopy;
+  return (
+    <div style={{ ...card, border: `1px solid ${activated ? 'rgba(16,185,129,0.2)' : 'rgba(0,0,0,0.06)'}`, background: activated ? 'rgba(16,185,129,0.02)' : '#FAFAF9' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{tpl.name}</span>
+            <CategoryBadge cat={tpl.category} />
+            {activated && (
+              <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>
+                ● ON for your org
+              </span>
+            )}
+          </div>
+          {tpl.description && <p style={{ color: '#706E6B', fontSize: 12, margin: '0 0 4px', lineHeight: 1.5 }}>{tpl.description}</p>}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ color: '#9E9D9B', fontSize: 11 }}>Trigger: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(tpl.trigger?.event)}</strong></span>
+            <span style={{ color: '#9E9D9B', fontSize: 11 }}>Actions: <strong>{tpl.actions?.length || 0}</strong></span>
+            {activated && copy?.triggerCount > 0 && (
+              <span style={{ color: '#9E9D9B', fontSize: 11 }}>Fired <strong>{copy.triggerCount}×</strong> for your org</span>
+            )}
+          </div>
+        </div>
+        {/* Toggle switch */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ color: activated ? '#059669' : '#9E9D9B', fontSize: 12, fontWeight: 600 }}>{activated ? 'Active' : 'Inactive'}</span>
+          <button
+            disabled={toggling}
+            onClick={activated ? onDeactivate : onActivate}
+            style={{
+              width: 44, height: 24, borderRadius: 12,
+              background: activated ? '#059669' : '#D1D5DB',
+              border: 'none', cursor: toggling ? 'not-allowed' : 'pointer',
+              position: 'relative', transition: 'background 0.2s',
+              opacity: toggling ? 0.6 : 1,
+            }}
+            title={activated ? 'Deactivate this automation' : 'Activate this automation for your org'}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: activated ? 22 : 3,
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#fff', transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin View (org admin) ─────────────────────────────────────────────────────
+function AdminView() {
+  const [customRules, setCustomRules]       = useState([]);
+  const [systemTemplates, setSystemTemplates] = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [showForm, setShowForm]             = useState(false);
+  const [editing, setEditing]               = useState(null);
+  const [toast, setToast]                   = useState('');
+  const [testing, setTesting]               = useState(null);
+  const [testResults, setTestResults]       = useState({});
+  const [toggling, setToggling]             = useState({});
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    api.getWorkflowRules()
-      .then(r => setRules(Array.isArray(r?.data) ? r.data : []))
-      .catch(() => setRules([]))
-      .finally(() => setLoading(false));
-  };
+    try {
+      const r = await api.getWorkflowRules();
+      setCustomRules(Array.isArray(r?.data) ? r.data : []);
+      setSystemTemplates(Array.isArray(r?.systemTemplates) ? r.systemTemplates : []);
+    } catch { setCustomRules([]); setSystemTemplates([]); }
+    setLoading(false);
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const toggleActive = async (rule) => {
+  const toggleCustom = async (rule) => {
     try {
       await api.updateWorkflowRule(rule._id || rule.id, { isActive: !rule.isActive });
-      setRules(prev => prev.map(r => (r._id === rule._id || r.id === rule.id) ? { ...r, isActive: !r.isActive } : r));
+      setCustomRules(prev => prev.map(r => (r._id === rule._id || r.id === rule.id) ? { ...r, isActive: !r.isActive } : r));
     } catch (e) { showToast('❌ ' + e.message); }
   };
 
-  const deleteRule = async (rule) => {
+  const deleteCustom = async (rule) => {
     if (!window.confirm(`Delete rule "${rule.name}"?`)) return;
     try {
       await api.deleteWorkflowRule(rule._id || rule.id);
-      setRules(prev => prev.filter(r => r._id !== rule._id && r.id !== rule.id));
+      setCustomRules(prev => prev.filter(r => r._id !== rule._id && r.id !== rule.id));
       showToast('✅ Rule deleted.');
     } catch (e) { showToast('❌ ' + e.message); }
   };
 
   const testRule = async (rule) => {
-    setTesting(rule._id || rule.id);
-    setTestResult(null);
+    const rid = rule._id || rule.id;
+    setTesting(rid); setTestResults(prev => ({ ...prev, [rid]: null }));
     try {
-      const r = await api.testWorkflowRule(rule._id || rule.id, {});
-      setTestResult({ ruleId: rule._id || rule.id, matched: r.matched, sampleData: r.sampleEventData });
+      const r = await api.testWorkflowRule(rid, {});
+      setTestResults(prev => ({ ...prev, [rid]: { matched: r.matched } }));
     } catch (e) { showToast('❌ ' + e.message); }
     setTesting(null);
   };
 
   const onSaved = (saved) => {
     if (!saved) return;
-    setRules(prev => {
+    setCustomRules(prev => {
       const exists = prev.find(r => r._id === saved._id || r.id === saved.id);
       return exists ? prev.map(r => (r._id === saved._id || r.id === saved.id) ? saved : r) : [saved, ...prev];
     });
-    setShowForm(false);
-    setEditing(null);
+    setShowForm(false); setEditing(null);
     showToast('✅ Rule saved!');
   };
 
-  const getTriggerLabel = (event) => TRIGGER_EVENTS.find(t => t.value === event)?.label || event;
+  const handleActivate = async (tpl) => {
+    const key = tpl.systemKey;
+    setToggling(prev => ({ ...prev, [key]: true }));
+    try {
+      await api.activateSystemAutomation(key);
+      setSystemTemplates(prev => prev.map(t => t.systemKey === key ? { ...t, activated: true, orgCopy: { triggerCount: 0 } } : t));
+      showToast('✅ Standard automation enabled for your org.');
+    } catch (e) { showToast('❌ ' + e.message); }
+    setToggling(prev => ({ ...prev, [key]: false }));
+  };
+
+  const handleDeactivate = async (tpl) => {
+    const key = tpl.systemKey;
+    if (!window.confirm(`Disable "${tpl.name}" for your organisation?`)) return;
+    setToggling(prev => ({ ...prev, [key]: true }));
+    try {
+      await api.deactivateSystemAutomation(key);
+      setSystemTemplates(prev => prev.map(t => t.systemKey === key ? { ...t, activated: false, orgCopy: null } : t));
+      showToast('✅ Standard automation disabled.');
+    } catch (e) { showToast('❌ ' + e.message); }
+    setToggling(prev => ({ ...prev, [key]: false }));
+  };
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -310,101 +486,220 @@ export default function AdminAutomation() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ color: '#181818', fontSize: 22, fontWeight: 800, margin: 0 }}>⚡ Workflow Automation</h1>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Automate emails, notifications, and stage moves based on hiring events.</p>
+          <h1 style={{ color: '#181818', fontSize: 22, fontWeight: 800, margin: 0 }}>⚡ Automation Engine</h1>
+          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Automate emails, notifications, and pipeline moves. Standard automations are pre-built; custom ones are yours to build.</p>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Create Rule</button>
-      </div>
-
-      {/* Info banner */}
-      <div style={{ background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 20 }}>ℹ️</span>
-        <div>
-          <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700, marginBottom: 3 }}>How Workflow Rules Work</div>
-          <div style={{ color: '#706E6B', fontSize: 12 }}>Rules fire automatically when the selected event occurs. All conditions must match. Actions execute in order. Rules apply only to your organisation's data.</div>
-        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Custom Rule</button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
-      ) : rules.length === 0 ? (
-        <div style={{ ...card, textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>⚡</div>
-          <div style={{ color: '#181818', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No automation rules yet</div>
-          <div style={{ color: '#706E6B', fontSize: 13, marginBottom: 20 }}>Create your first rule to automate repetitive tasks.</div>
-          <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Create First Rule</button>
-        </div>
+        <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {rules.map(rule => {
-            const isTestingThis = testing === (rule._id || rule.id);
-            const thisTestResult = testResult?.ruleId === (rule._id || rule.id) ? testResult : null;
-            return (
-              <div key={rule._id || rule.id} style={{ ...card, border: `1px solid ${rule.isActive ? 'rgba(1,118,211,0.15)' : 'rgba(0,0,0,0.06)'}`, opacity: rule.isActive ? 1 : 0.65 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <span style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{rule.name}</span>
-                      <span style={{ background: rule.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.06)', color: rule.isActive ? '#10B981' : '#9E9D9B', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
-                        {rule.isActive ? '● Active' : '○ Inactive'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#706E6B', fontSize: 12 }}>Trigger: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(rule.trigger?.event)}</strong></span>
-                      <span style={{ color: '#706E6B', fontSize: 12 }}>Conditions: <strong>{rule.trigger?.conditions?.length || 0}</strong></span>
-                      <span style={{ color: '#706E6B', fontSize: 12 }}>Actions: <strong>{rule.actions?.length || 0}</strong></span>
-                      {rule.triggerCount > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>Triggered: <strong>{rule.triggerCount}×</strong></span>}
-                      {rule.lastTriggeredAt && <span style={{ color: '#706E6B', fontSize: 12 }}>Last: <strong>{new Date(rule.lastTriggeredAt).toLocaleDateString('en-IN')}</strong></span>}
-                    </div>
-                    {rule.actions?.length > 0 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        {rule.actions.map((a, i) => (
-                          <span key={i} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
-                            {ACTION_TYPES.find(t => t.value === a.type)?.label || a.type}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {thisTestResult && (
-                      <div style={{ marginTop: 8, padding: '8px 12px', background: thisTestResult.matched ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${thisTestResult.matched ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 8 }}>
-                        <span style={{ color: thisTestResult.matched ? '#10B981' : '#F59E0B', fontSize: 12, fontWeight: 700 }}>
-                          {thisTestResult.matched ? '✅ Dry-run matched — rule would fire.' : '⚠️ Conditions did not match sample data.'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    {/* Toggle switch */}
-                    <button
-                      onClick={() => toggleActive(rule)}
-                      style={{ background: rule.isActive ? 'rgba(186,5,23,0.08)' : 'rgba(16,185,129,0.08)', border: `1px solid ${rule.isActive ? '#fca5a5' : 'rgba(16,185,129,0.3)'}`, color: rule.isActive ? '#BA0517' : '#10B981', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      {rule.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
-                      onClick={() => testRule(rule)}
-                      disabled={isTestingThis}
-                      style={{ ...btnG, fontSize: 12, padding: '6px 12px', opacity: isTestingThis ? 0.6 : 1 }}
-                    >
-                      {isTestingThis ? <Spinner /> : '▶ Test'}
-                    </button>
-                    <button onClick={() => { setEditing(rule); setShowForm(true); }} style={{ ...btnP, fontSize: 12, padding: '6px 12px' }}>Edit</button>
-                    <button onClick={() => deleteRule(rule)} style={{ ...btnD, fontSize: 12, padding: '6px 12px' }}>Delete</button>
-                  </div>
-                </div>
+        <>
+          {/* Standard Automations */}
+          {systemTemplates.length > 0 && (
+            <section style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <h2 style={{ color: '#181818', fontSize: 16, fontWeight: 700, margin: 0 }}>🏛 Standard Automations</h2>
+                <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                  {systemTemplates.filter(t => t.activated).length} / {systemTemplates.length} active
+                </span>
               </div>
-            );
-          })}
-        </div>
+              <div style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.12)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#706E6B' }}>
+                These are platform-wide automation templates. Toggle them on/off for your organisation — they run only for your data.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {systemTemplates.map(tpl => (
+                  <StandardAutomationRow
+                    key={tpl.systemKey}
+                    tpl={tpl}
+                    toggling={Boolean(toggling[tpl.systemKey])}
+                    onActivate={() => handleActivate(tpl)}
+                    onDeactivate={() => handleDeactivate(tpl)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Custom Automations */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h2 style={{ color: '#181818', fontSize: 16, fontWeight: 700, margin: 0 }}>🔧 Custom Automations</h2>
+              <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                {customRules.length} rule{customRules.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {customRules.length === 0 ? (
+              <div style={{ ...card, textAlign: 'center', padding: '40px 24px' }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🔧</div>
+                <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, marginBottom: 6 }}>No custom rules yet</div>
+                <div style={{ color: '#706E6B', fontSize: 13, marginBottom: 18 }}>Build your own automation rules on top of the standard ones.</div>
+                <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Create First Rule</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {customRules.map(rule => (
+                  <CustomRuleCard
+                    key={rule._id || rule.id}
+                    rule={rule}
+                    testing={testing === (rule._id || rule.id)}
+                    testResult={testResults[rule._id || rule.id]}
+                    onToggle={() => toggleCustom(rule)}
+                    onEdit={() => { setEditing(rule); setShowForm(true); }}
+                    onDelete={() => deleteCustom(rule)}
+                    onTest={() => testRule(rule)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {showForm && (
         <RuleFormModal
           rule={editing}
+          isSystem={false}
           onClose={() => { setShowForm(false); setEditing(null); }}
           onSaved={onSaved}
         />
       )}
     </div>
   );
+}
+
+// ── Super Admin View ───────────────────────────────────────────────────────────
+function SuperAdminView() {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [toast, setToast]         = useState('');
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api.getSystemWorkflowRules();
+      setTemplates(Array.isArray(r?.data) ? r.data : []);
+    } catch { setTemplates([]); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const deleteTpl = async (tpl) => {
+    if (!window.confirm(`Delete system template "${tpl.name}"? This will also deactivate it for all organisations.`)) return;
+    try {
+      await api.deleteSystemWorkflowRule(tpl._id || tpl.id);
+      setTemplates(prev => prev.filter(t => t._id !== tpl._id && t.id !== tpl.id));
+      showToast('✅ Template deleted.');
+    } catch (e) { showToast('❌ ' + e.message); }
+  };
+
+  const onSaved = (saved) => {
+    if (!saved) return;
+    setTemplates(prev => {
+      const exists = prev.find(t => t._id === saved._id || t.id === saved.id);
+      return exists ? prev.map(t => (t._id === saved._id || t.id === saved.id) ? saved : t) : [saved, ...prev];
+    });
+    setShowForm(false); setEditing(null);
+    showToast('✅ Template saved!');
+  };
+
+  const byCategory = templates.reduce((acc, t) => {
+    const cat = t.category || 'General';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(t);
+    return acc;
+  }, {});
+
+  const totalOrgs     = templates.reduce((s, t) => s + (t.orgCount || 0), 0);
+  const totalTriggers = templates.reduce((s, t) => s + (t.totalTriggers || 0), 0);
+
+  return (
+    <div style={{ maxWidth: 960 }}>
+      {toast && (
+        <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999, background: toast.startsWith('✅') ? 'rgba(16,185,129,0.15)' : 'rgba(186,5,23,0.12)', border: `1px solid ${toast.startsWith('✅') ? 'rgba(16,185,129,0.4)' : 'rgba(186,5,23,0.4)'}`, borderRadius: 12, padding: '12px 20px', color: toast.startsWith('✅') ? '#34d399' : '#BA0517', fontSize: 14, fontWeight: 600 }}>{toast}</div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ color: '#181818', fontSize: 22, fontWeight: 800, margin: 0 }}>⚡ System Automation Templates</h1>
+          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Platform-wide automation templates. Each organisation can independently enable or disable these.</p>
+        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ ...btnP, background: '#7C3AED' }}>+ New Template</button>
+      </div>
+
+      {/* Stats */}
+      {templates.length > 0 && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Templates', value: templates.length, color: '#7C3AED' },
+            { label: 'Org Activations', value: totalOrgs, color: '#059669' },
+            { label: 'Total Executions', value: totalTriggers, color: '#0176D3' },
+          ].map(s => (
+            <div key={s.label} style={{ ...card, flex: 1, minWidth: 120, textAlign: 'center', padding: '14px 20px' }}>
+              <div style={{ color: s.color, fontSize: 22, fontWeight: 800 }}>{s.value}</div>
+              <div style={{ color: '#706E6B', fontSize: 12, marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>
+      ) : templates.length === 0 ? (
+        <div style={{ ...card, textAlign: 'center', padding: '56px 24px' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⚡</div>
+          <div style={{ color: '#181818', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No system templates yet</div>
+          <div style={{ color: '#706E6B', fontSize: 13, marginBottom: 20 }}>Create platform-wide automation templates that organisations can activate for their teams.</div>
+          <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ ...btnP, background: '#7C3AED' }}>+ Create First Template</button>
+        </div>
+      ) : (
+        Object.entries(byCategory).map(([cat, items]) => (
+          <section key={cat} style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <CategoryBadge cat={cat} />
+              <span style={{ color: '#9E9D9B', fontSize: 12 }}>{items.length} template{items.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {items.map(tpl => (
+                <SystemTemplateCard
+                  key={tpl._id || tpl.id}
+                  tpl={tpl}
+                  onEdit={() => { setEditing(tpl); setShowForm(true); }}
+                  onDelete={() => deleteTpl(tpl)}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+
+      {showForm && (
+        <RuleFormModal
+          rule={editing}
+          isSystem={true}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onSaved={onSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Main Export ────────────────────────────────────────────────────────────────
+export default function AdminAutomation() {
+  const [role] = useState(() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('tn_user') || localStorage.getItem('tn_user') || '{}');
+      return u?.role || '';
+    } catch { return ''; }
+  });
+
+  return role === 'super_admin' ? <SuperAdminView /> : <AdminView />;
 }

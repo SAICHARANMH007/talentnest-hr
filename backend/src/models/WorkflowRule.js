@@ -17,9 +17,21 @@ const actionSchema = new mongoose.Schema({
 }, { _id: false });
 
 const workflowRuleSchema = new mongoose.Schema({
-  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
+  // null tenantId = system/platform-level template (not tenant-specific)
+  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
   name    : { type: String, required: true, trim: true },
   isActive: { type: Boolean, default: true },
+
+  // System template flags
+  isSystem        : { type: Boolean, default: false },  // true = platform template (super admin owns)
+  isSystemCopy    : { type: Boolean, default: false },  // true = org's activated copy of a system template
+  systemKey       : { type: String, default: null },    // unique key linking copies ↔ template (e.g. 'welcome_on_apply')
+  description     : { type: String, default: '' },      // human-readable description
+  category        : {                                   // grouping for display
+    type   : String,
+    default: 'General',
+    enum   : ['General', 'Communication', 'Pipeline', 'Assessment', 'Offer', 'Onboarding'],
+  },
 
   trigger: {
     event     : {
@@ -45,9 +57,12 @@ const workflowRuleSchema = new mongoose.Schema({
 
 workflowRuleSchema.index({ tenantId: 1, isActive: 1 });
 workflowRuleSchema.index({ tenantId: 1, 'trigger.event': 1 });
+workflowRuleSchema.index({ isSystem: 1 });                  // fast lookup of all system templates
+workflowRuleSchema.index({ tenantId: 1, systemKey: 1 });    // fast lookup of org's copy for a given key
 
 workflowRuleSchema.virtual('id').get(function () { return this._id.toHexString(); });
 workflowRuleSchema.set('toJSON', { virtuals: true });
 workflowRuleSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('WorkflowRule', workflowRuleSchema);
+

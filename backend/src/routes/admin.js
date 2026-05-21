@@ -182,13 +182,30 @@ router.get('/pending-invites', authenticate, allowRoles('super_admin', 'admin'),
 const wfGuard = [authMiddleware, tenantGuard, allowRoles('admin', 'super_admin')];
 
 // GET /api/admin/workflow-rules
+// Returns org's custom rules + system templates with activation status
 router.get('/workflow-rules', ...wfGuard, asyncHandler(async (req, res) => {
-  const rules = await WorkflowRule.find({ tenantId: req.user.tenantId })
-    .populate('createdBy', 'name')
-    .sort({ createdAt: -1 })
-    .lean();
-  const data = rules.map(r => ({ ...r, id: r._id.toString() }));
-  res.json({ success: true, data, total: data.length });
+  const tenantId = req.user.tenantId;
+  const [customRules, systemTemplates, orgCopies] = await Promise.all([
+    WorkflowRule.find({ tenantId, isSystemCopy: { $ne: true } })
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 })
+      .lean(),
+    WorkflowRule.find({ isSystem: true })
+      .select('name description category trigger actions isActive systemKey triggerCount lastTriggeredAt createdAt')
+      .sort({ category: 1, name: 1 })
+      .lean(),
+    WorkflowRule.find({ tenantId, isSystemCopy: true })
+      .select('systemKey isActive triggerCount lastTriggeredAt')
+      .lean(),
+  ]);
+  const orgCopyMap = Object.fromEntries(orgCopies.map(c => [c.systemKey, { ...c, id: c._id.toString() }]));
+  const sysWithStatus = systemTemplates.map(t => ({
+    ...t, id: t._id.toString(),
+    activated: Boolean(orgCopyMap[t.systemKey]),
+    orgCopy  : orgCopyMap[t.systemKey] || null,
+  }));
+  const data = customRules.map(r => ({ ...r, id: r._id.toString() }));
+  res.json({ success: true, data, systemTemplates: sysWithStatus, total: data.length });
 }));
 
 // POST /api/admin/workflow-rules
@@ -239,6 +256,94 @@ router.post('/workflow-rules/:id/test', ...wfGuard, asyncHandler(async (req, res
   };
   const result = await evaluateWorkflows(req.user.tenantId, sampleEventData, true);
   res.json({ success: true, matched: result.triggered > 0, ruleIds: result.ruleIds || [], sampleEventData });
+}));
+
+// ── System Automation Templates (super_admin only) ─────────────────────────────
+const saGuard = [authMiddleware, allowRoles('super_admin')];
+
+// GET /api/admin/workflow-rules/system — list all system templates
+router.get('/workflow-rules/system', ...saGuard, asyncHandler(async (req, res) => {
+  const templates = await WorkflowRule.find({ isSystem: true })
+    .populate('createdBy', 'name')
+    .sort({ category: 1, name: 1 })
+    .lean();
+  const keys = templates.map(t => t.systemKey).filter(Boolean);
+  const stats = await WorkflowRule.aggregate([
+    { $match: { isSystemCopy: true, systemKey: { $in: keys } } },
+    { $group: { _id: '$systemKey', orgCount: { $sum: 1 }, totalTriggers: { $sum: '$triggerCount' } } },
+  ]);
+  const statsMap = Object.fromEntries(stats.map(s => [s._id, s]));
+  const data = templates.map(t => ({
+    ...t, id: t._id.toString(),
+    orgCount     : statsMap[t.systemKey]?.orgCount     || 0,
+    totalTriggers: statsMap[t.systemKey]?.totalTriggers || 0,
+  }));
+  res.json({ success: true, data, total: data.length });
+}));
+
+// POST /api/admin/workflow-rules/system — create system template
+router.post('/workflow-rules/system', ...saGuard, asyncHandler(async (req, res) => {
+  const { name, description, category, trigger, actions, systemKey, isActive } = req.body;
+  if (!name || !trigger?.event) throw new AppError('name and trigger.event are required.', 400);
+  if (!systemKey) throw new AppError('systemKey is required for system templates.', 400);
+  const exists = await WorkflowRule.findOne({ isSystem: true, systemKey });
+  if (exists) throw new AppError(`System template with key "${systemKey}" already exists.`, 409);
+  const rule = await WorkflowRule.create({
+    tenantId: null, isSystem: true, isSystemCopy: false,
+    systemKey, name, description: description || '',
+    category: category || 'General',
+    trigger, actions: actions || [],
+    isActive: isActive !== false,
+    createdBy: req.user._id,
+  });
+  res.status(201).json({ success: true, data: { ...rule.toObject(), id: rule._id.toString() } });
+}));
+
+// PATCH /api/admin/workflow-rules/system/:id — update system template
+router.patch('/workflow-rules/system/:id', ...saGuard, asyncHandler(async (req, res) => {
+  const rule = await WorkflowRule.findOne({ _id: req.params.id, isSystem: true });
+  if (!rule) throw new AppError('System template not found.', 404);
+  ['name', 'description', 'category', 'trigger', 'actions', 'isActive'].forEach(k => {
+    if (req.body[k] !== undefined) rule[k] = req.body[k];
+  });
+  await rule.save();
+  res.json({ success: true, data: { ...rule.toObject(), id: rule._id.toString() } });
+}));
+
+// DELETE /api/admin/workflow-rules/system/:id — delete system template + all org copies
+router.delete('/workflow-rules/system/:id', ...saGuard, asyncHandler(async (req, res) => {
+  const rule = await WorkflowRule.findOneAndDelete({ _id: req.params.id, isSystem: true });
+  if (!rule) throw new AppError('System template not found.', 404);
+  if (rule.systemKey) await WorkflowRule.deleteMany({ isSystemCopy: true, systemKey: rule.systemKey });
+  res.json({ success: true, message: 'System template and all org copies deleted.' });
+}));
+
+// ── Org activation / deactivation of system automations ────────────────────────
+
+// POST /api/admin/workflow-rules/activate/:systemKey — create org copy from template
+router.post('/workflow-rules/activate/:systemKey', ...wfGuard, asyncHandler(async (req, res) => {
+  const { systemKey } = req.params;
+  const tenantId = req.user.tenantId;
+  const template = await WorkflowRule.findOne({ isSystem: true, systemKey }).lean();
+  if (!template) throw new AppError('System template not found.', 404);
+  const existing = await WorkflowRule.findOne({ isSystemCopy: true, systemKey, tenantId });
+  if (existing) return res.json({ success: true, data: { ...existing.toObject(), id: existing._id.toString() }, message: 'Already activated.' });
+  const copy = await WorkflowRule.create({
+    tenantId, isSystem: false, isSystemCopy: true, systemKey,
+    name: template.name, description: template.description,
+    category: template.category, trigger: template.trigger, actions: template.actions,
+    isActive: true, createdBy: req.user._id,
+  });
+  res.status(201).json({ success: true, data: { ...copy.toObject(), id: copy._id.toString() } });
+}));
+
+// DELETE /api/admin/workflow-rules/deactivate/:systemKey — remove org's activated copy
+router.delete('/workflow-rules/deactivate/:systemKey', ...wfGuard, asyncHandler(async (req, res) => {
+  const { systemKey } = req.params;
+  const tenantId = req.user.tenantId;
+  const deleted = await WorkflowRule.findOneAndDelete({ isSystemCopy: true, systemKey, tenantId });
+  if (!deleted) throw new AppError('No activated copy found for this template.', 404);
+  res.json({ success: true, message: 'System automation deactivated.' });
 }));
 
 // Stage priority — higher = further in pipeline (never downgrade a candidate)
