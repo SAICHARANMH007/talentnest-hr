@@ -1047,12 +1047,20 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
     orgNameMap(),
   ]);
 
+  // Fallback: for any app where candidateId wasn't populated (legacy data), look up by email
+  const appsNeedingFallback = apps.filter(a => !a.candidateId?._id);
+  const fallbackEmails = [...new Set(appsNeedingFallback.map(a => a.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const fallbackUsers  = fallbackEmails.length
+    ? await User.find({ role: 'candidate', email: { $in: fallbackEmails } }).select('name email phone tenantId').lean()
+    : [];
+  const usersByEmail = new Map(fallbackUsers.map(u => [u.email.toLowerCase(), u]));
+
   const rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const job       = app.jobId       && typeof app.jobId       === 'object' ? app.jobId       : {};
     return profileRow({
       candidate,
-      user   : {},
+      user   : usersByEmail.get((candidate.email || app.email || '').toLowerCase()) || {},
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
