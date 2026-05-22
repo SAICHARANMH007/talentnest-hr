@@ -181,17 +181,20 @@ function NotificationBell({ userRole, compact = false }) {
     interview: 'interviews', offer: 'offers', system: 'analytics',
     assessment: 'assessments', assessment_submitted: 'assessments', assessment_reviewed: 'assessments',
     job_approved: 'jobs', job_rejected: 'jobs',
+    job_approval_request: 'job-approvals',
     invite_interested: 'candidates', invite: 'analytics', mention: 'analytics'
   };
-  const TYPE_ICONS  = { 
-    application:'📋', stage_update:'🔄', stage_change:'🔄', interview:'📅', offer:'🎉', system:'⚙️', 
-    assessment:'📝', assessment_submitted:'📊', assessment_reviewed:'⭐', 
-    job_approved:'✅', job_rejected:'❌', invite_interested:'🙋', invite:'📨', mention: '💬'
+  const TYPE_ICONS  = {
+    application:'📋', stage_update:'🔄', stage_change:'🔄', interview:'📅', offer:'🎉', system:'⚙️',
+    assessment:'📝', assessment_submitted:'📊', assessment_reviewed:'⭐',
+    job_approved:'✅', job_rejected:'❌', job_approval_request:'⏳',
+    invite_interested:'🙋', invite:'📨', mention: '💬'
   };
-  const TYPE_LABELS = { 
-    application:'Application', stage_update:'Stage Update', stage_change:'Stage Update', interview:'Interview', offer:'Offer', system:'System', 
-    assessment:'Assessment', assessment_submitted:'Assessment', assessment_reviewed:'Assessment Review', 
-    job_approved:'Approved', job_rejected:'Rejected', invite_interested:'Interest', invite:'Invitation', mention: 'Mention'
+  const TYPE_LABELS = {
+    application:'Application', stage_update:'Stage Update', stage_change:'Stage Update', interview:'Interview', offer:'Offer', system:'System',
+    assessment:'Assessment', assessment_submitted:'Assessment', assessment_reviewed:'Assessment Review',
+    job_approved:'Approved', job_rejected:'Rejected', job_approval_request:'Approval Request',
+    invite_interested:'Interest', invite:'Invitation', mention: 'Mention'
   };
 
   // Open detail modal — mark read + store for display

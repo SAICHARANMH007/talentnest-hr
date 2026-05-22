@@ -166,6 +166,19 @@ router.get('/pending', ...guard, allowRoles('admin', 'super_admin'), asyncHandle
   res.json({ success: true, data: jobs.map(j => ({ ...normalizeJob(j), id: j._id.toString() })) });
 }));
 
+// GET /api/jobs/pending-approval — all jobs awaiting admin review (must be before /:id)
+router.get('/pending-approval', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const filter = { approvalStatus: 'pending_approval', deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const jobs = await Job.find(filter)
+    .populate('postedBy', 'name email')
+    .populate('createdBy', 'name email')
+    .sort({ createdAt: -1 })
+    .lean();
+  const normalized = jobs.map(j => ({ ...normalizeJob(j), id: j._id.toString() }));
+  res.json({ success: true, data: normalized, total: normalized.length });
+}));
+
 router.get('/:id', ...guard, asyncHandler(async (req, res) => {
   const filter = { _id: req.params.id, deletedAt: null };
   if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
@@ -357,19 +370,6 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
 
     logger.audit('Job updated', req.user.id, req.user.tenantId, { jobId: job._id });
     res.json({ success: true, data: normalizeJob(job) });
-}));
-
-// GET /api/jobs/pending-approval — all jobs awaiting admin review
-router.get('/pending-approval', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const filter = { approvalStatus: 'pending_approval', deletedAt: null };
-  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
-  const jobs = await Job.find(filter)
-    .populate('postedBy', 'name email')
-    .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 })
-    .lean();
-  const normalized = jobs.map(j => ({ ...normalizeJob(j), id: j._id.toString() }));
-  res.json({ success: true, data: normalized, total: normalized.length });
 }));
 
 // PATCH /api/jobs/:id/approve — admin approves a pending job
