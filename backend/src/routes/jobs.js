@@ -321,6 +321,21 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
     const job = await Job.findOneAndUpdate(patchFilter, { $set: updates }, { new: true });
     if (!job) throw new AppError('Job not found.', 404);
 
+    // Notify admins when recruiter explicitly submits a draft job for approval
+    if (updates.approvalStatus === 'pending_approval' && req.user.role === 'recruiter') {
+      const admins = await User.find({ tenantId: req.user.tenantId, role: { $in: ['admin', 'super_admin'] }, deletedAt: null }).select('_id').lean();
+      const recruiterName = req.user.name || 'A recruiter';
+      await Promise.all(admins.map(a =>
+        Notification.create({
+          userId: a._id, tenantId: req.user.tenantId, type: 'job_approval_request',
+          title: 'Job Pending Approval',
+          message: `${recruiterName} submitted "${job.title}" for your approval.`,
+          link: '/app/job-approvals',
+          metadata: { jobId: job._id },
+        }).catch(() => {})
+      ));
+    }
+
     // Distribution hooks on status change
     try {
       if (updates.status === 'active' && prevJob?.status !== 'active') {

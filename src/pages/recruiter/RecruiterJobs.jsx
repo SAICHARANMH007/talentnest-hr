@@ -276,8 +276,8 @@ export default function RecruiterJobs({ user }) {
                     <button
                       onClick={async () => {
                         try {
-                          // Correct flow: set approvalStatus=pending, keep status=draft
-                          await api.patchJob(j.id, { approvalStatus: 'pending' });
+                          // Correct flow: set approvalStatus=pending_approval, keep status=draft
+                          await api.patchJob(j.id, { approvalStatus: 'pending_approval' });
                           setToast('✅ Submitted for admin approval');
                           load();
                         } catch (e) { setToast(`❌ ${e.message}`); }
