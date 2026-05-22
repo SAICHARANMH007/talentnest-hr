@@ -512,7 +512,7 @@ export default function RecruiterPipeline({ user }) {
   const [movingAppId, setMovingAppId] = useState(null);
 
   useEffect(() => {
-    api.getJobs({ recruiterId: user.id, limit: 500 }).then(j => {
+    api.getJobs({ minimal: true }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
       const map = new Map();
       raw.forEach(item => {

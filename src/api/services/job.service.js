@@ -7,7 +7,7 @@ export const jobService = {
       const rid = recruiterIdOrOpts;
       return req('GET', `/jobs?limit=10000000${rid ? `&recruiterId=${rid}` : ''}`);
     }
-    const { recruiterId, limit, page, status, search, platform, urgency, location } = recruiterIdOrOpts;
+    const { recruiterId, limit, page, status, search, platform, urgency, location, minimal } = recruiterIdOrOpts;
     const p = new URLSearchParams();
     if (recruiterId) p.set('recruiterId', recruiterId);
     p.set('limit', String(limit || 10000000));
@@ -17,6 +17,7 @@ export const jobService = {
     if (platform)    p.set('platform', 'true');
     if (urgency)     p.set('urgency',  urgency);
     if (location)    p.set('location', location);
+    if (minimal)     p.set('minimal',  'true');
     return req('GET', `/jobs?${p.toString()}`);
   },
   async getJob(id)                    { return req('GET', `/jobs/${id}`); },

@@ -148,8 +148,12 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
     const skillList = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     if (skillList.length > 0) filter.skills = { $in: skillList.map(s => new RegExp(escRe(s), 'i')) };
   }
+  // ?minimal=true: return only lightweight selector fields (skips description/requirements/benefits)
+  const selectFields = req.query.minimal === 'true'
+    ? 'title company companyName applicantsCount applicationCount status urgency location skills department experience recruiterHistory assignedRecruiters careerPageSlug createdAt'
+    : '-__v';
   const [jobs, total] = await Promise.all([
-    Job.find(filter).select('-__v').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Job.find(filter).select(selectFields).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Job.countDocuments(filter),
   ]);
   res.json(paginatedResponse(jobs.map(normalizeJob), total, limit, page));
