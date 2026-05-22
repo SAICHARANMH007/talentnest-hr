@@ -495,6 +495,7 @@ export default function RecruiterPipeline({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState('');
+  const [jobSearch, setJobSearch] = useState('');
   const [presetTags, setPresetTags] = useState(DEFAULT_PRESET_TAGS);
   const [tagColors, setTagColors] = useState(DEFAULT_TAG_COLORS);
   const [apps, setApps] = useState([]);
@@ -511,7 +512,7 @@ export default function RecruiterPipeline({ user }) {
   const [movingAppId, setMovingAppId] = useState(null);
 
   useEffect(() => {
-    api.getJobs({ recruiterId: user.id, limit: 100 }).then(j => {
+    api.getJobs({ recruiterId: user.id, limit: 500 }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
       const map = new Map();
       raw.forEach(item => {
@@ -663,6 +664,24 @@ export default function RecruiterPipeline({ user }) {
 
   const selectedJob = jobs.find(j => String(j.id) === String(selJob));
 
+  // Jobs filtered by the search input in the pill bar
+  const filteredJobs = jobSearch.trim()
+    ? jobs.filter(j =>
+        (j.title || '').toLowerCase().includes(jobSearch.toLowerCase()) ||
+        (j.company || j.companyName || '').toLowerCase().includes(jobSearch.toLowerCase()) ||
+        (j.location || '').toLowerCase().includes(jobSearch.toLowerCase())
+      )
+    : jobs;
+
+  // Unified handler for selecting a job (pill, card, or any other entry point)
+  const selectJob = (id) => {
+    setSelJob(id);
+    setSelectedIds([]);
+    setSF('all');
+    setPagination(p => ({ ...p, page: 1 }));
+    setJobSearch('');
+  };
+
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
@@ -691,76 +710,168 @@ export default function RecruiterPipeline({ user }) {
         </div>
       )}
 
-      <div style={{ ...card, marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Select Job to View Applicants</label>
-            <select value={selJob} onChange={e => { const v = e.target.value; setSelJob(v); setSelectedIds([]); setSF('all'); setPagination(p => ({ ...p, page: 1 })); }} style={inp}>
-              <option value="">— Choose a job —</option>
-              {jobs.map(j => <option key={j.id} value={j.id}>{j.title} @ {j.company} ({j.applicantsCount || 0} applicants)</option>)}
-            </select>
+      {/* ── Job Selector ─────────────────────────────────────────────────────── */}
+      <div style={{ ...card, marginBottom: 20, padding: '14px 16px' }}>
+        {/* Search + action bar */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#94A3B8', pointerEvents: 'none' }}>🔍</span>
+            <input
+              value={jobSearch}
+              onChange={e => setJobSearch(e.target.value)}
+              placeholder={`Search ${jobs.length} job${jobs.length !== 1 ? 's' : ''}…`}
+              style={{ ...inp, paddingLeft: 32, fontSize: 13 }}
+            />
           </div>
-          <div style={{ display: 'flex', gap: 6, background: '#F1F5F9', padding: 4, borderRadius: 10 }}>
+          {/* Status filter */}
+          <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 10, flexShrink: 0 }}>
             {['active', 'parked', 'all'].map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  border: 'none',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  textTransform: 'uppercase',
-                  background: statusFilter === s ? '#fff' : 'transparent',
-                  color: statusFilter === s ? '#0176D3' : '#64748B',
-                  boxShadow: statusFilter === s ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                }}
-              >
+              <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', background: statusFilter === s ? '#fff' : 'transparent', color: statusFilter === s ? '#0176D3' : '#64748B', boxShadow: statusFilter === s ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}>
                 {s}
               </button>
             ))}
           </div>
           {selJob && (
-            <button
-              onClick={() => {
-                // Navigate to Talent Match with this job pre-selected via query param
-                navigate(`/app/talent-match?job=${selJob}`);
-              }}
-              style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-              🎯 Find Matching Candidates
+            <button onClick={() => navigate(`/app/talent-match?job=${selJob}`)} style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+              🎯 Find Matches
+            </button>
+          )}
+          {selJob && (
+            <button onClick={() => selectJob('')} style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 10, padding: '9px 14px', fontSize: 12, color: '#64748B', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              ← All Jobs
             </button>
           )}
         </div>
+
+        {/* Scrollable job pill bar */}
+        {filteredJobs.length > 0 ? (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {filteredJobs.map(j => {
+              const isActive = String(j.id) === String(selJob);
+              const isUrgent = (j.urgency || '').toLowerCase() === 'urgent' || (j.urgency || '').toLowerCase() === 'high';
+              const isDraft  = j.status === 'draft';
+              return (
+                <button
+                  key={j.id}
+                  onClick={() => selectJob(j.id)}
+                  style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '7px 13px', borderRadius: 22,
+                    border: `1.5px solid ${isActive ? '#0176D3' : isUrgent ? 'rgba(220,38,38,0.35)' : '#E2E8F0'}`,
+                    background: isActive ? 'rgba(1,118,211,0.1)' : isDraft ? '#FAFAFA' : '#fff',
+                    color: isActive ? '#0176D3' : isDraft ? '#94A3B8' : '#374151',
+                    fontWeight: isActive ? 700 : 500, fontSize: 12, cursor: 'pointer',
+                    boxShadow: isActive ? '0 0 0 3px rgba(1,118,211,0.12)' : 'none',
+                    transition: 'all 0.12s',
+                    maxWidth: 240,
+                  }}
+                  title={`${j.title} · ${j.applicantsCount || 0} applicants · ${j.status}`}
+                >
+                  {isUrgent && !isActive && <span style={{ fontSize: 10 }}>🔴</span>}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {j.title}
+                  </span>
+                  <span style={{ flexShrink: 0, background: isActive ? '#0176D3' : '#E2E8F0', color: isActive ? '#fff' : '#64748B', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, minWidth: 18, textAlign: 'center' }}>
+                    {j.applicantsCount || 0}
+                  </span>
+                  {isDraft && <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 700 }}>DRAFT</span>}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>No jobs match "{jobSearch}".</p>
+        )}
+
+        {/* Selected job info strip */}
         {selectedJob && (
-          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{selectedJob.title}</span>
             <Badge label={selectedJob.status || 'Active'} color="#2E844A" />
-            <Badge label={`⚡ ${selectedJob.urgency || 'Normal'}`} color={selectedJob.urgency === 'High' ? '#BA0517' : '#A07E00'} />
-            <span style={{ color: '#706E6B', fontSize: 12 }}>{selectedJob.location || 'Remote'} · {selectedJob.experience || 'Any'} exp</span>
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {(Array.isArray(selectedJob.skills) ? selectedJob.skills : []).map(s => <Badge key={s} label={s.trim()} color="#0176D3" />)}
+            {(selectedJob.urgency || '').toLowerCase() !== 'normal' && (
+              <Badge label={`⚡ ${selectedJob.urgency}`} color={['urgent','high'].includes((selectedJob.urgency||'').toLowerCase()) ? '#BA0517' : '#A07E00'} />
+            )}
+            <span style={{ color: '#706E6B', fontSize: 12 }}>{selectedJob.location || 'Remote'}{selectedJob.experience ? ` · ${selectedJob.experience} exp` : ''}</span>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {(Array.isArray(selectedJob.skills) ? selectedJob.skills.slice(0, 5) : []).map(s => (
+                <Badge key={s} label={s.trim()} color="#0176D3" />
+              ))}
+              {(selectedJob.skills || []).length > 5 && <span style={{ fontSize: 11, color: '#94A3B8' }}>+{selectedJob.skills.length - 5} more</span>}
             </div>
           </div>
         )}
       </div>
 
+      {/* ── No job selected: show all jobs as cards grid ─────────────────── */}
       {!selJob && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#706E6B' }}>
+        <div>
           {jobs.length === 0 ? (
-            <>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#706E6B' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🗂️</div>
               <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px', color: '#0F172A' }}>No jobs assigned yet</p>
-              <p style={{ fontSize: 13, margin: '0 0 20px' }}>You don't have any jobs assigned to you. Ask your admin to assign a job or create one.</p>
+              <p style={{ fontSize: 13, margin: '0 0 20px' }}>Ask your admin to assign a job or create one.</p>
               <button onClick={() => navigate('/app/jobs')} style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 📋 Go to Jobs
               </button>
-            </>
+            </div>
           ) : (
             <>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-              <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px' }}>Select a job to view applicants</p>
-              <p style={{ fontSize: 13, margin: 0 }}>Choose a job posting above to see all applicants and manage the hiring pipeline.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748B', fontWeight: 600 }}>
+                  {filteredJobs.length} of {jobs.length} job{jobs.length !== 1 ? 's' : ''} assigned to you — click any card to open its pipeline
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                    {jobs.reduce((s, j) => s + (j.applicantsCount || 0), 0)} total applicants
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                {filteredJobs.map(j => {
+                  const isUrgent = ['urgent','high'].includes((j.urgency || '').toLowerCase());
+                  const isDraft  = j.status === 'draft';
+                  const cnt      = j.applicantsCount || j.applicationCount || 0;
+                  return (
+                    <div
+                      key={j.id}
+                      onClick={() => selectJob(j.id)}
+                      style={{ ...card, cursor: 'pointer', padding: '16px', transition: 'all 0.15s', border: `1px solid ${isUrgent ? 'rgba(220,38,38,0.25)' : '#E2E8F0'}` }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#0176D3'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = card.boxShadow; e.currentTarget.style.borderColor = isUrgent ? 'rgba(220,38,38,0.25)' : '#E2E8F0'; }}
+                    >
+                      {/* Card header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', flex: 1, lineHeight: 1.3 }}>{j.title}</div>
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          {isUrgent && <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(220,38,38,0.1)', color: '#DC2626', padding: '2px 7px', borderRadius: 20 }}>URGENT</span>}
+                          {isDraft  && <span style={{ fontSize: 10, fontWeight: 800, background: '#F1F5F9', color: '#94A3B8', padding: '2px 7px', borderRadius: 20 }}>DRAFT</span>}
+                          {!isDraft && !isUrgent && <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(46,132,74,0.1)', color: '#2E844A', padding: '2px 7px', borderRadius: 20 }}>ACTIVE</span>}
+                        </div>
+                      </div>
+                      {/* Meta */}
+                      <div style={{ fontSize: 12, color: '#64748B', marginBottom: 10 }}>
+                        {[j.company || j.companyName, j.location, j.department].filter(Boolean).join(' · ')}
+                      </div>
+                      {/* Applicant count chip */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ background: cnt > 0 ? 'rgba(1,118,211,0.1)' : '#F1F5F9', color: cnt > 0 ? '#0176D3' : '#94A3B8', fontWeight: 700, fontSize: 13, padding: '4px 12px', borderRadius: 20 }}>
+                          {cnt} applicant{cnt !== 1 ? 's' : ''}
+                        </span>
+                        <span style={{ fontSize: 12, color: '#0176D3', fontWeight: 600 }}>Open Pipeline →</span>
+                      </div>
+                      {/* Skills preview */}
+                      {(j.skills || []).length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {(j.skills || []).slice(0, 3).map(s => (
+                            <span key={s} style={{ background: 'rgba(1,118,211,0.07)', color: '#0176D3', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 600 }}>{s}</span>
+                          ))}
+                          {(j.skills || []).length > 3 && <span style={{ fontSize: 10, color: '#94A3B8' }}>+{j.skills.length - 3}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
         </div>
