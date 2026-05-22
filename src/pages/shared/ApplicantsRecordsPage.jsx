@@ -611,13 +611,21 @@ export default function ApplicantsRecordsPage({ user }) {
                             )}
                           </div>
                         ) : (
-                          // Recruiter login: backend scopes ALL rows to their own jobs,
-                          // so they are always the recruiter. Show their name directly.
-                          // r.assignedRecruiters fills from backend nested populate;
-                          // user?.name is the bulletproof fallback.
-                          <span style={{ fontSize: 12, color: '#0176D3', fontWeight: 700 }}>
-                            {r.assignedRecruiters || user?.name || 'You'}
-                          </span>
+                          // Recruiter login: backend scopes ALL rows to their own jobs.
+                          // Show name + history button so the new recruiter can see the full
+                          // handoff trail (who previously worked this job and when).
+                          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                            <span style={{ fontSize: 12, color: '#0176D3', fontWeight: 700 }}>
+                              {r.assignedRecruiters || user?.name || 'You'}
+                            </span>
+                            {r.jobId && (
+                              <button
+                                title="View recruiter history for this job"
+                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                                style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:22, height:22, cursor:'pointer', fontSize:11, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
+                              >📋</button>
+                            )}
+                          </div>
                         )}
                       </td>
 
@@ -747,6 +755,13 @@ export default function ApplicantsRecordsPage({ user }) {
                         <option value="">Assign recruiter</option>
                         {recruiters.map(rec => <option key={normalizeId(rec)} value={normalizeId(rec)}>{rec.name || rec.email}</option>)}
                       </select>
+                    )}
+                    {r.jobId && (
+                      <button
+                        title="View recruiter history for this job"
+                        onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                        style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:30, height:30, cursor:'pointer', fontSize:13, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
+                      >📋</button>
                     )}
                   </div>
                 </div>

@@ -231,7 +231,7 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
 
   // Notify all admins in the tenant about pending approval
   if (isRecruiter) {
-    const admins = await User.find({ tenantId: req.user.tenantId, role: 'admin', deletedAt: null }).select('_id').lean();
+    const admins = await User.find({ tenantId: req.user.tenantId, role: { $in: ['admin', 'super_admin'] }, deletedAt: null }).select('_id').lean();
     const recruiterName = req.user.name || 'A recruiter';
     await Promise.all(admins.map(a =>
       Notification.create({

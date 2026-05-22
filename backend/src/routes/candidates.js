@@ -6,6 +6,7 @@ const pdfParse       = require('pdf-parse');
 const XLSX           = require('xlsx');
 const Candidate      = require('../models/Candidate');
 const User           = require('../models/User');
+const Application    = require('../models/Application');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard } = require('../middleware/tenantGuard');
 const { allowRoles } = require('../middleware/rbac');
@@ -156,9 +157,30 @@ router.post('/parse-resume', ...guard,
 router.get('/:id', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
-    const filter = { _id: req.params.id, deletedAt: null };
-    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
-    const candidate = await Candidate.findOne(filter).lean();
+    const baseFilter = { _id: req.params.id, deletedAt: null };
+    let candidate = null;
+
+    if (req.user.role !== 'super_admin') {
+      // Fast path: same-tenant candidate (most common case)
+      candidate = await Candidate.findOne({ ...baseFilter, tenantId: req.user.tenantId }).lean();
+
+      if (!candidate) {
+        // Cross-tenant path: platform candidates self-apply with their own tenantId,
+        // but the Application is stored under the job's tenantId (recruiter's tenant).
+        // If this recruiter has an application referencing this candidateId, allow the lookup.
+        const hasApp = await Application.exists({
+          candidateId: req.params.id,
+          tenantId: req.user.tenantId,
+          deletedAt: null,
+        });
+        if (hasApp) {
+          candidate = await Candidate.findOne(baseFilter).lean();
+        }
+      }
+    } else {
+      candidate = await Candidate.findOne(baseFilter).lean();
+    }
+
     if (!candidate) throw new AppError('Candidate not found.', 404);
     res.json({ success: true, data: { ...candidate, id: candidate._id?.toString() } });
   })
