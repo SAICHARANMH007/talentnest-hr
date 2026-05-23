@@ -2,7 +2,7 @@ import { req, downloadBlob, uploadFormData } from '../client.js';
 
 export const platformService = {
   // Email
-  async sendEmail(to, subject, body)     { return req('POST', '/email/send', { to, subject, body }); },
+  async sendEmail(to, subject, body, cc) { return req('POST', '/email/send', { to, subject, body, cc }); },
   async testSmtp(host, port, user, pass, provider, apiKey, fromName) {
     return req('POST', '/email/test-smtp', { host, port, user, pass, provider, apiKey, fromName });
   },

@@ -105,7 +105,7 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
     ['GROSS SALARY',                    fmt(ctc.monthly.gross),    fmt(ctc.annual.gross), true],
     ["Employer's PF Contribution (12% of Basic)", fmt(ctc.monthly.empPF), fmt(ctc.annual.empPF)],
     ['Gratuity Provision (4.81% of Basic)',        fmt(ctc.monthly.gratuity), fmt(ctc.annual.gratuity)],
-    ['TOTAL COST TO COMPANY (CTC)',     fmt(Math.round(ctc.annual.totalCTC/12)), fmt(ctc.annual.totalCTC), true, '#F3F2F2'],
+    ['TOTAL COST TO COMPANY (CTC)',     fmt(Math.round(ctc.annual.totalCTC/12)), fmt(ctc.annual.totalCTC), true, '#0154A4'],
   ];
   const deductRows = [
     ["Employee's PF Contribution (12%)", fmt(ctc.monthly.eePF), fmt(ctc.annual.eePF)],
@@ -348,6 +348,188 @@ function InfoTable({ rows }) {
   );
 }
 
+function buildOfferEmailHtml({ candidate: c, job: j, form: f }, ctc) {
+  const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  const fmtN = n => Math.round(n).toLocaleString('en-IN');
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+  const deadline = f.acceptanceDeadline ? new Date(f.acceptanceDeadline).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) : '—';
+  const joiningDate = f.joiningDate ? new Date(f.joiningDate).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' }) : 'As mutually agreed';
+  const firstName = c?.name?.split(' ')[0] || 'Candidate';
+
+  const rows = [
+    ['Basic Salary (40% of CTC)', fmt(ctc.monthly.basic), fmt(ctc.annual.basic)],
+    ['House Rent Allowance (HRA)', fmt(ctc.monthly.hra), fmt(ctc.annual.hra)],
+    ['Transport Allowance', fmt(ctc.monthly.transport), fmt(ctc.annual.transport)],
+    ['Medical Allowance', fmt(ctc.monthly.medical), fmt(ctc.annual.medical)],
+    ['Special Allowance', fmt(ctc.monthly.special), fmt(ctc.annual.special)],
+    ...(f.variablePct > 0 ? [[`Variable / Performance Pay (${f.variablePct}%)`, fmt(ctc.monthly.variable), fmt(ctc.annual.variable)]] : []),
+    ['GROSS SALARY', fmt(ctc.monthly.gross), fmt(ctc.annual.gross), true],
+    ["Employer's PF Contribution (12% of Basic)", fmt(ctc.monthly.empPF), fmt(ctc.annual.empPF)],
+    ['Gratuity Provision (4.81% of Basic)', fmt(ctc.monthly.gratuity), fmt(ctc.annual.gratuity)],
+    ['TOTAL COST TO COMPANY (CTC)', fmt(Math.round(ctc.annual.totalCTC / 12)), fmt(ctc.annual.totalCTC), true, '#0154A4'],
+  ];
+  const deductRows = [
+    ["Employee's PF Contribution (12%)", fmt(ctc.monthly.eePF), fmt(ctc.annual.eePF)],
+    ['Professional Tax (State applicable)', fmt(ctc.monthly.pt), fmt(ctc.annual.pt)],
+    ['Income Tax / TDS (estimated)', fmt(ctc.monthly.tds), fmt(ctc.annual.tds)],
+    ['ESTIMATED NET TAKE-HOME', fmt(ctc.monthly.inHand), fmt(ctc.annual.inHand), true, '#065f46'],
+  ];
+
+  const tableRow = ([label, monthly, annual, bold, accent]) => `
+    <tr style="background:${bold ? '#f0f9ff' : '#fff'}">
+      <td style="padding:7px 12px;font-size:11.5px;font-weight:${bold ? 700 : 400};color:${accent || '#1e293b'};border-bottom:1px solid #f1f5f9;">${label}</td>
+      <td style="padding:7px 12px;font-size:11.5px;font-weight:${bold ? 700 : 400};color:${accent || '#1e293b'};border-bottom:1px solid #f1f5f9;text-align:right;">${monthly}</td>
+      <td style="padding:7px 12px;font-size:11.5px;font-weight:${bold ? 700 : 400};color:${accent || '#1e293b'};border-bottom:1px solid #f1f5f9;text-align:right;">${annual}</td>
+    </tr>`;
+
+  const infoRow = (label, value, i) => `
+    <tr style="background:${i % 2 === 0 ? '#f8fafc' : '#fff'}">
+      <td style="padding:7px 12px;font-weight:700;color:#032D60;width:38%;border-bottom:1px solid #e2e8f0;">${label}</td>
+      <td style="padding:7px 12px;color:#1e293b;border-bottom:1px solid #e2e8f0;">${value}</td>
+    </tr>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Georgia','Times New Roman',serif;color:#1e293b;">
+<div style="max-width:720px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+  <!-- Top bar -->
+  <div style="height:5px;background:linear-gradient(90deg,#032D60 0%,#0176D3 60%,#38bdf8 100%);"></div>
+
+  <!-- Letterhead -->
+  <div style="padding:28px 40px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:26px;font-weight:900;color:#032D60;font-family:Arial,sans-serif;line-height:1.1;">TalentNest <span style="color:#0176D3;">HR</span></div>
+      <div style="font-size:9px;color:#0176D3;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:2px;">STAFFING &amp; HUMAN CAPITAL SOLUTIONS</div>
+      <div style="font-size:10px;color:#64748b;margin-top:6px;line-height:1.6;">
+        Floor 3, Brindavanam Block C, Ganesh Nagar, Miyapur, Hyderabad – 502033<br/>
+        hr@talentnesthr.com &nbsp;|&nbsp; +91 79955 35539 &nbsp;|&nbsp; www.talentnesthr.com
+      </div>
+    </div>
+    <div style="text-align:right;font-size:11px;">
+      <div style="font-weight:700;color:#374151;margin-bottom:2px;">Date: ${dateStr}</div>
+      <div style="margin-top:8px;background:#032D60;color:#fff;padding:4px 12px;border-radius:4px;font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;display:inline-block;">CONFIDENTIAL</div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:28px 40px;font-size:12px;line-height:1.75;">
+
+    <!-- Addressee -->
+    <div style="margin-bottom:18px;">
+      <div style="font-weight:700;">${c?.name || 'Candidate'}</div>
+      <div style="font-size:11px;color:#64748b;">${c?.email || ''}${c?.phone ? ' | ' + c.phone : ''}</div>
+      ${c?.location ? `<div style="font-size:11px;color:#64748b;">${c.location}</div>` : ''}
+    </div>
+
+    <!-- Subject -->
+    <div style="margin-bottom:18px;padding:11px 16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #032D60;border-radius:0 8px 8px 0;">
+      <span style="font-weight:800;color:#032D60;font-size:12px;">Sub: Offer of Employment — ${j?.title || f.designation} | ${f.employmentType}</span>
+    </div>
+
+    <p style="margin:0 0 10px;">Dear <strong>${firstName}</strong>,</p>
+    <p style="margin:0 0 16px;">
+      We are delighted to extend this offer of employment to you for the position of <strong>${j?.title || f.designation}</strong>${f.department ? ` in the <strong>${f.department}</strong> department` : ''} at <strong>${f.clientCompany || j?.company || 'TalentNest HR'}</strong>,
+      located at <strong>${f.workLocation || c?.location || 'Hyderabad, Telangana'}</strong>.
+      This offer is subject to the terms and conditions outlined below and the satisfactory completion of all pre-employment checks.
+    </p>
+
+    ${f.emailNote ? `<div style="margin-bottom:16px;padding:12px 16px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;font-style:italic;color:#92400e;">${f.emailNote}</div>` : ''}
+
+    <!-- Section 1: Employment Details -->
+    <div style="margin-top:22px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #e2e8f0;padding-bottom:6px;">
+      <div style="background:#032D60;color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">1</div>
+      <span style="font-weight:800;font-size:12px;color:#032D60;text-transform:uppercase;letter-spacing:0.8px;">EMPLOYMENT DETAILS</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11.5px;border:1px solid #e2e8f0;">
+      <tbody>
+        ${[
+          ['Designation / Job Title', j?.title || f.designation],
+          ['Department', f.department || '—'],
+          ['Employment Type', f.employmentType],
+          ['Work Location', f.workLocation || c?.location || 'Hyderabad, Telangana'],
+          ['Reporting To', f.reportingTo || 'Project Manager / HR Manager'],
+          ['Date of Joining', joiningDate],
+          ['Acceptance Deadline', deadline],
+        ].map(([k, v], i) => infoRow(k, v, i)).join('')}
+      </tbody>
+    </table>
+
+    <!-- Section 2: Compensation -->
+    <div style="margin-top:22px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #e2e8f0;padding-bottom:6px;">
+      <div style="background:#032D60;color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">2</div>
+      <span style="font-weight:800;font-size:12px;color:#032D60;text-transform:uppercase;letter-spacing:0.8px;">COMPENSATION STRUCTURE &nbsp;<span style="color:#0176D3;">(Annual CTC: ₹${fmtN(ctc.annual.totalCTC)} p.a.)</span></span>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-bottom:8px;">The following compensation is computed on a Cost-to-Company (CTC) basis and includes fixed pay, variable pay, and statutory employer contributions as applicable under Indian labour law.</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11.5px;">
+      <thead>
+        <tr>
+          <th style="background:#032D60;color:#fff;padding:9px 12px;font-size:11px;font-weight:700;text-align:left;">Compensation Component</th>
+          <th style="background:#032D60;color:#fff;padding:9px 12px;font-size:11px;font-weight:700;text-align:right;">Monthly (₹)</th>
+          <th style="background:#032D60;color:#fff;padding:9px 12px;font-size:11px;font-weight:700;text-align:right;">Annual (₹)</th>
+        </tr>
+      </thead>
+      <tbody>${rows.map(tableRow).join('')}</tbody>
+    </table>
+    <p style="font-size:11px;color:#1e293b;font-weight:800;margin:16px 0 4px;">STATUTORY DEDUCTIONS <span style="font-weight:400;color:#64748b;">(Indicative — actual as per applicable law)</span></p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11.5px;">
+      <thead>
+        <tr>
+          <th style="background:#1e293b;color:#f8fafc;padding:9px 12px;font-size:11px;font-weight:700;text-align:left;">Deduction</th>
+          <th style="background:#1e293b;color:#f8fafc;padding:9px 12px;font-size:11px;font-weight:700;text-align:right;">Monthly (₹)</th>
+          <th style="background:#1e293b;color:#f8fafc;padding:9px 12px;font-size:11px;font-weight:700;text-align:right;">Annual (₹)</th>
+        </tr>
+      </thead>
+      <tbody>${deductRows.map(tableRow).join('')}</tbody>
+    </table>
+    <p style="font-size:10px;color:#706E6B;font-style:italic;">* CTC includes both fixed and variable components. Actual in-hand salary may vary based on applicable taxes, declarations, and investment proofs. TDS is indicative.</p>
+
+    <!-- Sections 3–12 summary -->
+    <div style="margin-top:22px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #e2e8f0;padding-bottom:6px;">
+      <div style="background:#032D60;color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">3</div>
+      <span style="font-weight:800;font-size:12px;color:#032D60;text-transform:uppercase;letter-spacing:0.8px;">TERMS &amp; CONDITIONS SUMMARY</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11.5px;border:1px solid #e2e8f0;">
+      <tbody>
+        ${[
+          ['Probation Period', f.probation],
+          ['Notice during Probation', `${f.probationNotice} days`],
+          ['Post-Confirmation Notice', f.noticePeriod],
+          ['Working Hours', '9 hours/day, Monday–Friday'],
+          ['EPF', '12% employee + 12% employer of Basic'],
+          ['Gratuity', 'After 5 years — Payment of Gratuity Act, 1972'],
+        ].map(([k, v], i) => infoRow(k, v, i)).join('')}
+      </tbody>
+    </table>
+
+    <!-- Closing -->
+    <div style="margin-top:24px;padding:14px 18px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #0176D3;border-radius:0 8px 8px 0;">
+      <p style="margin:0 0 8px;">We believe you will be a valuable addition to our team. Please confirm your acceptance of this offer by signing and returning a copy of this letter, along with all supporting documents, by <strong>${deadline}</strong>.</p>
+      <p style="margin:0;">This offer will stand void if not accepted within the stipulated deadline or if any information provided by you is found to be incorrect.</p>
+    </div>
+
+    <p style="margin:16px 0 0;">Yours sincerely,</p>
+    <div style="margin-top:20px;padding-top:8px;border-top:1px solid #706E6B;max-width:220px;">
+      <div style="font-weight:700;font-size:12px;">${f.hrName || 'HR Manager'}</div>
+      <div style="font-size:11px;color:#64748b;">Human Resources | TalentNest HR</div>
+      <div style="font-size:11px;color:#64748b;">+91 79955 35539</div>
+    </div>
+
+  </div>
+
+  <!-- Footer bar -->
+  <div style="height:3px;background:linear-gradient(90deg,#032D60 0%,#0176D3 60%,#38bdf8 100%);"></div>
+  <div style="padding:10px 40px;display:flex;justify-content:space-between;font-size:10px;color:#706E6B;background:#f8fafc;">
+    <span>TalentNest HR · IT Staffing &amp; Consulting · Hyderabad</span>
+    <span>This document is system-generated and confidential</span>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
   const c = app.candidate, j = app.job;
@@ -377,6 +559,7 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
     hrName:            recruiter?.name || 'HR Manager',
     authorizedBy:      '',
     emailNote:         '',
+    ccEmails:          '',
   });
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -403,14 +586,23 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
   };
 
   const sendOffer = async () => {
+    if (!ctc) { setToast('❌ Enter Annual CTC first'); return; }
     setSaving(true);
     try {
       await api.updateStage(app.id, 'offer_extended', 'Offer letter generated and sent', {});
-      if (form.emailNote && c?.email) {
-        const body = `Dear ${c?.name?.split(' ')[0] || 'Candidate'},\n\nWe are pleased to extend a formal offer for the position of ${j?.title || form.designation} at ${form.clientCompany}.\n\nPlease find your offer letter attached. Kindly review the terms and confirm acceptance by ${new Date(form.acceptanceDeadline).toLocaleDateString('en-IN')}.\n\n${form.emailNote}\n\nWarm regards,\n${form.hrName}\nTalentNest HR\n+91 79955 35539`;
-        await api.sendEmail(c.email, `Offer Letter: ${j?.title || form.designation} — TalentNest HR`, body).catch(() => {});
+      if (c?.email) {
+        const htmlBody = buildOfferEmailHtml({ candidate: c, job: j, form }, ctc);
+        const ccList = form.ccEmails
+          ? form.ccEmails.split(',').map(e => e.trim()).filter(Boolean)
+          : [];
+        await api.sendEmail(
+          c.email,
+          `Offer Letter: ${j?.title || form.designation} — TalentNest HR`,
+          htmlBody,
+          ccList.length ? ccList : undefined
+        ).catch(err => console.warn('[Offer email] delivery failed:', err.message));
       }
-      onDone('✅ Offer sent! Stage updated to Offer Sent.');
+      onDone('✅ Offer sent! Candidate notified by email.');
     } catch(e) {
       setToast('❌ ' + e.message);
     }
@@ -563,7 +755,10 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               <Field label="HR Signatory" value={form.hrName} onChange={v => sf('hrName', v)} />
               <Field label="Approval Authority (optional)" value={form.authorizedBy} onChange={v => sf('authorizedBy', v)} placeholder="CEO / Director" />
               <div style={{ gridColumn: 'span 2' }}>
-                <Field label="Email Cover Note" value={form.emailNote} onChange={v => sf('emailNote', v)} rows={2} placeholder="Add a personal touch to the offer email…" />
+                <Field label="Email Cover Note (optional)" value={form.emailNote} onChange={v => sf('emailNote', v)} rows={2} placeholder="Add a personal message to the offer email…" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <Field label="CC Recipients (optional)" value={form.ccEmails} onChange={v => sf('ccEmails', v)} placeholder="e.g. manager@company.com, ceo@company.com (comma-separated)" />
               </div>
             </div>
           </div>

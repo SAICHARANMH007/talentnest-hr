@@ -20,11 +20,13 @@ const emailLimiter = rateLimit({
 const FROM_EMAIL = process.env.RESEND_FROM || process.env.ZOHO_EMAIL || 'hr@talentnesthr.com';
 
 // Send via Resend REST API (HTTPS — works on Railway, no SMTP ports needed)
-async function sendViaResend(to, subject, html, apiKey, fromEmail) {
+async function sendViaResend(to, subject, html, apiKey, fromEmail, cc) {
+  const payload = { from: `TalentNest HR <${fromEmail}>`, to: Array.isArray(to) ? to : [to], subject, html };
+  if (cc && (Array.isArray(cc) ? cc.length : cc)) payload.cc = Array.isArray(cc) ? cc : [cc];
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: `TalentNest HR <${fromEmail}>`, to: Array.isArray(to) ? to : [to], subject, html }),
+    body: JSON.stringify(payload),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.message || JSON.stringify(d));
@@ -34,9 +36,9 @@ async function sendViaResend(to, subject, html, apiKey, fromEmail) {
 /**
  * Send email — tries Resend first (cloud-safe), falls back to SMTP for local dev.
  */
-async function sendEmail(to, subject, body) {
+async function sendEmail(to, subject, body, cc) {
   if (process.env.RESEND_API_KEY) {
-    const result = await sendViaResend(to, subject, body, process.env.RESEND_API_KEY, FROM_EMAIL);
+    const result = await sendViaResend(to, subject, body, process.env.RESEND_API_KEY, FROM_EMAIL, cc);
     return { id: result.id, message: 'Email sent via Resend' };
   }
   if (process.env.ZOHO_EMAIL && process.env.ZOHO_PASSWORD) {
@@ -46,7 +48,9 @@ async function sendEmail(to, subject, body) {
       tls: { rejectUnauthorized: false },
       connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 8000,
     });
-    const result = await transporter.sendMail({ from: `TalentNest HR <${FROM_EMAIL}>`, to, subject, html: body });
+    const mailOptions = { from: `TalentNest HR <${FROM_EMAIL}>`, to, subject, html: body };
+    if (cc) mailOptions.cc = Array.isArray(cc) ? cc.join(',') : cc;
+    const result = await transporter.sendMail(mailOptions);
     return { id: result.messageId, message: 'Email sent via Zoho' };
   }
   console.log(`[Email DEV] To: ${to} | Subject: ${subject}`);
@@ -118,9 +122,9 @@ router.post('/test-smtp', authMiddleware, emailLimiter, async (req, res) => {
 // POST /api/email/send
 router.post('/send', authMiddleware, emailLimiter, async (req, res) => {
   try {
-    const { to, subject, body } = req.body;
+    const { to, subject, body, cc } = req.body;
     if (!to || !subject) return res.status(400).json({ success: false, error: 'to and subject are required.' });
-    const result = await sendEmail(to, subject, body || '');
+    const result = await sendEmail(to, subject, body || '', cc);
     try {
       EmailLog.create({ to, subject, body: body || '', status: 'sent', provider: process.env.RESEND_API_KEY ? 'resend' : 'smtp', sentBy: req.user?.id || 'system', retryCount: 0 }).catch(() => {});
     } catch {}
