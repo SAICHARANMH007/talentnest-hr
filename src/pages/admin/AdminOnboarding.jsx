@@ -627,7 +627,7 @@ export default function AdminOnboarding({ user }) {
                         </td>
                         <td style={{ padding:'12px 14px' }}>
                           {d.overallStatus === 'all_verified' && d.applicationId ? (
-                            <button onClick={() => navigate(`/app/forms/offer?appId=${d.applicationId}`)} style={{ background:'#0176D3', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+                            <button onClick={() => navigate('/app/offers')} style={{ background:'#0176D3', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
                               📝 Generate Offer
                             </button>
                           ) : (

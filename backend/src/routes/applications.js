@@ -928,8 +928,8 @@ router.patch('/:id/stage', ...guard,
 
     // Send stage-change email to candidate
     const candidate = await Candidate.findById(app.candidateId).select('name email').lean();
+    const jobDoc = await Job.findById(app.jobId).select('title').lean();
     if (candidate?.email) {
-      const jobDoc = await Job.findById(app.jobId).select('title').lean();
       const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
       // Load org notification message overrides

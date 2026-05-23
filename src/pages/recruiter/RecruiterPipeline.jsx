@@ -999,7 +999,7 @@ export default function RecruiterPipeline({ user }) {
                     onInterview={(app) => navigate(`/app/forms/interview?appId=${app.id}`)}
                     onReject={(app) => navigate(`/app/forms/reject?appId=${app.id}`)}
                     onPark={handlePark}
-                    onOffer={(app) => navigate(`/app/forms/offer?appId=${app.id}`)}
+                    onOffer={(app) => setOfferModalApp(app)}
                     onToast={setToast}
                     onRefresh={refresh}
                     assessmentId={assessmentData?.id}
