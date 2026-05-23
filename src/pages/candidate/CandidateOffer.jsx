@@ -183,28 +183,50 @@ export default function CandidateOffer({ user }) {
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: '6px 0 0' }}>{d.companyName || 'TalentNest HR'}</p>
         </div>
 
-        <div style={S.body}>
-          {/* Details */}
-          <div style={{ marginBottom: 20 }}>
-            {[
-              ['Position', d.designation],
-              ['Company',  d.companyName],
-              ['Annual CTC', d.ctc ? `₹ ${d.ctc}` : undefined],
-              ['Date of Joining', d.joiningDate],
-              ['Signatory', d.signatoryName ? `${d.signatoryName}${d.signatoryDesignation ? ` · ${d.signatoryDesignation}` : ''}` : undefined],
-            ].filter(([,v]) => v).map(([label, value]) => (
-              <div key={label} style={S.row}>
-                <span style={S.label}>{label}</span>
-                <span style={S.value}>{value}</span>
-              </div>
-            ))}
+        {/* Full rendered offer letter — shown when recruiter has generated it */}
+        {offer.offerHtml && (
+          <div style={{ borderBottom: '1px solid #e2e8f0' }}>
+            <iframe
+              srcDoc={offer.offerHtml}
+              title="Offer Letter"
+              sandbox="allow-same-origin"
+              style={{ width: '100%', border: 'none', minHeight: 860, display: 'block' }}
+              onLoad={e => {
+                // Auto-expand iframe to full content height
+                try {
+                  const h = e.target.contentDocument?.body?.scrollHeight;
+                  if (h && h > 100) e.target.style.height = h + 'px';
+                } catch {}
+              }}
+            />
           </div>
+        )}
 
-          {d.customClauses && (
-            <div style={{ background: '#F3F2F2', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 8 }}>SPECIAL TERMS</div>
-              <div style={{ fontSize: 13, color: '#3E3E3C', lineHeight: 1.7 }}>{d.customClauses}</div>
-            </div>
+        <div style={S.body}>
+          {/* Key details — shown only when no full HTML is available (legacy offers) */}
+          {!offer.offerHtml && (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                {[
+                  ['Position', d.designation],
+                  ['Company',  d.companyName],
+                  ['Annual CTC', d.ctc ? `₹ ${Number(d.ctc).toLocaleString('en-IN')}` : undefined],
+                  ['Date of Joining', d.joiningDate],
+                  ['Signatory', d.signatoryName ? `${d.signatoryName}${d.signatoryDesignation ? ` · ${d.signatoryDesignation}` : ''}` : undefined],
+                ].filter(([,v]) => v).map(([label, value]) => (
+                  <div key={label} style={S.row}>
+                    <span style={S.label}>{label}</span>
+                    <span style={S.value}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              {d.customClauses && (
+                <div style={{ background: '#F3F2F2', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 8 }}>SPECIAL TERMS</div>
+                  <div style={{ fontSize: 13, color: '#3E3E3C', lineHeight: 1.7 }}>{d.customClauses}</div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Signed state */}

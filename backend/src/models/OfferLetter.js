@@ -48,6 +48,7 @@ const offerLetterSchema = new mongoose.Schema({
     default: 'draft',
   },
   shareToken: { type: String, default: null }, // for public shareable link
+  offerHtml : { type: String, default: null }, // full rendered HTML of the generated offer letter
 }, { timestamps: true });
 
 offerLetterSchema.index({ tenantId: 1 });

@@ -110,7 +110,7 @@ export default function RecruiterOffers({ user }) {
           </div>
         ) : (
           <table style={S.table}>
-            <thead><tr>{['Candidate','Job','Stage','Offer Status','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Candidate','Job','CTC','Offer Status','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
               {apps.map(app => {
                 const cName = app.candidateId?.name || app.candidate?.name || 'Candidate';
@@ -120,6 +120,9 @@ export default function RecruiterOffers({ user }) {
                 const offerStatus = offer?.status || 'not_created';
                 const isSending = sendingId === appId;
                 const isDownloading = downloadingId === appId;
+                const ctcDisplay = offer?.templateData?.ctc
+                  ? '₹' + Number(offer.templateData.ctc).toLocaleString('en-IN')
+                  : '—';
                 return (
                   <tr key={appId}
                     onMouseEnter={e => e.currentTarget.style.background='#FAFAF9'}
@@ -129,10 +132,13 @@ export default function RecruiterOffers({ user }) {
                       {app.candidateId?.email && <div style={{ fontSize: 11, color: '#706E6B' }}>{app.candidateId.email}</div>}
                     </td>
                     <td style={S.td}>{jTitle}</td>
-                    <td style={S.td}><Badge label={app.currentStage || '—'} color={app.currentStage === 'Hired' ? '#34d399' : '#0176D3'} /></td>
+                    <td style={S.td}>
+                      <div style={{ fontWeight: 600, color: offerStatus !== 'not_created' ? '#032D60' : '#706E6B' }}>{ctcDisplay}</div>
+                      {offer?.templateData?.designation && <div style={{ fontSize: 11, color: '#706E6B' }}>{offer.templateData.designation}</div>}
+                    </td>
                     <td style={S.td}>
                       <Badge
-                        label={offerStatus === 'not_created' ? 'Not Created' : offerStatus}
+                        label={offerStatus === 'not_created' ? 'Not Created' : offerStatus.charAt(0).toUpperCase() + offerStatus.slice(1)}
                         color={S.statusColor[offerStatus] || '#706E6B'}
                       />
                     </td>
@@ -141,6 +147,18 @@ export default function RecruiterOffers({ user }) {
                         <button onClick={() => setOfferApp(app)} style={{ ...btnP, fontSize: 12 }}>
                           {offer ? '✏️ Edit' : '📄 Generate'}
                         </button>
+                        {offer?.offerHtml && (
+                          <button
+                            onClick={() => {
+                              const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+                              w.document.write(offer.offerHtml);
+                              w.document.close();
+                            }}
+                            style={{ ...btnG, fontSize: 12 }}
+                          >
+                            👁 View Letter
+                          </button>
+                        )}
                         {offer && offer.status === 'draft' && (
                           <button onClick={() => handleSend(appId)} disabled={isSending} style={{ ...btnG, fontSize: 12 }}>
                             {isSending ? 'Sending…' : '📧 Send'}

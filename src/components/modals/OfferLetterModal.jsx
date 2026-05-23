@@ -589,9 +589,36 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
     if (!ctc) { setToast('❌ Enter Annual CTC first'); return; }
     setSaving(true);
     try {
+      // 1. Move application to Offer stage (also auto-creates OfferLetter record if missing)
       await api.updateStage(app.id, 'offer_extended', 'Offer letter generated and sent', {});
+
+      // 2. Persist the full generated letter into the OfferLetter record so
+      //    recruiters and candidates can view it in the portal at any time.
+      const htmlBody = buildOfferEmailHtml({ candidate: c, job: j, form }, ctc);
+      try {
+        const offerRecord = await api.getOfferByApplication(app.id);
+        const offerId = offerRecord?.id || offerRecord?._id;
+        if (offerId) {
+          await api.updateOffer(offerId, {
+            templateData: {
+              candidateName       : c?.name || '',
+              designation         : j?.title || form.designation,
+              ctc                 : String(form.annualCTC),
+              joiningDate         : form.joiningDate,
+              companyName         : form.clientCompany || j?.company || 'TalentNest HR',
+              signatoryName       : form.hrName,
+              signatoryDesignation: 'Human Resources',
+            },
+            offerHtml: htmlBody,
+            status: 'sent',
+          });
+        }
+      } catch (saveErr) {
+        console.warn('[Offer] Failed to persist offer data:', saveErr.message);
+      }
+
+      // 3. Email the full offer letter to the candidate (+ CC if specified)
       if (c?.email) {
-        const htmlBody = buildOfferEmailHtml({ candidate: c, job: j, form }, ctc);
         const ccList = form.ccEmails
           ? form.ccEmails.split(',').map(e => e.trim()).filter(Boolean)
           : [];
@@ -602,6 +629,7 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
           ccList.length ? ccList : undefined
         ).catch(err => console.warn('[Offer email] delivery failed:', err.message));
       }
+
       onDone('✅ Offer sent! Candidate notified by email.');
     } catch(e) {
       setToast('❌ ' + e.message);

@@ -260,9 +260,12 @@ router.patch('/:id', ...guard,
     if (offer.status === 'signed') throw new AppError('Cannot edit a signed offer letter.', 400);
 
     // Merge templateData
-    const { templateData, status } = req.body;
+    const { templateData, status, offerHtml } = req.body;
     if (templateData) {
       offer.templateData = { ...offer.templateData, ...templateData };
+    }
+    if (offerHtml) {
+      offer.offerHtml = offerHtml;
     }
     if (status && ['draft', 'sent', 'declined'].includes(status)) {
       offer.status = status;
