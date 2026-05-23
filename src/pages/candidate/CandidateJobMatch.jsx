@@ -34,18 +34,29 @@ export default function CandidateJobMatch({ user }) {
   }, []);
 
   const [profile, setProfile] = useState(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Fetch the entire pool (10k cap) to ensure 100% coverage matching career page visibility
-    api.getPublicJobs('?limit=10000').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
+    let jobsDone = false, profileDone = false;
+    const checkReady = () => { if (jobsDone && profileDone) setReady(true); };
+
+    api.getPublicJobs('?limit=400').then(r => {
+      setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []));
+      jobsDone = true;
+      checkReady();
+    });
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });
-    api.getUser(user.id).then(r => setProfile(r.data || r)).catch(() => {});
+    api.getUser(user.id).then(r => {
+      setProfile(r.data || r);
+      profileDone = true;
+      checkReady();
+    }).catch(() => { profileDone = true; checkReady(); });
   }, [user.id]);
 
   const run = (currentQuery = query, currentFilters = filters) => {
-    if (!jobs.length) return;
+    if (!jobs.length || !profile) return;
     setLoad(true);
     try {
       let matched = matchJobsToCandidate(profile || {}, jobs, currentQuery);
@@ -222,15 +233,21 @@ export default function CandidateJobMatch({ user }) {
       </div>
 
       {/* ── Search Status ── */}
-      {results.length === 0 && !loading && jobs.length > 0 && (
+      {!ready && (
+        <div style={{ textAlign: 'center', padding: 48 }}>
+          <Spinner />
+          <p style={{ color: '#706E6B', marginTop: 12, fontSize: 13 }}>Loading your matches…</p>
+        </div>
+      )}
+      {ready && results.length === 0 && !loading && (
         <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ color: '#706E6B' }}>No matches found. Try adjusting your search.</p>
         </div>
       )}
-      {loading && <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>}
+      {ready && loading && <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>}
 
       {/* ── Results List ── */}
-      {results.map((r, i) => {
+      {ready && results.map((r, i) => {
         const isOpen = expanded === r.jobId;
         const isApplied = applied.has(String(r.jobId));
         const j = r.job;
