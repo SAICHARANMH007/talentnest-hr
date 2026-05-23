@@ -114,26 +114,35 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
     ['ESTIMATED NET TAKE-HOME',         fmt(ctc.monthly.inHand), fmt(ctc.annual.inHand), true, '#065f46'],
   ];
 
-  const th = { background:'#F3F2F2', color:'#181818', padding:'8px 12px', fontSize:11, fontWeight:700, textAlign:'left' };
+  const th = { background:'#032D60', color:'#fff', padding:'9px 12px', fontSize:11, fontWeight:700, textAlign:'left', letterSpacing:0.3 };
   const td = (bold, accent) => ({ padding:'7px 12px', fontSize:11.5, fontWeight:bold?700:400, color:accent||'#1e293b', borderBottom:'1px solid #f1f5f9', background: bold ? '#f0f9ff' : '#fff' });
   const tdR = { ...td(false), textAlign:'right' };
 
   return (
-    <div style={{ fontFamily:"'Times New Roman', Georgia, serif", color:'#1e293b', background:'#fff', fontSize:12, lineHeight:1.7 }}>
+    <div style={{ fontFamily:"'Georgia', 'Times New Roman', serif", color:'#1e293b', background:'#fff', fontSize:12, lineHeight:1.75 }}>
       {/* Letterhead */}
-      <div style={{ borderBottom:'3px solid #F3F2F2', paddingBottom:16, marginBottom:20, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div>
-          <div style={{ fontSize:22, fontWeight:900, color:'#F3F2F2', letterSpacing:0.5, fontFamily:'Arial, sans-serif' }}>TalentNest <span style={{color:'#0176D3'}}>HR</span></div>
-          <div style={{ fontSize:10.5, color:'#64748b', marginTop:3, lineHeight:1.5 }}>
-            Floor 3, Brindavanam Block C, Ganesh Nagar, Miyapur, Hyderabad – 502033<br/>
-            ✉ hr@talentnesthr.com | ☎ +91 79955 35539 | 🌐 www.talentnesthr.com
+      <div style={{ marginBottom:24 }}>
+        {/* Top accent bar */}
+        <div style={{ height:5, background:'linear-gradient(90deg,#032D60 0%,#0176D3 60%,#38bdf8 100%)', marginBottom:18, borderRadius:2 }}/>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <div style={{ fontSize:26, fontWeight:900, color:'#032D60', letterSpacing:0.5, fontFamily:"'Arial', sans-serif", lineHeight:1.1 }}>
+              TalentNest <span style={{color:'#0176D3'}}>HR</span>
+            </div>
+            <div style={{ fontSize:9, color:'#0176D3', fontWeight:700, letterSpacing:2, textTransform:'uppercase', marginTop:2 }}>STAFFING &amp; HUMAN CAPITAL SOLUTIONS</div>
+            <div style={{ fontSize:10, color:'#64748b', marginTop:6, lineHeight:1.6 }}>
+              Floor 3, Brindavanam Block C, Ganesh Nagar, Miyapur, Hyderabad – 502033<br/>
+              ✉ hr@talentnesthr.com &nbsp;|&nbsp; ☎ +91 79955 35539 &nbsp;|&nbsp; 🌐 www.talentnesthr.com
+            </div>
+          </div>
+          <div style={{ textAlign:'right', fontSize:11, color:'#374151' }}>
+            <div style={{ fontWeight:700, color:'#374151', marginBottom:2 }}>Ref No: {refNo}</div>
+            <div style={{ color:'#64748b' }}>Date: {dateStr}</div>
+            <div style={{ marginTop:8, background:'#032D60', color:'#fff', padding:'4px 12px', borderRadius:4, fontSize:9.5, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase' }}>CONFIDENTIAL</div>
           </div>
         </div>
-        <div style={{ textAlign:'right', fontSize:11, color:'#64748b' }}>
-          <div style={{ fontWeight:700, color:'#F3F2F2' }}>Ref No: {refNo}</div>
-          <div>Date: {dateStr}</div>
-          <div style={{ marginTop:6, background:'#F3F2F2', color:'#181818', padding:'3px 10px', borderRadius:4, fontSize:10, fontWeight:600 }}>CONFIDENTIAL</div>
-        </div>
+        {/* Bottom separator */}
+        <div style={{ height:1, background:'linear-gradient(90deg,#032D60,#e2e8f0)', marginTop:14 }}/>
       </div>
 
       {/* Addressee */}
@@ -144,14 +153,14 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
       </div>
 
       {/* Subject */}
-      <div style={{ marginBottom:16, padding:'10px 14px', background:'#f0f9ff', border:'1px solid #bae6fd', borderLeft:'4px solid #F3F2F2', borderRadius:'0 6px 6px 0' }}>
-        <span style={{ fontWeight:700 }}>Sub: Offer of Employment — {j?.title || f.designation} | {f.employmentType}</span>
+      <div style={{ marginBottom:18, padding:'11px 16px', background:'linear-gradient(135deg,#f0f9ff,#e0f2fe)', border:'1px solid #bae6fd', borderLeft:'4px solid #032D60', borderRadius:'0 8px 8px 0' }}>
+        <span style={{ fontWeight:800, color:'#032D60', fontSize:12 }}>Sub: Offer of Employment — {j?.title || f.designation} | {f.employmentType}</span>
       </div>
 
       <p>Dear <strong>{c?.name?.split(' ')[0] || 'Candidate'}</strong>,</p>
       <p style={{ marginTop:10 }}>
         We are delighted to extend this offer of employment to you for the position of <strong>{j?.title || f.designation}</strong>
-        {f.department ? ` in the <strong>${f.department}</strong> department` : ''} at <strong>{f.clientCompany || j?.company || 'TalentNest HR'}</strong>,
+        {f.department ? <> in the <strong>{f.department}</strong> department</> : ''} at <strong>{f.clientCompany || j?.company || 'TalentNest HR'}</strong>,
         located at <strong>{f.workLocation || c?.location || 'Hyderabad, Telangana'}</strong>.
         This offer is subject to the terms and conditions outlined below and the satisfactory completion of all pre-employment checks.
       </p>
@@ -191,13 +200,13 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
           ))}
         </tbody>
       </table>
-      <p style={{ fontSize:11, color:'#475569', marginBottom:4, fontWeight:600 }}>STATUTORY DEDUCTIONS (Indicative — actual as per applicable law)</p>
+      <p style={{ fontSize:11, color:'#1e293b', marginBottom:4, fontWeight:800, marginTop:16, letterSpacing:0.3 }}>STATUTORY DEDUCTIONS <span style={{ fontWeight:400, color:'#64748b' }}>(Indicative — actual as per applicable law)</span></p>
       <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:16, fontSize:11.5 }}>
         <thead>
           <tr>
-            <th style={{...th, background:'#374151'}}>Deduction</th>
-            <th style={{...th, background:'#374151', textAlign:'right'}}>Monthly (₹)</th>
-            <th style={{...th, background:'#374151', textAlign:'right'}}>Annual (₹)</th>
+            <th style={{...th, background:'#1e293b', color:'#f8fafc'}}>Deduction</th>
+            <th style={{...th, background:'#1e293b', color:'#f8fafc', textAlign:'right'}}>Monthly (₹)</th>
+            <th style={{...th, background:'#1e293b', color:'#f8fafc', textAlign:'right'}}>Annual (₹)</th>
           </tr>
         </thead>
         <tbody>
@@ -267,7 +276,7 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
       <p>This offer is conditional upon satisfactory completion of pre-employment background verification, including but not limited to: educational qualifications, previous employment records, professional references, and criminal background check. You must submit original documents for verification on or before your joining date. Suppression of any information or submission of false documents is grounds for immediate termination at any stage of employment.</p>
 
       {/* Closing */}
-      <div style={{ marginTop:20, padding:'12px 16px', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:6 }}>
+      <div style={{ marginTop:24, padding:'14px 18px', background:'linear-gradient(135deg,#f0f9ff,#e0f2fe)', border:'1px solid #bae6fd', borderLeft:'4px solid #0176D3', borderRadius:'0 8px 8px 0' }}>
         <p>We believe you will be a valuable addition to our team. Please confirm your acceptance of this offer by signing and returning a copy of this letter, along with all supporting documents, by <strong>{f.acceptanceDeadline ? new Date(f.acceptanceDeadline).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}) : 'the stipulated date'}</strong>.</p>
         <p style={{marginTop:8}}>This offer will stand void if not accepted within the stipulated deadline or if any information provided by you is found to be incorrect.</p>
       </div>
@@ -292,8 +301,8 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
       </div>
 
       {/* Acceptance block */}
-      <div style={{ marginTop:28, padding:'14px 16px', border:'2px dashed #F3F2F2', borderRadius:8 }}>
-        <p style={{ fontWeight:700, textTransform:'uppercase', fontSize:11, letterSpacing:1, marginBottom:10, color:'#F3F2F2' }}>ACCEPTANCE — To be signed and returned</p>
+      <div style={{ marginTop:28, padding:'16px 18px', border:'1.5px solid #cbd5e1', borderRadius:8, background:'#f8fafc' }}>
+        <p style={{ fontWeight:700, textTransform:'uppercase', fontSize:11, letterSpacing:1, marginBottom:10, color:'#1e293b' }}>ACCEPTANCE — To be signed and returned</p>
         <p>I, <strong>{c?.name || '___________________________'}</strong>, hereby accept the offer of employment as <strong>{j?.title || f.designation}</strong> at <strong>{f.clientCompany || j?.company || 'TalentNest HR'}</strong> on the terms and conditions stated above.</p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:20, marginTop:16 }}>
           <div><div style={{ borderTop:'1px solid #374151', paddingTop:6, fontSize:11 }}>Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div></div>
@@ -304,7 +313,10 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop:20, borderTop:'2px solid #F3F2F2', paddingTop:8, display:'flex', justifyContent:'space-between', fontSize:10, color:'#706E6B' }}>
+      <div style={{ marginTop:20 }}>
+        <div style={{ height:3, background:'linear-gradient(90deg,#032D60 0%,#0176D3 60%,#38bdf8 100%)', marginBottom:8, borderRadius:2 }}/>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#706E6B' }}>
         <span>TalentNest HR · IT Staffing & Consulting · Hyderabad</span>
         <span>This document is system-generated · {refNo}</span>
       </div>
@@ -314,21 +326,21 @@ function OfferLetterDoc({ data, ctc, ref: docRef }) {
 
 function SectionHead({ n, title, extra }) {
   return (
-    <div style={{ marginTop:18, marginBottom:6, display:'flex', alignItems:'center', gap:8 }}>
-      <div style={{ background:'#F3F2F2', color:'#181818', width:22, height:22, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{n}</div>
-      <span style={{ fontWeight:700, fontSize:12.5, color:'#F3F2F2', textTransform:'uppercase', letterSpacing:0.5 }}>{title}{extra && <span style={{ color:'#0154A4' }}>{extra}</span>}</span>
+    <div style={{ marginTop:22, marginBottom:8, display:'flex', alignItems:'center', gap:10, borderBottom:'1.5px solid #e2e8f0', paddingBottom:6 }}>
+      <div style={{ background:'#032D60', color:'#fff', width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, flexShrink:0 }}>{n}</div>
+      <span style={{ fontWeight:800, fontSize:12, color:'#032D60', textTransform:'uppercase', letterSpacing:0.8 }}>{title}{extra && <span style={{ color:'#0176D3', fontWeight:700 }}>{extra}</span>}</span>
     </div>
   );
 }
 
 function InfoTable({ rows }) {
   return (
-    <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:12, fontSize:11.5 }}>
+    <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:12, fontSize:11.5, border:'1px solid #e2e8f0', borderRadius:6, overflow:'hidden' }}>
       <tbody>
-        {rows.map(([k, v]) => (
-          <tr key={k}>
-            <td style={{ padding:'5px 10px', fontWeight:600, color:'#374151', width:'38%', borderBottom:'1px solid #f1f5f9', background:'#fafafa' }}>{k}</td>
-            <td style={{ padding:'5px 10px', color:'#1e293b', borderBottom:'1px solid #f1f5f9' }}>{v}</td>
+        {rows.map(([k, v], i) => (
+          <tr key={k} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+            <td style={{ padding:'7px 12px', fontWeight:700, color:'#032D60', width:'38%', borderBottom:'1px solid #e2e8f0' }}>{k}</td>
+            <td style={{ padding:'7px 12px', color:'#1e293b', borderBottom:'1px solid #e2e8f0' }}>{v}</td>
           </tr>
         ))}
       </tbody>
