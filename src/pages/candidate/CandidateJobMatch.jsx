@@ -133,7 +133,16 @@ export default function CandidateJobMatch({ user }) {
       await api.applyToJob(jobId, user.id);
       setApplied(prev => new Set([...prev, String(jobId)]));
       setToast("✅ Applied successfully!");
-    } catch (e) { setToast(`❌ ${e.message}`); }
+    } catch (e) {
+      const msg = e.message || '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('duplicate')) {
+        // Already applied — mark it locally so the button updates
+        setApplied(prev => new Set([...prev, String(jobId)]));
+        setToast("✅ You've already applied to this job!");
+      } else {
+        setToast(`❌ ${msg || 'Something went wrong. Please try again.'}`);
+      }
+    }
   };
 
   const toggleExpand = (jobId) => {

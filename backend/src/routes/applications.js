@@ -507,19 +507,32 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
     platformAppliedFrom.method   = 'browser';
   }
 
-  const app = await Application.create({
-    tenantId: appTenantId,
-    jobId,
-    candidateId: checkId,  // always the resolved Candidate._id (not User._id)
-    source: 'platform',
-    coverLetter: coverLetter || '',
-    talentMatchScore: score,
-    matchBreakdown: breakdown,
-    currentStage: 'Applied',
-    stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date() }],
-    screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
-    appliedFrom: platformAppliedFrom,
-  });
+  let app;
+  try {
+    app = await Application.create({
+      tenantId: appTenantId,
+      jobId,
+      candidateId: checkId,  // always the resolved Candidate._id (not User._id)
+      source: 'platform',
+      coverLetter: coverLetter || '',
+      talentMatchScore: score,
+      matchBreakdown: breakdown,
+      currentStage: 'Applied',
+      stageHistory: [{ stage: 'Applied', movedBy: req.user.id, movedAt: new Date() }],
+      screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
+      appliedFrom: platformAppliedFrom,
+    });
+  } catch (createErr) {
+    if (createErr.code === 11000) {
+      // E11000 fallback: duplicate slipped past the dedup check (race condition / soft-deleted record)
+      const existing = await Application.findOne({ jobId, candidateId: checkId });
+      return res.status(409).json({
+        error: 'You have already applied to this job.',
+        existingId: existing ? String(existing._id) : null,
+      });
+    }
+    throw createErr;
+  }
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
 
