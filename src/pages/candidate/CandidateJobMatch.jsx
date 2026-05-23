@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -35,12 +35,13 @@ export default function CandidateJobMatch({ user }) {
 
   const [profile, setProfile] = useState(null);
   const [ready, setReady] = useState(false);
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     let jobsDone = false, profileDone = false;
     const checkReady = () => { if (jobsDone && profileDone) setReady(true); };
 
-    api.getPublicJobs('?limit=400').then(r => {
+    api.getPublicJobs('?limit=10000').then(r => {
       setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []));
       jobsDone = true;
       checkReady();
@@ -55,47 +56,75 @@ export default function CandidateJobMatch({ user }) {
     }).catch(() => { profileDone = true; checkReady(); });
   }, [user.id]);
 
-  const run = (currentQuery = query, currentFilters = filters) => {
+  const run = (currentQuery = query, currentFilters = filters, currentSortBy = sortBy) => {
     if (!jobs.length || !profile) return;
+
+    // Stamp this run — any in-flight setTimeout from a previous run will see a
+    // different id and abort, keeping the UI responsive during rapid changes.
+    const thisRunId = ++runIdRef.current;
     setLoad(true);
-    try {
-      let matched = matchJobsToCandidate(profile || {}, jobs, currentQuery);
-      
-      // Advanced Filters
-      const qLocation = (currentFilters.location || '').toLowerCase();
-      if (qLocation) matched = matched.filter(r => (r.job.location || '').toLowerCase().includes(qLocation));
-      
+
+    const applyFiltersSort = (matched) => {
+      let out = matched;
+      const qLoc = (currentFilters.location || '').toLowerCase();
+      if (qLoc) out = out.filter(r => (r.job.location || '').toLowerCase().includes(qLoc));
       if (currentFilters.type !== 'all') {
-        const type = currentFilters.type;
-        matched = matched.filter(r => r.job.jobType === type || (type === 'remote' && (r.job.location || '').toLowerCase().includes('remote')));
+        const t = currentFilters.type;
+        out = out.filter(r => r.job.jobType === t || (t === 'remote' && (r.job.location || '').toLowerCase().includes('remote')));
       }
-      
       if (currentFilters.department !== 'all') {
         const dep = currentFilters.department.toLowerCase();
-        matched = matched.filter(r => (r.job.department || '').toLowerCase().includes(dep));
+        out = out.filter(r => (r.job.department || '').toLowerCase().includes(dep));
       }
       if (currentFilters.industry !== 'all') {
         const ind = currentFilters.industry.toLowerCase();
-        matched = matched.filter(r => (r.job.industry || '').toLowerCase().includes(ind));
+        out = out.filter(r => (r.job.industry || '').toLowerCase().includes(ind));
       }
-
-      // Sorting
-      if (sortBy === 'newest') matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
-      else if (sortBy === 'urgency') {
+      if (currentSortBy === 'newest') return [...out].sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
+      if (currentSortBy === 'urgency') {
         const order = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        matched.sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
-      } else {
-        matched.sort((a, b) => b.matchScore - a.matchScore);
+        return [...out].sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
+      }
+      return [...out].sort((a, b) => b.matchScore - a.matchScore);
+    };
+
+    // Process jobs in chunks of 200 — yields to the browser between chunks so
+    // clicks, animations, and filters stay responsive even with 10 000 jobs.
+    const CHUNK = 200;
+    const allMatched = [];
+    let chunkIdx = 0;
+    const totalChunks = Math.ceil(jobs.length / CHUNK);
+
+    const processNextChunk = () => {
+      if (runIdRef.current !== thisRunId) return; // stale run — abort
+
+      if (chunkIdx >= totalChunks) {
+        setResults(applyFiltersSort(allMatched));
+        setLoad(false);
+        return;
       }
 
-      setResults(matched);
-    } catch (e) { console.error(e); }
-    setLoad(false);
+      try {
+        const start = chunkIdx * CHUNK;
+        const scored = matchJobsToCandidate(profile, jobs.slice(start, start + CHUNK), currentQuery);
+        scored.forEach(r => allMatched.push(r));
+        chunkIdx++;
+
+        // Show first results early (after ~400 jobs scored) for instant feedback
+        if (chunkIdx <= 2) {
+          setResults(applyFiltersSort([...allMatched].sort((a, b) => b.matchScore - a.matchScore)));
+        }
+      } catch (e) { console.error(e); }
+
+      setTimeout(processNextChunk, 0);
+    };
+
+    setTimeout(processNextChunk, 0);
   };
 
-  useEffect(() => { run(query, filters); }, [jobs, filters, sortBy, profile]);
+  useEffect(() => { run(query, filters, sortBy); }, [jobs, filters, sortBy, profile]);
   useEffect(() => {
-    const timer = setTimeout(() => run(query, filters), 300);
+    const timer = setTimeout(() => run(query, filters, sortBy), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -145,7 +174,7 @@ export default function CandidateJobMatch({ user }) {
         </p>
         
         <form 
-          onSubmit={e => { e.preventDefault(); run(query, filters); }}
+          onSubmit={e => { e.preventDefault(); run(query, filters, sortBy); }}
           style={{ maxWidth: 800, margin: '0 auto', position: 'relative', display: 'flex', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}
         >
           <div style={{ position: 'relative', flex: 1 }}>
