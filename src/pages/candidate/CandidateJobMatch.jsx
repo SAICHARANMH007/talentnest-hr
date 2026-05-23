@@ -18,7 +18,7 @@ export default function CandidateJobMatch({ user }) {
   const [jobs, setJobs] = useState([]);
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
-  const [loading, setLoad] = useState(false);
+  const [loading, setLoad] = useState(true);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
