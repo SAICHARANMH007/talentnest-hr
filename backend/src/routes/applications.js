@@ -396,21 +396,27 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
   // Self-apply: candidate users have a User record but may not have a Candidate record.
   // Auto-create one linked by email so applications are trackable in the recruiter pipeline.
   if (req.user.role === 'candidate') {
-    let selfCandidate = await Candidate.findOne({
-      email: req.user.email,
-      tenantId: req.user.tenantId,
-      deletedAt: null,
-    });
+    // Search by email across ALL tenants — a recruiter may have created the Candidate
+    // record under the employer's tenantId, not the candidate's own tenantId.
+    const emailRegex = new RegExp(`^${req.user.email.toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    let selfCandidate = await Candidate.findOne({ email: emailRegex, deletedAt: null });
     if (!selfCandidate) {
-      selfCandidate = await Candidate.create({
-        tenantId: req.user.tenantId,
-        name: req.user.name,
-        email: req.user.email,
-        phone: req.user.phone || '',
-        source: 'platform',
-        skills: Array.isArray(req.user.skills) ? req.user.skills : [],
-        location: req.user.location || '',
-      });
+      // Use findOneAndUpdate (upsert) so concurrent requests don't race into E11000
+      selfCandidate = await Candidate.findOneAndUpdate(
+        { email: req.user.email.toLowerCase().trim(), tenantId: req.user.tenantId },
+        {
+          $setOnInsert: {
+            tenantId: req.user.tenantId,
+            name: req.user.name,
+            email: req.user.email.toLowerCase().trim(),
+            phone: req.user.phone || '',
+            source: 'platform',
+            skills: Array.isArray(req.user.skills) ? req.user.skills : [],
+            location: req.user.location || '',
+          },
+        },
+        { upsert: true, new: true }
+      );
     }
     candidateId = selfCandidate._id;
   }
