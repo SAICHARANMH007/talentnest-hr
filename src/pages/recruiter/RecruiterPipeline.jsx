@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Toast from '../../components/ui/Toast.jsx';
 import HiredDetailsModal from '../../components/modals/HiredDetailsModal.jsx';
+import OfferLetterModal from '../../components/modals/OfferLetterModal.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -436,10 +437,10 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         {/* Prominent Offer Letter button */}
         {(app.stage === 'interview_completed' || app.stage === 'offer_extended') && (
           <button
-            onClick={() => navigate(`/app/forms/offer?appId=${app.id}`)}
+            onClick={() => onOffer(app)}
             style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.25),rgba(234,179,8,0.15))', border: '1px solid rgba(245,158,11,0.5)', borderRadius: 12, color: '#F59E0B', padding: '7px 16px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
           >
-            📄 {app.stage === 'offer_extended' ? 'Resend Offer Letter' : 'Send Offer Letter'}
+            📄 {app.stage === 'offer_extended' ? 'Edit / Resend Offer Letter' : 'Send Offer Letter'}
           </button>
         )}
         {!isEditingFunnel && nextActions.filter(a => a !== 'rejected' && a !== 'offer_extended').map(a => {
@@ -503,6 +504,7 @@ export default function RecruiterPipeline({ user }) {
   const [detailApp, setDetApp] = useState(null);
   const [toast, setToast] = useState('');
   const [hiredModal, setHiredModal] = useState(null);
+  const [offerModalApp, setOfferModalApp] = useState(null);
   const [recruiter, setRecruiter] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
@@ -584,7 +586,7 @@ export default function RecruiterPipeline({ user }) {
   const moveStage = async (app, newStage) => {
     if (newStage === 'rejected') { navigate(`/app/forms/reject?appId=${app.id}`); return; }
     if (newStage === 'interview_scheduled') { navigate(`/app/forms/interview?appId=${app.id}`); return; }
-    if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
+    if (newStage === 'offer_extended') { setOfferModalApp(app); return; }
     if (movingAppId) return; // prevent double-click
     setMovingAppId(app.id);
     try {
@@ -603,7 +605,7 @@ export default function RecruiterPipeline({ user }) {
     if (newStage === app.stage) return;
     if (newStage === 'rejected') { navigate(`/app/forms/reject?appId=${app.id}`); return; }
     if (newStage === 'interview_scheduled') { navigate(`/app/forms/interview?appId=${app.id}`); return; }
-    if (newStage === 'offer_extended') { navigate(`/app/forms/offer?appId=${app.id}`); return; }
+    if (newStage === 'offer_extended') { setOfferModalApp(app); return; }
     if (movingAppId) return; // prevent double-click
     setMovingAppId(app.id);
     try {
@@ -693,6 +695,14 @@ export default function RecruiterPipeline({ user }) {
           jobTitle={hiredModal.jobTitle}
           onClose={() => setHiredModal(null)}
           onSaved={() => { setHiredModal(null); refresh(); }}
+        />
+      )}
+      {offerModalApp && (
+        <OfferLetterModal
+          app={offerModalApp}
+          recruiter={recruiter || user}
+          onClose={() => setOfferModalApp(null)}
+          onDone={(msg) => { setToast(msg); setOfferModalApp(null); refresh(); }}
         />
       )}
 
@@ -954,7 +964,7 @@ export default function RecruiterPipeline({ user }) {
                             onInterview={(a) => navigate(`/app/forms/interview?appId=${a.id}`)}
                             onReject={(a) => navigate(`/app/forms/reject?appId=${a.id}`)}
                             onPark={handlePark}
-                            onOffer={(a) => navigate(`/app/forms/offer?appId=${a.id}`)}
+                            onOffer={(a) => setOfferModalApp(a)}
                             onToast={setToast}
                             onRefresh={refresh}
                             assessmentId={assessmentData?.id}

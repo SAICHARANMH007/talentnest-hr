@@ -1040,10 +1040,27 @@ router.patch('/:id/stage', ...guard,
       } catch (err) {
         console.warn('[Notification] Candidate hired notification failed:', err.message);
       }
+
+      // In-app notification for all admins + the recruiter who moved the stage
+      try {
+        const User = require('../models/User');
+        const adminUsers = await User.find({ tenantId: app.tenantId, role: { $in: ['admin', 'recruiter'] }, deletedAt: null }).select('_id').lean();
+        const notifPayloads = adminUsers.map(u => ({
+          userId: u._id,
+          tenantId: app.tenantId,
+          type: 'stage_change',
+          title: `🎉 Hired: ${candidate.name}`,
+          message: `${candidate.name} was hired for ${jobDoc?.title || 'a role'}. Generate their offer letter in the Offers page.`,
+          link: `/app/offers`,
+        }));
+        if (notifPayloads.length) await Notification.insertMany(notifPayloads).catch(() => {});
+      } catch (err) {
+        console.warn('[Notification] Admin hired notification failed:', err.message);
+      }
     }
 
-    // When moved to Offer stage, create a blank OfferLetter if one doesn't exist
-    if (stage === 'Offer') {
+    // When moved to Offer or Hired stage, create a blank OfferLetter if one doesn't exist
+    if (stage === 'Offer' || stage === 'Hired') {
       const existingOffer = await OfferLetter.findOne({ applicationId: app._id });
       if (!existingOffer) {
         await OfferLetter.create({

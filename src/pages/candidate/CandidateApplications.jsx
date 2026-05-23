@@ -120,6 +120,8 @@ export default function CandidateApplications({ user }) {
   const [invites, setInvites]         = useState([]);
   const [activeTab, setActiveTab]     = useState('applications');
 
+  const [myOffers, setMyOffers] = useState([]);
+
   useEffect(() => {
     setLoad(true);
     api.getMyApplications()
@@ -147,6 +149,12 @@ export default function CandidateApplications({ user }) {
       })
       .catch(() => setApps([]))
       .finally(() => setLoad(false));
+
+    // Load sent/signed offer letters so we can show "View Offer" button
+    api.getMyOffers().then(r => {
+      const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+      setMyOffers(list);
+    }).catch(() => {});
 
     api.getMyInvites()
       .then(data => setInvites(Array.isArray(data) ? data : (data?.data || [])))
@@ -483,12 +491,30 @@ export default function CandidateApplications({ user }) {
                       </div>
                     )}
 
-                    {/* Offer info */}
-                    {a.stage === 'offer_extended' && (
-                      <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
-                        <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>🎉 Offer Extended! Contact your recruiter for offer details.</p>
-                      </div>
-                    )}
+                    {/* Offer info — show link if we have a sent/signed offer */}
+                    {(a.stage === 'offer_extended' || a.stage === 'selected') && (() => {
+                      const appIdStr = String(a.id || a._id || '');
+                      const matchedOffer = myOffers.find(o => String(o.applicationId) === appIdStr);
+                      return (
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
+                          {matchedOffer ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                              <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>
+                                🎉 {matchedOffer.status === 'signed' ? 'You signed this offer!' : 'Your offer letter is ready to review & sign!'}
+                              </p>
+                              <button
+                                onClick={() => navigate(`/offer/${matchedOffer.id || matchedOffer._id}`)}
+                                style={{ background: '#2E844A', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                {matchedOffer.status === 'signed' ? '📄 View Signed Offer' : '✍️ View & Sign Offer'}
+                              </button>
+                            </div>
+                          ) : (
+                            <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>🎉 Offer Extended! Your offer letter will be emailed to you shortly.</p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Rejection reason */}
                     {a.stage === 'rejected' && a.rejectionReason && (
