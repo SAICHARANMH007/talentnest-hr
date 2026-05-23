@@ -240,8 +240,21 @@ router.get('/application/:appId', ...guard, asyncHandler(async (req, res) => {
 }));
 
 // ── GET /api/offers/:id — single offer ────────────────────────────────────────
-router.get('/:id', ...guard, asyncHandler(async (req, res) => {
-  const offer = await OfferLetter.findOne({ _id: req.params.id, tenantId: req.user.tenantId });
+router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
+  let offer;
+  if (req.user.role === 'candidate') {
+    // Candidates' offers live under the employer's tenantId — skip tenantId filter,
+    // but verify the offer belongs to this candidate by matching their email.
+    offer = await OfferLetter.findById(req.params.id).lean();
+    if (offer) {
+      const cand = await Candidate.findById(offer.candidateId).select('email').lean();
+      if (!cand || cand.email.toLowerCase() !== req.user.email.toLowerCase()) {
+        throw new AppError('Offer not found.', 404);
+      }
+    }
+  } else {
+    offer = await OfferLetter.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
+  }
   if (!offer) throw new AppError('Offer not found.', 404);
 
   res.json({ success: true, data: normalizeOffer(offer) });

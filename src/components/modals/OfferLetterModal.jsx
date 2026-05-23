@@ -782,11 +782,31 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               <Dropdown label="Confirmation Notice Period" value={form.noticePeriod} onChange={v => sf('noticePeriod', v)} options={['15 days', '30 days', '45 days', '60 days', '90 days', '120 days']} />
               <Field label="HR Signatory" value={form.hrName} onChange={v => sf('hrName', v)} />
               <Field label="Approval Authority (optional)" value={form.authorizedBy} onChange={v => sf('authorizedBy', v)} placeholder="CEO / Director" />
-              <div style={{ gridColumn: 'span 2' }}>
-                <Field label="Email Cover Note (optional)" value={form.emailNote} onChange={v => sf('emailNote', v)} rows={2} placeholder="Add a personal message to the offer email…" />
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <Field label="CC Recipients (optional)" value={form.ccEmails} onChange={v => sf('ccEmails', v)} placeholder="e.g. manager@company.com, ceo@company.com (comma-separated)" />
+            </div>
+
+            {/* Email Options — always full-width, clearly visible */}
+            <div style={{ marginTop: 24, background: 'rgba(1,118,211,0.04)', border: '1.5px solid rgba(1,118,211,0.18)', borderRadius: 14, padding: '18px 20px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0176D3', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 14 }}>📧 Email Options</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5, letterSpacing: 0.3, textTransform: 'uppercase' }}>CC Recipients <span style={{ fontWeight: 400, color: '#9E9D9B', textTransform: 'none' }}>(optional — separate multiple emails with commas)</span></label>
+                  <input
+                    value={form.ccEmails}
+                    onChange={e => sf('ccEmails', e.target.value)}
+                    placeholder="e.g. manager@company.com, ceo@company.com"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(1,118,211,0.25)', fontSize: 13, color: '#181818', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5, letterSpacing: 0.3, textTransform: 'uppercase' }}>Email Cover Note <span style={{ fontWeight: 400, color: '#9E9D9B', textTransform: 'none' }}>(optional)</span></label>
+                  <textarea
+                    value={form.emailNote}
+                    onChange={e => sf('emailNote', e.target.value)}
+                    rows={2}
+                    placeholder="Add a personal message to accompany the offer email…"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(1,118,211,0.25)', fontSize: 13, color: '#181818', background: '#fff', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
               </div>
             </div>
           </div>
