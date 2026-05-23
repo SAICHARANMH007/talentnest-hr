@@ -50,6 +50,9 @@ const guard = [authMiddleware, tenantGuard];
 // Only select fields needed by the public job board — reduces payload ~60%.
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
 const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+// Lean variant strips heavy text fields (description/requirements/benefits) — used by
+// the candidate matching pool fetch where only scoring fields are needed (~70% smaller).
+const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
 
 // ── PUBLIC: fetch one job by ID (for shared links — no auth) ─────────────────
 router.get('/public/single/:id', asyncHandler(async (req, res) => {
@@ -105,9 +108,10 @@ router.get('/public', asyncHandler(async (req, res) => {
 
   // Run count and job fetch in parallel; skip expensive uniqueCompanies on paginated requests
   const isFirstPage = page === 1 && !req.query.search;
+  const selectFields = req.query.lean === '1' ? LEAN_JOB_FIELDS : PUBLIC_JOB_FIELDS;
   const [jobs, total, urgentCount, uniqueCompanies] = await Promise.all([
     Job.find(filter)
-      .select(PUBLIC_JOB_FIELDS)   // lean payload — no recruiter/tenant/internal fields
+      .select(selectFields)        // lean payload — no recruiter/tenant/internal fields
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

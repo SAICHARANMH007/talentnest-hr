@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -18,11 +18,13 @@ export default function CandidateJobMatch({ user }) {
   const [jobs, setJobs] = useState([]);
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
-  const [loading, setLoad] = useState(false);
+  const [loading, setLoad] = useState(true);
+  const [matchedOnce, setMatchedOnce] = useState(false);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
   const [assessments, setAssessments] = useState({}); // jobId → assessment
+  const [jobDetails, setJobDetails] = useState({});   // jobId → full job (with description)
   const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all", department: "all", industry: "all" });
   const [sortBy, setSortBy] = useState("match"); // match, newest, urgency
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -33,58 +35,95 @@ export default function CandidateJobMatch({ user }) {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  const [profile, setProfile] = useState(null);
+  // user from App already contains the full profile (skills, experience, workHistory etc.)
+  // — it is the normalized User document stored in sessionStorage on login/refresh.
+  // No separate getUser() call needed; using it directly removes one round trip.
+  const profile = user;
+  const [ready, setReady] = useState(false);
+  const runIdRef = useRef(0);
 
   useEffect(() => {
-    // Fetch the entire pool (10k cap) to ensure 100% coverage matching career page visibility
-    api.getPublicJobs('?limit=10000').then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
+    // lean=1 strips description/requirements/benefits → ~70% smaller payload.
+    // Description is fetched on-demand when a card is expanded.
+    api.getPublicJobs('?limit=10000&lean=1').then(r => {
+      setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []));
+      setReady(true);
+    });
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });
-    api.getUser(user.id).then(r => setProfile(r.data || r)).catch(() => {});
   }, [user.id]);
 
-  const run = (currentQuery = query, currentFilters = filters) => {
-    if (!jobs.length) return;
+  const run = (currentQuery = query, currentFilters = filters, currentSortBy = sortBy) => {
+    if (!jobs.length || !profile) return;
+
+    // Stamp this run — any in-flight setTimeout from a previous run will see a
+    // different id and abort, keeping the UI responsive during rapid changes.
+    const thisRunId = ++runIdRef.current;
     setLoad(true);
-    try {
-      let matched = matchJobsToCandidate(profile || {}, jobs, currentQuery);
-      
-      // Advanced Filters
-      const qLocation = (currentFilters.location || '').toLowerCase();
-      if (qLocation) matched = matched.filter(r => (r.job.location || '').toLowerCase().includes(qLocation));
-      
+
+    const applyFiltersSort = (matched) => {
+      let out = matched;
+      const qLoc = (currentFilters.location || '').toLowerCase();
+      if (qLoc) out = out.filter(r => (r.job.location || '').toLowerCase().includes(qLoc));
       if (currentFilters.type !== 'all') {
-        const type = currentFilters.type;
-        matched = matched.filter(r => r.job.jobType === type || (type === 'remote' && (r.job.location || '').toLowerCase().includes('remote')));
+        const t = currentFilters.type;
+        out = out.filter(r => r.job.jobType === t || (t === 'remote' && (r.job.location || '').toLowerCase().includes('remote')));
       }
-      
       if (currentFilters.department !== 'all') {
         const dep = currentFilters.department.toLowerCase();
-        matched = matched.filter(r => (r.job.department || '').toLowerCase().includes(dep));
+        out = out.filter(r => (r.job.department || '').toLowerCase().includes(dep));
       }
       if (currentFilters.industry !== 'all') {
         const ind = currentFilters.industry.toLowerCase();
-        matched = matched.filter(r => (r.job.industry || '').toLowerCase().includes(ind));
+        out = out.filter(r => (r.job.industry || '').toLowerCase().includes(ind));
       }
-
-      // Sorting
-      if (sortBy === 'newest') matched.sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
-      else if (sortBy === 'urgency') {
+      if (currentSortBy === 'newest') return [...out].sort((a, b) => new Date(b.job.createdAt) - new Date(a.job.createdAt));
+      if (currentSortBy === 'urgency') {
         const order = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        matched.sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
-      } else {
-        matched.sort((a, b) => b.matchScore - a.matchScore);
+        return [...out].sort((a, b) => (order[b.job.urgency] || 0) - (order[a.job.urgency] || 0));
+      }
+      return [...out].sort((a, b) => b.matchScore - a.matchScore);
+    };
+
+    // Process jobs in chunks of 200 — yields to the browser between chunks so
+    // clicks, animations, and filters stay responsive even with 10 000 jobs.
+    const CHUNK = 200;
+    const allMatched = [];
+    let chunkIdx = 0;
+    const totalChunks = Math.ceil(jobs.length / CHUNK);
+
+    const processNextChunk = () => {
+      if (runIdRef.current !== thisRunId) return; // stale run — abort
+
+      if (chunkIdx >= totalChunks) {
+        setResults(applyFiltersSort(allMatched));
+        setMatchedOnce(true);
+        setLoad(false);
+        return;
       }
 
-      setResults(matched);
-    } catch (e) { console.error(e); }
-    setLoad(false);
+      // Increment before try so a chunk error never causes an infinite loop
+      const start = chunkIdx * CHUNK;
+      chunkIdx++;
+      try {
+        const scored = matchJobsToCandidate(profile, jobs.slice(start, start + CHUNK), currentQuery);
+        scored.forEach(r => allMatched.push(r));
+        // Show first results early (after ~400 jobs scored) for instant feedback
+        if (chunkIdx <= 2) {
+          setResults(applyFiltersSort([...allMatched].sort((a, b) => b.matchScore - a.matchScore)));
+        }
+      } catch (e) { console.error(e); }
+
+      setTimeout(processNextChunk, 0);
+    };
+
+    setTimeout(processNextChunk, 0);
   };
 
-  useEffect(() => { run(query, filters); }, [jobs, filters, sortBy, profile]);
+  useEffect(() => { run(query, filters, sortBy); }, [jobs, filters, sortBy, profile]);
   useEffect(() => {
-    const timer = setTimeout(() => run(query, filters), 300);
+    const timer = setTimeout(() => run(query, filters, sortBy), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -103,6 +142,11 @@ export default function CandidateJobMatch({ user }) {
       api.getAssessmentForJob(jobId)
         .then(r => setAssessments(prev => ({ ...prev, [jobId]: r?.data || r || null })))
         .catch(() => setAssessments(prev => ({ ...prev, [jobId]: null })));
+    }
+    if (jobDetails[jobId] === undefined) {
+      api.getPublicJobById(jobId)
+        .then(r => setJobDetails(prev => ({ ...prev, [jobId]: r?.data || r || null })))
+        .catch(() => setJobDetails(prev => ({ ...prev, [jobId]: null })));
     }
   };
 
@@ -134,7 +178,7 @@ export default function CandidateJobMatch({ user }) {
         </p>
         
         <form 
-          onSubmit={e => { e.preventDefault(); run(query, filters); }}
+          onSubmit={e => { e.preventDefault(); run(query, filters, sortBy); }}
           style={{ maxWidth: 800, margin: '0 auto', position: 'relative', display: 'flex', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}
         >
           <div style={{ position: 'relative', flex: 1 }}>
@@ -222,15 +266,21 @@ export default function CandidateJobMatch({ user }) {
       </div>
 
       {/* ── Search Status ── */}
-      {results.length === 0 && !loading && jobs.length > 0 && (
+      {!ready && (
+        <div style={{ textAlign: 'center', padding: 48 }}>
+          <Spinner />
+          <p style={{ color: '#706E6B', marginTop: 12, fontSize: 13 }}>Loading your matches…</p>
+        </div>
+      )}
+      {ready && matchedOnce && results.length === 0 && !loading && (
         <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ color: '#706E6B' }}>No matches found. Try adjusting your search.</p>
         </div>
       )}
-      {loading && <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>}
+      {ready && loading && <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>}
 
       {/* ── Results List ── */}
-      {results.map((r, i) => {
+      {ready && results.map((r, i) => {
         const isOpen = expanded === r.jobId;
         const isApplied = applied.has(String(r.jobId));
         const j = r.job;
@@ -271,7 +321,10 @@ export default function CandidateJobMatch({ user }) {
             )}
 
             {/* expanded details */}
-            {isOpen && (
+            {isOpen && (() => {
+              const full = jobDetails[r.jobId];
+              const desc = full?.description || j.description;
+              return (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #FAFAF9' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 14 }}>
                   {[
@@ -287,10 +340,13 @@ export default function CandidateJobMatch({ user }) {
                   ))}
                 </div>
 
-                {j.description && (
+                {full === undefined && (
+                  <div style={{ textAlign: 'center', padding: '12px 0' }}><Spinner size={16} /></div>
+                )}
+                {desc && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ color: '#0176D3', fontSize: 11, marginBottom: 6, fontWeight: 600 }}>JOB DESCRIPTION</div>
-                    <p style={{ color: '#706E6B', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.description}</p>
+                    <p style={{ color: '#706E6B', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{desc}</p>
                   </div>
                 )}
 
@@ -302,7 +358,8 @@ export default function CandidateJobMatch({ user }) {
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
           </div>
         );
       })}
