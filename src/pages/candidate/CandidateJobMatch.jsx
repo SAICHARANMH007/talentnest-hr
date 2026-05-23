@@ -19,6 +19,7 @@ export default function CandidateJobMatch({ user }) {
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoad] = useState(true);
+  const [matchedOnce, setMatchedOnce] = useState(false);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
@@ -97,16 +98,17 @@ export default function CandidateJobMatch({ user }) {
 
       if (chunkIdx >= totalChunks) {
         setResults(applyFiltersSort(allMatched));
+        setMatchedOnce(true);
         setLoad(false);
         return;
       }
 
+      // Increment before try so a chunk error never causes an infinite loop
+      const start = chunkIdx * CHUNK;
+      chunkIdx++;
       try {
-        const start = chunkIdx * CHUNK;
         const scored = matchJobsToCandidate(profile, jobs.slice(start, start + CHUNK), currentQuery);
         scored.forEach(r => allMatched.push(r));
-        chunkIdx++;
-
         // Show first results early (after ~400 jobs scored) for instant feedback
         if (chunkIdx <= 2) {
           setResults(applyFiltersSort([...allMatched].sort((a, b) => b.matchScore - a.matchScore)));
@@ -270,7 +272,7 @@ export default function CandidateJobMatch({ user }) {
           <p style={{ color: '#706E6B', marginTop: 12, fontSize: 13 }}>Loading your matches…</p>
         </div>
       )}
-      {ready && results.length === 0 && !loading && (
+      {ready && matchedOnce && results.length === 0 && !loading && (
         <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
           <p style={{ color: '#706E6B' }}>No matches found. Try adjusting your search.</p>
         </div>
