@@ -23,6 +23,7 @@ export default function CandidateJobMatch({ user }) {
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
   const [assessments, setAssessments] = useState({}); // jobId → assessment
+  const [jobDetails, setJobDetails] = useState({});   // jobId → full job (with description)
   const [filters, setFilters] = useState({ location: "", type: "all", urgency: "all", department: "all", industry: "all" });
   const [sortBy, setSortBy] = useState("match"); // match, newest, urgency
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -33,27 +34,23 @@ export default function CandidateJobMatch({ user }) {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  const [profile, setProfile] = useState(null);
+  // user from App already contains the full profile (skills, experience, workHistory etc.)
+  // — it is the normalized User document stored in sessionStorage on login/refresh.
+  // No separate getUser() call needed; using it directly removes one round trip.
+  const profile = user;
   const [ready, setReady] = useState(false);
   const runIdRef = useRef(0);
 
   useEffect(() => {
-    let jobsDone = false, profileDone = false;
-    const checkReady = () => { if (jobsDone && profileDone) setReady(true); };
-
-    api.getPublicJobs('?limit=10000').then(r => {
+    // lean=1 strips description/requirements/benefits → ~70% smaller payload.
+    // Description is fetched on-demand when a card is expanded.
+    api.getPublicJobs('?limit=10000&lean=1').then(r => {
       setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []));
-      jobsDone = true;
-      checkReady();
+      setReady(true);
     });
     api.getMyApplications().then(apps => {
       setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
     }).catch(() => { });
-    api.getUser(user.id).then(r => {
-      setProfile(r.data || r);
-      profileDone = true;
-      checkReady();
-    }).catch(() => { profileDone = true; checkReady(); });
   }, [user.id]);
 
   const run = (currentQuery = query, currentFilters = filters, currentSortBy = sortBy) => {
@@ -143,6 +140,11 @@ export default function CandidateJobMatch({ user }) {
       api.getAssessmentForJob(jobId)
         .then(r => setAssessments(prev => ({ ...prev, [jobId]: r?.data || r || null })))
         .catch(() => setAssessments(prev => ({ ...prev, [jobId]: null })));
+    }
+    if (jobDetails[jobId] === undefined) {
+      api.getPublicJobById(jobId)
+        .then(r => setJobDetails(prev => ({ ...prev, [jobId]: r?.data || r || null })))
+        .catch(() => setJobDetails(prev => ({ ...prev, [jobId]: null })));
     }
   };
 
@@ -317,7 +319,10 @@ export default function CandidateJobMatch({ user }) {
             )}
 
             {/* expanded details */}
-            {isOpen && (
+            {isOpen && (() => {
+              const full = jobDetails[r.jobId];
+              const desc = full?.description || j.description;
+              return (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #FAFAF9' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 14 }}>
                   {[
@@ -333,10 +338,13 @@ export default function CandidateJobMatch({ user }) {
                   ))}
                 </div>
 
-                {j.description && (
+                {full === undefined && (
+                  <div style={{ textAlign: 'center', padding: '12px 0' }}><Spinner size={16} /></div>
+                )}
+                {desc && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ color: '#0176D3', fontSize: 11, marginBottom: 6, fontWeight: 600 }}>JOB DESCRIPTION</div>
-                    <p style={{ color: '#706E6B', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.description}</p>
+                    <p style={{ color: '#706E6B', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{desc}</p>
                   </div>
                 )}
 
@@ -348,7 +356,8 @@ export default function CandidateJobMatch({ user }) {
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
           </div>
         );
       })}
