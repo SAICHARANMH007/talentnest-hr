@@ -50,7 +50,7 @@ export default function AboutPage() {
       <MarketingNav active="about" />
 
       {/* ── HERO ── */}
-      <section style={{
+      <section className="abt-hero" style={{
         padding: '160px 0 100px',
         textAlign: 'center',
         background: 'linear-gradient(135deg, rgba(3,17,38,0.96) 0%, rgba(1,36,86,0.92) 100%)',
@@ -69,7 +69,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── DIFFERENTIATORS ── */}
-      <section className="mkt-section-light" style={{ padding: '32px 0 88px' }}>
+      <section className="mkt-section-light abt-section-sm" style={{ padding: '32px 0 88px' }}>
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 20 }}>
             {DIFFERENTIATORS.map(item => (
@@ -86,9 +86,9 @@ export default function AboutPage() {
       </section>
 
       {/* ── STORY ── */}
-      <section className="mkt-section-light" style={{ padding: '100px 0' }}>
+      <section className="mkt-section-light abt-section-lg" style={{ padding: '100px 0' }}>
         <div className="container">
-          <div className="grid-2" style={{ alignItems:'center', gap:60 }}>
+          <div className="grid-2 abt-story-grid" style={{ alignItems:'center', gap:60 }}>
             <div>
               <h2 style={{ fontSize: 'clamp(2.2rem,4vw,3.2rem)', fontWeight: 900, color: 'var(--mkt-text-heading)', marginBottom: 24, letterSpacing: '-0.04em', lineHeight: 1.05 }}>
                 Our Journey to <span style={{ color: 'var(--mkt-primary)' }}>Excellence</span>
@@ -122,7 +122,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── VALUES ── */}
-      <section className="mkt-section-light" style={{ padding: '100px 0', textAlign: 'center' }}>
+      <section className="mkt-section-light abt-section-lg" style={{ padding: '100px 0', textAlign: 'center' }}>
         <div className="container">
           <div className="section-header">
             <span className="section-tag">💎 Our Values</span>
@@ -145,7 +145,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── PROCESS ── */}
-      <section className="mkt-section-light" style={{ padding: '96px 0' }}>
+      <section className="mkt-section-light abt-section-lg" style={{ padding: '96px 0' }}>
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: 52 }}>
             <span className="section-tag">⚙️ Our Process</span>
@@ -174,10 +174,10 @@ export default function AboutPage() {
 
 
       {/* CTA */}
-      <section style={{ background: 'linear-gradient(135deg, rgba(3,17,38,0.98) 0%, rgba(1,36,86,0.94) 100%)', padding:'80px 0', textAlign:'center', position:'relative', overflow:'hidden' }}>
+      <section className="abt-cta-section" style={{ background: 'linear-gradient(135deg, rgba(3,17,38,0.98) 0%, rgba(1,36,86,0.94) 100%)', padding:'80px 0', textAlign:'center', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.12) 0%, transparent 60%)', pointerEvents:'none' }} />
         <div className="container" style={{ position:'relative' }}>
-          <h2 style={{ color: '#fff', fontSize:'2.5rem', fontWeight:900, marginBottom:16, letterSpacing: '-0.03em' }}>Ready to Work With Us?</h2>
+          <h2 className="abt-cta-h2" style={{ color: '#fff', fontSize:'clamp(1.6rem,5vw,2.5rem)', fontWeight:900, marginBottom:16, letterSpacing: '-0.03em' }}>Ready to Work With Us?</h2>
           <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom:32, maxWidth:440, margin:'0 auto 24px', lineHeight:1.7, fontSize: '1.1rem' }}>
             Tell us your hiring challenge. We will respond within 2 hours with a clear plan.
           </p>
@@ -205,6 +205,22 @@ export default function AboutPage() {
       </section>
 
       <MarketingFooter />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .abt-hero          { padding: 100px 0 56px !important; }
+          .abt-section-lg    { padding: 60px 0 !important; }
+          .abt-section-sm    { padding: 24px 0 56px !important; }
+          .abt-story-grid    { gap: 32px !important; }
+          .abt-cta-section   { padding: 56px 0 !important; }
+        }
+        @media (max-width: 480px) {
+          .abt-hero          { padding: 88px 0 40px !important; }
+          .abt-section-lg    { padding: 48px 0 !important; }
+          .abt-section-sm    { padding: 16px 0 40px !important; }
+          .abt-cta-section   { padding: 44px 0 !important; }
+        }
+      `}</style>
     </div>
   );
 }
