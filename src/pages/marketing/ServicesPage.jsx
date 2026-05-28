@@ -38,7 +38,7 @@ const SERVICES = [
     accent: '#10b981',
     coverImg: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&auto=format&fit=crop&q=80',
     color: 'rgba(16,185,129,0.08)',
-    desc: 'Finance, HR, operations, sales, and executive roles — the same rigour and speed as our technical placements.',
+    desc: 'Finance, HR, operations, sales, and executive roles — the same rigor and speed as our technical placements.',
     bullets: ['Finance & Accounting Leaders', 'HR & People Operations', 'Sales & Business Development', 'C-Suite & Executive Search'],
   },
   {
@@ -92,8 +92,8 @@ const SERVICES = [
 ];
 
 const SERVICE_PROMISES = [
-  { icon: '⚡', title: 'Fast response cycles', desc: 'Shortlists and recruiter feedback move quickly so hiring does not stall.' },
-  { icon: '🧪', title: 'Practical screening', desc: 'We look beyond CV keywords with role-fit, communication, and delivery context.' },
+  { icon: '⚡', title: 'Fast Response Times', desc: 'Shortlists and recruiter feedback move quickly so hiring does not stall.' },
+  { icon: '🧪', title: 'In-Depth Candidate Screening', desc: 'We go beyond job keywords — we assess role fit, communication skills, and real experience.' },
   { icon: '📊', title: 'Clear hiring visibility', desc: 'You know what is happening, what is blocked, and what comes next.' },
 ];
 
@@ -142,7 +142,7 @@ export default function ServicesPage() {
             <span className="mkt-gradient-text">For Every Business Need</span>
           </h1>
           <p style={{ color: "var(--mkt-text-on-dark-muted, rgba(255,255,255,0.7))", fontSize: '1.15rem', maxWidth: 620, margin: '0 auto 40px', lineHeight: 1.7 }}>
-            From elite technical squads to strategic executive placements — we partner with you to build high-performance teams with precision and speed.
+            From technical hires to senior executive placements — we help you build the right team, fast.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg">Hire Talent Now →</Link>
@@ -181,7 +181,7 @@ export default function ServicesPage() {
           <div className="section-header mkt-reveal">
             <span className="section-tag">Solutions Portfolio</span>
             <h2 className="section-title">Specialized <span>Hiring Models</span></h2>
-            <p className="section-subtitle">Tailored recruitment strategies designed to match your specific business velocity and budget.</p>
+            <p className="section-subtitle">Recruitment solutions built around your hiring speed and budget.</p>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(360px,1fr))', gap: 32 }}>

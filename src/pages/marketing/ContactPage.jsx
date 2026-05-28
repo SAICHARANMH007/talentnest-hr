@@ -132,7 +132,7 @@ export default function ContactPage() {
             </span>
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1.2rem', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-            Tell us your hiring challenge. We'll respond within 2 hours on business days.
+            Tell us what you need. We reply within 2 hours during business hours.
           </p>
           <div style={{ display:'flex', gap:20, justifyContent:'center', marginTop:36, flexWrap:'wrap' }}>
             {[{ icon:'⚡', text:'2hr Response Time' }, { icon:'🤝', text:'Free Consultation' }, { icon:'🔒', text:'100% Confidential' }].map(p => (
@@ -239,7 +239,7 @@ export default function ContactPage() {
               ) : (
                 <form onSubmit={submit}>
                   <h3 style={{ fontWeight: 900, color: 'var(--mkt-text-heading)', marginBottom: 12, fontSize: '1.6rem', letterSpacing: '-0.03em' }}>Request a Consultation</h3>
-                  <p style={{ color: 'var(--mkt-text-muted)', fontSize: '0.95rem', marginBottom: 36, lineHeight: 1.6 }}>We'll respond within 2 business hours. Your hiring challenge is our priority.</p>
+                  <p style={{ color: 'var(--mkt-text-muted)', fontSize: '0.95rem', marginBottom: 36, lineHeight: 1.6 }}>We will get back to you within 2 business hours.</p>
 
                   {/* Name + Email row */}
                   <div className="mkt-form-row" style={{ marginBottom: 18 }}>
@@ -349,9 +349,9 @@ export default function ContactPage() {
       <section className="mkt-section-light" style={{ padding: '80px 0' }}>
         <div className="tn-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
           {[
-            { title: 'Fast reply', desc: 'Most enquiries get a response within 2 business hours.', icon: '⚡' },
-            { title: 'Clear next steps', desc: 'We align on urgency, role type, and expected hiring path quickly.', icon: '🧭' },
-            { title: 'No-pressure consultation', desc: 'We focus on fit first, not pushing a generic package.', icon: '🤝' },
+            { title: 'Quick Response', desc: 'Most messages get a reply within 2 business hours.', icon: '⚡' },
+            { title: 'Clear Next Steps', desc: 'We quickly align on your urgency, role type, and hiring path.', icon: '🧭' },
+            { title: 'Honest, Friendly Advice', desc: 'We listen first and recommend the right solution — no pressure, no generic packages.', icon: '🤝' },
           ].map(item => (
             <div key={item.title} className="mkt-card" style={{ background: 'var(--mkt-card-bg)', border: `1px solid var(--mkt-card-border)`, borderRadius: 20, padding: 32 }}>
               <div style={{ width: 54, height: 54, borderRadius: 16, background: `linear-gradient(135deg, var(--mkt-primary), var(--mkt-accent))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 20, boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}>

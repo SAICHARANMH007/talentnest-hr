@@ -18,7 +18,7 @@ const PRODUCTS = [
     what:     'HireBoard is where recruiters manage their entire workflow — source candidates, communicate via chat and calls, run video interviews, and close with digital offer letters — all in one screen.',
     bullets: [
       'Visual pipeline board — Track candidates from "Applied" to "Hired" in one view',
-      'Advanced match scores — Instantly rank candidates based on skill resonance and experience',
+      'Smart match scores — Instantly rank candidates based on skills and experience',
       'Unified Communication — Integrated real-time chat, voice calls, and HD video interviews',
       'Automated Outreach — Smart WhatsApp and email triggers on every stage movement',
       'Digital Offer Letters — One-click generation with secure e-signature and PDF export',
@@ -37,7 +37,7 @@ const PRODUCTS = [
     what:     'HR admins see everything — every recruiter, every job, every application, every hire — with tools to approve, verify documents, automate notifications, and brand the entire hiring operation.',
     bullets: [
       'Live Analytics — Real-time insights into fill rates, source ROI, and recruiter performance',
-      'Governance & Compliance — Job approval workflows and role-based access control',
+      'Governance & Compliance — Job approval workflows and permission-based access control',
       'Custom Branding — Host your own branded org career page with live job distribution',
       'Automated Pre-boarding — Self-service checklists triggered immediately upon hiring',
       'Document Verification — Secure portal for candidate document uploads and admin review',
@@ -56,10 +56,10 @@ const PRODUCTS = [
     what:     'JobTrack gives candidates everything in one place — not just apply and wait, but apply, set alerts, chat with recruiters, attend video interviews, sign offers, and complete pre-boarding from their phone.',
     bullets: [
       'Intelligent Discovery — Browse thousands of jobs with personalized match scores',
-      'Intelligent Alerts — Get notified of roles matching your specific skills and location',
+      'Job Alerts — Get notified of roles matching your skills and location',
       'Live Progress — Real-time transparency with stage tracking via WhatsApp and Email',
       'Candidate Engagement — Direct real-time chat and voice calls with hiring teams',
-      'Mobile Interviews — Join high-fidelity video interviews directly from your browser',
+      'Mobile Interviews — Join HD video interviews from your phone or browser',
       'Digital Onboarding — Sign offers and upload pre-boarding documents from your phone',
       'Profile Builder — Create a professional, recruiter-ready profile in under 2 minutes',
     ],

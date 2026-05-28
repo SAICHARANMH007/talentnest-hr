@@ -11,7 +11,7 @@ const FEATURES = [
   { icon: '⏱️', title: 'Automated Shift Management', desc: 'Manage complex shift patterns, night shifts, and rotations easily. System auto-calculates work hours and overtime accurately.' },
   { icon: '💰', title: 'Automated Payroll Sync', desc: 'Sync attendance data directly with payroll. One-click salary processing with automated tax calculations and deduction management.' },
   { icon: '👤', title: 'Employee Self-Service', desc: 'Employees can view payslips, request leaves, and update personal details through a secure mobile-friendly portal.' },
-  { icon: '🛡️', title: 'Liveness Detection', desc: 'Prevents spoofing attacks using photos or videos. Only a real, physically present face will be accepted by the system.' },
+  { icon: '🛡️', title: 'Anti-Spoofing Security', desc: 'Prevents fraud by blocking photo and video spoofing attempts. Only a real, live person in front of the camera is accepted.' },
   { icon: '🚪', title: 'Access Control Integration', desc: 'Integrate with turnstiles, electromagnetic locks, and physical security barriers to grant access based on identity.' },
   { icon: '📊', title: 'Real-Time HR Analytics', desc: 'Live attendance reports, absenteeism trends, and workforce productivity metrics — all visible in one clean dashboard.' },
   { icon: '🔗', title: 'Third-Party Integrations', desc: 'Connect with existing ERP, Accounting, or HR software via secure APIs to maintain a unified data ecosystem.' },
@@ -51,7 +51,7 @@ export default function HRMSPage() {
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 30% 60%, rgba(6,182,212,0.12) 0%, transparent 55%), radial-gradient(circle at 75% 20%, rgba(1,118,211,0.15) 0%, transparent 50%)', pointerEvents: 'none' }} />
         <div className="container" style={{ position: 'relative' }}>
           <span className="section-tag" style={{ background: 'rgba(255,255,255,0.12)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.4)', backdropFilter: 'blur(8px)' }}>
-            🤝 Authorised Reseller: RNIT Faceify
+            🤝 Authorized Reseller: RNIT Faceify
           </span>
           <h1 style={{ color: 'var(--mkt-text-on-dark, #fff)', fontSize: 'clamp(2.5rem,6vw,4rem)', fontWeight: 900, margin: '20px 0 24px', lineHeight: 1.05, letterSpacing: '-0.04em' }}>
             Smart & Contactless<br />
@@ -63,7 +63,7 @@ export default function HRMSPage() {
             Powered by <strong style={{ color: 'var(--mkt-accent)' }}>Faceify by RNIT</strong>: contactless attendance, smart access control, and real-time HR analytics.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', maxWidth: 480, margin: '0 auto 40px', lineHeight: 1.6 }}>
-            TalentNest HR is an authorised reseller of Faceify in Hyderabad. Get implementation, training, and ongoing support from our team.
+            TalentNest HR is an authorized reseller of Faceify in Hyderabad. We handle setup, training, and ongoing support for your team.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg">Request a Demo →</Link>
@@ -82,10 +82,10 @@ export default function HRMSPage() {
                 Next-Generation <span>HR Technology</span>
               </h2>
               <p style={{ color: 'var(--mkt-text)', lineHeight: 1.8, marginBottom: 20, fontSize: '1.05rem' }}>
-                Faceify is an enterprise-grade Smart HRMS platform developed by <strong>RNIT</strong>, built around facial recognition technology. It eliminates traditional time-tracking problems — proxy attendance, lost ID cards, manual errors — replacing them with a seamless, contactless experience.
+                Faceify is an enterprise-grade Smart HRMS platform developed by <strong>RNIT</strong>, built around facial recognition technology. It solves common time-tracking problems — proxy attendance, lost ID cards, manual errors — and replaces them with a fast, contactless experience.
               </p>
               <p style={{ color: 'var(--mkt-text-muted)', lineHeight: 1.8, marginBottom: 32 }}>
-                As TalentNest HR's authorised reseller, we handle everything locally — from demo and procurement to on-site installation, employee enrollment, and post-go-live support.
+                As TalentNest HR's authorized reseller, we handle everything locally — from demo and procurement to on-site installation, employee enrollment, and post-go-live support.
               </p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {['99.9% Recognition Accuracy', 'Contactless & Hygienic', 'Cloud + On-Premise', 'GDPR Compliant'].map(tag => (
@@ -166,7 +166,7 @@ export default function HRMSPage() {
           <div className="section-header">
             <span className="section-tag">🤝 Why Buy Through Us</span>
             <h2 className="section-title" style={{ color: 'var(--mkt-text-heading)' }}>Local Support, <span>Enterprise Product</span></h2>
-            <p className="section-subtitle" style={{ color: 'var(--mkt-text-muted)' }}>As RNIT's authorised reseller, we don't just sell — we implement, train, and support.</p>
+            <p className="section-subtitle" style={{ color: 'var(--mkt-text-muted)' }}>As RNIT's authorized reseller, we don't just sell — we implement, train, and support.</p>
           </div>
           <div className="grid-3" style={{ alignItems: 'stretch' }}>
             {[
@@ -213,7 +213,7 @@ export default function HRMSPage() {
             Ready to Go Contactless?
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 36, fontSize: '1.1rem', maxWidth: 500, margin: '0 auto 36px', lineHeight: 1.7 }}>
-            Request a live demo or get in touch to discuss pricing and implementation for your organisation.
+            Request a live demo or get in touch to discuss pricing and implementation for your organization.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg">Book a Demo →</Link>

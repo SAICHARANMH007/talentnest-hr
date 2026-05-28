@@ -6,9 +6,9 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 
 const VALUES = [
   { icon: '🎯', title: 'Quality Over Volume', desc: 'We send 3 perfect candidates, not 30 average ones. Every submission is intentional, vetted, and worth your time.' },
-  { icon: '⚡', title: 'Speed Without Shortcuts', desc: 'First shortlist delivered within 5 business days — because the best candidates are off the market within 10 days of searching.' },
+  { icon: '⚡', title: 'Fast Results, Done Right', desc: 'First shortlist delivered within 5 business days — because the best candidates are off the market within 10 days of searching.' },
   { icon: '🔁', title: 'Full Replacement Guarantee', desc: 'If a placement does not work out, we replace them at zero cost. Our incentives are aligned with your long-term success.' },
-  { icon: '📞', title: 'Named Consultant, Always', desc: 'You speak to the same specialist who sourced your candidates — not a rotating call centre. Direct access, direct accountability.' },
+  { icon: '📞', title: 'One Dedicated Consultant', desc: 'You speak to the same specialist who sourced your candidates — not a rotating call centre. Direct access, direct accountability.' },
   { icon: '💡', title: 'Transparent Pricing', desc: 'No hidden fees, no surprise invoices. We quote clearly upfront and that is exactly what you pay.' },
   { icon: '📈', title: 'Retention-Focused', desc: 'We measure success at the 12-month mark, not the offer letter. Long-term fit is the only metric that matters to us.' },
 ];
@@ -98,7 +98,7 @@ export default function AboutPage() {
                   TalentNest HR was built with a clear purpose — to simplify hiring through technology. We are a platform-first recruitment partner that combines the speed of a job board with the precision of a staffing agency.
                 </p>
                 <p style={{ marginBottom:32, color: 'var(--mkt-text-muted)' }}>
-                  By providing businesses with advanced hiring software (ATS/HRMS) and a public-facing job portal, we give HR teams the tools they need to succeed independently, while our staffing specialists stand ready to provide strategic support for critical executive and technical roles.
+                  We give HR teams a job portal and hiring tools to manage recruitment on their own. When companies need extra support for senior or technical roles, our specialist recruiters step in to help.
                 </p>
               </div>
               <Link to="/contact" className="btn btn-primary">Get in Touch →</Link>
@@ -150,10 +150,10 @@ export default function AboutPage() {
           <div style={{ textAlign: 'center', marginBottom: 52 }}>
             <span className="section-tag">⚙️ Our Process</span>
             <h2 style={{ color: 'var(--mkt-text-heading)', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: '-0.03em', margin: '16px 0 14px', lineHeight: 1.1 }}>
-              A tighter hiring workflow<br />with less noise and more signal
+              A simple, step-by-step hiring process<br />that gets results every time
             </h2>
             <p style={{ color: 'var(--mkt-text-muted)', maxWidth: 620, margin: '0 auto', lineHeight: 1.8, fontSize: 15 }}>
-              Our model is designed to reduce decision fatigue for hiring teams while increasing confidence in every submission.
+              We make it easy for hiring teams — fewer candidates to review, better quality, and faster decisions.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 22 }}>
@@ -179,7 +179,7 @@ export default function AboutPage() {
         <div className="container" style={{ position:'relative' }}>
           <h2 className="abt-cta-h2" style={{ color: '#fff', fontSize:'clamp(1.6rem,5vw,2.5rem)', fontWeight:900, marginBottom:16, letterSpacing: '-0.03em' }}>Ready to Work With Us?</h2>
           <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom:32, maxWidth:440, margin:'0 auto 24px', lineHeight:1.7, fontSize: '1.1rem' }}>
-            Tell us your hiring challenge. We will respond within 2 hours with a clear plan.
+            Share your hiring needs and we will get back to you within 2 hours with a clear plan.
           </p>
           <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap', marginBottom:32 }}>
             {[
