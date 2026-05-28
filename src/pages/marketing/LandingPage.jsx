@@ -106,8 +106,8 @@ const VALUE_PILLARS = [
   {
     icon: ‘🎯’,
     title: ‘Expert Staffing & Search’,
-    desc: ‘Our specialist recruiters deliver interview-ready shortlists within 72 hours. IT, Cybersecurity, Executive & Non-IT roles — all backed by a 90-day replacement guarantee.’,
-    points: [‘Shortlists delivered in under 72 hours’, ‘90-day free replacement guarantee’, ‘IT, Cybersecurity & Executive networks’],
+    desc: ‘Our specialist recruiters deliver interview-ready shortlists within 72 hours — across IT, Finance, HR, Marketing, Operations, and Executive roles. All backed by a 90-day replacement guarantee.’,
+    points: [‘Shortlists delivered in under 72 hours’, ‘90-day free replacement guarantee’, ‘All industries & job functions covered’],
     accent: ‘#F59E0B’,
   },
 ];
@@ -115,7 +115,7 @@ const VALUE_PILLARS = [
 const HERO_SPOTLIGHTS = [
   { label: 'Time to Shortlist', value: '< 72 Hours', tone: '#00C2CB' },
   { label: 'Replacement Policy', value: '90-Day Free', tone: '#FF6B35' },
-  { label: 'Roles We Cover', value: 'IT · Cyber · Exec', tone: '#38BDF8' },
+  { label: 'Industries', value: 'All Sectors', tone: '#38BDF8' },
 ];
 
 const HERO_VALUE_CARDS = [
@@ -162,7 +162,7 @@ export default function LandingPage() {
   useEffect(() => {
     loadLiveData();
 
-    document.title = 'TalentNest HR | IT & Cybersecurity Recruitment Platform India';
+    document.title = 'TalentNest HR | Find Jobs in India — Job Board & Recruitment Platform';
 
     const setMeta = (selector, attr, val, content) => {
       let el = document.querySelector(selector);
@@ -171,18 +171,18 @@ export default function LandingPage() {
       el.setAttribute('content', content);
     };
 
-    setMeta('meta[name="description"]', 'name', 'description', "TalentNest HR is India's leading recruitment platform for IT, Cybersecurity, and Executive roles. Post jobs, manage your hiring pipeline, and hire faster with our ATS, public job board, and specialist staffing services. 90-day replacement guarantee.");
-    setMeta('meta[name="keywords"]', 'name', 'keywords', 'TalentNest, TalentNest HR, talentnesthr, talent nest, talent nest hr, talent next hr, IT staffing India, cybersecurity recruitment India, executive search India, recruitment platform India, ATS software India, job board India, hire faster, permanent staffing, contract to hire');
+    setMeta('meta[name="description"]', 'name', 'description', "TalentNest HR — India's job board and recruitment platform. Browse thousands of jobs across IT, Finance, Marketing, HR, Operations, Engineering, and more. Employers post jobs, manage pipelines, and hire faster with a full ATS and specialist staffing support. 90-day replacement guarantee.");
+    setMeta('meta[name="keywords"]', 'name', 'keywords', 'TalentNest, TalentNest HR, talentnesthr, talent nest, talent nest hr, talent next hr, jobs in India, job board India, find jobs, recruitment platform India, ATS software India, post jobs India, hire faster, IT jobs, finance jobs, marketing jobs, executive search India, permanent staffing, contract to hire, staffing agency India');
     setMeta('meta[name="robots"]', 'name', 'robots', 'index, follow');
     setMeta('meta[name="author"]', 'name', 'author', 'TalentNest HR');
     setMeta('meta[property="og:type"]', 'property', 'og:type', 'website');
-    setMeta('meta[property="og:title"]', 'property', 'og:title', 'TalentNest HR | IT & Cybersecurity Recruitment Platform India');
-    setMeta('meta[property="og:description"]', 'property', 'og:description', "India's leading recruitment platform. Post jobs, manage hiring pipelines, and source top IT, cybersecurity, and executive talent in under 72 hours.");
+    setMeta('meta[property="og:title"]', 'property', 'og:title', 'TalentNest HR | Find Jobs in India — Job Board & Recruitment Platform');
+    setMeta('meta[property="og:description"]', 'property', 'og:description', "India's job board and recruitment platform. Find jobs across IT, Finance, Marketing, HR, and more — or post jobs and hire the right talent faster.");
     setMeta('meta[property="og:url"]', 'property', 'og:url', 'https://www.talentnesthr.com/');
     setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'TalentNest HR');
     setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
-    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', 'TalentNest HR | IT & Cybersecurity Recruitment Platform India');
-    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', "Hire top IT, cybersecurity, and executive talent in under 72 hours. India's complete recruitment ATS, job board, and staffing platform.");
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', 'TalentNest HR | Find Jobs in India — Job Board & Recruitment Platform');
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', "Find jobs across every industry in India — or hire the right candidate faster. TalentNest HR is India's complete job board, ATS, and staffing platform.");
 
     let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
@@ -199,7 +199,7 @@ export default function LandingPage() {
           name: 'TalentNest HR',
           alternateName: ['TalentNest', 'talentnesthr', 'Talent Nest HR', 'Talent Nest', 'Talent Next HR'],
           url: 'https://www.talentnesthr.com',
-          description: "India's leading recruitment platform for IT, Cybersecurity, and Executive roles. Specialist staffing with a 90-day replacement guarantee.",
+          description: "India's job board and recruitment platform. Post jobs, find candidates, and hire across IT, Finance, Marketing, HR, Operations, and every other function. Specialist staffing with a 90-day replacement guarantee.",
           contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', url: 'https://www.talentnesthr.com/contact', areaServed: 'IN' },
           areaServed: { '@type': 'Country', name: 'India' },
         },
@@ -209,7 +209,7 @@ export default function LandingPage() {
           name: 'TalentNest HR',
           alternateName: 'talentnesthr',
           url: 'https://www.talentnesthr.com',
-          description: "India's leading recruitment platform for IT, Cybersecurity, and Executive roles.",
+          description: "India's job board and recruitment platform for all roles — IT, Finance, Marketing, HR, Operations, Engineering, and more.",
           potentialAction: {
             '@type': 'SearchAction',
             target: { '@type': 'EntryPoint', urlTemplate: 'https://www.talentnesthr.com/careers?q={search_term_string}' },
@@ -261,17 +261,17 @@ export default function LandingPage() {
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>
               <span className="mkt-glass-dark" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mkt-accent)', boxShadow: '0 0 12px var(--mkt-accent)', display: 'inline-block' }} />
-              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's #1 Job Board &amp; Recruitment Platform</span>
+              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's Job Board &amp; Recruitment Platform — All Industries</span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-              Hire IT &amp; Tech Talent<br />
-              <span className="mkt-gradient-text">10× Faster.</span><br />
-              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>India's Recruitment Platform &amp; Job Board.</span>
+              Find Your Dream Job<br />
+              <span className="mkt-gradient-text">or Hire Faster.</span><br />
+              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>India's Job Board &amp; Recruitment Platform.</span>
             </h1>
 
             <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, maxWidth: 520, marginBottom: 48, marginTop: 20, fontWeight: 500 }}>
-              Post jobs, screen applicants, track every candidate, and generate offer letters — all in one platform. Specialist recruiters deliver interview-ready shortlists for IT, Cybersecurity, and Executive roles in under 72 hours.
+              Browse thousands of jobs across IT, Finance, Marketing, HR, Operations, and more. Employers — post jobs, screen applicants, and close hires in one powerful platform backed by specialist staffing support.
             </p>
 
             <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -410,7 +410,7 @@ export default function LandingPage() {
         <div className="tn-container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
           <div style={{ minWidth: 220, textAlign: 'center' }} className="mkt-trust-label">
             <div style={{ color: 'var(--mkt-text-heading)', fontSize: 14, fontWeight: 800 }}>Trusted by growing teams across India</div>
-            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>IT, Cybersecurity, Executive &amp; Non-IT hiring — all covered</div>
+            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>Jobs across every industry — just like Naukri, built for faster hiring</div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', flex: 1 }}>
             {TRUST_BADGES.map(item => (
@@ -587,7 +587,7 @@ export default function LandingPage() {
       <section className="mkt-reveal" style={{ background: 'var(--mkt-section-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Expertise</SectionLabel>
-          <SectionHeading sub="From urgent IT roles to senior executive positions — our specialist recruiters deliver interview-ready candidates within 72 hours.">
+          <SectionHeading sub="IT, Finance, HR, Marketing, Operations, Executive — whatever the role, our specialist recruiters deliver interview-ready candidates within 72 hours.">
             Expert staffing for<br /><span className="mkt-gradient-text">every role</span>
           </SectionHeading>
 
@@ -684,7 +684,7 @@ export default function LandingPage() {
             Ready to Hire <span style={{ color: 'var(--mkt-accent)' }}>Smarter &amp; Faster?</span>
           </h2>
           <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.25rem)', color: 'rgba(255,255,255,0.7)', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', lineHeight: 1.8, fontWeight: 500 }}>
-            Get pre-screened, interview-ready candidates for IT, Cybersecurity, and Executive roles — delivered within 72 hours. Post your first job or speak to our recruiters today.
+            Post a job, find a candidate, or let our recruiters do the heavy lifting — across every industry and every role type. Get your first shortlist within 72 hours.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg mkt-cta-btn" style={{ borderRadius: 14, padding: 'clamp(14px, 3vw, 20px) clamp(24px, 5vw, 48px)', fontSize: 'clamp(16px, 2vw, 18px)' }}>
