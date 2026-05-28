@@ -484,7 +484,7 @@ export default function CareersPage() {
                 </select>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-                  <b style={{ color: '#1E293B' }}>{filtered.length}</b> jobs
+                  <b style={{ color: '#1E293B' }}>{totalJobs || filtered.length}</b> jobs
                 </div>
               </div>
               {/* Row 2 — Priority pills, horizontally scrollable */}
@@ -518,7 +518,7 @@ export default function CareersPage() {
               </select>
               <div style={{ marginLeft: 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-                <b style={{ color: '#1E293B' }}>{filtered.length}</b> positions found
+                <b style={{ color: '#1E293B' }}>{totalJobs || filtered.length}</b> positions found
               </div>
             </div>
           )}
