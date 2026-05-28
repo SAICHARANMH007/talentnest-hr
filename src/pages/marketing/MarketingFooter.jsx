@@ -13,6 +13,13 @@ const QUICK_LINKS = [
   { to: '/contact', label: 'Contact' },
 ];
 
+const PRODUCT_LINKS = [
+  { to: '/products/hireboard',  label: 'HireBoard — For Recruiters' },
+  { to: '/products/peopledesk', label: 'PeopleDesk — For HR Admins' },
+  { to: '/products/jobtrack',   label: 'JobTrack — For Job Seekers' },
+  { to: '/products',            label: 'Explore All Products →' },
+];
+
 const SERVICE_LINKS = [
   { to: '/services/it-staffing', label: 'IT Staffing' },
   { to: '/services/cybersecurity', label: 'Cybersecurity Staffing' },
@@ -71,7 +78,7 @@ export default function MarketingFooter() {
       fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif"
     }}>
       <div className="container">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '60px 40px', marginBottom: '80px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '60px 40px', marginBottom: '80px' }}>
 
           {/* Brand & Socials */}
           <div style={{ maxWidth: 320 }}>
@@ -126,9 +133,25 @@ export default function MarketingFooter() {
             ))}
           </div>
 
+          {/* Products */}
+          <div>
+            <span style={colHeaderStyle}>Products</span>
+            {PRODUCT_LINKS.map(l => (
+              <Link
+                key={l.to}
+                to={l.to}
+                style={linkStyle}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--mkt-accent)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+
           {/* Solutions */}
           <div>
-            <span style={colHeaderStyle}>Solutions</span>
+            <span style={colHeaderStyle}>Services</span>
             {SERVICE_LINKS.map(l => (
               <Link
                 key={l.to}
