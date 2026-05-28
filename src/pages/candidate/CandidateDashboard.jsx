@@ -199,10 +199,10 @@ export default function CandidateDashboard({ user }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>{profilePct < 50 ? '⚠️' : profilePct < 80 ? '🔶' : '✨'}</span>
                 <span style={{ fontWeight: 800, fontSize: 14, color: profilePct < 50 ? '#BA0517' : profilePct < 80 ? '#B45309' : '#0176D3' }}>
-                  Your profile is {profilePct}% complete
+                  Complete your profile — {profilePct}% done
                 </span>
                 <span style={{ fontSize: 11, color: '#706E6B' }}>
-                  — {firstMissing ? `Add your ${firstMissing.label} to improve` : 'Almost there!'}
+                  — {firstMissing ? 'Complete your profile so recruiters can find you' : 'Your profile is ready for recruiters!'}
                 </span>
               </div>
               {/* Progress bar */}
@@ -211,10 +211,10 @@ export default function CandidateDashboard({ user }) {
               </div>
               <p style={{ fontSize: 12, color: '#374151', margin: 0, lineHeight: 1.6 }}>
                 {profilePct < 50
-                  ? '🚀 A complete profile gets up to 5× more views from recruiters on our job board. Freshers — add your skills, summary, and industry to stand out immediately.'
+                  ? '👔 Recruiters are actively searching TalentNest for candidates like you. Complete your profile — title, skills, experience, and summary — so hiring managers can discover and shortlist you.'
                   : profilePct < 80
-                  ? '💡 You\'re getting there! Complete your profile to unlock smarter job matches and get discovered by recruiters searching for your skills.'
-                  : '🎯 Almost complete! Fill the remaining fields to maximise your visibility across all active job postings on TalentNest.'}
+                  ? '💼 You\'re almost there! A fully complete profile makes you visible to recruiters searching for your skills. Fill in the remaining details to get shortlisted faster.'
+                  : '🎯 One last step! Fill in the remaining fields to unlock full recruiter visibility and appear in more search results on TalentNest.'}
               </p>
             </div>
             <button
