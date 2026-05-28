@@ -7,6 +7,7 @@ import { glassCard, Z } from '../../constants/styles.js';
  * Uses createPortal to escape parent transform/filter contexts.
  */
 export default function Modal({ title, onClose, children, wide, width, footer, headerExtra }) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const content = (
     <div
       className="tn-overlay"
@@ -20,33 +21,29 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
         WebkitBackdropFilter: "blur(8px)",
         zIndex: Z.MODAL,
         display: "flex",
-        // flex-start + overflow-y: auto means content is never hidden behind the top edge.
-        // margin: auto on the inner card still centres it vertically when there is room.
-        alignItems: "flex-start",
+        alignItems: isMobile ? "flex-end" : "flex-start",
         justifyContent: "center",
-        overflowY: "auto",
-        padding: 'max(20px, env(safe-area-inset-top, 20px)) 16px max(20px, env(safe-area-inset-bottom, 20px))',
+        overflowY: isMobile ? "hidden" : "auto",
+        padding: isMobile ? '0' : 'max(20px, env(safe-area-inset-top, 20px)) 16px max(20px, env(safe-area-inset-bottom, 20px))',
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className={`tn-modal ${wide ? 'tn-modal-wide' : 'tn-modal-regular'}`}
-        style={{ 
-          ...glassCard, 
-          width: "100%", 
-          maxWidth: width || (wide ? '940px' : '640px'), 
-          display: "flex", 
+        style={{
+          ...glassCard,
+          width: "100%",
+          maxWidth: width || (wide ? '940px' : '640px'),
+          display: "flex",
           flexDirection: "column",
-          maxHeight: 'calc(100dvh - 40px)',
+          maxHeight: isMobile ? '92dvh' : 'calc(100dvh - 40px)',
           position: "relative",
           overflow: "hidden",
-          borderRadius: 24,
+          borderRadius: isMobile ? '20px 20px 0 0' : 24,
           boxShadow: '0 32px 64px rgba(0,0,0,0.35)',
           background: '#fff',
           height: 'auto',
-          // margin: auto centres the modal vertically when the overlay has extra space,
-          // but lets it sit at the top when content is tall (no clipping at top).
-          margin: 'auto',
+          margin: isMobile ? '0' : 'auto',
         }}
       >
         {/* Sticky header */}
@@ -93,16 +90,14 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
         </div>
 
         {/* Scrollable content */}
-        <div className="tn-modal-body" style={{ 
-          padding: "24px 20px", 
-          overflowY: "auto", 
-          flex: 1, 
-          minHeight: 0, 
-          WebkitOverflowScrolling: "touch", 
+        <div className="tn-modal-body" style={{
+          padding: isMobile ? "16px 14px 40px" : "24px 20px 40px",
+          overflowY: "auto",
+          flex: 1,
+          minHeight: 0,
+          WebkitOverflowScrolling: "touch",
           overscrollBehavior: 'contain',
           background: '#F8FAFF',
-          /* Extra bottom padding to ensure content isn't buried under sticky footer on mobile */
-          paddingBottom: '40px'
         }}>
           {children}
         </div>

@@ -10,6 +10,7 @@ import { getCompanyCareerUrl } from '../../utils/url.js';
 
 export default function PublicApplyModal({ job, orgName, onClose }) {
   const navigate = useNavigate();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
     try {
@@ -408,11 +409,11 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         <Field label="Email Address *" value={form.email} onChange={v => { sf('email', v); setPrefillState(null); setUserEditedFields(new Set()); }} onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
         <Field label={isHighlighted('name') ? '✅ Full Name *' : 'Full Name *'} value={form.name} onChange={v => handlePrefillFieldChange('name', v)} placeholder="Jane Smith" inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
         <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" type="tel" />
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
           <Field label="Current Title *" value={form.title} onChange={v => handlePrefillFieldChange('title', v)} placeholder="e.g. Developer" inputStyle={isHighlighted('title') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
           <Field label="Current Company *" value={form.currentCompany} onChange={v => handlePrefillFieldChange('currentCompany', v)} placeholder="e.g. TCS" inputStyle={isHighlighted('currentCompany') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Experience *</label>
             <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
@@ -428,7 +429,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             </select>
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
           <div>
             <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Industry *</label>
             <select value={form.industry} onChange={e => sf('industry', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border:'1px solid #DDDBDA', background:'#fff', fontSize:'16px' }}>
