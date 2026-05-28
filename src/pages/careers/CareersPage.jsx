@@ -475,29 +475,29 @@ export default function CareersPage() {
         <div className="tn-container">
           {isMobile ? (
             /* ── Mobile: 2-row layout ── */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Row 1 — Priority pills, scrollable */}
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+              {/* Row 1 — Location dropdown + live count */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
+                  style={{ flex: 1, minWidth: 0, minHeight: 42, padding: '0 32px 0 14px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#374151', background: '#fff', outline: 'none', WebkitAppearance: 'none', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                  {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
+                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                  <b style={{ color: '#1E293B' }}>{filtered.length}</b> jobs
+                </div>
+              </div>
+              {/* Row 2 — Priority pills, horizontally scrollable */}
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {['All', 'High', 'Medium', 'Low'].map(u => {
                   const active = urgencyFilter === u;
                   const color = u === 'High' ? '#BA0517' : u === 'Medium' ? '#F59E0B' : u === 'Low' ? '#10B981' : '#0176D3';
                   return (
-                    <button key={u} onClick={() => setUrgencyFilter(u)} style={{ flexShrink: 0, minHeight: 42, padding: '0 18px', borderRadius: 100, border: `1.5px solid ${active ? color : '#E2E8F0'}`, background: active ? color : '#fff', color: active ? '#fff' : '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, boxShadow: active ? `0 3px 10px ${color}44` : '0 1px 3px rgba(0,0,0,0.06)', WebkitTapHighlightColor: 'transparent' }}>
+                    <button key={u} onClick={() => setUrgencyFilter(u)} style={{ flexShrink: 0, minHeight: 40, padding: '0 18px', borderRadius: 100, border: `1.5px solid ${active ? color : '#E2E8F0'}`, background: active ? color : '#fff', color: active ? '#fff' : '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, boxShadow: active ? `0 3px 10px ${color}44` : '0 1px 3px rgba(0,0,0,0.06)', WebkitTapHighlightColor: 'transparent' }}>
                       {u === 'All' ? 'All' : <>{u === 'High' ? '🔥' : u === 'Medium' ? '⚡' : '🌱'} {u}</>}
                     </button>
                   );
                 })}
-              </div>
-              {/* Row 2 — Location + count */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
-                  style={{ flex: 1, minHeight: 42, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#374151', background: '#fff', outline: 'none', WebkitAppearance: 'none', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 32 }}>
-                  {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
-                </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block', flexShrink: 0 }} />
-                  <b style={{ color: '#1E293B' }}>{filtered.length}</b> jobs
-                </div>
               </div>
             </div>
           ) : (
