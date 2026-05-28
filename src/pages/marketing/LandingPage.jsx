@@ -246,7 +246,7 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           HERO
       ══════════════════════════════════════════════════════════════ */}
-      <section style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 80 }}>
+      <section className="mkt-hero-section" style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 80 }}>
         {/* BG */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1600&auto=format&fit=crop&q=65')", backgroundSize: 'cover', backgroundPosition: 'center top' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(3,17,38,0.96) 0%,rgba(1,36,86,0.92) 100%)' }} />
@@ -256,22 +256,22 @@ export default function LandingPage() {
         {/* Grid */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: 'clamp(60px, 10vw, 100px) 24px', gap: 'clamp(24px, 4vw, 48px)' }}>
+        <div className="tn-container mkt-hero-grid" style={{ position: 'relative', zIndex: 1, padding: 'clamp(32px, 6vw, 100px) 24px', gap: 'clamp(24px, 4vw, 48px)' }}>
           {/* Left */}
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>
               <span className="mkt-glass-dark" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mkt-accent)', boxShadow: '0 0 12px var(--mkt-accent)', display: 'inline-block' }} />
-              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's Job Board &amp; Recruitment Platform — All Industries</span>
+              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Find Jobs · Post Openings · Hire Smarter</span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-              Find Your Dream Job<br />
-              <span className="mkt-gradient-text">or Hire Faster.</span><br />
-              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>India's Job Board &amp; Recruitment Platform.</span>
+              Your Next Career<br />
+              <span className="mkt-gradient-text">Starts Here.</span><br />
+              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Jobs Across Every Industry in India.</span>
             </h1>
 
-            <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, maxWidth: 520, marginBottom: 48, marginTop: 20, fontWeight: 500 }}>
-              Browse thousands of jobs across IT, Finance, Marketing, HR, Operations, and more. Employers — post jobs, screen applicants, and close hires in one powerful platform backed by specialist staffing support.
+            <p style={{ fontSize: '1.15rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, maxWidth: 520, marginBottom: 40, marginTop: 20, fontWeight: 500 }}>
+              Browse thousands of jobs in IT, Finance, Marketing, HR, Operations, and more. Employers — post a role, track every applicant, and close hires faster with India's smartest hiring platform.
             </p>
 
             <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -709,7 +709,8 @@ export default function LandingPage() {
 
         @media(max-width:768px){
           .tn-desktop{display:none!important}
-          .mkt-hero-grid{grid-template-columns:1fr!important; text-align: center; }
+          .mkt-hero-section { align-items: flex-start!important; padding-top: 68px!important; }
+          .mkt-hero-grid{grid-template-columns:1fr!important; text-align: center; padding-top: 28px!important; padding-bottom: 40px!important; }
           .mkt-hero-grid h1, .mkt-hero-grid p { margin-left: auto; margin-right: auto; }
           .mkt-hero-grid .mkt-reveal-delayed { justify-content: center; }
           .mkt-trust-label { text-align: center!important; }
