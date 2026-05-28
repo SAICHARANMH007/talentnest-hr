@@ -63,7 +63,7 @@ export default function AboutPage() {
             About <span style={{ background: 'linear-gradient(135deg, var(--mkt-accent), #fff)', display: 'inline-block', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>TalentNest</span>
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1.25rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.6 }}>
-            Redefining recruitment through integrity, transparency, and deep domain expertise since 2018.
+            Redefining recruitment through integrity, transparency, and deep domain expertise since 2024.
           </p>
         </div>
       </section>
