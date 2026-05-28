@@ -8,7 +8,6 @@ import UploadZone from '../ui/UploadZone.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
-import { parseFile } from '../../api/matching.js';
 import { INDUSTRIES } from '../../constants/picklists.js';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
