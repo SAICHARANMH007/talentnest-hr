@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { glassCard, Z } from '../../constants/styles.js';
 
 export default function Modal({ title, onClose, children, wide, width, footer, headerExtra }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const content = (
     <div
@@ -63,12 +69,14 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
             <h3 style={{
               color: '#0A1628',
               fontWeight: 800,
-              fontSize: isMobile ? 16 : 18,
+              fontSize: isMobile ? 15 : 18,
               margin: 0,
-              lineHeight: 1.25,
+              lineHeight: 1.3,
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              whiteSpace: 'normal',
             }}>{title}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -403,14 +403,12 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         </div>
       )}
       {geoStatus === 'banner' && (
-        <div style={{ marginBottom: 16, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 20 }}>📍</span>
-            <div style={{ fontWeight: 700, fontSize: 14, color: '#1D4ED8' }}>Allow location for job alerts near you</div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={requestLocationPermission} style={{ flex: 1, background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px', cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>📍 Allow</button>
-            <button onClick={() => setGeoStatus('denied')} style={{ flex: 1, background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 8, color: '#374151', fontWeight: 600, fontSize: 14, padding: '10px', cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>Skip</button>
+        <div style={{ marginBottom: 14, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1D4ED8', lineHeight: 1.3 }}>Allow location for nearby job alerts</span>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button onClick={requestLocationPermission} style={{ background: '#0176D3', border: 'none', borderRadius: 7, color: '#fff', fontWeight: 700, fontSize: 13, padding: '7px 12px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>Allow</button>
+            <button onClick={() => setGeoStatus('denied')} style={{ background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 7, color: '#374151', fontWeight: 600, fontSize: 13, padding: '7px 10px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>Skip</button>
           </div>
         </div>
       )}
@@ -434,8 +432,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
         {/* Section: Contact */}
-        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Contact</span>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: '#0176D3', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Contact</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <MField label="Email Address *" value={form.email} type="email" placeholder="jane@example.com"
@@ -448,8 +447,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         </div>
 
         {/* Section: Professional */}
-        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Professional</span>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: '#7C3AED', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Professional</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <MField label="Current Title *" value={form.title} placeholder="e.g. Software Developer"
@@ -465,8 +465,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         </div>
 
         {/* Section: Role fit */}
-        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Role Fit</span>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: '#059669', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Role Fit</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <MSelect label="Industry *" value={form.industry} onChange={v => sf('industry', v)}
@@ -481,8 +482,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
           </div>
         </div>
         {/* Section: Account */}
-        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Account</span>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: '#F59E0B', borderRadius: 2, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Account</span>
         </div>
         <div style={{ marginBottom: 8 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', minHeight: 52, WebkitTapHighlightColor: 'transparent', background: createAccount ? '#EFF6FF' : '#F8FAFC', borderRadius: 12, padding: '12px 14px', border: `1.5px solid ${createAccount ? '#BFDBFE' : '#E2E8F0'}` }}>
@@ -563,8 +565,9 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
 
         {questions.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Screening Questions</span>
+            <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 3, height: 14, background: '#EF4444', borderRadius: 2, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Screening Questions</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {questions.map((q, i) => (
