@@ -446,8 +446,11 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
         </div>
         <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} />
         <div style={{ background: 'rgba(1,118,211,0.05)', borderRadius: 12, padding: '14px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontSize: '15px', fontWeight: 700, padding: '4px 0' }}>
-            <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} style={{ width: 18, height: 18 }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontSize: '15px', fontWeight: 700, minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>
+            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: createAccount ? '#0176D3' : '#fff', border: `2px solid ${createAccount ? '#0176D3' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
+              {createAccount && <span style={{ color: '#fff', fontSize: 15, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
+              <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', margin: 0, cursor: 'pointer' }} />
+            </span>
             Create a free account to track application
           </label>
           {createAccount && (
@@ -500,9 +503,11 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
                 )}
               </div>
               {/* T&C */}
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '13px', lineHeight: 1.5, cursor: 'pointer', padding: '6px 0' }}>
-                <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
-                  style={{ width: 17, height: 17, marginTop: 1, flexShrink: 0, accentColor: '#0176D3' }} />
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '13px', lineHeight: 1.5, cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>
+                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, background: agreedTerms ? '#0176D3' : '#fff', border: `2px solid ${agreedTerms ? '#0176D3' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
+                  {agreedTerms && <span style={{ color: '#fff', fontSize: 13, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
+                  <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', margin: 0, cursor: 'pointer' }} />
+                </span>
                 <span style={{ color: '#374151' }}>
                   I agree to the{' '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>

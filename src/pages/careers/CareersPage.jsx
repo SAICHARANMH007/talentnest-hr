@@ -170,12 +170,12 @@ export default function CareersPage() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Scroll to results when user triggers a search from the hero bar
+  // Scroll to results on mobile when user triggers a search from the hero bar
   useEffect(() => {
-    if (debouncedSearch && jobListRef.current) {
+    if (isMobile && debouncedSearch && jobListRef.current) {
       jobListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, isMobile]);
 
   useEffect(() => {
     setPage(1);
@@ -471,51 +471,57 @@ export default function CareersPage() {
       </section>
 
       {/* ── FILTER BAR ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: isMobile ? '12px 0' : '16px 0', position: 'sticky', top: isMobile ? 66 : 66, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', transition: 'all 0.2s' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0', padding: isMobile ? '10px 0 12px' : '16px 0', position: 'sticky', top: 66, zIndex: 90, boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
         <div className="tn-container">
-          <div style={{ display: 'flex', gap: isMobile ? 10 : 12, flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'center', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 6 : 0, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {/* Urgency filter pills */}
-            {['All', 'High', 'Medium', 'Low'].map(u => {
-              const active = urgencyFilter === u;
-              const color = u === 'High' ? '#BA0517' : u === 'Medium' ? '#F59E0B' : u === 'Low' ? '#10B981' : '#0176D3';
-              return (
-                <button 
-                  key={u} 
-                  onClick={() => setUrgencyFilter(u)} 
-                  style={{ 
-                    padding: '8px 20px', 
-                    borderRadius: 100, 
-                    border: '1px solid', 
-                    borderColor: active ? color : '#E2E8F0', 
-                    background: active ? color : '#F8FAFF', 
-                    color: active ? '#fff' : '#475569', 
-                    fontWeight: 700, 
-                    fontSize: 13, 
-                    cursor: 'pointer', 
-                    transition: 'all 0.2s ease', 
-                    whiteSpace: 'nowrap',
-                    boxShadow: active ? `0 4px 12px ${color}33` : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                >
-                  {u === 'All' ? 'All Priority' : <><span style={{ fontSize: 14 }}>{u === 'High' ? '🔥' : u === 'Medium' ? '⚡' : '🌱'}</span> {u}</>}
-                </button>
-              );
-            })}
-            <select
-              value={locationFilter}
-              onChange={e => setLocationFilter(e.target.value)}
-              style={{ padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: 100, fontSize: 13, fontWeight: 600, color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer', minWidth: 140, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
-            >
-              {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
-            </select>
-            <div style={{ marginLeft: isMobile ? 0 : 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', paddingRight: isMobile ? 12 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-              <b style={{ color: '#1E293B' }}>{filtered.length}</b> positions found
+          {isMobile ? (
+            /* ── Mobile: 2-row layout ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Row 1 — Priority pills, scrollable */}
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 2 }}>
+                {['All', 'High', 'Medium', 'Low'].map(u => {
+                  const active = urgencyFilter === u;
+                  const color = u === 'High' ? '#BA0517' : u === 'Medium' ? '#F59E0B' : u === 'Low' ? '#10B981' : '#0176D3';
+                  return (
+                    <button key={u} onClick={() => setUrgencyFilter(u)} style={{ flexShrink: 0, minHeight: 42, padding: '0 18px', borderRadius: 100, border: `1.5px solid ${active ? color : '#E2E8F0'}`, background: active ? color : '#fff', color: active ? '#fff' : '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, boxShadow: active ? `0 3px 10px ${color}44` : '0 1px 3px rgba(0,0,0,0.06)', WebkitTapHighlightColor: 'transparent' }}>
+                      {u === 'All' ? 'All' : <>{u === 'High' ? '🔥' : u === 'Medium' ? '⚡' : '🌱'} {u}</>}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Row 2 — Location + count */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
+                  style={{ flex: 1, minHeight: 42, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#374151', background: '#fff', outline: 'none', WebkitAppearance: 'none', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 32 }}>
+                  {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
+                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748B', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block', flexShrink: 0 }} />
+                  <b style={{ color: '#1E293B' }}>{filtered.length}</b> jobs
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* ── Desktop: original single-row layout ── */
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {['All', 'High', 'Medium', 'Low'].map(u => {
+                const active = urgencyFilter === u;
+                const color = u === 'High' ? '#BA0517' : u === 'Medium' ? '#F59E0B' : u === 'Low' ? '#10B981' : '#0176D3';
+                return (
+                  <button key={u} onClick={() => setUrgencyFilter(u)} style={{ padding: '8px 20px', borderRadius: 100, border: '1px solid', borderColor: active ? color : '#E2E8F0', background: active ? color : '#F8FAFF', color: active ? '#fff' : '#475569', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', boxShadow: active ? `0 4px 12px ${color}33` : 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {u === 'All' ? 'All Priority' : <><span style={{ fontSize: 14 }}>{u === 'High' ? '🔥' : u === 'Medium' ? '⚡' : '🌱'}</span> {u}</>}
+                  </button>
+                );
+              })}
+              <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
+                style={{ padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: 100, fontSize: 13, fontWeight: 600, color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer', minWidth: 140, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                {(Array.isArray(locations) ? locations : []).map(l => <option key={l} value={l}>{l === 'All' ? '📍 All Locations' : l}</option>)}
+              </select>
+              <div style={{ marginLeft: 'auto', color: '#64748B', fontSize: 13, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                <b style={{ color: '#1E293B' }}>{filtered.length}</b> positions found
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
