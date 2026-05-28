@@ -55,15 +55,15 @@ const SERVICES = [
   { slug: 'non-it-staffing',    icon: '🏢', title: 'Non-IT Staffing',         desc: 'Finance, HR, operations, and executive roles across every business function.', accent: '#10B981' },
   { slug: 'permanent-staffing', icon: '🎯', title: 'Permanent Staffing',      desc: 'Direct hire with a 90-day replacement guarantee. Culture fit is non-negotiable.', accent: '#0369A1' },
   { slug: 'c2h',                icon: '🔄', title: 'Contract to Hire',        desc: 'Evaluate candidates on the job before making a permanent commitment.', accent: '#F59E0B' },
-  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',           desc: 'Faceify by RNIT: Advanced facial recognition, attendance, and workforce management.', accent: '#7C3AED' },
+  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',           desc: 'Complete HR management: attendance tracking, workforce analytics, and seamless employee management in one dashboard.', accent: '#7C3AED' },
 ];
 
 const HOW_IT_WORKS = [
-  { step: '01', icon: '📝', title: 'Share Your Brief', desc: 'Tell us the role, skills needed, and timeline. Our intake takes under 5 minutes.' },
-  { step: '02', icon: '🎯', title: 'Advanced Matching', desc: 'Our system scans thousands of profiles and surfaces the best-fit candidates for your review.' },
-  { step: '03', icon: '👥', title: 'Curated Shortlist', desc: 'Receive a selection of fully-vetted candidates with detailed profiles.' },
-  { step: '04', icon: '🎯', title: 'Interview & Select', desc: 'We coordinate interviews, gather feedback, and manage offer negotiations.' },
-  { step: '05', icon: '🚀', title: 'Onboard & Succeed', desc: 'Background checks, onboarding support, and 90-day check-ins included.' },
+  { step: '01', icon: '📝', title: 'Post Your Job', desc: 'Create a job listing in minutes. Set role requirements, required skills, and urgency — it goes live on the job board instantly.' },
+  { step: '02', icon: '📥', title: 'Applications Arrive', desc: 'Candidates apply via your public careers page. Their resume, profile, and screening answers land directly in your dashboard.' },
+  { step: '03', icon: '🔍', title: 'Screen & Shortlist', desc: 'Move candidates through Screening, Assessment, and Interview stages with one click. Every action is logged and visible to your team.' },
+  { step: '04', icon: '📄', title: 'Generate Offer Letter', desc: 'Issue a branded offer letter directly from the platform. Candidates view, accept, or negotiate in their own candidate portal.' },
+  { step: '05', icon: '✅', title: 'Hire & Onboard', desc: 'Mark the candidate as Hired. Onboarding tasks and background verification kick off automatically — no manual follow-up needed.' },
 ];
 
 const STATS = [
@@ -80,42 +80,42 @@ const TESTIMONIALS = [
 ];
 
 const TRUST_BADGES = [
-  'Startups',
-  'SaaS Teams',
+  'IT Staffing',
   'Cybersecurity Hiring',
-  'Contract-to-Hire',
   'Executive Search',
-  'HRMS Automation',
+  'Contract to Hire',
+  'Permanent Staffing',
+  'HRMS Platform',
 ];
 
 const VALUE_PILLARS = [
   {
-    icon: '🚀',
-    title: 'Public Job Board & Portal',
-    desc: 'List your openings on India’s most specialized job board. Attract high-intent tech and executive talent with streamlined application tracking.',
-    points: ['Advanced candidate matching', 'Direct application tracking', 'High-intent tech talent pool'],
-    accent: '#0176D3',
+    icon: ‘🚀’,
+    title: ‘Job Board & Application Portal’,
+    desc: ‘Publish openings on TalentNest\’s public job board. Candidates apply directly — their profiles, resumes, and answers land in your dashboard the moment they apply.’,
+    points: [‘Real-time application notifications’, ‘Candidate profiles with resume & skills’, ‘Full visibility from Applied to Hired’],
+    accent: ‘#0176D3’,
   },
   {
-    icon: '⚙️',
-    title: 'Complete Recruitment Stack',
-    desc: 'A unified workspace for jobs, pipelines, outreach, and interviews. Stop juggling tools and start hiring in record time.',
-    points: ['Automated hiring workflows', 'Unified ATS dashboard', 'Live pipeline visibility'],
-    accent: '#00C2CB',
+    icon: ‘⚙️’,
+    title: ‘End-to-End Recruitment ATS’,
+    desc: ‘Manage every stage of hiring in one place — screening, assessments, interviews, offer letters, and onboarding. No spreadsheets. No missed follow-ups.’,
+    points: [‘7-stage pipeline: Applied → Hired’, ‘Automated email & status notifications’, ‘Offer letter generation & online acceptance’],
+    accent: ‘#00C2CB’,
   },
   {
-    icon: '🎯',
-    title: 'Strategic Staffing Support',
-    desc: 'Our expert recruiters provide rapid shortlist delivery and a 90-day replacement support for peace of mind.',
-    points: ['Rapid response cycle', '90-day replacement support', 'Expert industry sourcing'],
-    accent: '#F59E0B',
+    icon: ‘🎯’,
+    title: ‘Expert Staffing & Search’,
+    desc: ‘Our specialist recruiters deliver interview-ready shortlists within 72 hours. IT, Cybersecurity, Executive & Non-IT roles — all backed by a 90-day replacement guarantee.’,
+    points: [‘Shortlists delivered in under 72 hours’, ‘90-day free replacement guarantee’, ‘IT, Cybersecurity & Executive networks’],
+    accent: ‘#F59E0B’,
   },
 ];
 
 const HERO_SPOTLIGHTS = [
-  { label: 'Advanced screening', value: 'Quick match', tone: '#00C2CB' },
-  { label: 'Recruiter-led review', value: 'Human signal', tone: '#FF6B35' },
-  { label: 'Hiring visibility', value: 'Live pipeline', tone: '#38BDF8' },
+  { label: 'Time to Shortlist', value: '< 72 Hours', tone: '#00C2CB' },
+  { label: 'Replacement Policy', value: '90-Day Free', tone: '#FF6B35' },
+  { label: 'Roles We Cover', value: 'IT · Cyber · Exec', tone: '#38BDF8' },
 ];
 
 const HERO_VALUE_CARDS = [
@@ -161,12 +161,69 @@ export default function LandingPage() {
 
   useEffect(() => {
     loadLiveData();
-    // SEO & Meta
-    document.title = "TalentNest HR | India's #1 Recruitment Stack & Job Board";
-    const meta = document.querySelector('meta[name="description"]') || document.createElement('meta');
-    meta.name = "description";
-    meta.content = "Transform your hiring with TalentNest. The leading job board for IT, Cybersecurity, and Executive roles. Rapid shortlists with a 90-day replacement guarantee.";
-    if (!document.querySelector('meta[name="description"]')) document.head.appendChild(meta);
+
+    document.title = 'TalentNest HR | IT & Cybersecurity Recruitment Platform India';
+
+    const setMeta = (selector, attr, val, content) => {
+      let el = document.querySelector(selector);
+      if (!el) { el = document.createElement('meta'); document.head.appendChild(el); }
+      el.setAttribute(attr, val);
+      el.setAttribute('content', content);
+    };
+
+    setMeta('meta[name="description"]', 'name', 'description', "TalentNest HR is India's leading recruitment platform for IT, Cybersecurity, and Executive roles. Post jobs, manage your hiring pipeline, and hire faster with our ATS, public job board, and specialist staffing services. 90-day replacement guarantee.");
+    setMeta('meta[name="keywords"]', 'name', 'keywords', 'TalentNest, TalentNest HR, talentnesthr, talent nest, talent nest hr, talent next hr, IT staffing India, cybersecurity recruitment India, executive search India, recruitment platform India, ATS software India, job board India, hire faster, permanent staffing, contract to hire');
+    setMeta('meta[name="robots"]', 'name', 'robots', 'index, follow');
+    setMeta('meta[name="author"]', 'name', 'author', 'TalentNest HR');
+    setMeta('meta[property="og:type"]', 'property', 'og:type', 'website');
+    setMeta('meta[property="og:title"]', 'property', 'og:title', 'TalentNest HR | IT & Cybersecurity Recruitment Platform India');
+    setMeta('meta[property="og:description"]', 'property', 'og:description', "India's leading recruitment platform. Post jobs, manage hiring pipelines, and source top IT, cybersecurity, and executive talent in under 72 hours.");
+    setMeta('meta[property="og:url"]', 'property', 'og:url', 'https://www.talentnesthr.com/');
+    setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'TalentNest HR');
+    setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', 'TalentNest HR | IT & Cybersecurity Recruitment Platform India');
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', "Hire top IT, cybersecurity, and executive talent in under 72 hours. India's complete recruitment ATS, job board, and staffing platform.");
+
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
+    canonical.href = 'https://www.talentnesthr.com/';
+
+    if (!document.getElementById('tn-ld-home')) {
+      const script = document.createElement('script');
+      script.id = 'tn-ld-home';
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify([
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'TalentNest HR',
+          alternateName: ['TalentNest', 'talentnesthr', 'Talent Nest HR', 'Talent Nest', 'Talent Next HR'],
+          url: 'https://www.talentnesthr.com',
+          description: "India's leading recruitment platform for IT, Cybersecurity, and Executive roles. Specialist staffing with a 90-day replacement guarantee.",
+          contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', url: 'https://www.talentnesthr.com/contact', areaServed: 'IN' },
+          areaServed: { '@type': 'Country', name: 'India' },
+        },
+        {
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'TalentNest HR',
+          alternateName: 'talentnesthr',
+          url: 'https://www.talentnesthr.com',
+          description: "India's leading recruitment platform for IT, Cybersecurity, and Executive roles.",
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: { '@type': 'EntryPoint', urlTemplate: 'https://www.talentnesthr.com/careers?q={search_term_string}' },
+            'query-input': 'required name=search_term_string',
+          },
+        },
+      ]);
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      const ld = document.getElementById('tn-ld-home');
+      if (ld) ld.remove();
+    };
   }, []);
 
   // Cycle highlighted job every 2.5 seconds for animation
@@ -208,13 +265,13 @@ export default function LandingPage() {
             </div>
 
             <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-              The Future of <span className="mkt-gradient-text">Hiring.</span><br />
-              Simpler. Faster.<br />
-              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Job Board &amp; Recruitment Stack.</span>
+              Hire IT &amp; Tech Talent<br />
+              <span className="mkt-gradient-text">10× Faster.</span><br />
+              <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>India's Recruitment Platform &amp; Job Board.</span>
             </h1>
 
             <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, maxWidth: 520, marginBottom: 48, marginTop: 20, fontWeight: 500 }}>
-              The leading job board for IT, Cybersecurity, and Executive roles. Manage your entire hiring lifecycle — from job posting to onboarding — in one powerful platform.
+              Post jobs, screen applicants, track every candidate, and generate offer letters — all in one platform. Specialist recruiters deliver interview-ready shortlists for IT, Cybersecurity, and Executive roles in under 72 hours.
             </p>
 
             <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -352,8 +409,8 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', borderTop: `1px solid var(--mkt-card-border)`, borderBottom: `1px solid var(--mkt-card-border)`, padding: '22px 0' }}>
         <div className="tn-container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
           <div style={{ minWidth: 220, textAlign: 'center' }} className="mkt-trust-label">
-            <div style={{ color: 'var(--mkt-text-heading)', fontSize: 14, fontWeight: 800 }}>Built for modern hiring teams</div>
-            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>From urgent staffing to full recruitment operations</div>
+            <div style={{ color: 'var(--mkt-text-heading)', fontSize: 14, fontWeight: 800 }}>Trusted by growing teams across India</div>
+            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>IT, Cybersecurity, Executive &amp; Non-IT hiring — all covered</div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', flex: 1 }}>
             {TRUST_BADGES.map(item => (
@@ -386,8 +443,8 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Why TalentNest</SectionLabel>
-          <SectionHeading sub="A complete recruitment ecosystem for teams that need speed, clarity, and execution.">
-            More than an agency.<br /><span style={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>The Ultimate Job Board &amp; ATS Stack.</span>
+          <SectionHeading sub="Everything you need to post jobs, track candidates, and close hires — without juggling multiple tools.">
+            One platform for<br /><span style={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>all your hiring needs.</span>
           </SectionHeading>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 22, marginTop: 52 }}>
@@ -474,13 +531,13 @@ export default function LandingPage() {
                 Hiring that feels <span className="mkt-gradient-text">Seamless.</span>
               </h2>
               <p style={{ fontSize: 16, color: 'var(--mkt-text-muted)', lineHeight: 1.8, marginBottom: 32, fontWeight: 500 }}>
-                Stop manually reviewing hundreds of resumes. Our matching engine ranks candidates based on skill resonance, experience depth, and culture markers.
+                Post a job and watch qualified applications arrive. Screen, schedule interviews, and generate offer letters — without ever leaving the platform.
               </p>
               <div style={{ display: 'grid', gap: 20 }}>
                 {[
-                  { t: 'Automated Screening', d: 'Filter out unqualified applicants instantly with custom qualification criteria.' },
-                  { t: 'One-Click Interviews', d: 'Synced with your calendar. Send invites and gather feedback in a single flow.' },
-                  { t: 'Live Pipeline Health', d: 'Visual heatmaps of your hiring funnel to identify bottlenecks before they happen.' }
+                  { t: 'Smart Application Screening', d: 'Set your criteria once — the platform filters and ranks applicants so you focus only on the best fits.' },
+                  { t: 'One-Click Interview Scheduling', d: 'Move candidates to the Interview stage and send calendar invites in a single click. Feedback captured in-platform.' },
+                  { t: 'Offer Letter Generation', d: 'Create branded offer letters directly from the pipeline. Candidates view, accept, or respond in their own portal.' }
                 ].map(item => (
                   <div key={item.t} style={{ display: 'flex', gap: 16 }}>
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--mkt-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0 }}>✓</div>
@@ -530,8 +587,8 @@ export default function LandingPage() {
       <section className="mkt-reveal" style={{ background: 'var(--mkt-section-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Expertise</SectionLabel>
-          <SectionHeading sub="World-class teams require world-class talent. We curate shortlists that don't just fill roles—they drive revenue.">
-            Tailored solutions for<br /><span className="mkt-gradient-text">every function</span>
+          <SectionHeading sub="From urgent IT roles to senior executive positions — our specialist recruiters deliver interview-ready candidates within 72 hours.">
+            Expert staffing for<br /><span className="mkt-gradient-text">every role</span>
           </SectionHeading>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 28, marginTop: 72 }}>
@@ -560,7 +617,7 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>The Process</SectionLabel>
-          <SectionHeading sub="From brief to hire in 5 clear steps. No surprises, no wasted time.">
+          <SectionHeading sub="From job posting to signed offer letter — in 5 clear, trackable steps.">
             How TalentNest works
           </SectionHeading>
 
@@ -587,8 +644,8 @@ export default function LandingPage() {
       <section className="mkt-reveal" style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0' }}>
         <div className="tn-container">
           <SectionLabel>Client Success</SectionLabel>
-          <SectionHeading sub="Industry leaders trust TalentNest to power their high-growth teams.">
-            Trusted by the <span className="mkt-gradient-text">Best in Business</span>
+          <SectionHeading sub="Companies across India trust TalentNest to fill their most critical roles — fast.">
+            What our clients <span className="mkt-gradient-text">say about us</span>
           </SectionHeading>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 32, marginTop: 72 }}>
@@ -624,10 +681,10 @@ export default function LandingPage() {
         
         <div className="tn-container" style={{ textAlign: 'center', position: 'relative', zIndex: 1, padding: '0 24px' }}>
           <h2 style={{ fontSize: 'clamp(32px, 6vw, 64px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', marginBottom: 24, lineHeight: 1 }}>
-            Ready to lead the <span style={{ color: 'var(--mkt-accent)' }}>Future of Work?</span>
+            Ready to Hire <span style={{ color: 'var(--mkt-accent)' }}>Smarter &amp; Faster?</span>
           </h2>
           <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.25rem)', color: 'rgba(255,255,255,0.7)', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px', lineHeight: 1.8, fontWeight: 500 }}>
-            Stop settling for volume. Start hiring for resonance. Your first shortlist of pre-vetted elite talent is just a few clicks away.
+            Get pre-screened, interview-ready candidates for IT, Cybersecurity, and Executive roles — delivered within 72 hours. Post your first job or speak to our recruiters today.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg mkt-cta-btn" style={{ borderRadius: 14, padding: 'clamp(14px, 3vw, 20px) clamp(24px, 5vw, 48px)', fontSize: 'clamp(16px, 2vw, 18px)' }}>
