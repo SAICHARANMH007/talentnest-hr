@@ -8,6 +8,31 @@ import { requestGeolocation } from '../../utils/geolocation.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 import { getCompanyCareerUrl } from '../../utils/url.js';
 
+/* ── Mobile-optimised field components (local to this modal) ── */
+function MField({ label, value, onChange, onBlur, type = 'text', placeholder, highlight, suffix }) {
+  const base = { width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: '#0A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input type={type} value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} style={base} />
+        {suffix && <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>{suffix}</div>}
+      </div>
+    </div>
+  );
+}
+function MSelect({ label, value, onChange, options = [], highlight }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)}
+        style={{ width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: value ? '#0A1628' : '#94A3B8', outline: 'none', boxSizing: 'border-box', appearance: 'none', WebkitAppearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%2364748B' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 40 }}>
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </div>
+  );
+}
+
 export default function PublicApplyModal({ job, orgName, onClose }) {
   const navigate = useNavigate();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -343,173 +368,189 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
       title={`Apply — ${job.title} @ ${job.company || job.companyName || orgName || 'TalentNest HR'}`}
       onClose={onClose}
       footer={
-        <div className="tn-apply-footer-btns" style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap' }}>
-          <button onClick={submit} disabled={submitting} className="btn btn-primary tn-apply-submit" style={{ flex: 2, minWidth: 160, opacity: submitting ? 0.6 : 1, justifyContent: 'center', minHeight: 48, fontSize: 15 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10, width: '100%' }}>
+          <button onClick={submit} disabled={submitting}
+            style={{ flex: 1, background: submitting ? '#64A4D8' : 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 12, minHeight: 52, fontSize: 16, fontWeight: 800, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, WebkitTapHighlightColor: 'transparent', order: isMobile ? 1 : 0 }}>
             {submitting
               ? <><Spinner /> {geoStatus === 'asking' ? 'Getting location…' : 'Submitting…'}</>
               : '🚀 Submit Application'}
           </button>
-          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1, minWidth: 100, minHeight: 48 }}>Cancel</button>
+          <button onClick={onClose}
+            style={{ flex: isMobile ? 'none' : 1, background: '#F1F5F9', color: '#374151', border: 'none', borderRadius: 12, minHeight: isMobile ? 44 : 52, fontSize: 15, fontWeight: 700, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', order: isMobile ? 2 : 1 }}>
+            Cancel
+          </button>
         </div>
       }
     >
+      {/* ── Banners ── */}
       {assessmentInfo?.hasAssessment && (
-        <div style={{ marginBottom: 14, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(124,58,237,0.07),rgba(109,40,217,0.04))', borderRadius: 8, border: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16 }}>📝</span>
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: '#F5F3FF', borderRadius: 10, border: '1px solid #DDD6FE', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>📝</span>
           <div>
-            <p style={{ color: '#5b21b6', margin: 0, fontSize: 12, fontWeight: 700 }}>This job includes a screening assessment</p>
-            <p style={{ color: '#374151', margin: '2px 0 0', fontSize: 11 }}>
-              <b>{assessmentInfo.title}</b>{assessmentInfo.timeLimitMins > 0 ? ` · ${assessmentInfo.timeLimitMins} min` : ''}{assessmentInfo.questionCount > 0 ? ` · ${assessmentInfo.questionCount} questions` : ''} · Complete after applying
-            </p>
+            <p style={{ color: '#5b21b6', margin: 0, fontSize: 13, fontWeight: 700 }}>Screening assessment included</p>
+            <p style={{ color: '#374151', margin: '2px 0 0', fontSize: 12 }}>{assessmentInfo.title}{assessmentInfo.timeLimitMins > 0 ? ` · ${assessmentInfo.timeLimitMins} min` : ''}</p>
           </div>
         </div>
       )}
       {isPreFilled && (
-        <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(1,118,211,0.06)', borderRadius: 8, border: '1px solid rgba(1,118,211,0.2)' }}>
-          <p style={{ color: '#0154A4', margin: 0, fontSize: 12 }}>✓ Details pre-filled from your account. Edit if needed.</p>
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: '#EFF6FF', borderRadius: 10, border: '1px solid #BFDBFE' }}>
+          <p style={{ color: '#1D4ED8', margin: 0, fontSize: 13, fontWeight: 600 }}>✓ Details pre-filled from your account. Edit if needed.</p>
         </div>
       )}
       {error && (
-        <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(186,5,23,0.08)', borderRadius: 8, border: '1px solid rgba(186,5,23,0.2)' }}>
-          <p style={{ color: '#BA0517', margin: 0, fontSize: 13 }}>{error}</p>
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: '#FEF2F2', borderRadius: 10, border: '1px solid #FECACA' }}>
+          <p style={{ color: '#B91C1C', margin: 0, fontSize: 14, fontWeight: 600 }}>{error}</p>
         </div>
       )}
       {geoStatus === 'banner' && (
-        <div style={{ marginBottom: 12, background: 'linear-gradient(135deg,rgba(1,118,211,0.07),rgba(1,118,211,0.03))', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <span style={{ fontSize: 22, flexShrink: 0 }}>📍</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#0176D3', marginBottom: 3 }}>Allow your location for personalised job alerts</div>
-              <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6, marginBottom: 10 }}>
-                Share your location to receive job alerts for roles near you by email.
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={requestLocationPermission} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer' }}>📍 Allow Location</button>
-                <button onClick={() => setGeoStatus('denied')} style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 8, color: '#64748B', fontWeight: 600, fontSize: 12, padding: '8px 14px', cursor: 'pointer' }}>Skip</button>
-              </div>
-            </div>
+        <div style={{ marginBottom: 16, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 20 }}>📍</span>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#1D4ED8' }}>Allow location for job alerts near you</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={requestLocationPermission} style={{ flex: 1, background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px', cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>📍 Allow</button>
+            <button onClick={() => setGeoStatus('denied')} style={{ flex: 1, background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 8, color: '#374151', fontWeight: 600, fontSize: 14, padding: '10px', cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>Skip</button>
           </div>
         </div>
       )}
       {geoStatus === 'asking' && (
-        <div style={{ marginBottom: 12, background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#0176D3' }}>Requesting location…</div>
+        <div style={{ marginBottom: 16, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#1D4ED8', fontWeight: 600 }}>Detecting your location…</div>
       )}
       {geoStatus === 'granted' && geo && (
-        <div style={{ marginBottom: 12, background: 'rgba(5,150,105,0.07)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#065f46' }}>
-          📍 Location detected {geo.city ? `— ${geo.city}` : ''}
+        <div style={{ marginBottom: 16, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#166534', fontWeight: 600 }}>
+          📍 Location detected{geo.city ? ` — ${geo.city}` : ''}
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {prefillState && (
-          <div style={{ background: prefillState.isRegistered ? 'linear-gradient(135deg,rgba(5,150,105,0.08),rgba(5,150,105,0.04))' : 'rgba(1,118,211,0.06)', border: `1px solid ${prefillState.isRegistered ? 'rgba(5,150,105,0.3)' : 'rgba(1,118,211,0.25)'}`, borderRadius: 12, padding: '12px 16px', fontSize: 12 }}>
-            <strong>{prefillState.isRegistered ? 'Registered account found!' : 'Profile found'}</strong>
-            <p style={{ margin: '4px 0 0' }}>{prefillState.isRegistered ? 'Details pre-filled. Enter mobile to complete.' : 'Details pre-filled. Please verify.'}</p>
-          </div>
-        )}
-        <Field label="Email Address *" value={form.email} onChange={v => { sf('email', v); setPrefillState(null); setUserEditedFields(new Set()); }} onBlur={handleEmailBlur} type="email" placeholder="jane@example.com" />
-        <Field label={isHighlighted('name') ? '✅ Full Name *' : 'Full Name *'} value={form.name} onChange={v => handlePrefillFieldChange('name', v)} placeholder="Jane Smith" inputStyle={isHighlighted('name') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
-        <Field label="Mobile Number *" value={form.phone} onChange={v => sf('phone', v)} placeholder="+91 99999 99999" type="tel" />
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
-          <Field label="Current Title *" value={form.title} onChange={v => handlePrefillFieldChange('title', v)} placeholder="e.g. Developer" inputStyle={isHighlighted('title') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
-          <Field label="Current Company *" value={form.currentCompany} onChange={v => handlePrefillFieldChange('currentCompany', v)} placeholder="e.g. TCS" inputStyle={isHighlighted('currentCompany') ? { background:'#f0fdf4', borderColor:'#059669' } : {}} />
+      {prefillState && (
+        <div style={{ marginBottom: 16, background: prefillState.isRegistered ? '#F0FDF4' : '#EFF6FF', border: `1px solid ${prefillState.isRegistered ? '#BBF7D0' : '#BFDBFE'}`, borderRadius: 10, padding: '12px 14px' }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: prefillState.isRegistered ? '#166534' : '#1D4ED8' }}>
+            {prefillState.isRegistered ? '✅ Account found — details pre-filled' : 'ℹ️ Profile found — please verify'}
+          </p>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
+      )}
+
+      {/* ── FORM FIELDS ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+        {/* Section: Contact */}
+        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Contact</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <MField label="Email Address *" value={form.email} type="email" placeholder="jane@example.com"
+            onChange={v => { sf('email', v); setPrefillState(null); setUserEditedFields(new Set()); }} onBlur={handleEmailBlur}
+            suffix={emailChecking ? <span style={{ fontSize: 12, color: '#64748B' }}>checking…</span> : null} />
+          <MField label="Full Name *" value={form.name} placeholder="Jane Smith"
+            onChange={v => handlePrefillFieldChange('name', v)} highlight={isHighlighted('name')} />
+          <MField label="Mobile Number *" value={form.phone} type="tel" placeholder="+91 99999 99999"
+            onChange={v => sf('phone', v)} />
+        </div>
+
+        {/* Section: Professional */}
+        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Professional</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <MField label="Current Title *" value={form.title} placeholder="e.g. Software Developer"
+            onChange={v => handlePrefillFieldChange('title', v)} highlight={isHighlighted('title')} />
+          <MField label="Current Company *" value={form.currentCompany} placeholder="e.g. TCS"
+            onChange={v => handlePrefillFieldChange('currentCompany', v)} highlight={isHighlighted('currentCompany')} />
+          <MSelect label="Years of Experience *" value={form.experience}
+            onChange={v => handlePrefillFieldChange('experience', v)} highlight={isHighlighted('experience')}
+            options={[['', 'Select experience…'], ...['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => [y, `${y} year${y === '1' ? '' : 's'}`])]} />
+          <MSelect label="Notice Period / Availability *" value={form.availability}
+            onChange={v => handlePrefillFieldChange('availability', v)} highlight={isHighlighted('availability')}
+            options={[['', 'Select availability…'], ...['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => [a, a])]} />
+        </div>
+
+        {/* Section: Role fit */}
+        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Role Fit</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <MSelect label="Industry *" value={form.industry} onChange={v => sf('industry', v)}
+            options={[['', '— Select industry —'], ...INDUSTRIES.map(i => [i, i])]} />
+          <MSelect label="Department *" value={form.department} onChange={v => sf('department', v)}
+            options={[['', '— Select department —'], ...DEPARTMENTS.map(d => [d, d])]} />
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Experience *</label>
-            <select value={form.experience} onChange={e => handlePrefillFieldChange('experience', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('experience') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
-              <option value="">Select…</option>
-              {['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => <option key={y} value={y}>{y} yrs</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Availability *</label>
-            <select value={form.availability} onChange={e => handlePrefillFieldChange('availability', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border: isHighlighted('availability') ? '1.5px solid #059669' : '1px solid #DDDBDA', background: '#fff', fontSize: '16px' }}>
-              <option value="">Select…</option>
-              {['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Cover Letter <span style={{ color: '#94A3B8', fontWeight: 500 }}>(optional)</span></label>
+            <textarea value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} rows={3}
+              placeholder="Brief note about why you're a great fit…"
+              style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap:12 }}>
-          <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Industry *</label>
-            <select value={form.industry} onChange={e => sf('industry', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border:'1px solid #DDDBDA', background:'#fff', fontSize:'16px' }}>
-              <option value="">— Select industry —</option>
-              {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:600, marginBottom:4 }}>Department *</label>
-            <select value={form.department} onChange={e => sf('department', e.target.value)} style={{ width:'100%', padding:'12px', borderRadius:8, border:'1px solid #DDDBDA', background:'#fff', fontSize:'16px' }}>
-              <option value="">— Select department —</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
+        {/* Section: Account */}
+        <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Account</span>
         </div>
-        <Field label="Cover Letter (optional)" value={form.coverLetter} onChange={v => sf('coverLetter', v)} rows={3} />
-        <div style={{ background: 'rgba(1,118,211,0.05)', borderRadius: 12, padding: '14px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', fontSize: '15px', fontWeight: 700, minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>
-            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: createAccount ? '#0176D3' : '#fff', border: `2px solid ${createAccount ? '#0176D3' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
-              {createAccount && <span style={{ color: '#fff', fontSize: 15, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
+        <div style={{ marginBottom: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', minHeight: 52, WebkitTapHighlightColor: 'transparent', background: createAccount ? '#EFF6FF' : '#F8FAFC', borderRadius: 12, padding: '12px 14px', border: `1.5px solid ${createAccount ? '#BFDBFE' : '#E2E8F0'}` }}>
+            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: createAccount ? '#0176D3' : '#fff', border: `2px solid ${createAccount ? '#0176D3' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
+              {createAccount && <span style={{ color: '#fff', fontSize: 16, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
               <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', margin: 0, cursor: 'pointer' }} />
             </span>
-            Create a free account to track application
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628' }}>Create a free account</div>
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>Track your application live after submitting</div>
+            </div>
           </label>
           {createAccount && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Password */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' }}>Create Password *</label>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Create Password *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Min 8 characters"
-                    style={{ width: '100%', padding: '12px 42px 12px 12px', borderRadius: 8, border: '1.5px solid #DDDBDA', fontSize: '16px', boxSizing: 'border-box', outline: 'none' }}
+                    style={{ width: '100%', padding: '14px 48px 14px 16px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 16, boxSizing: 'border-box', outline: 'none', background: '#fff' }}
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.55, fontSize: 18 }}>
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {showPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
                 {password && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                     {[{ ok: password.length >= 8, label: '8+ chars' }, { ok: /[A-Z]/.test(password), label: 'Uppercase' }, { ok: /[0-9]/.test(password), label: 'Number' }].map(c => (
-                      <span key={c.label} style={{ fontSize: 11, color: c.ok ? '#059669' : '#94A3B8', fontWeight: 700 }}>{c.ok ? '✓' : '○'} {c.label}</span>
+                      <span key={c.label} style={{ fontSize: 12, color: c.ok ? '#059669' : '#94A3B8', fontWeight: 700 }}>{c.ok ? '✓' : '○'} {c.label}</span>
                     ))}
                   </div>
                 )}
               </div>
               {/* Confirm Password */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' }}>Confirm Password *</label>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Confirm Password *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter your password"
-                    style={{ width: '100%', padding: '12px 42px 12px 12px', borderRadius: 8, border: `1.5px solid ${confirmPassword && confirmPassword !== password ? '#BA0517' : '#DDDBDA'}`, fontSize: '16px', boxSizing: 'border-box', outline: 'none' }}
+                    style={{ width: '100%', padding: '14px 48px 14px 16px', borderRadius: 10, border: `1.5px solid ${confirmPassword && confirmPassword !== password ? '#EF4444' : '#CBD5E1'}`, fontSize: 16, boxSizing: 'border-box', outline: 'none', background: '#fff' }}
                   />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.55, fontSize: 18 }}>
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {showConfirmPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
                 {confirmPassword && confirmPassword === password && (
-                  <p style={{ color: '#059669', fontSize: 11, fontWeight: 700, margin: '4px 0 0' }}>✓ Passwords match</p>
+                  <p style={{ color: '#059669', fontSize: 13, fontWeight: 700, margin: '6px 0 0' }}>✓ Passwords match</p>
                 )}
                 {confirmPassword && confirmPassword !== password && (
-                  <p style={{ color: '#BA0517', fontSize: 11, fontWeight: 700, margin: '4px 0 0' }}>✕ Passwords do not match</p>
+                  <p style={{ color: '#EF4444', fontSize: 13, fontWeight: 700, margin: '6px 0 0' }}>✕ Passwords do not match</p>
                 )}
               </div>
               {/* T&C */}
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: '13px', lineHeight: 1.5, cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>
-                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1, background: agreedTerms ? '#0176D3' : '#fff', border: `2px solid ${agreedTerms ? '#0176D3' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
-                  {agreedTerms && <span style={{ color: '#fff', fontSize: 13, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', minHeight: 48, WebkitTapHighlightColor: 'transparent', background: agreedTerms ? '#F0FDF4' : '#F8FAFC', borderRadius: 10, padding: '12px', border: `1.5px solid ${agreedTerms ? '#BBF7D0' : '#E2E8F0'}` }}>
+                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, flexShrink: 0, marginTop: 1, background: agreedTerms ? '#059669' : '#fff', border: `2px solid ${agreedTerms ? '#059669' : '#94A3B8'}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', transition: 'all 0.15s' }}>
+                  {agreedTerms && <span style={{ color: '#fff', fontSize: 14, fontWeight: 900, lineHeight: 1, userSelect: 'none' }}>✓</span>}
                   <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', margin: 0, cursor: 'pointer' }} />
                 </span>
-                <span style={{ color: '#374151' }}>
+                <span style={{ color: '#374151', fontSize: 14, lineHeight: 1.5 }}>
                   I agree to the{' '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0176D3', fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>
                   {' '}and{' '}
@@ -519,20 +560,27 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             </div>
           )}
         </div>
+
         {questions.length > 0 && (
-          <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
-            <p style={{ color: '#0176D3', fontSize: 12, fontWeight: 700 }}>📋 Screening Questions</p>
-            {questions.map((q, i) => (
-              <div key={i} style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{q.question}</label>
-                <textarea value={answers[i] || ''} onChange={e => setAnswers(p => ({ ...p, [i]: e.target.value }))} rows={2} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #ddd' }} />
-              </div>
-            ))}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #F1F5F9' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Screening Questions</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {questions.map((q, i) => (
+                <div key={i}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{q.question}{q.required && <span style={{ color: '#EF4444' }}> *</span>}</label>
+                  <textarea value={answers[i] || ''} onChange={e => setAnswers(p => ({ ...p, [i]: e.target.value }))} rows={3}
+                    style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
-      <p style={{ color: '#706E6B', fontSize: 11, marginTop: 12, textAlign: 'center' }}>
-        Already have an account? <a href="/login" style={{ color: '#014486', fontWeight: 600 }}>Sign in</a>
+      <p style={{ color: '#94A3B8', fontSize: 13, marginTop: 20, textAlign: 'center' }}>
+        Already have an account?{' '}
+        <a href="/login" style={{ color: '#0176D3', fontWeight: 700 }}>Sign in</a>
       </p>
     </Modal>
   );
