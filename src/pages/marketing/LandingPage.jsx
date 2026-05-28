@@ -261,7 +261,7 @@ export default function LandingPage() {
           <div className="mkt-reveal">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 100, padding: '8px 20px', marginBottom: 32 }}>
               <span className="mkt-glass-dark" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mkt-accent)', boxShadow: '0 0 12px var(--mkt-accent)', display: 'inline-block' }} />
-              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India's Job Board — Find, Post &amp; Hire Smarter</span>
+              <span style={{ color: 'var(--mkt-accent)', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>India&apos;s Job Board — Connecting Talent with Opportunity</span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(36px, 6.5vw, 86px)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 0.95, color: '#fff', marginBottom: 16, textShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
