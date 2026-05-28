@@ -74,7 +74,7 @@ export default function AboutPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 20 }}>
             {DIFFERENTIATORS.map(item => (
               <div key={item.title} className="mkt-card" style={{ background: 'var(--mkt-card-bg)', borderRadius: 18, border: `1px solid var(--mkt-card-border)`, padding: 24 }}>
-                <div style={{ width: 50, height: 50, borderRadius: 14, background: `linear-gradient(135deg, var(--mkt-primary), var(--mkt-accent))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>
+                <div style={{ width: 50, height: 50, borderRadius: 14, background: `linear-gradient(135deg, var(--mkt-primary), var(--mkt-accent))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, margin: '0 auto 16px' }}>
                   {item.icon}
                 </div>
                 <h3 style={{ color: 'var(--mkt-text-heading)', fontSize: 18, fontWeight: 800, margin: '0 0 8px' }}>{item.title}</h3>
@@ -131,9 +131,9 @@ export default function AboutPage() {
           <div className="grid-3" style={{ alignItems:'stretch' }}>
             {(Array.isArray(VALUES) ? VALUES : []).map((v, i) => (
               <div key={v.title} className="mkt-card"
-                style={{ background: 'var(--mkt-card-bg)', borderRadius:20, padding:32, border: `1px solid var(--mkt-card-border)`, display:'flex', flexDirection:'column' }}
+                style={{ background: 'var(--mkt-card-bg)', borderRadius:20, padding:32, border: `1px solid var(--mkt-card-border)`, display:'flex', flexDirection:'column', alignItems:'center' }}
               >
-                <div style={{width:60,height:60,borderRadius:16,background:VALUE_GRADIENTS[i%VALUE_GRADIENTS.length],display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,marginBottom:20, boxShadow: '0 8px 20px rgba(0,0,0,0.1)'}}>
+                <div style={{width:60,height:60,borderRadius:16,background:VALUE_GRADIENTS[i%VALUE_GRADIENTS.length],display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,marginBottom:20, boxShadow: '0 8px 20px rgba(0,0,0,0.1)', flexShrink:0}}>
                   {v.icon}
                 </div>
                 <h4 style={{ fontWeight:800, color: 'var(--mkt-text-heading)', marginBottom:12, fontSize:'1.1rem' }}>{v.title}</h4>

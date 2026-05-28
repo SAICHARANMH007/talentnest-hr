@@ -323,10 +323,69 @@
 
 
 /* ════════════════════════════════════════════════════════════════════════
-   MIXED THEME — hero/nav is dark, content sections are light.
-   No overrides needed — default variables already handle it.
-   mkt-section-dark stays dark, mkt-section-light stays light.
+   MIXED THEME — dark nav, distinctly blue-tinted content sections.
+   Clearly different from Light (white) and Dark (slate).
    ════════════════════════════════════════════════════════════════════════ */
+
+/* Page wrapper background */
+[data-mkt-theme="mixed"] .mkt-page {
+  background: #E8F4FF;
+}
+
+/* Light sections get the blue tint */
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light {
+  background: #E8F4FF !important;
+}
+
+/* Cards stay white to contrast against the blue-tinted background */
+[data-mkt-theme="mixed"] .mkt-page .mkt-card {
+  background: #FFFFFF !important;
+  border-color: rgba(1,118,211,0.22) !important;
+  box-shadow: 0 4px 16px rgba(1,118,211,0.08) !important;
+}
+[data-mkt-theme="mixed"] .mkt-page .mkt-card:hover {
+  box-shadow: 0 12px 40px rgba(1,118,211,0.18) !important;
+  border-color: rgba(1,118,211,0.45) !important;
+}
+
+/* Headings: deep navy — clearly different from Light's near-black */
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h1,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h2,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h3,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h4,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h5,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light h6 {
+  color: #0C2D6B !important;
+}
+
+/* Body text: dark navy (readable on light-blue background) */
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light p,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-light li {
+  color: #1E3A5F !important;
+}
+
+/* Dark hero / CTA sections stay fully dark — do not override */
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark h1,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark h2,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark h3,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark p,
+[data-mkt-theme="mixed"] .mkt-page .mkt-section-dark li {
+  /* inherited from .mkt-section-dark — keep white text on dark */
+}
+
+/* Surface-bg elements (stat boxes, sub-panels) */
+[data-mkt-theme="mixed"] .mkt-page [style*="background: var(--mkt-surface-bg)"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background: #F8FAFC"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background: #f8fafc"] {
+  background: #D6ECFF !important;
+}
+
+/* Light theme — nav has visible white bg with subtle shadow border */
+[data-mkt-theme="light"] .mkt-page .tn-nav,
+[data-mkt-theme="light"] .mkt-page [class*="nav"] {
+  box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
 
 
 /* ════════════════════════════════════════════════════════════════════════
