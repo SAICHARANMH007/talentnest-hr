@@ -90,25 +90,25 @@ const TRUST_BADGES = [
 
 const VALUE_PILLARS = [
   {
-    icon: ‘🚀’,
-    title: ‘Job Board & Application Portal’,
-    desc: ‘Publish openings on TalentNest\’s public job board. Candidates apply directly — their profiles, resumes, and answers land in your dashboard the moment they apply.’,
-    points: [‘Real-time application notifications’, ‘Candidate profiles with resume & skills’, ‘Full visibility from Applied to Hired’],
-    accent: ‘#0176D3’,
+    icon: '🚀',
+    title: 'Job Board & Application Portal',
+    desc: 'Publish openings on TalentNest\'s public job board. Candidates apply directly — their profiles, resumes, and answers land in your dashboard the moment they apply.',
+    points: ['Real-time application notifications', 'Candidate profiles with resume & skills', 'Full visibility from Applied to Hired'],
+    accent: '#0176D3',
   },
   {
-    icon: ‘⚙️’,
-    title: ‘End-to-End Recruitment ATS’,
-    desc: ‘Manage every stage of hiring in one place — screening, assessments, interviews, offer letters, and onboarding. No spreadsheets. No missed follow-ups.’,
-    points: [‘7-stage pipeline: Applied → Hired’, ‘Automated email & status notifications’, ‘Offer letter generation & online acceptance’],
-    accent: ‘#00C2CB’,
+    icon: '⚙️',
+    title: 'End-to-End Recruitment ATS',
+    desc: 'Manage every stage of hiring in one place — screening, assessments, interviews, offer letters, and onboarding. No spreadsheets. No missed follow-ups.',
+    points: ['7-stage pipeline: Applied → Hired', 'Automated email & status notifications', 'Offer letter generation & online acceptance'],
+    accent: '#00C2CB',
   },
   {
-    icon: ‘🎯’,
-    title: ‘Expert Staffing & Search’,
-    desc: ‘Our specialist recruiters deliver interview-ready shortlists within 72 hours — across IT, Finance, HR, Marketing, Operations, and Executive roles. All backed by a 90-day replacement guarantee.’,
-    points: [‘Shortlists delivered in under 72 hours’, ‘90-day free replacement guarantee’, ‘All industries & job functions covered’],
-    accent: ‘#F59E0B’,
+    icon: '🎯',
+    title: 'Expert Staffing & Search',
+    desc: 'Our specialist recruiters deliver interview-ready shortlists within 72 hours — across IT, Finance, HR, Marketing, Operations, and Executive roles. All backed by a 90-day replacement guarantee.',
+    points: ['Shortlists delivered in under 72 hours', '90-day free replacement guarantee', 'All industries & job functions covered'],
+    accent: '#F59E0B',
   },
 ];
 
