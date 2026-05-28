@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback, Component, useRef } from 'react';
 import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -160,6 +160,7 @@ export default function CareersPage() {
   const [sharedJob, setSharedJob] = useState(null); // job featured at top when coming from a shared link
   const [sharePopover, setSharePopover] = useState(null); // job id whose share popover is open
   const [expanded, setExpanded] = useState(null); // id of job whose details are expanded
+  const jobListRef = useRef(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -168,6 +169,13 @@ export default function CareersPage() {
     }, 400);
     return () => clearTimeout(handler);
   }, [search]);
+
+  // Scroll to results when user triggers a search from the hero bar
+  useEffect(() => {
+    if (debouncedSearch && jobListRef.current) {
+      jobListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [debouncedSearch]);
 
   useEffect(() => {
     setPage(1);
@@ -512,7 +520,7 @@ export default function CareersPage() {
       </div>
 
       {/* ── JOB LISTINGS ── */}
-      <section style={{ background: '#F7F8FC', padding: '40px 0 80px' }}>
+      <section ref={jobListRef} style={{ background: '#F7F8FC', padding: '40px 0 80px' }}>
         <div className="tn-container">
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {loading ? (
