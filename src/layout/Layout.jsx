@@ -104,10 +104,12 @@ function NotificationBell({ userRole, compact = false }) {
   const [detail,   setDetail]   = React.useState(null);
   const [loading,  setLoading]  = React.useState(false);
   const btnRef                  = React.useRef(null);
-  const [pos,      setPos]      = React.useState({ top: 0, left: 0 });
-  const navigate                = useNavigate();
-  const summaryFetched          = React.useRef(false);
-  const readIds                 = React.useRef(new Set());
+  const [pos,         setPos]         = React.useState({ top: 0, left: 0 });
+  const [lastRefresh, setLastRefresh] = React.useState(null);
+  const navigate                      = useNavigate();
+  const summaryFetched                = React.useRef(false);
+  const readIds                       = React.useRef(new Set());
+  const isAdminOrSA = userRole === 'super_admin' || userRole === 'admin';
   const [isMobile, setIsMobile]  = React.useState(() => window.innerWidth < 768);
   React.useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -125,6 +127,7 @@ function NotificationBell({ userRole, compact = false }) {
         .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
         .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
       setNotifs(merged);
+      setLastRefresh(new Date());
     } catch {}
   }, []);
 
@@ -155,19 +158,47 @@ function NotificationBell({ userRole, compact = false }) {
     }
     setOpen(true);
 
-    // For super_admin: auto-generate platform summary on first open
-    if (userRole === 'super_admin' && !summaryFetched.current) {
+    // For admin + super_admin: auto-generate fresh notification summary on first open
+    if (isAdminOrSA && !summaryFetched.current) {
       summaryFetched.current = true;
       setLoading(true);
       try {
         const fresh = await api.generatePlatformNotifications();
-        if (Array.isArray(fresh)) setNotifs(fresh);
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          const seen = new Set();
+          const merged = fresh
+            .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
+            .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
+          setNotifs(merged);
+          setLastRefresh(new Date());
+        } else {
+          await load();
+        }
       } catch { await load(); }
       setLoading(false);
     } else {
       await load();
     }
   };
+
+  // Manual refresh — regenerate + reload
+  const refreshNotifs = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const fresh = await api.generatePlatformNotifications();
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        const seen = new Set();
+        const merged = fresh
+          .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
+          .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
+        setNotifs(merged);
+        setLastRefresh(new Date());
+      } else {
+        await load();
+      }
+    } catch { await load(); }
+    setLoading(false);
+  }, [load]);
 
   const markOne  = async (id) => {
     if (!id) return;
@@ -442,13 +473,10 @@ function NotificationBell({ userRole, compact = false }) {
                 {unread > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 10, padding: '2px 8px', fontSize: 11, marginLeft: 7, fontWeight: 700 }}>{unread} new</span>}
               </span>
               <div style={{ display: 'flex', gap: isMobile ? 12 : 8, alignItems: 'center' }}>
-                {userRole === 'super_admin' && (
+                {isAdminOrSA && (
                   <button
-                    onClick={async () => {
-                      setLoading(true);
-                      try { const f = await api.generatePlatformNotifications(); if (Array.isArray(f)) setNotifs(f); } catch {}
-                      setLoading(false);
-                    }}
+                    onClick={refreshNotifs}
+                    title="Refresh notifications"
                     style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 12, cursor: 'pointer', fontWeight: 700, padding: '4px 8px', minHeight: 36 }}
                   >🔄</button>
                 )}
@@ -491,16 +519,12 @@ function NotificationBell({ userRole, compact = false }) {
                 <div style={{ color: '#706E6B', fontSize: 11, marginTop: 5 }}>
                   {tab === 'unread' ? 'Switch to "All" to see past notifications' : "You'll see updates here when things happen"}
                 </div>
-                {userRole === 'super_admin' && tab !== 'unread' && (
+                {isAdminOrSA && (
                   <button
-                    onClick={async () => {
-                      setLoading(true);
-                      try { const f = await api.generatePlatformNotifications(); if (Array.isArray(f)) { setNotifs(f); setTab('all'); } } catch {}
-                      setLoading(false);
-                    }}
+                    onClick={refreshNotifs}
                     style={{ marginTop: 14, padding: '8px 18px', background: 'linear-gradient(135deg,#0176D3,#0154A4)', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
                   >
-                    🔄 Load Platform Summary
+                    🔄 Refresh Notifications
                   </button>
                 )}
               </div>
@@ -543,15 +567,32 @@ function NotificationBell({ userRole, compact = false }) {
             )}
           </div>
 
-          {notifs.length > 0 && (
-            <div style={{ padding: isMobile ? '12px 16px' : '10px 16px', borderTop: '1px solid #F3F2F2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#FAFAFA' }}>
-              <span style={{ color: '#9CA3AF', fontSize: isMobile ? 13 : 11 }}>{notifs.length} total · {unread} unread</span>
-              <button onClick={clearAll}
-                style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: isMobile ? 13 : 11, cursor: 'pointer', padding: isMobile ? '8px 12px' : '0', minHeight: isMobile ? 44 : 'auto' }}>
-                Clear all
-              </button>
+          <div style={{ padding: isMobile ? '10px 16px' : '8px 16px', borderTop: '1px solid #F3F2F2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: '#FAFAFA', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {notifs.length > 0 && (
+                <span style={{ color: '#9CA3AF', fontSize: isMobile ? 12 : 10 }}>{notifs.length} total · {unread} unread</span>
+              )}
+              {lastRefresh && (
+                <span style={{ color: '#CBD5E1', fontSize: 9, fontStyle: 'italic' }}>
+                  Updated {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                </span>
+              )}
             </div>
-          )}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {isAdminOrSA && (
+                <button onClick={refreshNotifs}
+                  style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 6, color: '#0176D3', fontSize: isMobile ? 12 : 10, cursor: 'pointer', padding: isMobile ? '6px 10px' : '3px 8px', fontWeight: 700, minHeight: isMobile ? 36 : 'auto' }}>
+                  🔄 Refresh
+                </button>
+              )}
+              {notifs.length > 0 && (
+                <button onClick={clearAll}
+                  style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: isMobile ? 12 : 10, cursor: 'pointer', padding: isMobile ? '6px 10px' : '3px 8px', minHeight: isMobile ? 36 : 'auto' }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
         </div>, document.body)}
         </>
       )}

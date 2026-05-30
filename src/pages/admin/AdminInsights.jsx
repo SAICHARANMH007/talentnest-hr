@@ -113,6 +113,9 @@ export default function AdminInsights({ user }) {
     : Array.isArray(slaRaw)         ? slaRaw : [];
   const upcomingInts = Array.isArray(interviewSection.data)               ? interviewSection.data
     : Array.isArray(interviewSection.data?.interviews)                    ? interviewSection.data.interviews
+    : Array.isArray(interviewSection.data?.upcoming)                      ? interviewSection.data.upcoming
+    : Array.isArray(interviewSection.data?.results)                       ? interviewSection.data.results
+    : Array.isArray(interviewSection.data?.items)                         ? interviewSection.data.items
     : Array.isArray(interviewSection.data?.data)                          ? interviewSection.data.data : [];
   const velocityData = Array.isArray(velocitySection.data)                ? velocitySection.data
     : Array.isArray(velocitySection.data?.data)                           ? velocitySection.data.data : [];
@@ -670,7 +673,16 @@ export default function AdminInsights({ user }) {
               {upcomingInts.length} interview{upcomingInts.length !== 1 ? 's' : ''} scheduled · 🔔 Today rows highlighted
             </p>
           </>
-        ) : <SectionEmpty msg="No upcoming interviews scheduled. Schedule interviews by moving candidates to Interview stage." />)}
+        ) : (
+          <div style={{ textAlign: 'center', padding: '28px 20px' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>No upcoming interviews at org level</div>
+            <div style={{ fontSize: 11, color: '#94A3B8', lineHeight: 1.6 }}>
+              Interviews are scheduled inside each recruiter&apos;s pipeline.<br />
+              Go to <strong>Applicants → Pipeline</strong> or check each recruiter&apos;s view to see scheduled interviews.
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── TIME TO HIRE + DROPOUT ANALYSIS ── */}
