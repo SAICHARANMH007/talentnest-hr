@@ -11,14 +11,25 @@ const calcDays = (from, to) => {
   return d > 0 ? d : 1;
 };
 const initials = name => (name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const fmtStage = s => (s || '').replace(/_/g, ' ');
 
 const STAGE_COLOR = {
   applied: '#0176D3', screening: '#7C3AED', shortlisted: '#0369A1',
   interview_scheduled: '#F59E0B', interview_completed: '#10B981',
   offer_extended: '#D97706', selected: '#059669', rejected: '#BA0517',
+  // also handle capitalised variants from the app model
+  Applied: '#0176D3', Screening: '#7C3AED', Shortlisted: '#0369A1',
+  'Interview Round 1': '#F59E0B', 'Interview Round 2': '#a78bfa',
+  Offer: '#059669', Hired: '#2E844A', Rejected: '#BA0517',
 };
 
-// ── Candidates-during-tenure list ───────────────────────────────────────────
+const STAGE_ORDER = [
+  'Applied','applied','Screening','screening','Shortlisted','shortlisted',
+  'Interview Round 1','interview_scheduled','Interview Round 2','interview_completed',
+  'Offer','offer_extended','Hired','selected','Rejected','rejected',
+];
+
+// ── Candidates list (reused in per-recruiter drill-down) ─────────────────────
 function CandidateList({ candidates, emptyMsg }) {
   if (!candidates.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
@@ -26,18 +37,18 @@ function CandidateList({ candidates, emptyMsg }) {
     <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {candidates.map((a, i) => {
         const name  = a.candidate?.name || a.candidateName || '?';
-        const stage = a.stage || 'applied';
+        const stage = a.currentStage || a.stage || 'applied';
         const color = STAGE_COLOR[stage] || '#64748B';
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}22` }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-              {name[0].toUpperCase()}
+              {(name[0] || '?').toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 12, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-              <div style={{ fontSize: 10, color: '#94A3B8' }}>Applied {fmt(a.createdAt)}</div>
+              <div style={{ fontSize: 10, color: '#94A3B8' }}>Applied {fmt(a.createdAt || a.appliedAt)}</div>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' }}>{stage}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtStage(stage)}</span>
           </div>
         );
       })}
@@ -59,7 +70,7 @@ function PipelineLog({ events, emptyMsg }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 11, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.candidateName} <span style={{ color: '#C9C7C5' }}>→</span>{' '}
-                <span style={{ color }}>{ev.stage || ev.stageId || '—'}</span>
+                <span style={{ color }}>{fmtStage(ev.stage || ev.stageId) || '—'}</span>
               </div>
               {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>"{ev.note}"</div>}
             </div>
@@ -72,21 +83,22 @@ function PipelineLog({ events, emptyMsg }) {
 }
 
 const TABS = [
-  { key: 'applied',  label: '👤 Applied During Tenure',     tip: 'Candidates who submitted applications while this recruiter was assigned' },
-  { key: 'pipeline', label: '🔄 Active Candidates',         tip: 'Candidates who had any stage change during this recruiter\'s tenure' },
-  { key: 'log',      label: '📋 Every Stage Change',        tip: 'Full log of every pipeline move that happened during this period' },
+  { key: 'applied',  label: '👤 Applied During Tenure',  tip: 'Candidates who submitted applications while this recruiter was assigned' },
+  { key: 'pipeline', label: '🔄 Active Candidates',      tip: "Candidates who had any stage change during this recruiter's tenure" },
+  { key: 'log',      label: '📋 Every Stage Change',     tip: 'Full log of every pipeline move that happened during this period' },
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
 function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }) {
-  const [open,     setOpen]     = useState(false);
-  const [tab,      setTab]      = useState('applied');
-  const [data,     setData]     = useState({});  // keyed by tab
-  const [loading,  setLoading]  = useState(false);
+  const [open,    setOpen]    = useState(false);
+  const [tab,     setTab]     = useState('applied');
+  const [data,    setData]    = useState({});
+  const [loading, setLoading] = useState(false);
 
   const from = entry.assignedAt ? new Date(entry.assignedAt) : null;
   const to   = entry.removedAt  ? new Date(entry.removedAt)  : null;
 
+  // null from/to = no date constraint (synthetic entry → show all)
   const inWindow = ts => {
     if (!ts) return false;
     const t = new Date(ts);
@@ -95,12 +107,12 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
 
   const loadTab = async (key) => {
     setTab(key);
-    if (data[key]) return;
+    if (data[key] !== undefined) return;
     setLoading(true);
     const apps = await ensureApps();
     let result;
     if (key === 'applied') {
-      result = apps.filter(a => inWindow(a.createdAt));
+      result = apps.filter(a => inWindow(a.createdAt || a.appliedAt));
     } else if (key === 'pipeline') {
       result = apps.filter(a =>
         Array.isArray(a.stageHistory) &&
@@ -125,14 +137,14 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
   const toggle = async () => {
     const next = !open;
     setOpen(next);
-    if (next && !data['applied']) await loadTab('applied');
+    if (next && data['applied'] === undefined) await loadTab('applied');
   };
 
   const borderColor = isCurrent ? 'rgba(5,150,105,0.3)' : '#E2E8F0';
   const bg          = isCurrent ? 'rgba(5,150,105,0.05)' : '#FAFBFF';
 
   return (
-    <div style={{ position: 'relative', marginBottom: isLast ? 0 : 0 }}>
+    <div style={{ position: 'relative' }}>
       {/* Timeline dot */}
       <div style={{
         position: 'absolute', left: -25, top: 16,
@@ -146,7 +158,7 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
       {/* Main card */}
       <div
         onClick={toggle}
-        style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px', background: bg, border: `1px solid ${borderColor}`, borderRadius: 12, cursor: 'pointer', transition: 'box-shadow 0.15s', userSelect: 'none' }}
+        style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px', background: bg, border: `1px solid ${borderColor}`, borderRadius: open ? '12px 12px 0 0' : 12, cursor: 'pointer', transition: 'box-shadow 0.15s', userSelect: 'none' }}
         onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.08)'; }}
         onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
       >
@@ -197,10 +209,14 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
 
           {/* Date range */}
           <div style={{ fontSize: 11, color: '#94A3B8' }}>
-            {isCurrent ? (
-              <>📅 <strong style={{ color: '#374151' }}>{fmt(entry.assignedAt)}</strong> → <strong style={{ color: '#059669' }}>Present (ongoing)</strong></>
+            {entry.assignedAt ? (
+              isCurrent ? (
+                <>📅 <strong style={{ color: '#374151' }}>{fmt(entry.assignedAt)}</strong> → <strong style={{ color: '#059669' }}>Present (ongoing)</strong></>
+              ) : (
+                <>📅 <strong style={{ color: '#374151' }}>{fmt(entry.assignedAt)}</strong> → <strong style={{ color: '#374151' }}>{fmt(entry.removedAt)}</strong></>
+              )
             ) : (
-              <>📅 <strong style={{ color: '#374151' }}>{fmt(entry.assignedAt)}</strong> → <strong style={{ color: '#374151' }}>{fmt(entry.removedAt)}</strong></>
+              <span style={{ color: '#94A3B8' }}>📅 Assignment date not recorded</span>
             )}
             {entry.assignedByName && (
               <span> · assigned by <strong style={{ color: '#706E6B' }}>{entry.assignedByName}</strong></span>
@@ -214,9 +230,9 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
 
       {/* Drill-down panel */}
       {open && (
-        <div style={{ margin: '4px 0 0 0', padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
+        <div style={{ padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderTop: 'none', borderRadius: '0 0 12px 12px' }}>
 
-          {/* Summary chips */}
+          {/* Tab buttons */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             {TABS.map(t => (
               <button
@@ -226,7 +242,7 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
                 style={{
                   padding: '5px 13px', borderRadius: 20, border: 'none', fontSize: 11, cursor: 'pointer', fontWeight: 700, transition: 'all 0.12s',
                   background: tab === t.key ? '#0176D3' : '#fff',
-                  color:      tab === t.key ? '#fff'     : '#64748B',
+                  color:      tab === t.key ? '#fff'    : '#64748B',
                   boxShadow:  tab === t.key ? '0 2px 8px rgba(1,118,211,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
                 }}
               >
@@ -235,38 +251,29 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
             ))}
           </div>
 
-          {/* Content */}
+          {/* Tab content */}
           {loading ? (
             <div style={{ textAlign: 'center', padding: 20, color: '#94A3B8', fontSize: 12 }}>Loading…</div>
           ) : (
             <>
-              {tab === 'applied'  && data.applied  && (
-                <CandidateList
-                  candidates={data.applied}
-                  emptyMsg="No candidates applied during this recruiter's tenure."
-                />
+              {tab === 'applied'  && data.applied  !== undefined && (
+                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." />
               )}
-              {tab === 'pipeline' && data.pipeline && (
-                <CandidateList
-                  candidates={data.pipeline}
-                  emptyMsg="No pipeline activity during this period."
-                />
+              {tab === 'pipeline' && data.pipeline !== undefined && (
+                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." />
               )}
-              {tab === 'log'      && data.log      && (
-                <PipelineLog
-                  events={data.log}
-                  emptyMsg="No stage changes logged during this period."
-                />
+              {tab === 'log'      && data.log      !== undefined && (
+                <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." />
               )}
             </>
           )}
 
-          {/* Count summary */}
+          {/* Count line */}
           {!loading && (
             <div style={{ marginTop: 10, fontSize: 10, color: '#94A3B8' }}>
-              {tab === 'applied'  && data.applied  && `${data.applied.length} candidates applied while ${entry.recruiterName} was assigned`}
-              {tab === 'pipeline' && data.pipeline && `${data.pipeline.length} candidates had pipeline activity during this period`}
-              {tab === 'log'      && data.log      && `${data.log.length} stage moves recorded during this period`}
+              {tab === 'applied'  && data.applied  !== undefined && `${data.applied.length} candidate${data.applied.length !== 1 ? 's' : ''} applied while ${entry.recruiterName} was assigned`}
+              {tab === 'pipeline' && data.pipeline !== undefined && `${data.pipeline.length} candidate${data.pipeline.length !== 1 ? 's' : ''} had pipeline activity during this period`}
+              {tab === 'log'      && data.log      !== undefined && `${data.log.length} stage move${data.log.length !== 1 ? 's' : ''} recorded during this period`}
             </div>
           )}
         </div>
@@ -287,12 +294,153 @@ function HandoffConnector({ from, to }) {
   );
 }
 
+// ── Full pipeline section: ALL candidates for the job, grouped by stage ──────
+function FullPipelineSection({ ensureApps, history }) {
+  const [apps,    setApps]    = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [open,    setOpen]    = useState(false);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && apps === null) {
+      setLoading(true);
+      const data = await ensureApps();
+      setApps(data);
+      setLoading(false);
+    }
+  };
+
+  // Which recruiter was handling the job when this application came in
+  const getRecruiterForApp = (app) => {
+    const ts = app.createdAt || app.appliedAt;
+    if (!ts || !history.length) return null;
+    const t = new Date(ts);
+    const match = history.find(r => {
+      const f  = r.assignedAt ? new Date(r.assignedAt) : null;
+      const to = r.removedAt  ? new Date(r.removedAt)  : null;
+      return (!f || t >= f) && (!to || t <= to);
+    });
+    return match?.recruiterName || null;
+  };
+
+  const total = apps?.length ?? 0;
+
+  // Group by current stage, preserving stage order
+  const byStage = {};
+  (apps || []).forEach(a => {
+    const s = a.currentStage || a.stage || 'applied';
+    if (!byStage[s]) byStage[s] = [];
+    byStage[s].push(a);
+  });
+  const sortedStages = [
+    ...STAGE_ORDER.filter(s => byStage[s]),
+    ...Object.keys(byStage).filter(s => !STAGE_ORDER.includes(s)),
+  ];
+
+  return (
+    <div style={{ marginBottom: 14, border: '1px solid #CBD5E1', borderRadius: 12, overflow: 'hidden' }}>
+      {/* Toggle header */}
+      <div
+        onClick={toggle}
+        style={{
+          padding: '11px 14px', cursor: 'pointer', userSelect: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: open ? '#EFF6FF' : '#F8FAFC',
+          borderBottom: open ? '1px solid #CBD5E1' : 'none',
+          transition: 'background 0.12s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 800, fontSize: 13, color: '#0A1628' }}>👥 All Candidates in Pipeline</span>
+          {apps !== null && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.12)', padding: '2px 9px', borderRadius: 20 }}>
+              {total}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {apps !== null && sortedStages.length > 0 && (
+            <div style={{ display: 'flex', gap: 4 }}>
+              {sortedStages.slice(0, 4).map(s => (
+                <div key={s} title={fmtStage(s)} style={{ width: 8, height: 8, borderRadius: '50%', background: STAGE_COLOR[s] || '#94A3B8' }} />
+              ))}
+              {sortedStages.length > 4 && <span style={{ fontSize: 10, color: '#94A3B8' }}>+{sortedStages.length - 4}</span>}
+            </div>
+          )}
+          <span style={{ fontSize: 12, color: '#94A3B8' }}>{open ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {/* Content */}
+      {open && (
+        <div style={{ padding: '14px 14px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: 16 }}>Loading candidates…</div>
+          ) : total === 0 ? (
+            <div style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, padding: 16 }}>No candidates have applied to this job yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {sortedStages.map(stage => {
+                const list  = byStage[stage];
+                const color = STAGE_COLOR[stage] || '#64748B';
+                return (
+                  <div key={stage}>
+                    {/* Stage heading */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                        {fmtStage(stage)}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>({list.length})</span>
+                    </div>
+
+                    {/* Candidate rows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 16 }}>
+                      {list.map((a, i) => {
+                        const name          = a.candidate?.name || a.candidateName || '?';
+                        const email         = a.candidate?.email || a.email || '';
+                        const recruiterName = getRecruiterForApp(a);
+                        const interviewCnt  = Array.isArray(a.interviewRounds) ? a.interviewRounds.length : 0;
+                        return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}20` }}>
+                            {/* Avatar */}
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: 12, flexShrink: 0 }}>
+                              {(name[0] || '?').toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                              <div style={{ fontSize: 10, color: '#94A3B8', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                                {email && <span>{email}</span>}
+                                <span>Applied {fmt(a.createdAt || a.appliedAt)}</span>
+                                {recruiterName && <span style={{ color: '#059669', fontWeight: 600 }}>👤 {recruiterName}</span>}
+                                {interviewCnt > 0 && <span style={{ color: '#D97706', fontWeight: 600 }}>🗓 {interviewCnt} interview{interviewCnt !== 1 ? 's' : ''}</span>}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                              {fmtStage(stage)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Root component ───────────────────────────────────────────────────────────
 export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [], currentRecruiterName, currentRecruiterId }) {
-  const [history,      setHistory]      = useState([]);
-  const [loading,      setLoading]      = useState(true);
+  const [history,       setHistory]       = useState([]);
+  const [loading,       setLoading]       = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
-  const [allApps,      setAllApps]      = useState(null);
+  const [allApps,       setAllApps]       = useState(null);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -310,7 +458,6 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           setHistory(fallbackHistory);
           setUsingFallback(true);
         } else if (currentRecruiterName) {
-          // Ultimate fallback: synthetic entry from the job's denormalised recruiterName field
           setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
           setUsingFallback(true);
         } else {
@@ -331,7 +478,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
       .finally(() => setLoading(false));
   }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Shared lazy loader — called by entries, caches result
+  // Shared lazy loader — fetches once, cached in state
   const ensureApps = async () => {
     if (fetchedRef.current && allApps !== null) return allApps;
     fetchedRef.current = true;
@@ -347,19 +494,19 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   };
 
   if (!jobId) return null;
-  if (loading) return <div style={{ color: '#94A3B8', fontSize: 12, padding: '8px 0' }}>Loading recruiter history…</div>;
+  if (loading) return <div style={{ color: '#94A3B8', fontSize: 12, padding: '16px 0', textAlign: 'center' }}>Loading recruiter history…</div>;
   if (!history.length) return (
     <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-      <div style={{ fontSize: 32, marginBottom: 10 }}>👤</div>
+      <div style={{ fontSize: 36, marginBottom: 10 }}>👤</div>
       <div style={{ color: '#374151', fontWeight: 700, fontSize: 14, marginBottom: 6 }}>No recruiter assigned yet</div>
       <div style={{ color: '#94A3B8', fontSize: 12 }}>Once a recruiter is assigned to this job, their history will appear here.</div>
     </div>
   );
 
-  // Sort oldest → newest
+  // Sorted oldest → newest
   const sorted = [...history].sort((a, b) => new Date(a.assignedAt || 0) - new Date(b.assignedAt || 0));
 
-  // Detect "again" — same recruiter name appearing more than once
+  // Detect "again" — same recruiter appearing more than once
   const nameTally = {};
   sorted.forEach(r => { nameTally[r.recruiterName] = (nameTally[r.recruiterName] || 0) + 1; });
   const nameSeen = {};
@@ -371,9 +518,9 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   return (
     <div>
       {/* ── Summary bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14, padding: '9px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, padding: '9px 14px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
         <span style={{ fontSize: 11, fontWeight: 800, color: '#374151' }}>
-          👥 {sorted.length} recruiter assignment{sorted.length !== 1 ? 's' : ''}
+          👥 {sorted.length} recruiter{sorted.length !== 1 ? 's' : ''} assigned
         </span>
         {handoffs > 0 && (
           <span style={{ fontSize: 11, color: '#706E6B' }}>· {handoffs} handoff{handoffs !== 1 ? 's' : ''}</span>
@@ -394,19 +541,21 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
       {/* ── Fallback notice ── */}
       {usingFallback && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', marginBottom: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8 }}>
-          <span style={{ fontSize: 14 }}>ℹ️</span>
+          <span style={{ fontSize: 13 }}>ℹ️</span>
           <span style={{ fontSize: 11, color: '#92400E' }}>Showing recruiter data from job record — full assignment audit log is being built by the server.</span>
         </div>
       )}
 
+      {/* ── All candidates in pipeline (collapsible) ── */}
+      <FullPipelineSection ensureApps={ensureApps} history={sorted} />
+
       {/* ── Tap hint ── */}
       <div style={{ fontSize: 10, color: '#94A3B8', marginBottom: 10, fontStyle: 'italic' }}>
-        Tap any recruiter to see candidates and pipeline activity during their tenure
+        Tap any recruiter below to see candidates and pipeline activity during their tenure
       </div>
 
-      {/* ── Timeline ── */}
+      {/* ── Recruiter timeline ── */}
       <div style={{ position: 'relative', paddingLeft: 28 }}>
-        {/* Vertical line connecting all entries */}
         {sorted.length > 1 && (
           <div style={{ position: 'absolute', left: 9, top: 24, bottom: 24, width: 2, background: '#E2E8F0', borderRadius: 2 }} />
         )}
@@ -416,8 +565,8 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           const days = calcDays(entry.assignedAt, entry.removedAt);
           nameSeen[entry.recruiterName] = (nameSeen[entry.recruiterName] || 0) + 1;
           const isRepeat = nameTally[entry.recruiterName] > 1 && nameSeen[entry.recruiterName] > 1;
-          const isLast = i === sorted.length - 1;
-          const next = sorted[i + 1];
+          const isLast   = i === sorted.length - 1;
+          const next     = sorted[i + 1];
 
           return (
             <div key={i}>
@@ -429,12 +578,8 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 isLast={isLast}
                 ensureApps={ensureApps}
               />
-              {/* Handoff connector between consecutive entries */}
               {!isLast && next && (
-                <HandoffConnector
-                  from={entry.recruiterName}
-                  to={next.recruiterName}
-                />
+                <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
               )}
             </div>
           );
