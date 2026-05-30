@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -302,87 +302,169 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
   );
 }
 
+const JOB_LIST_PG = 10; // jobs shown per page
+
+// ── Job-list paginator ────────────────────────────────────────────────────────
+function JobListPaginator({ page, setPage, total }) {
+  const totalPages = Math.ceil(total / JOB_LIST_PG);
+  if (totalPages <= 1) return null;
+  const start = (page - 1) * JOB_LIST_PG + 1;
+  const end   = Math.min(page * JOB_LIST_PG, total);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', marginTop: 8 }}>
+      <span style={{ fontSize: 12, color: '#94A3B8' }}>
+        Jobs {start}–{end} of <strong style={{ color: '#374151' }}>{total}</strong>
+      </span>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <button onClick={() => setPage(1)}         disabled={page === 1}          style={pgBtn(page === 1)}>«</button>
+        <button onClick={() => setPage(p => p-1)}  disabled={page === 1}          style={pgBtn(page === 1)}>‹</button>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', padding: '0 8px' }}>{page}/{totalPages}</span>
+        <button onClick={() => setPage(p => p+1)}  disabled={page === totalPages} style={pgBtn(page === totalPages)}>›</button>
+        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} style={pgBtn(page === totalPages)}>»</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AssignedCandidates({ user }) {
   const navigate = useNavigate();
 
-  const [jobs,       setJobs]       = useState([]);
-  const [apps,       setApps]       = useState([]);
-  const [requests,   setRequests]   = useState([]);
-  const [loading,    setLoad]       = useState(true);
-  const [search,     setSearch]     = useState('');
-  const [drawer,     setDrawer]     = useState(null);      // UserDetailDrawer candidate
-  const [historyJob, setHistoryJob] = useState(null);      // { jobId, jobTitle }
-  const [candPages,  setCandPages]  = useState({});        // jid → page number
+  const [jobs,        setJobs]        = useState([]);
+  // Per-job candidate cache: jid → { apps[], loading, loaded }
+  const [jobApps,     setJobApps]     = useState({});
+  const [requests,    setRequests]    = useState([]);
+  const [loading,     setLoad]        = useState(true);
+  const [search,      setSearch]      = useState('');
+  const [drawer,      setDrawer]      = useState(null);
+  const [historyJob,  setHistoryJob]  = useState(null);
+  const [candPages,   setCandPages]   = useState({});
+  const [jobListPage, setJobListPage] = useState(1);
+  // Global pool loaded on-demand when search is active
+  const [globalApps,        setGlobalApps]        = useState(null);
+  const [globalAppsLoading, setGlobalAppsLoading] = useState(false);
+  const fetchingRef = useRef(new Set());
 
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
   const getCandPage = jid => candPages[jid] || 1;
   const setCandPage = (jid, pg) => setCandPages(prev => ({ ...prev, [jid]: pg }));
 
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-
-  useEffect(() => {
-    const fetches = [
-      api.getJobs({}).catch(() => []),
-      api.getApplications({ limit: 10000 }).catch(() => []),
-    ];
-    if (!isAdmin) {
-      fetches.push(api.getCandidateRequests().catch(() => []));
+  // ── Lazy-load candidates for one job ────────────────────────────────────────
+  const loadJobApps = useCallback(async (jid) => {
+    if (fetchingRef.current.has(jid)) return;
+    fetchingRef.current.add(jid);
+    setJobApps(prev => ({ ...prev, [jid]: { apps: [], loading: true, loaded: false } }));
+    try {
+      const res  = await api.getApplications({ jobId: jid });
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setJobApps(prev => ({ ...prev, [jid]: { apps: list, loading: false, loaded: true } }));
+    } catch {
+      setJobApps(prev => ({ ...prev, [jid]: { apps: [], loading: false, loaded: true } }));
     }
+  }, []);
 
-    Promise.all(fetches).then(([j, a, r]) => {
-      const allJobs = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
-      const allApps = Array.isArray(a) ? a : (Array.isArray(a?.data) ? a.data : []);
+  // ── Mount: load only jobs (fast) ─────────────────────────────────────────────
+  useEffect(() => {
+    fetchingRef.current.clear();
+    setJobApps({});
+    setGlobalApps(null);
+    setLoad(true);
+    const fetches = [api.getJobs({}).catch(() => [])];
+    if (!isAdmin) fetches.push(api.getCandidateRequests().catch(() => []));
 
-      if (isAdmin) {
-        setJobs(allJobs);
-        setApps(allApps);
-      } else {
-        const myJobIds = new Set(allJobs.map(j => String(j._id || j.id)));
-        const myApps   = allApps.filter(a => myJobIds.has(String(a.jobId?._id || a.jobId)));
-        setJobs(allJobs);
-        setApps(myApps);
-        if (r) {
-          const reqArr = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
-          setRequests(reqArr.filter(req => req.status === 'in_progress' || req.status === 'fulfilled'));
-        }
+    Promise.all(fetches).then(([j, r]) => {
+      const raw = j;
+      const allJobs = Array.isArray(raw) ? raw
+        : Array.isArray(raw?.data) ? raw.data
+        : Array.isArray(raw?.jobs) ? raw.jobs
+        : [];
+      setJobs(allJobs);
+      if (!isAdmin && r) {
+        const reqArr = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
+        setRequests(reqArr.filter(req => req.status === 'in_progress' || req.status === 'fulfilled'));
       }
     }).finally(() => setLoad(false));
   }, [user?.id, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Paginated job list ───────────────────────────────────────────────────────
+  const pagedJobs = useMemo(
+    () => jobs.slice((jobListPage - 1) * JOB_LIST_PG, jobListPage * JOB_LIST_PG),
+    [jobs, jobListPage]
+  );
+
+  // ── Load candidates for the current page of jobs ─────────────────────────────
+  useEffect(() => {
+    pagedJobs.forEach(j => loadJobApps(String(j._id || j.id)));
+  }, [pagedJobs, loadJobApps]);
+
+  // ── Search: load global pool once when user starts typing ────────────────────
+  const handleSearch = useCallback(async (value) => {
+    setSearch(value);
+    if (value.trim() && globalApps === null && !globalAppsLoading) {
+      setGlobalAppsLoading(true);
+      try {
+        const res  = await api.getApplications({ limit: 10000 });
+        const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        setGlobalApps(list);
+      } catch {
+        setGlobalApps([]);
+      }
+      setGlobalAppsLoading(false);
+    }
+  }, [globalApps, globalAppsLoading]);
+
+  // ── Stage change: update per-job cache and global pool ───────────────────────
   const changeStage = async (app, stage) => {
     try {
       const appId = app.id || app._id;
       await api.updateStage(appId, stage);
-      setApps(prev => prev.map(a => (a.id || a._id) === appId
-        ? { ...a, currentStage: stage, stage }
-        : a));
+      const jid = String(app.jobId?._id || app.jobId || '');
+      setJobApps(prev => {
+        const entry = prev[jid];
+        if (!entry) return prev;
+        return { ...prev, [jid]: { ...entry, apps: entry.apps.map(a => (a.id || a._id) === appId ? { ...a, currentStage: stage, stage } : a) } };
+      });
+      setGlobalApps(prev => prev ? prev.map(a => (a.id || a._id) === appId ? { ...a, currentStage: stage, stage } : a) : prev);
     } catch (_e) {}
   };
 
-  // Filter apps by search
-  const filteredApps = apps.filter(a => {
-    if (!search) return true;
+  const jobMap = useMemo(() => Object.fromEntries(jobs.map(j => [String(j._id || j.id), j])), [jobs]);
+
+  // ── View derivations ─────────────────────────────────────────────────────────
+  const searchActive = Boolean(search.trim());
+
+  // When search is active, build byJob from global pool; else from per-page cache
+  const searchByJob = useMemo(() => {
+    if (!searchActive) return null;
+    const pool = globalApps || [];
     const q = search.toLowerCase();
-    const c = a.candidateId || a.candidate || {};
-    return (
-      (c.name  || '').toLowerCase().includes(q) ||
-      (c.email || '').toLowerCase().includes(q) ||
-      (a.jobId?.title || '').toLowerCase().includes(q)
-    );
-  });
+    const map = {};
+    pool.forEach(a => {
+      const c = a.candidateId || a.candidate || {};
+      if (
+        (c.name  || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (a.jobId?.title || '').toLowerCase().includes(q)
+      ) {
+        const jid = String(a.jobId?._id || a.jobId || 'unknown');
+        if (!map[jid]) map[jid] = [];
+        map[jid].push(a);
+      }
+    });
+    return map;
+  }, [searchActive, globalApps, search]);
 
-  // Group apps by job, keeping insertion order from jobs array
-  const byJob = {};
-  filteredApps.forEach(a => {
-    const jid = String(a.jobId?._id || a.jobId || 'unknown');
-    if (!byJob[jid]) byJob[jid] = { job: a.jobId, apps: [] };
-    byJob[jid].apps.push(a);
-  });
+  // Which jobs to render: search mode = any job with matches; normal = current page
+  const displayJobs = searchActive
+    ? jobs.filter(j => searchByJob?.[String(j._id || j.id)])
+    : pagedJobs;
 
-  // Quick lookup: full job object (with recruiterHistory) by id
-  const jobMap = Object.fromEntries(jobs.map(j => [String(j._id || j.id), j]));
+  // Total loaded candidate count for subtitle
+  const totalCands = useMemo(() => {
+    if (globalApps) return globalApps.length;
+    return Object.values(jobApps).reduce((s, e) => s + (e.apps?.length || 0), 0);
+  }, [globalApps, jobApps]);
 
-  // Derive handoff state for a job
   function handoffInfo(fullJob) {
     const history = fullJob?.recruiterHistory || [];
     const prev    = history.filter(h => h.removedAt);
@@ -391,7 +473,6 @@ export default function AssignedCandidates({ user }) {
       return { isHandoff: true, isFirst: false, lastPrev: sorted[0], totalPrev: prev.length };
     }
     const current = history.find(r => !r.removedAt) || history[0];
-    // Only show "first recruiter" banner when we have confirmed recruiter history data
     return { isHandoff: false, isFirst: history.length > 0, currentRecruiter: current };
   }
 
@@ -410,9 +491,7 @@ export default function AssignedCandidates({ user }) {
           title={`📋 Recruiter History — ${historyJob.jobTitle}`}
           onClose={() => setHistoryJob(null)}
           width="520px"
-          footer={
-            <button onClick={() => setHistoryJob(null)} style={{ ...btnG, width: '100%' }}>Close</button>
-          }
+          footer={<button onClick={() => setHistoryJob(null)} style={{ ...btnG, width: '100%' }}>Close</button>}
         >
           <JobRecruiterHistory
             jobId={historyJob.jobId}
@@ -427,15 +506,15 @@ export default function AssignedCandidates({ user }) {
       <PageHeader
         title={isAdmin ? '🎯 Assignments Overview' : '🎯 Assigned to Me'}
         subtitle={isAdmin
-          ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} · ${apps.length} application${apps.length !== 1 ? 's' : ''} across your organisation`
-          : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} assigned · ${apps.length} candidate${apps.length !== 1 ? 's' : ''}`}
+          ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} · ${totalCands > 0 ? `${totalCands} candidate${totalCands !== 1 ? 's' : ''} loaded` : 'loading candidates…'} across your organisation`
+          : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} assigned · ${totalCands} candidate${totalCands !== 1 ? 's' : ''}`}
       />
 
       {/* Search */}
       <div style={{ marginBottom: 20 }}>
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => handleSearch(e.target.value)}
           placeholder="Search by candidate name, email or job title…"
           style={{
             width: '100%', boxSizing: 'border-box', padding: '10px 16px',
@@ -443,6 +522,11 @@ export default function AssignedCandidates({ user }) {
             outline: 'none', background: '#F8FAFC',
           }}
         />
+        {searchActive && globalAppsLoading && (
+          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Spinner size={12} /> Loading all candidates for search…
+          </div>
+        )}
       </div>
 
       {/* Staffing requests (recruiter only) */}
@@ -471,165 +555,95 @@ export default function AssignedCandidates({ user }) {
         </div>
       )}
 
-      {/* ── Empty state ── */}
+      {/* ── Empty / search-no-results states ── */}
       {jobs.length === 0 ? (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: '60px 40px', textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
           <h3 style={{ color: '#181818', fontWeight: 700, margin: '0 0 8px' }}>No assignments yet</h3>
           <p style={{ color: '#706E6B', fontSize: 14, margin: '0 0 20px' }}>
-            {isAdmin
-              ? 'Jobs and candidates will appear here once created.'
-              : 'When an admin assigns a job to you, it will appear here.'}
+            {isAdmin ? 'Jobs will appear here once created and assigned.' : 'When an admin assigns a job to you, it will appear here.'}
           </p>
           {isAdmin && (
-            <button onClick={() => navigate('/app/candidates')}
-              style={{ ...btnG, padding: '10px 20px', fontSize: 13 }}>
-              Go to Candidates →
+            <button onClick={() => navigate('/app/jobs')} style={{ ...btnG, padding: '10px 20px', fontSize: 13 }}>
+              Go to Jobs →
             </button>
           )}
         </div>
-      ) : Object.keys(byJob).length === 0 && search ? (
+      ) : searchActive && !globalAppsLoading && displayJobs.length === 0 ? (
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', padding: 40, textAlign: 'center' }}>
           <p style={{ color: '#9E9D9B', fontSize: 13 }}>No candidates match "{search}".</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* Jobs with no applications yet */}
-          {!search && jobs.filter(j => !byJob[String(j._id || j.id)]).map(j => {
-            const jid = String(j._id || j.id);
-            const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(j);
-            const resolvedName = j.recruiterName || (!isAdmin ? user?.name : undefined);
-            const resolvedId   = j.recruiterId   || (!isAdmin ? user?.id || user?._id : undefined);
-            const patchedHist  = (j.recruiterHistory || []).map(h =>
-              (!h.removedAt && !h.recruiterName && resolvedName) ? { ...h, recruiterName: resolvedName } : h
-            );
-            const openHistory = () => setHistoryJob({
-              jobId: jid, jobTitle: j.title,
-              recruiterHistory: patchedHist,
-              recruiterName: resolvedName,
-              recruiterId:   resolvedId,
-            });
-            return (
-              <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                {isHandoff && (
-                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev} onViewHistory={openHistory} />
-                )}
-                {!isHandoff && isFirst && !isAdmin && (
-                  <FirstRecruiterBanner assignedAt={currentRecruiter?.assignedAt} onViewHistory={openHistory} />
-                )}
-                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{j.title}</span>
-                      {isHandoff && (
-                        <span style={{ fontSize: 10, fontWeight: 800, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 20, letterSpacing: 0.5 }}>
-                          HANDOFF
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#706E6B', marginTop: 2 }}>
-                      {j.location && `📍 ${j.location} · `}0 applicants yet
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <Badge label={j.status || 'active'} color={j.status === 'active' ? '#34d399' : '#706E6B'} />
-                    <button
-                      onClick={openHistory}
-                      style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: '#0176D3', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      📋 History
-                    </button>
-                    <button onClick={() => navigate('/app/pipeline')} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>
-                      Pipeline →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Jobs with applications */}
-          {Object.entries(byJob).map(([jid, { job, apps: jobApps }]) => {
-            const fullJob  = jobMap[jid] || {};
+          {/* ── Unified job list (paginated in normal mode, all matches in search mode) ── */}
+          {displayJobs.map(j => {
+            const jid      = String(j._id || j.id);
+            const fullJob  = jobMap[jid] || j;
             const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(fullJob);
-            const jobTitle = job?.title || fullJob.title || 'Unknown Job';
+            const jobTitle = fullJob.title || 'Unknown Job';
 
-            // Resolved recruiter name: job field → non-admin user name fallback
             const resolvedRecruiterName = fullJob.recruiterName || (!isAdmin ? user?.name : undefined);
             const resolvedRecruiterId   = fullJob.recruiterId   || (!isAdmin ? user?.id || user?._id : undefined);
-            // Patch any current history entry that's missing a name
             const patchedHistory = (fullJob.recruiterHistory || []).map(h =>
-              (!h.removedAt && !h.recruiterName && resolvedRecruiterName)
-                ? { ...h, recruiterName: resolvedRecruiterName }
-                : h
+              (!h.removedAt && !h.recruiterName && resolvedRecruiterName) ? { ...h, recruiterName: resolvedRecruiterName } : h
             );
             const openHistory = () => setHistoryJob({
               jobId: jid, jobTitle,
               recruiterHistory: patchedHistory,
-              recruiterName:    resolvedRecruiterName,
-              recruiterId:      resolvedRecruiterId,
+              recruiterName: resolvedRecruiterName,
+              recruiterId:   resolvedRecruiterId,
             });
+
+            // Candidates: search mode uses global pool slice, normal uses per-job cache
+            const entry     = searchActive
+              ? { apps: searchByJob?.[jid] || [], loading: false, loaded: true }
+              : (jobApps[jid] || { apps: [], loading: false, loaded: false });
+            const appsForJob = entry.apps;
+            const isLoading  = entry.loading;
+            const isLoaded   = entry.loaded;
 
             // Stage breakdown
             const stageCounts = {};
-            jobApps.forEach(a => {
+            appsForJob.forEach(a => {
               const s = a.currentStage || a.stage || 'Applied';
               stageCounts[s] = (stageCounts[s] || 0) + 1;
             });
 
             // Per-job candidate pagination
             const pg    = getCandPage(jid);
-            const slice = jobApps.slice((pg - 1) * CAND_PG, pg * CAND_PG);
+            const slice = appsForJob.slice((pg - 1) * CAND_PG, pg * CAND_PG);
 
             return (
               <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
-
-                {/* Handoff banner — shown when job was previously with another recruiter */}
-                {isHandoff && (
-                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev} onViewHistory={openHistory} />
-                )}
-                {/* First recruiter banner — shown when this is the only recruiter ever assigned */}
-                {!isHandoff && isFirst && !isAdmin && (
-                  <FirstRecruiterBanner assignedAt={currentRecruiter?.assignedAt} onViewHistory={openHistory} />
-                )}
+                {isHandoff && <HandoffBanner prev={lastPrev} totalPrev={totalPrev} onViewHistory={openHistory} />}
+                {!isHandoff && isFirst && !isAdmin && <FirstRecruiterBanner assignedAt={currentRecruiter?.assignedAt} onViewHistory={openHistory} />}
 
                 {/* Job header */}
                 <div style={{ padding: '14px 16px 10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 800, fontSize: 15, color: '#0A1628' }}>{jobTitle}</span>
                         {isHandoff && (
-                          <span style={{ fontSize: 10, fontWeight: 800, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 20, letterSpacing: 0.5 }}>
-                            HANDOFF
-                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 800, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 20, letterSpacing: 0.5 }}>HANDOFF</span>
                         )}
                         <Badge label={fullJob.status || 'active'} color={fullJob.status === 'active' ? '#34d399' : '#706E6B'} />
                         {fullJob.urgency === 'urgent' && (
-                          <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(220,38,38,0.1)', color: '#DC2626', padding: '2px 8px', borderRadius: 20 }}>
-                            🔴 URGENT
-                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(220,38,38,0.1)', color: '#DC2626', padding: '2px 8px', borderRadius: 20 }}>🔴 URGENT</span>
                         )}
                       </div>
                       <div style={{ fontSize: 12, color: '#706E6B', marginTop: 3 }}>
-                        {job?.location && <span>📍 {job.location}</span>}
+                        {fullJob.location && <span>📍 {fullJob.location}</span>}
                         {fullJob.department && <span> · {fullJob.department}</span>}
-                        <span> · {jobApps.length} candidate{jobApps.length !== 1 ? 's' : ''}</span>
+                        {isLoaded && <span> · {appsForJob.length} candidate{appsForJob.length !== 1 ? 's' : ''}</span>}
+                        {isLoading && <span style={{ color: '#94A3B8' }}> · loading candidates…</span>}
+                        {!isLoaded && !isLoading && <span style={{ color: '#94A3B8' }}> · pending</span>}
                       </div>
                     </div>
-
-                    {/* Action buttons */}
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                      <button
-                        onClick={openHistory}
-                        title="View full recruiter handoff history for this job"
-                        style={{
-                          background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)',
-                          borderRadius: 8, padding: '5px 12px', fontSize: 11, color: '#0176D3',
-                          cursor: 'pointer', fontWeight: 600,
-                        }}
-                      >
+                      <button onClick={openHistory} title="View full recruiter handoff history"
+                        style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 12px', fontSize: 11, color: '#0176D3', cursor: 'pointer', fontWeight: 600 }}>
                         📋 History
                       </button>
                       <button onClick={() => navigate('/app/pipeline')} style={{ ...btnG, padding: '5px 14px', fontSize: 12 }}>
@@ -655,25 +669,32 @@ export default function AssignedCandidates({ user }) {
                   )}
                 </div>
 
-                {/* Candidate rows — paginated */}
-                <div style={{ borderTop: '1px solid #F1F5F9' }}>
-                  {slice.map(a => (
-                    <CandidateRow
-                      key={a._id || a.id}
-                      a={a}
-                      onOpenDrawer={setDrawer}
-                      onChangeStage={changeStage}
-                    />
-                  ))}
-                </div>
-                <CandPaginator
-                  page={pg}
-                  setPage={pg => setCandPage(jid, pg)}
-                  total={jobApps.length}
-                />
+                {/* Candidate rows */}
+                {isLoading ? (
+                  <div style={{ borderTop: '1px solid #F1F5F9', padding: '16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Spinner size={16} />
+                    <span style={{ fontSize: 12, color: '#94A3B8' }}>Loading candidates…</span>
+                  </div>
+                ) : appsForJob.length > 0 ? (
+                  <>
+                    <div style={{ borderTop: '1px solid #F1F5F9' }}>
+                      {slice.map(a => (
+                        <CandidateRow key={a._id || a.id} a={a} onOpenDrawer={setDrawer} onChangeStage={changeStage} />
+                      ))}
+                    </div>
+                    <CandPaginator page={pg} setPage={pg => setCandPage(jid, pg)} total={appsForJob.length} />
+                  </>
+                ) : isLoaded ? (
+                  <div style={{ borderTop: '1px solid #F1F5F9', padding: '12px 16px', fontSize: 12, color: '#94A3B8' }}>
+                    No candidates yet for this job.
+                  </div>
+                ) : null}
               </div>
             );
           })}
+
+          {/* Job-list pagination (normal mode only) */}
+          {!searchActive && <JobListPaginator page={jobListPage} setPage={setJobListPage} total={jobs.length} />}
         </div>
       )}
     </div>
