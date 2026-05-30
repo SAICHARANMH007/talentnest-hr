@@ -369,7 +369,9 @@ export default function AssignedCandidates({ user }) {
     setJobApps({});
     setGlobalApps(null);
     setLoad(true);
-    const fetches = [api.getJobs({}).catch(() => [])];
+    // Recruiters only fetch their own assigned jobs; admins fetch all
+    const jobsQuery = isAdmin ? {} : { recruiterId: user?.id || user?._id };
+    const fetches = [api.getJobs(jobsQuery).catch(() => [])];
     if (!isAdmin) fetches.push(api.getCandidateRequests().catch(() => []));
 
     Promise.all(fetches).then(([j, r]) => {
