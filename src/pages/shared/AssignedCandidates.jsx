@@ -20,6 +20,41 @@ const fmt      = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digi
 const fmtShort = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
 const initials = name => (name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
+// ── First recruiter banner — shown when this recruiter is the first/only one ──
+function FirstRecruiterBanner({ assignedAt, onViewHistory }) {
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg,rgba(1,118,211,0.06),rgba(1,118,211,0.02))',
+      borderBottom: '1px solid rgba(1,118,211,0.15)',
+      padding: '9px 16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+          background: 'linear-gradient(135deg,#0176D3,#00C2CB)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontWeight: 900, fontSize: 10,
+        }}>1st</div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.3 }}>
+            👤 YOU ARE THE FIRST RECRUITER FOR THIS JOB
+          </div>
+          <div style={{ fontSize: 11, color: '#0176D3', marginTop: 2, opacity: 0.75 }}>
+            No previous recruiter — all pipeline activity started with you{assignedAt ? ` · Assigned ${fmt(assignedAt)}` : ''}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={onViewHistory}
+        style={{ background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 8, padding: '5px 12px', fontSize: 11, color: '#0176D3', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}
+      >
+        📋 View History
+      </button>
+    </div>
+  );
+}
+
 // ── Handoff banner — shown at the top of any job that was reassigned ──────────
 function HandoffBanner({ prev, totalPrev, onViewHistory }) {
   return (
@@ -85,6 +120,7 @@ function HandoffBanner({ prev, totalPrev, onViewHistory }) {
 
 // ── Single candidate row inside a job card ────────────────────────────────────
 function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
+  const [showHistory, setShowHistory] = useState(false);
   const c            = a.candidateId || a.candidate || {};
   const name         = c.name || a.candidateName || 'Unknown';
   const stage        = a.currentStage || a.stage || 'Applied';
@@ -187,6 +223,36 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
             </span>
           </div>
         )}
+
+        {/* Stage history toggle */}
+        {(a.stageHistory || []).length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <button
+              onClick={e => { e.stopPropagation(); setShowHistory(v => !v); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0176D3', padding: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {showHistory ? '▲' : '▼'} Pipeline history ({(a.stageHistory || []).length} change{(a.stageHistory || []).length !== 1 ? 's' : ''})
+            </button>
+            {showHistory && (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 10, borderLeft: '2px solid #E2E8F0' }}>
+                {[...(a.stageHistory || [])].reverse().map((h, i) => {
+                  const ts = h.movedAt || h.changedAt || h.date;
+                  const stageName = h.stage || h.stageId || 'Stage Change';
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0176D3', flexShrink: 0, marginTop: 3 }} />
+                      <div>
+                        <span style={{ fontWeight: 700, color: '#374151' }}>{stageName}</span>
+                        {ts && <span style={{ color: '#94A3B8', marginLeft: 5 }}>{fmtShort(ts)}</span>}
+                        {h.note && <div style={{ fontSize: 10, color: '#64748B', fontStyle: 'italic', marginTop: 1 }}>"{h.note}"</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stage selector */}
@@ -286,10 +352,15 @@ export default function AssignedCandidates({ user }) {
 
   // Derive handoff state for a job
   function handoffInfo(fullJob) {
-    const prev = (fullJob?.recruiterHistory || []).filter(h => h.removedAt);
-    if (!prev.length) return { isHandoff: false };
-    const sorted = [...prev].sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
-    return { isHandoff: true, lastPrev: sorted[0], totalPrev: prev.length };
+    const history = fullJob?.recruiterHistory || [];
+    const prev    = history.filter(h => h.removedAt);
+    if (prev.length > 0) {
+      const sorted = [...prev].sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
+      return { isHandoff: true, isFirst: false, lastPrev: sorted[0], totalPrev: prev.length };
+    }
+    const current = history.find(r => !r.removedAt) || history[0];
+    // Only show "first recruiter" banner when we have confirmed recruiter history data
+    return { isHandoff: false, isFirst: history.length > 0, currentRecruiter: current };
   }
 
   if (loading) return (
@@ -389,12 +460,18 @@ export default function AssignedCandidates({ user }) {
           {/* Jobs with no applications yet */}
           {!search && jobs.filter(j => !byJob[String(j._id || j.id)]).map(j => {
             const jid = String(j._id || j.id);
-            const { isHandoff, lastPrev, totalPrev } = handoffInfo(j);
+            const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(j);
             return (
               <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 {isHandoff && (
                   <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
                     onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title })} />
+                )}
+                {!isHandoff && isFirst && !isAdmin && (
+                  <FirstRecruiterBanner
+                    assignedAt={currentRecruiter?.assignedAt}
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title })}
+                  />
                 )}
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div>
@@ -430,7 +507,7 @@ export default function AssignedCandidates({ user }) {
           {/* Jobs with applications */}
           {Object.entries(byJob).map(([jid, { job, apps: jobApps }]) => {
             const fullJob = jobMap[jid] || {};
-            const { isHandoff, lastPrev, totalPrev } = handoffInfo(fullJob);
+            const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(fullJob);
             const jobTitle = job?.title || fullJob.title || 'Unknown Job';
 
             // Stage breakdown
@@ -447,6 +524,13 @@ export default function AssignedCandidates({ user }) {
                 {isHandoff && (
                   <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
                     onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle })} />
+                )}
+                {/* First recruiter banner — shown when this is the only recruiter ever assigned */}
+                {!isHandoff && isFirst && !isAdmin && (
+                  <FirstRecruiterBanner
+                    assignedAt={currentRecruiter?.assignedAt}
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle })}
+                  />
                 )}
 
                 {/* Job header */}

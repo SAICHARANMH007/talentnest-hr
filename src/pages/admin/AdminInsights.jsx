@@ -70,6 +70,8 @@ export default function AdminInsights({ user }) {
   const slaSection       = useSection(useCallback(() => api.getSlaCompliance(), []));
   const interviewSection = useSection(useCallback(() => api.getUpcomingInterviews(), []));
   const velocitySection  = useSection(useCallback(() => api.getStageVelocity(), []));
+  const timeToHireSection = useSection(useCallback(() => api.getTimeToHire(), []));
+  const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis(), []));
 
   const reloadAll = () => {
     alertsSection.reload(); stageSection.reload();
@@ -77,6 +79,7 @@ export default function AdminInsights({ user }) {
     recruiterSection.reload(); funnelSection.reload();
     statsSection.reload(); slaSection.reload();
     interviewSection.reload(); velocitySection.reload();
+    timeToHireSection.reload(); dropoutSection.reload();
   };
 
   const alerts    = alertsSection.data;
@@ -109,6 +112,18 @@ export default function AdminInsights({ user }) {
     : Array.isArray(interviewSection.data?.data)                          ? interviewSection.data.data : [];
   const velocityData = Array.isArray(velocitySection.data)                ? velocitySection.data
     : Array.isArray(velocitySection.data?.data)                           ? velocitySection.data.data : [];
+
+  const tthRaw  = timeToHireSection.data;
+  const tthAvg  = tthRaw?.avgDays ?? tthRaw?.average ?? tthRaw?.avg ?? (typeof tthRaw === 'number' ? tthRaw : null);
+  const tthList = Array.isArray(tthRaw?.byJob)         ? tthRaw.byJob
+    : Array.isArray(tthRaw?.jobs)                       ? tthRaw.jobs
+    : Array.isArray(tthRaw?.data)                       ? tthRaw.data
+    : Array.isArray(tthRaw)                             ? tthRaw : [];
+  const dropRaw  = dropoutSection.data;
+  const dropList = Array.isArray(dropRaw?.byStage)     ? dropRaw.byStage
+    : Array.isArray(dropRaw?.stages)                   ? dropRaw.stages
+    : Array.isArray(dropRaw?.data)                     ? dropRaw.data
+    : Array.isArray(dropRaw)                           ? dropRaw : [];
 
   const totalAlerts =
     (alerts?.staleJobs?.length || 0) +
@@ -145,6 +160,12 @@ export default function AdminInsights({ user }) {
           <div style={{ display: 'flex', gap: 12 }}>
             {[1,2,3,4].map(i => <div key={i} className="tn-skeleton" style={{ flex: 1, height: 72, borderRadius: 14 }} />)}
           </div>
+        </div>
+      )}
+      {statsSection.error && (
+        <div style={{ ...panel, padding: '16px 24px', marginBottom: 20 }}>
+          <p style={{ ...LABEL, marginBottom: 0 }}>📊 Org KPI Summary</p>
+          <SectionError onRetry={statsSection.reload} />
         </div>
       )}
 
@@ -646,6 +667,95 @@ export default function AdminInsights({ user }) {
             </p>
           </>
         ) : <SectionEmpty msg="No upcoming interviews scheduled. Schedule interviews by moving candidates to Interview stage." />)}
+      </div>
+
+      {/* ── TIME TO HIRE + DROPOUT ANALYSIS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
+
+        {/* Time to Hire */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>⏳ Time to Hire</p>
+            <button onClick={timeToHireSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {timeToHireSection.loading && <SectionLoader />}
+          {timeToHireSection.error   && <SectionError onRetry={timeToHireSection.reload} />}
+          {!timeToHireSection.loading && !timeToHireSection.error && (tthRaw ? (
+            <div>
+              {tthAvg != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: tthAvg <= 21 ? 'rgba(16,185,129,0.07)' : tthAvg <= 45 ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)', border: `1px solid ${tthAvg <= 21 ? 'rgba(16,185,129,0.2)' : tthAvg <= 45 ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12, marginBottom: 14 }}>
+                  <div style={{ fontSize: 36, fontWeight: 900, color: tthAvg <= 21 ? '#10B981' : tthAvg <= 45 ? '#F59E0B' : '#EF4444' }}>{tthAvg}<span style={{ fontSize: 14 }}>d</span></div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>Avg Days to Hire</div>
+                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                      {tthAvg <= 21 ? '🟢 Fast — industry benchmark is 21d' : tthAvg <= 45 ? '🟡 Average — aim for under 30d' : '🔴 Slow — investigate bottlenecks'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {tthList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Per Job</div>
+                  {tthList.slice(0, 6).map((j, i) => {
+                    const days = j.avgDays ?? j.days ?? j.timeToHire ?? 0;
+                    const color = days <= 21 ? '#10B981' : days <= 45 ? '#F59E0B' : '#EF4444';
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ flex: 1, fontSize: 12, color: '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title || j.jobTitle || j.job || `Job ${i+1}`}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{days}d</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {tthAvg == null && tthList.length === 0 && <SectionEmpty msg="No completed hires yet." />}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>
+                🟢 &lt;21d great · 🟡 21–45d average · 🔴 &gt;45d needs action
+              </p>
+            </div>
+          ) : <SectionEmpty msg="No hire data available yet. Make your first hire to start tracking." />)}
+        </div>
+
+        {/* Dropout / Falloff Analysis */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>📉 Candidate Dropout Analysis</p>
+            <button onClick={dropoutSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {dropoutSection.loading && <SectionLoader />}
+          {dropoutSection.error   && <SectionError onRetry={dropoutSection.reload} />}
+          {!dropoutSection.loading && !dropoutSection.error && (dropList.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {dropList.map((s, i) => {
+                const rate  = s.dropoutRate ?? s.rate ?? s.percentage ?? 0;
+                const count = s.dropoutCount ?? s.count ?? s.dropped ?? 0;
+                const color = rate >= 50 ? '#EF4444' : rate >= 25 ? '#F59E0B' : '#10B981';
+                return (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{s.stage || s.name || `Stage ${i+1}`}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {count > 0 && <span style={{ fontSize: 10, color: '#94A3B8' }}>{count} dropped</span>}
+                        <span style={{ fontSize: 11, fontWeight: 800, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20 }}>{rate}%</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 6, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, rate)}%`, borderRadius: 3, background: `linear-gradient(90deg,${color},${color}cc)`, transition: 'width 0.5s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {dropRaw?.topDropoutStage && (
+                <div style={{ marginTop: 6, padding: '8px 12px', background: 'rgba(239,68,68,0.05)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.15)' }}>
+                  <span style={{ fontSize: 11, color: '#EF4444', fontWeight: 700 }}>⚠️ Highest dropout: {dropRaw.topDropoutStage}</span>
+                </div>
+              )}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
+                Shows where candidates exit before progressing. High dropout stages need process review.
+              </p>
+            </div>
+          ) : <SectionEmpty msg="No dropout data yet. Candidates need to move through stages to generate this analysis." />)}
+        </div>
       </div>
 
     </div>

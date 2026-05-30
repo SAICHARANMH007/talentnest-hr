@@ -107,6 +107,7 @@ function NotificationBell({ userRole, compact = false }) {
   const [pos,      setPos]      = React.useState({ top: 0, left: 0 });
   const navigate                = useNavigate();
   const summaryFetched          = React.useRef(false);
+  const readIds                 = React.useRef(new Set());
   const [isMobile, setIsMobile]  = React.useState(() => window.innerWidth < 768);
   React.useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -117,7 +118,13 @@ function NotificationBell({ userRole, compact = false }) {
   const load = React.useCallback(async () => {
     try {
       const d = await api.getNotifications();
-      setNotifs(Array.isArray(d) ? d : []);
+      const raw = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+      // Deduplicate by ID + keep locally-marked-read state across polls
+      const seen = new Set();
+      const merged = raw
+        .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
+        .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
+      setNotifs(merged);
     } catch {}
   }, []);
 
@@ -164,15 +171,21 @@ function NotificationBell({ userRole, compact = false }) {
 
   const markOne  = async (id) => {
     if (!id) return;
+    readIds.current.add(id);
     try {
       await api.markRead(id);
       setNotifs(p => p.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
     } catch {}
   };
   const markAll  = async () => {
-    try { await api.markAllRead(); setNotifs(p => p.map(n => ({ ...n, read: true }))); } catch {}
+    setNotifs(p => {
+      p.forEach(n => { const id = n._id || n.id; if (id) readIds.current.add(id); });
+      return p.map(n => ({ ...n, read: true }));
+    });
+    try { await api.markAllRead(); } catch {}
   };
   const clearAll = async () => {
+    readIds.current.clear();
     try { await api.clearAllNotifications(); setNotifs([]); setOpen(false); } catch {}
   };
 
