@@ -20,6 +20,34 @@ const fmt      = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digi
 const fmtShort = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
 const initials = name => (name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
+const CAND_PG = 10; // candidates shown per job card per page
+
+const pgBtn = disabled => ({
+  padding: '3px 9px', borderRadius: 6, border: '1px solid #E2E8F0',
+  background: disabled ? '#F8FAFC' : '#fff', color: disabled ? '#CBD5E1' : '#374151',
+  fontSize: 12, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 700, lineHeight: 1,
+});
+function CandPaginator({ page, setPage, total }) {
+  const totalPages = Math.ceil(total / CAND_PG);
+  if (totalPages <= 1) return null;
+  const start = (page - 1) * CAND_PG + 1;
+  const end   = Math.min(page * CAND_PG, total);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: '1px solid #F1F5F9', background: '#FAFBFF' }}>
+      <span style={{ fontSize: 11, color: '#94A3B8' }}>
+        {start}–{end} of <strong style={{ color: '#374151' }}>{total}</strong> candidates
+      </span>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <button onClick={() => setPage(1)}         disabled={page === 1}          style={pgBtn(page === 1)}>«</button>
+        <button onClick={() => setPage(p => p-1)}  disabled={page === 1}          style={pgBtn(page === 1)}>‹</button>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151', padding: '0 6px' }}>{page}/{totalPages}</span>
+        <button onClick={() => setPage(p => p+1)}  disabled={page === totalPages} style={pgBtn(page === totalPages)}>›</button>
+        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} style={pgBtn(page === totalPages)}>»</button>
+      </div>
+    </div>
+  );
+}
+
 // ── First recruiter banner — shown when this recruiter is the first/only one ──
 function FirstRecruiterBanner({ assignedAt, onViewHistory }) {
   return (
@@ -285,13 +313,17 @@ export default function AssignedCandidates({ user }) {
   const [search,     setSearch]     = useState('');
   const [drawer,     setDrawer]     = useState(null);      // UserDetailDrawer candidate
   const [historyJob, setHistoryJob] = useState(null);      // { jobId, jobTitle }
+  const [candPages,  setCandPages]  = useState({});        // jid → page number
+
+  const getCandPage = jid => candPages[jid] || 1;
+  const setCandPage = (jid, pg) => setCandPages(prev => ({ ...prev, [jid]: pg }));
 
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
 
   useEffect(() => {
     const fetches = [
       api.getJobs({}).catch(() => []),
-      api.getApplications({ limit: 500 }).catch(() => []),
+      api.getApplications({ limit: 10000 }).catch(() => []),
     ];
     if (!isAdmin) {
       fetches.push(api.getCandidateRequests().catch(() => []));
@@ -467,17 +499,24 @@ export default function AssignedCandidates({ user }) {
           {!search && jobs.filter(j => !byJob[String(j._id || j.id)]).map(j => {
             const jid = String(j._id || j.id);
             const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(j);
+            const resolvedName = j.recruiterName || (!isAdmin ? user?.name : undefined);
+            const resolvedId   = j.recruiterId   || (!isAdmin ? user?.id || user?._id : undefined);
+            const patchedHist  = (j.recruiterHistory || []).map(h =>
+              (!h.removedAt && !h.recruiterName && resolvedName) ? { ...h, recruiterName: resolvedName } : h
+            );
+            const openHistory = () => setHistoryJob({
+              jobId: jid, jobTitle: j.title,
+              recruiterHistory: patchedHist,
+              recruiterName: resolvedName,
+              recruiterId:   resolvedId,
+            });
             return (
               <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 {isHandoff && (
-                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })} />
+                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev} onViewHistory={openHistory} />
                 )}
                 {!isHandoff && isFirst && !isAdmin && (
-                  <FirstRecruiterBanner
-                    assignedAt={currentRecruiter?.assignedAt}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })}
-                  />
+                  <FirstRecruiterBanner assignedAt={currentRecruiter?.assignedAt} onViewHistory={openHistory} />
                 )}
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div>
@@ -496,7 +535,7 @@ export default function AssignedCandidates({ user }) {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Badge label={j.status || 'active'} color={j.status === 'active' ? '#34d399' : '#706E6B'} />
                     <button
-                      onClick={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })}
+                      onClick={openHistory}
                       style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: '#0176D3', cursor: 'pointer', fontWeight: 600 }}
                     >
                       📋 History
@@ -512,9 +551,25 @@ export default function AssignedCandidates({ user }) {
 
           {/* Jobs with applications */}
           {Object.entries(byJob).map(([jid, { job, apps: jobApps }]) => {
-            const fullJob = jobMap[jid] || {};
+            const fullJob  = jobMap[jid] || {};
             const { isHandoff, isFirst, lastPrev, totalPrev, currentRecruiter } = handoffInfo(fullJob);
             const jobTitle = job?.title || fullJob.title || 'Unknown Job';
+
+            // Resolved recruiter name: job field → non-admin user name fallback
+            const resolvedRecruiterName = fullJob.recruiterName || (!isAdmin ? user?.name : undefined);
+            const resolvedRecruiterId   = fullJob.recruiterId   || (!isAdmin ? user?.id || user?._id : undefined);
+            // Patch any current history entry that's missing a name
+            const patchedHistory = (fullJob.recruiterHistory || []).map(h =>
+              (!h.removedAt && !h.recruiterName && resolvedRecruiterName)
+                ? { ...h, recruiterName: resolvedRecruiterName }
+                : h
+            );
+            const openHistory = () => setHistoryJob({
+              jobId: jid, jobTitle,
+              recruiterHistory: patchedHistory,
+              recruiterName:    resolvedRecruiterName,
+              recruiterId:      resolvedRecruiterId,
+            });
 
             // Stage breakdown
             const stageCounts = {};
@@ -523,20 +578,20 @@ export default function AssignedCandidates({ user }) {
               stageCounts[s] = (stageCounts[s] || 0) + 1;
             });
 
+            // Per-job candidate pagination
+            const pg    = getCandPage(jid);
+            const slice = jobApps.slice((pg - 1) * CAND_PG, pg * CAND_PG);
+
             return (
               <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
 
                 {/* Handoff banner — shown when job was previously with another recruiter */}
                 {isHandoff && (
-                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })} />
+                  <HandoffBanner prev={lastPrev} totalPrev={totalPrev} onViewHistory={openHistory} />
                 )}
                 {/* First recruiter banner — shown when this is the only recruiter ever assigned */}
                 {!isHandoff && isFirst && !isAdmin && (
-                  <FirstRecruiterBanner
-                    assignedAt={currentRecruiter?.assignedAt}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })}
-                  />
+                  <FirstRecruiterBanner assignedAt={currentRecruiter?.assignedAt} onViewHistory={openHistory} />
                 )}
 
                 {/* Job header */}
@@ -567,7 +622,7 @@ export default function AssignedCandidates({ user }) {
                     {/* Action buttons */}
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       <button
-                        onClick={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })}
+                        onClick={openHistory}
                         title="View full recruiter handoff history for this job"
                         style={{
                           background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)',
@@ -600,9 +655,9 @@ export default function AssignedCandidates({ user }) {
                   )}
                 </div>
 
-                {/* Candidate rows */}
+                {/* Candidate rows — paginated */}
                 <div style={{ borderTop: '1px solid #F1F5F9' }}>
-                  {jobApps.map(a => (
+                  {slice.map(a => (
                     <CandidateRow
                       key={a._id || a.id}
                       a={a}
@@ -611,6 +666,11 @@ export default function AssignedCandidates({ user }) {
                     />
                   ))}
                 </div>
+                <CandPaginator
+                  page={pg}
+                  setPage={pg => setCandPage(jid, pg)}
+                  total={jobApps.length}
+                />
               </div>
             );
           })}
