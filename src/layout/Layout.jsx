@@ -529,7 +529,30 @@ function NotificationBell({ userRole, compact = false }) {
                 )}
               </div>
             ) : (
-              displayed.map(n => (
+              <>
+                {/* Stale notifications warning — shown when newest notification is > 14 days old */}
+                {(() => {
+                  const newest = notifs.reduce((latest, n) => {
+                    const t = new Date(n.createdAt || 0).getTime();
+                    return t > latest ? t : latest;
+                  }, 0);
+                  const daysOld = newest ? Math.floor((Date.now() - newest) / 86400000) : null;
+                  if (!daysOld || daysOld < 14) return null;
+                  return (
+                    <div style={{ margin: '8px 12px', padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 2 }}>
+                          Notifications are {daysOld} days old
+                        </div>
+                        <div style={{ fontSize: 11, color: '#B45309', lineHeight: 1.5 }}>
+                          Recent activity (stage changes, hires, interviews) is not appearing here. Your backend notification service may not be recording new events. Contact your system administrator.
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {displayed.map(n => (
                 <div
                   key={n.id || n._id}
                   onClick={() => openDetail(n)}
@@ -563,7 +586,8 @@ function NotificationBell({ userRole, compact = false }) {
                     </div>
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
 
