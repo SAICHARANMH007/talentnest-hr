@@ -22,14 +22,23 @@ function getTs(entry) {
 }
 
 function recruiterAtTime(ts, history) {
-  if (!ts || !history?.length) return null;
+  if (!history?.length) return null;
+  // No timestamp — return current active recruiter or last known
+  if (!ts) return history.find(r => !r.removedAt) || history[history.length - 1];
   const t = new Date(ts).getTime();
+  // Exact tenure match
   for (const r of history) {
     const from = r.assignedAt ? new Date(r.assignedAt).getTime() : 0;
     const to   = r.removedAt  ? new Date(r.removedAt).getTime()  : Date.now();
     if (t >= from && t <= to) return r;
   }
-  return null;
+  // Fallback: most recently assigned recruiter before this event
+  const before = history
+    .filter(r => r.assignedAt && new Date(r.assignedAt).getTime() <= t)
+    .sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
+  if (before.length) return before[0];
+  // Last resort: whoever was assigned first (event predates all recruiter assignments)
+  return history[0];
 }
 
 function RecruiterBadge({ recruiter }) {
@@ -147,8 +156,18 @@ export default function CandidateActivityTimeline({ app, recruiterHistory = [] }
 
   return (
     <div style={{ borderTop: '1.5px solid #E2E8F0', paddingTop: 14, marginTop: 4 }}>
-      <div style={{ fontSize: 11, fontWeight: 900, color: '#0176D3', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>
-        📜 Full Activity History
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: '#0176D3', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          📜 Full Activity History
+        </span>
+        {recruiterHistory.length > 0 && (
+          <span style={{ fontSize: 10, color: '#059669', background: 'rgba(5,150,105,0.08)', padding: '2px 9px', borderRadius: 20, fontWeight: 600 }}>
+            👤 {recruiterHistory.length} recruiter{recruiterHistory.length !== 1 ? 's' : ''} on this job
+          </span>
+        )}
+        {recruiterHistory.length === 0 && (
+          <span style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>recruiter attribution not available</span>
+        )}
       </div>
 
       {/* Timeline */}

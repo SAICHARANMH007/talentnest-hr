@@ -66,11 +66,17 @@ export default function AdminInsights({ user }) {
   const sourceSection    = useSection(useCallback(() => api.getSourceEffectiveness(), []));
   const recruiterSection = useSection(useCallback(() => api.getRecruiterLeaderboard(), []));
   const funnelSection    = useSection(useCallback(() => api.getHiringFunnel(), []));
+  const statsSection     = useSection(useCallback(() => api.getDashboardStats(), []));
+  const slaSection       = useSection(useCallback(() => api.getSlaCompliance(), []));
+  const interviewSection = useSection(useCallback(() => api.getUpcomingInterviews(), []));
+  const velocitySection  = useSection(useCallback(() => api.getStageVelocity(), []));
 
   const reloadAll = () => {
     alertsSection.reload(); stageSection.reload();
     offerSection.reload();  sourceSection.reload();
     recruiterSection.reload(); funnelSection.reload();
+    statsSection.reload(); slaSection.reload();
+    interviewSection.reload(); velocitySection.reload();
   };
 
   const alerts    = alertsSection.data;
@@ -91,6 +97,19 @@ export default function AdminInsights({ user }) {
     ? funnelRaw
     : [];
 
+  const statsData    = statsSection.data;
+  const slaRaw       = slaSection.data;
+  const slaCompRate  = slaRaw?.complianceRate ?? slaRaw?.rate ?? null;
+  const slaList      = Array.isArray(slaRaw?.byStage)  ? slaRaw.byStage
+    : Array.isArray(slaRaw?.stages) ? slaRaw.stages
+    : Array.isArray(slaRaw?.data)   ? slaRaw.data
+    : Array.isArray(slaRaw)         ? slaRaw : [];
+  const upcomingInts = Array.isArray(interviewSection.data)               ? interviewSection.data
+    : Array.isArray(interviewSection.data?.interviews)                    ? interviewSection.data.interviews
+    : Array.isArray(interviewSection.data?.data)                          ? interviewSection.data.data : [];
+  const velocityData = Array.isArray(velocitySection.data)                ? velocitySection.data
+    : Array.isArray(velocitySection.data?.data)                           ? velocitySection.data.data : [];
+
   const totalAlerts =
     (alerts?.staleJobs?.length || 0) +
     (alerts?.stuckCandidates?.length || 0) +
@@ -102,12 +121,32 @@ export default function AdminInsights({ user }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 10 }}>
         <PageHeader
           title="📊 Hiring Insights"
-          subtitle="Smart alerts, pipeline bottlenecks, source effectiveness and offer analytics"
+          subtitle="Live org KPIs, smart alerts, SLA compliance, pipeline velocity, source effectiveness, and offer analytics"
         />
         <button onClick={reloadAll} style={{ ...btnG, padding: '9px 18px', fontSize: 12, flexShrink: 0 }}>
           ↻ Refresh All
         </button>
       </div>
+
+      {/* ── ORG KPI SUMMARY BAR ── */}
+      {!statsSection.loading && statsData && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+          <StatBox label="Open Positions"    value={statsData.openJobs     ?? statsData.activeJobs   ?? statsData.openPositions ?? '—'} color="#0176D3" />
+          <StatBox label="Total Candidates"  value={statsData.applications ?? statsData.totalApps     ?? statsData.candidates    ?? '—'} color="#7C3AED" />
+          <StatBox label="New This Month"    value={statsData.appsLast30   ?? statsData.newThisMonth  ?? '—'} color="#F59E0B" sub="applications in last 30d" />
+          <StatBox label="Hires Made"        value={statsData.hired        ?? statsData.totalHired    ?? statsData.hiredCount    ?? (statsData.pipeline ? (statsData.pipeline['Selected'] ?? statsData.pipeline['Hired'] ?? statsData.pipeline['selected'] ?? 0) : '—')} color="#10B981" />
+          {(statsData.totalRecruiters ?? statsData.recruiters) != null && (
+            <StatBox label="Active Recruiters" value={statsData.totalRecruiters ?? statsData.recruiters} color="#064E3B" />
+          )}
+        </div>
+      )}
+      {statsSection.loading && (
+        <div style={{ ...panel, padding: '18px 24px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {[1,2,3,4].map(i => <div key={i} className="tn-skeleton" style={{ flex: 1, height: 72, borderRadius: 14 }} />)}
+          </div>
+        </div>
+      )}
 
       {/* ── SMART ALERTS ── */}
       <div style={panel}>
@@ -444,6 +483,171 @@ export default function AdminInsights({ user }) {
           ) : <SectionEmpty msg="No pipeline data yet. Candidates need to move through stages to build a funnel." />)}
         </div>
       </div>
+
+      {/* ── SLA COMPLIANCE + STAGE VELOCITY ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
+
+        {/* SLA Compliance */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>🕐 SLA Compliance</p>
+            <button onClick={slaSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {slaSection.loading && <SectionLoader />}
+          {slaSection.error   && <SectionError onRetry={slaSection.reload} />}
+          {!slaSection.loading && !slaSection.error && (slaRaw ? (
+            <div>
+              {/* Overall compliance rate */}
+              {slaCompRate != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '14px 16px', background: slaCompRate >= 80 ? 'rgba(16,185,129,0.07)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)', border: `1px solid ${slaCompRate >= 80 ? 'rgba(16,185,129,0.2)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12 }}>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: slaCompRate >= 80 ? '#10B981' : slaCompRate >= 60 ? '#F59E0B' : '#EF4444' }}>{slaCompRate}%</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>Overall SLA Compliance</div>
+                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                      {slaRaw.onTrackCount != null ? `${slaRaw.onTrackCount} on track` : ''}
+                      {slaRaw.breachedCount != null ? ` · ${slaRaw.breachedCount} breached` : ''}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Per-stage SLA */}
+              {slaList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {slaList.map((s, i) => {
+                    const total  = (s.onTrack || s.ontrack || 0) + (s.breached || s.violated || 0);
+                    const rate   = total > 0 ? Math.round(((s.onTrack || s.ontrack || 0) / total) * 100) : null;
+                    const color  = rate == null ? '#94A3B8' : rate >= 80 ? '#10B981' : rate >= 60 ? '#F59E0B' : '#EF4444';
+                    return (
+                      <div key={i}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{s.stage || s.name || `Stage ${i+1}`}</span>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            {s.breached != null && s.breached > 0 && (
+                              <span style={{ fontSize: 10, color: '#EF4444', fontWeight: 700, background: '#EF444415', padding: '1px 7px', borderRadius: 20 }}>{s.breached || s.violated} breached</span>
+                            )}
+                            {rate != null && (
+                              <span style={{ fontSize: 11, fontWeight: 800, color }}>{rate}%</span>
+                            )}
+                          </div>
+                        </div>
+                        {rate != null && (
+                          <div style={{ height: 5, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${rate}%`, borderRadius: 3, background: color, transition: 'width 0.5s ease' }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {slaCompRate == null && slaList.length === 0 && <SectionEmpty msg="No SLA data available yet." />}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>
+                🔴 &lt;60% = at risk · 🟡 60–80% = needs attention · 🟢 &gt;80% = healthy
+              </p>
+            </div>
+          ) : <SectionEmpty msg="No SLA data available. Move candidates through stages to generate SLA tracking." />)}
+        </div>
+
+        {/* Stage Velocity */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>⚡ Stage Velocity</p>
+            <button onClick={velocitySection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {velocitySection.loading && <SectionLoader />}
+          {velocitySection.error   && <SectionError onRetry={velocitySection.reload} />}
+          {!velocitySection.loading && !velocitySection.error && (velocityData.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {velocityData.map((s, i) => {
+                const hours = s.avgHours ?? s.avgTime ?? s.hours ?? 0;
+                const days  = (hours / 24).toFixed(1);
+                const color = hours > 168 ? '#EF4444' : hours > 72 ? '#F59E0B' : '#10B981';
+                const maxHours = Math.max(...velocityData.map(x => x.avgHours ?? x.avgTime ?? x.hours ?? 0), 1);
+                return (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{s.stage || s.name || `Stage ${i+1}`}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {s.count != null && <span style={{ fontSize: 10, color: '#94A3B8' }}>{s.count} candidates</span>}
+                        <span style={{ fontSize: 12, fontWeight: 800, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20 }}>{days}d avg</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 6, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, (hours / maxHours) * 100)}%`, borderRadius: 3, background: `linear-gradient(90deg,${color},${color}cc)`, transition: 'width 0.5s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
+                Shows avg time candidates spend in each stage. Fast-moving stages are healthy; slow ones need attention.
+              </p>
+            </div>
+          ) : <SectionEmpty msg="Not enough data yet. Stage moves are tracked as candidates progress through the pipeline." />)}
+        </div>
+      </div>
+
+      {/* ── UPCOMING INTERVIEWS ── */}
+      <div style={panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <p style={{ ...LABEL, marginBottom: 0 }}>📅 Upcoming Interviews</p>
+          <button onClick={interviewSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+        </div>
+        {interviewSection.loading && <SectionLoader />}
+        {interviewSection.error   && <SectionError onRetry={interviewSection.reload} />}
+        {!interviewSection.loading && !interviewSection.error && (upcomingInts.length > 0 ? (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    {['Candidate', 'Job', 'Date & Time', 'Format', 'Interviewer', 'Round'].map(h => (
+                      <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingInts.map((iv, i) => {
+                    const dt = iv.scheduledAt || iv.date || iv.dateTime;
+                    const dateStr = dt ? new Date(dt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+                    const timeStr = dt ? new Date(dt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true }) : '';
+                    const isToday = dt && new Date(dt).toDateString() === new Date().toDateString();
+                    const isPast  = dt && new Date(dt) < new Date();
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', background: isToday ? 'rgba(245,158,11,0.04)' : '' }}
+                        onMouseEnter={e => e.currentTarget.style.background = isToday ? 'rgba(245,158,11,0.08)' : '#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background = isToday ? 'rgba(245,158,11,0.04)' : ''}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>{iv.candidateName || iv.candidate?.name || '—'}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 12, color: '#374151', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{iv.jobTitle || iv.job?.title || '—'}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: isToday ? '#D97706' : isPast ? '#94A3B8' : '#374151' }}>
+                              {isToday ? '🔔 Today' : dateStr}
+                            </span>
+                            {timeStr && <span style={{ fontSize: 11, color: '#94A3B8' }}>{timeStr}</span>}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ fontSize: 11, color: '#475569', background: '#F1F5F9', padding: '2px 8px', borderRadius: 20 }}>
+                            {iv.format === 'video' ? '📹 Video' : iv.format === 'phone' ? '📞 Phone' : iv.format === 'in_person' ? '🏢 In-Person' : iv.format || '—'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: 12, color: '#374151' }}>{iv.interviewerName || iv.interviewer?.name || '—'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 12, color: '#706E6B' }}>{iv.round ? `Round ${iv.round}` : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>
+              {upcomingInts.length} interview{upcomingInts.length !== 1 ? 's' : ''} scheduled · 🔔 Today rows highlighted
+            </p>
+          </>
+        ) : <SectionEmpty msg="No upcoming interviews scheduled. Schedule interviews by moving candidates to Interview stage." />)}
+      </div>
+
     </div>
   );
 }

@@ -6,6 +6,7 @@ import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import StageHistory from '../pipeline/StageHistory.jsx';
+import CandidateActivityTimeline from './CandidateActivityTimeline.jsx';
 import ErrorReportBoundary from './ErrorReportBoundary.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import HiredDetailsModal from '../modals/HiredDetailsModal.jsx';
@@ -406,7 +407,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
                             <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
                           </div>
-                          <StageHistory history={app.stageHistory} />
+                          <CandidateActivityTimeline app={app} recruiterHistory={[]} />
                         </div>
                       )}
                       {allFetchedApps.filter(a => String(a.id || a._id) !== String(app?.id || app?._id)).map(a => {
@@ -450,7 +451,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                 {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
                               </select>
                             </div>
-                            <StageHistory history={a.stageHistory} />
+                            <CandidateActivityTimeline app={a} recruiterHistory={[]} />
                           </div>
                         );
                       })}
