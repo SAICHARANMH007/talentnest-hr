@@ -131,6 +131,8 @@ export default function CandidateActivityTimeline({ app, recruiterHistory = [] }
     list.push({ type: 'applied', ts: app.createdAt, stageId: 'applied', label: 'Application Received' });
 
     (app.stageHistory || []).forEach(h => {
+      const sid = (h.stageId || h.stage || '').toLowerCase();
+      if (sid === 'applied') return; // already added explicitly above
       const ts = getTs(h);
       list.push({ type: 'stage', ts, stageId: h.stageId || h.stage, label: h.stage, note: h.note || null });
     });

@@ -104,6 +104,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [customFieldVals, setCustomFieldVals] = useState({});
 
   const [allFetchedApps, setAllFetchedApps] = useState([]);
+  const [jobHistories, setJobHistories] = useState({}); // jobId → recruiterHistory[]
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -133,7 +134,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       if (!uid && typeof u === 'string') uid = u;
       if (uid) {
         setLoadingApp(true);
-        api.getApplications({ candidateId: uid, email: u.email, limit: 1000 }).then(res => {
+        api.getApplications({ candidateId: uid, email: u.email, limit: 1000 }).then(async res => {
           const list = Array.isArray(res) ? res : (res?.data || []);
           setAllFetchedApps(list);
           const active = list.find(a => ['applied','screening','shortlisted','interview_scheduled','interview_completed','offer_extended','selected'].includes(a.stage));
@@ -141,6 +142,16 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
             setApp(active);
             setCurrentStage(active.stage || active.currentStage);
           }
+          // Fetch recruiter history for each unique job
+          const uniqueJobIds = [...new Set(list.map(a => String(a.jobId || a.job?._id || a.job?.id || '')).filter(Boolean))];
+          const histories = {};
+          await Promise.allSettled(uniqueJobIds.map(async jid => {
+            try {
+              const h = await api.getJobRecruiterHistory(jid);
+              histories[jid] = Array.isArray(h) ? h : (h?.data || []);
+            } catch { histories[jid] = []; }
+          }));
+          setJobHistories(histories);
         }).finally(() => setLoadingApp(false));
       }
     }
@@ -406,7 +417,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
                             <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
                           </div>
-                          <CandidateActivityTimeline app={app} recruiterHistory={[]} />
+                          <CandidateActivityTimeline app={app} recruiterHistory={jobHistories[String(app.jobId || app.job?._id || app.job?.id || '')] || []} />
                         </div>
                       )}
                       {allFetchedApps.filter(a => String(a.id || a._id) !== String(app?.id || app?._id)).map(a => {
@@ -450,7 +461,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                                 {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
                               </select>
                             </div>
-                            <CandidateActivityTimeline app={a} recruiterHistory={[]} />
+                            <CandidateActivityTimeline app={a} recruiterHistory={jobHistories[String(a.jobId || a.job?._id || a.job?.id || '')] || []} />
                           </div>
                         );
                       })}
