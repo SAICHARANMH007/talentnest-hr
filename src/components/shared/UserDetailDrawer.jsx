@@ -5,7 +5,6 @@ import Field from '../ui/Field.jsx';
 import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
 import Spinner from '../ui/Spinner.jsx';
-import StageHistory from '../pipeline/StageHistory.jsx';
 import CandidateActivityTimeline from './CandidateActivityTimeline.jsx';
 import ErrorReportBoundary from './ErrorReportBoundary.jsx';
 import ResumeCard from './ResumeCard.jsx';
