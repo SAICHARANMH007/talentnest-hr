@@ -65,10 +65,14 @@ export default function AdminInsights({ user }) {
   const offerSection     = useSection(useCallback(() => api.getOfferAnalytics(), []));
   const sourceSection    = useSection(useCallback(() => api.getSourceEffectiveness(), []));
   const recruiterSection = useSection(useCallback(() => api.getRecruiterLeaderboard(), []));
-  const funnelSection    = useSection(useCallback(() => api.getHiringFunnel(), []));
+  // Try primary funnel endpoint, fall back to /funnel, then null (shows empty state)
+  const funnelSection    = useSection(useCallback(() =>
+    api.getHiringFunnel().catch(() => api.getFunnel().catch(() => null)), []));
   const statsSection     = useSection(useCallback(() => api.getDashboardStats(), []));
   const slaSection       = useSection(useCallback(() => api.getSlaCompliance(), []));
-  const interviewSection = useSection(useCallback(() => api.getUpcomingInterviews(), []));
+  // Treat interview API failure as empty (no interviews) rather than hard error
+  const interviewSection = useSection(useCallback(() =>
+    api.getUpcomingInterviews().catch(() => []), []));
   const velocitySection  = useSection(useCallback(() => api.getStageVelocity(), []));
   const timeToHireSection = useSection(useCallback(() => api.getTimeToHire(), []));
   const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis(), []));
