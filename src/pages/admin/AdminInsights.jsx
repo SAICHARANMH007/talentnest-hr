@@ -9,6 +9,8 @@ import { card, btnP, btnG } from '../../constants/styles.js';
 const panel = { ...card, padding: 24, marginBottom: 20 };
 const LABEL = { fontSize: 10, fontWeight: 700, color: '#706E6B', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16, margin: '0 0 16px' };
 
+const PG = 10; // rows per page for all paginated sections
+
 function SectionLoader() {
   return <div style={{ textAlign: 'center', padding: 40 }}><Spinner size={28} /></div>;
 }
@@ -29,6 +31,37 @@ function StatBox({ label, value, color = '#0176D3', sub }) {
       <div style={{ fontSize: 26, fontWeight: 900, color }}>{typeof value === 'number' ? value.toLocaleString() : value}</div>
       <div style={{ fontSize: 11, color: '#706E6B', marginTop: 4, fontWeight: 600 }}>{label}</div>
       {sub && <div style={{ fontSize: 10, color, marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Pagination controls ───────────────────────────────────────────────────────
+const pgBtnStyle = disabled => ({
+  padding: '4px 10px', borderRadius: 6, border: '1px solid #E2E8F0',
+  background: disabled ? '#F8FAFC' : '#fff',
+  color: disabled ? '#CBD5E1' : '#374151',
+  fontSize: 13, cursor: disabled ? 'not-allowed' : 'pointer',
+  fontWeight: 700, lineHeight: 1,
+});
+function Paginator({ page, setPage, total, pageSize = PG }) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+  const start = (page - 1) * pageSize + 1;
+  const end   = Math.min(page * pageSize, total);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingTop: 10, borderTop: '1px solid #F1F5F9' }}>
+      <span style={{ fontSize: 11, color: '#94A3B8' }}>
+        Showing {start}–{end} of <strong style={{ color: '#374151' }}>{total.toLocaleString()}</strong>
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={() => setPage(1)}         disabled={page === 1}          style={pgBtnStyle(page === 1)}>«</button>
+        <button onClick={() => setPage(p => p-1)}  disabled={page === 1}          style={pgBtnStyle(page === 1)}>‹</button>
+        <span style={{ fontSize: 12, color: '#374151', fontWeight: 700, padding: '0 8px', minWidth: 60, textAlign: 'center' }}>
+          {page} / {totalPages}
+        </span>
+        <button onClick={() => setPage(p => p+1)}  disabled={page === totalPages} style={pgBtnStyle(page === totalPages)}>›</button>
+        <button onClick={() => setPage(totalPages)} disabled={page === totalPages} style={pgBtnStyle(page === totalPages)}>»</button>
+      </div>
     </div>
   );
 }
@@ -60,22 +93,34 @@ export default function AdminInsights({ user }) {
   const [toast, setToast] = useState('');
   const isSA = user?.role === 'super_admin';
 
-  const alertsSection    = useSection(useCallback(() => api.getSmartAlerts(), []));
+  // ── Section fetchers ──────────────────────────────────────────────────────
+  // Fetch all smart alerts without server-side limit so every item is visible
+  const alertsSection    = useSection(useCallback(() => api.getSmartAlerts({ limit: 10000 }), []));
   const stageSection     = useSection(useCallback(() => api.getStageTime(), []));
   const offerSection     = useSection(useCallback(() => api.getOfferAnalytics(), []));
   const sourceSection    = useSection(useCallback(() => api.getSourceEffectiveness(), []));
   const recruiterSection = useSection(useCallback(() => api.getRecruiterLeaderboard(), []));
-  // Try primary funnel endpoint, fall back to /funnel, then null (shows empty state)
   const funnelSection    = useSection(useCallback(() =>
     api.getHiringFunnel().catch(() => api.getFunnel().catch(() => null)), []));
   const statsSection     = useSection(useCallback(() => api.getDashboardStats(), []));
   const slaSection       = useSection(useCallback(() => api.getSlaCompliance(), []));
-  // Treat interview API failure as empty (no interviews) rather than hard error
   const interviewSection = useSection(useCallback(() =>
     api.getUpcomingInterviews().catch(() => []), []));
   const velocitySection  = useSection(useCallback(() => api.getStageVelocity(), []));
   const timeToHireSection = useSection(useCallback(() => api.getTimeToHire(), []));
   const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis(), []));
+
+  // ── Pagination state ──────────────────────────────────────────────────────
+  const [recPage,    setRecPage]    = useState(1);
+  const [tthPage,    setTthPage]    = useState(1);
+  const [intPage,    setIntPage]    = useState(1);
+  // Smart-alert per-category pagination
+  const [stalePage,  setStalePage]  = useState(1);
+  const [stuckPage,  setStuckPage]  = useState(1);
+  const [offerPage,  setOfferPage]  = useState(1);
+  // Optional date filter for pending offers
+  const [offerDateFrom, setOfferDateFrom] = useState('');
+  const [offerDateTo,   setOfferDateTo]   = useState('');
 
   const reloadAll = () => {
     alertsSection.reload(); stageSection.reload();
@@ -84,8 +129,21 @@ export default function AdminInsights({ user }) {
     statsSection.reload(); slaSection.reload();
     interviewSection.reload(); velocitySection.reload();
     timeToHireSection.reload(); dropoutSection.reload();
+    setRecPage(1); setTthPage(1); setIntPage(1);
+    setStalePage(1); setStuckPage(1); setOfferPage(1);
   };
 
+  // Reset pages when underlying data changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setRecPage(1); }, [recruiterSection.data]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setTthPage(1); }, [timeToHireSection.data]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setIntPage(1); }, [interviewSection.data]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setStalePage(1); setStuckPage(1); setOfferPage(1); }, [alertsSection.data]);
+
+  // ── Data derivations ──────────────────────────────────────────────────────
   const alerts    = alertsSection.data;
   const stageTime = stageSection.data;
   const offerData = offerSection.data;
@@ -111,31 +169,51 @@ export default function AdminInsights({ user }) {
     : Array.isArray(slaRaw?.stages) ? slaRaw.stages
     : Array.isArray(slaRaw?.data)   ? slaRaw.data
     : Array.isArray(slaRaw)         ? slaRaw : [];
-  const upcomingInts = Array.isArray(interviewSection.data)               ? interviewSection.data
-    : Array.isArray(interviewSection.data?.interviews)                    ? interviewSection.data.interviews
-    : Array.isArray(interviewSection.data?.upcoming)                      ? interviewSection.data.upcoming
-    : Array.isArray(interviewSection.data?.results)                       ? interviewSection.data.results
-    : Array.isArray(interviewSection.data?.items)                         ? interviewSection.data.items
-    : Array.isArray(interviewSection.data?.data)                          ? interviewSection.data.data : [];
-  const velocityData = Array.isArray(velocitySection.data)                ? velocitySection.data
-    : Array.isArray(velocitySection.data?.data)                           ? velocitySection.data.data : [];
+  const upcomingInts = Array.isArray(interviewSection.data)                    ? interviewSection.data
+    : Array.isArray(interviewSection.data?.interviews)                         ? interviewSection.data.interviews
+    : Array.isArray(interviewSection.data?.upcoming)                           ? interviewSection.data.upcoming
+    : Array.isArray(interviewSection.data?.results)                            ? interviewSection.data.results
+    : Array.isArray(interviewSection.data?.items)                              ? interviewSection.data.items
+    : Array.isArray(interviewSection.data?.data)                               ? interviewSection.data.data : [];
+  const velocityData = Array.isArray(velocitySection.data)                     ? velocitySection.data
+    : Array.isArray(velocitySection.data?.data)                                ? velocitySection.data.data : [];
 
   const tthRaw  = timeToHireSection.data;
   const tthAvg  = tthRaw?.avgDays ?? tthRaw?.average ?? tthRaw?.avg ?? (typeof tthRaw === 'number' ? tthRaw : null);
-  const tthList = Array.isArray(tthRaw?.byJob)         ? tthRaw.byJob
-    : Array.isArray(tthRaw?.jobs)                       ? tthRaw.jobs
-    : Array.isArray(tthRaw?.data)                       ? tthRaw.data
-    : Array.isArray(tthRaw)                             ? tthRaw : [];
+  const tthList = Array.isArray(tthRaw?.byJob)  ? tthRaw.byJob
+    : Array.isArray(tthRaw?.jobs)               ? tthRaw.jobs
+    : Array.isArray(tthRaw?.data)               ? tthRaw.data
+    : Array.isArray(tthRaw)                     ? tthRaw : [];
   const dropRaw  = dropoutSection.data;
-  const dropList = Array.isArray(dropRaw?.byStage)     ? dropRaw.byStage
-    : Array.isArray(dropRaw?.stages)                   ? dropRaw.stages
-    : Array.isArray(dropRaw?.data)                     ? dropRaw.data
-    : Array.isArray(dropRaw)                           ? dropRaw : [];
+  const dropList = Array.isArray(dropRaw?.byStage) ? dropRaw.byStage
+    : Array.isArray(dropRaw?.stages)              ? dropRaw.stages
+    : Array.isArray(dropRaw?.data)                ? dropRaw.data
+    : Array.isArray(dropRaw)                      ? dropRaw : [];
 
   const totalAlerts =
     (alerts?.staleJobs?.length || 0) +
     (alerts?.stuckCandidates?.length || 0) +
     (alerts?.pendingOffers?.length || 0);
+
+  // ── Paginated slices ──────────────────────────────────────────────────────
+  const recSlice = recruiterData.slice((recPage - 1) * PG, recPage * PG);
+  const tthSlice = tthList.slice((tthPage - 1) * PG, tthPage * PG);
+  const intSlice = upcomingInts.slice((intPage - 1) * PG, intPage * PG);
+
+  // Smart alert full lists (all returned by backend — no frontend cap)
+  const staleJobs  = alerts?.staleJobs || [];
+  const stuckCands = alerts?.stuckCandidates || [];
+  // Pending offers with optional date filter
+  const allPendingOffers = alerts?.pendingOffers || [];
+  const pendingOffers = allPendingOffers.filter(o => {
+    const ts = o.sentAt || o.createdAt || o.offerDate || '';
+    if (offerDateFrom && ts && ts.slice(0, 10) < offerDateFrom) return false;
+    if (offerDateTo   && ts && ts.slice(0, 10) > offerDateTo)   return false;
+    return true;
+  });
+  const staleSlice = staleJobs.slice((stalePage - 1) * PG, stalePage * PG);
+  const stuckSlice = stuckCands.slice((stuckPage - 1) * PG, stuckPage * PG);
+  const offerSlice = pendingOffers.slice((offerPage - 1) * PG, offerPage * PG);
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', animation: 'tn-fadein 0.3s ease both' }}>
@@ -156,7 +234,7 @@ export default function AdminInsights({ user }) {
           <StatBox label="Open Positions"    value={statsData.openJobs     ?? statsData.activeJobs   ?? statsData.openPositions ?? '—'} color="#0176D3" />
           <StatBox label="Total Candidates"  value={statsData.applications ?? statsData.totalApps     ?? statsData.candidates    ?? '—'} color="#7C3AED" />
           <StatBox label="New This Month"    value={statsData.appsLast30   ?? statsData.newThisMonth  ?? '—'} color="#F59E0B" sub="applications in last 30d" />
-          <StatBox label="Hires Made"        value={statsData.hired        ?? statsData.totalHired    ?? statsData.hiredCount    ?? (statsData.pipeline ? (statsData.pipeline['Selected'] ?? statsData.pipeline['Hired'] ?? statsData.pipeline['selected'] ?? 0) : '—')} color="#10B981" />
+          <StatBox label="Hires Made"        value={statsData.hired ?? statsData.totalHired ?? statsData.hiredCount ?? (statsData.pipeline ? (statsData.pipeline['Selected'] ?? statsData.pipeline['Hired'] ?? statsData.pipeline['selected'] ?? 0) : '—')} color="#10B981" />
           {(statsData.totalRecruiters ?? statsData.recruiters) != null && (
             <StatBox label="Active Recruiters" value={statsData.totalRecruiters ?? statsData.recruiters} color="#064E3B" />
           )}
@@ -203,18 +281,16 @@ export default function AdminInsights({ user }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
               {/* Stale Jobs */}
-              {alerts?.staleJobs?.length > 0 && (
+              {staleJobs.length > 0 && (
                 <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#92400E', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: '#92400E', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                     <span>⏳ Jobs open {alerts.thresholds?.staleJobDays || 30}+ days with no hire</span>
-                    {alerts.totals?.staleJobs > alerts.staleJobs.length && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#92400E' }}>
-                        Showing {alerts.staleJobs.length} of {alerts.totals.staleJobs}
-                      </span>
-                    )}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#92400E' }}>
+                      {staleJobs.length} job{staleJobs.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {alerts.staleJobs.map(j => (
+                    {staleSlice.map(j => (
                       <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff8e7', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a', minWidth: 120 }}>{j.title}</span>
                         <span style={{ fontSize: 11, color: '#64748B' }}>{j.company}</span>
@@ -223,22 +299,21 @@ export default function AdminInsights({ user }) {
                       </div>
                     ))}
                   </div>
+                  <Paginator page={stalePage} setPage={setStalePage} total={staleJobs.length} />
                 </div>
               )}
 
               {/* Stuck Candidates */}
-              {alerts?.stuckCandidates?.length > 0 && (
+              {stuckCands.length > 0 && (
                 <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#991B1B', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: '#991B1B', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                     <span>🔴 Candidates stuck {alerts.thresholds?.stuckCandDays || 7}+ days without stage move</span>
-                    {alerts.totals?.stuckCandidates > alerts.stuckCandidates.length && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B' }}>
-                        Showing {alerts.stuckCandidates.length} worst of {alerts.totals.stuckCandidates} total in pipeline
-                      </span>
-                    )}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B' }}>
+                      {stuckCands.length} candidate{stuckCands.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {alerts.stuckCandidates.map(c => (
+                    {stuckSlice.map(c => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff5f5', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a', minWidth: 100 }}>{c.candidateName}</span>
                         <Badge label={c.stage} color="#64748B" />
@@ -247,29 +322,70 @@ export default function AdminInsights({ user }) {
                       </div>
                     ))}
                   </div>
+                  <Paginator page={stuckPage} setPage={setStuckPage} total={stuckCands.length} />
                 </div>
               )}
 
               {/* Pending Offers */}
-              {alerts?.pendingOffers?.length > 0 && (
+              {allPendingOffers.length > 0 && (
                 <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#1E40AF', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>📄 Offer letters unsigned for {alerts.thresholds?.pendingOfferDays || 3}+ days</span>
-                    {alerts.totals?.pendingOffers > alerts.pendingOffers.length && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#1E40AF' }}>
-                        Showing {alerts.pendingOffers.length} of {alerts.totals.pendingOffers}
-                      </span>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: '#1E40AF', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                    <span>📄 Unsigned offer letters</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#1E40AF' }}>
+                      {pendingOffers.length !== allPendingOffers.length
+                        ? `${pendingOffers.length} of ${allPendingOffers.length} offer${allPendingOffers.length !== 1 ? 's' : ''} (filtered)`
+                        : `${allPendingOffers.length} offer${allPendingOffers.length !== 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+                  {/* Date filter */}
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#1E40AF', fontWeight: 700 }}>Filter by date:</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}>
+                      From
+                      <input
+                        type="date"
+                        value={offerDateFrom}
+                        onChange={e => { setOfferDateFrom(e.target.value); setOfferPage(1); }}
+                        style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #BFDBFE', background: '#fff', color: '#1E40AF' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}>
+                      To
+                      <input
+                        type="date"
+                        value={offerDateTo}
+                        onChange={e => { setOfferDateTo(e.target.value); setOfferPage(1); }}
+                        style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #BFDBFE', background: '#fff', color: '#1E40AF' }}
+                      />
+                    </label>
+                    {(offerDateFrom || offerDateTo) && (
+                      <button
+                        onClick={() => { setOfferDateFrom(''); setOfferDateTo(''); setOfferPage(1); }}
+                        style={{ fontSize: 11, color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                      >
+                        Clear
+                      </button>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {alerts.pendingOffers.map(o => (
-                      <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0f7ff', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a' }}>{o.candidateName}</span>
-                        <Badge label={o.status} color="#1E40AF" />
-                        <span style={{ fontSize: 11, color: '#1E40AF', fontWeight: 800, background: '#BFDBFE', padding: '2px 8px', borderRadius: 20 }}>{o.daysPending}d pending</span>
-                      </div>
-                    ))}
-                  </div>
+                  {pendingOffers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '12px 0', color: '#94A3B8', fontSize: 12 }}>No offers match the selected date range.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {offerSlice.map(o => (
+                        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0f7ff', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a' }}>{o.candidateName}</span>
+                          <Badge label={o.status} color="#1E40AF" />
+                          <span style={{ fontSize: 11, color: '#1E40AF', fontWeight: 800, background: '#BFDBFE', padding: '2px 8px', borderRadius: 20 }}>{o.daysPending}d pending</span>
+                          {(o.sentAt || o.createdAt || o.offerDate) && (
+                            <span style={{ fontSize: 11, color: '#64748B' }}>
+                              Sent {new Date(o.sentAt || o.createdAt || o.offerDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Paginator page={offerPage} setPage={setOfferPage} total={pendingOffers.length} />
                 </div>
               )}
             </div>
@@ -290,13 +406,13 @@ export default function AdminInsights({ user }) {
           {!offerSection.loading && !offerSection.error && (offerData ? (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-                <StatBox label="Total Offers" value={offerData.total}   color="#0176D3" />
-                <StatBox label="Signed"       value={offerData.signed}  color="#10B981" />
-                <StatBox label="Pending"      value={offerData.pending} color="#F59E0B" />
+                <StatBox label="Total Offers" value={offerData.total}    color="#0176D3" />
+                <StatBox label="Signed"       value={offerData.signed}   color="#10B981" />
+                <StatBox label="Pending"      value={offerData.pending}  color="#F59E0B" />
                 <StatBox label="Declined"     value={offerData.declined} color="#EF4444" />
               </div>
               {[
-                { label: 'Acceptance Rate', value: `${offerData.acceptanceRate}%`, color: offerData.acceptanceRate >= 70 ? '#10B981' : offerData.acceptanceRate >= 40 ? '#F59E0B' : '#EF4444' },
+                { label: 'Acceptance Rate',  value: `${offerData.acceptanceRate}%`, color: offerData.acceptanceRate >= 70 ? '#10B981' : offerData.acceptanceRate >= 40 ? '#F59E0B' : '#EF4444' },
                 { label: 'Avg Days to Sign', value: `${offerData.avgDaysToSign} days`, color: '#0176D3' },
               ].map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: '#F8FAFC', borderRadius: 10, marginBottom: 8 }}>
@@ -340,7 +456,7 @@ export default function AdminInsights({ user }) {
                 </div>
               ))}
               <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
-                🔴 &gt;14d = bottleneck · 🟡 7-14d = watch · 🟢 &lt;7d = healthy
+                🔴 &gt;14d = bottleneck · 🟡 7–14d = watch · 🟢 &lt;7d = healthy
               </p>
               <p style={{ fontSize: 11, color: '#94A3B8', margin: '2px 0 0' }}>
                 Based on all {stageTime.reduce((s,x) => s + x.count, 0).toLocaleString()} stage transitions in the database.
@@ -413,54 +529,63 @@ export default function AdminInsights({ user }) {
       {/* ── RECRUITER LEADERBOARD + HIRING FUNNEL ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
 
-        {/* Recruiter Leaderboard */}
+        {/* Recruiter Leaderboard — paginated, no data cap */}
         <div style={panel}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <p style={{ ...LABEL, marginBottom: 0 }}>🏆 Recruiter Leaderboard</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
+            <div>
+              <p style={{ ...LABEL, marginBottom: 0 }}>🏆 Recruiter Leaderboard</p>
+              {recruiterData.length > 0 && (
+                <span style={{ fontSize: 11, color: '#94A3B8' }}>{recruiterData.length} recruiter{recruiterData.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
             <button onClick={recruiterSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
           </div>
           {recruiterSection.loading && <SectionLoader />}
           {recruiterSection.error   && <SectionError onRetry={recruiterSection.reload} />}
           {!recruiterSection.loading && !recruiterSection.error && (recruiterData.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recruiterData.slice(0, 6).map((r, i) => {
-                const MEDAL = ['🥇', '🥈', '🥉'];
-                const convPct = typeof r.conversion === 'string' && r.conversion.includes('%')
-                  ? r.conversion
-                  : `${r.conversion ?? 0}%`;
-                return (
-                  <div key={r.recruiterId || r._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: i === 0 ? 'rgba(1,118,211,0.05)' : '#F8FAFC', border: `1px solid ${i === 0 ? 'rgba(1,118,211,0.2)' : '#E2E8F0'}` }}>
-                    <div style={{ width: 22, fontWeight: 900, fontSize: 16, textAlign: 'center', flexShrink: 0 }}>
-                      {MEDAL[i] || <span style={{ color: '#CBD5E1', fontWeight: 700, fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>}
-                    </div>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? 'linear-gradient(135deg,#0176D3,#00C2CB)' : 'linear-gradient(135deg,#64748B,#475569)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                      {(r.name || r.recruiterName || '?')[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || r.recruiterName || '—'}</div>
-                      <div style={{ fontSize: 10, color: '#706E6B' }}>{r.jobs ?? r.jobsAssigned ?? 0} jobs assigned</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontWeight: 800, fontSize: 13, color: '#0176D3' }}>{r.candidates ?? r.candidatesAdded ?? 0}</div>
-                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Apps</div>
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {recSlice.map((r, idx) => {
+                  const i = (recPage - 1) * PG + idx; // global rank index
+                  const MEDAL = ['🥇', '🥈', '🥉'];
+                  const convPct = typeof r.conversion === 'string' && r.conversion.includes('%')
+                    ? r.conversion
+                    : `${r.conversion ?? 0}%`;
+                  return (
+                    <div key={r.recruiterId || r._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: i === 0 ? 'rgba(1,118,211,0.05)' : '#F8FAFC', border: `1px solid ${i === 0 ? 'rgba(1,118,211,0.2)' : '#E2E8F0'}` }}>
+                      <div style={{ width: 22, fontWeight: 900, fontSize: 16, textAlign: 'center', flexShrink: 0 }}>
+                        {i < 3 ? MEDAL[i] : <span style={{ color: '#CBD5E1', fontWeight: 700, fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>}
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontWeight: 800, fontSize: 13, color: '#10B981' }}>{r.hired ?? 0}</div>
-                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Hired</div>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? 'linear-gradient(135deg,#0176D3,#00C2CB)' : 'linear-gradient(135deg,#64748B,#475569)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                        {(r.name || r.recruiterName || '?')[0].toUpperCase()}
                       </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontWeight: 800, fontSize: 13, color: '#F59E0B' }}>{convPct}</div>
-                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Conv</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || r.recruiterName || '—'}</div>
+                        <div style={{ fontSize: 10, color: '#706E6B' }}>{r.jobs ?? r.jobsAssigned ?? 0} jobs assigned</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: '#0176D3' }}>{r.candidates ?? r.candidatesAdded ?? 0}</div>
+                          <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Apps</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: '#10B981' }}>{r.hired ?? 0}</div>
+                          <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Hired</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: '#F59E0B' }}>{convPct}</div>
+                          <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Conv</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
+                  );
+                })}
+              </div>
+              <Paginator page={recPage} setPage={setRecPage} total={recruiterData.length} />
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>
                 💡 Conv = hire rate. Go to Analytics for full recruiter performance breakdown.
               </p>
-            </div>
+            </>
           ) : <SectionEmpty msg="No recruiter data yet. Assign recruiters and start moving candidates." />)}
         </div>
 
@@ -477,12 +602,11 @@ export default function AdminInsights({ user }) {
               {(() => {
                 const maxCount = Math.max(...funnelData.map(s => s.count || 0), 1);
                 return funnelData.map((s, idx) => {
-                  const prev = idx > 0 ? (funnelData[idx - 1].count || 0) : null;
+                  const prev    = idx > 0 ? (funnelData[idx - 1].count || 0) : null;
                   const dropoff = prev && prev > 0 ? Math.round((1 - (s.count || 0) / prev) * 100) : null;
                   const isHired = (s.stage || s.label || '').toLowerCase().includes('hired');
                   const isRej   = (s.stage || s.label || '').toLowerCase().includes('reject');
                   const barColor = isHired ? '#10B981' : isRej ? '#EF4444' : '#0176D3';
-                  const pct = s.percentage ?? Math.round(((s.count || 0) / maxCount) * 100);
                   return (
                     <div key={s.stage || s.label || idx}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
@@ -525,7 +649,6 @@ export default function AdminInsights({ user }) {
           {slaSection.error   && <SectionError onRetry={slaSection.reload} />}
           {!slaSection.loading && !slaSection.error && (slaRaw ? (
             <div>
-              {/* Overall compliance rate */}
               {slaCompRate != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '14px 16px', background: slaCompRate >= 80 ? 'rgba(16,185,129,0.07)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)', border: `1px solid ${slaCompRate >= 80 ? 'rgba(16,185,129,0.2)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12 }}>
                   <div style={{ fontSize: 32, fontWeight: 900, color: slaCompRate >= 80 ? '#10B981' : slaCompRate >= 60 ? '#F59E0B' : '#EF4444' }}>{slaCompRate}%</div>
@@ -538,7 +661,6 @@ export default function AdminInsights({ user }) {
                   </div>
                 </div>
               )}
-              {/* Per-stage SLA */}
               {slaList.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {slaList.map((s, i) => {
@@ -587,9 +709,9 @@ export default function AdminInsights({ user }) {
           {!velocitySection.loading && !velocitySection.error && (velocityData.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {velocityData.map((s, i) => {
-                const hours = s.avgHours ?? s.avgTime ?? s.hours ?? 0;
-                const days  = (hours / 24).toFixed(1);
-                const color = hours > 168 ? '#EF4444' : hours > 72 ? '#F59E0B' : '#10B981';
+                const hours    = s.avgHours ?? s.avgTime ?? s.hours ?? 0;
+                const days     = (hours / 24).toFixed(1);
+                const color    = hours > 168 ? '#EF4444' : hours > 72 ? '#F59E0B' : '#10B981';
                 const maxHours = Math.max(...velocityData.map(x => x.avgHours ?? x.avgTime ?? x.hours ?? 0), 1);
                 return (
                   <div key={i}>
@@ -614,10 +736,15 @@ export default function AdminInsights({ user }) {
         </div>
       </div>
 
-      {/* ── UPCOMING INTERVIEWS ── */}
+      {/* ── UPCOMING INTERVIEWS — paginated ── */}
       <div style={panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <p style={{ ...LABEL, marginBottom: 0 }}>📅 Upcoming Interviews</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
+          <div>
+            <p style={{ ...LABEL, marginBottom: 0 }}>📅 Upcoming Interviews</p>
+            {upcomingInts.length > 0 && (
+              <span style={{ fontSize: 11, color: '#94A3B8' }}>{upcomingInts.length} scheduled</span>
+            )}
+          </div>
           <button onClick={interviewSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
         </div>
         {interviewSection.loading && <SectionLoader />}
@@ -634,8 +761,8 @@ export default function AdminInsights({ user }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {upcomingInts.map((iv, i) => {
-                    const dt = iv.scheduledAt || iv.date || iv.dateTime;
+                  {intSlice.map((iv, i) => {
+                    const dt      = iv.scheduledAt || iv.date || iv.dateTime;
                     const dateStr = dt ? new Date(dt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
                     const timeStr = dt ? new Date(dt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true }) : '';
                     const isToday = dt && new Date(dt).toDateString() === new Date().toDateString();
@@ -669,6 +796,7 @@ export default function AdminInsights({ user }) {
                 </tbody>
               </table>
             </div>
+            <Paginator page={intPage} setPage={setIntPage} total={upcomingInts.length} />
             <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>
               {upcomingInts.length} interview{upcomingInts.length !== 1 ? 's' : ''} scheduled · 🔔 Today rows highlighted
             </p>
@@ -688,10 +816,15 @@ export default function AdminInsights({ user }) {
       {/* ── TIME TO HIRE + DROPOUT ANALYSIS ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
 
-        {/* Time to Hire */}
+        {/* Time to Hire — paginated per-job list, no cap */}
         <div style={panel}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <p style={{ ...LABEL, marginBottom: 0 }}>⏳ Time to Hire</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
+            <div>
+              <p style={{ ...LABEL, marginBottom: 0 }}>⏳ Time to Hire</p>
+              {tthList.length > 0 && (
+                <span style={{ fontSize: 11, color: '#94A3B8' }}>{tthList.length} job{tthList.length !== 1 ? 's' : ''} tracked</span>
+              )}
+            </div>
             <button onClick={timeToHireSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
           </div>
           {timeToHireSection.loading && <SectionLoader />}
@@ -710,19 +843,25 @@ export default function AdminInsights({ user }) {
                 </div>
               )}
               {tthList.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Per Job</div>
-                  {tthList.slice(0, 6).map((j, i) => {
-                    const days = j.avgDays ?? j.days ?? j.timeToHire ?? 0;
-                    const color = days <= 21 ? '#10B981' : days <= 45 ? '#F59E0B' : '#EF4444';
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ flex: 1, fontSize: 12, color: '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title || j.jobTitle || j.job || `Job ${i+1}`}</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{days}d</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Per Job</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {tthSlice.map((j, i) => {
+                      const days  = j.avgDays ?? j.days ?? j.timeToHire ?? 0;
+                      const color = days <= 21 ? '#10B981' : days <= 45 ? '#F59E0B' : '#EF4444';
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ flex: 1, fontSize: 12, color: '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.title || j.jobTitle || j.job || `Job ${(tthPage-1)*PG+i+1}`}</span>
+                          {(j.hireCount ?? j.count) != null && (
+                            <span style={{ fontSize: 10, color: '#94A3B8', flexShrink: 0 }}>{j.hireCount ?? j.count} hire{(j.hireCount ?? j.count) !== 1 ? 's' : ''}</span>
+                          )}
+                          <span style={{ fontSize: 11, fontWeight: 800, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{days}d</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Paginator page={tthPage} setPage={setTthPage} total={tthList.length} />
+                </>
               )}
               {tthAvg == null && tthList.length === 0 && <SectionEmpty msg="No completed hires yet." />}
               <p style={{ fontSize: 11, color: '#94A3B8', margin: '10px 0 0' }}>

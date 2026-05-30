@@ -291,7 +291,7 @@ export default function AssignedCandidates({ user }) {
   useEffect(() => {
     const fetches = [
       api.getJobs({}).catch(() => []),
-      api.getApplications({ limit: 2000 }).catch(() => []),
+      api.getApplications({ limit: 500 }).catch(() => []),
     ];
     if (!isAdmin) {
       fetches.push(api.getCandidateRequests().catch(() => []));
@@ -386,8 +386,8 @@ export default function AssignedCandidates({ user }) {
             jobId={historyJob.jobId}
             jobTitle={historyJob.jobTitle}
             fallbackHistory={historyJob.recruiterHistory || []}
-            currentRecruiterName={historyJob.recruiterName}
-            currentRecruiterId={historyJob.recruiterId}
+            currentRecruiterName={historyJob.recruiterName || (!isAdmin ? user?.name : undefined)}
+            currentRecruiterId={historyJob.recruiterId || (!isAdmin ? user?.id || user?._id : undefined)}
           />
         </Modal>
       )}
