@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import StageTracker from '../../components/pipeline/StageTracker.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import CandidateActivityTimeline from '../../components/shared/CandidateActivityTimeline.jsx';
 import { useNavigate } from 'react-router-dom';
 import { STAGES, SM, NEXT } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
@@ -188,13 +189,14 @@ const ASMT_RESULT = {
   pending: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)',  label: '⏳ Pending Review' },
 };
 
-function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment, onPark, presetTags = DEFAULT_PRESET_TAGS, tagColors = DEFAULT_TAG_COLORS }) {
+function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onViewDetail, onInterview, onReject, onOffer, onToast, onRefresh, assessmentId, submission, onReviewAssessment, onPark, presetTags = DEFAULT_PRESET_TAGS, tagColors = DEFAULT_TAG_COLORS, recruiterHistory = [] }) {
   const navigate = useNavigate();
   const c = app.candidate;
   const s = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
   const nextActions = NEXT[app.stage] || [];
   const [isEditingFunnel, setEditingFunnel] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Notes
   const [notes, setNotes] = useState(app.recruiterNotes || '');
@@ -416,6 +418,7 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         <button onClick={() => setEditingFunnel(!isEditingFunnel)} style={{ ...btnG, padding: '7px 14px', fontSize: 12, borderColor: isEditingFunnel ? '#0176D3' : '', color: isEditingFunnel ? '#0176D3' : '' }}>⏭ {isEditingFunnel ? 'Close' : 'Skip Stage'}</button>
         <button onClick={() => setShowNotes(!showNotes)} style={{ ...btnG, padding: '7px 14px', fontSize: 12, borderColor: showNotes ? '#0176D3' : '', color: showNotes ? '#0176D3' : '' }}>📝 {notes ? 'Notes ●' : 'Notes'}</button>
         <button onClick={() => setShowTags(!showTags)} style={{ ...btnG, padding: '7px 14px', fontSize: 12, borderColor: showTags ? '#0176D3' : '', color: showTags ? '#0176D3' : '' }}>🏷️ Tags{tags.length > 0 ? ` (${tags.length})` : ''}</button>
+        <button onClick={() => setShowHistory(!showHistory)} style={{ ...btnG, padding: '7px 14px', fontSize: 12, borderColor: showHistory ? '#0176D3' : '', color: showHistory ? '#0176D3' : '', background: showHistory ? 'rgba(1,118,211,0.08)' : '' }}>📜 History</button>
         {app.stage === 'interview_completed' && (
           <button onClick={() => setShowFeedback(true)} style={{ background: 'rgba(1,118,211,0.15)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, color: '#0176D3', padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>📋 {app.feedback ? 'Edit Feedback' : 'Add Feedback'}</button>
         )}
@@ -480,6 +483,10 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         </button>
       </div>
 
+      {showHistory && (
+        <CandidateActivityTimeline app={app} recruiterHistory={recruiterHistory} />
+      )}
+
       {showFeedback && (
         <FeedbackModal
           app={app}
@@ -512,6 +519,7 @@ export default function RecruiterPipeline({ user }) {
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [movingAppId, setMovingAppId] = useState(null);
+  const [recruiterHistory, setRecruiterHistory] = useState([]);
 
   useEffect(() => {
     api.getJobs({ minimal: true }).then(j => {
@@ -682,6 +690,12 @@ export default function RecruiterPipeline({ user }) {
     setSF('all');
     setPagination(p => ({ ...p, page: 1 }));
     setJobSearch('');
+    setRecruiterHistory([]);
+    if (id) {
+      api.getJobRecruiterHistory(id)
+        .then(r => setRecruiterHistory(r?.data?.history || []))
+        .catch(() => setRecruiterHistory([]));
+    }
   };
 
   return (
@@ -972,6 +986,7 @@ export default function RecruiterPipeline({ user }) {
                             onReviewAssessment={(aId, subId) => navigate(`/app/review/${aId}/${subId}`)}
                             presetTags={presetTags}
                             tagColors={tagColors}
+                            recruiterHistory={recruiterHistory}
                           />
                         ))}
                       </div>
@@ -1007,6 +1022,7 @@ export default function RecruiterPipeline({ user }) {
                     onReviewAssessment={(aId, subId) => navigate(`/app/review/${aId}/${subId}`)}
                     presetTags={presetTags}
                     tagColors={tagColors}
+                    recruiterHistory={recruiterHistory}
                   />
                 ))}
               </div>
