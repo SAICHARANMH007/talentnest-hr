@@ -214,7 +214,7 @@ export default function ApplicantsRecordsPage({ user }) {
   const [selected, setSelected] = useState(null);
   const [editRow, setEditRow]   = useState(null);
   const [assigning, setAssigning] = useState('');
-  const [historyJob, setHistoryJob] = useState(null); // { jobId, jobTitle }
+  const [historyJob, setHistoryJob] = useState(null); // { jobId, jobTitle, recruiterName, recruiterId }
 
   const canManage = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'recruiter';
 
@@ -605,7 +605,7 @@ export default function ApplicantsRecordsPage({ user }) {
                             {r.jobId && (
                               <button
                                 title="View recruiter history for this job"
-                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job', recruiterName: r.assignedRecruiters || '', recruiterId: r.assignedRecruiterId || r.assignedRecruiterIds?.[0] || '' })}
                                 style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:26, height:26, cursor:'pointer', fontSize:12, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
                               >📋</button>
                             )}
@@ -621,7 +621,7 @@ export default function ApplicantsRecordsPage({ user }) {
                             {r.jobId && (
                               <button
                                 title="View recruiter history for this job"
-                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                                onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job', recruiterName: r.assignedRecruiters || '', recruiterId: r.assignedRecruiterId || r.assignedRecruiterIds?.[0] || '' })}
                                 style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:22, height:22, cursor:'pointer', fontSize:11, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
                               >📋</button>
                             )}
@@ -759,7 +759,7 @@ export default function ApplicantsRecordsPage({ user }) {
                     {r.jobId && (
                       <button
                         title="View recruiter history for this job"
-                        onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job' })}
+                        onClick={() => setHistoryJob({ jobId: r.jobId, jobTitle: r.jobTitle || r.job || 'Job', recruiterName: r.assignedRecruiters || '', recruiterId: r.assignedRecruiterId || r.assignedRecruiterIds?.[0] || '' })}
                         style={{ background:'rgba(1,118,211,0.08)', border:'none', borderRadius:6, width:30, height:30, cursor:'pointer', fontSize:13, color:'#0176D3', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
                       >📋</button>
                     )}
@@ -798,7 +798,12 @@ export default function ApplicantsRecordsPage({ user }) {
           <div style={{ color:'#64748B', fontSize:12, marginBottom:16 }}>
             Full handoff trail for this job. Previous recruiters' contact details are shown so you can coordinate.
           </div>
-          <JobRecruiterHistory jobId={historyJob.jobId} jobTitle={historyJob.jobTitle} />
+          <JobRecruiterHistory
+            jobId={historyJob.jobId}
+            jobTitle={historyJob.jobTitle}
+            currentRecruiterName={historyJob.recruiterName || (['recruiter'].includes(user?.role) ? user?.name : undefined)}
+            currentRecruiterId={historyJob.recruiterId || (['recruiter'].includes(user?.role) ? user?.id || user?._id : undefined)}
+          />
         </Modal>
       )}
     </div>
