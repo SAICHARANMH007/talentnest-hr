@@ -117,6 +117,58 @@ function NotificationBell({ userRole, compact = false }) {
     return () => window.removeEventListener('resize', h);
   }, []);
 
+  // Admin-only: build a live feed from real current data (recent apps + smart alerts)
+  const buildAdminFeed = React.useCallback(async () => {
+    const items = [];
+
+    // Recent applications — newest first
+    try {
+      const resp = await api.getApplications({ limit: 25 });
+      const apps = Array.isArray(resp) ? resp : (Array.isArray(resp?.data) ? resp.data : []);
+      [...apps]
+        .sort((a, b) => new Date(b.createdAt || b.appliedAt || 0) - new Date(a.createdAt || a.appliedAt || 0))
+        .forEach(a => {
+          const cand  = a.candidateId || a.candidate || {};
+          const job   = a.jobId || {};
+          const rawId = a._id || a.id;
+          if (!rawId) return;
+          const id = `live_app_${rawId}`;
+          items.push({
+            _id: id, type: 'application',
+            title: 'New Application',
+            body: `${cand.name || a.candidateName || 'Candidate'} applied for: ${job.title || a.jobTitle || 'a position'}`,
+            createdAt: a.createdAt || a.appliedAt || new Date().toISOString(),
+            read: readIds.current.has(id), live: true,
+          });
+        });
+    } catch {}
+
+    // Smart alerts — stale jobs, stuck candidates, pending offers
+    try {
+      const alerts = await api.getSmartAlerts();
+      (alerts?.pendingOffers || []).slice(0, 5).forEach(o => {
+        const id = `live_offer_${o.id}`;
+        items.push({ _id: id, type: 'offer', title: 'Offer Letter Pending',
+          body: `${o.candidateName} — unsigned for ${o.daysPending} days`,
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+      });
+      (alerts?.stuckCandidates || []).slice(0, 5).forEach(c => {
+        const id = `live_stuck_${c.id}`;
+        items.push({ _id: id, type: 'stage_change', title: 'Candidate Stuck in Pipeline',
+          body: `${c.candidateName} stuck in ${c.stage} for ${c.daysStuck} days — ${c.jobTitle}`,
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+      });
+      (alerts?.staleJobs || []).slice(0, 5).forEach(j => {
+        const id = `live_stale_${j.id}`;
+        items.push({ _id: id, type: 'system', title: 'Job Open Too Long',
+          body: `${j.title} — open ${j.daysOpen} days with no hire`,
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+      });
+    } catch {}
+
+    return items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, []);
+
   const load = React.useCallback(async () => {
     try {
       const d = await api.getNotifications();
@@ -158,8 +210,17 @@ function NotificationBell({ userRole, compact = false }) {
     }
     setOpen(true);
 
-    // For admin + super_admin: auto-generate fresh notification summary on first open
-    if (isAdminOrSA && !summaryFetched.current) {
+    // Admin: always build live feed from real data (bypasses stale stored notifications)
+    if (userRole === 'admin') {
+      setLoading(true);
+      try {
+        const feed = await buildAdminFeed();
+        setNotifs(feed);
+        setLastRefresh(new Date());
+      } catch { await load(); }
+      setLoading(false);
+    // Super admin: auto-generate platform summary on first open
+    } else if (userRole === 'super_admin' && !summaryFetched.current) {
       summaryFetched.current = true;
       setLoading(true);
       try {
@@ -181,24 +242,30 @@ function NotificationBell({ userRole, compact = false }) {
     }
   };
 
-  // Manual refresh — regenerate + reload
+  // Manual refresh — admin gets live feed rebuild, super_admin regenerates summary
   const refreshNotifs = React.useCallback(async () => {
     setLoading(true);
     try {
-      const fresh = await api.generatePlatformNotifications();
-      if (Array.isArray(fresh) && fresh.length > 0) {
-        const seen = new Set();
-        const merged = fresh
-          .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
-          .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
-        setNotifs(merged);
+      if (userRole === 'admin') {
+        const feed = await buildAdminFeed();
+        setNotifs(feed);
         setLastRefresh(new Date());
       } else {
-        await load();
+        const fresh = await api.generatePlatformNotifications();
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          const seen = new Set();
+          const merged = fresh
+            .filter(n => { const id = n._id || n.id; if (!id || seen.has(id)) return false; seen.add(id); return true; })
+            .map(n => { const id = n._id || n.id; return readIds.current.has(id) ? { ...n, read: true } : n; });
+          setNotifs(merged);
+          setLastRefresh(new Date());
+        } else {
+          await load();
+        }
       }
     } catch { await load(); }
     setLoading(false);
-  }, [load]);
+  }, [load, buildAdminFeed, userRole]);
 
   const markOne  = async (id) => {
     if (!id) return;
@@ -582,6 +649,7 @@ function NotificationBell({ userRole, compact = false }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ color: '#9CA3AF', fontSize: isMobile ? 12 : 10 }}>{timeAgo(n.createdAt)}</span>
                       {n.type && <span style={{ color: '#0176D3', fontSize: isMobile ? 12 : 10, background: 'rgba(1,118,211,0.08)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>{TYPE_LABELS[n.type] || n.type}</span>}
+                      {n.live && <span style={{ color: '#059669', fontSize: 9, background: 'rgba(5,150,105,0.1)', borderRadius: 4, padding: '1px 5px', fontWeight: 800, letterSpacing: 0.3 }}>LIVE</span>}
                       <span style={{ color: '#0176D3', fontSize: isMobile ? 12 : 10, marginLeft: 'auto', fontWeight: 700 }}>View →</span>
                     </div>
                   </div>
