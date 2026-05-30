@@ -60,20 +60,36 @@ export default function AdminInsights({ user }) {
   const [toast, setToast] = useState('');
   const isSA = user?.role === 'super_admin';
 
-  const alertsSection  = useSection(useCallback(() => api.getSmartAlerts(), []));
-  const stageSection   = useSection(useCallback(() => api.getStageTime(), []));
-  const offerSection   = useSection(useCallback(() => api.getOfferAnalytics(), []));
-  const sourceSection  = useSection(useCallback(() => api.getSourceEffectiveness(), []));
+  const alertsSection    = useSection(useCallback(() => api.getSmartAlerts(), []));
+  const stageSection     = useSection(useCallback(() => api.getStageTime(), []));
+  const offerSection     = useSection(useCallback(() => api.getOfferAnalytics(), []));
+  const sourceSection    = useSection(useCallback(() => api.getSourceEffectiveness(), []));
+  const recruiterSection = useSection(useCallback(() => api.getRecruiterLeaderboard(), []));
+  const funnelSection    = useSection(useCallback(() => api.getHiringFunnel(), []));
 
   const reloadAll = () => {
     alertsSection.reload(); stageSection.reload();
     offerSection.reload();  sourceSection.reload();
+    recruiterSection.reload(); funnelSection.reload();
   };
 
   const alerts    = alertsSection.data;
   const stageTime = stageSection.data;
   const offerData = offerSection.data;
-  const sourceData = Array.isArray(sourceSection.data) ? sourceSection.data : [];
+  const sourceData    = Array.isArray(sourceSection.data) ? sourceSection.data : [];
+  const recruiterData = Array.isArray(recruiterSection.data)
+    ? recruiterSection.data
+    : Array.isArray(recruiterSection.data?.data)
+    ? recruiterSection.data.data
+    : [];
+  const funnelRaw  = funnelSection.data;
+  const funnelData = Array.isArray(funnelRaw?.stages)
+    ? funnelRaw.stages
+    : Array.isArray(funnelRaw?.data)
+    ? funnelRaw.data
+    : Array.isArray(funnelRaw)
+    ? funnelRaw
+    : [];
 
   const totalAlerts =
     (alerts?.staleJobs?.length || 0) +
@@ -278,7 +294,7 @@ export default function AdminInsights({ user }) {
         {!sourceSection.loading && !sourceSection.error && (sourceData.length > 0 ? (
           <>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 580 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 540 }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
                     {['Source', 'Applications', 'Shortlisted', 'Hired', 'Shortlist %', 'Hire %'].map(h => (
@@ -310,7 +326,6 @@ export default function AdminInsights({ user }) {
                       </td>
                     </tr>
                   ))}
-                  {/* Totals row */}
                   <tr style={{ background: '#F8FAFC', fontWeight: 800, borderTop: '2px solid #E2E8F0' }}>
                     <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 800, color: '#0A1628' }}>TOTAL</td>
                     <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 800, color: '#374151' }}>{sourceData.reduce((s,r) => s+r.applications,0).toLocaleString()}</td>
@@ -326,6 +341,108 @@ export default function AdminInsights({ user }) {
             </p>
           </>
         ) : <SectionEmpty msg="No source data available." />)}
+      </div>
+
+      {/* ── RECRUITER LEADERBOARD + HIRING FUNNEL ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
+
+        {/* Recruiter Leaderboard */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>🏆 Recruiter Leaderboard</p>
+            <button onClick={recruiterSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {recruiterSection.loading && <SectionLoader />}
+          {recruiterSection.error   && <SectionError onRetry={recruiterSection.reload} />}
+          {!recruiterSection.loading && !recruiterSection.error && (recruiterData.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recruiterData.slice(0, 6).map((r, i) => {
+                const MEDAL = ['🥇', '🥈', '🥉'];
+                const convPct = typeof r.conversion === 'string' && r.conversion.includes('%')
+                  ? r.conversion
+                  : `${r.conversion ?? 0}%`;
+                return (
+                  <div key={r.recruiterId || r._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: i === 0 ? 'rgba(1,118,211,0.05)' : '#F8FAFC', border: `1px solid ${i === 0 ? 'rgba(1,118,211,0.2)' : '#E2E8F0'}` }}>
+                    <div style={{ width: 22, fontWeight: 900, fontSize: 16, textAlign: 'center', flexShrink: 0 }}>
+                      {MEDAL[i] || <span style={{ color: '#CBD5E1', fontWeight: 700, fontSize: 12 }}>{String(i + 1).padStart(2, '0')}</span>}
+                    </div>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? 'linear-gradient(135deg,#0176D3,#00C2CB)' : 'linear-gradient(135deg,#64748B,#475569)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                      {(r.name || r.recruiterName || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || r.recruiterName || '—'}</div>
+                      <div style={{ fontSize: 10, color: '#706E6B' }}>{r.jobs ?? r.jobsAssigned ?? 0} jobs assigned</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: '#0176D3' }}>{r.candidates ?? r.candidatesAdded ?? 0}</div>
+                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Apps</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: '#10B981' }}>{r.hired ?? 0}</div>
+                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Hired</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: '#F59E0B' }}>{convPct}</div>
+                        <div style={{ fontSize: 9, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Conv</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
+                💡 Conv = hire rate. Go to Analytics for full recruiter performance breakdown.
+              </p>
+            </div>
+          ) : <SectionEmpty msg="No recruiter data yet. Assign recruiters and start moving candidates." />)}
+        </div>
+
+        {/* Hiring Funnel Snapshot */}
+        <div style={panel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={{ ...LABEL, marginBottom: 0 }}>🔽 Hiring Funnel Snapshot</p>
+            <button onClick={funnelSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
+          </div>
+          {funnelSection.loading && <SectionLoader />}
+          {funnelSection.error   && <SectionError onRetry={funnelSection.reload} />}
+          {!funnelSection.loading && !funnelSection.error && (funnelData.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(() => {
+                const maxCount = Math.max(...funnelData.map(s => s.count || 0), 1);
+                return funnelData.map((s, idx) => {
+                  const prev = idx > 0 ? (funnelData[idx - 1].count || 0) : null;
+                  const dropoff = prev && prev > 0 ? Math.round((1 - (s.count || 0) / prev) * 100) : null;
+                  const isHired = (s.stage || s.label || '').toLowerCase().includes('hired');
+                  const isRej   = (s.stage || s.label || '').toLowerCase().includes('reject');
+                  const barColor = isHired ? '#10B981' : isRej ? '#EF4444' : '#0176D3';
+                  const pct = s.percentage ?? Math.round(((s.count || 0) / maxCount) * 100);
+                  return (
+                    <div key={s.stage || s.label || idx}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{s.stage || s.label || `Stage ${idx + 1}`}</span>
+                        <span style={{ fontSize: 12, color: '#706E6B' }}>
+                          {(s.count || 0).toLocaleString()}
+                          {s.percentage != null && <span style={{ color: '#94A3B8', marginLeft: 4 }}>({s.percentage}%)</span>}
+                        </span>
+                      </div>
+                      <div style={{ height: 8, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 4, width: `${Math.min(100, (s.count || 0) / maxCount * 100)}%`, background: `linear-gradient(90deg, ${barColor}, ${barColor}cc)`, transition: 'width 0.6s ease' }} />
+                      </div>
+                      {dropoff !== null && dropoff > 0 && (
+                        <div style={{ fontSize: 10, color: dropoff > 60 ? '#EF4444' : '#F59E0B', marginTop: 2 }}>
+                          ↓ {dropoff}% drop from previous stage
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+              <p style={{ fontSize: 11, color: '#94A3B8', margin: '4px 0 0' }}>
+                Large drop-offs show where candidates are being lost in your process.
+              </p>
+            </div>
+          ) : <SectionEmpty msg="No pipeline data yet. Candidates need to move through stages to build a funnel." />)}
+        </div>
       </div>
     </div>
   );
