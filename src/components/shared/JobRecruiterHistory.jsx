@@ -288,23 +288,41 @@ function HandoffConnector({ from, to }) {
 }
 
 // ── Root component ───────────────────────────────────────────────────────────
-export default function JobRecruiterHistory({ jobId, jobTitle }) {
-  const [history,  setHistory]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState('');
-  const [allApps,  setAllApps]  = useState(null);
+export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [] }) {
+  const [history,      setHistory]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [allApps,      setAllApps]      = useState(null);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
     fetchedRef.current = false;
     setAllApps(null);
+    setUsingFallback(false);
     if (!jobId) { setLoading(false); return; }
     setLoading(true);
     api.getJobRecruiterHistory(jobId)
-      .then(r => setHistory(r?.data?.history || []))
-      .catch(e => setError(e.message))
+      .then(r => {
+        const hist = r?.data?.history || r?.history || [];
+        if (hist.length > 0) {
+          setHistory(hist);
+        } else if (fallbackHistory.length > 0) {
+          setHistory(fallbackHistory);
+          setUsingFallback(true);
+        } else {
+          setHistory([]);
+        }
+      })
+      .catch(() => {
+        if (fallbackHistory.length > 0) {
+          setHistory(fallbackHistory);
+          setUsingFallback(true);
+        } else {
+          setHistory([]);
+        }
+      })
       .finally(() => setLoading(false));
-  }, [jobId]);
+  }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared lazy loader — called by entries, caches result
   const ensureApps = async () => {
@@ -323,10 +341,11 @@ export default function JobRecruiterHistory({ jobId, jobTitle }) {
 
   if (!jobId) return null;
   if (loading) return <div style={{ color: '#94A3B8', fontSize: 12, padding: '8px 0' }}>Loading recruiter history…</div>;
-  if (error)   return <div style={{ color: '#BA0517', fontSize: 12, padding: '8px 0' }}>⚠️ {error}</div>;
   if (!history.length) return (
-    <div style={{ color: '#94A3B8', fontSize: 12, padding: '8px 0', textAlign: 'center' }}>
-      No recruiter history yet for this job.
+    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>👤</div>
+      <div style={{ color: '#374151', fontWeight: 700, fontSize: 14, marginBottom: 6 }}>No recruiter assigned yet</div>
+      <div style={{ color: '#94A3B8', fontSize: 12 }}>Once a recruiter is assigned to this job, their history will appear here.</div>
     </div>
   );
 
@@ -364,6 +383,14 @@ export default function JobRecruiterHistory({ jobId, jobTitle }) {
           <span style={{ fontSize: 11, color: '#94A3B8' }}>· {totalDays}d total job age</span>
         )}
       </div>
+
+      {/* ── Fallback notice ── */}
+      {usingFallback && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', marginBottom: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8 }}>
+          <span style={{ fontSize: 14 }}>ℹ️</span>
+          <span style={{ fontSize: 11, color: '#92400E' }}>Showing recruiter data from job record — full assignment audit log is being built by the server.</span>
+        </div>
+      )}
 
       {/* ── Tap hint ── */}
       <div style={{ fontSize: 10, color: '#94A3B8', marginBottom: 10, fontStyle: 'italic' }}>
