@@ -382,7 +382,13 @@ export default function AssignedCandidates({ user }) {
             <button onClick={() => setHistoryJob(null)} style={{ ...btnG, width: '100%' }}>Close</button>
           }
         >
-          <JobRecruiterHistory jobId={historyJob.jobId} jobTitle={historyJob.jobTitle} fallbackHistory={historyJob.recruiterHistory || []} />
+          <JobRecruiterHistory
+            jobId={historyJob.jobId}
+            jobTitle={historyJob.jobTitle}
+            fallbackHistory={historyJob.recruiterHistory || []}
+            currentRecruiterName={historyJob.recruiterName}
+            currentRecruiterId={historyJob.recruiterId}
+          />
         </Modal>
       )}
 
@@ -465,12 +471,12 @@ export default function AssignedCandidates({ user }) {
               <div key={jid} style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 {isHandoff && (
                   <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [] })} />
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })} />
                 )}
                 {!isHandoff && isFirst && !isAdmin && (
                   <FirstRecruiterBanner
                     assignedAt={currentRecruiter?.assignedAt}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [] })}
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })}
                   />
                 )}
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -490,7 +496,7 @@ export default function AssignedCandidates({ user }) {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Badge label={j.status || 'active'} color={j.status === 'active' ? '#34d399' : '#706E6B'} />
                     <button
-                      onClick={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [] })}
+                      onClick={() => setHistoryJob({ jobId: jid, jobTitle: j.title, recruiterHistory: j.recruiterHistory || [], recruiterName: j.recruiterName, recruiterId: j.recruiterId })}
                       style={{ background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: '#0176D3', cursor: 'pointer', fontWeight: 600 }}
                     >
                       📋 History
@@ -523,13 +529,13 @@ export default function AssignedCandidates({ user }) {
                 {/* Handoff banner — shown when job was previously with another recruiter */}
                 {isHandoff && (
                   <HandoffBanner prev={lastPrev} totalPrev={totalPrev}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [] })} />
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })} />
                 )}
                 {/* First recruiter banner — shown when this is the only recruiter ever assigned */}
                 {!isHandoff && isFirst && !isAdmin && (
                   <FirstRecruiterBanner
                     assignedAt={currentRecruiter?.assignedAt}
-                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [] })}
+                    onViewHistory={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })}
                   />
                 )}
 
@@ -561,7 +567,7 @@ export default function AssignedCandidates({ user }) {
                     {/* Action buttons */}
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       <button
-                        onClick={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [] })}
+                        onClick={() => setHistoryJob({ jobId: jid, jobTitle, recruiterHistory: fullJob.recruiterHistory || [], recruiterName: fullJob.recruiterName, recruiterId: fullJob.recruiterId })}
                         title="View full recruiter handoff history for this job"
                         style={{
                           background: 'rgba(1,118,211,0.07)', border: '1px solid rgba(1,118,211,0.2)',

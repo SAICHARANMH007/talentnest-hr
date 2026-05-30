@@ -288,7 +288,7 @@ function HandoffConnector({ from, to }) {
 }
 
 // ── Root component ───────────────────────────────────────────────────────────
-export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [] }) {
+export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [], currentRecruiterName, currentRecruiterId }) {
   const [history,      setHistory]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
@@ -309,6 +309,10 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
         } else if (fallbackHistory.length > 0) {
           setHistory(fallbackHistory);
           setUsingFallback(true);
+        } else if (currentRecruiterName) {
+          // Ultimate fallback: synthetic entry from the job's denormalised recruiterName field
+          setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
+          setUsingFallback(true);
         } else {
           setHistory([]);
         }
@@ -316,6 +320,9 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
       .catch(() => {
         if (fallbackHistory.length > 0) {
           setHistory(fallbackHistory);
+          setUsingFallback(true);
+        } else if (currentRecruiterName) {
+          setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
           setUsingFallback(true);
         } else {
           setHistory([]);
