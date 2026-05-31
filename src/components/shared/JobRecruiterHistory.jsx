@@ -30,15 +30,30 @@ const STAGE_ORDER = [
 ];
 
 // ── Candidates list (reused in per-recruiter drill-down) ─────────────────────
-function CandidateList({ candidates, emptyMsg }) {
+function CandidateList({ candidates, emptyMsg, entry, effectiveEndDate }) {
   if (!candidates.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
+
+  // Use effectiveEndDate (removedAt || nextRecruiter.assignedAt) as the boundary.
+  // This handles recruiters with no removedAt who were later superseded by another recruiter.
+  const getStageAtTenureEnd = (app) => {
+    if (!effectiveEndDate) return app.currentStage || app.stage || 'Applied';
+    const endDate = new Date(effectiveEndDate);
+    const history = (app.stageHistory || [])
+      .filter(h => { const ts = h.movedAt || h.changedAt || h.date; return ts && new Date(ts) <= endDate; })
+      .sort((a, b) => new Date(b.movedAt || b.changedAt || b.date) - new Date(a.movedAt || a.changedAt || a.date));
+    return history[0]?.stageId || history[0]?.stage || 'Applied';
+  };
+
   return (
     <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {candidates.map((a, i) => {
-        const name  = a.candidate?.name || a.candidateName || '?';
-        const stage = a.currentStage || a.stage || 'applied';
-        const color = STAGE_COLOR[stage] || '#64748B';
+        const name         = a.candidate?.name || a.candidateName || '?';
+        const tenureStage  = getStageAtTenureEnd(a);
+        const currentStage = a.currentStage || a.stage || 'Applied';
+        const movedAfter   = !!(effectiveEndDate && tenureStage !== currentStage);
+        const color        = STAGE_COLOR[tenureStage]  || '#64748B';
+        const nowColor     = STAGE_COLOR[currentStage] || '#64748B';
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}22` }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
@@ -48,7 +63,16 @@ function CandidateList({ candidates, emptyMsg }) {
               <div style={{ fontWeight: 700, fontSize: 12, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
               <div style={{ fontSize: 10, color: '#94A3B8' }}>Applied {fmt(a.createdAt || a.appliedAt)}</div>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtStage(stage)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                {fmtStage(tenureStage)}
+              </span>
+              {movedAfter && (
+                <span style={{ fontSize: 9, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                  → <span style={{ color: nowColor, fontWeight: 700 }}>{fmtStage(currentStage)}</span> after tenure
+                </span>
+              )}
+            </div>
           </div>
         );
       })}
@@ -57,13 +81,14 @@ function CandidateList({ candidates, emptyMsg }) {
 }
 
 // ── Stage-changes log ────────────────────────────────────────────────────────
-function PipelineLog({ events, emptyMsg }) {
+function PipelineLog({ events, emptyMsg, recruiterMap = {} }) {
   if (!events.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
   return (
     <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {events.map((ev, i) => {
-        const color = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
+        const color     = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
+        const moverName = ev.movedBy ? (recruiterMap[String(ev.movedBy)] || null) : null;
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}22` }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -72,7 +97,19 @@ function PipelineLog({ events, emptyMsg }) {
                 {ev.candidateName} <span style={{ color: '#C9C7C5' }}>→</span>{' '}
                 <span style={{ color }}>{fmtStage(ev.stage || ev.stageId) || '—'}</span>
               </div>
-              {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>"{ev.note}"</div>}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 2 }}>
+                {moverName && (
+                  <span style={{ fontSize: 10, color: '#706E6B' }}>
+                    👤 moved by <strong style={{ color: '#0176D3' }}>{moverName}</strong>
+                  </span>
+                )}
+                {ev.isCrossRecruiter && ev.appliedDuringName && (
+                  <span style={{ fontSize: 10, color: '#92400E', background: 'rgba(245,158,11,0.08)', padding: '1px 6px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.25)' }}>
+                    📋 applied during <strong>{ev.appliedDuringName}</strong>'s tenure
+                  </span>
+                )}
+              </div>
+              {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic', marginTop: 1 }}>"{ev.note}"</div>}
             </div>
             <span style={{ fontSize: 10, color: '#94A3B8', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtDT(ev._ts)}</span>
           </div>
@@ -89,7 +126,7 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
@@ -121,10 +158,21 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
     } else if (key === 'log') {
       const events = [];
       apps.forEach(a => {
-        const cName = a.candidate?.name || a.candidateName || '—';
+        const cName    = a.candidate?.name || a.candidateName || '—';
+        const appliedAt = a.createdAt || a.appliedAt;
+        // Find which recruiter was active when this candidate applied
+        const appliedDuringRec = appliedAt ? (history || []).find(r => {
+          const f  = r.assignedAt ? new Date(r.assignedAt) : null;
+          const to = r.removedAt  ? new Date(r.removedAt)  : null;
+          const t  = new Date(appliedAt);
+          return (!f || t >= f) && (!to || t <= to);
+        }) : null;
+        const appliedDuringName = appliedDuringRec?.recruiterName || null;
+        // Flag when the candidate applied under a different recruiter than this section's owner
+        const isCrossRecruiter  = !!(appliedDuringName && appliedDuringName !== entry.recruiterName);
         (a.stageHistory || []).forEach(h => {
           const ts = h.movedAt || h.changedAt || h.date;
-          if (inWindow(ts)) events.push({ ...h, _ts: ts, candidateName: cName });
+          if (inWindow(ts)) events.push({ ...h, _ts: ts, candidateName: cName, appliedDuringName, isCrossRecruiter });
         });
       });
       events.sort((a, b) => new Date(a._ts) - new Date(b._ts));
@@ -257,13 +305,13 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
           ) : (
             <>
               {tab === 'applied'  && data.applied  !== undefined && (
-                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." />
+                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." entry={entry} effectiveEndDate={effectiveEndDate} />
               )}
               {tab === 'pipeline' && data.pipeline !== undefined && (
-                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." />
+                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." entry={entry} effectiveEndDate={effectiveEndDate} />
               )}
               {tab === 'log'      && data.log      !== undefined && (
-                <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." />
+                <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." recruiterMap={recruiterMap} />
               )}
             </>
           )}
@@ -563,6 +611,10 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   // Sorted oldest → newest
   const sorted = [...history].sort((a, b) => new Date(a.assignedAt || 0) - new Date(b.assignedAt || 0));
 
+  // Map recruiterId → recruiterName for "moved by" attribution in stage logs
+  const recruiterMap = {};
+  sorted.forEach(r => { if (r.recruiterId) recruiterMap[String(r.recruiterId)] = r.recruiterName; });
+
   // Detect "again" — same recruiter appearing more than once
   const nameTally = {};
   sorted.forEach(r => { nameTally[r.recruiterName] = (nameTally[r.recruiterName] || 0) + 1; });
@@ -675,6 +727,9 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           const isRepeat = nameTally[entry.recruiterName] > 1 && nameSeen[entry.recruiterName] > 1;
           const isLast   = i === sorted.length - 1;
           const next     = sorted[i + 1];
+          // Use the next recruiter's assignedAt as the effective tenure end when this entry
+          // has no removedAt (e.g. bulk-assigned recruiter with no recorded removal date).
+          const effectiveEndDate = entry.removedAt || next?.assignedAt || null;
 
           return (
             <div key={i}>
@@ -685,6 +740,9 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 days={days}
                 isLast={isLast}
                 ensureApps={ensureApps}
+                recruiterMap={recruiterMap}
+                history={sorted}
+                effectiveEndDate={effectiveEndDate}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
