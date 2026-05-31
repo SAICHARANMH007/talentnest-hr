@@ -343,6 +343,7 @@ export default function AssignedCandidates({ user }) {
   // Global pool loaded on-demand when search is active
   const [globalApps,        setGlobalApps]        = useState(null);
   const [globalAppsLoading, setGlobalAppsLoading] = useState(false);
+  const [totalJobs,         setTotalJobs]         = useState(0);
   const fetchingRef = useRef(new Set());
 
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
@@ -363,35 +364,45 @@ export default function AssignedCandidates({ user }) {
     }
   }, []);
 
-  // ── Mount: load only jobs (fast) ─────────────────────────────────────────────
+  // ── Jobs fetch: server-side pagination for admin, all-assigned for recruiter ──
   useEffect(() => {
     fetchingRef.current.clear();
     setJobApps({});
     setGlobalApps(null);
     setLoad(true);
-    // Recruiters only fetch their own assigned jobs; admins fetch all
-    const jobsQuery = isAdmin ? {} : { recruiterId: user?.id || user?._id };
-    const fetches = [api.getJobs(jobsQuery).catch(() => [])];
-    if (!isAdmin) fetches.push(api.getCandidateRequests().catch(() => []));
 
-    Promise.all(fetches).then(([j, r]) => {
-      const raw = j;
-      const allJobs = Array.isArray(raw) ? raw
-        : Array.isArray(raw?.data) ? raw.data
-        : Array.isArray(raw?.jobs) ? raw.jobs
-        : [];
-      setJobs(allJobs);
-      if (!isAdmin && r) {
+    if (isAdmin) {
+      // Admin: paginated fetch — backend scopes to org via JWT
+      api.getJobs({ limit: JOB_LIST_PG, page: jobListPage })
+        .then(raw => {
+          const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
+          const total = raw?.pagination?.total ?? raw?.total ?? list.length;
+          setJobs(list);
+          setTotalJobs(total);
+        })
+        .catch(() => { setJobs([]); setTotalJobs(0); })
+        .finally(() => setLoad(false));
+    } else {
+      // Recruiter: load only their assigned jobs at once (typically small count)
+      Promise.all([
+        api.getJobs({ recruiterId: user?.id || user?._id }).catch(() => []),
+        api.getCandidateRequests().catch(() => []),
+      ]).then(([j, r]) => {
+        const allJobs = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : (Array.isArray(j?.jobs) ? j.jobs : []));
+        setJobs(allJobs);
+        setTotalJobs(allJobs.length);
         const reqArr = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
         setRequests(reqArr.filter(req => req.status === 'in_progress' || req.status === 'fulfilled'));
-      }
-    }).finally(() => setLoad(false));
-  }, [user?.id, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+      }).finally(() => setLoad(false));
+    }
+  }, [isAdmin, jobListPage, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Paginated job list ───────────────────────────────────────────────────────
+  // Admin: backend already returns only the current page — use jobs directly.
+  // Recruiter: all their jobs are loaded at once — client-side slice.
   const pagedJobs = useMemo(
-    () => jobs.slice((jobListPage - 1) * JOB_LIST_PG, jobListPage * JOB_LIST_PG),
-    [jobs, jobListPage]
+    () => isAdmin ? jobs : jobs.slice((jobListPage - 1) * JOB_LIST_PG, jobListPage * JOB_LIST_PG),
+    [isAdmin, jobs, jobListPage]
   );
 
   // ── Load candidates for the current page of jobs ─────────────────────────────
@@ -501,6 +512,21 @@ export default function AssignedCandidates({ user }) {
             fallbackHistory={historyJob.recruiterHistory || []}
             currentRecruiterName={historyJob.recruiterName || (!isAdmin ? user?.name : undefined)}
             currentRecruiterId={historyJob.recruiterId || (!isAdmin ? user?.id || user?._id : undefined)}
+            isAdmin={isAdmin}
+            onRecruiterChanged={() => {
+              setHistoryJob(null);
+              // Re-fetch current page so job cards reflect the new assignment
+              setLoad(true);
+              api.getJobs(isAdmin ? { limit: JOB_LIST_PG, page: jobListPage } : { recruiterId: user?.id || user?._id })
+                .then(raw => {
+                  const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
+                  const total = raw?.pagination?.total ?? raw?.total ?? list.length;
+                  setJobs(list);
+                  if (isAdmin) setTotalJobs(total);
+                })
+                .catch(() => {})
+                .finally(() => setLoad(false));
+            }}
           />
         </Modal>
       )}
@@ -508,7 +534,7 @@ export default function AssignedCandidates({ user }) {
       <PageHeader
         title={isAdmin ? '🎯 Assignments Overview' : '🎯 Assigned to Me'}
         subtitle={isAdmin
-          ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''} · ${totalCands > 0 ? `${totalCands} candidate${totalCands !== 1 ? 's' : ''} loaded` : 'loading candidates…'} across your organisation`
+          ? `${totalJobs} job${totalJobs !== 1 ? 's' : ''} across your organisation · ${totalCands > 0 ? `${totalCands} candidates loaded` : 'select a job to view candidates'}`
           : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} assigned · ${totalCands} candidate${totalCands !== 1 ? 's' : ''}`}
       />
 
@@ -590,12 +616,27 @@ export default function AssignedCandidates({ user }) {
             const patchedHistory = (fullJob.recruiterHistory || []).map(h =>
               (!h.removedAt && !h.recruiterName && resolvedRecruiterName) ? { ...h, recruiterName: resolvedRecruiterName } : h
             );
-            const openHistory = () => setHistoryJob({
-              jobId: jid, jobTitle,
-              recruiterHistory: patchedHistory,
-              recruiterName: resolvedRecruiterName,
-              recruiterId:   resolvedRecruiterId,
-            });
+            const openHistory = async () => {
+              let rName = resolvedRecruiterName;
+              let rId   = resolvedRecruiterId;
+              let rHist = patchedHistory;
+              // For admin: list API may omit recruiter fields — fetch full job details
+              if (isAdmin && !rName) {
+                try {
+                  const d = await api.getJob(jid);
+                  const details = d?.data || d || {};
+                  rName = details.recruiterName || details.recruiter?.name;
+                  rId   = details.recruiterId   || details.recruiter?._id?.toString();
+                  if ((details.recruiterHistory || []).length > 0) rHist = details.recruiterHistory;
+                } catch {}
+              }
+              setHistoryJob({
+                jobId: jid, jobTitle,
+                recruiterHistory: rHist,
+                recruiterName: rName,
+                recruiterId:   rId,
+              });
+            };
 
             // Candidates: search mode uses global pool slice, normal uses per-job cache
             const entry     = searchActive
@@ -696,7 +737,7 @@ export default function AssignedCandidates({ user }) {
           })}
 
           {/* Job-list pagination (normal mode only) */}
-          {!searchActive && <JobListPaginator page={jobListPage} setPage={setJobListPage} total={jobs.length} />}
+          {!searchActive && <JobListPaginator page={jobListPage} setPage={setJobListPage} total={isAdmin ? totalJobs : jobs.length} />}
         </div>
       )}
     </div>

@@ -436,24 +436,35 @@ function FullPipelineSection({ ensureApps, history }) {
 }
 
 // ── Root component ───────────────────────────────────────────────────────────
-export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [], currentRecruiterName, currentRecruiterId }) {
+export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [], currentRecruiterName, currentRecruiterId, isAdmin = false, onRecruiterChanged }) {
   const [history,       setHistory]       = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
   const [allApps,       setAllApps]       = useState(null);
   const fetchedRef = useRef(false);
 
-  useEffect(() => {
-    fetchedRef.current = false;
-    setAllApps(null);
-    setUsingFallback(false);
+  // Recruiter assignment state
+  const [assignMode,         setAssignMode]         = useState(false);
+  const [recruiters,         setRecruiters]         = useState([]);
+  const [loadingRecruiters,  setLoadingRecruiters]  = useState(false);
+  const [selectedRid,        setSelectedRid]        = useState('');
+  const [assigning,          setAssigning]          = useState(false);
+  const [assignError,        setAssignError]        = useState('');
+
+  const parseHistory = r => {
+    const raw = r?.data?.history || r?.history || (Array.isArray(r?.data) ? r.data : null) || (Array.isArray(r) ? r : []);
+    return Array.isArray(raw) ? raw : [];
+  };
+
+  const loadHistory = () => {
     if (!jobId) { setLoading(false); return; }
     setLoading(true);
     api.getJobRecruiterHistory(jobId)
       .then(r => {
-        const hist = r?.data?.history || r?.history || [];
+        const hist = parseHistory(r);
         if (hist.length > 0) {
           setHistory(hist);
+          setUsingFallback(false);
         } else if (fallbackHistory.length > 0) {
           setHistory(fallbackHistory);
           setUsingFallback(true);
@@ -476,7 +487,46 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
         }
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchedRef.current = false;
+    setAllApps(null);
+    setUsingFallback(false);
+    setAssignMode(false);
+    setSelectedRid('');
+    setAssignError('');
+    loadHistory();
   }, [jobId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openAssignMode = async () => {
+    setAssignMode(true);
+    setAssignError('');
+    if (recruiters.length === 0) {
+      setLoadingRecruiters(true);
+      try {
+        const list = await api.getUsers({ role: 'recruiter', limit: 200 });
+        setRecruiters(Array.isArray(list) ? list : []);
+      } catch { setRecruiters([]); }
+      setLoadingRecruiters(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!selectedRid) return;
+    setAssigning(true);
+    setAssignError('');
+    try {
+      await api.assignRecruiterToJob(jobId, selectedRid);
+      await loadHistory();
+      setAssignMode(false);
+      setSelectedRid('');
+      onRecruiterChanged?.();
+    } catch (e) {
+      setAssignError(e.message || 'Assignment failed. Please try again.');
+    }
+    setAssigning(false);
+  };
 
   // Shared lazy loader — fetches once, cached in state
   const ensureApps = async () => {
@@ -537,6 +587,57 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           <span style={{ fontSize: 11, color: '#94A3B8' }}>· {totalDays}d total job age</span>
         )}
       </div>
+
+      {/* ── Assign / Change Recruiter (admin only) ── */}
+      {isAdmin && (
+        <div style={{ marginBottom: 12 }}>
+          {!assignMode ? (
+            <button
+              onClick={openAssignMode}
+              style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, color: '#0176D3', cursor: 'pointer', width: '100%' }}
+            >
+              🔄 {history.length > 0 ? 'Change Recruiter' : 'Assign Recruiter'}
+            </button>
+          ) : (
+            <div style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 800, color: '#0176D3' }}>
+                👤 {history.length > 0 ? 'Change Recruiter for this Job' : 'Assign Recruiter to this Job'}
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  value={selectedRid}
+                  onChange={e => setSelectedRid(e.target.value)}
+                  disabled={loadingRecruiters || assigning}
+                  style={{ flex: 1, minWidth: 180, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #DDDBDA', fontSize: 12, fontWeight: 600 }}
+                >
+                  <option value="">{loadingRecruiters ? 'Loading recruiters…' : 'Select a recruiter…'}</option>
+                  {recruiters.map(r => {
+                    const rid = r.id || r._id?.toString();
+                    return <option key={rid} value={rid}>{r.name}{r.email ? ` — ${r.email}` : ''}</option>;
+                  })}
+                </select>
+                <button
+                  onClick={handleAssign}
+                  disabled={!selectedRid || assigning || loadingRecruiters}
+                  style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: (!selectedRid || assigning) ? '#E2E8F0' : '#0176D3', color: (!selectedRid || assigning) ? '#94A3B8' : '#fff', fontSize: 12, fontWeight: 800, cursor: (!selectedRid || assigning) ? 'not-allowed' : 'pointer' }}
+                >
+                  {assigning ? 'Assigning…' : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => { setAssignMode(false); setSelectedRid(''); setAssignError(''); }}
+                  disabled={assigning}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', fontSize: 12, fontWeight: 700, color: '#64748B', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {assignError && (
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: '#BA0517' }}>❌ {assignError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Fallback notice ── */}
       {usingFallback && (
