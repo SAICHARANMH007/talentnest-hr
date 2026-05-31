@@ -346,7 +346,13 @@ export default function AssignedCandidates({ user }) {
   const [totalJobs,         setTotalJobs]         = useState(0);
   const fetchingRef = useRef(new Set());
 
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  // Explicit role flags — super_admin has their own separate panel and nav,
+  // so this page is strictly for org admins and recruiters.
+  const isOrgAdmin  = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  // isAdmin = org-level admin view (can manage assignments, see all org jobs)
+  // super_admin uses platform:true so they don't bleed into org-scoped queries
+  const isAdmin = isOrgAdmin || isSuperAdmin;
   const getCandPage = jid => candPages[jid] || 1;
   const setCandPage = (jid, pg) => setCandPages(prev => ({ ...prev, [jid]: pg }));
 
@@ -372,8 +378,11 @@ export default function AssignedCandidates({ user }) {
     setLoad(true);
 
     if (isAdmin) {
-      // Admin: paginated fetch — backend scopes to org via JWT
-      api.getJobs({ limit: JOB_LIST_PG, page: jobListPage })
+      // Org admin: backend scopes to their org via JWT
+      // Super admin: platform:true to fetch all orgs' jobs correctly
+      const params = { limit: JOB_LIST_PG, page: jobListPage };
+      if (isSuperAdmin) params.platform = true;
+      api.getJobs(params)
         .then(raw => {
           const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
           const total = raw?.pagination?.total ?? raw?.total ?? list.length;
@@ -517,7 +526,7 @@ export default function AssignedCandidates({ user }) {
               setHistoryJob(null);
               // Re-fetch current page so job cards reflect the new assignment
               setLoad(true);
-              api.getJobs(isAdmin ? { limit: JOB_LIST_PG, page: jobListPage } : { recruiterId: user?.id || user?._id })
+              api.getJobs(isAdmin ? { limit: JOB_LIST_PG, page: jobListPage, ...(isSuperAdmin ? { platform: true } : {}) } : { recruiterId: user?.id || user?._id })
                 .then(raw => {
                   const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
                   const total = raw?.pagination?.total ?? raw?.total ?? list.length;
