@@ -97,12 +97,19 @@ function PipelineLog({ events, emptyMsg, recruiterMap = {} }) {
                 {ev.candidateName} <span style={{ color: '#C9C7C5' }}>→</span>{' '}
                 <span style={{ color }}>{fmtStage(ev.stage || ev.stageId) || '—'}</span>
               </div>
-              {moverName && (
-                <div style={{ fontSize: 10, color: '#706E6B', marginTop: 1 }}>
-                  👤 moved by <strong style={{ color: '#0176D3' }}>{moverName}</strong>
-                </div>
-              )}
-              {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>"{ev.note}"</div>}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 2 }}>
+                {moverName && (
+                  <span style={{ fontSize: 10, color: '#706E6B' }}>
+                    👤 moved by <strong style={{ color: '#0176D3' }}>{moverName}</strong>
+                  </span>
+                )}
+                {ev.isCrossRecruiter && ev.appliedDuringName && (
+                  <span style={{ fontSize: 10, color: '#92400E', background: 'rgba(245,158,11,0.08)', padding: '1px 6px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.25)' }}>
+                    📋 applied during <strong>{ev.appliedDuringName}</strong>'s tenure
+                  </span>
+                )}
+              </div>
+              {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic', marginTop: 1 }}>"{ev.note}"</div>}
             </div>
             <span style={{ fontSize: 10, color: '#94A3B8', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtDT(ev._ts)}</span>
           </div>
@@ -119,7 +126,7 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
@@ -151,10 +158,21 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
     } else if (key === 'log') {
       const events = [];
       apps.forEach(a => {
-        const cName = a.candidate?.name || a.candidateName || '—';
+        const cName    = a.candidate?.name || a.candidateName || '—';
+        const appliedAt = a.createdAt || a.appliedAt;
+        // Find which recruiter was active when this candidate applied
+        const appliedDuringRec = appliedAt ? (history || []).find(r => {
+          const f  = r.assignedAt ? new Date(r.assignedAt) : null;
+          const to = r.removedAt  ? new Date(r.removedAt)  : null;
+          const t  = new Date(appliedAt);
+          return (!f || t >= f) && (!to || t <= to);
+        }) : null;
+        const appliedDuringName = appliedDuringRec?.recruiterName || null;
+        // Flag when the candidate applied under a different recruiter than this section's owner
+        const isCrossRecruiter  = !!(appliedDuringName && appliedDuringName !== entry.recruiterName);
         (a.stageHistory || []).forEach(h => {
           const ts = h.movedAt || h.changedAt || h.date;
-          if (inWindow(ts)) events.push({ ...h, _ts: ts, candidateName: cName });
+          if (inWindow(ts)) events.push({ ...h, _ts: ts, candidateName: cName, appliedDuringName, isCrossRecruiter });
         });
       });
       events.sort((a, b) => new Date(a._ts) - new Date(b._ts));
@@ -720,6 +738,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 isLast={isLast}
                 ensureApps={ensureApps}
                 recruiterMap={recruiterMap}
+                history={sorted}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
