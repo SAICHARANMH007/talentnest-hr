@@ -287,7 +287,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
 
   // 2FA flow
   if (user.twoFactorEnabled) {
-    await authService.generateAndSendOtp(user);
+    await authService.generateAndSendOtp(user, { emailOnly: true });
     return res.json({ requires2FA: true, email: user.email });
   }
 
@@ -554,7 +554,7 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
     throw new AppError('No active 2FA challenge found for this account.', 400);
   }
 
-  await authService.generateAndSendOtp(user);
+  await authService.generateAndSendOtp(user, { emailOnly: true });
   res.json({ success: true, message: 'A new OTP has been sent.' });
 }));
 
@@ -738,7 +738,7 @@ router.post('/2fa/toggle', authMiddleware, asyncHandler(async (req, res) => {
 
   // If enabling, send a test OTP so user can verify it works
   if (newState) {
-    await authService.generateAndSendOtp(user).catch(() => {});
+    await authService.generateAndSendOtp(user, { emailOnly: true }).catch(() => {});
   }
 
   res.json({
