@@ -78,17 +78,17 @@ function tenantFilter(req) {
 }
 
 async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
-  const [candidateDocs, userDocs, appDocs, importedDocs] = await Promise.all([
+  // Load only the identity fields needed for deduplication (email/phone/name).
+  // appDocs was previously fetched here but never processed — removed.
+  const [candidateDocs, userDocs, importedDocs] = await Promise.all([
     Candidate.find({ deletedAt: null, ...candidateFilter }).select('_id email phone name userId').lean(),
     User.find({ deletedAt: null, role: 'candidate', ...userFilter }).select('_id email phone name').lean(),
-    Application.find({ deletedAt: null, ...candidateFilter }).select('candidateId candidateEmail candidatePhone candidateName email').lean(),
-    ImportedCandidate.find({ ...candidateFilter }).select('_id email phone name status').lean(),
+    ImportedCandidate.find({ ...candidateFilter }).select('_id email phone name').lean(),
   ]);
 
   const keys = new Set();
-  const userToKey = new Map(); // userId -> key
-  const candToKey = new Map(); // candidateId -> key
-  
+  const userToKey = new Map();
+
   const getCandidateKey = (email, phone, name) => {
     if (email) return `email:${email.toLowerCase().trim()}`;
     if (phone) return `phone:${phone.trim()}`;
@@ -96,14 +96,14 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
     return null;
   };
 
-  // 1. Process users
+  // 1. Process registered candidate users
   userDocs.forEach(d => {
     const k = getCandidateKey(d.email, d.phone, d.name) || `user:${d._id}`;
     keys.add(k);
     userToKey.set(String(d._id), k);
   });
 
-  // 2. Process candidates (link to users via userId)
+  // 2. Process candidate profiles (deduplicate with users via userId/email)
   candidateDocs.forEach(d => {
     let k = getCandidateKey(d.email, d.phone, d.name);
     if (!k && d.userId && userToKey.has(String(d.userId))) {
@@ -111,18 +111,17 @@ async function countUniqueCandidateProfiles(candidateFilter, userFilter) {
     }
     if (!k) k = `cand:${d._id}`;
     keys.add(k);
-    candToKey.set(String(d._id), k);
     if (d.userId && !userToKey.has(String(d.userId))) {
       userToKey.set(String(d.userId), k);
     }
   });
 
-  // 4. Process imported candidates
+  // 3. Process imported candidates (deduplicate by email/phone/name)
   importedDocs.forEach(d => {
     const k = getCandidateKey(d.email, d.phone, d.name) || `imp:${d._id}`;
     keys.add(k);
   });
-  
+
   return keys.size;
 }
 
