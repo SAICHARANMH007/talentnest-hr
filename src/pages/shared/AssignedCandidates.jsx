@@ -510,19 +510,22 @@ export default function AssignedCandidates({ user }) {
   }, [globalApps, jobApps]);
 
   function handoffInfo(fullJob) {
-    const history = fullJob?.recruiterHistory || [];
-    const prev    = history.filter(h => h.removedAt);
+    const history       = fullJob?.recruiterHistory || [];
+    const assignedCount = (fullJob?.assignedRecruiters || []).length;
+
+    const prev = history.filter(h => h.removedAt);
     if (prev.length > 0) {
       const sorted = [...prev].sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
       return { isHandoff: true, isFirst: false, lastPrev: sorted[0], totalPrev: prev.length };
     }
     const activeEntries = history.filter(h => !h.removedAt);
-    // Multiple active recruiters with no removals = shared job, not a "first recruiter" scenario
-    if (activeEntries.length > 1) {
+    // More than 1 currently-assigned recruiter = shared job.
+    // Check BOTH recruiterHistory active entries AND assignedRecruiters array because
+    // bulk/legacy assignments may be in assignedRecruiters without a history entry.
+    if (activeEntries.length > 1 || assignedCount > 1) {
       return { isHandoff: false, isFirst: false, currentRecruiter: activeEntries[0] };
     }
-    // 0 entries (empty history = no recorded history, recruiter IS the first)
-    // OR exactly 1 active entry (sole documented recruiter)
+    // 0 or 1 entries → sole/first recruiter
     const current = activeEntries[0] || null;
     return { isHandoff: false, isFirst: true, currentRecruiter: current };
   }
