@@ -590,6 +590,7 @@ export default function App() {
             <Route path="billing" element={<BillingPage />} />
             <Route path="automation" element={<AdminAutomation />} />
             <Route path="custom-fields" element={<AdminCustomFields />} />
+            <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="org-chart" element={<OrgChart user={user} />} />

@@ -39,10 +39,10 @@ function CandidateList({ candidates, emptyMsg, entry, effectiveEndDate }) {
   const getStageAtTenureEnd = (app) => {
     if (!effectiveEndDate) return app.currentStage || app.stage || 'Applied';
     const endDate = new Date(effectiveEndDate);
-    const history = (app.stageHistory || [])
+    const hist = (app.stageHistory || [])
       .filter(h => { const ts = h.movedAt || h.changedAt || h.date; return ts && new Date(ts) <= endDate; })
       .sort((a, b) => new Date(b.movedAt || b.changedAt || b.date) - new Date(a.movedAt || a.changedAt || a.date));
-    return history[0]?.stageId || history[0]?.stage || 'Applied';
+    return hist[0]?.stageId || hist[0]?.stage || app.currentStage || app.stage || 'Applied';
   };
 
   return (
@@ -133,13 +133,25 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
   const [loading, setLoading] = useState(false);
 
   const from = entry.assignedAt ? new Date(entry.assignedAt) : null;
-  const to   = entry.removedAt  ? new Date(entry.removedAt)  : null;
+  // Use effectiveEndDate (not raw removedAt) so that recruiters with no removedAt
+  // still get a proper upper bound when a successor was assigned.
+  const to   = effectiveEndDate ? new Date(effectiveEndDate) : null;
 
-  // null from/to = no date constraint (synthetic entry → show all)
+  // No date constraints (synthetic/null entry) → include everything
   const inWindow = ts => {
+    if (!from && !to) return true;
     if (!ts) return false;
     const t = new Date(ts);
     return (!from || t >= from) && (!to || t <= to);
+  };
+
+  // True when this candidate "belongs" to this tenure (applied during it).
+  // Candidates with unknown appliedAt are included to avoid false negatives.
+  const belongsToTenure = a => {
+    const ts = a.createdAt || a.appliedAt;
+    if (!from && !to) return true;
+    if (!ts) return true;
+    return inWindow(ts);
   };
 
   const loadTab = async (key) => {
@@ -149,30 +161,59 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
     const apps = await ensureApps();
     let result;
     if (key === 'applied') {
-      result = apps.filter(a => inWindow(a.createdAt || a.appliedAt));
+      // Candidates who applied during this recruiter's effective tenure
+      result = apps.filter(a => belongsToTenure(a));
     } else if (key === 'pipeline') {
+      // Tenure-era candidates who have any stage history (shows ongoing journey)
       result = apps.filter(a =>
+        belongsToTenure(a) &&
         Array.isArray(a.stageHistory) &&
-        a.stageHistory.some(h => inWindow(h.movedAt || h.changedAt || h.date))
+        a.stageHistory.length > 0
       );
     } else if (key === 'log') {
+      // Helper: which recruiter owned the job when this candidate applied, using
+      // effective end dates so null-removedAt recruiters don't bleed past their successor.
+      const whoOwned = (appliedAt) => {
+        if (!appliedAt) return null;
+        const t = new Date(appliedAt);
+        return (history || []).find((r, rIdx) => {
+          const f   = r.assignedAt ? new Date(r.assignedAt) : null;
+          const nxt = history[rIdx + 1];
+          const eff = r.removedAt || nxt?.assignedAt || null;
+          const toR = eff ? new Date(eff) : null;
+          if (!f && !toR) return true;
+          if (!f) return !toR || t <= toR;
+          if (!toR) return t >= f;
+          return t >= f && t <= toR;
+        }) || null;
+      };
+
       const events = [];
+      const seen   = new Set(); // deduplicate by appId+ts+stage
       apps.forEach(a => {
-        const cName    = a.candidate?.name || a.candidateName || '—';
+        const cName     = a.candidate?.name || a.candidateName || '—';
         const appliedAt = a.createdAt || a.appliedAt;
-        // Find which recruiter was active when this candidate applied
-        const appliedDuringRec = appliedAt ? (history || []).find(r => {
-          const f  = r.assignedAt ? new Date(r.assignedAt) : null;
-          const to = r.removedAt  ? new Date(r.removedAt)  : null;
-          const t  = new Date(appliedAt);
-          return (!f || t >= f) && (!to || t <= to);
-        }) : null;
-        const appliedDuringName = appliedDuringRec?.recruiterName || null;
-        // Flag when the candidate applied under a different recruiter than this section's owner
+        const ownerRec  = whoOwned(appliedAt);
+        const appliedDuringName = ownerRec?.recruiterName || null;
         const isCrossRecruiter  = !!(appliedDuringName && appliedDuringName !== entry.recruiterName);
+
+        // Include events for candidates applied during this tenure
+        // OR stage changes made by this recruiter (cross-tenure contributions)
+        const tenureCandidate = belongsToTenure(a);
+
         (a.stageHistory || []).forEach(h => {
-          const ts = h.movedAt || h.changedAt || h.date;
-          if (inWindow(ts)) events.push({ ...h, _ts: ts, candidateName: cName, appliedDuringName, isCrossRecruiter });
+          const ts  = h.movedAt || h.changedAt || h.date;
+          const movedByThisRecruiter = entry.recruiterId &&
+            h.movedBy && String(h.movedBy) === String(entry.recruiterId);
+
+          if (!tenureCandidate && !movedByThisRecruiter) return;
+          if (!ts) return;
+
+          const uid = `${String(a._id)}-${ts}-${h.stage || h.stageId}`;
+          if (seen.has(uid)) return;
+          seen.add(uid);
+
+          events.push({ ...h, _ts: ts, candidateName: cName, appliedDuringName, isCrossRecruiter });
         });
       });
       events.sort((a, b) => new Date(a._ts) - new Date(b._ts));
