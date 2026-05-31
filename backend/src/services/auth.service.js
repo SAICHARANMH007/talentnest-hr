@@ -239,23 +239,24 @@ class AuthService {
     await Otp.findOneAndUpdate(
       { email: user.email },
       { otp, expiresAt },
-      { upsert: true, new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     let smsSent = false;
 
-    // Try SMS first if user has a phone number
+    // Try SMS first if user has a phone number and SMS API is configured
     if (user.phone) {
       try {
         const { sendSms } = require('../utils/sendSms');
-        await sendSms(user.phone, `Your TalentNest HR login OTP is: ${otp}. Valid for 10 minutes. Do not share this with anyone.`);
-        smsSent = true;
+        const smsResult = await sendSms(user.phone, `Your TalentNest HR login OTP is: ${otp}. Valid for 10 minutes. Do not share this with anyone.`);
+        // Only count as sent if this was a real API call (not dev-mode console log)
+        smsSent = !smsResult?.dev;
       } catch (smsErr) {
         console.warn('[2FA] SMS failed, falling back to email:', smsErr.message);
       }
     }
 
-    // Email fallback (or primary if no phone)
+    // Email — always sent when SMS didn't go through a real provider
     if (!smsSent) {
       const { sendEmailWithRetry, templates } = require('../utils/email');
       const tpl = templates.otp(otp);
@@ -269,8 +270,12 @@ class AuthService {
    * OTP verification
    */
   async verifyOtp(email, code) {
-    const otpRecord = await Otp.findOne({ email: email.toLowerCase(), otp: code });
-    if (!otpRecord) throw new AppError('Invalid or expired 2FA code.', 401);
+    const otpRecord = await Otp.findOne({
+      email: email.toLowerCase(),
+      otp: code,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!otpRecord) throw new AppError('Invalid or expired OTP. Please request a new code.', 401);
     await Otp.deleteOne({ _id: otpRecord._id });
 
     const user = await User.findOne({ email: email.toLowerCase() });

@@ -153,21 +153,26 @@ const templates = {
   },
 
   /**
-   * OTP Verification (2FA)
+   * OTP Verification (2FA / Passwordless Login)
    */
   otp: (otp, opts = {}) => {
+    const action = opts.purpose === 'password_reset' ? 'reset your password' : 'sign in to your account';
     return {
-      subject: `${opts.orgName || 'TalentNest'}: Your Security Code`,
+      subject: `${otp} is your ${opts.orgName || 'TalentNest HR'} login code`,
       html: baseLayout(`
-        <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Security Verification 🛡️</h2>
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px">
-          Please use the following code to complete your sign-in. This code is valid for 10 minutes.
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 16px;font-weight:800">Your Login Code 🔐</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px">
+          Use the code below to ${action}. Valid for <strong>10 minutes</strong>.
         </p>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;text-align:center;margin:24px 0">
-          <div style="font-size:32px;font-weight:800;letter-spacing:8px;color:#032D60;font-family:monospace">${otp}</div>
+        <div style="background:linear-gradient(135deg,#032D60,#0176D3);border-radius:14px;padding:28px 20px;text-align:center;margin:24px 0">
+          <div style="font-size:44px;font-weight:900;letter-spacing:14px;color:#fff;font-family:monospace;line-height:1">${otp}</div>
+          <div style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:10px">Enter this 6-digit code in the app</div>
         </div>
-        <p style="color:#6b7280;font-size:12px;text-align:center">If you didn't request this code, please secure your account immediately.</p>
-      `, 'Security Code', opts)
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 16px;margin:0 0 16px">
+          <p style="color:#92400E;font-size:12px;margin:0;font-weight:600">⚠️ Never share this code with anyone. TalentNest HR will never ask for your OTP.</p>
+        </div>
+        <p style="color:#9ca3af;font-size:12px;text-align:center">If you didn't request this, you can safely ignore this email.</p>
+      `, 'Your Login Code', opts)
     };
   },
 
