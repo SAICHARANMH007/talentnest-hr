@@ -122,6 +122,134 @@ const SYSTEM_AUTOMATIONS = [
       config: { stage: 'Shortlisted' },
     }],
   },
+
+  // ── 8 ───────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'candidate_hired_congratulations',
+    name       : 'Congratulations Email on Hire',
+    description: 'Sends a warm congratulations email to the candidate when they are marked as Hired.',
+    category   : 'Onboarding',
+    trigger    : { event: 'candidate_hired', conditions: [] },
+    actions    : [
+      {
+        type  : 'send_email',
+        config: {
+          subject: 'Welcome aboard, {{candidateName}}! 🎉',
+          body   : '<p>Dear {{candidateName}},</p><p>We are thrilled to officially welcome you to the team! You have been selected for the position of <strong>{{jobTitle}}</strong> and we cannot wait to have you on board.</p><p>Your onboarding details will be shared with you shortly. Please keep an eye on your inbox.</p><p>Congratulations and welcome!<br>The HR Team</p>',
+        },
+      },
+      {
+        type  : 'send_whatsapp',
+        config: { message: '🎉 Congratulations {{candidateName}}! You have been selected for {{jobTitle}}. Welcome to the team! Our HR team will reach out shortly with next steps.' },
+      },
+    ],
+  },
+
+  // ── 9 ───────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'candidate_rejected_compassionate',
+    name       : 'Rejection Email — Compassionate',
+    description: 'Sends an empathetic rejection notification when a candidate is moved to Rejected. Preserves employer brand.',
+    category   : 'Communication',
+    trigger    : { event: 'candidate_rejected', conditions: [] },
+    actions    : [{
+      type  : 'send_email',
+      config: {
+        subject: 'Update on your application for {{jobTitle}}',
+        body   : '<p>Dear {{candidateName}},</p><p>Thank you sincerely for taking the time to apply for the <strong>{{jobTitle}}</strong> position and for your interest in joining our team.</p><p>After careful consideration, we have decided to move forward with other candidates whose experience more closely matches our current requirements. This was a difficult decision — we genuinely appreciated your time and effort.</p><p>We will keep your profile on file and encourage you to apply for future openings that match your skills. We wish you every success in your career journey.</p><p>Warm regards,<br>The Recruitment Team</p>',
+      },
+    }],
+  },
+
+  // ── 10 ──────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'offer_accepted_onboarding_alert',
+    name       : 'Offer Accepted → Trigger Onboarding',
+    description: 'Notifies the admin and recruiter to initiate onboarding when a candidate accepts an offer.',
+    category   : 'Onboarding',
+    trigger    : { event: 'offer_accepted', conditions: [] },
+    actions    : [
+      {
+        type  : 'notify_admin',
+        config: {
+          title  : '🎊 Offer Accepted — Start Onboarding',
+          message: '{{candidateName}} accepted the offer for {{jobTitle}}. Please initiate the onboarding checklist and document collection.',
+        },
+      },
+      {
+        type  : 'notify_recruiter',
+        config: {
+          title  : '✅ {{candidateName}} Accepted the Offer',
+          message: 'Great news! {{candidateName}} has formally accepted the offer for {{jobTitle}}. Coordinate with HR to begin onboarding.',
+        },
+      },
+    ],
+  },
+
+  // ── 11 ──────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'job_published_team_notify',
+    name       : 'Job Published — Notify Admin',
+    description: 'Notifies the admin when a new job goes live so they can assign recruiters and promote the listing.',
+    category   : 'Pipeline',
+    trigger    : { event: 'job_published', conditions: [] },
+    actions    : [{
+      type  : 'notify_admin',
+      config: {
+        title  : '🚀 New Job Published',
+        message: '{{jobTitle}} is now live. Assign recruiters and share the listing to start receiving applications.',
+      },
+    }],
+  },
+
+  // ── 12 ──────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'high_match_score_auto_tag',
+    name       : 'High Match Score → Tag as Top Talent',
+    description: 'Automatically tags candidates with a Talent Match Score of 80% or above as "Top Talent" for priority review.',
+    category   : 'Assessment',
+    trigger    : {
+      event     : 'candidate_applied',
+      conditions: [{ field: 'assessmentScore', operator: 'above', value: '80' }],
+    },
+    actions: [
+      {
+        type  : 'assign_tag',
+        config: { tag: 'Top Talent' },
+      },
+      {
+        type  : 'notify_recruiter',
+        config: {
+          title  : '⭐ High Match Candidate',
+          message: '{{candidateName}} scored above 80% on match criteria for {{jobTitle}}. Priority review recommended.',
+        },
+      },
+    ],
+  },
+
+  // ── 13 ──────────────────────────────────────────────────────────────────────
+  {
+    systemKey  : 'interview_24h_reminder',
+    name       : 'Interview 24-Hour Reminder',
+    description: 'Sends a reminder email and WhatsApp to the candidate one day before their scheduled interview.',
+    category   : 'Communication',
+    trigger    : { event: 'interview_scheduled', conditions: [] },
+    actions    : [
+      {
+        type        : 'send_email',
+        delayMinutes: 0,
+        config      : {
+          subject: 'Reminder: Your interview for {{jobTitle}} is tomorrow',
+          body   : '<p>Hi {{candidateName}},</p><p>This is a friendly reminder that your interview for <strong>{{jobTitle}}</strong> is scheduled. Please ensure you have the meeting details ready and prepare any required documents.</p><p>Best of luck — we are looking forward to speaking with you!</p>',
+        },
+      },
+      {
+        type        : 'send_whatsapp',
+        delayMinutes: 0,
+        config      : { message: '📅 Hi {{candidateName}}, reminder: your interview for {{jobTitle}} is coming up soon. Please be prepared and check your email for the full details. All the best! 🌟' },
+      },
+    ],
+  },
 ];
 
 async function seed() {

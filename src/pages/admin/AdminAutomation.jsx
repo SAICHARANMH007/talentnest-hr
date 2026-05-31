@@ -26,14 +26,19 @@ const ACTION_TYPES = [
   { value: 'move_stage',       label: '➡️ Move to Stage',         desc: 'Automatically advance or move the application' },
   { value: 'assign_tag',       label: '🏷️ Assign Tag',           desc: 'Add a tag to the application' },
   { value: 'add_note',         label: '📝 Add Internal Note',    desc: 'Append an auto-note to the application' },
+  { value: 'create_task',      label: '✅ Create Task',           desc: 'Create a task notification for the recruiter/admin to act on' },
 ];
 
 const CONDITION_FIELDS = [
-  { value: 'stage',           label: 'Current Stage' },
-  { value: 'previousStage',   label: 'Previous Stage' },
-  { value: 'candidateSource', label: 'Candidate Source' },
-  { value: 'assessmentScore', label: 'Assessment Score' },
-  { value: 'jobTitle',        label: 'Job Title' },
+  { value: 'stage',            label: 'Current Stage' },
+  { value: 'previousStage',    label: 'Previous Stage' },
+  { value: 'candidateSource',  label: 'Candidate Source' },
+  { value: 'assessmentScore',  label: 'Assessment Score' },
+  { value: 'talentMatchScore', label: 'Talent Match Score' },
+  { value: 'jobTitle',         label: 'Job Title' },
+  { value: 'department',       label: 'Department' },
+  { value: 'experienceYears',  label: 'Experience (Years)' },
+  { value: 'location',         label: 'Candidate Location' },
 ];
 
 const OPERATORS = [
@@ -64,6 +69,7 @@ const CATEGORY_COLORS = {
 const TEMPLATE_VARS = [
   '{{candidateName}}','{{candidateEmail}}','{{candidatePhone}}',
   '{{jobTitle}}','{{stage}}','{{previousStage}}','{{companyName}}',
+  '{{recruiterName}}','{{assessmentScore}}','{{department}}','{{location}}',
 ];
 
 const EMPTY_RULE = {
@@ -176,6 +182,20 @@ function ActionConfigFields({ action, onChange }) {
       return (
         <div style={{ marginTop: 8 }}>
           <textarea style={{ ...inp, resize: 'vertical' }} rows={2} placeholder="Note text (use {{candidateName}}, {{stage}} etc.)" value={action.config.note || ''} onChange={e => set('note', e.target.value)} />
+        </div>
+      );
+    case 'create_task':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+          <input style={inp} placeholder="Task title (e.g. Follow up with {{candidateName}})" value={action.config.title || ''} onChange={e => set('title', e.target.value)} />
+          <textarea style={{ ...inp, resize: 'vertical' }} rows={2} placeholder="Task description (optional)" value={action.config.description || ''} onChange={e => set('description', e.target.value)} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 700, display: 'block', marginBottom: 4 }}>Due in (days)</label>
+              <input style={inp} type="number" min={1} max={30} placeholder="e.g. 2" value={action.config.dueDays || ''} onChange={e => set('dueDays', e.target.value)} />
+            </div>
+          </div>
+          {delaySelect}
         </div>
       );
     default: return null;

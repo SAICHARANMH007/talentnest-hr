@@ -1318,25 +1318,181 @@ function BrandColorsTab({ data, updateSingleton }) {
   );
 }
 
+// ─── 17. Employment Types ─────────────────────────────────────────────────────
+function EmploymentTypesTab({ data, addItem, deleteItem, replaceSection }) {
+  const items = data?.employmentTypes || [];
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const add = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    await addItem('employmentTypes', { name: name.trim() });
+    setName('');
+    setSaving(false);
+  };
+
+  const reset = async () => {
+    const defaults = [
+      { name: 'Full-time' }, { name: 'Part-time' }, { name: 'Contract' },
+      { name: 'Freelance' }, { name: 'Internship' }, { name: 'Temporary' },
+      { name: 'Remote' }, { name: 'Hybrid' },
+    ];
+    await replaceSection('employmentTypes', defaults);
+  };
+
+  return (
+    <div>
+      <SectionHeader icon="💼" title="Employment Types"
+        desc="Define the employment types available when creating job postings"
+        action={<button onClick={reset} style={S.btnG}>↺ Reset Defaults</button>}
+      />
+      <div style={S.card}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Contract" style={{ ...S.inp, flex: 1 }}
+            onKeyDown={e => e.key === 'Enter' && add()} />
+          <button onClick={add} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>+ Add</button>
+        </div>
+        {items.length === 0 ? <EmptyState icon="💼" msg="No employment types yet. Click Reset Defaults to load standard types." /> :
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {items.map(item => (
+              <div key={item._id} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 20 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0176D3' }}>{item.name}</span>
+                <button onClick={() => deleteItem('employmentTypes', item._id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9E9D9B', fontSize: 12, padding: 0 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── 18. Hiring Process Settings ─────────────────────────────────────────────
+const DEFAULT_HIRING = {
+  timeToFillTarget: 30,
+  maxInterviewRounds: 3,
+  defaultInterviewDuration: 45,
+  autoRejectBelow: 0,
+  requireScorecard: false,
+  requireInterviewFeedback: false,
+  sendRejectionAuto: false,
+  probationDays: 90,
+};
+
+function HiringSettingsTab({ data, updateSingleton }) {
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (data) setForm({ ...DEFAULT_HIRING, ...(data.hiringSettings || {}) });
+  }, [data]);
+
+  if (!form) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
+
+  const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const save = async () => {
+    setSaving(true);
+    await updateSingleton({ hiringSettings: form });
+    setSaving(false);
+  };
+
+  const Field = ({ label, hint, children }) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '14px 20px', background: '#fff', border: '1px solid #F1F5F9', borderRadius: 10 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{label}</div>
+        {hint && <div style={{ fontSize: 12, color: '#9E9D9B', marginTop: 2 }}>{hint}</div>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <SectionHeader icon="⚙️" title="Hiring Process Settings"
+        desc="Configure default targets, SLA thresholds, and process rules for your recruitment pipeline"
+        action={<button onClick={save} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : '💾 Save Settings'}</button>}
+      />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.8, padding: '8px 4px 4px' }}>SLA & Targets</div>
+
+        <Field label="Time-to-Fill Target (days)" hint="Alert admin when a job has been open longer than this">
+          <input type="number" min={1} max={365} value={form.timeToFillTarget} onChange={e => sf('timeToFillTarget', Number(e.target.value))}
+            style={{ ...S.inp, width: 80, textAlign: 'center' }} />
+        </Field>
+
+        <Field label="Auto-Reject Score Threshold" hint="Automatically reject applications with Talent Match Score below this (0 = disabled)">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="number" min={0} max={100} value={form.autoRejectBelow} onChange={e => sf('autoRejectBelow', Number(e.target.value))}
+              style={{ ...S.inp, width: 80, textAlign: 'center' }} />
+            <span style={{ fontSize: 12, color: '#9E9D9B' }}>%</span>
+          </div>
+        </Field>
+
+        <Field label="Probation Period (days)" hint="Default probation period for new hires shown in offer letters">
+          <input type="number" min={0} max={365} value={form.probationDays} onChange={e => sf('probationDays', Number(e.target.value))}
+            style={{ ...S.inp, width: 80, textAlign: 'center' }} />
+        </Field>
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.8, padding: '12px 4px 4px' }}>Interview Defaults</div>
+
+        <Field label="Default Interview Rounds" hint="Pre-fill for new job postings (recruiters can override per job)">
+          <input type="number" min={1} max={10} value={form.maxInterviewRounds} onChange={e => sf('maxInterviewRounds', Number(e.target.value))}
+            style={{ ...S.inp, width: 80, textAlign: 'center' }} />
+        </Field>
+
+        <Field label="Default Interview Duration (minutes)" hint="Pre-filled when scheduling a new interview">
+          <select value={form.defaultInterviewDuration} onChange={e => sf('defaultInterviewDuration', Number(e.target.value))} style={{ ...S.inp, width: 100 }}>
+            {[15,30,45,60,90,120].map(v => <option key={v} value={v}>{v} min</option>)}
+          </select>
+        </Field>
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: 0.8, padding: '12px 4px 4px' }}>Process Rules</div>
+
+        <Field label="Require Scorecard Before Moving" hint="Interviewers must complete a scorecard before advancing a candidate">
+          <button onClick={() => sf('requireScorecard', !form.requireScorecard)} style={{ background: form.requireScorecard ? '#0176D3' : '#E5E7EB', border: 'none', borderRadius: 20, padding: '4px 16px', color: form.requireScorecard ? '#fff' : '#6b7280', fontWeight: 700, fontSize: 12, cursor: 'pointer', minWidth: 68 }}>
+            {form.requireScorecard ? 'ON' : 'OFF'}
+          </button>
+        </Field>
+
+        <Field label="Require Interview Feedback" hint="Recruiters must submit feedback notes after every interview">
+          <button onClick={() => sf('requireInterviewFeedback', !form.requireInterviewFeedback)} style={{ background: form.requireInterviewFeedback ? '#0176D3' : '#E5E7EB', border: 'none', borderRadius: 20, padding: '4px 16px', color: form.requireInterviewFeedback ? '#fff' : '#6b7280', fontWeight: 700, fontSize: 12, cursor: 'pointer', minWidth: 68 }}>
+            {form.requireInterviewFeedback ? 'ON' : 'OFF'}
+          </button>
+        </Field>
+
+        <Field label="Auto-Send Rejection Email" hint="Automatically send rejection email when candidate is moved to Rejected stage (requires Rejection automation to be active)">
+          <button onClick={() => sf('sendRejectionAuto', !form.sendRejectionAuto)} style={{ background: form.sendRejectionAuto ? '#0176D3' : '#E5E7EB', border: 'none', borderRadius: 20, padding: '4px 16px', color: form.sendRejectionAuto ? '#fff' : '#6b7280', fontWeight: 700, fontSize: 12, cursor: 'pointer', minWidth: 68 }}>
+            {form.sendRejectionAuto ? 'ON' : 'OFF'}
+          </button>
+        </Field>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tabs Config ──────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'custom-fields',  icon: '🧩', label: 'Custom Fields'     },
-  { id: 'automations',   icon: '⚡', label: 'Automations'       },
-  { id: 'departments',    icon: '🏢', label: 'Departments'       },
-  { id: 'locations',      icon: '📍', label: 'Office Locations'  },
-  { id: 'sources',        icon: '📢', label: 'App. Sources'      },
-  { id: 'pipeline',       icon: '🔄', label: 'Pipeline Statuses' },
-  { id: 'tags',           icon: '🏷️', label: 'Custom Tags'       },
-  { id: 'rejection',      icon: '❌', label: 'Rejection Reasons' },
-  { id: 'scorecard',      icon: '📊', label: 'Score Cards'       },
-  { id: 'doc-types',      icon: '📁', label: 'Document Types'    },
-  { id: 'questions',      icon: '❓', label: 'Question Bank'     },
-  { id: 'email-sig',      icon: '✉️', label: 'Email Signature'   },
-  { id: 'notifications',  icon: '🔔', label: 'Notifications'     },
-  { id: 'visibility',     icon: '👁️', label: 'Field Visibility'  },
-  { id: 'offer-vars',     icon: '📝', label: 'Offer Variables'   },
-  { id: 'offer-template', icon: '📄', label: 'Offer Template'    },
-  { id: 'brand-colors',   icon: '🎨', label: 'Brand Colors'      },
+  { id: 'custom-fields',   icon: '🧩', label: 'Custom Fields'      },
+  { id: 'automations',     icon: '⚡', label: 'Automations'        },
+  { id: 'hiring-settings', icon: '⚙️', label: 'Hiring Settings'    },
+  { id: 'departments',     icon: '🏢', label: 'Departments'        },
+  { id: 'employment-types',icon: '💼', label: 'Employment Types'   },
+  { id: 'locations',       icon: '📍', label: 'Office Locations'   },
+  { id: 'sources',         icon: '📢', label: 'App. Sources'       },
+  { id: 'pipeline',        icon: '🔄', label: 'Pipeline Statuses'  },
+  { id: 'tags',            icon: '🏷️', label: 'Custom Tags'        },
+  { id: 'rejection',       icon: '❌', label: 'Rejection Reasons'  },
+  { id: 'scorecard',       icon: '📊', label: 'Score Cards'        },
+  { id: 'doc-types',       icon: '📁', label: 'Document Types'     },
+  { id: 'questions',       icon: '❓', label: 'Question Bank'      },
+  { id: 'email-sig',       icon: '✉️', label: 'Email Signature'    },
+  { id: 'notifications',   icon: '🔔', label: 'Notifications'      },
+  { id: 'visibility',      icon: '👁️', label: 'Field Visibility'   },
+  { id: 'offer-vars',      icon: '📝', label: 'Offer Variables'    },
+  { id: 'offer-template',  icon: '📄', label: 'Offer Template'     },
+  { id: 'brand-colors',    icon: '🎨', label: 'Brand Colors'       },
 ];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -1351,9 +1507,11 @@ export default function SuperAdminCustomizations() {
     if (activeTab === 'automations')    return <AutomationsTab />;
     if (ctx.loading) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
     switch (activeTab) {
-      case 'departments':   return <DepartmentsTab {...tabProps} />;
-      case 'locations':     return <LocationsTab {...tabProps} />;
-      case 'sources':       return <SourcesTab {...tabProps} />;
+      case 'hiring-settings':  return <HiringSettingsTab {...tabProps} />;
+      case 'departments':      return <DepartmentsTab {...tabProps} />;
+      case 'employment-types': return <EmploymentTypesTab {...tabProps} />;
+      case 'locations':        return <LocationsTab {...tabProps} />;
+      case 'sources':          return <SourcesTab {...tabProps} />;
       case 'pipeline':      return <PipelineStatusesTab {...tabProps} />;
       case 'tags':          return <CustomTagsTab {...tabProps} />;
       case 'rejection':     return <RejectionReasonsTab {...tabProps} />;

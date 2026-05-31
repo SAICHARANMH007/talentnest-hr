@@ -68,8 +68,21 @@ const OrgCustomizationsSchema = new Schema({
   departments:         [SimpleNameSchema],
   locations:           [SimpleNameSchema],
   sources:             [SimpleNameSchema],
+  employmentTypes:     [SimpleNameSchema],
 
   // Singleton objects
+  hiringSettings: {
+    timeToFillTarget:          { type: Number, default: 30 },
+    maxInterviewRounds:        { type: Number, default: 3 },
+    defaultInterviewDuration:  { type: Number, default: 45 },
+    autoRejectBelow:           { type: Number, default: 0 },
+    requireScorecard:          { type: Boolean, default: false },
+    requireInterviewFeedback:  { type: Boolean, default: false },
+    sendRejectionAuto:         { type: Boolean, default: false },
+    probationDays:             { type: Number, default: 90 },
+  },
+
+  // Singleton objects (continued)
   emailSignature: {
     companyName:  { type: String, default: '' },
     tagline:      { type: String, default: '' },

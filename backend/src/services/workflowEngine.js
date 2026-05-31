@@ -122,6 +122,30 @@ async function execNotifyUser(role, config, eventData) {
   }).catch(() => {});
 }
 
+async function execCreateTask(config, eventData) {
+  // Creates a task as an in-app notification for the recruiter/admin so it surfaces in their feed.
+  // Notifies both the recruiter (if known) and the first admin so the task is never missed.
+  const title    = interpolate(config.title       || 'Task: Follow up with {{candidateName}}', eventData);
+  const message  = interpolate(config.description || 'Task created by automation rule for {{jobTitle}}.', eventData);
+  const dueLabel = config.dueDays ? ` (due in ${config.dueDays} day${config.dueDays !== 1 ? 's' : ''})` : '';
+  const link     = config.link || `${FRONTEND_URL}/app/pipeline`;
+
+  const targets = [];
+  if (eventData.recruiterId) targets.push(eventData.recruiterId);
+  const admin = await User.findOne({ tenantId: eventData.tenantId, role: { $in: ['admin', 'super_admin'] }, deletedAt: null }).select('_id').lean();
+  if (admin && String(admin._id) !== String(eventData.recruiterId)) targets.push(admin._id);
+
+  await Promise.all(targets.map(uid =>
+    Notification.create({
+      userId: uid, tenantId: eventData.tenantId,
+      type: 'task',
+      title: `📌 ${title}`,
+      message: `${message}${dueLabel}`,
+      link,
+    }).catch(() => {}),
+  ));
+}
+
 // Simple {{placeholder}} interpolation
 function interpolate(template, data) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
@@ -161,9 +185,7 @@ async function evaluateWorkflows(tenantId, eventData, dryRun = false) {
             case 'notify_admin':     return execNotifyUser('admin', action.config, eventData);
             case 'assign_tag':      return execAssignTag(action.config, eventData);
             case 'add_note':        return execAddNote(action.config, eventData);
-            case 'create_task':
-              logger.info('[workflow] create_task action (not yet wired)', action.config);
-              return Promise.resolve();
+            case 'create_task':     return execCreateTask(action.config, eventData);
             default:
               return Promise.resolve();
           }

@@ -4,7 +4,7 @@ const notiSchema = new mongoose.Schema({
   userId  : { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
   orgId   : { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },  // legacy — keep for backward compat
-  type    : { type: String, enum: ['application','stage_change','interview','offer','system', 'mention', 'job_approved', 'job_rejected', 'assessment', 'assessment_submitted', 'assessment_reviewed', 'invite_interested', 'invite'], default: 'system' },
+  type    : { type: String, enum: ['application','stage_change','interview','offer','system', 'mention', 'job_approved', 'job_rejected', 'job_assignment', 'assessment', 'assessment_submitted', 'assessment_reviewed', 'invite_interested', 'invite', 'task'], default: 'system' },
   title   : { type: String, required: true },
   message : { type: String, required: true },
   link    : { type: String },

@@ -22,9 +22,9 @@ const guard = [authenticate, allowRoles('admin', 'super_admin')];
 const COLLECTIONS = [
   'pipelineStatuses', 'tags', 'rejectionReasons', 'scoreCards',
   'documentTypes', 'questionBank', 'offerVariables', 'notificationMessages',
-  'departments', 'locations', 'sources',
+  'departments', 'locations', 'sources', 'employmentTypes',
 ];
-const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate'];
+const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings'];
 
 function resolveOrgId(req) {
   // super_admin can pass ?orgId=... or uses their own tenantId
