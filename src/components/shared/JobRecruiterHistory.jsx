@@ -213,16 +213,18 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
         const appliedDuringName = ownerRec?.recruiterName || null;
         const isCrossRecruiter  = !!(appliedDuringName && appliedDuringName !== entry.recruiterName);
 
-        const tenureCandidate = belongsToTenure(a);
-        // If this recruiter made ANY move on this candidate, show ALL their stage changes.
-        // This catches cases where the recruiter added a candidate whose appliedAt falls
-        // outside the computed tenure window (e.g. same-day boundary issues).
+        // A recruiter inherits ALL candidates already in the pipeline when assigned,
+        // so include any candidate who applied before this recruiter's tenure ENDED
+        // (not just those who applied after their assignedAt).
+        const appliedBeforeEnd = !appliedAt || !to || new Date(appliedAt) <= to;
+
+        // Also include candidates this recruiter directly touched (added or moved stage).
         const rid = entry.recruiterId;
         const recruiterTouchedCandidate = rid && (a.stageHistory || []).some(
           h => h.movedBy && String(h.movedBy) === String(rid)
         );
 
-        if (!tenureCandidate && !recruiterTouchedCandidate) return;
+        if (!appliedBeforeEnd && !recruiterTouchedCandidate) return;
 
         (a.stageHistory || []).forEach(h => {
           const ts = h.movedAt || h.changedAt || h.date;
@@ -242,16 +244,9 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
     setLoading(false);
   };
 
-  // Always point loadTabRef at the latest loadTab so the refreshKey effect
-  // never calls a stale version that captures old closures.
+  // Always point loadTabRef at the latest loadTab so it captures fresh closures
+  // (correct from/to/entry values) when called after a re-render.
   loadTabRef.current = loadTab;
-
-  // When the parent bumps refreshKey, clear all caches and reload the active tab.
-  useEffect(() => {
-    loadedRef.current = {};
-    setData({});
-    if (openRef.current) loadTabRef.current?.(tabRef.current);
-  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = async () => {
     const next = !open;
