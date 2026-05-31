@@ -352,7 +352,11 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
 
   const del = { deletedAt: null };
   const [candidates, recruiters, openJobs, applications, hired, pipelineAgg, recentApps, revenueAgg] = await Promise.all([
-    countUniqueCandidateProfiles(platformWide ? {} : tenantScope, platformWide ? { isActive: true } : { ...tenantScope, isActive: true }),
+    Candidate.aggregate([
+      { $match: { ...aggF, deletedAt: null } },
+      { $group: { _id: { $ifNull: ['$userId', { $ifNull: [{ $toLower: '$email' }, '$_id'] }] } } },
+      { $count: 'total' },
+    ]).then(r => r[0]?.total || 0),
     User.countDocuments({ ...orgF, role: 'recruiter', isActive: true }),
     Job.countDocuments({ ...orgF, status: 'active', ...del }),
     (async () => {
