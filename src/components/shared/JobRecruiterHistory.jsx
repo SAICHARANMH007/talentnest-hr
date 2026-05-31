@@ -81,13 +81,14 @@ function CandidateList({ candidates, emptyMsg, entry }) {
 }
 
 // ── Stage-changes log ────────────────────────────────────────────────────────
-function PipelineLog({ events, emptyMsg }) {
+function PipelineLog({ events, emptyMsg, recruiterMap = {} }) {
   if (!events.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
   return (
     <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {events.map((ev, i) => {
-        const color = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
+        const color     = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
+        const moverName = ev.movedBy ? (recruiterMap[String(ev.movedBy)] || null) : null;
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}22` }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -96,6 +97,11 @@ function PipelineLog({ events, emptyMsg }) {
                 {ev.candidateName} <span style={{ color: '#C9C7C5' }}>→</span>{' '}
                 <span style={{ color }}>{fmtStage(ev.stage || ev.stageId) || '—'}</span>
               </div>
+              {moverName && (
+                <div style={{ fontSize: 10, color: '#706E6B', marginTop: 1 }}>
+                  👤 moved by <strong style={{ color: '#0176D3' }}>{moverName}</strong>
+                </div>
+              )}
               {ev.note && <div style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic' }}>"{ev.note}"</div>}
             </div>
             <span style={{ fontSize: 10, color: '#94A3B8', flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtDT(ev._ts)}</span>
@@ -113,7 +119,7 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
@@ -287,7 +293,7 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
                 <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." entry={entry} />
               )}
               {tab === 'log'      && data.log      !== undefined && (
-                <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." />
+                <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." recruiterMap={recruiterMap} />
               )}
             </>
           )}
@@ -587,6 +593,10 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   // Sorted oldest → newest
   const sorted = [...history].sort((a, b) => new Date(a.assignedAt || 0) - new Date(b.assignedAt || 0));
 
+  // Map recruiterId → recruiterName for "moved by" attribution in stage logs
+  const recruiterMap = {};
+  sorted.forEach(r => { if (r.recruiterId) recruiterMap[String(r.recruiterId)] = r.recruiterName; });
+
   // Detect "again" — same recruiter appearing more than once
   const nameTally = {};
   sorted.forEach(r => { nameTally[r.recruiterName] = (nameTally[r.recruiterName] || 0) + 1; });
@@ -709,6 +719,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 days={days}
                 isLast={isLast}
                 ensureApps={ensureApps}
+                recruiterMap={recruiterMap}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
