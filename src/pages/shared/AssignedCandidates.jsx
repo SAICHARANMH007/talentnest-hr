@@ -380,12 +380,16 @@ export default function AssignedCandidates({ user }) {
     if (isAdmin) {
       // Org admin: backend scopes to their org via JWT
       // Super admin: platform:true to fetch all orgs' jobs correctly
-      const params = { limit: JOB_LIST_PG, page: jobListPage };
-      if (isSuperAdmin) params.platform = true;
-      api.getJobs(params)
-        .then(raw => {
+      const platform = isSuperAdmin ? true : undefined;
+      const params       = { limit: JOB_LIST_PG, page: jobListPage, ...(platform ? { platform } : {}) };
+      const countParams  = { limit: 1, page: 1,            ...(platform ? { platform } : {}) };
+      Promise.all([
+        api.getJobs(params),
+        api.getJobs(countParams),
+      ]).then(([raw, countRaw]) => {
           const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
-          const total = raw?.pagination?.total ?? raw?.total ?? list.length;
+          // Dedicated count query gives the most accurate total (same as AdminJobs status counts)
+          const total = countRaw?.pagination?.total || raw?.pagination?.total || raw?.total || list.length;
           setJobs(list);
           setTotalJobs(total);
         })
@@ -524,14 +528,18 @@ export default function AssignedCandidates({ user }) {
             isAdmin={isAdmin}
             onRecruiterChanged={() => {
               setHistoryJob(null);
-              // Re-fetch current page so job cards reflect the new assignment
               setLoad(true);
-              api.getJobs(isAdmin ? { limit: JOB_LIST_PG, page: jobListPage, ...(isSuperAdmin ? { platform: true } : {}) } : { recruiterId: user?.id || user?._id })
-                .then(raw => {
+              const platform = isSuperAdmin ? true : undefined;
+              const p = { limit: JOB_LIST_PG, page: jobListPage, ...(platform ? { platform } : {}) };
+              const cp = { limit: 1, page: 1, ...(platform ? { platform } : {}) };
+              Promise.all(
+                isAdmin
+                  ? [api.getJobs(p), api.getJobs(cp)]
+                  : [api.getJobs({ recruiterId: user?.id || user?._id }), Promise.resolve(null)]
+              ).then(([raw, countRaw]) => {
                   const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
-                  const total = raw?.pagination?.total ?? raw?.total ?? list.length;
                   setJobs(list);
-                  if (isAdmin) setTotalJobs(total);
+                  if (isAdmin) setTotalJobs(countRaw?.pagination?.total || raw?.pagination?.total || list.length);
                 })
                 .catch(() => {})
                 .finally(() => setLoad(false));
@@ -643,8 +651,9 @@ export default function AssignedCandidates({ user }) {
                     || details.recruiterId
                     || details.recruiter?._id?.toString()
                     || details.recruiter?.id;
-                  if ((details.recruiterHistory || details.assignedRecruiters || []).length > 0) {
-                    rHist = details.recruiterHistory || details.assignedRecruiters || [];
+                  const detailHistory = Array.isArray(details.recruiterHistory) ? details.recruiterHistory : [];
+                  if (detailHistory.length > rHist.length) {
+                    rHist = detailHistory;
                   }
                 } catch {}
                 // If we still have an ID but no name, look up the user

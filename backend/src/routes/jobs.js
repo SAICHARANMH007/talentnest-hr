@@ -690,11 +690,54 @@ router.get('/:id/recruiter-history', ...guard, allowRoles('admin', 'super_admin'
   const job = await Job.findOne(filter).select('title recruiterHistory assignedRecruiters').lean();
   if (!job) throw new AppError('Job not found.', 404);
 
-  // Sort history: active (removedAt=null) first, then by assignedAt desc
-  const history = (job.recruiterHistory || []).sort((a, b) => {
+  const history = [...(job.recruiterHistory || [])];
+
+  // Populate missing recruiter names from User collection
+  const missingNameIds = history
+    .filter(h => !h.recruiterName && h.recruiterId)
+    .map(h => h.recruiterId.toString());
+
+  // If history is empty but job has assignedRecruiters, synthesize entries
+  const activeIds = (job.assignedRecruiters || []).map(id => id.toString());
+  const historyIds = new Set(history.map(h => h.recruiterId?.toString()));
+  const untracked = activeIds.filter(id => !historyIds.has(id));
+
+  const lookupIds = [...new Set([...missingNameIds, ...untracked])];
+  let userMap = {};
+  if (lookupIds.length > 0) {
+    const users = await User.find({ _id: { $in: lookupIds } }).select('_id name email phone').lean();
+    userMap = Object.fromEntries(users.map(u => [u._id.toString(), u]));
+  }
+
+  // Patch empty names in existing entries
+  history.forEach(h => {
+    if (!h.recruiterName && h.recruiterId) {
+      const u = userMap[h.recruiterId.toString()];
+      if (u) { h.recruiterName = u.name || ''; h.recruiterEmail = u.email || ''; }
+    }
+  });
+
+  // Synthesize entries for recruiters in assignedRecruiters but not in history
+  for (const id of untracked) {
+    const u = userMap[id];
+    if (u) {
+      history.push({
+        recruiterId   : u._id,
+        recruiterName : u.name || '',
+        recruiterEmail: u.email || '',
+        recruiterPhone: u.phone || '',
+        assignedAt    : null,
+        removedAt     : null,
+        _synthesized  : true,
+      });
+    }
+  }
+
+  // Sort: active (removedAt=null) first, then by assignedAt desc
+  history.sort((a, b) => {
     if (!a.removedAt && b.removedAt) return -1;
     if (a.removedAt && !b.removedAt) return 1;
-    return new Date(b.assignedAt) - new Date(a.assignedAt);
+    return new Date(b.assignedAt || 0) - new Date(a.assignedAt || 0);
   });
 
   res.json({ success: true, data: { jobTitle: job.title, history } });
