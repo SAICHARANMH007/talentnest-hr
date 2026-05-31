@@ -630,14 +630,31 @@ export default function AssignedCandidates({ user }) {
               let rId   = resolvedRecruiterId;
               let rHist = patchedHistory;
               // For admin: list API may omit recruiter fields — fetch full job details
-              if (isAdmin && !rName) {
+              if (isAdmin) {
                 try {
                   const d = await api.getJob(jid);
                   const details = d?.data || d || {};
-                  rName = details.recruiterName || details.recruiter?.name;
-                  rId   = details.recruiterId   || details.recruiter?._id?.toString();
-                  if ((details.recruiterHistory || []).length > 0) rHist = details.recruiterHistory;
+                  // Try every field name the backend might use
+                  rName = rName
+                    || details.recruiterName
+                    || details.recruiter?.name
+                    || details.assignedRecruiterName;
+                  rId = rId
+                    || details.recruiterId
+                    || details.recruiter?._id?.toString()
+                    || details.recruiter?.id;
+                  if ((details.recruiterHistory || details.assignedRecruiters || []).length > 0) {
+                    rHist = details.recruiterHistory || details.assignedRecruiters || [];
+                  }
                 } catch {}
+                // If we still have an ID but no name, look up the user
+                if (rId && !rName) {
+                  try {
+                    const u = await api.getUser(rId);
+                    const ud = u?.data || u || {};
+                    rName = ud.name;
+                  } catch {}
+                }
               }
               setHistoryJob({
                 jobId: jid, jobTitle,

@@ -452,7 +452,13 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   const [assignError,        setAssignError]        = useState('');
 
   const parseHistory = r => {
-    const raw = r?.data?.history || r?.history || (Array.isArray(r?.data) ? r.data : null) || (Array.isArray(r) ? r : []);
+    // Try every shape the backend might return
+    const raw = r?.data?.history
+      || r?.history
+      || r?.data?.recruiterHistory
+      || r?.recruiterHistory
+      || (Array.isArray(r?.data) ? r.data : null)
+      || (Array.isArray(r) ? r : []);
     return Array.isArray(raw) ? raw : [];
   };
 
