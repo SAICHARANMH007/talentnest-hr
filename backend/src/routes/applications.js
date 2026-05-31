@@ -1037,6 +1037,66 @@ router.patch('/:id/stage', ...guard,
       }
     }
 
+    // ── In-app notifications for all meaningful stage changes ─────────────────
+    const STAGE_NOTIF = {
+      Screening:           { icon: '📋', adminTitle: 'Under Review',    candidateTitle: 'Application update' },
+      Shortlisted:         { icon: '🎉', adminTitle: 'Shortlisted',     candidateTitle: 'Great news!' },
+      'Interview Round 1': { icon: '📅', adminTitle: 'Interview R1',    candidateTitle: 'Interview scheduled' },
+      'Interview Round 2': { icon: '📅', adminTitle: 'Interview R2',    candidateTitle: 'Interview Round 2' },
+      Offer:               { icon: '🤝', adminTitle: 'Offer Extended',  candidateTitle: 'Offer extended!' },
+      Hired:               { icon: '🎊', adminTitle: 'Hired',           candidateTitle: "You're hired!" },
+      Rejected:            { icon: '❌', adminTitle: 'Rejected',        candidateTitle: 'Application update' },
+    };
+    const notifCfg = STAGE_NOTIF[stage];
+    if (notifCfg) {
+      const cName  = candidate?.name  || 'A candidate';
+      const jTitle = jobDoc?.title    || 'a role';
+
+      // Notify all admins + recruiters in the tenant (except the person who made the change)
+      try {
+        const moverIdStr = String(req.user._id || req.user.id);
+        const teamUsers = await User.find({
+          tenantId: app.tenantId,
+          role: { $in: ['admin', 'recruiter'] },
+          deletedAt: null,
+        }).select('_id').lean();
+        const payloads = teamUsers
+          .filter(u => String(u._id) !== moverIdStr)
+          .map(u => ({
+            userId:   u._id,
+            tenantId: app.tenantId,
+            type:     'stage_change',
+            title:    `${notifCfg.icon} ${cName} — ${notifCfg.adminTitle}`,
+            message:  `${cName} was moved to ${stage} for ${jTitle}`,
+            link:     `/app/pipeline`,
+          }));
+        if (payloads.length) await Notification.insertMany(payloads).catch(() => {});
+      } catch (err) {
+        console.warn('[Notification] team stage notification failed:', err.message);
+      }
+
+      // Notify the candidate's user account for positive/significant stages
+      if (['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired', 'Rejected'].includes(stage) && candidateEmail) {
+        try {
+          const candidateUser = await User.findOne({ email: candidateEmail }).lean();
+          if (candidateUser) {
+            await Notification.create({
+              userId:   candidateUser._id,
+              tenantId: app.tenantId,
+              type:     'stage_change',
+              title:    `${notifCfg.icon} ${notifCfg.candidateTitle} — ${jTitle}`,
+              message:  stage === 'Hired'
+                ? `Congratulations! You have been hired for ${jTitle}. Check your pre-boarding checklist.`
+                : `Your application for ${jTitle} has been moved to: ${stage}`,
+              link:     stage === 'Hired' ? '/app/onboarding' : '/app/applications',
+            });
+          }
+        } catch (err) {
+          console.warn('[Notification] candidate stage notification failed:', err.message);
+        }
+      }
+    }
+
     if (stage === 'Hired') {
       // Auto-create pre-boarding checklist for the hired candidate
       try {
@@ -1045,36 +1105,17 @@ router.patch('/:id/stage', ...guard,
       } catch (pbErr) {
         console.warn('[PreBoarding] auto-create on Hired stage failed:', pbErr.message);
       }
-      
-      // In-app Notification for candidate
-      try {
-        const User = require('../models/User');
-        const candidateUser = await User.findOne({ email: candidate.email }).lean();
-        if (candidateUser) {
-          await Notification.create({
-            userId: candidateUser._id,
-            tenantId: app.tenantId,
-            type: 'stage_change',
-            title: `You're Hired for ${jobDoc?.title}!`,
-            message: `Congratulations! Please check your Pre-boarding checklist to proceed with document verification.`,
-            link: '/app/onboarding',
-          });
-        }
-      } catch (err) {
-        console.warn('[Notification] Candidate hired notification failed:', err.message);
-      }
 
-      // In-app notification for all admins + the recruiter who moved the stage
+      // Additional Hired-specific admin notification with offer letter prompt
       try {
-        const User = require('../models/User');
         const adminUsers = await User.find({ tenantId: app.tenantId, role: { $in: ['admin', 'recruiter'] }, deletedAt: null }).select('_id').lean();
         const notifPayloads = adminUsers.map(u => ({
-          userId: u._id,
+          userId:   u._id,
           tenantId: app.tenantId,
-          type: 'stage_change',
-          title: `🎉 Hired: ${candidate.name}`,
-          message: `${candidate.name} was hired for ${jobDoc?.title || 'a role'}. Generate their offer letter in the Offers page.`,
-          link: `/app/offers`,
+          type:     'stage_change',
+          title:    `🎉 Hired: ${candidate?.name || 'Candidate'}`,
+          message:  `${candidate?.name || 'A candidate'} was hired for ${jobDoc?.title || 'a role'}. Generate their offer letter in the Offers page.`,
+          link:     `/app/offers`,
         }));
         if (notifPayloads.length) await Notification.insertMany(notifPayloads).catch(() => {});
       } catch (err) {
