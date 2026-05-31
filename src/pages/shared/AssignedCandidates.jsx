@@ -381,14 +381,16 @@ export default function AssignedCandidates({ user }) {
       // Org admin: backend scopes to their org via JWT
       // Super admin: platform:true to fetch all orgs' jobs correctly
       const platform = isSuperAdmin ? true : undefined;
+      // Main list: all statuses (admin needs to manage draft/closed assignments too)
       const params       = { limit: JOB_LIST_PG, page: jobListPage, ...(platform ? { platform } : {}) };
-      const countParams  = { limit: 1, page: 1,            ...(platform ? { platform } : {}) };
+      // Count query: active only — matches Analytics "Open Positions" definition (no cap, countDocuments)
+      const countParams  = { limit: 1, page: 1, status: 'active', ...(platform ? { platform } : {}) };
       Promise.all([
         api.getJobs(params),
         api.getJobs(countParams),
       ]).then(([raw, countRaw]) => {
           const list  = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.jobs) ? raw.jobs : []));
-          // Dedicated count query gives the most accurate total (same as AdminJobs status counts)
+          // Dedicated active-jobs count — matches Analytics "Open Positions" KPI
           const total = countRaw?.pagination?.total || raw?.pagination?.total || raw?.total || list.length;
           setJobs(list);
           setTotalJobs(total);
@@ -531,7 +533,7 @@ export default function AssignedCandidates({ user }) {
               setLoad(true);
               const platform = isSuperAdmin ? true : undefined;
               const p = { limit: JOB_LIST_PG, page: jobListPage, ...(platform ? { platform } : {}) };
-              const cp = { limit: 1, page: 1, ...(platform ? { platform } : {}) };
+              const cp = { limit: 1, page: 1, status: 'active', ...(platform ? { platform } : {}) };
               Promise.all(
                 isAdmin
                   ? [api.getJobs(p), api.getJobs(cp)]
@@ -551,7 +553,7 @@ export default function AssignedCandidates({ user }) {
       <PageHeader
         title={isAdmin ? '🎯 Assignments Overview' : '🎯 Assigned to Me'}
         subtitle={isAdmin
-          ? `${totalJobs} job${totalJobs !== 1 ? 's' : ''} across your organisation · ${totalCands > 0 ? `${totalCands} candidates loaded` : 'select a job to view candidates'}`
+          ? `${totalJobs} open position${totalJobs !== 1 ? 's' : ''} · ${totalCands > 0 ? `${totalCands} candidates loaded` : 'select a job to view candidates'}`
           : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} assigned · ${totalCands} candidate${totalCands !== 1 ? 's' : ''}`}
       />
 
