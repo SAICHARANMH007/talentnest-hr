@@ -163,41 +163,51 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
     <div
       onClick={() => c._id && onOpenDrawer(c)}
       style={{
-        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px',
-        borderBottom: '1px solid #F1F5F9', background: '#fff',
-        cursor: c._id ? 'pointer' : 'default', transition: 'background 0.12s',
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        padding: '14px 16px', borderBottom: '1px solid #E8EDF5',
+        background: '#fff', cursor: c._id ? 'pointer' : 'default',
+        transition: 'background 0.12s',
       }}
       onMouseEnter={e => { if (c._id) e.currentTarget.style.background = '#F0F7FF'; }}
       onMouseLeave={e => e.currentTarget.style.background = '#fff'}
     >
       {/* Avatar */}
       <div style={{
-        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
         background: 'linear-gradient(135deg,#032D60,#0176D3)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#fff', fontWeight: 800, fontSize: 14,
+        color: '#fff', fontWeight: 800, fontSize: 14, marginTop: 1,
       }}>
         {initials(name)}
       </div>
 
       {/* Info block */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Name + contact */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: '#181818' }}>{name}</span>
-          {c.email && (
-            <a href={`mailto:${c.email}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none' }}
-              onClick={e => e.stopPropagation()}>
-              {c.email}
-            </a>
-          )}
-          {c.phone && (
-            <a href={`tel:${c.phone}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none' }}
-              onClick={e => e.stopPropagation()}>
-              {c.phone}
-            </a>
-          )}
+        {/* Name on its own line */}
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#181818', lineHeight: 1.3 }}>
+          {name}
         </div>
+
+        {/* Email + phone on second line */}
+        {(c.email || c.phone) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            {c.email && (
+              <a href={`mailto:${c.email}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+                onClick={e => e.stopPropagation()}>
+                {c.email}
+              </a>
+            )}
+            {c.email && c.phone && (
+              <span style={{ fontSize: 10, color: '#CBD5E1' }}>·</span>
+            )}
+            {c.phone && (
+              <a href={`tel:${c.phone}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                onClick={e => e.stopPropagation()}>
+                {c.phone}
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Title / company */}
         {(c.title || c.currentCompany) && (
@@ -207,7 +217,7 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
         )}
 
         {/* Meta chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
           <span style={{ fontSize: 10, color: '#64748B', background: '#F1F5F9', padding: '2px 7px', borderRadius: 20 }}>
             📅 Applied {fmtShort(a.createdAt || a.appliedAt)}
           </span>
@@ -284,15 +294,15 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
       </div>
 
       {/* Stage selector */}
-      <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+      <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
         <select
           value={stage}
           onChange={e => onChangeStage(a, e.target.value)}
           style={{
             background: `${stageColor}18`, color: stageColor,
             border: `1px solid ${stageColor}40`,
-            borderRadius: 20, padding: '5px 10px', fontSize: 11, fontWeight: 700,
-            outline: 'none', cursor: 'pointer',
+            borderRadius: 20, padding: '5px 8px', fontSize: 10, fontWeight: 700,
+            outline: 'none', cursor: 'pointer', maxWidth: 110,
           }}
         >
           {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
