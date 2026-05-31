@@ -553,7 +553,7 @@ export default function AssignedCandidates({ user }) {
       <PageHeader
         title={isAdmin ? '🎯 Assignments Overview' : '🎯 Assigned to Me'}
         subtitle={isAdmin
-          ? `${totalJobs} open position${totalJobs !== 1 ? 's' : ''} · ${totalCands > 0 ? `${totalCands} candidates loaded` : 'select a job to view candidates'}`
+          ? `${totalJobs} open position${totalJobs !== 1 ? 's' : ''}`
           : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} assigned · ${totalCands} candidate${totalCands !== 1 ? 's' : ''}`}
       />
 
