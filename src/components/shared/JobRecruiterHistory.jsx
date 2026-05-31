@@ -30,17 +30,17 @@ const STAGE_ORDER = [
 ];
 
 // ── Candidates list (reused in per-recruiter drill-down) ─────────────────────
-function CandidateList({ candidates, emptyMsg, entry }) {
+function CandidateList({ candidates, emptyMsg, entry, effectiveEndDate }) {
   if (!candidates.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
 
-  // For past recruiters: find what stage the candidate was in when the recruiter left.
-  // For current recruiter: always show current stage.
+  // Use effectiveEndDate (removedAt || nextRecruiter.assignedAt) as the boundary.
+  // This handles recruiters with no removedAt who were later superseded by another recruiter.
   const getStageAtTenureEnd = (app) => {
-    if (!entry?.removedAt) return app.currentStage || app.stage || 'Applied';
-    const removedAt = new Date(entry.removedAt);
+    if (!effectiveEndDate) return app.currentStage || app.stage || 'Applied';
+    const endDate = new Date(effectiveEndDate);
     const history = (app.stageHistory || [])
-      .filter(h => { const ts = h.movedAt || h.changedAt || h.date; return ts && new Date(ts) <= removedAt; })
+      .filter(h => { const ts = h.movedAt || h.changedAt || h.date; return ts && new Date(ts) <= endDate; })
       .sort((a, b) => new Date(b.movedAt || b.changedAt || b.date) - new Date(a.movedAt || a.changedAt || a.date));
     return history[0]?.stageId || history[0]?.stage || 'Applied';
   };
@@ -51,7 +51,7 @@ function CandidateList({ candidates, emptyMsg, entry }) {
         const name         = a.candidate?.name || a.candidateName || '?';
         const tenureStage  = getStageAtTenureEnd(a);
         const currentStage = a.currentStage || a.stage || 'Applied';
-        const movedAfter   = entry?.removedAt && tenureStage !== currentStage;
+        const movedAfter   = !!(effectiveEndDate && tenureStage !== currentStage);
         const color        = STAGE_COLOR[tenureStage]  || '#64748B';
         const nowColor     = STAGE_COLOR[currentStage] || '#64748B';
         return (
@@ -126,7 +126,7 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
@@ -305,10 +305,10 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
           ) : (
             <>
               {tab === 'applied'  && data.applied  !== undefined && (
-                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." entry={entry} />
+                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." entry={entry} effectiveEndDate={effectiveEndDate} />
               )}
               {tab === 'pipeline' && data.pipeline !== undefined && (
-                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." entry={entry} />
+                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." entry={entry} effectiveEndDate={effectiveEndDate} />
               )}
               {tab === 'log'      && data.log      !== undefined && (
                 <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." recruiterMap={recruiterMap} />
@@ -727,6 +727,9 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           const isRepeat = nameTally[entry.recruiterName] > 1 && nameSeen[entry.recruiterName] > 1;
           const isLast   = i === sorted.length - 1;
           const next     = sorted[i + 1];
+          // Use the next recruiter's assignedAt as the effective tenure end when this entry
+          // has no removedAt (e.g. bulk-assigned recruiter with no recorded removal date).
+          const effectiveEndDate = entry.removedAt || next?.assignedAt || null;
 
           return (
             <div key={i}>
@@ -739,6 +742,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 ensureApps={ensureApps}
                 recruiterMap={recruiterMap}
                 history={sorted}
+                effectiveEndDate={effectiveEndDate}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
