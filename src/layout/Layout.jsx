@@ -131,6 +131,7 @@ function NotificationBell({ userRole, compact = false }) {
           const cand  = a.candidateId || a.candidate || {};
           const job   = a.jobId || {};
           const rawId = a._id || a.id;
+          const jobId = job._id || job.id || a.jobId;
           if (!rawId) return;
           const id = `live_app_${rawId}`;
           items.push({
@@ -139,6 +140,8 @@ function NotificationBell({ userRole, compact = false }) {
             body: `${cand.name || a.candidateName || 'Candidate'} applied for: ${job.title || a.jobTitle || 'a position'}`,
             createdAt: a.createdAt || a.appliedAt || new Date().toISOString(),
             read: readIds.current.has(id), live: true,
+            link: jobId ? `/app/pipeline?jobId=${jobId}` : '/app/pipeline',
+            metadata: { applicationId: String(rawId), candidateId: String(cand._id || cand.id || ''), jobId: String(jobId || '') },
           });
         });
     } catch {}
@@ -150,19 +153,23 @@ function NotificationBell({ userRole, compact = false }) {
         const id = `live_offer_${o.id}`;
         items.push({ _id: id, type: 'offer', title: 'Offer Letter Pending',
           body: `${o.candidateName} — unsigned for ${o.daysPending} days`,
-          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true,
+          link: '/app/offers', metadata: { candidateId: String(o.id || '') } });
       });
       (alerts?.stuckCandidates || []).slice(0, 5).forEach(c => {
         const id = `live_stuck_${c.id}`;
         items.push({ _id: id, type: 'stage_change', title: 'Candidate Stuck in Pipeline',
           body: `${c.candidateName} stuck in ${c.stage} for ${c.daysStuck} days — ${c.jobTitle}`,
-          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true,
+          link: c.jobId ? `/app/pipeline?jobId=${c.jobId}` : '/app/pipeline',
+          metadata: { candidateId: String(c.id || ''), jobId: String(c.jobId || '') } });
       });
       (alerts?.staleJobs || []).slice(0, 5).forEach(j => {
         const id = `live_stale_${j.id}`;
         items.push({ _id: id, type: 'system', title: 'Job Open Too Long',
           body: `${j.title} — open ${j.daysOpen} days with no hire`,
-          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true });
+          createdAt: new Date().toISOString(), read: readIds.current.has(id), live: true,
+          link: '/app/jobs', metadata: { jobId: String(j.id || '') } });
       });
     } catch {}
 
@@ -293,6 +300,7 @@ function NotificationBell({ userRole, compact = false }) {
     assessment: 'assessments', assessment_submitted: 'assessments', assessment_reviewed: 'assessments',
     job_approved: 'jobs', job_rejected: 'jobs',
     job_approval_request: 'job-approvals',
+    job_assignment: 'pipeline',
     invite_interested: 'candidates', invite: 'analytics', mention: 'analytics'
   };
   const TYPE_ICONS  = {
@@ -318,22 +326,51 @@ function NotificationBell({ userRole, compact = false }) {
     setDetail(n);
   };
 
-  // Navigate after viewing detail — use n.link first (most specific), fall back to TYPE_MAP
+  // Navigate after viewing detail — resolve the best deep-link from notification data
   const goToDetail = (n) => {
     setDetail(null);
     setOpen(false);
 
-    // Prefer the stored link — normalize legacy route prefixes before navigating.
-    // Backend creates links as /recruiter/pipeline or /admin/jobs but the app router
-    // uses /app/ as the prefix for all authenticated routes. Navigating to /recruiter/*
-    // finds no match → catch-all → /app/analytics (dashboard). Fix: normalize here.
+    const meta  = n.metadata || n.data || {};
+    const jobId = meta.jobId;
+
+    // Build best possible link from metadata before falling back to stored link
+    if (n.type === 'job_assignment' && jobId) {
+      navigate(`/app/pipeline?jobId=${jobId}`);
+      return;
+    }
+    if ((n.type === 'application' || n.type === 'stage_update' || n.type === 'stage_change') && jobId) {
+      navigate(`/app/pipeline?jobId=${jobId}`);
+      return;
+    }
+    if (n.type === 'offer') {
+      navigate('/app/offers');
+      return;
+    }
+    if (n.type === 'interview') {
+      navigate('/app/interviews');
+      return;
+    }
+    if ((n.type === 'assessment' || n.type === 'assessment_submitted' || n.type === 'assessment_reviewed')) {
+      navigate('/app/assessments');
+      return;
+    }
+    if (n.type === 'job_approved' || n.type === 'job_rejected') {
+      navigate('/app/jobs');
+      return;
+    }
+    if (n.type === 'job_approval_request') {
+      navigate('/app/job-approvals');
+      return;
+    }
+
+    // Prefer the stored link — normalize any legacy route prefixes before navigating
     if (n.link && n.link.trim()) {
       const raw = n.link.trim();
       if (raw.startsWith('http')) {
         window.open(raw, '_blank', 'noopener');
         return;
       }
-      // Normalize any legacy prefix so the route always resolves correctly
       const normalized = raw
         .replace(/^\/recruiter\//, '/app/')
         .replace(/^\/admin\//, '/app/')
@@ -345,16 +382,13 @@ function NotificationBell({ userRole, compact = false }) {
       return;
     }
 
-    // Fallback: use specific candidateId metadata or TYPE_MAP routing
-    const candidateId = n.metadata?.candidateId || n.data?.candidateId;
+    // Last resort: TYPE_MAP generic routing
+    const candidateId = meta.candidateId;
     if (candidateId) {
       sessionStorage.setItem('tn_open_candidate_id', candidateId);
       navigate('/app/candidates');
     } else {
-      const dest = TYPE_MAP[n.type];
-      // Only navigate if we have a specific non-generic destination
-      // 'system' type → 'analytics' is the dashboard — valid for super_admin summaries
-      navigate(`/app/${dest || 'analytics'}`);
+      navigate(`/app/${TYPE_MAP[n.type] || 'analytics'}`);
     }
   };
 

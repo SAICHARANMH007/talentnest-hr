@@ -472,10 +472,11 @@ router.post('/:id/assign', ...guard,
     // 1. Notify the recruiter — include applicant count so they know what to expect
     const appCount = await Application.countDocuments({ jobId: job._id, deletedAt: null });
     await Notification.create({
-      userId: recruiterId, tenantId: job.tenantId, type: 'system',
+      userId: recruiterId, tenantId: job.tenantId, type: 'job_assignment',
       title: '📋 New Job Assignment',
       message: `You have been assigned to "${job.title}". There ${appCount === 1 ? 'is' : 'are'} ${appCount} existing applicant${appCount !== 1 ? 's' : ''} in your pipeline ready to review.`,
-      link: '/app/pipeline',
+      link: `/app/pipeline?jobId=${job._id}`,
+      metadata: { jobId: job._id.toString(), jobTitle: job.title },
     }).catch(() => {});
 
     // 2. Notify ALL existing candidates who applied for this job that a recruiter is now assigned

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -47,6 +48,7 @@ const OFFER_STAGES = new Set(['offer_extended','offer_letter','offer_accepted'])
 const SCHED_EMPTY = { date: '', time: '', format: 'video', interviewerName: '', interviewerEmail: '', videoLink: '', notes: '' };
 
 export default function AdminPipeline({ user }) {
+  const [searchParams] = useSearchParams();
   const { stages: orgStages, isVisible } = useOrgOptions();
   // Build SM (stage map by id) from org stages so custom colors/labels resolve correctly
   const activeStages = orgStages.length > 0 ? orgStages : STAGES;
@@ -58,7 +60,7 @@ export default function AdminPipeline({ user }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
   const [toast,   setToast]   = useState('');
-  const [jobFilter,  setJobFilter]  = useState('');
+  const [jobFilter,  setJobFilter]  = useState(() => searchParams.get('jobId') || '');
   const [stageFilter,setStageFilter]= useState('');
   const [drawerApp,  setDrawerApp]  = useState(null);
   const [movingId,   setMovingId]   = useState('');

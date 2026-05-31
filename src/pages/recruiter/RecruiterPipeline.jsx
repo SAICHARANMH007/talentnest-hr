@@ -8,7 +8,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import StageTracker from '../../components/pipeline/StageTracker.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import CandidateActivityTimeline from '../../components/shared/CandidateActivityTimeline.jsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { STAGES, SM, NEXT } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -501,8 +501,9 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function RecruiterPipeline({ user }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
-  const [selJob, setSelJob] = useState('');
+  const [selJob, setSelJob] = useState(() => searchParams.get('jobId') || '');
   const [jobSearch, setJobSearch] = useState('');
   const [presetTags, setPresetTags] = useState(DEFAULT_PRESET_TAGS);
   const [tagColors, setTagColors] = useState(DEFAULT_TAG_COLORS);
