@@ -132,6 +132,14 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
   const [data,    setData]    = useState({});
   const [loading, setLoading] = useState(false);
 
+  // Refs for stale-closure-safe refresh (loadedRef checked instead of data state)
+  const loadedRef  = useRef({});
+  const openRef    = useRef(false);
+  const tabRef     = useRef('applied');
+  const loadTabRef = useRef(null);
+  openRef.current = open;
+  tabRef.current  = tab;
+
   const from = entry.assignedAt ? new Date(entry.assignedAt) : null;
   // Use effectiveEndDate (not raw removedAt) so that recruiters with no removedAt
   // still get a proper upper bound when a successor was assigned.
@@ -156,17 +164,25 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
 
   const loadTab = async (key) => {
     setTab(key);
-    if (data[key] !== undefined) return;
+    if (loadedRef.current[key]) return; // ref-based cache — immune to stale closures
+    loadedRef.current[key] = true;      // mark immediately to prevent double-fetch races
     setLoading(true);
     const apps = await ensureApps();
+    // Helper: was this recruiter involved with this candidate at all?
+    const rid = entry.recruiterId;
+    const recruiterTouched = (a) => rid && (a.stageHistory || []).some(
+      h => h.movedBy && String(h.movedBy) === String(rid)
+    );
+
     let result;
     if (key === 'applied') {
-      // Candidates who applied during this recruiter's effective tenure
-      result = apps.filter(a => belongsToTenure(a));
+      // Candidates who applied during this recruiter's effective tenure,
+      // plus any candidate this recruiter directly added to the pipeline.
+      result = apps.filter(a => belongsToTenure(a) || recruiterTouched(a));
     } else if (key === 'pipeline') {
-      // Tenure-era candidates who have any stage history (shows ongoing journey)
+      // Same inclusion rule, filtered to candidates with any stage history.
       result = apps.filter(a =>
-        belongsToTenure(a) &&
+        (belongsToTenure(a) || recruiterTouched(a)) &&
         Array.isArray(a.stageHistory) &&
         a.stageHistory.length > 0
       );
@@ -197,19 +213,22 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
         const appliedDuringName = ownerRec?.recruiterName || null;
         const isCrossRecruiter  = !!(appliedDuringName && appliedDuringName !== entry.recruiterName);
 
-        // Include events for candidates applied during this tenure
-        // OR stage changes made by this recruiter (cross-tenure contributions)
         const tenureCandidate = belongsToTenure(a);
+        // If this recruiter made ANY move on this candidate, show ALL their stage changes.
+        // This catches cases where the recruiter added a candidate whose appliedAt falls
+        // outside the computed tenure window (e.g. same-day boundary issues).
+        const rid = entry.recruiterId;
+        const recruiterTouchedCandidate = rid && (a.stageHistory || []).some(
+          h => h.movedBy && String(h.movedBy) === String(rid)
+        );
+
+        if (!tenureCandidate && !recruiterTouchedCandidate) return;
 
         (a.stageHistory || []).forEach(h => {
-          const ts  = h.movedAt || h.changedAt || h.date;
-          const movedByThisRecruiter = entry.recruiterId &&
-            h.movedBy && String(h.movedBy) === String(entry.recruiterId);
-
-          if (!tenureCandidate && !movedByThisRecruiter) return;
+          const ts = h.movedAt || h.changedAt || h.date;
           if (!ts) return;
 
-          const uid = `${String(a._id)}-${ts}-${h.stage || h.stageId}`;
+          const uid = `${String(a._id || a.id)}-${ts}-${h.stage || h.stageId}`;
           if (seen.has(uid)) return;
           seen.add(uid);
 
@@ -223,10 +242,21 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
     setLoading(false);
   };
 
+  // Always point loadTabRef at the latest loadTab so the refreshKey effect
+  // never calls a stale version that captures old closures.
+  loadTabRef.current = loadTab;
+
+  // When the parent bumps refreshKey, clear all caches and reload the active tab.
+  useEffect(() => {
+    loadedRef.current = {};
+    setData({});
+    if (openRef.current) loadTabRef.current?.(tabRef.current);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggle = async () => {
     const next = !open;
     setOpen(next);
-    if (next && data['applied'] === undefined) await loadTab('applied');
+    if (next && !loadedRef.current['applied']) await loadTab('applied');
   };
 
   const borderColor = isCurrent ? 'rgba(5,150,105,0.3)' : '#E2E8F0';
