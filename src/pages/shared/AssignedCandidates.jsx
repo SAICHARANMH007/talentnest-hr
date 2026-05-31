@@ -500,8 +500,15 @@ export default function AssignedCandidates({ user }) {
       const sorted = [...prev].sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
       return { isHandoff: true, isFirst: false, lastPrev: sorted[0], totalPrev: prev.length };
     }
-    const current = history.find(r => !r.removedAt) || history[0];
-    return { isHandoff: false, isFirst: history.length > 0, currentRecruiter: current };
+    const activeEntries = history.filter(h => !h.removedAt);
+    // Multiple active recruiters with no removals = shared job, not a "first recruiter" scenario
+    if (activeEntries.length > 1) {
+      return { isHandoff: false, isFirst: false, currentRecruiter: activeEntries[0] };
+    }
+    // 0 entries (empty history = no recorded history, recruiter IS the first)
+    // OR exactly 1 active entry (sole documented recruiter)
+    const current = activeEntries[0] || null;
+    return { isHandoff: false, isFirst: true, currentRecruiter: current };
   }
 
   if (loading) return (
