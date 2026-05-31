@@ -30,15 +30,30 @@ const STAGE_ORDER = [
 ];
 
 // ── Candidates list (reused in per-recruiter drill-down) ─────────────────────
-function CandidateList({ candidates, emptyMsg }) {
+function CandidateList({ candidates, emptyMsg, entry }) {
   if (!candidates.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
+
+  // For past recruiters: find what stage the candidate was in when the recruiter left.
+  // For current recruiter: always show current stage.
+  const getStageAtTenureEnd = (app) => {
+    if (!entry?.removedAt) return app.currentStage || app.stage || 'Applied';
+    const removedAt = new Date(entry.removedAt);
+    const history = (app.stageHistory || [])
+      .filter(h => { const ts = h.movedAt || h.changedAt || h.date; return ts && new Date(ts) <= removedAt; })
+      .sort((a, b) => new Date(b.movedAt || b.changedAt || b.date) - new Date(a.movedAt || a.changedAt || a.date));
+    return history[0]?.stageId || history[0]?.stage || 'Applied';
+  };
+
   return (
     <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {candidates.map((a, i) => {
-        const name  = a.candidate?.name || a.candidateName || '?';
-        const stage = a.currentStage || a.stage || 'applied';
-        const color = STAGE_COLOR[stage] || '#64748B';
+        const name         = a.candidate?.name || a.candidateName || '?';
+        const tenureStage  = getStageAtTenureEnd(a);
+        const currentStage = a.currentStage || a.stage || 'Applied';
+        const movedAfter   = entry?.removedAt && tenureStage !== currentStage;
+        const color        = STAGE_COLOR[tenureStage]  || '#64748B';
+        const nowColor     = STAGE_COLOR[currentStage] || '#64748B';
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${color}22` }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
@@ -48,7 +63,16 @@ function CandidateList({ candidates, emptyMsg }) {
               <div style={{ fontWeight: 700, fontSize: 12, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
               <div style={{ fontSize: 10, color: '#94A3B8' }}>Applied {fmt(a.createdAt || a.appliedAt)}</div>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap' }}>{fmtStage(stage)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                {fmtStage(tenureStage)}
+              </span>
+              {movedAfter && (
+                <span style={{ fontSize: 9, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                  → <span style={{ color: nowColor, fontWeight: 700 }}>{fmtStage(currentStage)}</span> after tenure
+                </span>
+              )}
+            </div>
           </div>
         );
       })}
@@ -257,10 +281,10 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps }
           ) : (
             <>
               {tab === 'applied'  && data.applied  !== undefined && (
-                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." />
+                <CandidateList candidates={data.applied}  emptyMsg="No candidates applied during this recruiter's tenure." entry={entry} />
               )}
               {tab === 'pipeline' && data.pipeline !== undefined && (
-                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." />
+                <CandidateList candidates={data.pipeline} emptyMsg="No pipeline activity during this period." entry={entry} />
               )}
               {tab === 'log'      && data.log      !== undefined && (
                 <PipelineLog   events={data.log}          emptyMsg="No stage changes logged during this period." />
