@@ -829,10 +829,12 @@ const io = new IOServer(httpServer, {
   maxHttpBufferSize: 1e6, // 1MB — enough for signaling payloads
   connectTimeout: 10000,
 });
+const { setupPlatformSocket } = require('./src/socket/platformSocket');
 socketRegistry.setIO(io);
 setupVideoSocket(io);
 setupChatSocket(io);
 setupCallSocket(io);
+setupPlatformSocket(io);
 
 // ── Calls REST
 // (Moved up)

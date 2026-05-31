@@ -1172,6 +1172,20 @@ router.patch('/:id/stage', ...guard,
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 
+    // Real-time broadcast — every connected user in the tenant gets this instantly
+    try {
+      const { emitToTenant } = require('../socket/platformSocket');
+      const socketRegistry   = require('../socket/index');
+      emitToTenant(socketRegistry.getIO(), app.tenantId, 'application:stageChanged', {
+        applicationId: String(app._id),
+        jobId        : String(app.jobId),
+        candidateId  : String(app.candidateId),
+        stage,
+        movedBy      : String(req.user._id || req.user.id),
+        movedAt      : new Date().toISOString(),
+      });
+    } catch { /* non-fatal */ }
+
     // Notify all super_admins about significant stage movements (non-blocking)
     const significantStages = ['Shortlisted', 'Offer', 'Hired', 'Rejected'];
     if (significantStages.includes(stage)) {

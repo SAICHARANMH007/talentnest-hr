@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/api.js';
+import { usePlatformSocket } from '../../hooks/usePlatformSocket.js';
 
 const fmt = d =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -46,7 +47,7 @@ function CandidateList({ candidates, emptyMsg, entry, effectiveEndDate }) {
   };
 
   return (
-    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {candidates.map((a, i) => {
         const name         = a.candidate?.name || a.candidateName || '?';
         const tenureStage  = getStageAtTenureEnd(a);
@@ -85,7 +86,7 @@ function PipelineLog({ events, emptyMsg, recruiterMap = {} }) {
   if (!events.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
   return (
-    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {events.map((ev, i) => {
         const color     = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
         const moverName = ev.movedBy ? (recruiterMap[String(ev.movedBy)] || null) : null;
@@ -533,11 +534,14 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
     setRefreshKey(k => k + 1);
   };
 
-  // Auto-refresh every 30 seconds so stage changes made elsewhere appear without closing the modal
+  // Auto-refresh every 30 seconds as a safety net
   useEffect(() => {
     const id = setInterval(doRefresh, 30000);
     return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Instant refresh via WebSocket — fires the moment any stage changes in this tenant
+  usePlatformSocket(doRefresh);
 
   // Recruiter assignment state
   const [assignMode,         setAssignMode]         = useState(false);
