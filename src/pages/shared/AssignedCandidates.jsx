@@ -164,11 +164,12 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
       onClick={() => c._id && onOpenDrawer(c)}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 12,
-        padding: '14px 16px', borderBottom: '1px solid #E8EDF5',
+        padding: '14px 16px 16px',
+        borderBottom: '2px solid #EEF2F7',
         background: '#fff', cursor: c._id ? 'pointer' : 'default',
         transition: 'background 0.12s',
       }}
-      onMouseEnter={e => { if (c._id) e.currentTarget.style.background = '#F0F7FF'; }}
+      onMouseEnter={e => { if (c._id) e.currentTarget.style.background = '#F5F8FF'; }}
       onMouseLeave={e => e.currentTarget.style.background = '#fff'}
     >
       {/* Avatar */}
@@ -184,24 +185,29 @@ function CandidateRow({ a, onOpenDrawer, onChangeStage }) {
       {/* Info block */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Name on its own line */}
-        <div style={{ fontWeight: 700, fontSize: 13, color: '#181818', lineHeight: 1.3 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', lineHeight: 1.35 }}>
           {name}
         </div>
 
-        {/* Email + phone on second line */}
+        {/* Email · phone — single no-wrap row; email shrinks and ellipses, phone stays */}
         {(c.email || c.phone) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, minWidth: 0, overflow: 'hidden' }}>
             {c.email && (
-              <a href={`mailto:${c.email}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+              <a href={`mailto:${c.email}`}
+                style={{ fontSize: 11, color: '#64748B', textDecoration: 'none',
+                  flex: '0 1 auto', minWidth: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                 onClick={e => e.stopPropagation()}>
                 {c.email}
               </a>
             )}
             {c.email && c.phone && (
-              <span style={{ fontSize: 10, color: '#CBD5E1' }}>·</span>
+              <span style={{ fontSize: 10, color: '#CBD5E1', flexShrink: 0 }}>·</span>
             )}
             {c.phone && (
-              <a href={`tel:${c.phone}`} style={{ fontSize: 11, color: '#64748B', textDecoration: 'none', whiteSpace: 'nowrap' }}
+              <a href={`tel:${c.phone}`}
+                style={{ fontSize: 11, color: '#64748B', textDecoration: 'none',
+                  whiteSpace: 'nowrap', flexShrink: 0 }}
                 onClick={e => e.stopPropagation()}>
                 {c.phone}
               </a>
