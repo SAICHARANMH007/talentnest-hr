@@ -232,7 +232,7 @@ class AuthService {
   /**
    * Secure OTP Generation — sends via SMS (if phone) or email fallback
    */
-  async generateAndSendOtp(user) {
+  async generateAndSendOtp(user, { emailOnly = false } = {}) {
     const otp = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
@@ -244,8 +244,8 @@ class AuthService {
 
     let smsSent = false;
 
-    // Try SMS first if user has a phone number and SMS API is configured
-    if (user.phone) {
+    // Try SMS only for 2FA (not for passwordless login — user explicitly requested email)
+    if (!emailOnly && user.phone) {
       try {
         const { sendSms } = require('../utils/sendSms');
         const smsResult = await sendSms(user.phone, `Your TalentNest HR login OTP is: ${otp}. Valid for 10 minutes. Do not share this with anyone.`);
@@ -256,7 +256,7 @@ class AuthService {
       }
     }
 
-    // Email — always sent when SMS didn't go through a real provider
+    // Email — primary channel for passwordless login; fallback for 2FA when SMS unavailable
     if (!smsSent) {
       const { sendEmailWithRetry, templates } = require('../utils/email');
       const tpl = templates.otp(otp);

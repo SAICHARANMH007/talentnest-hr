@@ -575,14 +575,13 @@ router.post('/send-login-otp', otpLimiter, asyncHandler(async (req, res) => {
     throw new AppError('This account has been deactivated. Please contact support.', 403);
   }
 
-  const { channel } = await authService.generateAndSendOtp(user);
+  // Login OTP always goes to email — user explicitly chose "Login with OTP"
+  await authService.generateAndSendOtp(user, { emailOnly: true });
   res.json({
     success : true,
     exists  : true,
-    channel,
-    hint    : channel === 'sms'
-      ? `OTP sent to phone ending in ${(user.phone || '').slice(-4)}`
-      : `OTP sent to ${email.toLowerCase().trim()}`,
+    channel : 'email',
+    hint    : `OTP sent to ${email.toLowerCase().trim()}`,
   });
 }));
 
