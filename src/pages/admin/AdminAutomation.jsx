@@ -6,26 +6,34 @@ import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const TRIGGER_EVENTS = [
-  { value: 'stage_changed',        label: '📋 Stage Changed' },
-  { value: 'candidate_applied',    label: '📥 Candidate Applied' },
-  { value: 'assessment_completed', label: '📝 Assessment Completed' },
-  { value: 'interview_scheduled',  label: '📅 Interview Scheduled' },
-  { value: 'offer_not_signed',     label: '✉️ Offer Not Signed' },
-  { value: 'candidate_stuck',      label: '⏰ Candidate Stuck in Stage' },
+  { value: 'candidate_applied',    label: '📥 New Application',          desc: 'Fires when a candidate submits an application' },
+  { value: 'stage_changed',        label: '📋 Stage Changed',             desc: 'Fires every time an application moves stages' },
+  { value: 'candidate_hired',      label: '🎉 Candidate Hired',           desc: 'Fires when stage is moved to Hired' },
+  { value: 'candidate_rejected',   label: '❌ Candidate Rejected',        desc: 'Fires when stage is moved to Rejected' },
+  { value: 'interview_scheduled',  label: '📅 Interview Scheduled',       desc: 'Fires when an interview is booked' },
+  { value: 'assessment_completed', label: '📝 Assessment Completed',      desc: 'Fires when a candidate submits assessment' },
+  { value: 'offer_not_signed',     label: '✉️ Offer Not Signed',          desc: 'Fires for offers pending signature (scheduled)' },
+  { value: 'offer_accepted',       label: '🤝 Offer Accepted',            desc: 'Fires when candidate accepts an offer' },
+  { value: 'job_published',        label: '🚀 Job Published',             desc: 'Fires when a job goes live' },
+  { value: 'candidate_stuck',      label: '⏰ Candidate Stuck in Stage',  desc: 'Fires when no activity for N days (scheduled)' },
 ];
 
 const ACTION_TYPES = [
-  { value: 'send_email',       label: '📧 Send Email' },
-  { value: 'send_whatsapp',    label: '💬 Send WhatsApp' },
-  { value: 'move_stage',       label: '➡️ Move Stage' },
-  { value: 'notify_recruiter', label: '🔔 Notify Recruiter' },
-  { value: 'notify_admin',     label: '🔔 Notify Admin' },
+  { value: 'send_email',       label: '📧 Send Email',          desc: 'Send an email to the candidate or a custom address' },
+  { value: 'send_whatsapp',    label: '💬 Send WhatsApp',        desc: 'Send WhatsApp message via Twilio' },
+  { value: 'notify_recruiter', label: '🔔 Notify Recruiter',     desc: 'In-app notification to assigned recruiter' },
+  { value: 'notify_admin',     label: '🔔 Notify Admin',         desc: 'In-app notification to org admin' },
+  { value: 'move_stage',       label: '➡️ Move to Stage',         desc: 'Automatically advance or move the application' },
+  { value: 'assign_tag',       label: '🏷️ Assign Tag',           desc: 'Add a tag to the application' },
+  { value: 'add_note',         label: '📝 Add Internal Note',    desc: 'Append an auto-note to the application' },
 ];
 
 const CONDITION_FIELDS = [
   { value: 'stage',           label: 'Current Stage' },
+  { value: 'previousStage',   label: 'Previous Stage' },
   { value: 'candidateSource', label: 'Candidate Source' },
   { value: 'assessmentScore', label: 'Assessment Score' },
+  { value: 'jobTitle',        label: 'Job Title' },
 ];
 
 const OPERATORS = [
@@ -53,15 +61,20 @@ const CATEGORY_COLORS = {
   Onboarding   : { bg: 'rgba(236,72,153,0.08)', color: '#BE185D' },
 };
 
+const TEMPLATE_VARS = [
+  '{{candidateName}}','{{candidateEmail}}','{{candidatePhone}}',
+  '{{jobTitle}}','{{stage}}','{{previousStage}}','{{companyName}}',
+];
+
 const EMPTY_RULE = {
   name: '', isActive: true,
-  trigger: { event: 'stage_changed', conditions: [] },
+  trigger: { event: 'candidate_applied', conditions: [] },
   actions: [],
 };
 
 const EMPTY_SYSTEM_RULE = {
   name: '', description: '', category: 'General', systemKey: '', isActive: true,
-  trigger: { event: 'stage_changed', conditions: [] },
+  trigger: { event: 'candidate_applied', conditions: [] },
   actions: [],
 };
 
@@ -77,22 +90,62 @@ function CategoryBadge({ cat }) {
   );
 }
 
+// ── Variable Picker ────────────────────────────────────────────────────────────
+function VarPicker({ onInsert }) {
+  return (
+    <div style={{ padding: '10px 14px', background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 8 }}>
+      <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Click to copy variable</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {TEMPLATE_VARS.map(v => (
+          <code
+            key={v}
+            onClick={() => {
+              navigator.clipboard?.writeText(v).catch(() => {});
+              onInsert?.(v);
+            }}
+            style={{ background: '#EAF5FE', color: '#0176D3', padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer', border: '1px solid rgba(1,118,211,0.2)', userSelect: 'none' }}
+            title="Click to copy"
+          >{v}</code>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Action Config Fields ───────────────────────────────────────────────────────
 function ActionConfigFields({ action, onChange }) {
   const set = (key, val) => onChange({ ...action, config: { ...action.config, [key]: val } });
+  const setDelay = (val) => onChange({ ...action, delayMinutes: Number(val) || 0 });
+
+  const delaySelect = (
+    <div style={{ marginTop: 10 }}>
+      <label style={{ color: '#706E6B', fontSize: 11, fontWeight: 700, display: 'block', marginBottom: 4 }}>Delay before executing</label>
+      <select style={{ ...inp, fontSize: 12 }} value={action.delayMinutes || 0} onChange={e => setDelay(e.target.value)}>
+        <option value={0}>Immediately</option>
+        <option value={60}>After 1 hour</option>
+        <option value={360}>After 6 hours</option>
+        <option value={1440}>After 1 day</option>
+        <option value={4320}>After 3 days</option>
+        <option value={10080}>After 7 days</option>
+      </select>
+    </div>
+  );
+
   switch (action.type) {
     case 'send_email':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-          <input style={inp} placeholder="To (leave blank = candidate email)" value={action.config.to || ''} onChange={e => set('to', e.target.value)} />
+          <input style={inp} placeholder="To — leave blank to send to candidate" value={action.config.to || ''} onChange={e => set('to', e.target.value)} />
           <input style={inp} placeholder="Subject (use {{candidateName}} etc.)" value={action.config.subject || ''} onChange={e => set('subject', e.target.value)} />
-          <textarea style={{ ...inp, resize: 'vertical' }} rows={3} placeholder="Email body (HTML supported)" value={action.config.body || ''} onChange={e => set('body', e.target.value)} />
+          <textarea style={{ ...inp, resize: 'vertical' }} rows={3} placeholder="Email body — HTML supported" value={action.config.body || ''} onChange={e => set('body', e.target.value)} />
+          {delaySelect}
         </div>
       );
     case 'send_whatsapp':
       return (
         <div style={{ marginTop: 8 }}>
           <textarea style={{ ...inp, resize: 'vertical' }} rows={2} placeholder="WhatsApp message (use {{candidateName}} etc.)" value={action.config.message || ''} onChange={e => set('message', e.target.value)} />
+          {delaySelect}
         </div>
       );
     case 'move_stage':
@@ -102,6 +155,7 @@ function ActionConfigFields({ action, onChange }) {
             <option value="">Select target stage…</option>
             {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          {delaySelect}
         </div>
       );
     case 'notify_recruiter':
@@ -110,6 +164,18 @@ function ActionConfigFields({ action, onChange }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
           <input style={inp} placeholder="Title (use {{candidateName}} etc.)" value={action.config.title || ''} onChange={e => set('title', e.target.value)} />
           <input style={inp} placeholder="Message" value={action.config.message || ''} onChange={e => set('message', e.target.value)} />
+        </div>
+      );
+    case 'assign_tag':
+      return (
+        <div style={{ marginTop: 8 }}>
+          <input style={inp} placeholder="Tag name (e.g. High Priority, Follow-up)" value={action.config.tag || ''} onChange={e => set('tag', e.target.value)} />
+        </div>
+      );
+    case 'add_note':
+      return (
+        <div style={{ marginTop: 8 }}>
+          <textarea style={{ ...inp, resize: 'vertical' }} rows={2} placeholder="Note text (use {{candidateName}}, {{stage}} etc.)" value={action.config.note || ''} onChange={e => set('note', e.target.value)} />
         </div>
       );
     default: return null;
@@ -129,7 +195,7 @@ function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
   const removeCondition = (i) =>
     setForm(f => ({ ...f, trigger: { ...f.trigger, conditions: f.trigger.conditions.filter((_, idx) => idx !== i) } }));
   const addAction = () =>
-    setForm(f => ({ ...f, actions: [...f.actions, { type: 'send_email', config: {} }] }));
+    setForm(f => ({ ...f, actions: [...f.actions, { type: 'send_email', config: {}, delayMinutes: 0 }] }));
   const updateAction = (i, action) =>
     setForm(f => { const a = [...f.actions]; a[i] = action; return { ...f, actions: a }; });
   const removeAction = (i) =>
@@ -158,7 +224,7 @@ function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
   const footer = (
     <>
       <button onClick={save} disabled={saving} style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : 1 }}>
-        {saving ? <><Spinner /> Saving…</> : (form._id || form.id) ? '💾 Update' : '✅ Create'}
+        {saving ? <><Spinner /> Saving…</> : (form._id || form.id) ? '💾 Update' : '✅ Create Rule'}
       </button>
       <button onClick={onClose} style={btnG}>Cancel</button>
     </>
@@ -192,19 +258,26 @@ function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
             </div>
           </>
         )}
+
+        {/* Trigger */}
         <div>
           <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Trigger Event *</label>
           <select style={inp} value={form.trigger.event} onChange={e => setForm(f => ({ ...f, trigger: { ...f.trigger, event: e.target.value } }))}>
             {TRIGGER_EVENTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
+          <div style={{ color: '#9E9D9B', fontSize: 11, marginTop: 4 }}>
+            {TRIGGER_EVENTS.find(t => t.value === form.trigger.event)?.desc}
+          </div>
         </div>
+
+        {/* Conditions */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600 }}>Conditions (all must match)</label>
+            <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600 }}>Conditions <span style={{ color: '#9E9D9B', fontWeight: 400 }}>(all must match)</span></label>
             <button onClick={addCondition} style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}>+ Add Condition</button>
           </div>
           {form.trigger.conditions.length === 0 ? (
-            <div style={{ color: '#9E9D9B', fontSize: 12, padding: '10px 14px', background: '#FAFAF9', borderRadius: 8 }}>No conditions — triggers on every event.</div>
+            <div style={{ color: '#9E9D9B', fontSize: 12, padding: '10px 14px', background: '#FAFAF9', borderRadius: 8 }}>No conditions — triggers on every matching event.</div>
           ) : form.trigger.conditions.map((cond, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
               <select style={{ ...inp, flex: 1 }} value={cond.field} onChange={e => updateCondition(i, { ...cond, field: e.target.value })}>
@@ -213,11 +286,20 @@ function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
               <select style={{ ...inp, flex: 1 }} value={cond.operator} onChange={e => updateCondition(i, { ...cond, operator: e.target.value })}>
                 {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
-              <input style={{ ...inp, flex: 1 }} placeholder="Value" value={cond.value} onChange={e => updateCondition(i, { ...cond, value: e.target.value })} />
+              {cond.field === 'stage' || cond.field === 'previousStage' ? (
+                <select style={{ ...inp, flex: 1 }} value={cond.value} onChange={e => updateCondition(i, { ...cond, value: e.target.value })}>
+                  <option value="">Select stage…</option>
+                  {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <input style={{ ...inp, flex: 1 }} placeholder="Value" value={cond.value} onChange={e => updateCondition(i, { ...cond, value: e.target.value })} />
+              )}
               <button onClick={() => removeCondition(i)} style={{ ...btnD, padding: '8px 12px', fontSize: 14, flexShrink: 0 }}>✕</button>
             </div>
           ))}
         </div>
+
+        {/* Actions */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600 }}>Actions *</label>
@@ -228,34 +310,34 @@ function RuleFormModal({ rule: initial, isSystem = false, onClose, onSaved }) {
           ) : form.actions.map((action, i) => (
             <div key={i} style={{ ...card, padding: 14, marginBottom: 10, border: '1px solid rgba(1,118,211,0.15)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <select style={{ ...inp, flex: 1 }} value={action.type} onChange={e => updateAction(i, { ...action, type: e.target.value, config: {} })}>
+                <select style={{ ...inp, flex: 1 }} value={action.type} onChange={e => updateAction(i, { ...action, type: e.target.value, config: {}, delayMinutes: 0 })}>
                   {ACTION_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                 </select>
                 <button onClick={() => removeAction(i)} style={{ ...btnD, padding: '8px 12px', fontSize: 14, marginLeft: 8, flexShrink: 0 }}>✕</button>
+              </div>
+              <div style={{ fontSize: 11, color: '#9E9D9B', marginTop: 4 }}>
+                {ACTION_TYPES.find(t => t.value === action.type)?.desc}
               </div>
               <ActionConfigFields action={action} onChange={updated => updateAction(i, updated)} />
             </div>
           ))}
         </div>
+
+        <VarPicker />
+
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#0176D3' }} />
           <span style={{ color: '#3E3E3C', fontSize: 13, fontWeight: 600 }}>Rule is Active</span>
         </label>
-        <div style={{ padding: '10px 14px', background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 8 }}>
-          <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Available Variables</div>
-          <div style={{ color: '#706E6B', fontSize: 11, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {['{{candidateName}}','{{candidateEmail}}','{{candidatePhone}}','{{jobTitle}}','{{stage}}'].map(v => (
-              <code key={v} style={{ background: '#EAF5FE', color: '#0176D3', padding: '2px 6px', borderRadius: 4 }}>{v}</code>
-            ))}
-          </div>
-        </div>
       </div>
     </Modal>
   );
 }
 
 // ── Custom Rule Card ───────────────────────────────────────────────────────────
-function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, testing, testResult }) {
+function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, onDuplicate, testing, testResult }) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div style={{ ...card, border: `1px solid ${rule.isActive ? 'rgba(1,118,211,0.15)' : 'rgba(0,0,0,0.06)'}`, opacity: rule.isActive ? 1 : 0.65 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
@@ -263,14 +345,14 @@ function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, testing, tes
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
             <span style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{rule.name}</span>
             <span style={{ background: rule.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.06)', color: rule.isActive ? '#10B981' : '#9E9D9B', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
-              {rule.isActive ? '● Active' : '○ Inactive'}
+              {rule.isActive ? '● Active' : '○ Paused'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <span style={{ color: '#706E6B', fontSize: 12 }}>Trigger: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(rule.trigger?.event)}</strong></span>
+            <span style={{ color: '#706E6B', fontSize: 12 }}>When: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(rule.trigger?.event)}</strong></span>
             <span style={{ color: '#706E6B', fontSize: 12 }}>Conditions: <strong>{rule.trigger?.conditions?.length || 0}</strong></span>
             <span style={{ color: '#706E6B', fontSize: 12 }}>Actions: <strong>{rule.actions?.length || 0}</strong></span>
-            {rule.triggerCount > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>Triggered: <strong>{rule.triggerCount}×</strong></span>}
+            <span style={{ color: '#706E6B', fontSize: 12 }}>Triggered: <strong>{rule.triggerCount || 0}×</strong></span>
             {rule.lastTriggeredAt && <span style={{ color: '#706E6B', fontSize: 12 }}>Last: <strong>{new Date(rule.lastTriggeredAt).toLocaleDateString('en-IN')}</strong></span>}
           </div>
           {rule.actions?.length > 0 && (
@@ -278,6 +360,7 @@ function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, testing, tes
               {rule.actions.map((a, i) => (
                 <span key={i} style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
                   {ACTION_TYPES.find(t => t.value === a.type)?.label || a.type}
+                  {a.delayMinutes > 0 && <span style={{ color: '#9E9D9B', fontWeight: 400, marginLeft: 4 }}>+{a.delayMinutes >= 1440 ? `${a.delayMinutes/1440}d` : `${a.delayMinutes/60}h`}</span>}
                 </span>
               ))}
             </div>
@@ -289,14 +372,29 @@ function CustomRuleCard({ rule, onToggle, onEdit, onDelete, onTest, testing, tes
               </span>
             </div>
           )}
+          {/* Expand: show conditions detail */}
+          {expanded && rule.trigger?.conditions?.length > 0 && (
+            <div style={{ marginTop: 10, padding: '10px 14px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>Conditions</div>
+              {rule.trigger.conditions.map((c, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#374151', marginBottom: 3 }}>
+                  • {c.field} <em>{c.operator}</em> "<strong>{c.value}</strong>"
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+          <button onClick={() => setExpanded(e => !e)} style={{ ...btnG, fontSize: 12, padding: '6px 10px' }} title="Show details">
+            {expanded ? '▲' : '▼'}
+          </button>
           <button onClick={onToggle} style={{ background: rule.isActive ? 'rgba(186,5,23,0.08)' : 'rgba(16,185,129,0.08)', border: `1px solid ${rule.isActive ? '#fca5a5' : 'rgba(16,185,129,0.3)'}`, color: rule.isActive ? '#BA0517' : '#10B981', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             {rule.isActive ? 'Pause' : 'Resume'}
           </button>
           <button onClick={onTest} disabled={testing} style={{ ...btnG, fontSize: 12, padding: '6px 12px', opacity: testing ? 0.6 : 1 }}>
             {testing ? <Spinner /> : '▶ Test'}
           </button>
+          <button onClick={onDuplicate} style={{ ...btnG, fontSize: 12, padding: '6px 12px' }} title="Duplicate rule">⧉</button>
           <button onClick={onEdit} style={{ ...btnP, fontSize: 12, padding: '6px 12px' }}>Edit</button>
           <button onClick={onDelete} style={{ ...btnD, fontSize: 12, padding: '6px 12px' }}>Delete</button>
         </div>
@@ -323,10 +421,8 @@ function SystemTemplateCard({ tpl, onEdit, onDelete }) {
             <span style={{ color: '#706E6B', fontSize: 12 }}>Trigger: <strong style={{ color: '#7C3AED' }}>{getTriggerLabel(tpl.trigger?.event)}</strong></span>
             <span style={{ color: '#706E6B', fontSize: 12 }}>Key: <code style={{ background: '#F3F4F6', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>{tpl.systemKey}</code></span>
             <span style={{ color: '#706E6B', fontSize: 12 }}>Actions: <strong>{tpl.actions?.length || 0}</strong></span>
-          </div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
             <span style={{ color: '#706E6B', fontSize: 12 }}>🏢 Active in <strong>{tpl.orgCount || 0}</strong> org{tpl.orgCount !== 1 ? 's' : ''}</span>
-            {tpl.totalTriggers > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>⚡ <strong>{tpl.totalTriggers}</strong> total executions</span>}
+            {tpl.totalTriggers > 0 && <span style={{ color: '#706E6B', fontSize: 12 }}>⚡ <strong>{tpl.totalTriggers}</strong> executions</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -350,23 +446,20 @@ function StandardAutomationRow({ tpl, onActivate, onDeactivate, toggling }) {
             <span style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{tpl.name}</span>
             <CategoryBadge cat={tpl.category} />
             {activated && (
-              <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>
-                ● ON for your org
-              </span>
+              <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>● ON</span>
             )}
           </div>
           {tpl.description && <p style={{ color: '#706E6B', fontSize: 12, margin: '0 0 4px', lineHeight: 1.5 }}>{tpl.description}</p>}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ color: '#9E9D9B', fontSize: 11 }}>Trigger: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(tpl.trigger?.event)}</strong></span>
+            <span style={{ color: '#9E9D9B', fontSize: 11 }}>When: <strong style={{ color: '#0176D3' }}>{getTriggerLabel(tpl.trigger?.event)}</strong></span>
             <span style={{ color: '#9E9D9B', fontSize: 11 }}>Actions: <strong>{tpl.actions?.length || 0}</strong></span>
             {activated && copy?.triggerCount > 0 && (
-              <span style={{ color: '#9E9D9B', fontSize: 11 }}>Fired <strong>{copy.triggerCount}×</strong> for your org</span>
+              <span style={{ color: '#9E9D9B', fontSize: 11 }}>Fired <strong>{copy.triggerCount}×</strong></span>
             )}
           </div>
         </div>
-        {/* Toggle switch */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ color: activated ? '#059669' : '#9E9D9B', fontSize: 12, fontWeight: 600 }}>{activated ? 'Active' : 'Inactive'}</span>
+          <span style={{ color: activated ? '#059669' : '#9E9D9B', fontSize: 12, fontWeight: 600 }}>{activated ? 'Active' : 'Off'}</span>
           <button
             disabled={toggling}
             onClick={activated ? onDeactivate : onActivate}
@@ -377,7 +470,6 @@ function StandardAutomationRow({ tpl, onActivate, onDeactivate, toggling }) {
               position: 'relative', transition: 'background 0.2s',
               opacity: toggling ? 0.6 : 1,
             }}
-            title={activated ? 'Deactivate this automation' : 'Activate this automation for your org'}
           >
             <span style={{
               position: 'absolute', top: 3, left: activated ? 22 : 3,
@@ -388,6 +480,35 @@ function StandardAutomationRow({ tpl, onActivate, onDeactivate, toggling }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Stats Bar ──────────────────────────────────────────────────────────────────
+function StatsBar({ rules }) {
+  const active    = rules.filter(r => r.isActive).length;
+  const total     = rules.length;
+  const executions = rules.reduce((s, r) => s + (r.triggerCount || 0), 0);
+  const lastRun   = rules.reduce((latest, r) => {
+    if (!r.lastTriggeredAt) return latest;
+    return !latest || new Date(r.lastTriggeredAt) > new Date(latest) ? r.lastTriggeredAt : latest;
+  }, null);
+
+  const stats = [
+    { label: 'Total Rules',  value: total,      color: '#0176D3' },
+    { label: 'Active',       value: active,     color: '#10B981' },
+    { label: 'Total Fired',  value: executions, color: '#7C3AED' },
+    { label: 'Last Run',     value: lastRun ? new Date(lastRun).toLocaleDateString('en-IN') : 'Never', color: '#F59E0B', small: true },
+  ];
+
+  return (
+    <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+      {stats.map(s => (
+        <div key={s.label} style={{ ...card, flex: 1, minWidth: 120, textAlign: 'center', padding: '14px 20px' }}>
+          <div style={{ color: s.color, fontSize: s.small ? 14 : 22, fontWeight: 800 }}>{s.value}</div>
+          <div style={{ color: '#706E6B', fontSize: 11, marginTop: 2 }}>{s.label}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -403,6 +524,7 @@ function AdminView() {
   const [testing, setTesting]               = useState(null);
   const [testResults, setTestResults]       = useState({});
   const [toggling, setToggling]             = useState({});
+  const [triggerFilter, setTriggerFilter]   = useState('all');
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -434,6 +556,20 @@ function AdminView() {
     } catch (e) { showToast('❌ ' + e.message); }
   };
 
+  const duplicateRule = async (rule) => {
+    try {
+      const payload = {
+        name: `${rule.name} (copy)`,
+        isActive: false,
+        trigger: rule.trigger,
+        actions: rule.actions,
+      };
+      const saved = await api.createWorkflowRule(payload);
+      setCustomRules(prev => [saved?.data || saved, ...prev]);
+      showToast('✅ Rule duplicated — it is paused by default.');
+    } catch (e) { showToast('❌ ' + e.message); }
+  };
+
   const testRule = async (rule) => {
     const rid = rule._id || rule.id;
     setTesting(rid); setTestResults(prev => ({ ...prev, [rid]: null }));
@@ -460,7 +596,7 @@ function AdminView() {
     try {
       await api.activateSystemAutomation(key);
       setSystemTemplates(prev => prev.map(t => t.systemKey === key ? { ...t, activated: true, orgCopy: { triggerCount: 0 } } : t));
-      showToast('✅ Standard automation enabled for your org.');
+      showToast('✅ Automation enabled for your org.');
     } catch (e) { showToast('❌ ' + e.message); }
     setToggling(prev => ({ ...prev, [key]: false }));
   };
@@ -472,13 +608,17 @@ function AdminView() {
     try {
       await api.deactivateSystemAutomation(key);
       setSystemTemplates(prev => prev.map(t => t.systemKey === key ? { ...t, activated: false, orgCopy: null } : t));
-      showToast('✅ Standard automation disabled.');
+      showToast('✅ Automation disabled.');
     } catch (e) { showToast('❌ ' + e.message); }
     setToggling(prev => ({ ...prev, [key]: false }));
   };
 
+  const filteredRules = triggerFilter === 'all'
+    ? customRules
+    : customRules.filter(r => r.trigger?.event === triggerFilter);
+
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 920 }}>
       {toast && (
         <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999, background: toast.startsWith('✅') ? 'rgba(16,185,129,0.15)' : 'rgba(186,5,23,0.12)', border: `1px solid ${toast.startsWith('✅') ? 'rgba(16,185,129,0.4)' : 'rgba(186,5,23,0.4)'}`, borderRadius: 12, padding: '12px 20px', color: toast.startsWith('✅') ? '#34d399' : '#BA0517', fontSize: 14, fontWeight: 600 }}>{toast}</div>
       )}
@@ -487,15 +627,18 @@ function AdminView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ color: '#181818', fontSize: 22, fontWeight: 800, margin: 0 }}>⚡ Automation Engine</h1>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Automate emails, notifications, and pipeline moves. Standard automations are pre-built; custom ones are yours to build.</p>
+          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Automate emails, notifications, and pipeline actions. Standard automations are pre-built; custom ones are yours to configure.</p>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Custom Rule</button>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ New Rule</button>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>
       ) : (
         <>
+          {/* Stats */}
+          {customRules.length > 0 && <StatsBar rules={customRules} />}
+
           {/* Standard Automations */}
           {systemTemplates.length > 0 && (
             <section style={{ marginBottom: 32 }}>
@@ -506,7 +649,7 @@ function AdminView() {
                 </span>
               </div>
               <div style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.12)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#706E6B' }}>
-                These are platform-wide automation templates. Toggle them on/off for your organisation — they run only for your data.
+                Platform-wide templates. Toggle them on/off — they only run against your organisation's data.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {systemTemplates.map(tpl => (
@@ -524,22 +667,34 @@ function AdminView() {
 
           {/* Custom Automations */}
           <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <h2 style={{ color: '#181818', fontSize: 16, fontWeight: 700, margin: 0 }}>🔧 Custom Automations</h2>
-              <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
-                {customRules.length} rule{customRules.length !== 1 ? 's' : ''}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h2 style={{ color: '#181818', fontSize: 16, fontWeight: 700, margin: 0 }}>🔧 Custom Automations</h2>
+                <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                  {filteredRules.length}{triggerFilter !== 'all' ? ` of ${customRules.length}` : ''} rule{customRules.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {/* Filter by trigger */}
+              {customRules.length > 0 && (
+                <select style={{ ...inp, width: 'auto', fontSize: 12, padding: '6px 10px' }} value={triggerFilter} onChange={e => setTriggerFilter(e.target.value)}>
+                  <option value="all">All triggers</option>
+                  {TRIGGER_EVENTS.map(t => <option key={t.value} value={t.value}>{t.label.replace(/^[^ ]+ /, '')}</option>)}
+                </select>
+              )}
             </div>
+
             {customRules.length === 0 ? (
               <div style={{ ...card, textAlign: 'center', padding: '40px 24px' }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>🔧</div>
                 <div style={{ color: '#181818', fontWeight: 700, fontSize: 15, marginBottom: 6 }}>No custom rules yet</div>
-                <div style={{ color: '#706E6B', fontSize: 13, marginBottom: 18 }}>Build your own automation rules on top of the standard ones.</div>
+                <div style={{ color: '#706E6B', fontSize: 13, marginBottom: 18 }}>Build automation rules for your recruitment pipeline — emails, notifications, stage moves, and more.</div>
                 <button onClick={() => { setEditing(null); setShowForm(true); }} style={btnP}>+ Create First Rule</button>
               </div>
+            ) : filteredRules.length === 0 ? (
+              <div style={{ ...card, textAlign: 'center', padding: '24px', color: '#9E9D9B' }}>No rules for this trigger.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {customRules.map(rule => (
+                {filteredRules.map(rule => (
                   <CustomRuleCard
                     key={rule._id || rule.id}
                     rule={rule}
@@ -549,6 +704,7 @@ function AdminView() {
                     onEdit={() => { setEditing(rule); setShowForm(true); }}
                     onDelete={() => deleteCustom(rule)}
                     onTest={() => testRule(rule)}
+                    onDuplicate={() => duplicateRule(rule)}
                   />
                 ))}
               </div>
@@ -625,16 +781,14 @@ function SuperAdminView() {
         <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999, background: toast.startsWith('✅') ? 'rgba(16,185,129,0.15)' : 'rgba(186,5,23,0.12)', border: `1px solid ${toast.startsWith('✅') ? 'rgba(16,185,129,0.4)' : 'rgba(186,5,23,0.4)'}`, borderRadius: 12, padding: '12px 20px', color: toast.startsWith('✅') ? '#34d399' : '#BA0517', fontSize: 14, fontWeight: 600 }}>{toast}</div>
       )}
 
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ color: '#181818', fontSize: 22, fontWeight: 800, margin: 0 }}>⚡ System Automation Templates</h1>
-          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Platform-wide automation templates. Each organisation can independently enable or disable these.</p>
+          <p style={{ color: '#706E6B', fontSize: 13, margin: '4px 0 0' }}>Platform-wide automation templates that each organisation can independently enable.</p>
         </div>
         <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ ...btnP, background: '#7C3AED' }}>+ New Template</button>
       </div>
 
-      {/* Stats */}
       {templates.length > 0 && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           {[

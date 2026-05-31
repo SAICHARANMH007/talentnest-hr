@@ -367,37 +367,19 @@ function CustomFieldsTab({ data, updateSingleton, setToast }) {
   );
 }
 
-// ── 0. Automations (New Tab) ──────────────────────────────────────────────────
-const EMPTY_RULE = { name: '', isActive: true, trigger: { event: 'stage_changed', conditions: [] }, actions: [] };
-const TRIGGER_EVENTS = [
-  { value: 'stage_changed', label: 'Stage Changed' }, { value: 'candidate_applied', label: 'New Application' },
-  { value: 'interview_scheduled', label: 'Interview Scheduled' }, { value: 'assessment_completed', label: 'Assessment Done' },
-  { value: 'offer_not_signed', label: 'Offer Stale' }, { value: 'candidate_stuck', label: 'Candidate Inactive' },
-];
-const ACTION_TYPES = [
-  { value: 'send_email', label: '📧 Send Email' }, { value: 'send_whatsapp', label: '💬 WhatsApp' },
-  { value: 'move_stage', label: '➡️ Move Stage' }, { value: 'notify_recruiter', label: '🔔 Notify Recruiter' },
-  { value: 'notify_admin', label: '🔔 Notify Admin' },
-];
-
+// ── 0. Automations Tab — bridges to the full Automation Engine ───────────────
 function AutomationsTab() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [newRule, setNewRule] = useState(JSON.parse(JSON.stringify(EMPTY_RULE)));
-  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const resp = await api.getWorkflowRules();
       setRules(Array.isArray(resp?.data) ? resp.data : []);
-    } catch (e) {
-      setToast('❌ Failed to load rules');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setToast('❌ Failed to load rules'); }
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -406,9 +388,7 @@ function AutomationsTab() {
     try {
       await api.updateWorkflowRule(rule.id || rule._id, { isActive: !rule.isActive });
       setRules(prev => prev.map(r => (r.id === rule.id || r._id === rule._id) ? { ...r, isActive: !r.isActive } : r));
-    } catch (e) {
-      setToast('❌ Toggle failed: ' + e.message);
-    }
+    } catch (e) { setToast('❌ ' + e.message); }
   };
 
   const deleteRule = async (rule) => {
@@ -417,25 +397,7 @@ function AutomationsTab() {
       await api.deleteWorkflowRule(rule.id || rule._id);
       setRules(prev => prev.filter(r => (r.id || r._id) !== (rule.id || rule._id)));
       setToast('🗑️ Rule deleted');
-    } catch (e) {
-      setToast('❌ ' + e.message);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!newRule.name.trim()) { setToast('❌ Rule name is required'); return; }
-    if (!newRule.actions.length) { setToast('❌ Add at least one action'); return; }
-    setSaving(true);
-    try {
-      const saved = await api.createWorkflowRule(newRule);
-      setRules(prev => [saved?.data || saved, ...prev]);
-      setShowCreate(false);
-      setNewRule(JSON.parse(JSON.stringify(EMPTY_RULE)));
-      setToast('✅ Automation rule created!');
-    } catch (e) {
-      setToast('❌ ' + e.message);
-    }
-    setSaving(false);
+    } catch (e) { setToast('❌ ' + e.message); }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>;
@@ -443,78 +405,38 @@ function AutomationsTab() {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <SectionHeader icon="⚡" title="Workflow Automations" desc="Configure triggered actions like automated emails, stage moves, and notifications."
-        action={<button style={S.btn} onClick={() => setShowCreate(true)}>+ Create Flow</button>} />
-
-      {/* Inline Create Form */}
-      {showCreate && (
-        <div style={{ ...S.card, border: '2px solid rgba(1,118,211,0.3)', marginBottom: 24 }}>
-          <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800 }}>New Automation Rule</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={S.label}>Rule Name *</label>
-              <input style={S.inp} value={newRule.name} onChange={e => setNewRule(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Welcome email on application" />
-            </div>
-            <div>
-              <label style={S.label}>Trigger Event</label>
-              <select style={S.inp} value={newRule.trigger.event} onChange={e => setNewRule(p => ({ ...p, trigger: { ...p.trigger, event: e.target.value } }))}>
-                {TRIGGER_EVENTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={S.label}>Actions</label>
-            {newRule.actions.map((act, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                <select style={{ ...S.inp, width: 'auto' }} value={act.type} onChange={e => setNewRule(p => { const a = [...p.actions]; a[i] = { ...a[i], type: e.target.value }; return { ...p, actions: a }; })}>
-                  {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                <button onClick={() => setNewRule(p => ({ ...p, actions: p.actions.filter((_, j) => j !== i) }))} style={S.btnR}>✕</button>
-              </div>
-            ))}
-            <button style={S.btnG} onClick={() => setNewRule(p => ({ ...p, actions: [...p.actions, { type: 'send_email', config: {} }] }))}>+ Add Action</button>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={S.btn} onClick={handleCreate} disabled={saving}>{saving ? 'Saving…' : 'Create Rule'}</button>
-            <button style={S.btnG} onClick={() => { setShowCreate(false); setNewRule(JSON.parse(JSON.stringify(EMPTY_RULE))); }}>Cancel</button>
-          </div>
+      <SectionHeader icon="⚡" title="Workflow Automations"
+        desc="Configure triggered actions for your org — emails, stage moves, notifications, and more."
+        action={
+          <a href="/app/automation" style={{ ...S.btn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            ⚡ Open Automation Engine →
+          </a>
+        }
+      />
+      <div style={{ background: 'rgba(1,118,211,0.04)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: '#374151' }}>
+          <strong style={{ color: '#0176D3' }}>{rules.filter(r => r.isActive).length}</strong> of <strong>{rules.length}</strong> rules active.
+          Full rule creation, editing, conditions, and execution history is in the{' '}
+          <a href="/app/automation" style={{ color: '#0176D3', fontWeight: 700 }}>Automation Engine</a>.
         </div>
-      )}
-
-      
-      {rules.length === 0 ? <EmptyState icon="⚡" msg="No automated flows configured yet." /> :
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
+      </div>
+      {rules.length === 0 ? <EmptyState icon="⚡" msg="No automation rules yet. Open the Automation Engine to create your first rule." /> :
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {rules.map(rule => (
-            <div key={rule.id} style={{ ...S.card, opacity: rule.isActive ? 1 : 0.6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>{rule.name}</h4>
-                  <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>{rule.triggerCount || 0} executions · Last run {rule.lastTriggeredAt ? new Date(rule.lastTriggeredAt).toLocaleDateString() : 'Never'}</div>
+            <div key={rule.id || rule._id} style={{ ...S.card, border: `1px solid ${rule.isActive ? 'rgba(16,185,129,0.2)' : 'rgba(0,0,0,0.06)'}`, opacity: rule.isActive ? 1 : 0.65 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{rule.name}</div>
+                  <div style={{ fontSize: 11, color: '#706E6B', marginTop: 2 }}>
+                    Trigger: <strong style={{ color: '#0176D3' }}>{rule.trigger?.event?.replace(/_/g, ' ')}</strong>
+                    {' · '}{rule.actions?.length || 0} action{rule.actions?.length !== 1 ? 's' : ''}
+                    {' · '}Fired <strong>{rule.triggerCount || 0}×</strong>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   <Toggle checked={rule.isActive} onChange={() => toggleRule(rule)} />
                   <button onClick={() => deleteRule(rule)} style={S.btnR}>✕</button>
                 </div>
-              </div>
-              
-              <div style={{ background: '#F8FAFC', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ color: '#0176D3', fontWeight: 700 }}>WHEN:</span>
-                  <span style={{ fontWeight: 600 }}>{AUTOMATION_TRIGGERS[rule.trigger?.event] || rule.trigger?.event}</span>
-                </div>
-                {rule.trigger?.conditions?.length > 0 && (
-                  <div style={{ fontSize: 11, color: '#64748B', marginLeft: 50, marginTop: 4 }}>
-                    {rule.trigger.conditions.map((c, i) => <div key={i}>• {c.field} {c.operator} "{c.value}"</div>)}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {rule.actions.map((act, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#374151', background: '#fff', border: '1px solid #E2E8F0', padding: '4px 10px', borderRadius: 20 }}>
-                    {AUTOMATION_ACTIONS[act.type] || act.type}
-                  </span>
-                ))}
               </div>
             </div>
           ))}
@@ -830,12 +752,14 @@ function QuestionBankTab({ data, addItem, deleteItem }) {
 }
 
 // ─── 8. Email Signature ───────────────────────────────────────────────────────
+const DEFAULT_EMAIL_SIG = { companyName: '', tagline: '', website: '', supportEmail: '', phone: '', linkedIn: '', footerNote: '' };
+
 function EmailSignatureTab({ data, updateSingleton }) {
   const [sig, setSig]   = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data?.emailSignature) setSig(data.emailSignature);
+    if (data) setSig({ ...DEFAULT_EMAIL_SIG, ...(data.emailSignature || {}) });
   }, [data]);
 
   if (!sig) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
@@ -882,12 +806,23 @@ function EmailSignatureTab({ data, updateSingleton }) {
   );
 }
 
+const DEFAULT_NOTIF_TRIGGERS = [
+  { trigger: 'Application Received',   channel: 'Email + In-app', message: 'Hi {{candidateName}}, we have received your application for {{jobTitle}}. We will review it and get back to you soon.' },
+  { trigger: 'Interview Scheduled',    channel: 'Email + In-app', message: 'Hi {{candidateName}}, your interview for {{jobTitle}} has been scheduled. Please check your email for details.' },
+  { trigger: 'Offer Extended',         channel: 'Email + In-app', message: 'Congratulations {{candidateName}}! We are pleased to extend an offer for {{jobTitle}}. Please review and respond at your earliest.' },
+  { trigger: 'Application Rejected',   channel: 'Email',          message: 'Hi {{candidateName}}, thank you for applying for {{jobTitle}}. After careful consideration, we will not be moving forward at this time.' },
+  { trigger: 'Shortlisted',            channel: 'Email + In-app', message: 'Great news {{candidateName}}! You have been shortlisted for {{jobTitle}}. Our team will be in touch shortly.' },
+];
+
 // ─── 9. Notification Messages ─────────────────────────────────────────────────
-function NotificationMessagesTab({ data, updateItem }) {
+function NotificationMessagesTab({ data, addItem, updateItem, deleteItem }) {
   const notifs = data?.notificationMessages || [];
   const [editing, setEditing] = useState(null);
   const [msg, setMsg]         = useState('');
   const [saving, setSaving]   = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newForm, setNewForm] = useState({ trigger: '', channel: 'Email + In-app', message: '' });
+  const [adding, setAdding]   = useState(false);
 
   const startEdit = (n) => { setEditing(n._id); setMsg(n.message); };
 
@@ -898,9 +833,62 @@ function NotificationMessagesTab({ data, updateItem }) {
     setSaving(false);
   };
 
+  const addDefault = async (tpl) => {
+    await addItem('notificationMessages', tpl);
+  };
+
+  const handleAdd = async () => {
+    if (!newForm.trigger.trim() || !newForm.message.trim()) return;
+    setAdding(true);
+    await addItem('notificationMessages', newForm);
+    setNewForm({ trigger: '', channel: 'Email + In-app', message: '' });
+    setShowAdd(false);
+    setAdding(false);
+  };
+
+  const missingDefaults = DEFAULT_NOTIF_TRIGGERS.filter(d => !notifs.some(n => n.trigger === d.trigger));
+
   return (
     <div>
-      <SectionHeader icon="🔔" title="Notification Messages" desc="Customize messages sent to candidates at key stages of the recruitment process" />
+      <SectionHeader icon="🔔" title="Notification Messages"
+        desc="Customize messages sent to candidates at key stages of the recruitment process"
+        action={<button onClick={() => setShowAdd(s => !s)} style={S.btn}>+ Add Message</button>}
+      />
+
+      {/* Seed defaults banner */}
+      {missingDefaults.length > 0 && (
+        <div style={{ background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#0176D3', marginBottom: 8 }}>💡 Quick-add standard messages</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {missingDefaults.map(d => (
+              <button key={d.trigger} onClick={() => addDefault(d)} style={{ ...S.btnG, fontSize: 12 }}>+ {d.trigger}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add form */}
+      {showAdd && (
+        <div style={{ ...S.card, border: '1px solid rgba(1,118,211,0.2)', marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div><label style={S.label}>Trigger Name *</label><input value={newForm.trigger} onChange={e => setNewForm(p => ({ ...p, trigger: e.target.value }))} placeholder="e.g. Application Received" style={S.inp} /></div>
+            <div><label style={S.label}>Channel</label>
+              <select value={newForm.channel} onChange={e => setNewForm(p => ({ ...p, channel: e.target.value }))} style={S.inp}>
+                {['Email', 'In-app', 'Email + In-app', 'WhatsApp'].map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={S.label}>Message * <span style={{ color: '#9E9D9B', fontWeight: 400, textTransform: 'none' }}>— use {'{{candidateName}}'}, {'{{jobTitle}}'}</span></label>
+            <textarea value={newForm.message} onChange={e => setNewForm(p => ({ ...p, message: e.target.value }))} rows={3} style={{ ...S.inp, resize: 'vertical' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleAdd} disabled={adding || !newForm.trigger.trim()} style={{ ...S.btn, opacity: adding || !newForm.trigger.trim() ? 0.5 : 1 }}>{adding ? '…' : '+ Add'}</button>
+            <button onClick={() => setShowAdd(false)} style={S.btnG}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {notifs.map(n => (
           <div key={n._id} style={S.card}>
@@ -909,19 +897,22 @@ function NotificationMessagesTab({ data, updateItem }) {
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{n.trigger}</div>
                 <div style={{ fontSize: 11, color: '#9E9D9B' }}>Channel: {n.channel}</div>
               </div>
-              <button onClick={() => editing === n._id ? setEditing(null) : startEdit(n)} style={S.btnG}>{editing === n._id ? 'Cancel' : '✏️ Edit'}</button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => editing === n._id ? setEditing(null) : startEdit(n)} style={S.btnG}>{editing === n._id ? 'Cancel' : '✏️ Edit'}</button>
+                <button onClick={() => deleteItem('notificationMessages', n._id)} style={S.btnR}>✕</button>
+              </div>
             </div>
             {editing === n._id ? (
               <div>
                 <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={3} style={{ ...S.inp, resize: 'vertical', marginBottom: 10 }} />
-                <button onClick={() => save(n)} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>{saving ? '…' : '💾 Save Message'}</button>
+                <button onClick={() => save(n)} disabled={saving} style={{ ...S.btn, opacity: saving ? 0.6 : 1 }}>{saving ? '…' : '💾 Save'}</button>
               </div>
             ) : (
-              <div style={{ fontSize: 13, color: '#374151', background: '#f8fafc', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6 }}>{n.message}</div>
+              <div style={{ fontSize: 13, color: '#374151', background: '#f8fafc', padding: '10px 14px', borderRadius: 8, lineHeight: 1.6 }}>{n.message || <span style={{ color: '#9E9D9B' }}>No message set</span>}</div>
             )}
           </div>
         ))}
-        {notifs.length === 0 && <EmptyState icon="🔔" msg="No notification messages configured." />}
+        {notifs.length === 0 && <EmptyState icon="🔔" msg="No notification messages yet. Use Quick-add above or create custom ones." />}
       </div>
     </div>
   );
@@ -1026,13 +1017,15 @@ const OLT_FIELDS = [
   { key: 'footerNote',         label: 'Footer Note',             rows: 1,  hint: 'e.g. This is a computer-generated offer letter.' },
 ];
 
+const DEFAULT_OLT = OLT_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {});
+
 function OfferLetterTemplateTab({ data, updateSingleton }) {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState(OLT_FIELDS[0].key);
 
   useEffect(() => {
-    if (data?.offerLetterTemplate) setForm({ ...data.offerLetterTemplate });
+    if (data) setForm({ ...DEFAULT_OLT, ...(data.offerLetterTemplate || {}) });
   }, [data]);
 
   if (!form) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
@@ -1260,12 +1253,14 @@ const BRAND_COLOR_FIELDS = [
   { key: 'bgPage',    label: 'Page Background',   desc: 'Main page/body background color' },
 ];
 
+const DEFAULT_BRAND_COLORS = { primary: '#0176D3', secondary: '#032D60', accent: '#10b981', danger: '#ef4444', warning: '#f59e0b', bgCard: '#ffffff', bgPage: '#f4f6f8' };
+
 function BrandColorsTab({ data, updateSingleton }) {
   const [colors, setColors] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data?.brandColors) setColors({ ...data.brandColors });
+    if (data) setColors({ ...DEFAULT_BRAND_COLORS, ...(data.brandColors || {}) });
   }, [data]);
 
   if (!colors) return <div style={{ textAlign: 'center', padding: 60 }}><Spinner /></div>;
@@ -1278,9 +1273,7 @@ function BrandColorsTab({ data, updateSingleton }) {
     setSaving(false);
   };
 
-  const reset = () => {
-    setColors({ primary: '#0176D3', secondary: '#032D60', accent: '#10b981', danger: '#ef4444', warning: '#f59e0b', bgCard: '#ffffff', bgPage: '#f4f6f8' });
-  };
+  const reset = () => { setColors({ ...DEFAULT_BRAND_COLORS }); };
 
   return (
     <div>
@@ -1368,7 +1361,7 @@ export default function SuperAdminCustomizations() {
       case 'doc-types':     return <DocumentTypesTab {...tabProps} />;
       case 'questions':     return <QuestionBankTab {...tabProps} />;
       case 'email-sig':     return <EmailSignatureTab {...tabProps} />;
-      case 'notifications': return <NotificationMessagesTab {...tabProps} />;
+      case 'notifications': return <NotificationMessagesTab data={ctx.data} addItem={ctx.addItem} updateItem={ctx.updateItem} deleteItem={ctx.deleteItem} />;
       case 'visibility':    return <FieldVisibilityTab {...tabProps} />;
       case 'offer-vars':     return <OfferVariablesTab {...tabProps} />;
       case 'offer-template': return <OfferLetterTemplateTab {...tabProps} />;

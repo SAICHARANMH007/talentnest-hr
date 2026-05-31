@@ -1090,8 +1090,7 @@ router.patch('/:id/stage', ...guard,
     const { evaluateWorkflows } = require('../services/workflowEngine');
     const candidateForWf = await Candidate.findById(app.candidateId).select('name email phone source').lean();
     const jobForWf = await Job.findById(app.jobId).select('title assignedRecruiters').lean();
-    evaluateWorkflows(req.user.tenantId, {
-      event         : 'stage_changed',
+    const wfBase = {
       applicationId : app._id.toString(),
       tenantId      : req.user.tenantId,
       stage,
@@ -1102,7 +1101,10 @@ router.patch('/:id/stage', ...guard,
       candidateSource: candidateForWf?.source || '',
       recruiterId   : jobForWf?.assignedRecruiters?.[0] || req.user.id,
       jobTitle      : jobForWf?.title || '',
-    }).catch(() => {});
+    };
+    evaluateWorkflows(req.user.tenantId, { event: 'stage_changed', ...wfBase }).catch(() => {});
+    if (stage === 'Hired')    evaluateWorkflows(req.user.tenantId, { event: 'candidate_hired',    ...wfBase }).catch(() => {});
+    if (stage === 'Rejected') evaluateWorkflows(req.user.tenantId, { event: 'candidate_rejected', ...wfBase }).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 

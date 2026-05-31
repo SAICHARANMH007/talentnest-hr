@@ -11,9 +11,10 @@ const actionSchema = new mongoose.Schema({
   type  : {
     type    : String,
     required: true,
-    enum    : ['send_email', 'send_whatsapp', 'move_stage', 'notify_recruiter', 'notify_admin', 'create_task'],
+    enum    : ['send_email', 'send_whatsapp', 'move_stage', 'notify_recruiter', 'notify_admin', 'create_task', 'assign_tag', 'add_note'],
   },
-  config: { type: mongoose.Schema.Types.Mixed, default: {} },
+  config      : { type: mongoose.Schema.Types.Mixed, default: {} },
+  delayMinutes: { type: Number, default: 0 },
 }, { _id: false });
 
 const workflowRuleSchema = new mongoose.Schema({
@@ -44,6 +45,10 @@ const workflowRuleSchema = new mongoose.Schema({
         'offer_not_signed',
         'candidate_applied',
         'interview_scheduled',
+        'candidate_hired',
+        'candidate_rejected',
+        'job_published',
+        'offer_accepted',
       ],
     },
     conditions: { type: [conditionSchema], default: [] },

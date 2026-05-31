@@ -364,6 +364,8 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
         require('./feed').invalidateFeedCache();
         // Ping IndexNow immediately when job goes live
         pingIndexNow(job).catch(() => {});
+        const { evaluateWorkflows } = require('../services/workflowEngine');
+        evaluateWorkflows(job.tenantId, { event: 'job_published', tenantId: job.tenantId, jobTitle: job.title, jobId: job._id.toString() }).catch(() => {});
       } else if (updates.status === 'closed' && prevJob?.status === 'active') {
         require('./distribution').logJobClosed(job._id);
         require('./feed').invalidateFeedCache();

@@ -89,6 +89,22 @@ async function execMoveStage(config, eventData) {
   }).catch(e => logger.error('[workflow] move_stage failed', { err: e.message }));
 }
 
+async function execAssignTag(config, eventData) {
+  if (!config.tag || !eventData.applicationId) return;
+  await Application.findByIdAndUpdate(eventData.applicationId, {
+    $addToSet: { tags: config.tag },
+  }).catch(e => logger.error('[workflow] assign_tag failed', { err: e.message }));
+}
+
+async function execAddNote(config, eventData) {
+  if (!config.note || !eventData.applicationId) return;
+  const note = interpolate(config.note, eventData);
+  const timestamp = new Date().toLocaleString('en-IN');
+  await Application.findByIdAndUpdate(eventData.applicationId, {
+    $set: { recruiterNotes: `[Auto-note ${timestamp}] ${note}` },
+  }).catch(e => logger.error('[workflow] add_note failed', { err: e.message }));
+}
+
 async function execNotifyUser(role, config, eventData) {
   let userId = eventData.recruiterId;
   if (role === 'admin') {
@@ -143,6 +159,8 @@ async function evaluateWorkflows(tenantId, eventData, dryRun = false) {
             case 'move_stage':       return execMoveStage(action.config, eventData);
             case 'notify_recruiter': return execNotifyUser('recruiter', action.config, eventData);
             case 'notify_admin':     return execNotifyUser('admin', action.config, eventData);
+            case 'assign_tag':      return execAssignTag(action.config, eventData);
+            case 'add_note':        return execAddNote(action.config, eventData);
             case 'create_task':
               logger.info('[workflow] create_task action (not yet wired)', action.config);
               return Promise.resolve();
