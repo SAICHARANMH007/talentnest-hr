@@ -48,7 +48,58 @@ export default function OrgCareersPage() {
         setJobs(Array.isArray(res.data) ? res.data : []);
         setEmployerBrand(res.employerBrand || null);
         setBrandColors(res.brandColors || {});
-        document.title = `${res.org?.name || 'Careers'} — Open Positions`;
+        const orgName  = res.org?.name || 'Company';
+        const siteUrl  = window.location.origin;
+        const pageUrl  = window.location.href;
+        const logoUrl  = res.employerBrand?.bannerImageUrl || `${siteUrl}/favicon.svg`;
+        const jobCount = (Array.isArray(res.data) ? res.data : []).length;
+        const desc     = res.employerBrand?.about
+          ? res.employerBrand.about.slice(0, 160)
+          : `${orgName} is hiring! Browse ${jobCount} open position${jobCount !== 1 ? 's' : ''} and apply today.`;
+
+        document.title = `${orgName} — ${jobCount} Open Position${jobCount !== 1 ? 's' : ''}`;
+
+        const setMetaTag = (sel, attr, val) => {
+          let el = document.head.querySelector(sel);
+          if (!el) { el = document.createElement('meta'); document.head.appendChild(el); }
+          el.setAttribute(attr, val);
+        };
+        setMetaTag('meta[name="description"]',        'content', desc);
+        setMetaTag('meta[property="og:title"]',       'property', 'og:title');
+        document.head.querySelector('meta[property="og:title"]')?.setAttribute('content', `${orgName} Careers — Open Positions`);
+        setMetaTag('meta[property="og:description"]', 'property', 'og:description');
+        document.head.querySelector('meta[property="og:description"]')?.setAttribute('content', desc);
+        setMetaTag('meta[property="og:url"]',         'property', 'og:url');
+        document.head.querySelector('meta[property="og:url"]')?.setAttribute('content', pageUrl);
+        setMetaTag('meta[property="og:image"]',       'property', 'og:image');
+        document.head.querySelector('meta[property="og:image"]')?.setAttribute('content', logoUrl);
+        setMetaTag('meta[property="og:type"]',        'property', 'og:type');
+        document.head.querySelector('meta[property="og:type"]')?.setAttribute('content', 'website');
+        setMetaTag('meta[name="twitter:card"]',       'name', 'twitter:card');
+        document.head.querySelector('meta[name="twitter:card"]')?.setAttribute('content', 'summary_large_image');
+        setMetaTag('meta[name="twitter:title"]',      'name', 'twitter:title');
+        document.head.querySelector('meta[name="twitter:title"]')?.setAttribute('content', `${orgName} Careers`);
+
+        let canon = document.head.querySelector('link[rel="canonical"]');
+        if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+        canon.href = pageUrl;
+
+        // Inject Organization JSON-LD for Google Knowledge Graph
+        const existingLd = document.getElementById('org-career-ld');
+        if (existingLd) existingLd.remove();
+        const ldScript = document.createElement('script');
+        ldScript.id = 'org-career-ld';
+        ldScript.type = 'application/ld+json';
+        ldScript.text = JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: orgName,
+          url: pageUrl,
+          logo: logoUrl,
+          description: desc,
+          ...(res.employerBrand?.website ? { sameAs: [res.employerBrand.website] } : {}),
+        });
+        document.head.appendChild(ldScript);
       })
       .catch(() => setError('Could not load jobs. Please try again later.'))
       .finally(() => setLoading(false));
