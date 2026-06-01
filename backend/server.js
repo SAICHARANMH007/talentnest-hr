@@ -119,6 +119,10 @@ const CSRF_EXEMPT_PATHS = new Set([
 app.use('/api/', (req, res, next) => {
   if (CSRF_SAFE_METHODS.has(req.method)) return next();
   if (CSRF_EXEMPT_PATHS.has(req.path)) return next();
+  if (req.path.startsWith('/company-reviews/public/')) return next();
+  if (req.path === '/referrals/track') return next();
+  if (req.path.startsWith('/nps/survey/')) return next();
+  if (req.path.startsWith('/schedule/') && (req.path.endsWith('/confirm') || req.path.endsWith('/token'))) return next();
   if (req.headers['x-requested-with'] === 'TalentNest') return next();
   // Allow requests with dev bypass header (Postman/curl: set X-Dev-Bypass: 1 in non-prod)
   if (!IS_PROD && req.headers['x-dev-bypass'] === '1') return next();
@@ -183,6 +187,28 @@ app.use('/api/job-alerts', require('./src/routes/jobAlerts'));
 app.use('/api/blogs', require('./src/routes/blogs'));
 app.use('/api/presence', require('./src/routes/presence'));
 app.use('/api/messages', require('./src/routes/messages'));
+// ── Interview Self-Scheduling
+app.use('/api/schedule', require('./src/routes/schedule'));
+// ── Interview Kits
+app.use('/api/interview-kits', require('./src/routes/interviewKits'));
+// ── Webhooks
+app.use('/api/webhooks', require('./src/routes/webhooks'));
+// ── Company Reviews
+app.use('/api/company-reviews', require('./src/routes/companyReviews'));
+// ── Referral Portal
+app.use('/api/referrals', require('./src/routes/referrals'));
+// ── Talent Pool
+app.use('/api/talent-pool', require('./src/routes/talentPool'));
+// ── Onboarding Templates
+app.use('/api/onboarding-templates', require('./src/routes/onboardingTemplates'));
+// ── Saved Searches
+app.use('/api/saved-searches', require('./src/routes/savedSearches'));
+// ── Email Sequences
+app.use('/api/email-sequences', require('./src/routes/emailSequences'));
+// ── Rejection Templates
+app.use('/api/rejection-templates', require('./src/routes/rejectionTemplates'));
+// ── Headcount Plans
+app.use('/api/headcount-plans', require('./src/routes/headcountPlans'));
 
 function escHtml(v = '') {
   return String(v)
@@ -883,8 +909,10 @@ const { startWeeklyReportJob } = require('./src/jobs/weeklyReport');
 const { startSlaMonitorJob } = require('./src/jobs/slaMonitor');
 const { startNpsSchedulerJob } = require('./src/jobs/npsScheduler');
 const { startPreBoardingJobs } = require('./src/jobs/preboardingCron');
-const { startJobAlertJobs } = require('./src/jobs/jobAlertCron');
+const { startJobAlertJobs }  = require('./src/jobs/jobAlertCron');
+const { startJobExpiryCron } = require('./src/jobs/jobExpiryCron');
 const { startDistributionRetryJob } = require('./src/jobs/distributionRetry');
+require('./src/jobs/sequenceProcessor'); // self-registering cron
 
 connectDB()
   .then(() => seed())
@@ -933,6 +961,7 @@ connectDB()
     startNpsSchedulerJob();
     startPreBoardingJobs();
     startJobAlertJobs();
+    startJobExpiryCron();
     startDistributionRetryJob();
 
   })

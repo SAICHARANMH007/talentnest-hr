@@ -10,8 +10,10 @@ const MeetingRoom      = lazy(() => import('./pages/meeting/MeetingRoom.jsx'));
 const JobDistribution  = lazy(() => import('./pages/admin/JobDistribution.jsx'));
 const AuthScreen = lazy(() => import('./pages/auth/AuthScreen.jsx'));
 const SetPasswordPage = lazy(() => import('./pages/auth/SetPasswordPage.jsx'));
-const CareersPage    = lazy(() => import('./pages/careers/CareersPage.jsx'));
-const JobDetailPage  = lazy(() => import('./pages/careers/JobDetailPage.jsx'));
+const CareersPage          = lazy(() => import('./pages/careers/CareersPage.jsx'));
+const JobDetailPage        = lazy(() => import('./pages/careers/JobDetailPage.jsx'));
+const ApplicationTracker   = lazy(() => import('./pages/public/ApplicationTracker.jsx'));
+const NpsSurveyPage        = lazy(() => import('./pages/public/NpsSurveyPage.jsx'));
 const LandingPage = lazy(() => import('./pages/marketing/LandingPage.jsx'));
 const AboutPage = lazy(() => import('./pages/marketing/AboutPage.jsx'));
 const ServicesPage = lazy(() => import('./pages/marketing/ServicesPage.jsx'));
@@ -28,6 +30,8 @@ const ProductJobTrack    = lazy(() => import('./pages/marketing/ProductJobTrack.
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
+const SchedulingPage       = lazy(() => import('./pages/public/SchedulingPage.jsx'));
+const OfferApprovalPage    = lazy(() => import('./pages/public/OfferApprovalPage.jsx'));
 const OrgCareersPage = lazy(() => import('./pages/careers/OrgCareersPage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
@@ -47,7 +51,13 @@ const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAsses
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics.jsx'));
-const AdminInsights  = lazy(() => import('./pages/admin/AdminInsights.jsx'));
+const AdminInsights      = lazy(() => import('./pages/admin/AdminInsights.jsx'));
+const AdminInterviewKits = lazy(() => import('./pages/admin/AdminInterviewKits.jsx'));
+const AdminWebhooks      = lazy(() => import('./pages/admin/AdminWebhooks.jsx'));
+const DiversityReport    = lazy(() => import('./pages/admin/DiversityReport.jsx'));
+const AdminReviews       = lazy(() => import('./pages/admin/AdminReviews.jsx'));
+const AdminReferrals     = lazy(() => import('./pages/admin/AdminReferrals.jsx'));
+const AdminTalentPool    = lazy(() => import('./pages/admin/TalentPool.jsx'));
 const OrgSettings = lazy(() => import('./pages/admin/OrgSettings.jsx'));
 const AdminJobApproval = lazy(() => import('./pages/admin/AdminJobApproval.jsx'));
 const OutreachTracker = lazy(() => import('./pages/admin/OutreachTracker.jsx'));
@@ -73,7 +83,21 @@ const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
 const AdminClients = lazy(() => import('./pages/admin/AdminClients.jsx'));
 const AdminAutomation = lazy(() => import('./pages/admin/AdminAutomation.jsx'));
-const AdminOnboarding = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
+const AdminOnboarding       = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
+const OnboardingTemplates   = lazy(() => import('./pages/admin/OnboardingTemplates.jsx'));
+const AdminNPS              = lazy(() => import('./pages/admin/AdminNPS.jsx'));
+const EmailSequences        = lazy(() => import('./pages/admin/EmailSequences.jsx'));
+const PipelineHeatmap       = lazy(() => import('./pages/admin/PipelineHeatmap.jsx'));
+const InterviewScorecards   = lazy(() => import('./pages/admin/InterviewScorecards.jsx'));
+const TimeToFillTracker     = lazy(() => import('./pages/admin/TimeToFillTracker.jsx'));
+const DuplicateMerge        = lazy(() => import('./pages/admin/DuplicateMerge.jsx'));
+const SourcingTracker       = lazy(() => import('./pages/admin/SourcingTracker.jsx'));
+const RejectionTemplates    = lazy(() => import('./pages/admin/RejectionTemplates.jsx'));
+const OfferLetterBuilder    = lazy(() => import('./pages/admin/OfferLetterBuilder.jsx'));
+const DashboardWidgets      = lazy(() => import('./pages/admin/DashboardWidgets.jsx'));
+const HeadcountPlanner      = lazy(() => import('./pages/admin/HeadcountPlanner.jsx'));
+const SlaAlerts             = lazy(() => import('./pages/admin/SlaAlerts.jsx'));
+const CustomHiringStages    = lazy(() => import('./pages/admin/CustomHiringStages.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -83,7 +107,8 @@ const RecruiterInterviews = lazy(() => import('./pages/recruiter/RecruiterInterv
 const RecruiterOffers = lazy(() => import('./pages/recruiter/RecruiterOffers.jsx'));
 const TalentPool = lazy(() => import('./pages/recruiter/TalentPool.jsx'));
 
-const CandidateOffer = lazy(() => import('./pages/candidate/CandidateOffer.jsx'));
+const CandidateOffer      = lazy(() => import('./pages/candidate/CandidateOffer.jsx'));
+const OfferComparison     = lazy(() => import('./pages/candidate/OfferComparison.jsx'));
 
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard.jsx'));
 const HiringManagerDashboard = lazy(() => import('./pages/hiring_manager/HiringManagerDashboard.jsx'));
@@ -491,7 +516,11 @@ export default function App() {
       <Route path="/careers/job/:slug" element={<Suspense fallback={<PageLoader />}><JobDetailPage /></Suspense>} />
       <Route path="/careers/:companySlug" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/companies" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
-      <Route path="/invite/:token" element={<Suspense fallback={<PageLoader />}><InviteResponsePage /></Suspense>} />
+      <Route path="/track/:token"    element={<Suspense fallback={<PageLoader />}><ApplicationTracker /></Suspense>} />
+      <Route path="/nps/:token"      element={<Suspense fallback={<PageLoader />}><NpsSurveyPage /></Suspense>} />
+      <Route path="/invite/:token"   element={<Suspense fallback={<PageLoader />}><InviteResponsePage /></Suspense>} />
+      <Route path="/schedule/:token"           element={<Suspense fallback={<PageLoader />}><SchedulingPage /></Suspense>} />
+      <Route path="/app/offer-approval/:offerId" element={<Suspense fallback={<PageLoader />}><OfferApprovalPage /></Suspense>} />
       <Route path="/interest/confirmed" element={<Suspense fallback={<PageLoader />}><InterestConfirmedPage /></Suspense>} />
       <Route path="/interest/declined" element={<Suspense fallback={<PageLoader />}><InterestDeclinedPage /></Suspense>} />
       <Route path="/nps-thankyou" element={
@@ -549,6 +578,7 @@ export default function App() {
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
             <Route path="background-verification" element={<CandidateBackgroundVerification user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />
+            <Route path="offer-comparison" element={<OfferComparison user={user} />} />
           </>
         )}
 
@@ -569,6 +599,20 @@ export default function App() {
             <Route path="offers" element={<RecruiterOffers user={user} />} />
             <Route path="talent-pool" element={<TalentPool user={user} />} />
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
+            <Route path="onboarding-templates" element={<OnboardingTemplates />} />
+            <Route path="nps-dashboard" element={<AdminNPS />} />
+            <Route path="email-sequences" element={<EmailSequences />} />
+            <Route path="pipeline-heatmap" element={<PipelineHeatmap />} />
+            <Route path="interview-scorecards" element={<InterviewScorecards />} />
+            <Route path="time-to-fill" element={<TimeToFillTracker />} />
+            <Route path="duplicate-merge" element={<DuplicateMerge />} />
+            <Route path="sourcing-tracker" element={<SourcingTracker />} />
+            <Route path="rejection-templates" element={<RejectionTemplates />} />
+            <Route path="offer-letter-builder" element={<OfferLetterBuilder />} />
+            <Route path="dashboard-widgets" element={<DashboardWidgets />} />
+            <Route path="headcount-planner" element={<HeadcountPlanner />} />
+            <Route path="sla-alerts" element={<SlaAlerts />} />
+            <Route path="custom-stages" element={<CustomHiringStages />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}
@@ -597,6 +641,12 @@ export default function App() {
             <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="interview-kits" element={<AdminInterviewKits user={user} />} />
+            <Route path="webhooks" element={<AdminWebhooks user={user} />} />
+            <Route path="diversity" element={<DiversityReport user={user} />} />
+            <Route path="reviews" element={<AdminReviews />} />
+            <Route path="referrals" element={<AdminReferrals />} />
+            <Route path="talent-pool" element={<AdminTalentPool />} />
             <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />

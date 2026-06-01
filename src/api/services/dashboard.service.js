@@ -102,4 +102,13 @@ export const dashboardService = {
   async getUnregisteredCandidates(params = {}) {
     return req('GET', `/dashboard/unregistered-candidates${qs(params)}`);
   },
+  async getDiversityReport(params = {}) {
+    return req('GET', `/stats/diversity${qs(params)}`);
+  },
+  async getPipelineHeatmap(days = 90) {
+    return req('GET', `/dashboard/pipeline-heatmap?days=${days}`);
+  },
+  async getTimeToFill(params = {}) {
+    return req('GET', `/dashboard/time-to-fill${qs(params)}`);
+  },
 };

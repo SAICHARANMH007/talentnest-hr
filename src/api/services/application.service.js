@@ -34,6 +34,9 @@ export const applicationService = {
   async applyPublic(jobId, form) {
     return req('POST', '/applications/public', { jobId, ...form }, false);
   },
+  async quickApply(jobId, coverLetter = '') {
+    return req('POST', '/applications/quick', { jobId, coverLetter });
+  },
   async prefillByEmail(email) {
     return req('POST', '/applications/prefill', { email }, false);
   },
@@ -49,7 +52,7 @@ export const applicationService = {
   async updateAppNotes(appId, notes) { return req('PATCH', `/applications/${appId}/notes`, { notes }); },
   async updateAppTags(appId, tags) { return req('PATCH', `/applications/${appId}/tags`, { tags }); },
   async addFeedback(appId, feedback) { return req('PATCH', `/applications/${appId}/feedback`, feedback); },
-  async withdrawApplication(appId) { return req('DELETE', `/applications/${appId}`); },
+  async withdrawApplication(appId, reason) { return req('DELETE', `/applications/${appId}`, reason ? { reason } : undefined); },
   async getApplicationLocations() { return req('GET', '/applications/locations'); },
   async talentMatchAction(candidateId, jobId, action) {
     return req('POST', '/invites/talent-match', { candidateId, jobId, action });
@@ -58,5 +61,9 @@ export const applicationService = {
     const fd = new FormData();
     fd.append('file', file);
     return req('POST', '/parse-resume', fd);
-  }
+  },
+  async getScorecards(jobId) {
+    const r = await req('GET', `/applications/scorecards?jobId=${jobId}`);
+    return r?.data || [];
+  },
 };

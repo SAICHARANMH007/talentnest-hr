@@ -470,7 +470,13 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
   cutoff14.setHours(0, 0, 0, 0);
 
   // Step 2: All counts in parallel — pipeline, per-job, trends, recent activity
-  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites, trendAgg] = await Promise.all([
+  // Daily queue time windows
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+  const in3days    = new Date(Date.now() + 3 * 86400000);
+
+  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites, trendAgg,
+    todayInterviewCount, newAppsCount, offersOutCount, expiringJobsCount] = await Promise.all([
     // Stage breakdown (pipeline funnel)
     Application.aggregate([
       { $match: appFilter },
@@ -496,6 +502,23 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ14 } }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]),
+    // Daily queue: interviews scheduled today
+    Application.countDocuments({
+      ...appFilter,
+      currentStage: { $in: ['Interview Round 1', 'Interview Round 2', 'Technical Interview'] },
+      'interviewRounds.scheduledAt': { $gte: todayStart, $lte: todayEnd },
+    }),
+    // Daily queue: new unreviewed applications (still in Applied stage)
+    Application.countDocuments({ ...appFilter, currentStage: 'Applied' }),
+    // Daily queue: offers waiting for candidate response
+    Application.countDocuments({ ...appFilter, currentStage: 'Offer' }),
+    // Daily queue: jobs with application deadline in next 3 days
+    Job.countDocuments({
+      _id: { $in: jobIds },
+      status: 'active',
+      applicationDeadline: { $gte: todayStart, $lte: in3days },
+      ...del,
+    }),
   ]);
 
   // Build per-job count map
@@ -545,6 +568,13 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       id            : j._id.toString(),
       applicantsCount: perJobMap[j._id.toString()] ?? j.applicationCount ?? 0,
     })),
+    // Daily action queue — shown as a top-of-dashboard "what to do today" widget
+    dailyQueue: {
+      todayInterviews : todayInterviewCount,
+      newApplications : newAppsCount,
+      offersOut       : offersOutCount,
+      expiringJobs    : expiringJobsCount,
+    },
   }});
 }));
 
@@ -1050,20 +1080,28 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
     orgNameMap(),
   ]);
 
-  // Fallback: for any app where candidateId wasn't populated (legacy data), look up by email
-  const appsNeedingFallback = apps.filter(a => !a.candidateId?._id);
-  const fallbackEmails = [...new Set(appsNeedingFallback.map(a => a.email).filter(Boolean).map(e => e.toLowerCase()))];
-  const fallbackUsers  = fallbackEmails.length
-    ? await User.find({ role: 'candidate', email: { $in: fallbackEmails } }).select('name email phone tenantId').lean()
-    : [];
-  const usersByEmail = new Map(fallbackUsers.map(u => [u.email.toLowerCase(), u]));
+  // Fallback: look up User account for apps where candidateId wasn't populated OR
+  // where the populated Candidate record has no name (e.g. manually-added/invited candidates)
+  const appsNeedingFallback = apps.filter(a => !a.candidateId?._id || !a.candidateId?.name);
+  const fallbackEmails  = [...new Set(appsNeedingFallback.map(a => (a.candidateId?.email || a.email)).filter(Boolean).map(e => e.toLowerCase()))];
+  const fallbackUserIds = [...new Set(appsNeedingFallback.map(a => a.candidateId?.userId?.toString()).filter(Boolean))];
+  const [fallbackByEmail, fallbackById] = await Promise.all([
+    fallbackEmails.length  ? User.find({ email: { $in: fallbackEmails } }).select('name email phone tenantId').lean()  : [],
+    fallbackUserIds.length ? User.find({ _id:   { $in: fallbackUserIds } }).select('name email phone tenantId').lean() : [],
+  ]);
+  const usersByEmail  = new Map([...fallbackByEmail, ...fallbackById].map(u => [u.email?.toLowerCase(), u]));
+  const usersById     = new Map(fallbackById.map(u => [String(u._id), u]));
 
   const rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const job       = app.jobId       && typeof app.jobId       === 'object' ? app.jobId       : {};
+    const user =
+      usersById.get(candidate.userId?.toString()) ||
+      usersByEmail.get((candidate.email || app.email || '').toLowerCase()) ||
+      {};
     return profileRow({
       candidate,
-      user   : usersByEmail.get((candidate.email || app.email || '').toLowerCase()) || {},
+      user,
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
@@ -1090,18 +1128,26 @@ router.get('/applicants/export', authenticate, allowRoles('admin', 'super_admin'
     orgNameMap(),
   ]);
 
-  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
-  const users = emails.length
-    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('-password -passwordHash').lean()
-    : [];
-  const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
+  const appsNeedingFallbackExp = apps.filter(a => !a.candidateId?._id || !a.candidateId?.name);
+  const fallbackEmailsExp  = [...new Set(appsNeedingFallbackExp.map(a => (a.candidateId?.email || a.email)).filter(Boolean).map(e => e.toLowerCase()))];
+  const fallbackUserIdsExp = [...new Set(appsNeedingFallbackExp.map(a => a.candidateId?.userId?.toString()).filter(Boolean))];
+  const [fallbackByEmailExp, fallbackByIdExp] = await Promise.all([
+    fallbackEmailsExp.length  ? User.find({ email: { $in: fallbackEmailsExp  } }).select('-password -passwordHash').lean() : [],
+    fallbackUserIdsExp.length ? User.find({ _id:   { $in: fallbackUserIdsExp } }).select('-password -passwordHash').lean() : [],
+  ]);
+  const usersByEmailExp = new Map([...fallbackByEmailExp, ...fallbackByIdExp].map(u => [u.email?.toLowerCase(), u]));
+  const usersByIdExp    = new Map(fallbackByIdExp.map(u => [String(u._id), u]));
 
   let rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    const user =
+      usersByIdExp.get(candidate.userId?.toString()) ||
+      usersByEmailExp.get((candidate.email || app.email || '').toLowerCase()) ||
+      {};
     return profileRow({
       candidate,
-      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      user,
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
@@ -2446,6 +2492,184 @@ router.get('/source-effectiveness', authenticate, allowRoles('admin', 'super_adm
   }));
 
   res.json({ success: true, data });
+}));
+
+// ── GET /api/stats/diversity — DEI report ─────────────────────────────────────
+router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const Candidate   = require('../models/Candidate');
+  const Application = require('../models/Application');
+
+  const tid = req.user.tenantId;
+  const { startDate, endDate } = req.query;
+
+  // Date filter for applications
+  const dateMatch = {};
+  if (startDate) dateMatch.$gte = new Date(startDate);
+  if (endDate)   dateMatch.$lte = new Date(endDate);
+  const appFilter = { tenantId: tid, deletedAt: null };
+  if (Object.keys(dateMatch).length) appFilter.createdAt = dateMatch;
+
+  // Gender breakdown from applications → candidates
+  const [genderRows, stageByGender, hiresByGender] = await Promise.all([
+    // Overall gender breakdown of all candidates in pool
+    Candidate.aggregate([
+      { $match: { tenantId: tid, deletedAt: null } },
+      { $group: { _id: { $ifNull: ['$gender', 'not_disclosed'] }, count: { $sum: 1 } } },
+    ]),
+    // Applications by gender and current stage
+    Application.aggregate([
+      { $match: appFilter },
+      { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'cand' } },
+      { $unwind: { path: '$cand', preserveNullAndEmptyArrays: true } },
+      { $group: {
+        _id: {
+          gender: { $ifNull: ['$cand.gender', 'not_disclosed'] },
+          stage:  '$currentStage',
+        },
+        count: { $sum: 1 },
+      }},
+    ]),
+    // Hired candidates by gender
+    Application.aggregate([
+      { $match: { ...appFilter, status: 'hired' } },
+      { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'cand' } },
+      { $unwind: { path: '$cand', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: { $ifNull: ['$cand.gender', 'not_disclosed'] }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  // Source breakdown
+  const sourceRows = await Application.aggregate([
+    { $match: appFilter },
+    { $group: { _id: '$source', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  // Stage funnel for diversity (shortlisted vs applied by gender)
+  const genderStageMap = {};
+  stageByGender.forEach(r => {
+    const g = r._id.gender || 'not_disclosed';
+    if (!genderStageMap[g]) genderStageMap[g] = {};
+    genderStageMap[g][r._id.stage] = r.count;
+  });
+
+  const genderHireMap = {};
+  hiresByGender.forEach(r => { genderHireMap[r._id || 'not_disclosed'] = r.count; });
+
+  const totalCandidates = genderRows.reduce((s, r) => s + r.count, 0);
+  const totalApps = sourceRows.reduce((s, r) => s + r.count, 0);
+  const totalHired = hiresByGender.reduce((s, r) => s + r.count, 0);
+
+  const genderBreakdown = genderRows.map(r => {
+    const g = r._id || 'not_disclosed';
+    const applied      = Object.values(genderStageMap[g] || {}).reduce((s, c) => s + c, 0);
+    const shortlisted  = (genderStageMap[g] || {})['Shortlisted'] || 0;
+    const hired        = genderHireMap[g] || 0;
+    return {
+      gender: g,
+      total: r.count,
+      pct: totalCandidates > 0 ? Math.round((r.count / totalCandidates) * 100) : 0,
+      applied, shortlisted, hired,
+      shortlistRate: applied > 0 ? Math.round((shortlisted / applied) * 100) : 0,
+      hireRate:      applied > 0 ? Math.round((hired / applied) * 100) : 0,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      totalCandidates,
+      totalApplications: totalApps,
+      totalHired,
+      genderBreakdown,
+      sourceBreakdown: sourceRows.map(r => ({ source: r._id || 'direct', count: r.count })),
+    },
+  });
+}));
+
+// ── Time-to-Fill Tracker ─────────────────────────────────────────────────────
+// Per-job: time from job.createdAt to first Hired application movedAt
+router.get('/time-to-fill', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const matchCond = { tenantId: req.user.tenantId, deletedAt: null };
+  if (startDate) matchCond.createdAt = { $gte: new Date(startDate) };
+  if (endDate)   matchCond.createdAt = { ...(matchCond.createdAt || {}), $lte: new Date(endDate) };
+
+  const Job = require('../models/Job');
+  const jobs = await Job.find({ tenantId: req.user.tenantId, deletedAt: null }).select('title createdAt status').lean();
+
+  const results = await Promise.all(jobs.slice(0, 50).map(async (job) => {
+    const hiredApp = await Application.findOne({
+      tenantId: req.user.tenantId,
+      jobId   : job._id,
+      status  : 'hired',
+      deletedAt: null,
+    }).sort({ createdAt: 1 }).lean();
+
+    const hiredAt = hiredApp?.updatedAt;
+    const daysToFill = hiredAt
+      ? Math.round((new Date(hiredAt) - new Date(job.createdAt)) / 86400000)
+      : null;
+
+    const appCount = await Application.countDocuments({ jobId: job._id, deletedAt: null });
+
+    return {
+      jobId     : job._id,
+      title     : job.title,
+      status    : job.status,
+      createdAt : job.createdAt,
+      hiredAt,
+      daysToFill,
+      appCount,
+    };
+  }));
+
+  const filled   = results.filter(r => r.daysToFill !== null);
+  const avgDays  = filled.length ? Math.round(filled.reduce((s, r) => s + r.daysToFill, 0) / filled.length) : null;
+
+  res.json({ success: true, data: { jobs: results, avgDaysToFill: avgDays, filledCount: filled.length } });
+}));
+
+// ── Pipeline Heatmap ─────────────────────────────────────────────────────────
+// Returns application counts grouped by (day-of-week, stage) for the last N days
+router.get('/pipeline-heatmap', ...guard, asyncHandler(async (req, res) => {
+  const days   = Math.min(parseInt(req.query.days || 90, 10), 365);
+  const since  = new Date(Date.now() - days * 86400000);
+
+  const raw = await Application.aggregate([
+    { $match: { tenantId: req.user.tenantId, deletedAt: null, createdAt: { $gte: since } } },
+    { $group: {
+      _id: {
+        week   : { $week: '$createdAt' },
+        year   : { $year: '$createdAt' },
+        dayOfWeek: { $dayOfWeek: '$createdAt' },
+        stage  : '$currentStage',
+      },
+      count: { $sum: 1 },
+    }},
+    { $project: {
+      week   : '$_id.week',
+      year   : '$_id.year',
+      day    : '$_id.dayOfWeek',
+      stage  : '$_id.stage',
+      count  : 1,
+      _id    : 0,
+    }},
+    { $sort: { year: 1, week: 1 } },
+  ]);
+
+  // Also get daily totals for the calendar view
+  const daily = await Application.aggregate([
+    { $match: { tenantId: req.user.tenantId, deletedAt: null, createdAt: { $gte: since } } },
+    { $group: {
+      _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+      count: { $sum: 1 },
+    }},
+    { $project: { date: '$_id', count: 1, _id: 0 } },
+    { $sort: { date: 1 } },
+  ]);
+
+  res.json({ success: true, data: { raw, daily, days } });
 }));
 
 module.exports = router;

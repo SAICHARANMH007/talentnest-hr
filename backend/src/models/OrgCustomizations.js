@@ -114,6 +114,22 @@ const OrgCustomizationsSchema = new Schema({
     bgPage:    { type: String, default: '#f4f6f8' },
   },
 
+  employerBrand: {
+    tagline        : { type: String, default: '' },
+    about          : { type: String, default: '' },
+    culture        : { type: String, default: '' },
+    mission        : { type: String, default: '' },
+    website        : { type: String, default: '' },
+    linkedIn       : { type: String, default: '' },
+    twitter        : { type: String, default: '' },
+    instagram      : { type: String, default: '' },
+    bannerImageUrl : { type: String, default: '' },
+    perks          : [{ title: { type: String }, description: { type: String } }],
+    testimonials   : [{ name: { type: String }, role: { type: String }, text: { type: String } }],
+    techStack      : [{ type: String }],
+    accentColor    : { type: String, default: '#0176D3' },
+  },
+
   offerLetterTemplate: {
     // Intro / opening paragraph
     introText: {
@@ -148,6 +164,28 @@ const OrgCustomizationsSchema = new Schema({
     // Signatory details defaults
     signatoryTitle:     { type: String, default: 'Head of Human Resources' },
     footerNote:         { type: String, default: 'This is a computer-generated offer letter.' },
+  },
+
+  // Role-based dashboard widget visibility
+  dashboardWidgets: {
+    type: Map,
+    of: Boolean,
+    default: () => new Map([
+      ['admin_kpi_stats', true],
+      ['admin_pipeline_health', true],
+      ['admin_hiring_funnel', true],
+      ['admin_source_breakdown', true],
+      ['admin_top_skills', true],
+      ['admin_leaderboard', true],
+      ['admin_job_performance', true],
+      ['admin_upcoming_interviews', true],
+      ['recruiter_action_queue', true],
+      ['recruiter_pipeline', true],
+      ['recruiter_upcoming_interviews', true],
+      ['candidate_job_matches', true],
+      ['candidate_application_status', true],
+      ['candidate_upcoming_interviews', true],
+    ]),
   },
 
 }, { timestamps: true });

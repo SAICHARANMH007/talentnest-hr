@@ -196,6 +196,62 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   return res.json({ success: true, exists: false });
 }));
 
+// POST /api/applications/quick — one-click apply for logged-in candidates
+router.post('/quick', authMiddleware, asyncHandler(async (req, res) => {
+  const { jobId, coverLetter } = req.body;
+  if (!jobId) throw new AppError('jobId is required.', 400);
+
+  const candidate = await Candidate.findOne({ email: req.user.email }).lean();
+  if (!candidate) throw new AppError('Candidate profile not found.', 404);
+
+  const job = await Job.findById(jobId).lean();
+  if (!job) throw new AppError('Job not found.', 404);
+  if (job.status !== 'active') throw new AppError('Job is not active.', 400);
+
+  const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });
+  if (exists) throw new AppError('Already applied for this job.', 409);
+
+  const { score, breakdown } = calculateTalentMatchScore(job, candidate);
+
+  const app = await Application.create({
+    tenantId   : job.tenantId,
+    jobId,
+    candidateId: candidate._id,
+    source     : 'career_page',
+    coverLetter: coverLetter || '',
+    talentMatchScore : score,
+    matchBreakdown   : breakdown,
+    currentStage     : 'Applied',
+    stageHistory     : [{ stage: 'Applied', movedAt: new Date(), notes: 'One-click apply' }],
+    statusToken      : crypto.randomBytes(24).toString('hex'),
+  });
+
+  await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
+
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const trackerLink = `${FRONTEND_URL}/track/${app.statusToken}`;
+
+  email.sendEmailWithRetry?.(candidate.email,
+    `✅ Application submitted — ${job.title}`,
+    `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#032D60">Hi ${candidate.name || candidate.firstName || 'there'},</h2>
+      <p>Your application for <strong>${job.title}</strong> at <strong>${job.company || job.companyName || ''}</strong> has been submitted via one-click apply.</p>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${trackerLink}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+          📍 Track Application Status →
+        </a>
+      </div>
+    </div>`
+  ).catch(() => {});
+
+  res.status(201).json({
+    success      : true,
+    applicationId: String(app._id),
+    trackerUrl   : trackerLink,
+    matchScore   : score,
+  });
+}));
+
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
@@ -271,6 +327,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     stageHistory: [{ stage: 'Applied', movedAt: new Date(), notes: 'Applied via career page' }],
     screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
     appliedFrom,
+    statusToken: crypto.randomBytes(24).toString('hex'),
   });
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
@@ -288,6 +345,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     // /register with email + name prefilled so account auto-links to their applications
     const registerLink = `${FRONTEND_URL}/login?email=${encodeURIComponent(emailLower)}&name=${encodeURIComponent(name.trim())}&ref=career_apply`;
+    const trackerLink  = `${FRONTEND_URL}/track/${app.statusToken}`;
     const orgName = job.companyName || job.company || 'TalentNest HR';
 
     email.sendEmailWithRetry?.(emailLower,
@@ -307,8 +365,15 @@ router.post('/public', asyncHandler(async (req, res) => {
           <div style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:24px;border:1px solid #E2E8F0">
             <p style="color:#0176D3;font-size:13px;font-weight:800;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📊 Track your application</p>
             <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
-              Create a free TalentNest account to see your application status in real time,
-              get interview notifications, and manage all your job applications in one place.
+              You can track the live status of your application at any time — no login required.
+            </p>
+            <div style="text-align:center;margin-bottom:16px">
+              <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:800;font-size:14px;letter-spacing:0.3px">
+                📍 Track Application Status →
+              </a>
+            </div>
+            <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
+              Or create a free account to manage all your applications in one place:
             </p>
             <div style="text-align:center">
               <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;letter-spacing:0.3px">
@@ -329,15 +394,19 @@ router.post('/public', asyncHandler(async (req, res) => {
       await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } });
     }).catch(() => {});
   } else if (existingUser) {
-    // They already have an account — send a simple "thanks" confirmation only
+    const FRONTEND_URL2 = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+    const trackerLink2  = `${FRONTEND_URL2}/track/${app.statusToken}`;
     email.sendEmailWithRetry?.(emailLower,
       `✅ Application confirmed — ${job.title}`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
         <h2 style="color:#032D60">Hi ${name.trim()},</h2>
-        <p>Your application for <strong>${job.title}</strong> has been received. Log in to your TalentNest account to track it.</p>
+        <p>Your application for <strong>${job.title}</strong> has been received.</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/login" style="background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
-            Track Application →
+          <a href="${trackerLink2}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin-right:12px">
+            📍 Track Status →
+          </a>
+          <a href="${FRONTEND_URL2}/login" style="display:inline-block;background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+            Login to Dashboard →
           </a>
         </div>
       </div>`
@@ -377,11 +446,17 @@ router.post('/public', asyncHandler(async (req, res) => {
     jobTitle       : job.title,
   }).catch(() => {});
 
+  // Fire webhook
+  const { fireWebhooks: _fwh } = require('../services/webhookService');
+  _fwh(job.tenantId, 'application.created', { applicationId: String(app._id), candidateName: candidate.name, jobTitle: job.title, source: 'career_page' }).catch(() => {});
+
+  const FRONTEND_URL3 = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
   res.status(201).json({
     success: true,
     data: normalizeApp(app),
     hasAccount: !!existingUser,
     candidateName: candidate.name,
+    trackerUrl: `${FRONTEND_URL3}/track/${app.statusToken}`,
   });
 }));
 
@@ -1136,17 +1211,31 @@ router.patch('/:id/stage', ...guard,
       }
     }
 
-    // Push notification to the recruiter/creator of the job
+    // Push notification to the recruiter/creator of the job + candidate
     try {
       const { sendPush } = require('../utils/sendPush');
-      const jobDoc = await Job.findById(app.jobId).lean();
-      const candidateDoc = await Candidate.findById(app.candidateId).select('name').lean();
-      if (jobDoc && jobDoc.createdBy) {
-        await sendPush(jobDoc.createdBy, {
+      const pushJob  = await Job.findById(app.jobId).select('title createdBy').lean();
+      const pushCand = await Candidate.findById(app.candidateId).select('name email').lean();
+      // Notify job creator
+      if (pushJob?.createdBy) {
+        await sendPush(pushJob.createdBy, {
           title: 'Stage Updated',
-          body: `${candidateDoc?.name || 'Candidate'} moved to ${stage} for ${jobDoc.title}`,
-          url: `/app/pipeline?job=${jobDoc._id}`,
+          body: `${pushCand?.name || 'Candidate'} moved to ${stage} for ${pushJob.title}`,
+          url: `/app/pipeline?job=${pushJob._id}`,
         });
+      }
+      // Notify candidate for meaningful stages
+      const PUSH_STAGES = ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Technical Interview', 'Offer', 'Hired', 'Rejected'];
+      if (PUSH_STAGES.includes(stage) && pushCand?.email) {
+        const candUser = await User.findOne({ email: pushCand.email.toLowerCase(), deletedAt: null }).select('_id').lean();
+        if (candUser) {
+          const pushTitles = { Shortlisted: "You've been shortlisted!", Offer: 'Offer extended!', Hired: 'Congratulations — you\'re hired!', Rejected: 'Application update', 'Interview Round 1': 'Interview scheduled', 'Interview Round 2': 'Second interview scheduled', 'Technical Interview': 'Technical interview scheduled' };
+          await sendPush(candUser._id, {
+            title: pushTitles[stage] || 'Application update',
+            body: `Your application for ${pushJob?.title || 'the role'} has been updated.`,
+            url: `/app/applications`,
+          });
+        }
       }
     } catch (e) { /* non-fatal */ }
 
@@ -1169,6 +1258,13 @@ router.patch('/:id/stage', ...guard,
     evaluateWorkflows(req.user.tenantId, { event: 'stage_changed', ...wfBase }).catch(() => {});
     if (stage === 'Hired')    evaluateWorkflows(req.user.tenantId, { event: 'candidate_hired',    ...wfBase }).catch(() => {});
     if (stage === 'Rejected') evaluateWorkflows(req.user.tenantId, { event: 'candidate_rejected', ...wfBase }).catch(() => {});
+
+    // ── Fire webhooks (non-blocking)
+    const { fireWebhooks } = require('../services/webhookService');
+    const whPayload = { applicationId: String(app._id), candidateName: wfBase.candidateName, jobTitle: wfBase.jobTitle, stage, recruiterName: req.user.name || req.user.email };
+    fireWebhooks(req.user.tenantId, 'application.stage_changed', whPayload).catch(() => {});
+    if (stage === 'Hired')    fireWebhooks(req.user.tenantId, 'application.hired',    whPayload).catch(() => {});
+    if (stage === 'Rejected') fireWebhooks(req.user.tenantId, 'application.rejected', whPayload).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 
@@ -1448,6 +1544,45 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
   res.json({ success: true, data: normalizeApp(app) });
 }));
 
+// GET /api/applications/scorecards?jobId=xxx — list all scorecard summaries for a job
+router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { jobId } = req.query;
+  if (!jobId) return res.status(400).json({ message: 'jobId required' });
+
+  const apps = await Application.find({ tenantId: req.user.tenantId, jobId, deletedAt: null })
+    .populate('candidateId', 'firstName lastName email')
+    .select('candidateId currentStage interviewRounds')
+    .lean();
+
+  const results = apps.map(app => ({
+    applicationId: app._id,
+    candidate: app.candidateId
+      ? `${app.candidateId.firstName || ''} ${app.candidateId.lastName || ''}`.trim() || app.candidateId.email
+      : 'Unknown',
+    currentStage: app.currentStage,
+    rounds: (app.interviewRounds || []).map((r, i) => ({
+      index          : i,
+      scheduledAt    : r.scheduledAt,
+      format         : r.format,
+      interviewerName: r.interviewerName,
+      hasFeedback    : !!(r.feedback?.submittedAt),
+      feedback       : r.feedback?.submittedAt ? {
+        rating              : r.feedback.rating,
+        technicalScore      : r.feedback.technicalScore,
+        communicationScore  : r.feedback.communicationScore,
+        problemSolvingScore : r.feedback.problemSolvingScore,
+        cultureFitScore     : r.feedback.cultureFitScore,
+        strengths           : r.feedback.strengths,
+        weaknesses          : r.feedback.weaknesses,
+        recommendation      : r.feedback.recommendation,
+        submittedAt         : r.feedback.submittedAt,
+      } : null,
+    })),
+  }));
+
+  res.json({ success: true, data: results });
+}));
+
 // POST /api/applications/:id/interview/:roundIndex/scorecard — submit interview scorecard
 router.post('/:id/interview/:roundIndex/scorecard', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
@@ -1484,6 +1619,28 @@ router.post('/:id/interview/:roundIndex/scorecard', ...guard,
   })
 );
 
+// POST /api/applications/:id/interview/:roundIndex/kit-scores — save structured kit scores
+router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter'),
+  asyncHandler(async (req, res) => {
+    const { kitScores } = req.body;
+    if (!Array.isArray(kitScores)) throw new AppError('kitScores array is required', 400);
+
+    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    if (!app) throw new AppError('Application not found.', 404);
+
+    const idx = parseInt(req.params.roundIndex, 10);
+    if (isNaN(idx) || idx < 0 || idx >= app.interviewRounds.length) {
+      throw new AppError('Invalid round index.', 400);
+    }
+
+    app.interviewRounds[idx].kitScores = kitScores;
+    app.markModified('interviewRounds');
+    await app.save();
+    res.json({ success: true, data: normalizeApp(app) });
+  })
+);
+
 // PATCH /api/applications/:id/park — toggle talent pool parking
 router.patch('/:id/park', ...guard, asyncHandler(async (req, res) => {
   const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
@@ -1515,16 +1672,45 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
     filter.tenantId = req.user.tenantId;
   }
 
-  const app = await Application.findOneAndUpdate(
-    filter,
-    { $set: { deletedAt: new Date(), status: 'withdrawn' } },
-    { new: true }
-  );
+  const withdrawalReason = req.body?.reason || '';
+  const update = {
+    deletedAt: new Date(),
+    status   : 'withdrawn',
+    ...(withdrawalReason ? { rejectionReason: withdrawalReason } : {}),
+  };
+  const app = await Application.findOneAndUpdate(filter, { $set: update }, { new: true });
   if (!app) throw new AppError('Application not found.', 404);
 
   await Job.findByIdAndUpdate(app.jobId, { $inc: { applicationCount: -1 } });
-  logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id });
+  logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id, reason: withdrawalReason });
   res.json({ success: true, message: 'Application withdrawn.' });
+}));
+
+// ── Public Application Status Tracker ────────────────────────────────────────
+// Returns a sanitized status snapshot for an applicant via a token link.
+router.get('/status/:token', asyncHandler(async (req, res) => {
+  const app = await Application.findOne({ statusToken: req.params.token, deletedAt: null })
+    .populate('jobId', 'title company companyName location jobType status')
+    .lean();
+  if (!app) return res.status(404).json({ message: 'Application not found or link expired.' });
+
+  const stages = (app.stageHistory || []).map(h => ({
+    stage  : h.stage,
+    movedAt: h.movedAt,
+  }));
+
+  res.json({
+    status       : app.status,
+    currentStage : app.currentStage,
+    stageHistory : stages,
+    createdAt    : app.createdAt,
+    job: {
+      title      : app.jobId?.title || '',
+      company    : app.jobId?.company || app.jobId?.companyName || '',
+      location   : app.jobId?.location || '',
+      type       : app.jobId?.jobType || '',
+    },
+  });
 }));
 
 module.exports = router;

@@ -73,6 +73,13 @@ const applicationSchema = new mongoose.Schema({
       submittedAt         : { type: Date },
     },
     calendarEventId: { type: String },
+    kitScores: [{
+      questionId : { type: mongoose.Schema.Types.ObjectId },
+      competency : { type: String },
+      question   : { type: String },
+      score      : { type: Number },
+      notes      : { type: String, default: '' },
+    }],
   }],
 
   offerLetterId: {
@@ -151,6 +158,9 @@ const applicationSchema = new mongoose.Schema({
     enum   : ['pending', 'sent', 'opened', 'interested', 'accepted', 'declined'],
     default: null,
   },
+
+  // Public status-tracker token (emailed to applicant at submission time)
+  statusToken: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 applicationSchema.index({ tenantId: 1 });

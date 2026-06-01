@@ -92,6 +92,9 @@ export const platformService = {
   async downloadOfferPreview(id)            { return downloadBlob(`/offers/${id}/pdf/preview`); },
   async generateOfferShareLink(id)          { return req('POST',  `/offers/${id}/generate-share-link`, {}); },
   async createStandaloneOffer(data)         { return req('POST',  '/offers/standalone', data); },
+  async requestOfferApproval(id, approvers) { const r = await req('POST', `/offers/${id}/request-approval`, { approvers }); return r?.data || r; },
+  async getOfferApprovalStatus(id)          { const r = await req('GET',  `/offers/${id}/approval-status`); return r?.data || r; },
+  async decideOfferApproval(id, token, action, comment) { const r = await req('POST', `/offers/${id}/decide-approval`, { token, action, comment }); return r?.data || r; },
   async getPreBoardingDocStatus()           { return req('GET',   '/preboarding/doc-status'); },
 
   // Interview scorecard
@@ -120,6 +123,7 @@ export const platformService = {
   async getAuditLogs(qs)               { return req('GET', `/platform/audit-logs${qs ? `?${qs}` : ''}`); },
   async getPlatformRevenue()           { return req('GET', '/platform/revenue'); },
   async getOrgHealth()                 { return req('GET', '/platform/org-health'); },
+  async getSystemHealth()              { const r = await req('GET', '/platform/system-health'); return r?.data || r; },
   async broadcastAnnouncement(data)    { return req('POST', '/platform/broadcast', data); },
 
   // Candidate requests
@@ -297,4 +301,64 @@ export const platformService = {
   async getEmployerSettings(tid)        { return req('GET',   `/distribution/employer-settings/${tid}`); },
   async saveEmployerSettings(tid, data) { return req('PATCH', `/distribution/employer-settings/${tid}`, data); },
   async runDeduplication()               { return req('POST',  '/admin/deduplicate-jobs', {}); },
+
+  // ── Video Job Description ─────────────────────────────────────────────────────
+  async uploadJobVideoJd(jobId, formData) {
+    const r = await uploadFormData('POST', `/jobs/${jobId}/video-jd`, formData);
+    return r?.data || r;
+  },
+  async deleteJobVideoJd(jobId) { return req('DELETE', `/jobs/${jobId}/video-jd`); },
+
+  // ── Referral Portal ───────────────────────────────────────────────────────────
+  async getReferrals()                   { const r = await req('GET', '/referrals'); return r?.data || r; },
+  async generateReferralLink(data)       { const r = await req('POST', '/referrals/generate', data); return r?.data || r; },
+  async getReferralStats()               { return req('GET', '/referrals/stats'); },
+  async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
+  async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
+
+  // ── Email Sequences ───────────────────────────────────────────────────────────
+  async getEmailSequences()                  { const r = await req('GET', '/email-sequences'); return r?.sequences || []; },
+  async createEmailSequence(data)            { const r = await req('POST', '/email-sequences', data); return r?.sequence || r; },
+  async updateEmailSequence(id, data)        { const r = await req('PATCH', `/email-sequences/${id}`, data); return r?.sequence || r; },
+  async deleteEmailSequence(id)              { return req('DELETE', `/email-sequences/${id}`); },
+  async enrollInSequence(seqId, candidateId) { return req('POST', `/email-sequences/${seqId}/enroll`, { candidateId }); },
+  async getSequenceEnrollments(seqId)        { const r = await req('GET', `/email-sequences/${seqId}/enrollments`); return r?.enrollments || []; },
+
+  // ── Saved Search Templates ────────────────────────────────────────────────────
+  async getSavedSearches(context)            { const r = await req('GET', `/saved-searches${context ? `?context=${context}` : ''}`); return r?.searches || []; },
+  async saveSearch(name, context, filters)   { const r = await req('POST', '/saved-searches', { name, context, filters }); return r?.search || r; },
+  async updateSavedSearch(id, data)          { const r = await req('PATCH', `/saved-searches/${id}`, data); return r?.search || r; },
+  async deleteSavedSearch(id)                { return req('DELETE', `/saved-searches/${id}`); },
+
+  // ── Onboarding Templates ─────────────────────────────────────────────────────
+  async getOnboardingTemplates()                       { const r = await req('GET', '/onboarding-templates'); return r?.templates || []; },
+  async createOnboardingTemplate(data)                 { const r = await req('POST', '/onboarding-templates', data); return r?.template || r; },
+  async updateOnboardingTemplate(id, data)             { const r = await req('PATCH', `/onboarding-templates/${id}`, data); return r?.template || r; },
+  async deleteOnboardingTemplate(id)                   { return req('DELETE', `/onboarding-templates/${id}`); },
+  async applyOnboardingTemplate(templateId, pbId)      { return req('POST', `/onboarding-templates/${templateId}/apply/${pbId}`, {}); },
+
+  // ── Talent Pool ───────────────────────────────────────────────────────────────
+  async getTalentPools()                         { const r = await req('GET', '/talent-pool'); return r?.pools || []; },
+  async createTalentPool(data)                   { const r = await req('POST', '/talent-pool', data); return r?.pool || r; },
+  async getTalentPool(id)                        { const r = await req('GET', `/talent-pool/${id}`); return r?.pool || r; },
+  async updateTalentPool(id, data)               { const r = await req('PATCH', `/talent-pool/${id}`, data); return r?.pool || r; },
+  async deleteTalentPool(id)                     { return req('DELETE', `/talent-pool/${id}`); },
+  async addTalentPoolMember(poolId, data)        { return req('POST', `/talent-pool/${poolId}/members`, data); },
+  async removeTalentPoolMember(poolId, candId)   { return req('DELETE', `/talent-pool/${poolId}/members/${candId}`); },
+  async updateTalentPoolMemberNotes(poolId, candId, notes) {
+    return req('PATCH', `/talent-pool/${poolId}/members/${candId}`, { notes });
+  },
+
+  // ── Rejection Templates ───────────────────────────────────────────────────────
+  async getRejectionTemplates(stage)    { const r = await req('GET', `/rejection-templates${stage ? `?stage=${stage}` : ''}`); return r?.data || []; },
+  async createRejectionTemplate(data)   { const r = await req('POST', '/rejection-templates', data); return r?.data || r; },
+  async updateRejectionTemplate(id, d)  { const r = await req('PATCH', `/rejection-templates/${id}`, d); return r?.data || r; },
+  async deleteRejectionTemplate(id)     { return req('DELETE', `/rejection-templates/${id}`); },
+
+  // ── Headcount Plans ───────────────────────────────────────────────────────────
+  async getHeadcountPlans()             { const r = await req('GET', '/headcount-plans'); return r?.data || []; },
+  async createHeadcountPlan(data)       { const r = await req('POST', '/headcount-plans', data); return r?.data || r; },
+  async getHeadcountPlan(id)            { const r = await req('GET', `/headcount-plans/${id}`); return r?.data || r; },
+  async updateHeadcountPlan(id, data)   { const r = await req('PATCH', `/headcount-plans/${id}`, data); return r?.data || r; },
+  async deleteHeadcountPlan(id)         { return req('DELETE', `/headcount-plans/${id}`); },
 };

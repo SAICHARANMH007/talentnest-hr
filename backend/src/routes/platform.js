@@ -312,4 +312,95 @@ router.post('/broadcast', auth, allowRoles('super_admin'), asyncHandler(async (r
   res.json({ success: true, data: { total: admins.length, sent, failed } });
 }));
 
+// ── GET /api/platform/system-health — real-time platform health ─────────────
+router.get('/system-health', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const mongoose = require('mongoose');
+  const os       = require('os');
+  const start    = Date.now();
+
+  // DB connectivity
+  let dbStatus = 'ok', dbLatencyMs = 0;
+  try {
+    const dbStart = Date.now();
+    await mongoose.connection.db.admin().ping();
+    dbLatencyMs = Date.now() - dbStart;
+  } catch { dbStatus = 'error'; }
+
+  // Count some key collections for sanity
+  let dbStats = {};
+  try {
+    const [orgs, users, jobs, apps] = await Promise.all([
+      require('../models/Organization').countDocuments(),
+      require('../models/User').countDocuments({ deletedAt: null }),
+      require('../models/Job').countDocuments({ deletedAt: null }),
+      require('../models/Application').countDocuments({ deletedAt: null }),
+    ]);
+    dbStats = { orgs, users, jobs, applications: apps };
+  } catch {}
+
+  // Memory
+  const memTotal = os.totalmem();
+  const memFree  = os.freemem();
+  const memUsedPct = Math.round(((memTotal - memFree) / memTotal) * 100);
+
+  // Process memory
+  const procMem = process.memoryUsage();
+
+  // Uptime
+  const uptimeSecs = process.uptime();
+  const uptimeStr  = (() => {
+    const h = Math.floor(uptimeSecs / 3600);
+    const m = Math.floor((uptimeSecs % 3600) / 60);
+    const s = Math.floor(uptimeSecs % 60);
+    return `${h}h ${m}m ${s}s`;
+  })();
+
+  // Environment checks
+  const envChecks = {
+    mongoUri       : !!process.env.MONGO_URI,
+    jwtSecret      : !!process.env.JWT_SECRET,
+    frontendUrl    : !!process.env.FRONTEND_URL,
+    resendApiKey   : !!process.env.RESEND_API_KEY,
+    vapidPublicKey : !!process.env.VAPID_PUBLIC_KEY,
+    vapidPrivateKey: !!process.env.VAPID_PRIVATE_KEY,
+  };
+
+  // Node version & environment
+  const nodeVersion = process.version;
+  const nodeEnv     = process.env.NODE_ENV || 'development';
+
+  const responseTime = Date.now() - start;
+
+  res.json({
+    success: true,
+    data: {
+      timestamp  : new Date().toISOString(),
+      status     : dbStatus === 'ok' ? 'healthy' : 'degraded',
+      responseTime: `${responseTime}ms`,
+      uptime     : uptimeStr,
+      nodeVersion,
+      nodeEnv,
+      database: {
+        status    : dbStatus,
+        latencyMs : dbLatencyMs,
+        readyState: mongoose.connection.readyState, // 1 = connected
+        stats     : dbStats,
+      },
+      memory: {
+        systemUsedPct: memUsedPct,
+        systemTotalMB: Math.round(memTotal / 1024 / 1024),
+        heapUsedMB   : Math.round(procMem.heapUsed / 1024 / 1024),
+        heapTotalMB  : Math.round(procMem.heapTotal / 1024 / 1024),
+        rssM         : Math.round(procMem.rss / 1024 / 1024),
+      },
+      envChecks,
+      services: {
+        email : envChecks.resendApiKey ? 'configured' : 'using_shared',
+        push  : (envChecks.vapidPublicKey && envChecks.vapidPrivateKey) ? 'configured' : 'not_configured',
+        database: dbStatus,
+      },
+    },
+  });
+}));
+
 module.exports = router;

@@ -75,9 +75,9 @@ function PageLoader() {
 
 // ── Nav definitions ────────────────────────────────────────────────────────────
 const NAVS = {
-  candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"job-match",icon:"🎯",label:"Job Match"},{id:"applications",icon:"📋",label:"My Applications"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"background-verification",icon:"🛡️",label:"BGV Documents"},{id:"profile",icon:"👤",label:"My Profile"}],
+  candidate:  [{id:"dashboard",icon:"🏠",label:"Dashboard"},{id:"job-match",icon:"🎯",label:"Job Match"},{id:"applications",icon:"📋",label:"My Applications"},{id:"offer-comparison",icon:"⚖️",label:"Offer Comparison"},{id:"job-alerts",icon:"🔔",label:"Job Alerts"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"background-verification",icon:"🛡️",label:"BGV Documents"},{id:"profile",icon:"👤",label:"My Profile"}],
   recruiter:  [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"jobs",icon:"💼",label:"My Jobs"},{id:"candidates",icon:"🧑‍💼",label:"My Candidates"},{id:"assigned-candidates",icon:"🎯",label:"Assigned to Me"},{id:"talent-match",icon:"🎯",label:"Talent Match"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"talent-pool",icon:"🅿️",label:"Talent Pool"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"offers",icon:"📄",label:"Offers"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"profile",icon:"👤",label:"My Profile"}],
-  admin:      [{id:"analytics",icon:"📈",label:"Overview"},{id:"insights",icon:"🔍",label:"Insights"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"assigned-candidates",icon:"🎯",label:"Assignments"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"org-chart",icon:"🏢",label:"Org Chart"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"🎛️",label:"Customizations"},{id:"org-settings",icon:"⚙️",label:"Org Settings"},{id:"billing",icon:"💳",label:"Billing"},{id:"profile",icon:"👤",label:"My Profile"}],
+  admin:      [{id:"analytics",icon:"📈",label:"Overview"},{id:"insights",icon:"🔍",label:"Insights"},{id:"applicants",icon:"📇",label:"Applicants"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"candidates",icon:"👤",label:"Candidates"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"assigned-candidates",icon:"🎯",label:"Assignments"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"org-chart",icon:"🏢",label:"Org Chart"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"interview-kits",icon:"📋",label:"Interview Kits"},{id:"webhooks",icon:"🔗",label:"Webhooks"},{id:"diversity",icon:"⚖️",label:"Diversity"},{id:"reviews",icon:"⭐",label:"Reviews"},{id:"referrals",icon:"👥",label:"Referrals"},{id:"talent-pool",icon:"🏊",label:"Talent Pool"},{id:"nps-dashboard",icon:"🌟",label:"NPS"},{id:"time-to-fill",icon:"⏱️",label:"Time to Fill"},{id:"duplicate-merge",icon:"🔀",label:"Merge Duplicates"},{id:"sourcing-tracker",icon:"📡",label:"Sourcing Tracker"},{id:"rejection-templates",icon:"📝",label:"Rejection Templates"},{id:"offer-letter-builder",icon:"📜",label:"Offer Letter Builder"},{id:"dashboard-widgets",icon:"🧩",label:"Dashboard Widgets"},{id:"headcount-planner",icon:"👥",label:"Headcount Planner"},{id:"sla-alerts",icon:"🚨",label:"SLA Alerts"},{id:"custom-stages",icon:"🔄",label:"Custom Stages"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"🎛️",label:"Customizations"},{id:"org-settings",icon:"⚙️",label:"Org Settings"},{id:"billing",icon:"💳",label:"Billing"},{id:"profile",icon:"👤",label:"My Profile"}],
   superadmin: [{id:"analytics",icon:"📈",label:"Overview"},{id:"candidates",icon:"👤",label:"Registered Users"},{id:"unregistered-candidates",icon:"🕵️",label:"Guest Applicants"},{id:"all-candidates",icon:"🗂️",label:"Candidate Database"},{id:"applicants",icon:"📄",label:"Application Records"},{id:"platform",icon:"🌐",label:"Platform"},{id:"organisations",icon:"🏢",label:"Organisations"},{id:"job-approvals",icon:"✅",label:"Job Approvals"},{id:"billing",icon:"💳",label:"Billing"},{id:"security",icon:"🛡️",label:"Security"},{id:"permissions",icon:"🔐",label:"Permissions"},{id:"import-candidates",icon:"📥",label:"Import & Assign"},{id:"recruiters",icon:"🧑‍💼",label:"Recruiters"},{id:"admins",icon:"🔑",label:"Admins"},{id:"jobs",icon:"💼",label:"All Jobs"},{id:"assessments",icon:"📝",label:"Assessments"},{id:"onboarding",icon:"🎯",label:"Pre-boarding"},{id:"bgv-tracker",icon:"🛡️",label:"BGV Tracker"},{id:"automation",icon:"⚡",label:"Automation"},{id:"customizations",icon:"⚙️",label:"Customizations"},{id:"outreach",icon:"📣",label:"Outreach"},{id:"contact-leads",icon:"📞",label:"Contact Enquiries"},{id:"candidate-requests",icon:"📨",label:"Candidate Requests"},{id:"playbooks",icon:"📚",label:"Playbooks"},{id:"blogs",icon:"✍️",label:"Blog Manager"},{id:"profile",icon:"👤",label:"My Profile"}],
   client:     [{id:"dashboard",icon:"🏢",label:"Dashboard"},{id:"shortlists",icon:"🌟",label:"Shortlists"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"placements",icon:"🏆",label:"Placements"},{id:"profile",icon:"👤",label:"My Profile"}],
   hiring_manager: [{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"pipeline",icon:"🔄",label:"Pipeline"},{id:"interviews",icon:"📅",label:"Interviews"},{id:"profile",icon:"👤",label:"My Profile"}],
@@ -192,6 +192,18 @@ function NotificationBell({ userRole, compact = false }) {
     load();
     const iv = setInterval(load, 30000);
     return () => clearInterval(iv);
+  }, [load]);
+
+  // Real-time: reload immediately when a stage change fires (dispatched by Layout's socket handler)
+  const [bellFlash, setBellFlash] = React.useState(false);
+  React.useEffect(() => {
+    const handler = () => {
+      load();
+      setBellFlash(true);
+      setTimeout(() => setBellFlash(false), 1500);
+    };
+    window.addEventListener('tn:stageChanged', handler);
+    return () => window.removeEventListener('tn:stageChanged', handler);
   }, [load]);
 
   const unread = notifs.filter(n => !n.read).length;
@@ -496,8 +508,10 @@ function NotificationBell({ userRole, compact = false }) {
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
         style={{ background: open ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer', color: '#FFFFFF', fontSize: compact ? 14 : 16, position: 'relative', padding: 0, transition: 'all 0.15s', width: iconButtonSize, minWidth: iconButtonSize, height: iconButtonSize, minHeight: iconButtonSize, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
       >
-        <AppIcon name="bell" size={compact ? 16 : 18} />
-        {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
+        <span style={{ display: 'inline-flex', animation: bellFlash ? 'tn-bell-ring 0.4s ease 3' : 'none' }}>
+          <AppIcon name="bell" size={compact ? 16 : 18} />
+        </span>
+        {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px', animation: bellFlash ? 'tn-badge-pop 0.3s ease' : 'none' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
       {/* Notification panel */}
@@ -1038,6 +1052,8 @@ export default function Layout({ user, onLogout }) {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @keyframes pulse-dot { 0%,80%,100% { transform: scale(0.6); opacity: 0.4 } 40% { transform: scale(1); opacity: 1 } }
+        @keyframes tn-bell-ring { 0%,100% { transform: rotate(0deg) } 20% { transform: rotate(-15deg) } 40% { transform: rotate(15deg) } 60% { transform: rotate(-10deg) } 80% { transform: rotate(8deg) } }
+        @keyframes tn-badge-pop { 0% { transform: scale(1) } 50% { transform: scale(1.4) } 100% { transform: scale(1) } }
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }

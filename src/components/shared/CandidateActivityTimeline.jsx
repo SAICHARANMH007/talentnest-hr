@@ -119,6 +119,16 @@ function TimelineEntry({ ev, recruiterHistory, isLast }) {
             </a>
           </div>
         )}
+        {/* Kit scores summary */}
+        {ev.kitScores?.length > 0 && (
+          <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {ev.kitScores.map((ks, ki) => (
+              <span key={ki} style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 600 }}>
+                {ks.competency}: {ks.score || 0}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -146,6 +156,7 @@ export default function CandidateActivityTimeline({ app, recruiterHistory = [] }
           format: r.format,
           interviewerName: r.interviewerName || null,
           videoLink: r.videoLink || null,
+          kitScores: r.kitScores || [],
         });
       }
     });

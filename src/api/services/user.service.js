@@ -81,6 +81,10 @@ export const userService = {
   async assignCandidate(id, recruiterId) { return req('PATCH', `/users/${id}/assign`, { recruiterId }); },
   async mergeUsers(primaryId, duplicateId) { return req('POST', '/users/merge', { primaryId, duplicateId }); },
   async mergeCandidates(payload) { return req('POST', '/candidates/merge', payload); },
+  async findDuplicateCandidates() {
+    const r = await req('GET', '/candidates/find-duplicates');
+    return r?.data || [];
+  },
   async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); },
 
   // Candidate-model (separate from User model) — used by pipeline/application populate
@@ -90,6 +94,10 @@ export const userService = {
   },
   async updateCandidate(id, data) {
     const r = await req('PATCH', `/candidates/${id}`, data);
+    return r?.data || r;
+  },
+  async getCandidateFullTimeline(id) {
+    const r = await req('GET', `/candidates/${id}/full-timeline`);
     return r?.data || r;
   },
 

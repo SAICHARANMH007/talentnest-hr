@@ -271,7 +271,7 @@ export default function CareersPage() {
               title:       j.title,
               description: j.description || `${j.title} opening at ${company}.`,
               datePosted:  j.createdAt || new Date().toISOString(),
-              validThrough: new Date(Date.now() + 60 * 864e5).toISOString(),
+              validThrough: j.applicationDeadline ? new Date(j.applicationDeadline).toISOString() : new Date(Date.now() + 60 * 864e5).toISOString(),
               hiringOrganization: { '@type': 'Organization', name: company, sameAs: BASE },
               employmentType: 'FULL_TIME',
               jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: j.location || 'India', addressCountry: 'IN' } },
@@ -585,6 +585,15 @@ export default function CareersPage() {
                               🌐 External Opening
                             </span>
                           )}
+                          {j.applicationDeadline && (() => {
+                            const dl   = new Date(j.applicationDeadline);
+                            const diff = Math.ceil((dl - Date.now()) / 86400000);
+                            const color = diff <= 3 ? '#BA0517' : '#F59E0B';
+                            const bg    = diff <= 3 ? 'rgba(186,5,23,0.1)' : 'rgba(245,158,11,0.1)';
+                            const bdr   = diff <= 3 ? 'rgba(186,5,23,0.3)' : 'rgba(245,158,11,0.3)';
+                            const label = diff <= 0 ? 'Deadline passed' : diff === 1 ? 'Closes tomorrow' : diff <= 3 ? `Closes in ${diff} days` : `Apply by ${dl.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}`;
+                            return <span style={{ background: bg, color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 50, border: `1px solid ${bdr}` }}>📅 {label}</span>;
+                          })()}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>

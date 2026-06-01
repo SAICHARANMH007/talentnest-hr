@@ -118,6 +118,7 @@ const PERIODS = [
   { label: 'Last 30 days', days: 30 },
   { label: 'Last 90 days', days: 90 },
   { label: 'All time',     days: null },
+  { label: 'Custom',       days: -1 },
 ];
 
 const SOURCE_COLORS = {
@@ -945,10 +946,25 @@ export default function AdminAnalytics({ user, onNavigate }) {
             style={{ padding: '7px 16px', borderRadius: 10, border: '2px solid #E2E8F0', background: '#fff', color: '#7c3aed', fontSize: 12, fontWeight: 800, cursor: exporting.applicants ? 'wait' : 'pointer', whiteSpace: 'nowrap', opacity: exporting.applicants ? 0.6 : 1 }}>
             {exporting.applicants ? 'Exporting…' : '⬇ Export Applicants Excel'}
           </button>
-          <div style={{ display: 'flex', background: 'rgba(1,118,211,0.06)', padding: 4, borderRadius: 14, flexWrap: 'wrap', gap: 2 }}>
-            {PERIODS.map((p, i) => (
-              <button key={i} onClick={() => setPeriod(i)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: period === i ? '#0176D3' : 'transparent', color: period === i ? '#fff' : '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{p.label}</button>
-            ))}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', background: 'rgba(1,118,211,0.06)', padding: 4, borderRadius: 14, flexWrap: 'wrap', gap: 2 }}>
+              {PERIODS.map((p, i) => (
+                <button key={i} onClick={() => setPeriod(i)} style={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: period === i ? '#0176D3' : 'transparent', color: period === i ? '#fff' : '#0176D3', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{p.label}</button>
+              ))}
+            </div>
+            {/* Custom date range inputs — shown only when Custom is selected */}
+            {PERIODS[period]?.days === -1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} max={endDate}
+                  style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(1,118,211,0.3)', fontSize:12, color:'#181818', outline:'none', background:'#fff' }} />
+                <span style={{ color:'#9CA3AF', fontSize:12 }}>to</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} max={new Date().toISOString().split('T')[0]}
+                  style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(1,118,211,0.3)', fontSize:12, color:'#181818', outline:'none', background:'#fff' }} />
+                <button onClick={applyFilter} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#0176D3', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Apply</button>
+                {appliedStart !== startDate || appliedEnd !== endDate ? null :
+                  <span style={{ fontSize:11, color:'#10B981', fontWeight:600 }}>✓ {appliedStart} → {appliedEnd}</span>}
+              </div>
+            )}
           </div>
         </div>
       </div>

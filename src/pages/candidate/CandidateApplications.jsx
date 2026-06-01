@@ -113,6 +113,7 @@ export default function CandidateApplications({ user }) {
   const [loading, setLoad]        = useState(true);
   const [withdrawing, setWith]    = useState({});
   const [confirmId, setConfirm]   = useState(null);
+  const [withdrawReason, setWithdrawReason] = useState('');
   const [toast, setToast]         = useState('');
   const [assessments, setAssessments] = useState({});  // jobId → assessment
   const [mySubmissions, setMySubs]    = useState({});  // assessmentId → submission
@@ -165,7 +166,8 @@ export default function CandidateApplications({ user }) {
     setConfirm(null);
     setWith(p => ({ ...p, [appId]: true }));
     try {
-      await api.withdrawApplication(appId);
+      await api.withdrawApplication(appId, withdrawReason);
+      setWithdrawReason('');
       setApps(prev => {
         const next = prev.filter(a => (a.id || a._id) !== appId);
         // Reset filter if the current filtered view becomes empty
@@ -344,15 +346,28 @@ export default function CandidateApplications({ user }) {
           {/* Withdraw confirmation modal */}
           {confirmId && (
             <div className="tn-drill-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-              <div className="tn-confirm-modal" style={{ background: '#fff', borderRadius: 20, maxWidth: 400, width: '100%', maxHeight: 'calc(100dvh - 48px)', display: 'flex', flexDirection: 'column', textAlign: 'center', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
-                <div style={{ background: 'linear-gradient(135deg,#BA0517,#9B0514)', padding: '20px 24px' }}>
+              <div className="tn-confirm-modal" style={{ background: '#fff', borderRadius: 20, maxWidth: 420, width: '100%', maxHeight: 'calc(100dvh - 48px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
+                <div style={{ background: 'linear-gradient(135deg,#BA0517,#9B0514)', padding: '20px 24px', textAlign: 'center' }}>
                   <div style={{ fontSize: 32, marginBottom: 6 }}>⚠️</div>
                   <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 800, margin: 0 }}>Withdraw Application?</h3>
                 </div>
                 <div style={{ padding: '20px 24px 24px' }}>
-                  <p style={{ color: '#374151', fontSize: 13, margin: '0 0 20px', lineHeight: 1.6 }}>This action cannot be undone. You will be removed from the hiring process for this position.</p>
+                  <p style={{ color: '#374151', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>This action cannot be undone. You will be removed from the hiring process for this position.</p>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', display: 'block', marginBottom: 6 }}>Reason for withdrawing (optional)</label>
+                    <select value={withdrawReason} onChange={e => setWithdrawReason(e.target.value)} style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}>
+                      <option value="">Select a reason…</option>
+                      <option value="Accepted another offer">Accepted another offer</option>
+                      <option value="Role not a fit">Role not a fit</option>
+                      <option value="Salary expectations not met">Salary expectations not met</option>
+                      <option value="Location / remote policy">Location / remote policy</option>
+                      <option value="Applied by mistake">Applied by mistake</option>
+                      <option value="Personal reasons">Personal reasons</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => setConfirm(null)} style={{ flex: 1, background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#374151', fontSize: 13, fontWeight: 600, padding: '10px 0', cursor: 'pointer' }}>Keep Application</button>
+                    <button onClick={() => { setConfirm(null); setWithdrawReason(''); }} style={{ flex: 1, background: '#F8FAFF', border: '1.5px solid #E2E8F0', borderRadius: 10, color: '#374151', fontSize: 13, fontWeight: 600, padding: '10px 0', cursor: 'pointer' }}>Keep Application</button>
                     <button onClick={() => handleWithdraw(confirmId)} style={{ flex: 1, background: 'linear-gradient(135deg,#BA0517,#9B0514)', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 0', cursor: 'pointer' }}>Yes, Withdraw</button>
                   </div>
                 </div>
@@ -449,6 +464,40 @@ export default function CandidateApplications({ user }) {
                     {/* Pipeline Stepper */}
                     <ApplicationStepper app={a} />
 
+                    {/* Resume Match Score Feedback */}
+                    {(a.talentMatchScore != null || a.matchBreakdown) && (() => {
+                      const score = a.talentMatchScore ?? 0;
+                      const bd    = a.matchBreakdown || {};
+                      const color = score >= 75 ? '#059669' : score >= 50 ? '#D97706' : '#DC2626';
+                      const label = score >= 75 ? 'Strong Match' : score >= 50 ? 'Good Match' : 'Partial Match';
+                      const items = [
+                        { k: 'Skills',     v: bd.skillScore },
+                        { k: 'Experience', v: bd.experienceScore },
+                        { k: 'Location',   v: bd.locationScore },
+                      ].filter(x => x.v != null);
+                      return (
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: `${color}0d`, borderRadius: 10, border: `1px solid ${color}33` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: items.length ? 8 : 0 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color }}>🎯 Resume Match — {label}</span>
+                            <span style={{ fontSize: 18, fontWeight: 900, color }}>{Math.round(score)}%</span>
+                          </div>
+                          {items.length > 0 && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              {items.map(item => (
+                                <div key={item.k} style={{ flex: 1, minWidth: 70 }}>
+                                  <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 2 }}>{item.k}</div>
+                                  <div style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                                    <div style={{ width: `${Math.min(100, item.v)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.6s' }} />
+                                  </div>
+                                  <div style={{ fontSize: 10, color, fontWeight: 700, marginTop: 2 }}>{Math.round(item.v)}%</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Assigned Recruiter — shown when the job has a recruiter assigned */}
                     {(() => {
                       const recruiters = a.job?.assignedRecruiters || a.jobId?.assignedRecruiters || [];
@@ -469,6 +518,28 @@ export default function CandidateApplications({ user }) {
                               ✉ {rec.email}
                             </a>
                           )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Interview Prep Tips */}
+                    {(a.stage === 'interview_scheduled') && (() => {
+                      const jobSkills = a.jobId?.skills || a.job?.skills || [];
+                      const tips = [
+                        `Review fundamentals of: ${jobSkills.slice(0, 3).join(', ') || 'your key skills'}`,
+                        'Research the company — values, products, recent news',
+                        'Prepare 2–3 examples using the STAR method (Situation, Task, Action, Result)',
+                        'Have questions ready to ask the interviewer',
+                        'Test your audio/video if it\'s a virtual interview',
+                      ];
+                      return (
+                        <div style={{ marginTop: 10, padding: '12px 14px', background: 'rgba(139,92,246,0.06)', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)' }}>
+                          <p style={{ color: '#7C3AED', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>💡 Interview Prep Tips</p>
+                          <ul style={{ margin: 0, paddingLeft: 16 }}>
+                            {tips.map((t, i) => (
+                              <li key={i} style={{ color: '#374151', fontSize: 12, marginBottom: 4, lineHeight: 1.5 }}>{t}</li>
+                            ))}
+                          </ul>
                         </div>
                       );
                     })()}

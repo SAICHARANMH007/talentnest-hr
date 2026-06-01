@@ -49,10 +49,10 @@ const guard = [authMiddleware, tenantGuard];
 // ── PUBLIC — optimised for high traffic (millions of requests) ───────────────
 // Only select fields needed by the public job board — reduces payload ~60%.
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
-const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline';
 // Lean variant strips heavy text fields (description/requirements/benefits) — used by
 // the candidate matching pool fetch where only scoring fields are needed (~70% smaller).
-const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline';
 
 // ── PUBLIC: fetch one job by ID (for shared links — no auth) ─────────────────
 router.get('/public/single/:id', asyncHandler(async (req, res) => {
@@ -73,8 +73,16 @@ router.get('/public', asyncHandler(async (req, res) => {
   const requestedLimit = parseInt(req.query.limit) || 100;
   const limit = Math.min(requestedLimit, 10000); // Production Standard: High-capacity pool for 100% result visibility
   const { page, skip } = getPagination(req, { limit });
-  // Career portal: show active jobs that are non-deleted
-  const filter = { status: 'active', deletedAt: null };
+  // Career portal: show active, non-deleted jobs that haven't passed their deadline
+  const filter = {
+    status  : 'active',
+    deletedAt: null,
+    $and: [{ $or: [
+      { applicationDeadline: null },
+      { applicationDeadline: { $exists: false } },
+      { applicationDeadline: { $gte: new Date() } },
+    ]}],
+  };
 
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;
@@ -649,16 +657,21 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
-  const jobs = await Job.find({
-    tenantId: org._id,
-    isPublic: true,
-    status: 'active',
-    deletedAt: null,
-  }).select('title company companyName location jobType experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency careerPageSlug externalUrl createdAt numberOfOpenings').sort({ createdAt: -1 }).lean();
+  const [jobs, orgCustom] = await Promise.all([
+    Job.find({
+      tenantId: org._id,
+      isPublic: true,
+      status: 'active',
+      deletedAt: null,
+    }).select('title company companyName location jobType experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency careerPageSlug externalUrl createdAt numberOfOpenings applicationDeadline').sort({ createdAt: -1 }).lean(),
+    require('../models/OrgCustomizations').findOne({ orgId: org._id }).select('employerBrand brandColors').lean(),
+  ]);
 
   res.json({
     success: true,
     org: { name: org.name, logoUrl: org.logoUrl, slug: req.params.orgSlug },
+    employerBrand: orgCustom?.employerBrand || {},
+    brandColors: orgCustom?.brandColors || {},
     data: jobs.map(normalizeJob),
   });
 }));
@@ -842,6 +855,69 @@ router.post('/redistribute', ...guard, allowRoles('admin', 'super_admin'), async
 
   logger.audit('Jobs redistributed', req.user.id, tid, { total: jobs.length, recruiters: recruiters.length });
   res.json({ success: true, total: jobs.length, summary });
+}));
+
+// ── POST /api/jobs/:id/video-jd — upload a video job description to Cloudinary
+router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const multer     = require('multer');
+  const cloudinary = require('cloudinary').v2;
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  const job = await Job.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
+  if (!job) throw new AppError('Job not found.', 404);
+
+  // Parse the multipart form
+  await new Promise((resolve, reject) => {
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+      fileFilter: (_, f, cb) => f.mimetype.startsWith('video/') ? cb(null, true) : cb(new Error('Only video files allowed')),
+    }).single('video');
+    upload(req, res, err => err ? reject(err) : resolve());
+  });
+
+  if (!req.file) throw new AppError('Video file required.', 400);
+
+  const uploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: 'video', folder: 'job-videos', transformation: [{ quality: 'auto' }] },
+      (err, result) => err ? reject(err) : resolve(result)
+    );
+    stream.end(req.file.buffer);
+  });
+
+  job.videoJdUrl = uploadResult.secure_url;
+  await job.save();
+
+  res.json({ success: true, data: { videoJdUrl: uploadResult.secure_url } });
+}));
+
+// PATCH /api/jobs/:id/custom-stages — set custom hiring stages for this job
+router.patch('/:id/custom-stages', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { stages } = req.body;
+  if (!Array.isArray(stages)) throw new AppError('stages must be an array.', 400);
+  const job = await Job.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    { $set: { customStages: stages } },
+    { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
+  res.json({ success: true, data: job.customStages });
+}));
+
+// ── DELETE /api/jobs/:id/video-jd — remove video JD
+router.delete('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const job = await Job.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.tenantId, deletedAt: null },
+    { $set: { videoJdUrl: '' } }, { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
+  res.json({ success: true });
 }));
 
 module.exports = router;

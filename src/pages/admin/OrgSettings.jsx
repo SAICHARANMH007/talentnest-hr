@@ -155,6 +155,10 @@ export default function OrgSettings({ user }) {
   const [savingTpl, setSavingTpl]       = useState(false);
   const [applyingTpl, setApplyingTpl]   = useState('');
 
+  // Employer Brand
+  const [brandForm, setBrandForm] = useState({ tagline: '', about: '', culture: '', mission: '', website: '', linkedIn: '', twitter: '', instagram: '', bannerImageUrl: '', perks: [], testimonials: [], techStack: [], accentColor: '#0176D3' });
+  const [savingBrand, setSavingBrand] = useState(false);
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
@@ -181,6 +185,11 @@ export default function OrgSettings({ user }) {
       try {
         const tr = await api.getPipelineTemplates();
         if (tr?.data) setTemplates(tr.data);
+      } catch {}
+      // Load employer brand
+      try {
+        const cr = await api.getCustomizations();
+        if (cr?.data?.employerBrand) setBrandForm(prev => ({ ...prev, ...cr.data.employerBrand }));
       } catch {}
       // Load team members for org chart (admins + recruiters in this org)
       try {
@@ -236,6 +245,16 @@ export default function OrgSettings({ user }) {
       load();
     } catch (e) { setError(e.message); }
     setSaving(false);
+  };
+
+  const saveBrand = async () => {
+    setSavingBrand(true);
+    try {
+      await api.updateCustomizationsSingleton({ employerBrand: brandForm });
+      setSuccess('Employer brand saved!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (e) { setError(e.message); }
+    setSavingBrand(false);
   };
 
   const addStage = () => {
@@ -597,7 +616,90 @@ export default function OrgSettings({ user }) {
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
+
+        {/* ── EMPLOYER BRAND SECTION ──────────────────────────────────────── */}
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: '24px 28px', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111827' }}>🏢 Employer Brand Page</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Shown on your public careers page to attract top talent.</p>
+            </div>
+            <button onClick={saveBrand} disabled={savingBrand} style={{ background: '#7C3AED', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, padding: '9px 20px', cursor: 'pointer', opacity: savingBrand ? 0.7 : 1 }}>
+              {savingBrand ? 'Saving…' : 'Save Brand'}
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            <div>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Tagline</label>
+              <input value={brandForm.tagline} onChange={e => setBrandForm(p => ({ ...p, tagline: e.target.value }))} placeholder="We build the future together" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Accent Color</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="color" value={brandForm.accentColor} onChange={e => setBrandForm(p => ({ ...p, accentColor: e.target.value }))} style={{ width: 40, height: 34, borderRadius: 8, border: '1px solid #E2E8F0', cursor: 'pointer', padding: 2 }} />
+                <input value={brandForm.accentColor} onChange={e => setBrandForm(p => ({ ...p, accentColor: e.target.value }))} style={{ flex: 1, padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+              </div>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>About Us</label>
+              <textarea value={brandForm.about} onChange={e => setBrandForm(p => ({ ...p, about: e.target.value }))} rows={3} placeholder="Brief description of your company…" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical' }} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Culture</label>
+              <textarea value={brandForm.culture} onChange={e => setBrandForm(p => ({ ...p, culture: e.target.value }))} rows={2} placeholder="How do you work? Remote/hybrid? Values?" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical' }} />
+            </div>
+            <div><label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Website</label><input value={brandForm.website} onChange={e => setBrandForm(p => ({ ...p, website: e.target.value }))} placeholder="https://yourcompany.com" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} /></div>
+            <div><label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>LinkedIn</label><input value={brandForm.linkedIn} onChange={e => setBrandForm(p => ({ ...p, linkedIn: e.target.value }))} placeholder="https://linkedin.com/company/..." style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} /></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Banner Image URL (optional)</label>
+              <input value={brandForm.bannerImageUrl} onChange={e => setBrandForm(p => ({ ...p, bannerImageUrl: e.target.value }))} placeholder="https://cdn.yoursite.com/banner.jpg" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Perks */}
+          <div style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 700 }}>Perks & Benefits</label>
+              <button onClick={() => setBrandForm(p => ({ ...p, perks: [...p.perks, { title: '', description: '' }] }))} style={{ background: 'rgba(124,58,237,0.08)', border: '1px dashed #7C3AED', borderRadius: 8, color: '#7C3AED', fontSize: 11, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>+ Add Perk</button>
+            </div>
+            {brandForm.perks.map((p, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input value={p.title} onChange={e => setBrandForm(prev => ({ ...prev, perks: prev.perks.map((x, j) => j === i ? { ...x, title: e.target.value } : x) }))} placeholder="Perk title" style={{ flex: 1, padding: '7px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, outline: 'none' }} />
+                <input value={p.description} onChange={e => setBrandForm(prev => ({ ...prev, perks: prev.perks.map((x, j) => j === i ? { ...x, description: e.target.value } : x) }))} placeholder="Description" style={{ flex: 2, padding: '7px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, outline: 'none' }} />
+                <button onClick={() => setBrandForm(prev => ({ ...prev, perks: prev.perks.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 16, cursor: 'pointer' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* ── JOB WIDGET EMBED ────────────────────────────────────────────── */}
+      {org?.slug && (() => {
+        const SITE = (typeof window !== 'undefined' ? window.location.origin : 'https://www.talentnesthr.com');
+        const careerUrl = `${SITE}/careers/${org.slug}`;
+        const iframeSnippet = `<iframe\n  src="${careerUrl}?embed=1"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="${org.name || 'Open Positions'} — Careers"\n  style="border:none;border-radius:12px;"\n  allow="geolocation"\n></iframe>`;
+        const copyToClipboard = (text) => { navigator.clipboard?.writeText(text).catch(() => {}); };
+        return (
+          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginTop: 24 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800 }}>🔗 Job Widget Embed</h2>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280' }}>Embed your live job listings on your company website. It updates automatically when you add or close jobs.</p>
+            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '14px 16px', marginBottom: 12, border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Career Page URL</span>
+                <button onClick={() => copyToClipboard(careerUrl)} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: '#EFF6FF', color: '#1D4ED8', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
+              </div>
+              <code style={{ fontSize: 12, color: '#1D4ED8', wordBreak: 'break-all' }}>{careerUrl}</code>
+            </div>
+            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>HTML Embed Code (iframe)</span>
+                <button onClick={() => copyToClipboard(iframeSnippet)} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: '#EFF6FF', color: '#1D4ED8', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Copy Code</button>
+              </div>
+              <pre style={{ fontSize: 11, color: '#374151', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>{iframeSnippet}</pre>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

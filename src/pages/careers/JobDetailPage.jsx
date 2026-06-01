@@ -38,8 +38,23 @@ export default function JobDetailPage() {
   const [error, setError]     = useState('');
   const [searchParams] = useSearchParams();
   const [applying, setApplying] = useState(false);
+  const [quickApplying, setQuickApplying] = useState(false);
+  const [quickDone, setQuickDone]         = useState(null); // { trackerUrl }
   const explicitOrg = searchParams.get('org');
   const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
+
+  const handleQuickApply = async () => {
+    if (!job) return;
+    setQuickApplying(true);
+    try {
+      const r = await api.quickApply(job._id || job.id);
+      setQuickDone({ trackerUrl: r.trackerUrl, score: r.matchScore });
+    } catch (e) {
+      alert(e?.response?.data?.message || e?.message || 'Could not submit application.');
+    } finally {
+      setQuickApplying(false);
+    }
+  };
 
   useEffect(() => {
     if (!document.getElementById('marketing-css')) {
@@ -231,11 +246,25 @@ export default function JobDetailPage() {
           )}
 
           {/* CTA */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => setApplying(true)}
-              style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-              {job.externalUrl ? '🌐 Apply on Company Site →' : '🚀 Apply Now →'}
-            </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {quickDone ? (
+              <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 12, padding: '12px 20px', color: '#D1FAE5', fontSize: 14, fontWeight: 700 }}>
+                ✅ Applied! <a href={quickDone.trackerUrl} target="_blank" rel="noreferrer" style={{ color: '#6EE7B7', textDecoration: 'underline' }}>Track status →</a>
+              </div>
+            ) : (
+              <>
+                {isLoggedIn && !job.externalUrl ? (
+                  <button onClick={handleQuickApply} disabled={quickApplying}
+                    style={{ background: 'linear-gradient(135deg,#10B981,#059669)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: quickApplying ? 'default' : 'pointer', opacity: quickApplying ? 0.7 : 1 }}>
+                    {quickApplying ? 'Submitting…' : '⚡ One-Click Apply'}
+                  </button>
+                ) : null}
+                <button onClick={() => setApplying(true)}
+                  style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+                  {job.externalUrl ? '🌐 Apply on Company Site →' : (isLoggedIn ? '📝 Apply with Cover Letter' : '🚀 Apply Now →')}
+                </button>
+              </>
+            )}
             <Link to="/careers" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', padding: '13px 20px', borderRadius: 12, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
               ← All Jobs
             </Link>
@@ -248,6 +277,12 @@ export default function JobDetailPage() {
 
         {/* Left: description */}
         <div style={{ minWidth: 0 }}>
+          {job.videoJdUrl && (
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 'clamp(16px,3vw,24px)', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', margin: '0 0 12px' }}>🎬 About This Role (Video)</h2>
+              <video src={job.videoJdUrl} controls style={{ width: '100%', borderRadius: 10, maxHeight: 360, background: '#000' }} preload="metadata" />
+            </div>
+          )}
           {job.description && (
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 'clamp(20px,4vw,32px)', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0A1628', margin: '0 0 14px' }}>About the Role</h2>
@@ -277,10 +312,25 @@ export default function JobDetailPage() {
             <div style={{ fontSize: 13, color: '#64748B', marginBottom: 10, lineHeight: 1.5 }}>
               Interested in this role?
             </div>
-            <button onClick={() => setApplying(true)}
-              style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
-              {job.externalUrl ? 'Apply on Company Site →' : 'Apply Now →'}
-            </button>
+            {quickDone ? (
+              <div style={{ background: '#D1FAE5', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, color: '#065F46', fontSize: 14 }}>✅ Application Submitted!</div>
+                <a href={quickDone.trackerUrl} target="_blank" rel="noreferrer" style={{ color: '#059669', fontSize: 12, fontWeight: 600 }}>📍 Track your status →</a>
+              </div>
+            ) : (
+              <>
+                {isLoggedIn && !job.externalUrl && (
+                  <button onClick={handleQuickApply} disabled={quickApplying}
+                    style={{ width: '100%', background: 'linear-gradient(135deg,#10B981,#059669)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: quickApplying ? 'default' : 'pointer', marginBottom: 8, opacity: quickApplying ? 0.7 : 1 }}>
+                    {quickApplying ? 'Submitting…' : '⚡ One-Click Apply'}
+                  </button>
+                )}
+                <button onClick={() => setApplying(true)}
+                  style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                  {job.externalUrl ? 'Apply on Company Site →' : (isLoggedIn ? '📝 Apply with Cover Letter' : 'Apply Now →')}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Job details */}

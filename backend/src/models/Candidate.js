@@ -85,6 +85,11 @@ const candidateSchema = new mongoose.Schema({
   accountInviteSentAt : { type: Date, default: null },
   accountRequestSent  : { type: Boolean, default: false },
 
+  // ── Diversity & Inclusion (self-reported, voluntary) ────────────────────────
+  gender           : { type: String, trim: true, default: '' }, // male/female/non-binary/prefer_not_to_say
+  diversityFlags   : { type: [String], default: [] }, // ['pwd', 'veteran', 'lgbtq+', ...]
+  // candidateStatus already tracks placement
+
   // ── Soft delete ─────────────────────────────────────────────────────────────
   // Attribution (VMS Support)
   submittedByTenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },

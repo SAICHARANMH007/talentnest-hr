@@ -35,6 +35,30 @@ function useDebounce(fn, delay) {
 function FeedbackModal({ app, onClose, onDone }) {
   const [form, setForm] = useState({ rating: 3, strengths: '', weaknesses: '', recommendation: true });
   const [saving, setSaving] = useState(false);
+  const [kit, setKit]       = useState(null);
+  const [kitScores, setKitScores] = useState({}); // { [questionId]: { score, notes } }
+
+  // Load kit if attached to this job
+  useEffect(() => {
+    if (app.interviewKitId) {
+      api.getInterviewKit(app.interviewKitId).then(k => {
+        setKit(k);
+        // Pre-fill from existing round scores
+        const lastRound = app.interviewRounds?.[app.interviewRounds.length - 1];
+        if (lastRound?.kitScores?.length) {
+          const pre = {};
+          lastRound.kitScores.forEach(ks => { pre[ks.questionId] = { score: ks.score, notes: ks.notes || '' }; });
+          setKitScores(pre);
+        }
+      }).catch(() => {});
+    }
+  }, [app.interviewKitId]);
+
+  const setKitScore = (qId, field, val) => setKitScores(p => ({ ...p, [qId]: { ...p[qId], [field]: val } }));
+
+  const kitAvgScore = kit?.questions?.length
+    ? (kit.questions.reduce((sum, q) => sum + (kitScores[q._id]?.score || 0), 0) / kit.questions.length).toFixed(1)
+    : null;
 
   const submit = async () => {
     if (!form.strengths?.trim() && !form.weaknesses?.trim()) {
@@ -44,6 +68,18 @@ function FeedbackModal({ app, onClose, onDone }) {
     setSaving(true);
     try {
       await api.addFeedback(app.id, form);
+      // Also save kit scores if kit is loaded
+      if (kit?.questions?.length) {
+        const roundIndex = Math.max(0, (app.interviewRounds?.length || 1) - 1);
+        const scores = kit.questions.map(q => ({
+          questionId: q._id,
+          competency: q.competency,
+          question: q.question,
+          score: kitScores[q._id]?.score || 0,
+          notes: kitScores[q._id]?.notes || '',
+        }));
+        await api.saveKitScores(app.id, roundIndex, scores).catch(() => {});
+      }
       onDone('✅ Feedback saved!');
       onClose();
     } catch (e) {
@@ -65,6 +101,40 @@ function FeedbackModal({ app, onClose, onDone }) {
         </div>
         <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Structured Kit Questions */}
+            {kit?.questions?.length > 0 && (
+              <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0176D3' }}>📋 {kit.name}</div>
+                  {kitAvgScore > 0 && <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>Avg: {kitAvgScore}</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {kit.questions.map((q, qi) => {
+                    const sc = kitScores[q._id] || {};
+                    return (
+                      <div key={q._id} style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #E5E7EB' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div>
+                            <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700, marginRight: 6 }}>{q.competency}</span>
+                            <span style={{ color: '#374151', fontSize: 12 }}>{q.question}</span>
+                          </div>
+                        </div>
+                        {q.scoringTip && <p style={{ color: '#9CA3AF', fontSize: 11, margin: '0 0 6px', fontStyle: 'italic' }}>💡 {q.scoringTip}</p>}
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {Array.from({ length: q.maxScore || 5 }, (_, i) => i + 1).map(n => (
+                            <button key={n} onClick={() => setKitScore(q._id, 'score', n)}
+                              style={{ width: 30, height: 30, borderRadius: 6, border: (sc.score || 0) >= n ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: (sc.score || 0) >= n ? 'rgba(124,58,237,0.2)' : '#fff', color: (sc.score || 0) >= n ? '#7C3AED' : '#9CA3AF', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{n}</button>
+                          ))}
+                          <input value={sc.notes || ''} onChange={e => setKitScore(q._id, 'notes', e.target.value)}
+                            placeholder="Note (optional)" style={{ flex: 1, minWidth: 100, padding: '4px 8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 11, outline: 'none' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div>
               <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 8 }}>Rating</label>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -197,6 +267,14 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   const [isEditingFunnel, setEditingFunnel] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [schedModal, setSchedModal] = useState(false);
+  const [schedSlots, setSchedSlots] = useState(['', '', '']);
+  const [schedFormat, setSchedFormat] = useState('video');
+  const [schedVideoLink, setSchedVideoLink] = useState('');
+  const [schedLocation, setSchedLocation] = useState('');
+  const [schedNotes, setSchedNotes] = useState('');
+  const [schedSending, setSchedSending] = useState(false);
+  const [schedDone, setSchedDone] = useState(null);
 
   // Notes
   const [notes, setNotes] = useState(app.recruiterNotes || '');
@@ -223,6 +301,28 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   const handleAnyStage = async (newStage) => {
     setEditingFunnel(false);
     await onAnyStage(app, newStage);
+  };
+
+  const sendSchedulingLink = async () => {
+    const validSlots = schedSlots.filter(s => s.trim());
+    if (validSlots.length === 0) { onToast('❌ Add at least one slot'); return; }
+    setSchedSending(true);
+    try {
+      const result = await api.createSchedulingLink({
+        applicationId: app.id,
+        slots: validSlots,
+        format: schedFormat,
+        videoLink: schedVideoLink,
+        location: schedLocation,
+        notes: schedNotes,
+      });
+      setSchedDone(result?.scheduleUrl || '✅ Sent!');
+      onToast('✅ Scheduling link sent to candidate!');
+    } catch (e) {
+      onToast(`❌ ${e.message}`);
+    } finally {
+      setSchedSending(false);
+    }
   };
 
   return (
@@ -422,6 +522,9 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         {app.stage === 'interview_completed' && (
           <button onClick={() => setShowFeedback(true)} style={{ background: 'rgba(1,118,211,0.15)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, color: '#0176D3', padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>📋 {app.feedback ? 'Edit Feedback' : 'Add Feedback'}</button>
         )}
+        {!['rejected', 'selected'].includes(app.stage) && (
+          <button onClick={() => { setSchedModal(true); setSchedDone(null); }} style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 12, color: '#7C3AED', padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>📅 Send Scheduling Link</button>
+        )}
         {/* Assessment badge + review */}
         {assessmentId && (
           submission ? (
@@ -494,6 +597,83 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
           onDone={(msg) => { onToast(msg); setShowFeedback(false); onRefresh(); }}
         />
       )}
+
+      {schedModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Interview Scheduling</div>
+                <h3 style={{ color: '#fff', margin: 0, fontSize: 16, fontWeight: 800 }}>📅 Send Scheduling Link — {app.candidate?.name}</h3>
+              </div>
+              <button onClick={() => { setSchedModal(false); setSchedDone(null); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
+              {schedDone ? (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+                  <h4 style={{ color: '#059669', margin: '0 0 8px', fontWeight: 700 }}>Scheduling link sent!</h4>
+                  <p style={{ color: '#6B7280', fontSize: 13, margin: '0 0 16px' }}>The candidate has been emailed their scheduling link.</p>
+                  {schedDone.startsWith('http') && (
+                    <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, marginBottom: 4 }}>Direct link (copy if needed)</div>
+                      <code style={{ fontSize: 11, color: '#4C1D95', wordBreak: 'break-all' }}>{schedDone}</code>
+                    </div>
+                  )}
+                  <button onClick={() => { setSchedModal(false); setSchedDone(null); }} style={{ ...btnP, padding: '9px 20px', fontSize: 13 }}>Done</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Available Slots (datetime-local)</label>
+                    {schedSlots.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <input type="datetime-local" value={s} onChange={e => setSchedSlots(p => p.map((v, j) => j === i ? e.target.value : v))}
+                          style={{ ...inp, flex: 1, fontSize: 13 }} />
+                        {i > 0 && <button onClick={() => setSchedSlots(p => p.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 16, cursor: 'pointer', padding: 4 }}>✕</button>}
+                      </div>
+                    ))}
+                    {schedSlots.length < 10 && (
+                      <button onClick={() => setSchedSlots(p => [...p, ''])} style={{ background: 'rgba(124,58,237,0.08)', border: '1px dashed #7C3AED', borderRadius: 8, color: '#7C3AED', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>+ Add Slot</button>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Format</label>
+                    <select value={schedFormat} onChange={e => setSchedFormat(e.target.value)} style={{ ...inp, fontSize: 13 }}>
+                      <option value="video">📹 Video Call</option>
+                      <option value="phone">📞 Phone</option>
+                      <option value="in_person">🏢 In-Person</option>
+                    </select>
+                  </div>
+                  {schedFormat === 'video' && (
+                    <div>
+                      <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Video Link (optional)</label>
+                      <input value={schedVideoLink} onChange={e => setSchedVideoLink(e.target.value)} placeholder="https://meet.google.com/..." style={{ ...inp, fontSize: 13 }} />
+                    </div>
+                  )}
+                  {schedFormat === 'in_person' && (
+                    <div>
+                      <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Location</label>
+                      <input value={schedLocation} onChange={e => setSchedLocation(e.target.value)} placeholder="Office address…" style={{ ...inp, fontSize: 13 }} />
+                    </div>
+                  )}
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Note to candidate (optional)</label>
+                    <textarea value={schedNotes} onChange={e => setSchedNotes(e.target.value)} rows={2} placeholder="Any preparation tips or details…" style={{ ...inp, fontSize: 13, resize: 'vertical' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setSchedModal(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F3F2F2', color: '#706E6B', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                    <button onClick={sendSchedulingLink} disabled={schedSending || schedSlots.filter(s => s).length === 0}
+                      style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: schedSending ? 0.7 : 1 }}>
+                      {schedSending ? 'Sending…' : '📅 Send Link'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -515,6 +695,9 @@ export default function RecruiterPipeline({ user }) {
   const [offerModalApp, setOfferModalApp] = useState(null);
   const [recruiter, setRecruiter] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkEmailModal, setBulkEmailModal] = useState(false);
+  const [bulkEmailForm, setBulkEmailForm] = useState({ subject: '', body: '' });
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
   const [stageFilter, setSF] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
@@ -646,6 +829,23 @@ export default function RecruiterPipeline({ user }) {
     }
   };
 
+  const bulkSendEmail = async () => {
+    if (!bulkEmailForm.subject.trim() || !bulkEmailForm.body.trim()) return;
+    const emails = apps.filter(a => selectedIds.includes(a.id)).map(a => a.candidate?.email).filter(Boolean);
+    if (!emails.length) { setToast('❌ No emails found for selected candidates'); return; }
+    setBulkEmailSending(true);
+    try {
+      await Promise.all(emails.map(to => api.sendEmail(to, bulkEmailForm.subject, bulkEmailForm.body)));
+      setToast(`✅ Email sent to ${emails.length} candidate${emails.length !== 1 ? 's' : ''}`);
+      setBulkEmailModal(false);
+      setBulkEmailForm({ subject: '', body: '' });
+      setSelectedIds([]);
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+    setBulkEmailSending(false);
+  };
+
   const handlePark = async (app) => {
     try {
       await api.parkApplication(app.id);
@@ -723,15 +923,57 @@ export default function RecruiterPipeline({ user }) {
 
       <PageHeader title="Applicant Pipeline" subtitle="Full hiring funnel management" />
 
+      {/* Bulk Email Modal */}
+      {bulkEmailModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(5,13,26,0.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, padding:24, boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:'#181818' }}>📧 Bulk Email — {apps.filter(a=>selectedIds.includes(a.id)).length} candidates</h3>
+              <button onClick={() => setBulkEmailModal(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#706E6B' }}>✕</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div>
+                <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Subject</label>
+                <input value={bulkEmailForm.subject} onChange={e => setBulkEmailForm(p=>({...p,subject:e.target.value}))}
+                  placeholder="e.g. Interview Invitation — [Company Name]"
+                  style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none' }} />
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Message</label>
+                <textarea value={bulkEmailForm.body} onChange={e => setBulkEmailForm(p=>({...p,body:e.target.value}))}
+                  rows={6} placeholder="Write your message here…"
+                  style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', resize:'vertical' }} />
+              </div>
+              <div style={{ fontSize:11, color:'#9CA3AF' }}>
+                Sending to: {apps.filter(a=>selectedIds.includes(a.id)).map(a=>a.candidate?.name||'Unknown').join(', ')}
+              </div>
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+                <button onClick={() => setBulkEmailModal(false)} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F3F2F2', color:'#706E6B', fontWeight:600, cursor:'pointer', fontSize:13 }}>Cancel</button>
+                <button onClick={bulkSendEmail} disabled={bulkEmailSending || !bulkEmailForm.subject || !bulkEmailForm.body}
+                  style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'#0176D3', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13, opacity: bulkEmailSending ? 0.7 : 1 }}>
+                  {bulkEmailSending ? 'Sending…' : `Send to ${apps.filter(a=>selectedIds.includes(a.id)).length} candidates`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div style={{ marginBottom: 16, padding: '12px 20px', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ color: '#0176D3', fontWeight: 700, fontSize: 13 }}>{selectedIds.length} selected</span>
-          <span style={{ color: '#C9C7C5', fontSize: 13 }}>—</span>
-          <button onClick={() => bulkMoveStage('shortlisted')} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, color: '#34d399', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>✓ Shortlist</button>
-          <button onClick={() => bulkMoveStage('interview_scheduled')} style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#F59E0B', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>📅 Move to Interview</button>
-          <button onClick={() => bulkMoveStage('rejected')} style={{ background: 'rgba(186,5,23,0.1)', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 8, color: '#FE5C4C', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>✕ Reject</button>
-          <button onClick={() => setSelectedIds([])} style={{ background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>Clear</button>
+        <div style={{ marginBottom: 16, padding: '12px 20px', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ color: '#0176D3', fontWeight: 800, fontSize: 13, flexShrink:0 }}>{selectedIds.length} selected</span>
+          <span style={{ color: '#C9C7C5' }}>|</span>
+          {/* Move to stage dropdown */}
+          <select onChange={e => { if (e.target.value) { bulkMoveStage(e.target.value); e.target.value = ''; } }}
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(1,118,211,0.3)', background:'#fff', color:'#0176D3', fontSize:12, fontWeight:600, cursor:'pointer', outline:'none' }}>
+            <option value="">📋 Move to Stage…</option>
+            {STAGES.filter(s => s.id !== 'rejected').map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+          </select>
+          <button onClick={() => bulkMoveStage('shortlisted')} style={{ background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:8, color:'#059669', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>✓ Shortlist</button>
+          <button onClick={() => setBulkEmailModal(true)} style={{ background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.3)', borderRadius:8, color:'#7C3AED', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>📧 Email All</button>
+          <button onClick={() => bulkMoveStage('rejected')} style={{ background:'rgba(186,5,23,0.1)', border:'1px solid rgba(186,5,23,0.3)', borderRadius:8, color:'#BA0517', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>✕ Reject All</button>
+          <button onClick={() => setSelectedIds([])} style={{ background:'#F3F2F2', border:'1px solid #DDDBDA', borderRadius:8, color:'#706E6B', fontSize:12, padding:'6px 14px', cursor:'pointer' }}>Clear</button>
         </div>
       )}
 

@@ -52,9 +52,11 @@ const jobSchema = new mongoose.Schema({
   alternateContactEmail: { type: String, trim: true, lowercase: true, default: '' },
   contactPhone: { type: String, trim: true, default: '' },
 
-  numberOfOpenings: { type: Number, default: 1 },
-  targetHireDate  : { type: Date },
-  applicationCount: { type: Number, default: 0 },
+  numberOfOpenings   : { type: Number, default: 1 },
+  targetHireDate     : { type: Date },
+  applicationDeadline: { type: Date, default: null },
+  videoJdUrl         : { type: String, default: '' }, // short video job description
+  applicationCount   : { type: Number, default: 0 },
   urgency         : { type: String, default: '' },
 
   status: {
@@ -84,6 +86,16 @@ const jobSchema = new mongoose.Schema({
   careerPageSlug: { type: String },
   isPublic: { type: Boolean, default: false }, // Opt-in to org career listing page
 
+  interviewKitId: { type: mongoose.Schema.Types.ObjectId, ref: 'InterviewKit', default: null },
+
+  // Optional per-job custom hiring stages (overrides org-level pipeline when non-empty)
+  customStages: [{
+    name    : { type: String, required: true, trim: true },
+    color   : { type: String, default: '#0176D3' },
+    order   : { type: Number, default: 0 },
+    isDefault: { type: Boolean, default: false },
+  }],
+
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   // Full audit trail of every recruiter who has ever worked on this job.
@@ -110,6 +122,7 @@ jobSchema.index({ tenantId: 1, status: 1, deletedAt: 1 });        // active job 
 jobSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 });    // tenant paginated lists
 jobSchema.index({ careerPageSlug: 1 });                           // public career page
 jobSchema.index({ tenantId: 1, isPublic: 1, status: 1 });         // org career listing
+jobSchema.index({ applicationDeadline: 1, status: 1, deletedAt: 1 }); // expiry cron
 jobSchema.index({ assignedRecruiters: 1, status: 1 });            // recruiter job lists
 jobSchema.index({ tenantId: 1, assignedRecruiters: 1, deletedAt: 1 }); // recruiter stats endpoint
 

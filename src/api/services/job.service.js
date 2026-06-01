@@ -33,6 +33,7 @@ export const jobService = {
   async bulkClassifyJobs()                          { return req('POST',  '/jobs/bulk-classify',  {}); },
   async getJobRecruiterHistory(jobId)               { return req('GET',   `/jobs/${jobId}/recruiter-history?_t=${Date.now()}`); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
+  async updateJobCustomStages(jobId, stages) { const r = await req('PATCH', `/jobs/${jobId}/custom-stages`, { stages }); return r?.data || []; },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
   async getPendingApprovalJobs()      { return req('GET', `/jobs/pending-approval?_t=${Date.now()}`); },
   async approveJob(id, action, reason) { return req('PATCH', `/jobs/${id}/approve`, { action, ...(reason ? { reason } : {}) }); },

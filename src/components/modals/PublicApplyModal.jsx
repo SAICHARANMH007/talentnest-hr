@@ -572,9 +572,29 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {questions.map((q, i) => (
                 <div key={i}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{q.question}{q.required && <span style={{ color: '#EF4444' }}> *</span>}</label>
-                  <textarea value={answers[i] || ''} onChange={e => setAnswers(p => ({ ...p, [i]: e.target.value }))} rows={3}
-                    style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 8 }}>{q.question}{q.required && <span style={{ color: '#EF4444' }}> *</span>}</label>
+                  {q.type === 'yesno' ? (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {['Yes', 'No'].map(opt => (
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '10px 18px', borderRadius: 10, border: `1.5px solid ${answers[i] === opt ? '#0176D3' : '#CBD5E1'}`, background: answers[i] === opt ? 'rgba(1,118,211,0.06)' : '#fff', flex: 1, justifyContent: 'center', fontSize: 14, fontWeight: 600, color: answers[i] === opt ? '#0176D3' : '#374151' }}>
+                          <input type="radio" name={`q_${i}`} value={opt} checked={answers[i] === opt} onChange={() => setAnswers(p => ({ ...p, [i]: opt }))} style={{ display: 'none' }} />
+                          {opt === 'Yes' ? '✅' : '❌'} {opt}
+                        </label>
+                      ))}
+                    </div>
+                  ) : q.type === 'multiple' && Array.isArray(q.options) && q.options.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {q.options.map(opt => (
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 16px', borderRadius: 10, border: `1.5px solid ${answers[i] === opt ? '#0176D3' : '#CBD5E1'}`, background: answers[i] === opt ? 'rgba(1,118,211,0.06)' : '#fff', fontSize: 14, color: answers[i] === opt ? '#0176D3' : '#374151', fontWeight: answers[i] === opt ? 700 : 400 }}>
+                          <input type="radio" name={`q_${i}`} value={opt} checked={answers[i] === opt} onChange={() => setAnswers(p => ({ ...p, [i]: opt }))} style={{ accentColor: '#0176D3' }} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <textarea value={answers[i] || ''} onChange={e => setAnswers(p => ({ ...p, [i]: e.target.value }))} rows={3}
+                      style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
+                  )}
                 </div>
               ))}
             </div>
