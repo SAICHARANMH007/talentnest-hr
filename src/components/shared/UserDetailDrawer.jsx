@@ -6,6 +6,7 @@ import Badge from '../ui/Badge.jsx';
 import Toast from '../ui/Toast.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import CandidateActivityTimeline from './CandidateActivityTimeline.jsx';
+import CandidateCRMTimeline from './CandidateCRMTimeline.jsx';
 import ErrorReportBoundary from './ErrorReportBoundary.jsx';
 import ResumeCard from './ResumeCard.jsx';
 import HiredDetailsModal from '../modals/HiredDetailsModal.jsx';
@@ -268,6 +269,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
           <div style={{ display: 'flex', gap: 0, marginTop: 16, borderBottom: '1px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none' }}>
             <button style={tabStyle('profile')} onClick={() => setTab('profile')}>👤 Profile Information</button>
             {(form.role || u.role || 'candidate') === 'candidate' && <button style={tabStyle('pipeline')} onClick={() => setTab('pipeline')}>🔄 Career Tracking</button>}
+            {(form.role || u.role || 'candidate') === 'candidate' && <button style={tabStyle('crm')} onClick={() => setTab('crm')}>🗂️ Full Timeline</button>}
             <button style={tabStyle('resume')} onClick={() => setTab('resume')}>📋 Documents</button>
           </div>
         </div>
@@ -470,6 +472,10 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 </div>
               )}
             </div>
+          )}
+
+          {tab === 'crm' && (
+            <CandidateCRMTimeline candidateId={isCandidateModel ? (fullUser?.id || u?.id) : (u?.candidateId || fullUser?.candidateId || fullUser?.id || u?.id)} />
           )}
 
           {tab === 'resume' && (

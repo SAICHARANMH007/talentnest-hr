@@ -607,4 +607,121 @@ router.get('/:id/suggested-jobs', ...guard, asyncHandler(async (req, res) => {
   res.json({ success: true, data: jobs });
 }));
 
+// GET /api/candidates/:id/full-timeline — full CRM timeline across all applications
+router.get('/:id/full-timeline', ...guard, asyncHandler(async (req, res) => {
+  const candId = req.params.id;
+  const tenantId = req.user.tenantId;
+
+  const candidate = await Candidate.findOne({ _id: candId, deletedAt: null }).select('name email phone tags source createdAt').lean();
+  if (!candidate) throw new AppError('Candidate not found.', 404);
+
+  const applications = await Application.find({ candidateId: candId, tenantId, deletedAt: null })
+    .populate('jobId', 'title department location')
+    .lean();
+
+  const events = [];
+
+  // Profile created event
+  events.push({
+    type: 'profile_created',
+    ts: candidate.createdAt,
+    icon: '🧑‍💼',
+    color: '#0176D3',
+    title: 'Candidate profile created',
+    detail: candidate.source ? `Source: ${candidate.source}` : null,
+  });
+
+  // Application events
+  for (const app of applications) {
+    const jobTitle = app.jobId?.title || 'Unknown Job';
+    const dept     = app.jobId?.department || '';
+    const loc      = app.jobId?.location || '';
+
+    events.push({
+      type: 'application',
+      ts: app.createdAt,
+      icon: '📥',
+      color: '#7C3AED',
+      title: `Applied — ${jobTitle}`,
+      detail: [dept, loc].filter(Boolean).join(' · ') || null,
+      appId: app._id,
+      jobTitle,
+    });
+
+    // Stage history
+    (app.stageHistory || []).forEach(h => {
+      const stage = h.stage || h.stageId || '';
+      if (stage.toLowerCase() === 'applied') return;
+      events.push({
+        type: 'stage_change',
+        ts: h.movedAt || h.changedAt,
+        icon: stage === 'Hired' || stage === 'selected' ? '🏆' : stage === 'Rejected' || stage === 'rejected' ? '❌' : stage === 'Offer' || stage === 'offer_extended' ? '📄' : '🔄',
+        color: stage === 'Hired' || stage === 'selected' ? '#059669' : stage === 'Rejected' || stage === 'rejected' ? '#BA0517' : '#F59E0B',
+        title: `Stage: ${stage}`,
+        detail: `${jobTitle}${h.notes ? ' — ' + h.notes : ''}`,
+        appId: app._id,
+        jobTitle,
+      });
+    });
+
+    // Interview rounds
+    (app.interviewRounds || []).forEach((r, i) => {
+      if (r.scheduledAt) {
+        const d = new Date(r.scheduledAt);
+        events.push({
+          type: 'interview',
+          ts: r.scheduledAt,
+          icon: '📅',
+          color: '#F59E0B',
+          title: `Interview Round ${i + 1} — ${jobTitle}`,
+          detail: `${r.format === 'video' ? '📹 Video' : r.format === 'phone' ? '📞 Phone' : '🏢 In-Person'}${r.interviewerName ? ' with ' + r.interviewerName : ''}`,
+          videoLink: r.videoLink || null,
+          feedback: r.feedback || null,
+          kitScores: r.kitScores || [],
+          appId: app._id,
+          jobTitle,
+        });
+      }
+    });
+
+    // Feedback
+    if (app.feedback?.strengths || app.feedback?.weaknesses || app.feedback?.rating) {
+      events.push({
+        type: 'feedback',
+        ts: app.updatedAt,
+        icon: '📋',
+        color: '#0176D3',
+        title: `Feedback recorded — ${jobTitle}`,
+        detail: `Rating: ${app.feedback.rating || 0}/5 · ${app.feedback.recommendation ? '✓ Recommended' : '✕ Not Recommended'}`,
+        strengths: app.feedback.strengths,
+        weaknesses: app.feedback.weaknesses,
+        appId: app._id,
+        jobTitle,
+      });
+    }
+
+    // Offer letter
+    if (app.offerLetterId || app.currentStage === 'Offer' || app.currentStage === 'offer_extended') {
+      const offerEvent = (app.stageHistory || []).find(h => (h.stage || '').toLowerCase().includes('offer'));
+      if (offerEvent) {
+        events.push({
+          type: 'offer',
+          ts: offerEvent.movedAt,
+          icon: '🎉',
+          color: '#D97706',
+          title: `Offer Extended — ${jobTitle}`,
+          detail: null,
+          appId: app._id,
+          jobTitle,
+        });
+      }
+    }
+  }
+
+  // Sort by timestamp descending (most recent first)
+  events.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+
+  res.json({ success: true, data: { candidate, applications: applications.length, events } });
+}));
+
 module.exports = router;

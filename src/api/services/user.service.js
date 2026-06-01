@@ -92,6 +92,10 @@ export const userService = {
     const r = await req('PATCH', `/candidates/${id}`, data);
     return r?.data || r;
   },
+  async getCandidateFullTimeline(id) {
+    const r = await req('GET', `/candidates/${id}/full-timeline`);
+    return r?.data || r;
+  },
 
   // ── BGV Documents ──────────────────────────────────────────────────────────
   async getBgvDocuments()              { return req('GET', '/bgv'); },
