@@ -52,7 +52,7 @@ export const applicationService = {
   async updateAppNotes(appId, notes) { return req('PATCH', `/applications/${appId}/notes`, { notes }); },
   async updateAppTags(appId, tags) { return req('PATCH', `/applications/${appId}/tags`, { tags }); },
   async addFeedback(appId, feedback) { return req('PATCH', `/applications/${appId}/feedback`, feedback); },
-  async withdrawApplication(appId) { return req('DELETE', `/applications/${appId}`); },
+  async withdrawApplication(appId, reason) { return req('DELETE', `/applications/${appId}`, reason ? { reason } : undefined); },
   async getApplicationLocations() { return req('GET', '/applications/locations'); },
   async talentMatchAction(candidateId, jobId, action) {
     return req('POST', '/invites/talent-match', { candidateId, jobId, action });

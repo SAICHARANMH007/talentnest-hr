@@ -1633,15 +1633,17 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
     filter.tenantId = req.user.tenantId;
   }
 
-  const app = await Application.findOneAndUpdate(
-    filter,
-    { $set: { deletedAt: new Date(), status: 'withdrawn' } },
-    { new: true }
-  );
+  const withdrawalReason = req.body?.reason || '';
+  const update = {
+    deletedAt: new Date(),
+    status   : 'withdrawn',
+    ...(withdrawalReason ? { rejectionReason: withdrawalReason } : {}),
+  };
+  const app = await Application.findOneAndUpdate(filter, { $set: update }, { new: true });
   if (!app) throw new AppError('Application not found.', 404);
 
   await Job.findByIdAndUpdate(app.jobId, { $inc: { applicationCount: -1 } });
-  logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id });
+  logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id, reason: withdrawalReason });
   res.json({ success: true, message: 'Application withdrawn.' });
 }));
 
