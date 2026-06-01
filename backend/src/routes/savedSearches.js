@@ -1,8 +1,8 @@
 'use strict';
 const router       = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const authMiddleware = require('../middleware/authMiddleware');
-const tenantGuard  = require('../middleware/tenantGuard');
+const asyncHandler = require('../utils/asyncHandler');
+const { authMiddleware } = require('../middleware/auth');
+const { tenantGuard }  = require('../middleware/tenantGuard');
 const SavedSearch  = require('../models/SavedSearch');
 
 const guard = [authMiddleware, tenantGuard];

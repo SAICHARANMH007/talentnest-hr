@@ -1,9 +1,9 @@
 'use strict';
 const router       = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const authMiddleware = require('../middleware/authMiddleware');
-const tenantGuard  = require('../middleware/tenantGuard');
-const allowRoles   = require('../middleware/allowRoles');
+const asyncHandler = require('../utils/asyncHandler');
+const { authMiddleware } = require('../middleware/auth');
+const { tenantGuard }  = require('../middleware/tenantGuard');
+const { allowRoles }   = require('../middleware/rbac');
 const EmailSequence = require('../models/EmailSequence');
 const Candidate    = require('../models/Candidate');
 const email        = require('../utils/email');

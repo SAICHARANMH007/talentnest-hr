@@ -1,8 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const { asyncHandler, AppError } = require('../utils/asyncHandler');
-const { authMiddleware, tenantGuard } = require('../middleware/authMiddleware');
-const allowRoles = require('../middleware/allowRoles');
+const asyncHandler = require('../utils/asyncHandler');
+const AppError = require('../utils/AppError');
+const { authMiddleware } = require('../middleware/auth');
+const { tenantGuard } = require('../middleware/tenantGuard');
+const { allowRoles } = require('../middleware/rbac');
 const RejectionTemplate = require('../models/RejectionTemplate');
 
 const guard = [authMiddleware, tenantGuard];
