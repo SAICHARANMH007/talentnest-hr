@@ -537,6 +537,11 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
   const [tab, setTab]     = useState('configure'); // 'configure' | 'preview'
   const [saving, setSaving] = useState(false);
   const [toast, setToast]  = useState('');
+  const [approvalModal, setApprovalModal] = useState(false);
+  const [approvers, setApprovers] = useState([{ name: '', email: '', role: '', order: 1 }]);
+  const [requestingApproval, setRequestingApproval] = useState(false);
+  const [approvalSent, setApprovalSent] = useState(false);
+  const [savedOfferId, setSavedOfferId] = useState(app.offerId || null);
 
   const today = new Date().toISOString().split('T')[0];
   const deadline = new Date(Date.now() + 7*24*3600*1000).toISOString().split('T')[0];
@@ -637,6 +642,30 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
     setSaving(false);
   };
 
+  const requestApproval = async () => {
+    const valid = approvers.filter(a => a.email.trim());
+    if (valid.length === 0) { setToast('❌ Add at least one approver email'); return; }
+    setRequestingApproval(true);
+    try {
+      // First save offer if not yet saved
+      let offerId = savedOfferId;
+      if (!offerId) {
+        const offerRecord = await api.getOfferByApplication(app.id).catch(() => null);
+        offerId = offerRecord?.id || offerRecord?._id;
+        if (offerId) setSavedOfferId(offerId);
+      }
+      if (!offerId) { setToast('❌ Save the offer first before requesting approval'); setRequestingApproval(false); return; }
+      await api.requestOfferApproval(offerId, valid.map((a, i) => ({ ...a, order: i + 1 })));
+      setApprovalSent(true);
+      setApprovalModal(false);
+      setToast('✅ Approval request sent to approvers!');
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
   const tabBtn = (t, label) => ({
     padding: '7px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
     border: 'none', borderRadius: '10px 10px 0 0',
@@ -668,6 +697,10 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
               📄 Generate & Preview Letter →
             </button>
           )}
+          <button onClick={() => setApprovalModal(true)} disabled={!form.annualCTC || approvalSent} title="Route through approval chain before sending"
+            style={{ ...btnP, minHeight: 48, padding: '0 18px', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', opacity: (!form.annualCTC || approvalSent) ? 0.6 : 1, fontSize: 12, flexShrink: 0 }}>
+            {approvalSent ? '✅ Approval Sent' : '📋 Request Approval'}
+          </button>
           <button onClick={sendOffer} disabled={saving || !form.annualCTC} style={{ ...btnP, flex: 1, minHeight: 48, background: 'linear-gradient(135deg,#059669,#047857)', opacity: (saving || !form.annualCTC) ? 0.6 : 1 }}>
             {saving ? <><Spinner /> Finalizing Package…</> : '📨 Confirm & Send Offer Package'}
           </button>
@@ -675,6 +708,38 @@ export default function OfferLetterModal({ app, recruiter, onClose, onDone }) {
       }
     >
       <Toast msg={toast} onClose={() => setToast('')} />
+
+      {/* Approval Chain Modal */}
+      {approvalModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10010, padding: '24px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, boxShadow: '0 24px 60px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ color: '#fff', margin: 0, fontSize: 16, fontWeight: 800 }}>📋 Request Approval Chain</h3>
+              <button onClick={() => setApprovalModal(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px' }}>
+              <p style={{ color: '#374151', fontSize: 13, margin: '0 0 16px' }}>Add approvers in order. Each will receive an email when it's their turn.</p>
+              {approvers.map((a, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                  <span style={{ background: '#F1F5F9', color: '#64748B', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                  <input value={a.name} onChange={e => setApprovers(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Name" style={{ flex: 1, padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, outline: 'none' }} />
+                  <input value={a.email} onChange={e => setApprovers(p => p.map((x, j) => j === i ? { ...x, email: e.target.value } : x))} placeholder="Email *" type="email" style={{ flex: 2, padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 12, outline: 'none' }} />
+                  {approvers.length > 1 && <button onClick={() => setApprovers(p => p.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 16, cursor: 'pointer' }}>✕</button>}
+                </div>
+              ))}
+              {approvers.length < 5 && (
+                <button onClick={() => setApprovers(p => [...p, { name: '', email: '', role: '', order: p.length + 1 }])} style={{ background: 'rgba(124,58,237,0.08)', border: '1px dashed #7C3AED', borderRadius: 8, color: '#7C3AED', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, marginBottom: 16 }}>+ Add Approver</button>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button onClick={() => setApprovalModal(false)} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F3F2F2', color: '#706E6B', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                <button onClick={requestApproval} disabled={requestingApproval} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: requestingApproval ? 0.7 : 1 }}>
+                  {requestingApproval ? 'Sending…' : '📋 Send for Approval'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, padding: '0 0px', borderBottom: '1px solid #E2E8F0', background: '#fff', flexShrink: 0, marginBottom: 20 }}>

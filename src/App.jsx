@@ -28,7 +28,8 @@ const ProductJobTrack    = lazy(() => import('./pages/marketing/ProductJobTrack.
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
-const SchedulingPage     = lazy(() => import('./pages/public/SchedulingPage.jsx'));
+const SchedulingPage       = lazy(() => import('./pages/public/SchedulingPage.jsx'));
+const OfferApprovalPage    = lazy(() => import('./pages/public/OfferApprovalPage.jsx'));
 const OrgCareersPage = lazy(() => import('./pages/careers/OrgCareersPage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
@@ -494,7 +495,8 @@ export default function App() {
       <Route path="/careers/:companySlug" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/companies" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
       <Route path="/invite/:token"   element={<Suspense fallback={<PageLoader />}><InviteResponsePage /></Suspense>} />
-      <Route path="/schedule/:token" element={<Suspense fallback={<PageLoader />}><SchedulingPage /></Suspense>} />
+      <Route path="/schedule/:token"           element={<Suspense fallback={<PageLoader />}><SchedulingPage /></Suspense>} />
+      <Route path="/app/offer-approval/:offerId" element={<Suspense fallback={<PageLoader />}><OfferApprovalPage /></Suspense>} />
       <Route path="/interest/confirmed" element={<Suspense fallback={<PageLoader />}><InterestConfirmedPage /></Suspense>} />
       <Route path="/interest/declined" element={<Suspense fallback={<PageLoader />}><InterestDeclinedPage /></Suspense>} />
       <Route path="/nps-thankyou" element={

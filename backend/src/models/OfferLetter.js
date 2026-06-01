@@ -49,6 +49,22 @@ const offerLetterSchema = new mongoose.Schema({
   },
   shareToken: { type: String, default: null }, // for public shareable link
   offerHtml : { type: String, default: null }, // full rendered HTML of the generated offer letter
+
+  // Approval chain
+  approvalChain: [{
+    userId    : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    name      : { type: String },
+    email     : { type: String },
+    role      : { type: String },
+    order     : { type: Number }, // 1-based ordering
+    status    : { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    decidedAt : { type: Date },
+    comment   : { type: String, default: '' },
+    token     : { type: String }, // one-time token for email link
+  }],
+  approvalStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+  approvalRequestedAt: { type: Date },
+  approvalCompletedAt: { type: Date },
 }, { timestamps: true });
 
 offerLetterSchema.index({ tenantId: 1 });

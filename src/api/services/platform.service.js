@@ -92,6 +92,9 @@ export const platformService = {
   async downloadOfferPreview(id)            { return downloadBlob(`/offers/${id}/pdf/preview`); },
   async generateOfferShareLink(id)          { return req('POST',  `/offers/${id}/generate-share-link`, {}); },
   async createStandaloneOffer(data)         { return req('POST',  '/offers/standalone', data); },
+  async requestOfferApproval(id, approvers) { const r = await req('POST', `/offers/${id}/request-approval`, { approvers }); return r?.data || r; },
+  async getOfferApprovalStatus(id)          { const r = await req('GET',  `/offers/${id}/approval-status`); return r?.data || r; },
+  async decideOfferApproval(id, token, action, comment) { const r = await req('POST', `/offers/${id}/decide-approval`, { token, action, comment }); return r?.data || r; },
   async getPreBoardingDocStatus()           { return req('GET',   '/preboarding/doc-status'); },
 
   // Interview scorecard

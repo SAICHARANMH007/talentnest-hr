@@ -626,4 +626,146 @@ router.post('/standalone', ...guard, allowRoles('admin', 'super_admin', 'recruit
   res.json({ success: true, data: normalizeOffer(offer) });
 }));
 
+// ── POST /api/offers/:id/request-approval — recruiter submits offer for approval chain
+router.post('/:id/request-approval', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { approvers } = req.body; // [{ userId, name, email, role, order }]
+  if (!Array.isArray(approvers) || approvers.length === 0) throw new AppError('approvers array is required', 400);
+
+  const offer = await OfferLetter.findOne({ _id: req.params.id, tenantId: req.user.tenantId });
+  if (!offer) throw new AppError('Offer not found', 404);
+  if (offer.approvalStatus === 'pending') throw new AppError('Approval already in progress', 400);
+
+  const crypto = require('crypto');
+  const chain  = approvers.map((a, i) => ({
+    userId: a.userId || null,
+    name   : a.name || '',
+    email  : a.email || '',
+    role   : a.role || '',
+    order  : a.order || i + 1,
+    status : 'pending',
+    token  : crypto.randomBytes(20).toString('hex'),
+  }));
+
+  offer.approvalChain       = chain;
+  offer.approvalStatus      = 'pending';
+  offer.approvalRequestedAt = new Date();
+  await offer.save();
+
+  // Notify first approver
+  const first      = chain.sort((a, b) => a.order - b.order)[0];
+  const baseUrl    = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const approveUrl = `${baseUrl}/app/offer-approval/${offer._id}?token=${first.token}&action=approve`;
+  const rejectUrl  = `${baseUrl}/app/offer-approval/${offer._id}?token=${first.token}&action=reject`;
+  const jobTitle   = offer.templateData?.designation || 'the role';
+  const candName   = offer.templateData?.candidateName || 'Candidate';
+
+  if (first.email) {
+    const html = `<div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:540px;margin:0 auto;background:#f8fafc;padding:28px 16px;">
+      <div style="background:linear-gradient(135deg,#7C3AED,#4F46E5);padding:24px 28px;border-radius:14px 14px 0 0;">
+        <h2 style="color:#fff;margin:0;font-size:18px;">📋 Offer Approval Required</h2>
+        <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px;">Your approval is needed for ${candName} — ${jobTitle}</p>
+      </div>
+      <div style="background:#fff;padding:24px 28px;border-radius:0 0 14px 14px;border:1px solid #e2e8f0;border-top:none;">
+        <p style="color:#374151;font-size:14px;">${req.user.name || 'HR'} has submitted an offer letter for <strong>${candName}</strong> for <strong>${jobTitle}</strong> and needs your approval.</p>
+        <div style="display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;">
+          <a href="${approveUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px;">✓ Approve Offer</a>
+          <a href="${rejectUrl}" style="display:inline-block;background:#BA0517;color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px;">✕ Reject</a>
+        </div>
+        <p style="color:#9CA3AF;font-size:11px;">This link is single-use. Please review the offer in TalentNest HR before deciding.</p>
+      </div>
+    </div>`;
+    email.sendEmailWithRetry(first.email, `📋 Offer Approval Required — ${candName}`, html).catch(() => {});
+  }
+
+  // In-app notification to first approver
+  if (first.userId) {
+    const Notification = require('../models/Notification');
+    Notification.create({
+      userId: first.userId, tenantId: offer.tenantId, type: 'stage_change',
+      title: '📋 Offer Approval Needed',
+      message: `Review and approve the offer for ${candName} — ${jobTitle}`,
+      link: `/app/offer-approval/${offer._id}`,
+    }).catch(() => {});
+  }
+
+  res.json({ success: true, message: 'Approval chain initiated', data: { approvalStatus: 'pending', chain: offer.approvalChain } });
+}));
+
+// ── GET /api/offers/:id/approval-status — get current approval chain status
+router.get('/:id/approval-status', ...guard, asyncHandler(async (req, res) => {
+  const offer = await OfferLetter.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).select('approvalChain approvalStatus approvalRequestedAt approvalCompletedAt').lean();
+  if (!offer) throw new AppError('Offer not found', 404);
+  res.json({ success: true, data: { approvalStatus: offer.approvalStatus, chain: offer.approvalChain, requestedAt: offer.approvalRequestedAt, completedAt: offer.approvalCompletedAt } });
+}));
+
+// ── POST /api/offers/:id/decide-approval — approver approves or rejects via token
+router.post('/:id/decide-approval', asyncHandler(async (req, res) => {
+  const { token, action, comment } = req.body; // action: 'approve' | 'reject'
+  if (!token || !['approve', 'reject'].includes(action)) throw new AppError('token and action required', 400);
+
+  const offer = await OfferLetter.findById(req.params.id);
+  if (!offer) throw new AppError('Offer not found', 404);
+  if (offer.approvalStatus !== 'pending') throw new AppError('No pending approval', 400);
+
+  const sorted = offer.approvalChain.sort((a, b) => a.order - b.order);
+  const step   = sorted.find(s => s.token === token && s.status === 'pending');
+  if (!step) throw new AppError('Token invalid or already used', 400);
+
+  step.status    = action === 'approve' ? 'approved' : 'rejected';
+  step.decidedAt = new Date();
+  step.comment   = comment || '';
+  offer.markModified('approvalChain');
+
+  if (action === 'reject') {
+    offer.approvalStatus      = 'rejected';
+    offer.approvalCompletedAt = new Date();
+    // Notify recruiter/admins of rejection
+    const User = require('../models/User');
+    const notify = await User.find({ tenantId: offer.tenantId, role: { $in: ['admin', 'super_admin', 'recruiter'] }, deletedAt: null }).select('_id').lean();
+    const Notification = require('../models/Notification');
+    await Promise.all(notify.map(u => Notification.create({
+      userId: u._id, tenantId: offer.tenantId, type: 'stage_change',
+      title: '❌ Offer Approval Rejected',
+      message: `${step.name || 'An approver'} rejected the offer for ${offer.templateData?.candidateName || 'candidate'}. Reason: ${comment || 'No comment.'}`,
+      link: `/app/pipeline`,
+    }).catch(() => {})));
+  } else {
+    // Check if all approved
+    const remaining = sorted.filter(s => s.status === 'pending');
+    if (remaining.length === 0) {
+      offer.approvalStatus      = 'approved';
+      offer.approvalCompletedAt = new Date();
+      // Notify recruiter
+      const User = require('../models/User');
+      const notify = await User.find({ tenantId: offer.tenantId, role: { $in: ['admin', 'super_admin', 'recruiter'] }, deletedAt: null }).select('_id').lean();
+      const Notification = require('../models/Notification');
+      await Promise.all(notify.map(u => Notification.create({
+        userId: u._id, tenantId: offer.tenantId, type: 'stage_change',
+        title: '✅ Offer Approved — Ready to Send!',
+        message: `The offer for ${offer.templateData?.candidateName || 'candidate'} has been fully approved. You can now send it.`,
+        link: `/app/pipeline`,
+      }).catch(() => {})));
+    } else {
+      // Notify next approver
+      const next  = remaining[0];
+      const baseUrl    = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+      const approveUrl = `${baseUrl}/app/offer-approval/${offer._id}?token=${next.token}&action=approve`;
+      const rejectUrl  = `${baseUrl}/app/offer-approval/${offer._id}?token=${next.token}&action=reject`;
+      const candName   = offer.templateData?.candidateName || 'Candidate';
+      const jobTitle   = offer.templateData?.designation || 'the role';
+      if (next.email) {
+        const html = `<div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:540px;margin:0 auto;background:#f8fafc;padding:28px 16px;"><div style="background:linear-gradient(135deg,#7C3AED,#4F46E5);padding:24px 28px;border-radius:14px 14px 0 0;"><h2 style="color:#fff;margin:0;font-size:18px;">📋 Offer Approval Required</h2></div><div style="background:#fff;padding:24px 28px;border-radius:0 0 14px 14px;border:1px solid #e2e8f0;border-top:none;"><p style="color:#374151;font-size:14px;">Your approval is needed for <strong>${candName}</strong> — <strong>${jobTitle}</strong>.</p><div style="display:flex;gap:12px;margin:20px 0;"><a href="${approveUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;">✓ Approve</a><a href="${rejectUrl}" style="display:inline-block;background:#BA0517;color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;">✕ Reject</a></div></div></div>`;
+        email.sendEmailWithRetry(next.email, `📋 Offer Approval Required — ${candName}`, html).catch(() => {});
+      }
+      if (next.userId) {
+        const Notification = require('../models/Notification');
+        Notification.create({ userId: next.userId, tenantId: offer.tenantId, type: 'stage_change', title: '📋 Offer Approval Needed', message: `Approve the offer for ${candName}`, link: `/app/offer-approval/${offer._id}` }).catch(() => {});
+      }
+    }
+  }
+
+  await offer.save();
+  res.json({ success: true, data: { approvalStatus: offer.approvalStatus, step: { name: step.name, status: step.status } } });
+}));
+
 module.exports = router;
