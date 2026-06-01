@@ -152,6 +152,46 @@ async function orgNameMap() {
   return _orgMapCache;
 }
 
+// Resolves candidate names for the recent-activity feed.
+// When candidateId.name is empty (manual/invited candidates), looks up the linked User account.
+async function resolveRecentNames(apps) {
+  if (!apps || !apps.length) return apps;
+  const needName = apps.filter(a => {
+    const c = a.candidateId && typeof a.candidateId === 'object' ? a.candidateId : null;
+    return !c?.name;
+  });
+  if (!needName.length) return apps.map(a => ({
+    ...a,
+    id: a._id?.toString() || a.id,
+    candidateName: (a.candidateId?.name) || (a.candidateId?.email ? a.candidateId.email.split('@')[0] : ''),
+    candidate: a.candidateId || null,
+  }));
+
+  const emails  = [...new Set(needName.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
+  const userIds = [...new Set(needName.map(a => a.candidateId?.userId?.toString()).filter(Boolean))];
+  const [byEmail, byId] = await Promise.all([
+    emails.length  ? User.find({ email:  { $in: emails  } }).select('name email').lean() : [],
+    userIds.length ? User.find({ _id:    { $in: userIds } }).select('name email').lean() : [],
+  ]);
+  const emailMap = new Map([...byEmail, ...byId].map(u => [u.email?.toLowerCase(), u]));
+  const idMap    = new Map(byId.map(u => [String(u._id), u]));
+
+  return apps.map(a => {
+    const c   = a.candidateId && typeof a.candidateId === 'object' ? a.candidateId : null;
+    let name  = c?.name || '';
+    if (!name) {
+      const u = idMap.get(c?.userId?.toString()) || emailMap.get((c?.email || '').toLowerCase());
+      name = u?.name || (c?.email ? c.email.split('@')[0] : '');
+    }
+    return {
+      ...a,
+      id: a._id?.toString() || a.id,
+      candidateName: name,
+      candidate: c ? { ...c, name } : null,
+    };
+  });
+}
+
 async function buildApplicationFilters(req) {
   const filter = { ...tenantFilter(req), deletedAt: null };
   const { stage, source, jobId, startDate, endDate, status, recruiterId, minScore } = req.query;
@@ -420,7 +460,7 @@ router.get('/stats', authenticate, allowRoles('admin', 'super_admin'), cacheRout
     platformWide,
     pipeline,
     revenue: revenueAgg[0]?.total || 0,
-    recent: recentApps,
+    recent: await resolveRecentNames(recentApps),
     subtitle: `${active} candidates actively in pipeline`,
     changes: {
       candidates : pct(candNew, candOld),
@@ -560,7 +600,7 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
     conversionRate,
     interestedInvites,
     pipeline,
-    recent,
+    recent: await resolveRecentNames(recent),
     trendData, // 14-day application velocity scoped to recruiter's jobs
     // Normalise job objects: add applicantsCount (frontend name) from real aggregation
     jobs: myJobs.map(j => ({
