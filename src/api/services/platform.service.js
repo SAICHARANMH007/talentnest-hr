@@ -301,4 +301,11 @@ export const platformService = {
   async getEmployerSettings(tid)        { return req('GET',   `/distribution/employer-settings/${tid}`); },
   async saveEmployerSettings(tid, data) { return req('PATCH', `/distribution/employer-settings/${tid}`, data); },
   async runDeduplication()               { return req('POST',  '/admin/deduplicate-jobs', {}); },
+
+  // ── Referral Portal ───────────────────────────────────────────────────────────
+  async getReferrals()                   { const r = await req('GET', '/referrals'); return r?.data || r; },
+  async generateReferralLink(data)       { const r = await req('POST', '/referrals/generate', data); return r?.data || r; },
+  async getReferralStats()               { return req('GET', '/referrals/stats'); },
+  async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
+  async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
 };

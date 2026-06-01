@@ -120,6 +120,7 @@ app.use('/api/', (req, res, next) => {
   if (CSRF_SAFE_METHODS.has(req.method)) return next();
   if (CSRF_EXEMPT_PATHS.has(req.path)) return next();
   if (req.path.startsWith('/company-reviews/public/')) return next();
+  if (req.path === '/referrals/track') return next();
   if (req.path.startsWith('/schedule/') && (req.path.endsWith('/confirm') || req.path.endsWith('/token'))) return next();
   if (req.headers['x-requested-with'] === 'TalentNest') return next();
   // Allow requests with dev bypass header (Postman/curl: set X-Dev-Bypass: 1 in non-prod)
@@ -193,6 +194,8 @@ app.use('/api/interview-kits', require('./src/routes/interviewKits'));
 app.use('/api/webhooks', require('./src/routes/webhooks'));
 // ── Company Reviews
 app.use('/api/company-reviews', require('./src/routes/companyReviews'));
+// ── Referral Portal
+app.use('/api/referrals', require('./src/routes/referrals'));
 
 function escHtml(v = '') {
   return String(v)
