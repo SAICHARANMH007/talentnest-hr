@@ -37,6 +37,12 @@ export default function OrgCareersPage() {
   const [location, setLocation] = useState('All');
   const [applying, setApplying] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [avgRating, setAvgRating] = useState(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', pros: '', cons: '', role: '', isAnonymous: true });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
 
   useEffect(() => {
     if (!orgSlug) return;
@@ -103,6 +109,11 @@ export default function OrgCareersPage() {
       })
       .catch(() => setError('Could not load jobs. Please try again later.'))
       .finally(() => setLoading(false));
+
+    // Load reviews in parallel (non-blocking)
+    api.getPublicReviews(orgSlug).then(r => {
+      if (r?.success) { setReviews(r.data || []); setAvgRating(r.avgRating); }
+    }).catch(() => {});
   }, [orgSlug]);
 
   const locations = ['All', ...new Set(jobs.map(j => j.location).filter(Boolean))];
@@ -429,6 +440,98 @@ export default function OrgCareersPage() {
           </div>
         )}
       </div>
+
+      {/* ── Employee Reviews Widget ── */}
+      {!embed && (
+        <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>⭐ Employee Reviews</h3>
+              {avgRating && <span style={{ fontSize: 13, color: '#6B7280' }}>{avgRating}/5 average from {reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>}
+            </div>
+            {!showReviewForm && !reviewDone && (
+              <button onClick={() => setShowReviewForm(true)}
+                style={{ background: '#0176D3', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Write a Review
+              </button>
+            )}
+          </div>
+
+          {showReviewForm && !reviewDone && (
+            <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '20px 24px', marginBottom: 20, border: '1px solid #E5E7EB' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700 }}>Share your experience</h4>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Rating</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <button key={n} onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
+                      style={{ fontSize: 20, background: 'none', border: 'none', cursor: 'pointer', opacity: reviewForm.rating >= n ? 1 : 0.3 }}>⭐</button>
+                  ))}
+                </div>
+              </div>
+              {[
+                { key: 'role',  label: 'Your Role / Position', placeholder: 'e.g. Software Engineer' },
+                { key: 'title', label: 'Review Title', placeholder: 'Summary of your experience' },
+                { key: 'pros',  label: 'What did you like? (Pros)', placeholder: 'Great culture, flexible hours…' },
+                { key: 'cons',  label: 'What could be better? (Cons)', placeholder: 'Limited growth opportunities…' },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key} style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 3 }}>{label}</label>
+                  {key === 'pros' || key === 'cons' ? (
+                    <textarea rows={2} style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid #D1D5DB', fontSize: 12, boxSizing: 'border-box', resize: 'vertical' }}
+                      value={reviewForm[key]} onChange={e => setReviewForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} />
+                  ) : (
+                    <input style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid #D1D5DB', fontSize: 12, boxSizing: 'border-box' }}
+                      value={reviewForm[key]} onChange={e => setReviewForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} />
+                  )}
+                </div>
+              ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={reviewForm.isAnonymous} onChange={e => setReviewForm(f => ({ ...f, isAnonymous: e.target.checked }))} />
+                Post anonymously
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setShowReviewForm(false)} style={{ background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: 7, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                <button disabled={reviewSubmitting} style={{ background: '#0176D3', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 20px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  onClick={async () => {
+                    setReviewSubmitting(true);
+                    try {
+                      const r = await api.submitReview(orgSlug, reviewForm);
+                      if (r?.success) { setReviewDone(true); setShowReviewForm(false); }
+                    } catch {}
+                    setReviewSubmitting(false);
+                  }}>
+                  {reviewSubmitting ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {reviewDone && (
+            <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '14px 18px', marginBottom: 16, fontSize: 13, color: '#166534' }}>
+              ✅ Thank you! Your review has been submitted for approval.
+            </div>
+          )}
+
+          {reviews.length === 0 && !showReviewForm ? (
+            <p style={{ color: '#9CA3AF', fontSize: 13 }}>No reviews yet. Be the first to share your experience!</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {reviews.map((r, i) => (
+                <div key={r._id || i} style={{ background: '#fff', borderRadius: 10, padding: '14px 18px', border: '1px solid #E5E7EB', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 14 }}>{'⭐'.repeat(r.rating)}</span>
+                    {r.title && <span style={{ fontWeight: 700, fontSize: 13 }}>{r.title}</span>}
+                  </div>
+                  {r.role && <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 6 }}>{r.reviewerName || 'Anonymous'} · {r.role}</div>}
+                  {r.pros && <p style={{ fontSize: 12, color: '#374151', margin: '0 0 4px' }}><span style={{ color: '#16A34A', fontWeight: 700 }}>👍 </span>{r.pros}</p>}
+                  {r.cons && <p style={{ fontSize: 12, color: '#374151', margin: 0 }}><span style={{ color: '#DC2626', fontWeight: 700 }}>👎 </span>{r.cons}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Full Marketing footer — only for TalentNest HR's own career page */}
       {isMainOrg && !embed && <MarketingFooter />}

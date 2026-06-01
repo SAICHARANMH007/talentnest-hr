@@ -119,6 +119,8 @@ const CSRF_EXEMPT_PATHS = new Set([
 app.use('/api/', (req, res, next) => {
   if (CSRF_SAFE_METHODS.has(req.method)) return next();
   if (CSRF_EXEMPT_PATHS.has(req.path)) return next();
+  if (req.path.startsWith('/company-reviews/public/')) return next();
+  if (req.path.startsWith('/schedule/') && (req.path.endsWith('/confirm') || req.path.endsWith('/token'))) return next();
   if (req.headers['x-requested-with'] === 'TalentNest') return next();
   // Allow requests with dev bypass header (Postman/curl: set X-Dev-Bypass: 1 in non-prod)
   if (!IS_PROD && req.headers['x-dev-bypass'] === '1') return next();
@@ -189,6 +191,8 @@ app.use('/api/schedule', require('./src/routes/schedule'));
 app.use('/api/interview-kits', require('./src/routes/interviewKits'));
 // ── Webhooks
 app.use('/api/webhooks', require('./src/routes/webhooks'));
+// ── Company Reviews
+app.use('/api/company-reviews', require('./src/routes/companyReviews'));
 
 function escHtml(v = '') {
   return String(v)
