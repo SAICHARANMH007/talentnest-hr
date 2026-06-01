@@ -92,7 +92,8 @@ const RecruiterInterviews = lazy(() => import('./pages/recruiter/RecruiterInterv
 const RecruiterOffers = lazy(() => import('./pages/recruiter/RecruiterOffers.jsx'));
 const TalentPool = lazy(() => import('./pages/recruiter/TalentPool.jsx'));
 
-const CandidateOffer = lazy(() => import('./pages/candidate/CandidateOffer.jsx'));
+const CandidateOffer      = lazy(() => import('./pages/candidate/CandidateOffer.jsx'));
+const OfferComparison     = lazy(() => import('./pages/candidate/OfferComparison.jsx'));
 
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard.jsx'));
 const HiringManagerDashboard = lazy(() => import('./pages/hiring_manager/HiringManagerDashboard.jsx'));
@@ -561,6 +562,7 @@ export default function App() {
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
             <Route path="background-verification" element={<CandidateBackgroundVerification user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />
+            <Route path="offer-comparison" element={<OfferComparison user={user} />} />
           </>
         )}
 
