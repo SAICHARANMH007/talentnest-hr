@@ -135,7 +135,7 @@ function NotificationBell({ userRole, compact = false }) {
           items.push({
             _id: id, type: 'application',
             title: 'New Application',
-            body: `${cand.name || a.candidateName || 'Candidate'} applied for: ${job.title || a.jobTitle || 'a position'}`,
+            body: `${cand.name || a.candidateName || cand.email?.split('@')[0] || 'New applicant'} applied for: ${job.title || a.jobTitle || 'a position'}`,
             createdAt: a.createdAt || a.appliedAt || new Date().toISOString(),
             read: readIds.current.has(id), live: true,
             link: jobId ? `/app/pipeline?jobId=${jobId}` : '/app/pipeline',

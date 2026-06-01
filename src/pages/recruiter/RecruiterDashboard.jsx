@@ -33,6 +33,7 @@ export default function RecruiterDashboard({ user }) {
   const [drawerUser, setDrawerUser] = useState(null);
   const [drillDown, setDrillDown]   = useState(null);
   const [error, setError] = useState(null);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -496,6 +497,49 @@ export default function RecruiterDashboard({ user }) {
           })}
           {recentActs.length === 0 && <p style={{ color:"#9E9D9B", fontSize:13, textAlign:"center", padding:"20px 0" }}>No recent activity yet.</p>}
         </div>
+      </div>
+
+      {/* ── WHAT'S NEW — Feature Guide ── */}
+      <div style={{ ...card, marginBottom:20, border:'1px solid rgba(1,118,211,0.25)', background:'linear-gradient(135deg,#F0F7FF,#fff)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }} onClick={() => setShowWhatsNew(p => !p)}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:22 }}>🚀</span>
+            <div>
+              <div style={{ color:'#0176D3', fontSize:12, fontWeight:800, letterSpacing:0.5 }}>WHAT'S NEW — RECRUITER FEATURES</div>
+              <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>Click to {showWhatsNew ? 'hide' : 'see'} all available features & where to find them</div>
+            </div>
+          </div>
+          <span style={{ color:'#0176D3', fontSize:16, transition:'transform 0.2s', transform: showWhatsNew ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+        </div>
+        {showWhatsNew && (
+          <div style={{ marginTop:16, display:'flex', flexDirection:'column', gap:10 }}>
+            {[
+              { nav:'/app/dashboard',   icon:'📊', label:'Dashboard',          desc:'Daily queue, pipeline funnel, job performance, upcoming interviews — all in one view' },
+              { nav:'/app/jobs',        icon:'💼', label:'Jobs',               desc:'Post jobs, manage urgency, set custom hiring stages, view applicants per job' },
+              { nav:'/app/pipeline',    icon:'🔄', label:'Pipeline',           desc:'Drag-and-drop Kanban board — move candidates through stages, add notes, schedule interviews' },
+              { nav:'/app/applicants',  icon:'📋', label:'Applicant Records',  desc:'Full table of all applicants with real names, resume, stage, and contact details' },
+              { nav:'/app/candidates',  icon:'👥', label:'Candidates DB',      desc:'Search and manage your full candidate pool — send invites, view profiles, open detail drawer' },
+              { nav:'/app/talent-pool', icon:'⭐', label:'Talent Pool',        desc:'Park promising candidates for future roles — pull them back when a job opens up' },
+              { nav:'/app/interviews',  icon:'📅', label:'Interviews',         desc:'All scheduled interviews with video/phone links, round tracking, and feedback notes' },
+              { nav:'/app/offers',      icon:'📨', label:'Offer Letters',      desc:'Generate personalised offer letters, preview HTML, send to candidates, download signed PDF' },
+              { nav:'/app/outreach',    icon:'📣', label:'Outreach',           desc:'Bulk invite candidates to jobs — track sent, opened, interested, declined responses' },
+              { nav:'/app/referrals',   icon:'🔗', label:'Referrals',          desc:'Generate shareable referral links per job and track referred applicants' },
+              { nav:'/app/analytics',   icon:'📈', label:'Analytics',          desc:'Time-to-hire, source breakdown, funnel conversion, SLA compliance charts' },
+            ].map(f => (
+              <div key={f.nav} onClick={() => navigate(f.nav)}
+                style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#fff', borderRadius:10, border:'1px solid #E8ECF0', cursor:'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.background='#F0F7FF'}
+                onMouseLeave={e => e.currentTarget.style.background='#fff'}>
+                <span style={{ fontSize:20, flexShrink:0 }}>{f.icon}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontWeight:700, color:'#032D60', fontSize:13 }}>{f.label}</div>
+                  <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{f.desc}</div>
+                </div>
+                <span style={{ color:'#0176D3', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>Go →</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Drill-down Overlay ── */}

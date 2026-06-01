@@ -113,7 +113,7 @@ export default function AdminPipeline({ user }) {
       // Trigger package/CTC collection when candidate is Hired
       if (newStage === 'selected') {
         const app = apps.find(a => (a.id || a._id?.toString()) === appId);
-        setHiredModal({ appId, candidateName: app?.candidateName || app?.candidate?.name || 'Candidate', jobTitle: app?.job?.title || app?.jobTitle || '' });
+        setHiredModal({ appId, candidateName: app?.candidateName || app?.candidate?.name || app?.candidateEmail?.split('@')[0] || '—', jobTitle: app?.job?.title || app?.jobTitle || '' });
       }
     } catch (e) {
       setToast(`❌ ${e.message}`);
@@ -201,7 +201,7 @@ export default function AdminPipeline({ user }) {
                 ) : stageApps.length === 0 ? (
                   <div style={S.emptyCol}>Drop here</div>
                 ) : stageApps.map(a => {
-                  const cName = a.candidateId?.name || a.candidate?.name || a.candidateName || 'Candidate';
+                  const cName = a.candidateId?.name || a.candidate?.name || a.candidateName || a.candidateId?.email?.split('@')[0] || a.candidateEmail?.split('@')[0] || '—';
                   const jTitle = a.jobId?.title || jobs.find(j => toId(j) === toId(a.jobId))?.title || '';
                   const score = a.aiMatchScore || 0;
                   const isMoving = movingId === (a.id || a._id?.toString());

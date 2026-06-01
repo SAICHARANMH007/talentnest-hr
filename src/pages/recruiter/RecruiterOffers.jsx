@@ -113,7 +113,7 @@ export default function RecruiterOffers({ user }) {
             <thead><tr>{['Candidate','Job','CTC','Offer Status','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
               {apps.map(app => {
-                const cName = app.candidateId?.name || app.candidate?.name || 'Candidate';
+                const cName = app.candidateId?.name || app.candidate?.name || app.candidateName || app.candidateId?.email?.split('@')[0] || app.email?.split('@')[0] || '—';
                 const jTitle = app.jobId?.title || '—';
                 const appId = app.id || app._id?.toString();
                 const offer = getOffer(appId);

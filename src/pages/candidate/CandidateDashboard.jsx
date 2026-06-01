@@ -293,6 +293,29 @@ export default function CandidateDashboard({ user }) {
         </div>
       )}
 
+      {/* ── Action Required Panel ── */}
+      {(() => {
+        const offerApps    = apps.filter(a => a.stage === 'offer_extended');
+        const interviewApp = apps.filter(a => a.stage === 'interview_scheduled');
+        const shortlisted  = apps.filter(a => a.stage === 'shortlisted');
+        const actions      = [...offerApps.map(a => ({ emoji: '🎉', color: '#059669', bg: '#D1FAE5', border: '#6EE7B7', msg: `You have an offer from ${a.jobId?.companyName || a.jobId?.company || 'an employer'}!`, cta: 'Review Offer' })), ...interviewApp.map(a => ({ emoji: '📅', color: '#6D28D9', bg: '#EDE9FE', border: '#C4B5FD', msg: `Interview scheduled for ${a.jobId?.title || 'a role'} at ${a.jobId?.companyName || a.jobId?.company || 'employer'}`, cta: 'View Details' })), ...shortlisted.map(a => ({ emoji: '⭐', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D', msg: `You've been shortlisted for ${a.jobId?.title || 'a role'} at ${a.jobId?.companyName || a.jobId?.company || 'employer'}`, cta: 'View Application' }))];
+        if (!actions.length) return null;
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, margin: '0 0 10px', letterSpacing: 1 }}>⚡ ACTION REQUIRED</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {actions.map((ac, i) => (
+                <div key={i} style={{ background: ac.bg, border: `1.5px solid ${ac.border}`, borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 22 }}>{ac.emoji}</span>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: '#0A1628', minWidth: 120 }}>{ac.msg}</span>
+                  <button onClick={() => navigate('/app/applications')} style={{ background: ac.color, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>{ac.cta} →</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Recent Activity Updates ── */}
       {recentUpdates.length > 0 && (
         <div style={{ ...card, marginBottom:20 }}>

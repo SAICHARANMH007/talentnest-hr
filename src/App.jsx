@@ -597,7 +597,7 @@ export default function App() {
             <Route path="assessments" element={<RecruiterAssessments user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
             <Route path="offers" element={<RecruiterOffers user={user} />} />
-            <Route path="talent-pool" element={<TalentPool user={user} />} />
+            {rk === 'recruiter' && <Route path="talent-pool" element={<TalentPool user={user} />} />}
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
             <Route path="onboarding-templates" element={<OnboardingTemplates />} />
             <Route path="nps-dashboard" element={<AdminNPS />} />
