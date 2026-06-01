@@ -1080,20 +1080,28 @@ router.get('/applicants', authenticate, allowRoles('admin', 'super_admin', 'recr
     orgNameMap(),
   ]);
 
-  // Fallback: for any app where candidateId wasn't populated (legacy data), look up by email
-  const appsNeedingFallback = apps.filter(a => !a.candidateId?._id);
-  const fallbackEmails = [...new Set(appsNeedingFallback.map(a => a.email).filter(Boolean).map(e => e.toLowerCase()))];
-  const fallbackUsers  = fallbackEmails.length
-    ? await User.find({ role: 'candidate', email: { $in: fallbackEmails } }).select('name email phone tenantId').lean()
-    : [];
-  const usersByEmail = new Map(fallbackUsers.map(u => [u.email.toLowerCase(), u]));
+  // Fallback: look up User account for apps where candidateId wasn't populated OR
+  // where the populated Candidate record has no name (e.g. manually-added/invited candidates)
+  const appsNeedingFallback = apps.filter(a => !a.candidateId?._id || !a.candidateId?.name);
+  const fallbackEmails  = [...new Set(appsNeedingFallback.map(a => (a.candidateId?.email || a.email)).filter(Boolean).map(e => e.toLowerCase()))];
+  const fallbackUserIds = [...new Set(appsNeedingFallback.map(a => a.candidateId?.userId?.toString()).filter(Boolean))];
+  const [fallbackByEmail, fallbackById] = await Promise.all([
+    fallbackEmails.length  ? User.find({ email: { $in: fallbackEmails } }).select('name email phone tenantId').lean()  : [],
+    fallbackUserIds.length ? User.find({ _id:   { $in: fallbackUserIds } }).select('name email phone tenantId').lean() : [],
+  ]);
+  const usersByEmail  = new Map([...fallbackByEmail, ...fallbackById].map(u => [u.email?.toLowerCase(), u]));
+  const usersById     = new Map(fallbackById.map(u => [String(u._id), u]));
 
   const rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const job       = app.jobId       && typeof app.jobId       === 'object' ? app.jobId       : {};
+    const user =
+      usersById.get(candidate.userId?.toString()) ||
+      usersByEmail.get((candidate.email || app.email || '').toLowerCase()) ||
+      {};
     return profileRow({
       candidate,
-      user   : usersByEmail.get((candidate.email || app.email || '').toLowerCase()) || {},
+      user,
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
@@ -1120,18 +1128,26 @@ router.get('/applicants/export', authenticate, allowRoles('admin', 'super_admin'
     orgNameMap(),
   ]);
 
-  const emails = [...new Set(apps.map(a => a.candidateId?.email).filter(Boolean).map(e => e.toLowerCase()))];
-  const users = emails.length
-    ? await User.find({ role: 'candidate', email: { $in: emails } }).select('-password -passwordHash').lean()
-    : [];
-  const usersByEmail = new Map(users.map(u => [u.email.toLowerCase(), u]));
+  const appsNeedingFallbackExp = apps.filter(a => !a.candidateId?._id || !a.candidateId?.name);
+  const fallbackEmailsExp  = [...new Set(appsNeedingFallbackExp.map(a => (a.candidateId?.email || a.email)).filter(Boolean).map(e => e.toLowerCase()))];
+  const fallbackUserIdsExp = [...new Set(appsNeedingFallbackExp.map(a => a.candidateId?.userId?.toString()).filter(Boolean))];
+  const [fallbackByEmailExp, fallbackByIdExp] = await Promise.all([
+    fallbackEmailsExp.length  ? User.find({ email: { $in: fallbackEmailsExp  } }).select('-password -passwordHash').lean() : [],
+    fallbackUserIdsExp.length ? User.find({ _id:   { $in: fallbackUserIdsExp } }).select('-password -passwordHash').lean() : [],
+  ]);
+  const usersByEmailExp = new Map([...fallbackByEmailExp, ...fallbackByIdExp].map(u => [u.email?.toLowerCase(), u]));
+  const usersByIdExp    = new Map(fallbackByIdExp.map(u => [String(u._id), u]));
 
   let rows = apps.map(app => {
     const candidate = app.candidateId && typeof app.candidateId === 'object' ? app.candidateId : {};
     const job = app.jobId && typeof app.jobId === 'object' ? app.jobId : {};
+    const user =
+      usersByIdExp.get(candidate.userId?.toString()) ||
+      usersByEmailExp.get((candidate.email || app.email || '').toLowerCase()) ||
+      {};
     return profileRow({
       candidate,
-      user: usersByEmail.get((candidate.email || '').toLowerCase()) || {},
+      user,
       app,
       job,
       orgName: tenantMap[String(app.tenantId)] || tenantMap[String(job.tenantId)] || '',
