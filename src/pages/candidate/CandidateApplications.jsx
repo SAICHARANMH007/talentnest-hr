@@ -507,6 +507,28 @@ export default function CandidateApplications({ user }) {
                       );
                     })()}
 
+                    {/* Interview Prep Tips */}
+                    {(a.stage === 'interview_scheduled') && (() => {
+                      const jobSkills = a.jobId?.skills || a.job?.skills || [];
+                      const tips = [
+                        `Review fundamentals of: ${jobSkills.slice(0, 3).join(', ') || 'your key skills'}`,
+                        'Research the company — values, products, recent news',
+                        'Prepare 2–3 examples using the STAR method (Situation, Task, Action, Result)',
+                        'Have questions ready to ask the interviewer',
+                        'Test your audio/video if it\'s a virtual interview',
+                      ];
+                      return (
+                        <div style={{ marginTop: 10, padding: '12px 14px', background: 'rgba(139,92,246,0.06)', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)' }}>
+                          <p style={{ color: '#7C3AED', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>💡 Interview Prep Tips</p>
+                          <ul style={{ margin: 0, paddingLeft: 16 }}>
+                            {tips.map((t, i) => (
+                              <li key={i} style={{ color: '#374151', fontSize: 12, marginBottom: 4, lineHeight: 1.5 }}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })()}
+
                     {/* Interview details from interviews[] array */}
                     {(a.stage === 'interview_scheduled' || a.stage === 'interview_completed') && iv.scheduledAt && (
                       <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.3)' }}>
