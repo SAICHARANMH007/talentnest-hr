@@ -2571,4 +2571,46 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
   });
 }));
 
+// ── Pipeline Heatmap ─────────────────────────────────────────────────────────
+// Returns application counts grouped by (day-of-week, stage) for the last N days
+router.get('/pipeline-heatmap', ...guard, asyncHandler(async (req, res) => {
+  const days   = Math.min(parseInt(req.query.days || 90, 10), 365);
+  const since  = new Date(Date.now() - days * 86400000);
+
+  const raw = await Application.aggregate([
+    { $match: { tenantId: req.user.tenantId, deletedAt: null, createdAt: { $gte: since } } },
+    { $group: {
+      _id: {
+        week   : { $week: '$createdAt' },
+        year   : { $year: '$createdAt' },
+        dayOfWeek: { $dayOfWeek: '$createdAt' },
+        stage  : '$currentStage',
+      },
+      count: { $sum: 1 },
+    }},
+    { $project: {
+      week   : '$_id.week',
+      year   : '$_id.year',
+      day    : '$_id.dayOfWeek',
+      stage  : '$_id.stage',
+      count  : 1,
+      _id    : 0,
+    }},
+    { $sort: { year: 1, week: 1 } },
+  ]);
+
+  // Also get daily totals for the calendar view
+  const daily = await Application.aggregate([
+    { $match: { tenantId: req.user.tenantId, deletedAt: null, createdAt: { $gte: since } } },
+    { $group: {
+      _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+      count: { $sum: 1 },
+    }},
+    { $project: { date: '$_id', count: 1, _id: 0 } },
+    { $sort: { date: 1 } },
+  ]);
+
+  res.json({ success: true, data: { raw, daily, days } });
+}));
+
 module.exports = router;

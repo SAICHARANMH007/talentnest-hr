@@ -105,4 +105,7 @@ export const dashboardService = {
   async getDiversityReport(params = {}) {
     return req('GET', `/stats/diversity${qs(params)}`);
   },
+  async getPipelineHeatmap(days = 90) {
+    return req('GET', `/dashboard/pipeline-heatmap?days=${days}`);
+  },
 };
