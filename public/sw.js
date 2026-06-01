@@ -1,4 +1,4 @@
-const CACHE_NAME = 'talentnest-v3';
+const CACHE_NAME = 'talentnest-v4';
 const OFFLINE_ASSETS = [
   '/offline.html',
   '/logo.svg',
@@ -19,6 +19,12 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clientList) => {
+        for (const client of clientList) {
+          client.navigate(client.url);
+        }
+      })
   );
 });
 
@@ -63,7 +69,15 @@ self.addEventListener('fetch', (event) => {
   if (!isSameOrigin) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, '/offline.html'));
+    // Always fetch fresh HTML from network, bypass HTTP cache entirely
+    const freshRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      credentials: request.credentials,
+      cache: 'no-store',
+      redirect: request.redirect,
+    });
+    event.respondWith(networkFirst(freshRequest, '/offline.html'));
     return;
   }
 
