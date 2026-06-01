@@ -897,6 +897,19 @@ router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recru
   res.json({ success: true, data: { videoJdUrl: uploadResult.secure_url } });
 }));
 
+// PATCH /api/jobs/:id/custom-stages — set custom hiring stages for this job
+router.patch('/:id/custom-stages', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { stages } = req.body;
+  if (!Array.isArray(stages)) throw new AppError('stages must be an array.', 400);
+  const job = await Job.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    { $set: { customStages: stages } },
+    { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
+  res.json({ success: true, data: job.customStages });
+}));
+
 // ── DELETE /api/jobs/:id/video-jd — remove video JD
 router.delete('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const job = await Job.findOneAndUpdate(

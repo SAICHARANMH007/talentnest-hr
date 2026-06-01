@@ -97,6 +97,7 @@ const OfferLetterBuilder    = lazy(() => import('./pages/admin/OfferLetterBuilde
 const DashboardWidgets      = lazy(() => import('./pages/admin/DashboardWidgets.jsx'));
 const HeadcountPlanner      = lazy(() => import('./pages/admin/HeadcountPlanner.jsx'));
 const SlaAlerts             = lazy(() => import('./pages/admin/SlaAlerts.jsx'));
+const CustomHiringStages    = lazy(() => import('./pages/admin/CustomHiringStages.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -611,6 +612,7 @@ export default function App() {
             <Route path="dashboard-widgets" element={<DashboardWidgets />} />
             <Route path="headcount-planner" element={<HeadcountPlanner />} />
             <Route path="sla-alerts" element={<SlaAlerts />} />
+            <Route path="custom-stages" element={<CustomHiringStages />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}

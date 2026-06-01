@@ -88,6 +88,14 @@ const jobSchema = new mongoose.Schema({
 
   interviewKitId: { type: mongoose.Schema.Types.ObjectId, ref: 'InterviewKit', default: null },
 
+  // Optional per-job custom hiring stages (overrides org-level pipeline when non-empty)
+  customStages: [{
+    name    : { type: String, required: true, trim: true },
+    color   : { type: String, default: '#0176D3' },
+    order   : { type: Number, default: 0 },
+    isDefault: { type: Boolean, default: false },
+  }],
+
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   // Full audit trail of every recruiter who has ever worked on this job.
