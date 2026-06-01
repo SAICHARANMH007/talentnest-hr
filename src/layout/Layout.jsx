@@ -11,10 +11,7 @@ import { useLogo } from '../context/LogoContext.jsx';
 import useHeartbeat from '../hooks/useHeartbeat.js';
 import { usePlatformSocket } from '../hooks/usePlatformSocket.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
-import ChatPanel from '../components/shared/ChatPanel.jsx';
-// Direct import (not lazy) so socket connects immediately on app load.
-// Previously lazy + ErrorBoundary was silently swallowing errors and preventing
-// the call socket from ever connecting for some users.
+const ChatPanel = lazy(() => import('../components/shared/ChatPanel.jsx'));
 import CallManager from '../components/calling/CallManager.jsx';
 
 function AppIcon({ name, size = 18, color = 'currentColor' }) {
@@ -1034,7 +1031,9 @@ export default function Layout({ user, onLogout }) {
       {showChangePwd && <ChangePasswordModal user={user} onClose={() => setShowChangePwd(false)} />}
       {showEmailSettings && <EmailSettingsModal user={user} onClose={() => setShowEmailSettings(false)} />}
       <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} onMessage={u => { setShowOnline(false); setChatRecipient(u); setShowInbox(true); }} />
-      <ChatPanel open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); setChatRecipient(null); }} myUser={user} initialRecipient={chatRecipient} />
+      <Suspense fallback={null}>
+        <ChatPanel open={showInbox} onClose={() => { setShowInbox(false); setUnreadMsgs(0); setChatRecipient(null); }} myUser={user} initialRecipient={chatRecipient} />
+      </Suspense>
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
