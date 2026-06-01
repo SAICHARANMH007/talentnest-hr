@@ -73,6 +73,13 @@ const applicationSchema = new mongoose.Schema({
       submittedAt         : { type: Date },
     },
     calendarEventId: { type: String },
+    kitScores: [{
+      questionId : { type: mongoose.Schema.Types.ObjectId },
+      competency : { type: String },
+      question   : { type: String },
+      score      : { type: Number },
+      notes      : { type: String, default: '' },
+    }],
   }],
 
   offerLetterId: {

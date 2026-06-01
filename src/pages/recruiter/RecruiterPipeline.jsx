@@ -35,6 +35,30 @@ function useDebounce(fn, delay) {
 function FeedbackModal({ app, onClose, onDone }) {
   const [form, setForm] = useState({ rating: 3, strengths: '', weaknesses: '', recommendation: true });
   const [saving, setSaving] = useState(false);
+  const [kit, setKit]       = useState(null);
+  const [kitScores, setKitScores] = useState({}); // { [questionId]: { score, notes } }
+
+  // Load kit if attached to this job
+  useEffect(() => {
+    if (app.interviewKitId) {
+      api.getInterviewKit(app.interviewKitId).then(k => {
+        setKit(k);
+        // Pre-fill from existing round scores
+        const lastRound = app.interviewRounds?.[app.interviewRounds.length - 1];
+        if (lastRound?.kitScores?.length) {
+          const pre = {};
+          lastRound.kitScores.forEach(ks => { pre[ks.questionId] = { score: ks.score, notes: ks.notes || '' }; });
+          setKitScores(pre);
+        }
+      }).catch(() => {});
+    }
+  }, [app.interviewKitId]);
+
+  const setKitScore = (qId, field, val) => setKitScores(p => ({ ...p, [qId]: { ...p[qId], [field]: val } }));
+
+  const kitAvgScore = kit?.questions?.length
+    ? (kit.questions.reduce((sum, q) => sum + (kitScores[q._id]?.score || 0), 0) / kit.questions.length).toFixed(1)
+    : null;
 
   const submit = async () => {
     if (!form.strengths?.trim() && !form.weaknesses?.trim()) {
@@ -44,6 +68,18 @@ function FeedbackModal({ app, onClose, onDone }) {
     setSaving(true);
     try {
       await api.addFeedback(app.id, form);
+      // Also save kit scores if kit is loaded
+      if (kit?.questions?.length) {
+        const roundIndex = Math.max(0, (app.interviewRounds?.length || 1) - 1);
+        const scores = kit.questions.map(q => ({
+          questionId: q._id,
+          competency: q.competency,
+          question: q.question,
+          score: kitScores[q._id]?.score || 0,
+          notes: kitScores[q._id]?.notes || '',
+        }));
+        await api.saveKitScores(app.id, roundIndex, scores).catch(() => {});
+      }
       onDone('✅ Feedback saved!');
       onClose();
     } catch (e) {
@@ -65,6 +101,40 @@ function FeedbackModal({ app, onClose, onDone }) {
         </div>
         <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Structured Kit Questions */}
+            {kit?.questions?.length > 0 && (
+              <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0176D3' }}>📋 {kit.name}</div>
+                  {kitAvgScore > 0 && <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>Avg: {kitAvgScore}</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {kit.questions.map((q, qi) => {
+                    const sc = kitScores[q._id] || {};
+                    return (
+                      <div key={q._id} style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #E5E7EB' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div>
+                            <span style={{ background: 'rgba(1,118,211,0.08)', color: '#0176D3', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700, marginRight: 6 }}>{q.competency}</span>
+                            <span style={{ color: '#374151', fontSize: 12 }}>{q.question}</span>
+                          </div>
+                        </div>
+                        {q.scoringTip && <p style={{ color: '#9CA3AF', fontSize: 11, margin: '0 0 6px', fontStyle: 'italic' }}>💡 {q.scoringTip}</p>}
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {Array.from({ length: q.maxScore || 5 }, (_, i) => i + 1).map(n => (
+                            <button key={n} onClick={() => setKitScore(q._id, 'score', n)}
+                              style={{ width: 30, height: 30, borderRadius: 6, border: (sc.score || 0) >= n ? '2px solid #7C3AED' : '1px solid #D1D5DB', background: (sc.score || 0) >= n ? 'rgba(124,58,237,0.2)' : '#fff', color: (sc.score || 0) >= n ? '#7C3AED' : '#9CA3AF', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{n}</button>
+                          ))}
+                          <input value={sc.notes || ''} onChange={e => setKitScore(q._id, 'notes', e.target.value)}
+                            placeholder="Note (optional)" style={{ flex: 1, minWidth: 100, padding: '4px 8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 11, outline: 'none' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div>
               <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 8 }}>Rating</label>
               <div style={{ display: 'flex', gap: 8 }}>

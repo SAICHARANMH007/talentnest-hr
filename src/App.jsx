@@ -48,7 +48,8 @@ const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAsses
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics.jsx'));
-const AdminInsights  = lazy(() => import('./pages/admin/AdminInsights.jsx'));
+const AdminInsights      = lazy(() => import('./pages/admin/AdminInsights.jsx'));
+const AdminInterviewKits = lazy(() => import('./pages/admin/AdminInterviewKits.jsx'));
 const OrgSettings = lazy(() => import('./pages/admin/OrgSettings.jsx'));
 const AdminJobApproval = lazy(() => import('./pages/admin/AdminJobApproval.jsx'));
 const OutreachTracker = lazy(() => import('./pages/admin/OutreachTracker.jsx'));
@@ -599,6 +600,7 @@ export default function App() {
             <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="interview-kits" element={<AdminInterviewKits user={user} />} />
             <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />

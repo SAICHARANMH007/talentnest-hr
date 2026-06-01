@@ -18,6 +18,7 @@ import { videoRoomService } from './services/videoRoom.service.js';
 import { callService }      from './services/call.service.js';
 import { importedCandidateService } from './services/importedCandidate.service.js';
 import { scheduleService }          from './services/schedule.service.js';
+import { interviewKitService }      from './services/interviewKit.service.js';
 
 // Re-export the 401 handler and auth initializer for global app subscription
 export const set401Handler = _set401;
@@ -43,6 +44,7 @@ export const api = {
   ...callService,
   ...importedCandidateService,
   ...scheduleService,
+  ...interviewKitService,
 };
 
 // Default export for convenience

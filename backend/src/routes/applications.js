@@ -1498,6 +1498,28 @@ router.post('/:id/interview/:roundIndex/scorecard', ...guard,
   })
 );
 
+// POST /api/applications/:id/interview/:roundIndex/kit-scores — save structured kit scores
+router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter'),
+  asyncHandler(async (req, res) => {
+    const { kitScores } = req.body;
+    if (!Array.isArray(kitScores)) throw new AppError('kitScores array is required', 400);
+
+    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    if (!app) throw new AppError('Application not found.', 404);
+
+    const idx = parseInt(req.params.roundIndex, 10);
+    if (isNaN(idx) || idx < 0 || idx >= app.interviewRounds.length) {
+      throw new AppError('Invalid round index.', 400);
+    }
+
+    app.interviewRounds[idx].kitScores = kitScores;
+    app.markModified('interviewRounds');
+    await app.save();
+    res.json({ success: true, data: normalizeApp(app) });
+  })
+);
+
 // PATCH /api/applications/:id/park — toggle talent pool parking
 router.patch('/:id/park', ...guard, asyncHandler(async (req, res) => {
   const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });

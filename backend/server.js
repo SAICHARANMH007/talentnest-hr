@@ -797,6 +797,9 @@ app.use('/api/bgv',   require('./src/routes/bgv'));
 // ── Interview Self-Scheduling
 app.use('/api/schedule', require('./src/routes/schedule'));
 
+// ── Interview Kits
+app.use('/api/interview-kits', require('./src/routes/interviewKits'));
+
 // ── 404 handler (Wrap in AppError for API)
 app.all('*', (req, res, next) => {
   if (req.originalUrl.startsWith('/api/')) {

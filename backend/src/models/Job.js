@@ -85,6 +85,8 @@ const jobSchema = new mongoose.Schema({
   careerPageSlug: { type: String },
   isPublic: { type: Boolean, default: false }, // Opt-in to org career listing page
 
+  interviewKitId: { type: mongoose.Schema.Types.ObjectId, ref: 'InterviewKit', default: null },
+
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   // Full audit trail of every recruiter who has ever worked on this job.
