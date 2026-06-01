@@ -24,7 +24,7 @@ const COLLECTIONS = [
   'documentTypes', 'questionBank', 'offerVariables', 'notificationMessages',
   'departments', 'locations', 'sources', 'employmentTypes',
 ];
-const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings', 'employerBrand'];
+const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings', 'employerBrand', 'dashboardWidgets'];
 
 function resolveOrgId(req) {
   // super_admin can pass ?orgId=... or uses their own tenantId

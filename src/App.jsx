@@ -94,6 +94,7 @@ const DuplicateMerge        = lazy(() => import('./pages/admin/DuplicateMerge.js
 const SourcingTracker       = lazy(() => import('./pages/admin/SourcingTracker.jsx'));
 const RejectionTemplates    = lazy(() => import('./pages/admin/RejectionTemplates.jsx'));
 const OfferLetterBuilder    = lazy(() => import('./pages/admin/OfferLetterBuilder.jsx'));
+const DashboardWidgets      = lazy(() => import('./pages/admin/DashboardWidgets.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -605,6 +606,7 @@ export default function App() {
             <Route path="sourcing-tracker" element={<SourcingTracker />} />
             <Route path="rejection-templates" element={<RejectionTemplates />} />
             <Route path="offer-letter-builder" element={<OfferLetterBuilder />} />
+            <Route path="dashboard-widgets" element={<DashboardWidgets />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}

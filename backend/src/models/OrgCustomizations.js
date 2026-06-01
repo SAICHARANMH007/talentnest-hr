@@ -166,6 +166,28 @@ const OrgCustomizationsSchema = new Schema({
     footerNote:         { type: String, default: 'This is a computer-generated offer letter.' },
   },
 
+  // Role-based dashboard widget visibility
+  dashboardWidgets: {
+    type: Map,
+    of: Boolean,
+    default: () => new Map([
+      ['admin_kpi_stats', true],
+      ['admin_pipeline_health', true],
+      ['admin_hiring_funnel', true],
+      ['admin_source_breakdown', true],
+      ['admin_top_skills', true],
+      ['admin_leaderboard', true],
+      ['admin_job_performance', true],
+      ['admin_upcoming_interviews', true],
+      ['recruiter_action_queue', true],
+      ['recruiter_pipeline', true],
+      ['recruiter_upcoming_interviews', true],
+      ['candidate_job_matches', true],
+      ['candidate_application_status', true],
+      ['candidate_upcoming_interviews', true],
+    ]),
+  },
+
 }, { timestamps: true });
 
 // Seed defaults if document is new
