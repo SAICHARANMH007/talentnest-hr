@@ -183,6 +183,47 @@ export default function JobDistribution({ user }) {
         </div>
       </div>
 
+      {/* Direct Job Links — copy and share */}
+      {job.careerPageSlug && (
+        <div style={{ ...card, padding: '20px 24px', marginBottom: 24 }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 800, color: '#032D60' }}>🔗 Share This Job</h3>
+          <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>Copy and share these links across social media or embed directly.</p>
+          {(() => {
+            const baseUrl = 'https://www.talentnesthr.com';
+            const jobUrl = `${baseUrl}/careers/job/${job.careerPageSlug}`;
+            const liText = encodeURIComponent(`We're hiring a ${job.title}! Apply now: ${jobUrl}`);
+            const twText = encodeURIComponent(`🚀 We're hiring a ${job.title}! Apply: ${jobUrl}`);
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F8FAFC', borderRadius: 8, padding: '10px 14px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', minWidth: 110 }}>Direct Job URL</span>
+                  <span style={{ fontSize: 11, color: '#0176D3', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobUrl}</span>
+                  <button onClick={() => copyText(jobUrl, 'joburl')} style={{ background: copied === 'joburl' ? '#10b981' : '#0176D3', border: 'none', borderRadius: 6, color: '#fff', padding: '5px 12px', fontSize: 11, cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}>{copied === 'joburl' ? '✅' : '📋 Copy'}</button>
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`} target="_blank" rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#0A66C2', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>
+                    💼 Share on LinkedIn
+                  </a>
+                  <a href={`https://twitter.com/intent/tweet?text=${twText}`} target="_blank" rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#1DA1F2', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>
+                    🐦 Share on Twitter
+                  </a>
+                  <a href={`https://wa.me/?text=${liText}`} target="_blank" rel="noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>
+                    💬 Share on WhatsApp
+                  </a>
+                  <button onClick={() => copyText(`<a href="${jobUrl}" target="_blank">${job.title} — Apply Now</a>`, 'embedlink')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: copied === 'embedlink' ? '#10b981' : '#fff', color: copied === 'embedlink' ? '#fff' : '#374151', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                    {copied === 'embedlink' ? '✅ Copied' : '🖇️ Copy HTML Link'}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Manual submission checklist */}
       <div style={{ ...card, padding: '20px 24px' }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 800, color: '#032D60' }}>✅ Platform Submission Checklist</h3>
