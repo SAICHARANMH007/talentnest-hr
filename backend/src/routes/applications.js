@@ -1136,17 +1136,31 @@ router.patch('/:id/stage', ...guard,
       }
     }
 
-    // Push notification to the recruiter/creator of the job
+    // Push notification to the recruiter/creator of the job + candidate
     try {
       const { sendPush } = require('../utils/sendPush');
-      const jobDoc = await Job.findById(app.jobId).lean();
-      const candidateDoc = await Candidate.findById(app.candidateId).select('name').lean();
-      if (jobDoc && jobDoc.createdBy) {
-        await sendPush(jobDoc.createdBy, {
+      const pushJob  = await Job.findById(app.jobId).select('title createdBy').lean();
+      const pushCand = await Candidate.findById(app.candidateId).select('name email').lean();
+      // Notify job creator
+      if (pushJob?.createdBy) {
+        await sendPush(pushJob.createdBy, {
           title: 'Stage Updated',
-          body: `${candidateDoc?.name || 'Candidate'} moved to ${stage} for ${jobDoc.title}`,
-          url: `/app/pipeline?job=${jobDoc._id}`,
+          body: `${pushCand?.name || 'Candidate'} moved to ${stage} for ${pushJob.title}`,
+          url: `/app/pipeline?job=${pushJob._id}`,
         });
+      }
+      // Notify candidate for meaningful stages
+      const PUSH_STAGES = ['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Technical Interview', 'Offer', 'Hired', 'Rejected'];
+      if (PUSH_STAGES.includes(stage) && pushCand?.email) {
+        const candUser = await User.findOne({ email: pushCand.email.toLowerCase(), deletedAt: null }).select('_id').lean();
+        if (candUser) {
+          const pushTitles = { Shortlisted: "You've been shortlisted!", Offer: 'Offer extended!', Hired: 'Congratulations — you\'re hired!', Rejected: 'Application update', 'Interview Round 1': 'Interview scheduled', 'Interview Round 2': 'Second interview scheduled', 'Technical Interview': 'Technical interview scheduled' };
+          await sendPush(candUser._id, {
+            title: pushTitles[stage] || 'Application update',
+            body: `Your application for ${pushJob?.title || 'the role'} has been updated.`,
+            url: `/app/applications`,
+          });
+        }
       }
     } catch (e) { /* non-fatal */ }
 

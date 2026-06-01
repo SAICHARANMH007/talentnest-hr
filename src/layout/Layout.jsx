@@ -194,6 +194,18 @@ function NotificationBell({ userRole, compact = false }) {
     return () => clearInterval(iv);
   }, [load]);
 
+  // Real-time: reload immediately when a stage change fires (dispatched by Layout's socket handler)
+  const [bellFlash, setBellFlash] = React.useState(false);
+  React.useEffect(() => {
+    const handler = () => {
+      load();
+      setBellFlash(true);
+      setTimeout(() => setBellFlash(false), 1500);
+    };
+    window.addEventListener('tn:stageChanged', handler);
+    return () => window.removeEventListener('tn:stageChanged', handler);
+  }, [load]);
+
   const unread = notifs.filter(n => !n.read).length;
 
   React.useEffect(() => {
@@ -496,8 +508,10 @@ function NotificationBell({ userRole, compact = false }) {
         aria-label={`Notifications${unread > 0 ? ` — ${unread} unread` : ''}`}
         style={{ background: open ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer', color: '#FFFFFF', fontSize: compact ? 14 : 16, position: 'relative', padding: 0, transition: 'all 0.15s', width: iconButtonSize, minWidth: iconButtonSize, height: iconButtonSize, minHeight: iconButtonSize, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
       >
-        <AppIcon name="bell" size={compact ? 16 : 18} />
-        {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px' }}>{unread > 99 ? '99+' : unread}</span>}
+        <span style={{ display: 'inline-flex', animation: bellFlash ? 'tn-bell-ring 0.4s ease 3' : 'none' }}>
+          <AppIcon name="bell" size={compact ? 16 : 18} />
+        </span>
+        {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#BA0517', color: '#fff', borderRadius: '50%', minWidth: 17, height: 17, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, padding: '0 3px', animation: bellFlash ? 'tn-badge-pop 0.3s ease' : 'none' }}>{unread > 99 ? '99+' : unread}</span>}
       </button>
 
       {/* Notification panel */}
@@ -1038,6 +1052,8 @@ export default function Layout({ user, onLogout }) {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @keyframes pulse-dot { 0%,80%,100% { transform: scale(0.6); opacity: 0.4 } 40% { transform: scale(1); opacity: 1 } }
+        @keyframes tn-bell-ring { 0%,100% { transform: rotate(0deg) } 20% { transform: rotate(-15deg) } 40% { transform: rotate(15deg) } 60% { transform: rotate(-10deg) } 80% { transform: rotate(8deg) } }
+        @keyframes tn-badge-pop { 0% { transform: scale(1) } 50% { transform: scale(1.4) } 100% { transform: scale(1) } }
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
         ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }

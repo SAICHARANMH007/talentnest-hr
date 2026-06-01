@@ -146,11 +146,60 @@ export default function RecruiterDashboard({ user }) {
     } catch (e) { alert(`❌ ${e.message}`); }
   };
 
+  const dq = sd.dailyQueue || {};
+  const hasQueue = (dq.todayInterviews || 0) + (dq.newApplications || 0) + (dq.offersOut || 0) + (dq.expiringJobs || 0) > 0;
+
   return (
     <ErrorReportBoundary componentName="RecruiterDashboard">
       <div>
       {drawerUser && <UserDetailDrawer user={drawerUser} onClose={() => setDrawerUser(null)} />}
       <PageHeader title={`Welcome back, ${user.name?.split(" ")[0]} 👋`} subtitle={`${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})} · ${activeApps > 0 ? `${activeApps} active candidates in pipeline` : 'Dashboard loaded instantly'}`} />
+
+      {/* ── Daily Action Queue ── */}
+      {hasQueue && (
+        <div style={{ ...card, padding:'16px 20px', marginBottom:20, background:'linear-gradient(135deg,#EFF6FF,#DBEAFE)', border:'1px solid rgba(1,118,211,0.2)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:18 }}>⚡</span>
+            <span style={{ fontWeight:800, fontSize:14, color:'#0176D3' }}>Today's Action Queue</span>
+            <span style={{ color:'#706E6B', fontSize:12 }}>— {new Date().toLocaleDateString('en-US',{weekday:'long'})}</span>
+          </div>
+          <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            {dq.todayInterviews > 0 && (
+              <button onClick={() => navigate('/app/pipeline?stage=interview_scheduled')}
+                style={{ background:'#fff', border:'1.5px solid #7C3AED', borderRadius:10, padding:'10px 16px', cursor:'pointer', textAlign:'left', minWidth:140 }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>📅</div>
+                <div style={{ fontWeight:800, color:'#7C3AED', fontSize:18 }}>{dq.todayInterviews}</div>
+                <div style={{ color:'#706E6B', fontSize:11, fontWeight:600 }}>Interview{dq.todayInterviews !== 1 ? 's' : ''} today</div>
+              </button>
+            )}
+            {dq.newApplications > 0 && (
+              <button onClick={() => navigate('/app/pipeline?stage=applied')}
+                style={{ background:'#fff', border:'1.5px solid #0176D3', borderRadius:10, padding:'10px 16px', cursor:'pointer', textAlign:'left', minWidth:140 }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>📥</div>
+                <div style={{ fontWeight:800, color:'#0176D3', fontSize:18 }}>{dq.newApplications}</div>
+                <div style={{ color:'#706E6B', fontSize:11, fontWeight:600 }}>New application{dq.newApplications !== 1 ? 's' : ''} to review</div>
+              </button>
+            )}
+            {dq.offersOut > 0 && (
+              <button onClick={() => navigate('/app/pipeline?stage=offer_extended')}
+                style={{ background:'#fff', border:'1.5px solid #059669', borderRadius:10, padding:'10px 16px', cursor:'pointer', textAlign:'left', minWidth:140 }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>🤝</div>
+                <div style={{ fontWeight:800, color:'#059669', fontSize:18 }}>{dq.offersOut}</div>
+                <div style={{ color:'#706E6B', fontSize:11, fontWeight:600 }}>Offer{dq.offersOut !== 1 ? 's' : ''} awaiting response</div>
+              </button>
+            )}
+            {dq.expiringJobs > 0 && (
+              <button onClick={() => navigate('/app/jobs')}
+                style={{ background:'#fff', border:'1.5px solid #F59E0B', borderRadius:10, padding:'10px 16px', cursor:'pointer', textAlign:'left', minWidth:140 }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>⏳</div>
+                <div style={{ fontWeight:800, color:'#F59E0B', fontSize:18 }}>{dq.expiringJobs}</div>
+                <div style={{ color:'#706E6B', fontSize:11, fontWeight:600 }}>Job{dq.expiringJobs !== 1 ? 's' : ''} closing in 3 days</div>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:12, marginBottom:20 }}>
         <div style={{ cursor:"pointer" }} onClick={() => navigate("/app/jobs")}>
           <KpiCard icon="💼" label="Active Jobs"      value={jobs.filter(j => j.status === 'active' || j.status === 'Open').length} color="#0176D3" trend={8}  sparkValues={[1,2,2,3,3,jobs.length]} />

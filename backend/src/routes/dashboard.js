@@ -470,7 +470,13 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
   cutoff14.setHours(0, 0, 0, 0);
 
   // Step 2: All counts in parallel — pipeline, per-job, trends, recent activity
-  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites, trendAgg] = await Promise.all([
+  // Daily queue time windows
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+  const in3days    = new Date(Date.now() + 3 * 86400000);
+
+  const [pipelineAgg, perJobAgg, appsLast30, hiredLast30, recent, interestedInvites, trendAgg,
+    todayInterviewCount, newAppsCount, offersOutCount, expiringJobsCount] = await Promise.all([
     // Stage breakdown (pipeline funnel)
     Application.aggregate([
       { $match: appFilter },
@@ -496,6 +502,23 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ14 } }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]),
+    // Daily queue: interviews scheduled today
+    Application.countDocuments({
+      ...appFilter,
+      currentStage: { $in: ['Interview Round 1', 'Interview Round 2', 'Technical Interview'] },
+      'interviewRounds.scheduledAt': { $gte: todayStart, $lte: todayEnd },
+    }),
+    // Daily queue: new unreviewed applications (still in Applied stage)
+    Application.countDocuments({ ...appFilter, currentStage: 'Applied' }),
+    // Daily queue: offers waiting for candidate response
+    Application.countDocuments({ ...appFilter, currentStage: 'Offer' }),
+    // Daily queue: jobs with application deadline in next 3 days
+    Job.countDocuments({
+      _id: { $in: jobIds },
+      status: 'active',
+      applicationDeadline: { $gte: todayStart, $lte: in3days },
+      ...del,
+    }),
   ]);
 
   // Build per-job count map
@@ -545,6 +568,13 @@ router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), cacheRoute
       id            : j._id.toString(),
       applicantsCount: perJobMap[j._id.toString()] ?? j.applicationCount ?? 0,
     })),
+    // Daily action queue — shown as a top-of-dashboard "what to do today" widget
+    dailyQueue: {
+      todayInterviews : todayInterviewCount,
+      newApplications : newAppsCount,
+      offersOut       : offersOutCount,
+      expiringJobs    : expiringJobsCount,
+    },
   }});
 }));
 

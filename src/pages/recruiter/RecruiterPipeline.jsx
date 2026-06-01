@@ -515,6 +515,9 @@ export default function RecruiterPipeline({ user }) {
   const [offerModalApp, setOfferModalApp] = useState(null);
   const [recruiter, setRecruiter] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkEmailModal, setBulkEmailModal] = useState(false);
+  const [bulkEmailForm, setBulkEmailForm] = useState({ subject: '', body: '' });
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
   const [stageFilter, setSF] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
@@ -646,6 +649,23 @@ export default function RecruiterPipeline({ user }) {
     }
   };
 
+  const bulkSendEmail = async () => {
+    if (!bulkEmailForm.subject.trim() || !bulkEmailForm.body.trim()) return;
+    const emails = apps.filter(a => selectedIds.includes(a.id)).map(a => a.candidate?.email).filter(Boolean);
+    if (!emails.length) { setToast('❌ No emails found for selected candidates'); return; }
+    setBulkEmailSending(true);
+    try {
+      await Promise.all(emails.map(to => api.sendEmail(to, bulkEmailForm.subject, bulkEmailForm.body)));
+      setToast(`✅ Email sent to ${emails.length} candidate${emails.length !== 1 ? 's' : ''}`);
+      setBulkEmailModal(false);
+      setBulkEmailForm({ subject: '', body: '' });
+      setSelectedIds([]);
+    } catch (e) {
+      setToast(`❌ ${e.message}`);
+    }
+    setBulkEmailSending(false);
+  };
+
   const handlePark = async (app) => {
     try {
       await api.parkApplication(app.id);
@@ -723,15 +743,57 @@ export default function RecruiterPipeline({ user }) {
 
       <PageHeader title="Applicant Pipeline" subtitle="Full hiring funnel management" />
 
+      {/* Bulk Email Modal */}
+      {bulkEmailModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(5,13,26,0.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, padding:24, boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:'#181818' }}>📧 Bulk Email — {apps.filter(a=>selectedIds.includes(a.id)).length} candidates</h3>
+              <button onClick={() => setBulkEmailModal(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#706E6B' }}>✕</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div>
+                <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Subject</label>
+                <input value={bulkEmailForm.subject} onChange={e => setBulkEmailForm(p=>({...p,subject:e.target.value}))}
+                  placeholder="e.g. Interview Invitation — [Company Name]"
+                  style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none' }} />
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:4 }}>Message</label>
+                <textarea value={bulkEmailForm.body} onChange={e => setBulkEmailForm(p=>({...p,body:e.target.value}))}
+                  rows={6} placeholder="Write your message here…"
+                  style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:8, border:'1px solid #E2E8F0', fontSize:13, outline:'none', resize:'vertical' }} />
+              </div>
+              <div style={{ fontSize:11, color:'#9CA3AF' }}>
+                Sending to: {apps.filter(a=>selectedIds.includes(a.id)).map(a=>a.candidate?.name||'Unknown').join(', ')}
+              </div>
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+                <button onClick={() => setBulkEmailModal(false)} style={{ padding:'9px 18px', borderRadius:8, border:'1px solid #E2E8F0', background:'#F3F2F2', color:'#706E6B', fontWeight:600, cursor:'pointer', fontSize:13 }}>Cancel</button>
+                <button onClick={bulkSendEmail} disabled={bulkEmailSending || !bulkEmailForm.subject || !bulkEmailForm.body}
+                  style={{ padding:'9px 18px', borderRadius:8, border:'none', background:'#0176D3', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13, opacity: bulkEmailSending ? 0.7 : 1 }}>
+                  {bulkEmailSending ? 'Sending…' : `Send to ${apps.filter(a=>selectedIds.includes(a.id)).length} candidates`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div style={{ marginBottom: 16, padding: '12px 20px', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ color: '#0176D3', fontWeight: 700, fontSize: 13 }}>{selectedIds.length} selected</span>
-          <span style={{ color: '#C9C7C5', fontSize: 13 }}>—</span>
-          <button onClick={() => bulkMoveStage('shortlisted')} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, color: '#34d399', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>✓ Shortlist</button>
-          <button onClick={() => bulkMoveStage('interview_scheduled')} style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#F59E0B', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>📅 Move to Interview</button>
-          <button onClick={() => bulkMoveStage('rejected')} style={{ background: 'rgba(186,5,23,0.1)', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 8, color: '#FE5C4C', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>✕ Reject</button>
-          <button onClick={() => setSelectedIds([])} style={{ background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#706E6B', fontSize: 12, padding: '6px 14px', cursor: 'pointer' }}>Clear</button>
+        <div style={{ marginBottom: 16, padding: '12px 20px', background: 'rgba(1,118,211,0.1)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ color: '#0176D3', fontWeight: 800, fontSize: 13, flexShrink:0 }}>{selectedIds.length} selected</span>
+          <span style={{ color: '#C9C7C5' }}>|</span>
+          {/* Move to stage dropdown */}
+          <select onChange={e => { if (e.target.value) { bulkMoveStage(e.target.value); e.target.value = ''; } }}
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(1,118,211,0.3)', background:'#fff', color:'#0176D3', fontSize:12, fontWeight:600, cursor:'pointer', outline:'none' }}>
+            <option value="">📋 Move to Stage…</option>
+            {STAGES.filter(s => s.id !== 'rejected').map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+          </select>
+          <button onClick={() => bulkMoveStage('shortlisted')} style={{ background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:8, color:'#059669', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>✓ Shortlist</button>
+          <button onClick={() => setBulkEmailModal(true)} style={{ background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.3)', borderRadius:8, color:'#7C3AED', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>📧 Email All</button>
+          <button onClick={() => bulkMoveStage('rejected')} style={{ background:'rgba(186,5,23,0.1)', border:'1px solid rgba(186,5,23,0.3)', borderRadius:8, color:'#BA0517', fontSize:12, padding:'6px 14px', cursor:'pointer', fontWeight:600 }}>✕ Reject All</button>
+          <button onClick={() => setSelectedIds([])} style={{ background:'#F3F2F2', border:'1px solid #DDDBDA', borderRadius:8, color:'#706E6B', fontSize:12, padding:'6px 14px', cursor:'pointer' }}>Clear</button>
         </div>
       )}
 
