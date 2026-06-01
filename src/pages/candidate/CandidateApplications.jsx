@@ -449,6 +449,40 @@ export default function CandidateApplications({ user }) {
                     {/* Pipeline Stepper */}
                     <ApplicationStepper app={a} />
 
+                    {/* Resume Match Score Feedback */}
+                    {(a.talentMatchScore != null || a.matchBreakdown) && (() => {
+                      const score = a.talentMatchScore ?? 0;
+                      const bd    = a.matchBreakdown || {};
+                      const color = score >= 75 ? '#059669' : score >= 50 ? '#D97706' : '#DC2626';
+                      const label = score >= 75 ? 'Strong Match' : score >= 50 ? 'Good Match' : 'Partial Match';
+                      const items = [
+                        { k: 'Skills',     v: bd.skillScore },
+                        { k: 'Experience', v: bd.experienceScore },
+                        { k: 'Location',   v: bd.locationScore },
+                      ].filter(x => x.v != null);
+                      return (
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: `${color}0d`, borderRadius: 10, border: `1px solid ${color}33` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: items.length ? 8 : 0 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color }}>🎯 Resume Match — {label}</span>
+                            <span style={{ fontSize: 18, fontWeight: 900, color }}>{Math.round(score)}%</span>
+                          </div>
+                          {items.length > 0 && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              {items.map(item => (
+                                <div key={item.k} style={{ flex: 1, minWidth: 70 }}>
+                                  <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 2 }}>{item.k}</div>
+                                  <div style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                                    <div style={{ width: `${Math.min(100, item.v)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.6s' }} />
+                                  </div>
+                                  <div style={{ fontSize: 10, color, fontWeight: 700, marginTop: 2 }}>{Math.round(item.v)}%</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Assigned Recruiter — shown when the job has a recruiter assigned */}
                     {(() => {
                       const recruiters = a.job?.assignedRecruiters || a.jobId?.assignedRecruiters || [];
