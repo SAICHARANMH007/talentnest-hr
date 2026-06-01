@@ -1,5 +1,5 @@
 import { useState, useEffect, Component, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { set401Handler, clearToken, default as api, setToken as setApiToken, tokenIsValid } from './api/api.js';
 import { usePushNotifications } from './hooks/usePushNotifications.js';
 import { API_BASE_URL } from './api/config.js';
@@ -269,6 +269,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Public routes that must render immediately without waiting for auth
+  const isPublicRoute = !location.pathname.startsWith('/app') && location.pathname !== '/login';
 
   // Push notification subscription (fires 30s after login, production only)
   usePushNotifications({
@@ -404,8 +408,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Show clean loader while silent refresh is in-flight
-  if (authLoading) {
+  // Show clean loader while silent refresh is in-flight — but never block public marketing pages
+  if (authLoading && !isPublicRoute) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F8FAFC' }}>
         <div style={{ textAlign: 'center' }}>
