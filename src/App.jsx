@@ -82,7 +82,8 @@ const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
 const AdminClients = lazy(() => import('./pages/admin/AdminClients.jsx'));
 const AdminAutomation = lazy(() => import('./pages/admin/AdminAutomation.jsx'));
-const AdminOnboarding = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
+const AdminOnboarding       = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
+const OnboardingTemplates   = lazy(() => import('./pages/admin/OnboardingTemplates.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -583,6 +584,7 @@ export default function App() {
             <Route path="offers" element={<RecruiterOffers user={user} />} />
             <Route path="talent-pool" element={<TalentPool user={user} />} />
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
+            <Route path="onboarding-templates" element={<OnboardingTemplates />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}

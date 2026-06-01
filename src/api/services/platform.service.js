@@ -316,6 +316,13 @@ export const platformService = {
   async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
   async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
 
+  // ── Onboarding Templates ─────────────────────────────────────────────────────
+  async getOnboardingTemplates()                       { const r = await req('GET', '/onboarding-templates'); return r?.templates || []; },
+  async createOnboardingTemplate(data)                 { const r = await req('POST', '/onboarding-templates', data); return r?.template || r; },
+  async updateOnboardingTemplate(id, data)             { const r = await req('PATCH', `/onboarding-templates/${id}`, data); return r?.template || r; },
+  async deleteOnboardingTemplate(id)                   { return req('DELETE', `/onboarding-templates/${id}`); },
+  async applyOnboardingTemplate(templateId, pbId)      { return req('POST', `/onboarding-templates/${templateId}/apply/${pbId}`, {}); },
+
   // ── Talent Pool ───────────────────────────────────────────────────────────────
   async getTalentPools()                         { const r = await req('GET', '/talent-pool'); return r?.pools || []; },
   async createTalentPool(data)                   { const r = await req('POST', '/talent-pool', data); return r?.pool || r; },

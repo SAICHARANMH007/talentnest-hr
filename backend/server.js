@@ -198,6 +198,8 @@ app.use('/api/company-reviews', require('./src/routes/companyReviews'));
 app.use('/api/referrals', require('./src/routes/referrals'));
 // ── Talent Pool
 app.use('/api/talent-pool', require('./src/routes/talentPool'));
+// ── Onboarding Templates
+app.use('/api/onboarding-templates', require('./src/routes/onboardingTemplates'));
 
 function escHtml(v = '') {
   return String(v)
