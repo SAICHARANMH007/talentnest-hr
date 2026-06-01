@@ -182,8 +182,9 @@ export function MarketingThemeProvider({ children }) {
     r.style.setProperty('--mkt-section-bg-rgb', hexToRgb(theme.sectionBg));
     r.style.setProperty('--mkt-dark-rgb',        theme.darkRgb);
 
-    // Set data attribute for CSS selector overrides
-    document.body.setAttribute('data-mkt-theme', themeId);
+    // Set data attribute for CSS selector overrides (on html so it works before React renders too)
+    document.documentElement.setAttribute('data-mkt-theme', themeId);
+    document.body?.setAttribute('data-mkt-theme', themeId);
   }, [themeId, theme]);
 
   return (
