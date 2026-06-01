@@ -583,7 +583,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     }
 
     // 2. Top-level candidateName (set by normalizeApp / applicants endpoint)
-    if (app.candidateName && app.candidateName !== 'candidate') return { name: app.candidateName, user: null };
+    if (app.candidateName && app.candidateName.toLowerCase() !== 'candidate') return { name: app.candidateName, user: null };
 
     // 3. Search in allCandidates / allApps cache by ID
     const cid = extractId(app.candidateId || app.candidate);
@@ -603,7 +603,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const email = app.candidateEmail || app.email || u?.email;
     if (email) return { name: email.split('@')[0], user: null };
     
-    return { name: app.name || 'Candidate', user: null };
+    return { name: app.name || `Applicant-${(app.id || app._id || '').toString().slice(-6)}` || '—', user: null };
   }, [allCandidates, allApps]);
 
   const topJobs = useMemo(() => {
@@ -675,7 +675,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       return list.map(c => ({
         ...c,
         id: c.applicationId || c.candidateId || c.userId || `${c.email}-${c.jobTitle}`,
-        name: c.candidateName || c.email || 'Candidate',
+        name: c.candidateName || c.email?.split('@')[0] || '—',
         email: c.email || '',
         sub: `${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''} · ${c.organisation || 'TalentNest HR'}`,
       }));
@@ -693,7 +693,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     return list.map(c => ({
       ...c,
       id: c.id || c._id,
-      name: c.name || c._displayName || c.candidateName || c.email || 'Candidate',
+      name: c.name || c._displayName || c.candidateName || c.email?.split('@')[0] || '—',
       sub: `${c.jobTitle || c.title || 'Unknown Job'} · ${c.stage || c.currentStage || 'Applied'} · ${c.email || 'No email'}${c.phone ? ` · ${c.phone}` : ''}`,
       stage: DB_TO_FRONTEND_STAGE[c.stage] || c.stage,
       currentStage: c.stage,
@@ -708,7 +708,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     return (raw?.data || []).map(r => ({
       ...r,
       id: r.applicationId,
-      name: r.candidateName || r.email || 'Candidate',
+      name: r.candidateName || r.email?.split('@')[0] || '—',
       sub: `${r.appliedAt ? new Date(r.appliedAt).toLocaleDateString() : ''} · ${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || 'No email'}${r.phone ? ` · ${r.phone}` : ''}${r.assignedRecruiters ? ` · ${r.assignedRecruiters}` : ''}`,
       stage: DB_TO_FRONTEND_STAGE[r.stage] || r.stage,
       currentStage: r.stage,
@@ -751,7 +751,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
         .map(r => ({
           ...r,
           id: r.applicationId || r.id,
-          name: r.candidateName || r.email || 'Candidate',
+          name: r.candidateName || r.email?.split('@')[0] || '—',
           sub: `${r.jobTitle || 'Unknown Job'} · ${r.stage || 'Applied'} · ${r.email || ''}${r.phone ? ` · ${r.phone}` : ''}`,
         }));
     });
@@ -1067,7 +1067,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                         // Use candidateName field directly when getCandidateData couldn't resolve
                         const displayName = (cand.name && cand.name !== 'Unknown')
                           ? cand.name
-                          : (a.candidateName || email.split('@')[0] || 'Candidate');
+                          : (a.candidateName || email.split('@')[0] || '—');
                         return {
                           ...a,
                           id: a.id || a._id,

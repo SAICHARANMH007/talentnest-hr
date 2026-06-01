@@ -110,7 +110,7 @@ export default function ClientShortlists({ user }) {
             <tbody>
               {apps.map(a => {
                 const appId = a.id || a._id?.toString();
-                const cName = a.candidateId?.name || a.candidate?.name || 'Candidate';
+                const cName = a.candidateId?.name || a.candidate?.name || a.candidateId?.email?.split('@')[0] || a.candidate?.email?.split('@')[0] || '—';
                 const jTitle = a.jobId?.title || '—';
                 const score = a.aiMatchScore || 0;
                 const isSaving = savingId === appId;

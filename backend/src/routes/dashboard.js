@@ -163,7 +163,7 @@ async function resolveRecentNames(apps) {
   if (!needName.length) return apps.map(a => ({
     ...a,
     id: a._id?.toString() || a.id,
-    candidateName: (a.candidateId?.name) || (a.candidateId?.email ? a.candidateId.email.split('@')[0] : ''),
+    candidateName: (a.candidateId?.name) || (a.candidateId?.email ? a.candidateId.email.split('@')[0] : `Applicant-${(a._id?.toString() || '').slice(-6)}`),
     candidate: a.candidateId || null,
   }));
 
@@ -183,11 +183,13 @@ async function resolveRecentNames(apps) {
       const u = idMap.get(c?.userId?.toString()) || emailMap.get((c?.email || '').toLowerCase());
       name = u?.name || (c?.email ? c.email.split('@')[0] : '');
     }
+    const fallbackId = (a._id?.toString() || a.id || '').slice(-6);
+    const displayName = name || `Applicant-${fallbackId}`;
     return {
       ...a,
       id: a._id?.toString() || a.id,
-      candidateName: name,
-      candidate: c ? { ...c, name } : null,
+      candidateName: displayName,
+      candidate: c ? { ...c, name: displayName } : null,
     };
   });
 }

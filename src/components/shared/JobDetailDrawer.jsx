@@ -358,7 +358,7 @@ export default function JobDetailDrawer({ job: initialJob, user, onClose, onJobU
                         const fullCand = allCandidates.find(ac => String(ac.id || ac._id) === cId);
                         const c = (app.candidateId != null && typeof app.candidateId === 'object' ? app.candidateId : null) || app.candidate || fullCand || {};
                         const stage = SM[app.stage] || { color: '#0176D3', label: app.stage, icon: '•' };
-                        const candName = c.name || app.candidateName || 'Candidate';
+                        const candName = c.name || app.candidateName || c.email?.split('@')[0] || app.candidateEmail?.split('@')[0] || '—';
 
                         return (
                           <div key={app.id || app._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#F8FAFF', borderRadius: 10, border: '1px solid rgba(1,118,211,0.1)' }}>

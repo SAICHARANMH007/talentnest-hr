@@ -83,7 +83,7 @@ export default function ClientPlacements({ user }) {
                 <thead><tr>{['Candidate','Role','Match Score','Hired Date'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {placements.map(p => {
-                    const cName = p.candidateId?.name || 'Candidate';
+                    const cName = p.candidateId?.name || p.candidateId?.email?.split('@')[0] || '—';
                     const jTitle = p.jobId?.title || '—';
                     const score = p.aiMatchScore || 0;
                     return (

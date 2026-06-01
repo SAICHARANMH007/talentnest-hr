@@ -742,7 +742,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
       {/* ── Resume Viewer Modal ── */}
       {detailUser && (
         <Modal
-          title={`Resume: ${detailUser.name || 'Candidate'}`}
+          title={`Resume: ${detailUser.name || detailUser.email?.split('@')[0] || '—'}`}
           onClose={() => setDetailUser(null)}
           wide
           footer={

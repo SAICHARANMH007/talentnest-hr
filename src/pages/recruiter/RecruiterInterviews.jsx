@@ -117,7 +117,7 @@ export default function RecruiterInterviews({ user }) {
           <div style={S.sectionHead}>⚠️ {interviewApps.length} Application{interviewApps.length > 1 ? 's' : ''} Awaiting Interview Schedule</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {interviewApps.map(a => {
-              const cName = a.candidateId?.name || a.candidate?.name || 'Candidate';
+              const cName = a.candidateId?.name || a.candidate?.name || a.candidateId?.email?.split('@')[0] || a.candidate?.email?.split('@')[0] || '—';
               const jTitle = a.jobId?.title || '—';
               return (
                 <div key={a.id || a._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #F3F2F2' }}>
@@ -164,7 +164,7 @@ export default function RecruiterInterviews({ user }) {
             <thead><tr>{['Candidate','Job','Round','Date','Format','Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
               {displayed.map(({ app, round, idx }, i) => {
-                const cName = app.candidateId?.name || app.candidate?.name || 'Candidate';
+                const cName = app.candidateId?.name || app.candidate?.name || app.candidateId?.email?.split('@')[0] || app.candidate?.email?.split('@')[0] || '—';
                 const jTitle = app.jobId?.title || '—';
                 const hasFeedback = round.feedback && round.feedback.submittedBy;
                 return (
@@ -227,7 +227,7 @@ export default function RecruiterInterviews({ user }) {
         }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ ...card, background: 'rgba(1,118,211,0.05)', border: '1px solid rgba(1,118,211,0.15)', fontSize: 13 }}>
-              <span style={{ fontWeight: 600 }}>{schedApp.candidateId?.name || schedApp.candidate?.name || 'Candidate'}</span> · {schedApp.jobId?.title || '—'}
+              <span style={{ fontWeight: 600 }}>{schedApp.candidateId?.name || schedApp.candidate?.name || schedApp.candidateId?.email?.split('@')[0] || schedApp.candidate?.email?.split('@')[0] || '—'}</span> · {schedApp.jobId?.title || '—'}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
               <Field label="Date *" value={schedForm.date} onChange={v => sf('date', v)} type="date" />

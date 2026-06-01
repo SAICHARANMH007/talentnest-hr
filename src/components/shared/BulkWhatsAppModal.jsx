@@ -30,7 +30,7 @@ export default function BulkWhatsAppModal({
   const preview = useMemo(() => {
     if (!firstCandidate) return template;
     return template
-      .replace(/\{\{CandidateName\}\}/g,  firstCandidate.name || 'Candidate')
+      .replace(/\{\{CandidateName\}\}/g,  firstCandidate.name || firstCandidate.email?.split('@')[0] || '—')
       .replace(/\{\{JobTitle\}\}/g,       jobTitle || '')
       .replace(/\{\{CompanyName\}\}/g,    companyName || '')
       .replace(/\{\{RecruiterName\}\}/g,  recruiterName || '')

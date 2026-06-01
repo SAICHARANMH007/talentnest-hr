@@ -94,7 +94,7 @@ export default function ClientInterviews({ user }) {
             <thead><tr>{['Candidate','Job','Round','Date','Format','Feedback'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
               {interviews.map(({ app, round, idx }) => {
-                const cName = app.candidateId?.name || 'Candidate';
+                const cName = app.candidateId?.name || app.candidateId?.email?.split('@')[0] || '—';
                 const jTitle = app.jobId?.title || '—';
                 const hasFeedback = round.feedback?.submittedBy;
                 const isPast = round.scheduledAt && new Date(round.scheduledAt) <= new Date();

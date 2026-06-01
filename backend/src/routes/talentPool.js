@@ -12,11 +12,15 @@ const adminOrRecruiter = allowRoles('admin', 'super_admin', 'recruiter');
 
 // List pools
 router.get('/', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
-  const pools = await TalentPool.find({ tenantId: req.user.tenantId, deletedAt: null })
+  const rawPools = await TalentPool.find({ tenantId: req.user.tenantId, deletedAt: null })
     .sort({ createdAt: -1 })
-    .populate('members.candidateId', 'firstName lastName email phone currentRole')
     .lean();
-  res.json({ pools });
+  // Remove members with missing candidateId (legacy data issue) before populate
+  for (const p of rawPools) {
+    p.members = (p.members || []).filter(m => m.candidateId != null);
+  }
+  await TalentPool.populate(rawPools, { path: 'members.candidateId', select: 'name email' });
+  res.json({ pools: rawPools });
 }));
 
 // Create pool
@@ -33,10 +37,10 @@ router.post('/', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
 
 // Get single pool
 router.get('/:id', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
-  const pool = await TalentPool.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null })
-    .populate('members.candidateId', 'firstName lastName email phone currentRole avatarUrl skills')
-    .lean();
+  const pool = await TalentPool.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
   if (!pool) return res.status(404).json({ message: 'Pool not found' });
+  pool.members = (pool.members || []).filter(m => m.candidateId != null);
+  await TalentPool.populate([pool], { path: 'members.candidateId', select: 'name email avatarUrl skills' });
   res.json({ pool });
 }));
 

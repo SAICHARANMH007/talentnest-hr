@@ -131,7 +131,7 @@ export default function HiringManagerDashboard({ user }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {upcoming.slice(0, 6).map(a => {
-                const name = a.candidateId?.name || a.candidate?.name || 'Candidate';
+                const name = a.candidateId?.name || a.candidate?.name || a.candidateId?.email?.split('@')[0] || a.candidate?.email?.split('@')[0] || '—';
                 const job  = a.jobId?.title || a.job?.title || '—';
                 const round = a.nextRound;
                 const dateStr = a.nextDate.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });

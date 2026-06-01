@@ -771,7 +771,7 @@ export default function RecruiterPipeline({ user }) {
 
   const triggerHiredModal = (app, appId, newStage) => {
     if (newStage === 'selected') {
-      setHiredModal({ appId: String(appId || app?.id), candidateName: app?.candidateName || app?.candidate?.name || 'Candidate', jobTitle: app?.job?.title || app?.jobTitle || '' });
+      setHiredModal({ appId: String(appId || app?.id), candidateName: app?.candidateName || app?.candidate?.name || app?.candidate?.email?.split('@')[0] || `Applicant-${(appId || app?.id || '').toString().slice(-6)}` || '—', jobTitle: app?.job?.title || app?.jobTitle || '' });
     }
   };
 

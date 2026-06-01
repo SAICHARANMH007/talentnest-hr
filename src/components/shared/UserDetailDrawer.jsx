@@ -203,7 +203,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
       setToast(`✅ Stage updated → ${SM[newStage]?.label || newStage}`);
       onUpdated?.();
       if (newStage === 'selected') {
-        const candName = fullUser?.name || u?.name || form.name || 'Candidate';
+        const candName = fullUser?.name || u?.name || form.name || fullUser?.email?.split('@')[0] || u?.email?.split('@')[0] || form.email?.split('@')[0] || '—';
         const jobTitle = app?.job?.title || app?.jobTitle || '';
         setHiredModal({ appId: String(appId), candidateName: candName, jobTitle });
       }

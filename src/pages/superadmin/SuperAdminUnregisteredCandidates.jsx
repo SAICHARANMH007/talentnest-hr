@@ -257,7 +257,7 @@ export default function SuperAdminUnregisteredCandidates() {
       // Send {email, name} pairs — backend uses name directly, no DB lookup needed
       const candidates = rows
         .filter(r => selectedCandidates.has(r.email))
-        .map(r => ({ email: r.email, name: r.name || 'Candidate' }));
+        .map(r => ({ email: r.email, name: r.name || r.email?.split('@')[0] || '—' }));
       const res = await api.inviteGuestCandidates(candidates);
       setToast(res.message || `Invites sent to ${candidates.length} candidate${candidates.length !== 1 ? 's' : ''}.`);
       setSelectedCandidates(new Set());

@@ -118,7 +118,7 @@ export default function RecruiterTalentMatch({ user }) {
                 ✕ Close
               </button>
               <div style={{ flex:1, color:'#fff', fontWeight:700, fontSize:15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                📋 Resume — {resumeCandidate.name || 'Candidate'}
+                📋 Resume — {resumeCandidate.name || resumeCandidate.email?.split('@')[0] || '—'}
               </div>
               <button
                 onClick={() => window.print()}

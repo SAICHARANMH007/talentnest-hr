@@ -77,7 +77,7 @@ export default function ResumeViewPage({ user }) {
           ← Back
         </button>
         <div style={{ flex: 1, color: '#fff', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          📋 Resume — {candidate.name || 'Candidate'}
+          📋 Resume — {candidate.name || candidate.email?.split('@')[0] || '—'}
         </div>
         <button
           onClick={handlePrint}

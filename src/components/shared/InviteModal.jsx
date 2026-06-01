@@ -46,7 +46,7 @@ Click below to confirm your interest and we'll fast-track your profile immediate
 // Replace [placeholder] tokens with actual values for preview
 function buildPreview(template, vars) {
   return template
-    .replace(/\[name\]/g,    vars.name    || 'Candidate')
+    .replace(/\[name\]/g,    vars.name    || '—')
     .replace(/\[title\]/g,   vars.title   || 'Open Role')
     .replace(/\[company\]/g, vars.company || 'Our Client')
     .replace(/\[sender\]/g,  vars.sender  || 'TalentNest HR');
@@ -84,7 +84,7 @@ export default function InviteModal({ candidates, onClose, onSent }) {
   const selectedJob = jobs.find(j => j.id === selJob);
 
   const previewVars = {
-    name:    withEmail.length === 1 ? withEmail[0].name : 'Candidate',
+    name:    withEmail.length === 1 ? (withEmail[0].name || withEmail[0].email?.split('@')[0] || '—') : 'Candidate(s)',
     title:   selectedJob?.title   || '[title]',
     company: selectedJob?.company || '[company]',
     sender:  'Your Name',

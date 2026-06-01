@@ -49,7 +49,7 @@ export default function HiredDetailsModal({ appId, candidateName, jobTitle, onCl
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <h2 style={{ color: '#181818', margin: 0, fontSize: 18, fontWeight: 800 }}>{candidateName || 'Candidate'}</h2>
+          <h2 style={{ color: '#181818', margin: 0, fontSize: 18, fontWeight: 800 }}>{candidateName || '—'}</h2>
           {jobTitle && <p style={{ color: '#706E6B', margin: '4px 0 0', fontSize: 13 }}>for {jobTitle}</p>}
         </div>
 

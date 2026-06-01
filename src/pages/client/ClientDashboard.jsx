@@ -100,7 +100,7 @@ export default function ClientDashboard({ user }) {
                     .sort((a, b) => (b.aiMatchScore || 0) - (a.aiMatchScore || 0))
                     .slice(0, 6)
                     .map(a => {
-                      const name   = a.candidateId?.name || a.candidate?.name || 'Candidate';
+                      const name   = a.candidateId?.name || a.candidate?.name || a.candidateId?.email?.split('@')[0] || a.candidate?.email?.split('@')[0] || '—';
                       const jTitle = a.jobId?.title || a.job?.title || '—';
                       const score  = a.aiMatchScore || 0;
                       return (
@@ -130,7 +130,7 @@ export default function ClientDashboard({ user }) {
               <p style={{ fontSize: 11, fontWeight: 800, color: '#2E844A', margin: '0 0 14px', letterSpacing: 1 }}>🎊 RECENT HIRES</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {hired.slice(0, 5).map(a => {
-                  const name   = a.candidateId?.name || a.candidate?.name || 'Candidate';
+                  const name   = a.candidateId?.name || a.candidate?.name || a.candidateId?.email?.split('@')[0] || a.candidate?.email?.split('@')[0] || '—';
                   const jTitle = a.jobId?.title || a.job?.title || '—';
                   const hiredAt = a.stageHistory?.filter(s => s.stage === 'Hired').slice(-1)[0]?.movedAt;
                   return (

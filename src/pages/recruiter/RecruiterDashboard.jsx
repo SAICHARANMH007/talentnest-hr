@@ -398,7 +398,7 @@ export default function RecruiterDashboard({ user }) {
                       {(cand?.name||"?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ color:"#181818",fontWeight:600,fontSize:13 }}>{cand?.name || a.candidateName || a.candidate?.name || 'Candidate'}</div>
+                      <div style={{ color:"#181818",fontWeight:600,fontSize:13 }}>{cand?.name || a.candidateName || a.candidate?.name || cand?.email?.split('@')[0] || '—'}</div>
                       <div style={{ color:"#706E6B",fontSize:11,marginTop:1 }}>{cand?.title||""}{a.jobId?.title ? ` · for ${a.jobId.title}` : ""}</div>
                     </div>
                     <div style={{ display:"flex",gap:6,alignItems:"center" }}>
@@ -431,7 +431,7 @@ export default function RecruiterDashboard({ user }) {
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {(recentActs.filter(a => a.inviteStatus === 'interested')).slice(0,8).map(inv => {
               const invCand = inv.candidateId || inv.candidate;
-              const invName = invCand?.name || 'Candidate';
+              const invName = invCand?.name || invCand?.email?.split('@')[0] || '—';
               const invEmail = invCand?.email || '';
               const invJob = inv.jobId?.title || '';
               const openInvDrawer = () => invCand ? setDrawerUser({ role:'candidate', ...invCand, id: invCand.id||invCand._id?.toString() }) : navigate("/app/candidates");
@@ -565,11 +565,11 @@ export default function RecruiterDashboard({ user }) {
                       {(item._displayName || candObj?.name || 'C')[0].toUpperCase()}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || candObj?.name || item.candidateName || 'Candidate'}</div>
+                      <div style={{ fontWeight:700, color:'#0A1628', fontSize:13 }}>{item._displayName || candObj?.name || item.candidateName || candObj?.email?.split('@')[0] || '—'}</div>
                       <div style={{ color:'#706E6B', fontSize:11, marginTop:1 }}>{item._displaySub || `${item.jobId?.title || ''}`}</div>
                     </div>
                     <span style={{ background:`${stg3.color}15`, color:stg3.color, border:`1px solid ${stg3.color}33`, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{stg3.label}</span>
-                    <button onClick={(e) => { e.stopPropagation(); handlePark(item.id, item._displayName || candObj?.name || 'Candidate'); }} style={{ background:'none', border:'none', color:'#F59E0B', fontSize:14, cursor:'pointer', padding:8 }} title="Park Candidate">🅿️</button>
+                    <button onClick={(e) => { e.stopPropagation(); handlePark(item.id, item._displayName || candObj?.name || candObj?.email?.split('@')[0] || '—'); }} style={{ background:'none', border:'none', color:'#F59E0B', fontSize:14, cursor:'pointer', padding:8 }} title="Park Candidate">🅿️</button>
                   </div>
                 );
               })}

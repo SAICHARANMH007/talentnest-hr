@@ -88,7 +88,7 @@ function AddMemberModal({ pool, onClose, onAdded }) {
             return (
               <div key={c._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F1F5F9' }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{c.firstName} {c.lastName}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name || c.email?.split('@')[0] || '—'}</div>
                   <div style={{ fontSize: 12, color: '#6B7280' }}>{c.email}</div>
                 </div>
                 {inPool
@@ -141,7 +141,7 @@ export default function TalentPool() {
     load();
   };
 
-  const initials = (c) => ((c?.firstName?.[0] || '') + (c?.lastName?.[0] || '')).toUpperCase() || '?';
+  const initials = (c) => { const n = c?.name || c?.email || '?'; return n[0].toUpperCase(); };
 
   return (
     <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
