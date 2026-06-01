@@ -929,7 +929,16 @@ router.patch('/:id/stage', ...guard,
     // Send stage-change email to candidate
     const candidate = await Candidate.findById(app.candidateId).select('name email').lean();
     const jobDoc = await Job.findById(app.jobId).select('title').lean();
-    if (candidate?.email) {
+    // Fallback: if Candidate record has no email, look it up from their User account
+    let candidateEmail = candidate?.email;
+    if (!candidateEmail) {
+      try {
+        const cu = await User.findOne({ candidateId: app.candidateId }).select('email').lean()
+          || await User.findOne({ _id: app.candidateId }).select('email').lean();
+        if (cu?.email) candidateEmail = cu.email;
+      } catch { /* ignore */ }
+    }
+    if (candidateEmail) {
       const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
       // Load org notification message overrides
@@ -940,8 +949,12 @@ router.patch('/:id/stage', ...guard,
         (cust?.notificationMessages || []).forEach(nm => { orgNotifMap[nm.trigger] = nm.message; });
       } catch { /* fall back to defaults */ }
 
+      const cName    = candidate?.name || 'there';
+      const jobTitle = jobDoc?.title   || 'the role';
+
       // Map stage name → notification trigger key
       const STAGE_TO_TRIGGER = {
+        Screening: 'Application Screening',
         Shortlisted: 'Application Shortlisted',
         'Interview Round 1': 'Interview Scheduled',
         'Interview Round 2': 'Interview Scheduled',
@@ -950,47 +963,53 @@ router.patch('/:id/stage', ...guard,
         Rejected: 'Application Rejected',
       };
       const stageEmailMap = {
+        Screening: {
+          subject: `📋 Your application is under review — ${jobTitle}`,
+          icon: '📋', color: '#0369A1',
+          headline: 'Your application is being reviewed',
+          body: `Hi <strong>${cName}</strong>, your application for the <strong>${jobTitle}</strong> role is currently under review. We will update you as soon as we have news. Thank you for your patience!`,
+        },
         Shortlisted: {
-          subject: `🎉 You've been shortlisted for ${jobDoc?.title}`,
+          subject: `🎉 You've been shortlisted for ${jobTitle}`,
           icon: '🎉', color: '#0176D3',
           headline: `You've been shortlisted!`,
-          body: `Great news, <strong>${candidate.name}</strong>! You have been shortlisted for the <strong>${jobDoc?.title}</strong> role. Our team will be in touch shortly with next steps.`,
+          body: `Great news, <strong>${cName}</strong>! You have been shortlisted for the <strong>${jobTitle}</strong> role. Our team will be in touch shortly with next steps.`,
         },
         'Interview Round 1': {
-          subject: `📅 Interview Invitation — ${jobDoc?.title}`,
+          subject: `📅 Interview Invitation — ${jobTitle}`,
           icon: '📅', color: '#7C3AED',
           headline: 'You have an interview!',
-          body: `Hi <strong>${candidate.name}</strong>, you have been selected for an interview for the <strong>${jobDoc?.title}</strong> role. Please check your portal for details.`,
+          body: `Hi <strong>${cName}</strong>, you have been selected for an interview for the <strong>${jobTitle}</strong> role. Please check your portal for details.`,
         },
         'Interview Round 2': {
-          subject: `📅 Interview Round 2 — ${jobDoc?.title}`,
+          subject: `📅 Interview Round 2 — ${jobTitle}`,
           icon: '📅', color: '#7C3AED',
           headline: 'You have a second interview!',
-          body: `Hi <strong>${candidate.name}</strong>, congratulations on clearing Round 1! You have been invited for Interview Round 2 for <strong>${jobDoc?.title}</strong>.`,
+          body: `Hi <strong>${cName}</strong>, congratulations on clearing Round 1! You have been invited for Interview Round 2 for <strong>${jobTitle}</strong>.`,
         },
         'Technical Interview': {
-          subject: `💻 Technical Interview — ${jobDoc?.title}`,
+          subject: `💻 Technical Interview — ${jobTitle}`,
           icon: '💻', color: '#0369A1',
           headline: 'Technical Interview scheduled',
-          body: `Hi <strong>${candidate.name}</strong>, you have been selected for a Technical Interview for the <strong>${jobDoc?.title}</strong> role.`,
+          body: `Hi <strong>${cName}</strong>, you have been selected for a Technical Interview for the <strong>${jobTitle}</strong> role.`,
         },
         Offer: {
-          subject: `🤝 Offer Extended — ${jobDoc?.title}`,
+          subject: `🤝 Offer Extended — ${jobTitle}`,
           icon: '🤝', color: '#059669',
           headline: 'An offer is on its way!',
-          body: `Hi <strong>${candidate.name}</strong>, we are pleased to extend an offer for the <strong>${jobDoc?.title}</strong> role. Please log in to review and accept your offer letter.`,
+          body: `Hi <strong>${cName}</strong>, we are pleased to extend an offer for the <strong>${jobTitle}</strong> role. Please log in to review and accept your offer letter.`,
         },
         Hired: {
-          subject: `🎊 Welcome to the team! — ${jobDoc?.title}`,
+          subject: `🎊 Welcome to the team! — ${jobTitle}`,
           icon: '🎊', color: '#059669',
           headline: 'Welcome aboard!',
-          body: `Congratulations <strong>${candidate.name}</strong>! You have been officially hired for the <strong>${jobDoc?.title}</strong> role. We are excited to have you on board!`,
+          body: `Congratulations <strong>${cName}</strong>! You have been officially hired for the <strong>${jobTitle}</strong> role. We are excited to have you on board!`,
         },
         Rejected: {
-          subject: `Application Update — ${jobDoc?.title}`,
+          subject: `Application Update — ${jobTitle}`,
           icon: '📋', color: '#6B7280',
           headline: 'Application status update',
-          body: `Hi <strong>${candidate.name}</strong>, thank you for your interest in the <strong>${jobDoc?.title}</strong> role. After careful consideration, we will not be moving forward at this time. We encourage you to apply for future openings.`,
+          body: `Hi <strong>${cName}</strong>, thank you for your interest in the <strong>${jobTitle}</strong> role. After careful consideration, we will not be moving forward at this time. We encourage you to apply for future openings.`,
         },
       };
       // Override body with org custom notification message if set
@@ -1010,7 +1029,71 @@ router.patch('/:id/stage', ...guard,
             <p style="color:#9ca3af;font-size:12px;margin-top:24px;">You are receiving this email because you applied through TalentNest HR.</p>
           </div>
         </div>`;
-        email.sendOrgEmail(candidate.email, tpl.subject, html, app.tenantId).catch(e => console.warn("[Email] stage-change:", e.message));
+        email.sendOrgEmail(candidateEmail, tpl.subject, html, app.tenantId)
+          .then(() => console.log(`[Email] stage-change sent → ${candidateEmail} (${stage})`))
+          .catch(e => console.error(`[Email] stage-change FAILED → ${candidateEmail} (${stage}):`, e.message));
+      } else {
+        console.log(`[Email] no template for stage "${stage}" — skipping email to ${candidateEmail}`);
+      }
+    }
+
+    // ── In-app notifications for all meaningful stage changes ─────────────────
+    const STAGE_NOTIF = {
+      Screening:           { icon: '📋', adminTitle: 'Under Review',    candidateTitle: 'Application update' },
+      Shortlisted:         { icon: '🎉', adminTitle: 'Shortlisted',     candidateTitle: 'Great news!' },
+      'Interview Round 1': { icon: '📅', adminTitle: 'Interview R1',    candidateTitle: 'Interview scheduled' },
+      'Interview Round 2': { icon: '📅', adminTitle: 'Interview R2',    candidateTitle: 'Interview Round 2' },
+      Offer:               { icon: '🤝', adminTitle: 'Offer Extended',  candidateTitle: 'Offer extended!' },
+      Hired:               { icon: '🎊', adminTitle: 'Hired',           candidateTitle: "You're hired!" },
+      Rejected:            { icon: '❌', adminTitle: 'Rejected',        candidateTitle: 'Application update' },
+    };
+    const notifCfg = STAGE_NOTIF[stage];
+    if (notifCfg) {
+      const cName  = candidate?.name  || 'A candidate';
+      const jTitle = jobDoc?.title    || 'a role';
+
+      // Notify all admins + recruiters in the tenant (except the person who made the change)
+      try {
+        const moverIdStr = String(req.user._id || req.user.id);
+        const teamUsers = await User.find({
+          tenantId: app.tenantId,
+          role: { $in: ['admin', 'recruiter'] },
+          deletedAt: null,
+        }).select('_id').lean();
+        const payloads = teamUsers
+          .filter(u => String(u._id) !== moverIdStr)
+          .map(u => ({
+            userId:   u._id,
+            tenantId: app.tenantId,
+            type:     'stage_change',
+            title:    `${notifCfg.icon} ${cName} — ${notifCfg.adminTitle}`,
+            message:  `${cName} was moved to ${stage} for ${jTitle}`,
+            link:     `/app/pipeline`,
+          }));
+        if (payloads.length) await Notification.insertMany(payloads).catch(() => {});
+      } catch (err) {
+        console.warn('[Notification] team stage notification failed:', err.message);
+      }
+
+      // Notify the candidate's user account for positive/significant stages
+      if (['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired', 'Rejected'].includes(stage) && candidateEmail) {
+        try {
+          const candidateUser = await User.findOne({ email: candidateEmail }).lean();
+          if (candidateUser) {
+            await Notification.create({
+              userId:   candidateUser._id,
+              tenantId: app.tenantId,
+              type:     'stage_change',
+              title:    `${notifCfg.icon} ${notifCfg.candidateTitle} — ${jTitle}`,
+              message:  stage === 'Hired'
+                ? `Congratulations! You have been hired for ${jTitle}. Check your pre-boarding checklist.`
+                : `Your application for ${jTitle} has been moved to: ${stage}`,
+              link:     stage === 'Hired' ? '/app/onboarding' : '/app/applications',
+            });
+          }
+        } catch (err) {
+          console.warn('[Notification] candidate stage notification failed:', err.message);
+        }
       }
     }
 
@@ -1022,36 +1105,17 @@ router.patch('/:id/stage', ...guard,
       } catch (pbErr) {
         console.warn('[PreBoarding] auto-create on Hired stage failed:', pbErr.message);
       }
-      
-      // In-app Notification for candidate
-      try {
-        const User = require('../models/User');
-        const candidateUser = await User.findOne({ email: candidate.email }).lean();
-        if (candidateUser) {
-          await Notification.create({
-            userId: candidateUser._id,
-            tenantId: app.tenantId,
-            type: 'stage_change',
-            title: `You're Hired for ${jobDoc?.title}!`,
-            message: `Congratulations! Please check your Pre-boarding checklist to proceed with document verification.`,
-            link: '/app/onboarding',
-          });
-        }
-      } catch (err) {
-        console.warn('[Notification] Candidate hired notification failed:', err.message);
-      }
 
-      // In-app notification for all admins + the recruiter who moved the stage
+      // Additional Hired-specific admin notification with offer letter prompt
       try {
-        const User = require('../models/User');
         const adminUsers = await User.find({ tenantId: app.tenantId, role: { $in: ['admin', 'recruiter'] }, deletedAt: null }).select('_id').lean();
         const notifPayloads = adminUsers.map(u => ({
-          userId: u._id,
+          userId:   u._id,
           tenantId: app.tenantId,
-          type: 'stage_change',
-          title: `🎉 Hired: ${candidate.name}`,
-          message: `${candidate.name} was hired for ${jobDoc?.title || 'a role'}. Generate their offer letter in the Offers page.`,
-          link: `/app/offers`,
+          type:     'stage_change',
+          title:    `🎉 Hired: ${candidate?.name || 'Candidate'}`,
+          message:  `${candidate?.name || 'A candidate'} was hired for ${jobDoc?.title || 'a role'}. Generate their offer letter in the Offers page.`,
+          link:     `/app/offers`,
         }));
         if (notifPayloads.length) await Notification.insertMany(notifPayloads).catch(() => {});
       } catch (err) {
@@ -1107,6 +1171,20 @@ router.patch('/:id/stage', ...guard,
     if (stage === 'Rejected') evaluateWorkflows(req.user.tenantId, { event: 'candidate_rejected', ...wfBase }).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
+
+    // Real-time broadcast — every connected user in the tenant gets this instantly
+    try {
+      const { emitToTenant } = require('../socket/platformSocket');
+      const socketRegistry   = require('../socket/index');
+      emitToTenant(socketRegistry.getIO(), app.tenantId, 'application:stageChanged', {
+        applicationId: String(app._id),
+        jobId        : String(app.jobId),
+        candidateId  : String(app.candidateId),
+        stage,
+        movedBy      : String(req.user._id || req.user.id),
+        movedAt      : new Date().toISOString(),
+      });
+    } catch { /* non-fatal */ }
 
     // Notify all super_admins about significant stage movements (non-blocking)
     const significantStages = ['Shortlisted', 'Offer', 'Hired', 'Rejected'];

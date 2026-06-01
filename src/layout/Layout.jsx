@@ -9,6 +9,7 @@ import Logo from '../components/Logo.jsx';
 import Skeleton from '../components/ui/Skeleton.jsx';
 import { useLogo } from '../context/LogoContext.jsx';
 import useHeartbeat from '../hooks/useHeartbeat.js';
+import { usePlatformSocket } from '../hooks/usePlatformSocket.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
 import ChatPanel from '../components/shared/ChatPanel.jsx';
 // Direct import (not lazy) so socket connects immediately on app load.
@@ -1011,6 +1012,12 @@ export default function Layout({ user, onLogout }) {
   const [unreadMsgs, setUnreadMsgs]   = useState(0);
   const [chatRecipient, setChatRecipient] = useState(null);
   useHeartbeat(user);
+
+  // Platform-wide real-time sync — dispatch a browser event so any page can
+  // listen and refresh its data when a stage change happens anywhere in the tenant
+  usePlatformSocket((data) => {
+    window.dispatchEvent(new CustomEvent('tn:stageChanged', { detail: data }));
+  });
 
   useEffect(() => {
     if (!user?.role) return;

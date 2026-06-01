@@ -829,10 +829,12 @@ const io = new IOServer(httpServer, {
   maxHttpBufferSize: 1e6, // 1MB — enough for signaling payloads
   connectTimeout: 10000,
 });
+const { setupPlatformSocket } = require('./src/socket/platformSocket');
 socketRegistry.setIO(io);
 setupVideoSocket(io);
 setupChatSocket(io);
 setupCallSocket(io);
+setupPlatformSocket(io);
 
 // ── Calls REST
 // (Moved up)
@@ -844,6 +846,36 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀  Talent Nest API   →  Listening on port ${PORT}`);
   console.log(`📡  Mode             →  ${IS_PROD ? (process.env.RENDER ? 'Production (Render)' : 'Production') : 'Development'}`);
   if (IS_PROD) console.info('🔥  Production Environment Active & Bound to 0.0.0.0');
+
+  // ── Keep-alive self-ping — starts immediately on listen, not after DB ──────
+  // Render free tier sleeps after 15 min of inactivity. Ping every 4 minutes
+  // to keep the process alive. Starts right here so DB delays can't block it.
+  if (IS_PROD) {
+    const SELF_URL = (
+      process.env.RENDER_EXTERNAL_URL ||
+      process.env.BACKEND_URL ||
+      'https://talentnest-hr.onrender.com'
+    ).replace(/\/$/, '') + '/api/health';
+
+    const _https = require('https');
+    const _http  = require('http');
+    const ping = () => {
+      try {
+        const client = SELF_URL.startsWith('https') ? _https : _http;
+        const req = client.get(SELF_URL, res => {
+          res.resume();
+          console.log(`⏱️  Keep-alive ping → ${res.statusCode}`);
+        });
+        req.on('error', e => console.warn('⚠️  Keep-alive ping failed:', e.message));
+        req.setTimeout(10000, () => { req.destroy(); console.warn('⚠️  Keep-alive ping timed out'); });
+      } catch (e) {
+        console.warn('⚠️  Keep-alive error:', e.message);
+      }
+    };
+    ping(); // fire immediately on startup
+    setInterval(ping, 4 * 60 * 1000); // every 4 minutes
+    console.log(`⏱️  Keep-alive started (every 4 min) → ${SELF_URL}`);
+  }
 });
 
 // Connect DB + seed in background
@@ -903,28 +935,5 @@ connectDB()
     startJobAlertJobs();
     startDistributionRetryJob();
 
-    // ── Keep-alive self-ping (prevents Render free tier from sleeping) ──
-    // Render free tier sleeps after 15 minutes of inactivity.
-    // Ping every 4 minutes to stay well within that threshold.
-    const BACKEND_URL = process.env.RENDER_EXTERNAL_URL
-      || process.env.BACKEND_URL
-      || 'https://talentnest-hr.onrender.com';
-    const selfUrl = BACKEND_URL.replace(/\/$/, '') + '/api/health';
-    const https = require('https');
-    const http  = require('http');
-    const keepAlive = () => {
-      try {
-        const client = selfUrl.startsWith('https') ? https : http;
-        const req = client.get(selfUrl, res => {
-          res.resume();
-          if (res.statusCode !== 200) console.warn(`⚠️  Keep-alive got ${res.statusCode}`);
-        });
-        req.on('error', e => console.warn('⚠️  Keep-alive ping failed:', e.message));
-        req.setTimeout(8000, () => { req.destroy(); });
-      } catch {}
-    };
-    keepAlive(); // ping immediately on startup
-    setInterval(keepAlive, 4 * 60 * 1000); // every 4 minutes
-    console.log(`⏱️  Keep-alive cron started (4 min) → ${selfUrl}`);
   })
   .catch(err => console.error('❌  DB connection failed:', err.message));

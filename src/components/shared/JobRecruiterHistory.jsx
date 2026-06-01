@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/api.js';
+import { usePlatformSocket } from '../../hooks/usePlatformSocket.js';
 
 const fmt = d =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -46,7 +47,7 @@ function CandidateList({ candidates, emptyMsg, entry, effectiveEndDate }) {
   };
 
   return (
-    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {candidates.map((a, i) => {
         const name         = a.candidate?.name || a.candidateName || '?';
         const tenureStage  = getStageAtTenureEnd(a);
@@ -85,7 +86,7 @@ function PipelineLog({ events, emptyMsg, recruiterMap = {} }) {
   if (!events.length)
     return <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '10px 0' }}>{emptyMsg}</p>;
   return (
-    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
       {events.map((ev, i) => {
         const color     = STAGE_COLOR[ev.stageId || ev.stage] || '#64748B';
         const moverName = ev.movedBy ? (recruiterMap[String(ev.movedBy)] || null) : null;
@@ -126,13 +127,14 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate, refreshKey }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Refs for stale-closure-safe refresh (loadedRef checked instead of data state)
+  // loadedRef tracks which tabs have been fetched — ref-based so effects never
+  // read a stale closure copy that predates a doRefresh() call.
   const loadedRef  = useRef({});
   const openRef    = useRef(false);
   const tabRef     = useRef('applied');
@@ -164,8 +166,8 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
 
   const loadTab = async (key) => {
     setTab(key);
-    if (loadedRef.current[key]) return; // ref-based cache — immune to stale closures
-    loadedRef.current[key] = true;      // mark immediately to prevent double-fetch races
+    if (loadedRef.current[key]) return;
+    loadedRef.current[key] = true; // mark immediately — prevents double-fetch races
     setLoading(true);
     const apps = await ensureApps();
     // Helper: was this recruiter involved with this candidate at all?
@@ -244,9 +246,16 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
     setLoading(false);
   };
 
-  // Always point loadTabRef at the latest loadTab so it captures fresh closures
-  // (correct from/to/entry values) when called after a re-render.
+  // Always point to the latest loadTab so effects never call a stale version
   loadTabRef.current = loadTab;
+
+  // When the parent bumps refreshKey, clear cache and reload the active tab
+  useEffect(() => {
+    loadedRef.current = {};
+    setData({});
+    if (openRef.current) loadTabRef.current?.(tabRef.current);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const toggle = async () => {
     const next = !open;
@@ -409,10 +418,24 @@ function HandoffConnector({ from, to }) {
 }
 
 // ── Full pipeline section: ALL candidates for the job, grouped by stage ──────
-function FullPipelineSection({ ensureApps, history }) {
+function FullPipelineSection({ ensureApps, history, refreshKey }) {
   const [apps,    setApps]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [open,    setOpen]    = useState(false);
+
+  const openRef = useRef(false);
+  openRef.current = open;
+
+  // Reload when parent refreshes — clear if closed so next open is always fresh
+  useEffect(() => {
+    if (openRef.current) {
+      setLoading(true);
+      setApps(null);
+      ensureApps().then(d => { setApps(d); setLoading(false); }).catch(() => { setApps([]); setLoading(false); });
+    } else {
+      setApps(null);
+    }
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = async () => {
     const next = !open;
@@ -555,7 +578,24 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   const [loading,       setLoading]       = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
   const [allApps,       setAllApps]       = useState(null);
+  const [refreshKey,    setRefreshKey]    = useState(0);
   const fetchedRef = useRef(false);
+
+  // Clears the shared app cache and bumps refreshKey so every open panel reloads
+  const doRefresh = () => {
+    fetchedRef.current = false;
+    setAllApps(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  // Auto-refresh every 30 seconds as a safety net
+  useEffect(() => {
+    const id = setInterval(doRefresh, 30000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Instant refresh via WebSocket — fires the moment any stage changes in this tenant
+  usePlatformSocket(doRefresh);
 
   // Recruiter assignment state
   const [assignMode,         setAssignMode]         = useState(false);
@@ -711,6 +751,11 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
         {totalDays && (
           <span style={{ fontSize: 11, color: '#94A3B8' }}>· {totalDays}d total job age</span>
         )}
+        <button
+          onClick={doRefresh}
+          title="Refresh pipeline data"
+          style={{ marginLeft: 'auto', background: 'none', border: '1px solid #E2E8F0', borderRadius: 8, padding: '3px 10px', fontSize: 13, cursor: 'pointer', color: '#64748B' }}
+        >↻</button>
       </div>
 
       {/* ── Assign / Change Recruiter (admin only) ── */}
@@ -773,7 +818,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
       )}
 
       {/* ── All candidates in pipeline (collapsible) ── */}
-      <FullPipelineSection ensureApps={ensureApps} history={sorted} />
+      <FullPipelineSection ensureApps={ensureApps} history={sorted} refreshKey={refreshKey} />
 
       {/* ── Tap hint ── */}
       <div style={{ fontSize: 10, color: '#94A3B8', marginBottom: 10, fontStyle: 'italic' }}>
@@ -809,6 +854,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 recruiterMap={recruiterMap}
                 history={sorted}
                 effectiveEndDate={effectiveEndDate}
+                refreshKey={refreshKey}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />
