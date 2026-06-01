@@ -55,6 +55,7 @@ const jobSchema = new mongoose.Schema({
   numberOfOpenings   : { type: Number, default: 1 },
   targetHireDate     : { type: Date },
   applicationDeadline: { type: Date, default: null },
+  videoJdUrl         : { type: String, default: '' }, // short video job description
   applicationCount   : { type: Number, default: 0 },
   urgency         : { type: String, default: '' },
 

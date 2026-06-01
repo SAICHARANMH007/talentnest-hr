@@ -248,6 +248,12 @@ export default function JobDetailPage() {
 
         {/* Left: description */}
         <div style={{ minWidth: 0 }}>
+          {job.videoJdUrl && (
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 'clamp(16px,3vw,24px)', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0A1628', margin: '0 0 12px' }}>🎬 About This Role (Video)</h2>
+              <video src={job.videoJdUrl} controls style={{ width: '100%', borderRadius: 10, maxHeight: 360, background: '#000' }} preload="metadata" />
+            </div>
+          )}
           {job.description && (
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 'clamp(20px,4vw,32px)', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0A1628', margin: '0 0 14px' }}>About the Role</h2>

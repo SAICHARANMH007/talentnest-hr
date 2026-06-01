@@ -224,6 +224,43 @@ export default function JobDistribution({ user }) {
         </div>
       )}
 
+      {/* Video JD Upload */}
+      {(() => {
+        const [videoFile, setVideoFile] = React.useState(null);
+        const [uploading, setUploading] = React.useState(false);
+        const [videoUrl, setVideoUrl]   = React.useState(job?.videoJdUrl || '');
+        return (
+          <div style={{ ...card, padding: '20px 24px', marginBottom: 24 }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 800, color: '#032D60' }}>🎬 Video Job Description</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6B7280' }}>Upload a short video (≤200MB) explaining the role. It shows on your job detail page.</p>
+            {videoUrl && (
+              <div style={{ marginBottom: 12 }}>
+                <video src={videoUrl} controls style={{ width: '100%', maxHeight: 260, borderRadius: 10, border: '1px solid #E2E8F0', background: '#000' }} preload="metadata" />
+                <button onClick={async () => {
+                  try { await api.deleteJobVideoJd(jobId); setVideoUrl(''); setToast('Video removed.'); } catch {}
+                }} style={{ marginTop: 8, fontSize: 11, padding: '4px 12px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Remove video</button>
+              </div>
+            )}
+            <input type="file" accept="video/*" onChange={e => setVideoFile(e.target.files[0])} style={{ fontSize: 12, marginBottom: 8 }} />
+            {videoFile && (
+              <button disabled={uploading} onClick={async () => {
+                setUploading(true);
+                try {
+                  const fd = new FormData(); fd.append('video', videoFile);
+                  const r = await api.uploadJobVideoJd(jobId, fd);
+                  setVideoUrl(r?.videoJdUrl || r?.data?.videoJdUrl || '');
+                  setVideoFile(null);
+                  setToast('✅ Video uploaded!');
+                } catch (e) { setToast('❌ Upload failed: ' + e.message); }
+                setUploading(false);
+              }} style={{ ...btnP, fontSize: 12 }}>
+                {uploading ? '⏳ Uploading…' : '⬆️ Upload Video'}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Manual submission checklist */}
       <div style={{ ...card, padding: '20px 24px' }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 800, color: '#032D60' }}>✅ Platform Submission Checklist</h3>

@@ -302,6 +302,13 @@ export const platformService = {
   async saveEmployerSettings(tid, data) { return req('PATCH', `/distribution/employer-settings/${tid}`, data); },
   async runDeduplication()               { return req('POST',  '/admin/deduplicate-jobs', {}); },
 
+  // ── Video Job Description ─────────────────────────────────────────────────────
+  async uploadJobVideoJd(jobId, formData) {
+    const r = await uploadFormData('POST', `/jobs/${jobId}/video-jd`, formData);
+    return r?.data || r;
+  },
+  async deleteJobVideoJd(jobId) { return req('DELETE', `/jobs/${jobId}/video-jd`); },
+
   // ── Referral Portal ───────────────────────────────────────────────────────────
   async getReferrals()                   { const r = await req('GET', '/referrals'); return r?.data || r; },
   async generateReferralLink(data)       { const r = await req('POST', '/referrals/generate', data); return r?.data || r; },

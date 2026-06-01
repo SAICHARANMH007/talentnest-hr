@@ -857,4 +857,54 @@ router.post('/redistribute', ...guard, allowRoles('admin', 'super_admin'), async
   res.json({ success: true, total: jobs.length, summary });
 }));
 
+// ── POST /api/jobs/:id/video-jd — upload a video job description to Cloudinary
+router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const multer     = require('multer');
+  const cloudinary = require('cloudinary').v2;
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  const job = await Job.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
+  if (!job) throw new AppError('Job not found.', 404);
+
+  // Parse the multipart form
+  await new Promise((resolve, reject) => {
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+      fileFilter: (_, f, cb) => f.mimetype.startsWith('video/') ? cb(null, true) : cb(new Error('Only video files allowed')),
+    }).single('video');
+    upload(req, res, err => err ? reject(err) : resolve());
+  });
+
+  if (!req.file) throw new AppError('Video file required.', 400);
+
+  const uploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: 'video', folder: 'job-videos', transformation: [{ quality: 'auto' }] },
+      (err, result) => err ? reject(err) : resolve(result)
+    );
+    stream.end(req.file.buffer);
+  });
+
+  job.videoJdUrl = uploadResult.secure_url;
+  await job.save();
+
+  res.json({ success: true, data: { videoJdUrl: uploadResult.secure_url } });
+}));
+
+// ── DELETE /api/jobs/:id/video-jd — remove video JD
+router.delete('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const job = await Job.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.tenantId, deletedAt: null },
+    { $set: { videoJdUrl: '' } }, { new: true }
+  );
+  if (!job) throw new AppError('Job not found.', 404);
+  res.json({ success: true });
+}));
+
 module.exports = router;
