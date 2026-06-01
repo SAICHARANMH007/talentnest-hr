@@ -315,4 +315,16 @@ export const platformService = {
   async getReferralStats()               { return req('GET', '/referrals/stats'); },
   async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
   async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
+
+  // ── Talent Pool ───────────────────────────────────────────────────────────────
+  async getTalentPools()                         { const r = await req('GET', '/talent-pool'); return r?.pools || []; },
+  async createTalentPool(data)                   { const r = await req('POST', '/talent-pool', data); return r?.pool || r; },
+  async getTalentPool(id)                        { const r = await req('GET', `/talent-pool/${id}`); return r?.pool || r; },
+  async updateTalentPool(id, data)               { const r = await req('PATCH', `/talent-pool/${id}`, data); return r?.pool || r; },
+  async deleteTalentPool(id)                     { return req('DELETE', `/talent-pool/${id}`); },
+  async addTalentPoolMember(poolId, data)        { return req('POST', `/talent-pool/${poolId}/members`, data); },
+  async removeTalentPoolMember(poolId, candId)   { return req('DELETE', `/talent-pool/${poolId}/members/${candId}`); },
+  async updateTalentPoolMemberNotes(poolId, candId, notes) {
+    return req('PATCH', `/talent-pool/${poolId}/members/${candId}`, { notes });
+  },
 };

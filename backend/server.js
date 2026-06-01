@@ -196,6 +196,8 @@ app.use('/api/webhooks', require('./src/routes/webhooks'));
 app.use('/api/company-reviews', require('./src/routes/companyReviews'));
 // ── Referral Portal
 app.use('/api/referrals', require('./src/routes/referrals'));
+// ── Talent Pool
+app.use('/api/talent-pool', require('./src/routes/talentPool'));
 
 function escHtml(v = '') {
   return String(v)

@@ -55,6 +55,7 @@ const AdminWebhooks      = lazy(() => import('./pages/admin/AdminWebhooks.jsx'))
 const DiversityReport    = lazy(() => import('./pages/admin/DiversityReport.jsx'));
 const AdminReviews       = lazy(() => import('./pages/admin/AdminReviews.jsx'));
 const AdminReferrals     = lazy(() => import('./pages/admin/AdminReferrals.jsx'));
+const AdminTalentPool    = lazy(() => import('./pages/admin/TalentPool.jsx'));
 const OrgSettings = lazy(() => import('./pages/admin/OrgSettings.jsx'));
 const AdminJobApproval = lazy(() => import('./pages/admin/AdminJobApproval.jsx'));
 const OutreachTracker = lazy(() => import('./pages/admin/OutreachTracker.jsx'));
@@ -611,6 +612,7 @@ export default function App() {
             <Route path="diversity" element={<DiversityReport user={user} />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="referrals" element={<AdminReferrals />} />
+            <Route path="talent-pool" element={<AdminTalentPool />} />
             <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
