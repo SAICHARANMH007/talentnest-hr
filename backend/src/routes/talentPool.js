@@ -15,7 +15,6 @@ router.get('/', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
   const pools = await TalentPool.find({ tenantId: req.user.tenantId, deletedAt: null })
     .sort({ createdAt: -1 })
     .populate('members.candidateId', 'firstName lastName email phone currentRole')
-    .populate('members.addedBy', 'name email')
     .lean();
   res.json({ pools });
 }));
@@ -36,7 +35,6 @@ router.post('/', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
 router.get('/:id', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => {
   const pool = await TalentPool.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null })
     .populate('members.candidateId', 'firstName lastName email phone currentRole avatarUrl skills')
-    .populate('members.addedBy', 'name email')
     .lean();
   if (!pool) return res.status(404).json({ message: 'Pool not found' });
   res.json({ pool });
