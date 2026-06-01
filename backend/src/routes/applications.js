@@ -196,6 +196,62 @@ router.post('/prefill', asyncHandler(async (req, res) => {
   return res.json({ success: true, exists: false });
 }));
 
+// POST /api/applications/quick — one-click apply for logged-in candidates
+router.post('/quick', authMiddleware, asyncHandler(async (req, res) => {
+  const { jobId, coverLetter } = req.body;
+  if (!jobId) throw new AppError('jobId is required.', 400);
+
+  const candidate = await Candidate.findOne({ email: req.user.email }).lean();
+  if (!candidate) throw new AppError('Candidate profile not found.', 404);
+
+  const job = await Job.findById(jobId).lean();
+  if (!job) throw new AppError('Job not found.', 404);
+  if (job.status !== 'active') throw new AppError('Job is not active.', 400);
+
+  const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });
+  if (exists) throw new AppError('Already applied for this job.', 409);
+
+  const { score, breakdown } = calculateTalentMatchScore(job, candidate);
+
+  const app = await Application.create({
+    tenantId   : job.tenantId,
+    jobId,
+    candidateId: candidate._id,
+    source     : 'career_page',
+    coverLetter: coverLetter || '',
+    talentMatchScore : score,
+    matchBreakdown   : breakdown,
+    currentStage     : 'Applied',
+    stageHistory     : [{ stage: 'Applied', movedAt: new Date(), notes: 'One-click apply' }],
+    statusToken      : crypto.randomBytes(24).toString('hex'),
+  });
+
+  await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
+
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const trackerLink = `${FRONTEND_URL}/track/${app.statusToken}`;
+
+  email.sendEmailWithRetry?.(candidate.email,
+    `✅ Application submitted — ${job.title}`,
+    `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#032D60">Hi ${candidate.name || candidate.firstName || 'there'},</h2>
+      <p>Your application for <strong>${job.title}</strong> at <strong>${job.company || job.companyName || ''}</strong> has been submitted via one-click apply.</p>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${trackerLink}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+          📍 Track Application Status →
+        </a>
+      </div>
+    </div>`
+  ).catch(() => {});
+
+  res.status(201).json({
+    success      : true,
+    applicationId: String(app._id),
+    trackerUrl   : trackerLink,
+    matchScore   : score,
+  });
+}));
+
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,

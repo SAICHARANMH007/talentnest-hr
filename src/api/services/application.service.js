@@ -34,6 +34,9 @@ export const applicationService = {
   async applyPublic(jobId, form) {
     return req('POST', '/applications/public', { jobId, ...form }, false);
   },
+  async quickApply(jobId, coverLetter = '') {
+    return req('POST', '/applications/quick', { jobId, coverLetter });
+  },
   async prefillByEmail(email) {
     return req('POST', '/applications/prefill', { email }, false);
   },
