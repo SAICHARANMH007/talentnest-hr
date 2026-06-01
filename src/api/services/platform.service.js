@@ -316,6 +316,12 @@ export const platformService = {
   async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
   async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
 
+  // ── Saved Search Templates ────────────────────────────────────────────────────
+  async getSavedSearches(context)            { const r = await req('GET', `/saved-searches${context ? `?context=${context}` : ''}`); return r?.searches || []; },
+  async saveSearch(name, context, filters)   { const r = await req('POST', '/saved-searches', { name, context, filters }); return r?.search || r; },
+  async updateSavedSearch(id, data)          { const r = await req('PATCH', `/saved-searches/${id}`, data); return r?.search || r; },
+  async deleteSavedSearch(id)                { return req('DELETE', `/saved-searches/${id}`); },
+
   // ── Onboarding Templates ─────────────────────────────────────────────────────
   async getOnboardingTemplates()                       { const r = await req('GET', '/onboarding-templates'); return r?.templates || []; },
   async createOnboardingTemplate(data)                 { const r = await req('POST', '/onboarding-templates', data); return r?.template || r; },

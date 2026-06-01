@@ -312,9 +312,36 @@ export default function RecruiterCandidates({ user }) {
     minCTC: '',
     maxCTC: '',
     availability: '',
-    roles: [], 
+    roles: [],
   });
   const sf = (k, v) => setFilters(p => ({ ...p, [k]: v }));
+
+  // ── Saved Searches ────────────────────────────────────────────────────────────
+  const [savedSearches, setSavedSearches]   = useState([]);
+  const [saveSearchName, setSaveSearchName] = useState('');
+  const [showSaveInput, setShowSaveInput]   = useState(false);
+
+  useEffect(() => {
+    api.getSavedSearches('candidates').then(s => setSavedSearches(s || [])).catch(() => {});
+  }, []);
+
+  const handleSaveSearch = async () => {
+    if (!saveSearchName.trim()) return;
+    const { roles, ...rest } = filters;
+    const s = await api.saveSearch(saveSearchName.trim(), 'candidates', rest);
+    setSavedSearches(prev => [s, ...prev]);
+    setSaveSearchName('');
+    setShowSaveInput(false);
+  };
+
+  const handleLoadSearch = (s) => {
+    setFilters(f => ({ ...f, ...s.filters }));
+  };
+
+  const handleDeleteSavedSearch = async (id) => {
+    await api.deleteSavedSearch(id);
+    setSavedSearches(prev => prev.filter(s => s._id !== id));
+  };
   const toggleRoleFilter = (r) => setFilters(p => ({ ...p, roles: p.roles.includes(r) ? p.roles.filter(x => x !== r) : [...p.roles, r] }));
 
   const ROLE_CATS = ['IT', 'Cybersecurity', 'Non-IT', 'Finance', 'HR', 'Sales', 'Operations', 'Management'];
@@ -620,6 +647,21 @@ export default function RecruiterCandidates({ user }) {
               </div>
             </div>
 
+            {/* Saved Searches */}
+            {savedSearches.length > 0 && (
+              <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>SAVED:</span>
+                {savedSearches.map(s => (
+                  <span key={s._id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={() => handleLoadSearch(s)} style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      🔖 {s.name}
+                    </button>
+                    <button onClick={() => handleDeleteSavedSearch(s._id)} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={search} style={btnP}>🔍 Search</button>
               <button
@@ -635,6 +677,16 @@ export default function RecruiterCandidates({ user }) {
                 {onlineOnly ? `Online Now (${onlineIds.size})` : 'Online Now'}
               </button>
               {hasFilters && <button onClick={reset} style={btnG}>✕ Clear</button>}
+              {hasFilters && !showSaveInput && (
+                <button onClick={() => setShowSaveInput(true)} style={{ ...btnG, fontSize: 12 }}>🔖 Save Search</button>
+              )}
+              {showSaveInput && (
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  <input value={saveSearchName} onChange={e => setSaveSearchName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveSearch()} placeholder="Search name…" style={{ border: '1px solid #E2E8F0', borderRadius: 8, padding: '5px 10px', fontSize: 12, width: 130 }} autoFocus />
+                  <button onClick={handleSaveSearch} style={btnP}>Save</button>
+                  <button onClick={() => setShowSaveInput(false)} style={btnG}>✕</button>
+                </span>
+              )}
               <span style={{ color: '#9E9D9B', fontSize: 12 }}>
                 {results.length} shown {totalCount > results.length ? `of ${totalCount.toLocaleString()} total` : ''}
               </span>

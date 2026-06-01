@@ -201,6 +201,8 @@ app.use('/api/referrals', require('./src/routes/referrals'));
 app.use('/api/talent-pool', require('./src/routes/talentPool'));
 // ── Onboarding Templates
 app.use('/api/onboarding-templates', require('./src/routes/onboardingTemplates'));
+// ── Saved Searches
+app.use('/api/saved-searches', require('./src/routes/savedSearches'));
 
 function escHtml(v = '') {
   return String(v)
