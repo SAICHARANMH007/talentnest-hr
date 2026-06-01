@@ -5,6 +5,7 @@ backend/.env
 backend/node_modules/
 backend/data/
 *.log
+backend/logs/
 .mvn/
 .vscode/
 backend-spring/target/
