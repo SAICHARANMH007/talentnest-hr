@@ -92,6 +92,7 @@ const InterviewScorecards   = lazy(() => import('./pages/admin/InterviewScorecar
 const TimeToFillTracker     = lazy(() => import('./pages/admin/TimeToFillTracker.jsx'));
 const DuplicateMerge        = lazy(() => import('./pages/admin/DuplicateMerge.jsx'));
 const SourcingTracker       = lazy(() => import('./pages/admin/SourcingTracker.jsx'));
+const RejectionTemplates    = lazy(() => import('./pages/admin/RejectionTemplates.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -601,6 +602,7 @@ export default function App() {
             <Route path="time-to-fill" element={<TimeToFillTracker />} />
             <Route path="duplicate-merge" element={<DuplicateMerge />} />
             <Route path="sourcing-tracker" element={<SourcingTracker />} />
+            <Route path="rejection-templates" element={<RejectionTemplates />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}

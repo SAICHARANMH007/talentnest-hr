@@ -205,6 +205,8 @@ app.use('/api/onboarding-templates', require('./src/routes/onboardingTemplates')
 app.use('/api/saved-searches', require('./src/routes/savedSearches'));
 // ── Email Sequences
 app.use('/api/email-sequences', require('./src/routes/emailSequences'));
+// ── Rejection Templates
+app.use('/api/rejection-templates', require('./src/routes/rejectionTemplates'));
 
 function escHtml(v = '') {
   return String(v)

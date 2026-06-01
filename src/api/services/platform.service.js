@@ -348,4 +348,10 @@ export const platformService = {
   async updateTalentPoolMemberNotes(poolId, candId, notes) {
     return req('PATCH', `/talent-pool/${poolId}/members/${candId}`, { notes });
   },
+
+  // ── Rejection Templates ───────────────────────────────────────────────────────
+  async getRejectionTemplates(stage)    { const r = await req('GET', `/rejection-templates${stage ? `?stage=${stage}` : ''}`); return r?.data || []; },
+  async createRejectionTemplate(data)   { const r = await req('POST', '/rejection-templates', data); return r?.data || r; },
+  async updateRejectionTemplate(id, d)  { const r = await req('PATCH', `/rejection-templates/${id}`, d); return r?.data || r; },
+  async deleteRejectionTemplate(id)     { return req('DELETE', `/rejection-templates/${id}`); },
 };
