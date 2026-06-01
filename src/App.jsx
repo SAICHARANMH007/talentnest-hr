@@ -13,6 +13,7 @@ const SetPasswordPage = lazy(() => import('./pages/auth/SetPasswordPage.jsx'));
 const CareersPage          = lazy(() => import('./pages/careers/CareersPage.jsx'));
 const JobDetailPage        = lazy(() => import('./pages/careers/JobDetailPage.jsx'));
 const ApplicationTracker   = lazy(() => import('./pages/public/ApplicationTracker.jsx'));
+const NpsSurveyPage        = lazy(() => import('./pages/public/NpsSurveyPage.jsx'));
 const LandingPage = lazy(() => import('./pages/marketing/LandingPage.jsx'));
 const AboutPage = lazy(() => import('./pages/marketing/AboutPage.jsx'));
 const ServicesPage = lazy(() => import('./pages/marketing/ServicesPage.jsx'));
@@ -84,6 +85,7 @@ const AdminClients = lazy(() => import('./pages/admin/AdminClients.jsx'));
 const AdminAutomation = lazy(() => import('./pages/admin/AdminAutomation.jsx'));
 const AdminOnboarding       = lazy(() => import('./pages/admin/AdminOnboarding.jsx'));
 const OnboardingTemplates   = lazy(() => import('./pages/admin/OnboardingTemplates.jsx'));
+const AdminNPS              = lazy(() => import('./pages/admin/AdminNPS.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -502,7 +504,8 @@ export default function App() {
       <Route path="/careers/job/:slug" element={<Suspense fallback={<PageLoader />}><JobDetailPage /></Suspense>} />
       <Route path="/careers/:companySlug" element={<Suspense fallback={<PageLoader />}><CareersPage /></Suspense>} />
       <Route path="/companies" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
-      <Route path="/track/:token"   element={<Suspense fallback={<PageLoader />}><ApplicationTracker /></Suspense>} />
+      <Route path="/track/:token"    element={<Suspense fallback={<PageLoader />}><ApplicationTracker /></Suspense>} />
+      <Route path="/nps/:token"      element={<Suspense fallback={<PageLoader />}><NpsSurveyPage /></Suspense>} />
       <Route path="/invite/:token"   element={<Suspense fallback={<PageLoader />}><InviteResponsePage /></Suspense>} />
       <Route path="/schedule/:token"           element={<Suspense fallback={<PageLoader />}><SchedulingPage /></Suspense>} />
       <Route path="/app/offer-approval/:offerId" element={<Suspense fallback={<PageLoader />}><OfferApprovalPage /></Suspense>} />
@@ -585,6 +588,7 @@ export default function App() {
             <Route path="talent-pool" element={<TalentPool user={user} />} />
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
             <Route path="onboarding-templates" element={<OnboardingTemplates />} />
+            <Route path="nps-dashboard" element={<AdminNPS />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}

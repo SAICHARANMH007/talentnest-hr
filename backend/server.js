@@ -121,6 +121,7 @@ app.use('/api/', (req, res, next) => {
   if (CSRF_EXEMPT_PATHS.has(req.path)) return next();
   if (req.path.startsWith('/company-reviews/public/')) return next();
   if (req.path === '/referrals/track') return next();
+  if (req.path.startsWith('/nps/survey/')) return next();
   if (req.path.startsWith('/schedule/') && (req.path.endsWith('/confirm') || req.path.endsWith('/token'))) return next();
   if (req.headers['x-requested-with'] === 'TalentNest') return next();
   // Allow requests with dev bypass header (Postman/curl: set X-Dev-Bypass: 1 in non-prod)

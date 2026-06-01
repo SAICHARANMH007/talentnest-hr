@@ -47,6 +47,49 @@ router.get('/respond/:token', asyncHandler(async (req, res) => {
   res.redirect(`${FRONTEND_URL}/nps-thankyou?status=success`);
 }));
 
+// GET /api/nps/survey/:token — return survey info for web form
+router.get('/survey/:token', asyncHandler(async (req, res) => {
+  let payload;
+  try { payload = jwt.verify(req.params.token, JWT_SECRET); } catch {
+    return res.status(400).json({ message: 'Invalid or expired survey link.' });
+  }
+  const nps = await CandidateNPS.findOne({ surveyToken: req.params.token })
+    .populate('jobId', 'title company companyName').lean();
+  if (!nps) return res.status(404).json({ message: 'Survey not found.' });
+  if (nps.respondedAt) return res.json({ alreadySubmitted: true });
+  res.json({
+    alreadySubmitted: false,
+    jobTitle : nps.jobId?.title || '',
+    company  : nps.jobId?.company || nps.jobId?.companyName || '',
+    outcome  : nps.applicationOutcome || '',
+  });
+}));
+
+// POST /api/nps/survey/:token — web form submission
+router.post('/survey/:token', asyncHandler(async (req, res) => {
+  const { score, wouldRecommend, feedbackText } = req.body;
+  let payload;
+  try { payload = jwt.verify(req.params.token, JWT_SECRET); } catch {
+    return res.status(400).json({ message: 'Invalid or expired survey link.' });
+  }
+  const nps = await CandidateNPS.findOne({ surveyToken: req.params.token });
+  if (!nps) return res.status(404).json({ message: 'Survey not found.' });
+  if (nps.respondedAt) return res.status(409).json({ message: 'Already submitted.' });
+
+  const s = parseInt(score, 10);
+  if (isNaN(s) || s < 1 || s > 10) return res.status(400).json({ message: 'Score must be 1–10.' });
+
+  await CandidateNPS.findByIdAndUpdate(nps._id, {
+    $set: {
+      score,
+      wouldRecommend: wouldRecommend !== undefined ? !!wouldRecommend : undefined,
+      feedbackText  : feedbackText || '',
+      respondedAt   : new Date(),
+    },
+  });
+  res.json({ success: true });
+}));
+
 // GET /api/nps/stats — admin: NPS dashboard data
 router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;

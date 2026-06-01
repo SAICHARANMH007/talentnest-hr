@@ -54,6 +54,7 @@ async function sendNpsSurvey(app, candidate, job, outcome) {
       emailSentAt   : new Date(),
     });
 
+    const webSurveyUrl = `${FRONTEND_URL}/nps/${token}`;
     const yesUrl = `${FRONTEND_URL}/api/nps/respond/${token}?recommend=yes`;
     const noUrl  = `${FRONTEND_URL}/api/nps/respond/${token}?recommend=no`;
 
@@ -70,9 +71,15 @@ async function sendNpsSurvey(app, candidate, job, outcome) {
           <p>Hi ${candidate.name?.split(' ')[0] || 'there'},</p>
           <p>${outcomeMsg}</p>
           <p>We'd love your feedback on the hiring process. It only takes 30 seconds.</p>
-          <p style="font-weight:700;margin-bottom:8px">On a scale of 1–10, how would you rate your experience? (1 = very poor, 10 = excellent)</p>
-          <div style="margin-bottom:20px">${buildScoreButtons(token)}</div>
-          <p style="font-weight:700;margin-bottom:8px">Would you recommend this company to others?</p>
+          <div style="text-align:center;margin:20px 0">
+            <a href="${webSurveyUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#0176D3,#00C2CB);color:#fff;border-radius:10px;text-decoration:none;font-weight:800;font-size:16px">
+              ✍️ Leave Feedback →
+            </a>
+          </div>
+          <p style="font-weight:700;margin-bottom:8px;font-size:13px">Or rate directly from email:</p>
+          <p style="font-size:12px;font-weight:700;margin-bottom:8px">Score (1 = very poor, 10 = excellent):</p>
+          <div style="margin-bottom:16px">${buildScoreButtons(token)}</div>
+          <p style="font-weight:700;margin-bottom:8px;font-size:12px">Would you recommend this company?</p>
           <div>
             <a href="${yesUrl}" style="display:inline-block;padding:10px 24px;background:#10b981;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;margin-right:8px">👍 Yes</a>
             <a href="${noUrl}"  style="display:inline-block;padding:10px 24px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none;font-weight:700">👎 No</a>
