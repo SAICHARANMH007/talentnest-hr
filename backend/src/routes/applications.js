@@ -377,6 +377,10 @@ router.post('/public', asyncHandler(async (req, res) => {
     jobTitle       : job.title,
   }).catch(() => {});
 
+  // Fire webhook
+  const { fireWebhooks: _fwh } = require('../services/webhookService');
+  _fwh(job.tenantId, 'application.created', { applicationId: String(app._id), candidateName: candidate.name, jobTitle: job.title, source: 'career_page' }).catch(() => {});
+
   res.status(201).json({
     success: true,
     data: normalizeApp(app),
@@ -1183,6 +1187,13 @@ router.patch('/:id/stage', ...guard,
     evaluateWorkflows(req.user.tenantId, { event: 'stage_changed', ...wfBase }).catch(() => {});
     if (stage === 'Hired')    evaluateWorkflows(req.user.tenantId, { event: 'candidate_hired',    ...wfBase }).catch(() => {});
     if (stage === 'Rejected') evaluateWorkflows(req.user.tenantId, { event: 'candidate_rejected', ...wfBase }).catch(() => {});
+
+    // ── Fire webhooks (non-blocking)
+    const { fireWebhooks } = require('../services/webhookService');
+    const whPayload = { applicationId: String(app._id), candidateName: wfBase.candidateName, jobTitle: wfBase.jobTitle, stage, recruiterName: req.user.name || req.user.email };
+    fireWebhooks(req.user.tenantId, 'application.stage_changed', whPayload).catch(() => {});
+    if (stage === 'Hired')    fireWebhooks(req.user.tenantId, 'application.hired',    whPayload).catch(() => {});
+    if (stage === 'Rejected') fireWebhooks(req.user.tenantId, 'application.rejected', whPayload).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 

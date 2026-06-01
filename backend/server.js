@@ -183,6 +183,12 @@ app.use('/api/job-alerts', require('./src/routes/jobAlerts'));
 app.use('/api/blogs', require('./src/routes/blogs'));
 app.use('/api/presence', require('./src/routes/presence'));
 app.use('/api/messages', require('./src/routes/messages'));
+// ── Interview Self-Scheduling
+app.use('/api/schedule', require('./src/routes/schedule'));
+// ── Interview Kits
+app.use('/api/interview-kits', require('./src/routes/interviewKits'));
+// ── Webhooks
+app.use('/api/webhooks', require('./src/routes/webhooks'));
 
 function escHtml(v = '') {
   return String(v)
@@ -793,12 +799,6 @@ app.get('/robots.txt',  (req, res) => res.redirect('/api/feed/robots.txt'));
 // ── Calls REST
 app.use('/api/calls', require('./src/routes/calls'));
 app.use('/api/bgv',   require('./src/routes/bgv'));
-
-// ── Interview Self-Scheduling
-app.use('/api/schedule', require('./src/routes/schedule'));
-
-// ── Interview Kits
-app.use('/api/interview-kits', require('./src/routes/interviewKits'));
 
 // ── 404 handler (Wrap in AppError for API)
 app.all('*', (req, res, next) => {
