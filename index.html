@@ -236,6 +236,8 @@
     /* sr-only: visually hidden but readable by all bots and screen readers (B3/A2) */
     .sr-only,.sr-content{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   </style>
+  <!-- Set marketing theme CSS vars before React renders to prevent white flash on landing page -->
+  <script>(function(){try{var t=localStorage.getItem('tn_mkt_theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'mixed');var m={dark:{sb:'#0A0F1E',su:'#0F172A',cb:'#141C2E',br:'rgba(255,255,255,0.07)',tx:'#F1F5F9',th:'#F1F5F9',tm:'rgba(255,255,255,0.5)',pr:'59,130,246',ac:'6,182,212'},light:{sb:'#FFFFFF',su:'#F8FAFC',cb:'#FFFFFF',br:'#D1D9E6',tx:'#111827',th:'#111827',tm:'#6B7280',pr:'1,118,211',ac:'8,145,178'},mixed:{sb:'#13112E',su:'#1A1740',cb:'#201D52',br:'rgba(139,92,246,0.25)',tx:'#E0E7FF',th:'#FFFFFF',tm:'rgba(199,210,254,0.6)',pr:'99,102,241',ac:'139,92,246'}};var v=m[t]||m.mixed;var r=document.documentElement;r.style.setProperty('--mkt-section-bg',v.sb);r.style.setProperty('--mkt-surface-bg',v.su);r.style.setProperty('--mkt-card-bg',v.cb);r.style.setProperty('--mkt-card-border',v.br);r.style.setProperty('--mkt-text',v.tx);r.style.setProperty('--mkt-text-heading',v.th);r.style.setProperty('--mkt-text-muted',v.tm);r.style.setProperty('--mkt-primary-rgb',v.pr);r.style.setProperty('--mkt-accent-rgb',v.ac);document.body.setAttribute('data-mkt-theme',t);}catch(e){}})()</script>
   <!-- Adsense temporarily disabled for investor review to ensure clean UI -->
 </head>
   <body>
