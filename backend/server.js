@@ -794,6 +794,9 @@ app.get('/robots.txt',  (req, res) => res.redirect('/api/feed/robots.txt'));
 app.use('/api/calls', require('./src/routes/calls'));
 app.use('/api/bgv',   require('./src/routes/bgv'));
 
+// ── Interview Self-Scheduling
+app.use('/api/schedule', require('./src/routes/schedule'));
+
 // ── 404 handler (Wrap in AppError for API)
 app.all('*', (req, res, next) => {
   if (req.originalUrl.startsWith('/api/')) {

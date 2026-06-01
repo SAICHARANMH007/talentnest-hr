@@ -197,6 +197,14 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   const [isEditingFunnel, setEditingFunnel] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [schedModal, setSchedModal] = useState(false);
+  const [schedSlots, setSchedSlots] = useState(['', '', '']);
+  const [schedFormat, setSchedFormat] = useState('video');
+  const [schedVideoLink, setSchedVideoLink] = useState('');
+  const [schedLocation, setSchedLocation] = useState('');
+  const [schedNotes, setSchedNotes] = useState('');
+  const [schedSending, setSchedSending] = useState(false);
+  const [schedDone, setSchedDone] = useState(null);
 
   // Notes
   const [notes, setNotes] = useState(app.recruiterNotes || '');
@@ -223,6 +231,28 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   const handleAnyStage = async (newStage) => {
     setEditingFunnel(false);
     await onAnyStage(app, newStage);
+  };
+
+  const sendSchedulingLink = async () => {
+    const validSlots = schedSlots.filter(s => s.trim());
+    if (validSlots.length === 0) { onToast('❌ Add at least one slot'); return; }
+    setSchedSending(true);
+    try {
+      const result = await api.createSchedulingLink({
+        applicationId: app.id,
+        slots: validSlots,
+        format: schedFormat,
+        videoLink: schedVideoLink,
+        location: schedLocation,
+        notes: schedNotes,
+      });
+      setSchedDone(result?.scheduleUrl || '✅ Sent!');
+      onToast('✅ Scheduling link sent to candidate!');
+    } catch (e) {
+      onToast(`❌ ${e.message}`);
+    } finally {
+      setSchedSending(false);
+    }
   };
 
   return (
@@ -422,6 +452,9 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
         {app.stage === 'interview_completed' && (
           <button onClick={() => setShowFeedback(true)} style={{ background: 'rgba(1,118,211,0.15)', border: '1px solid rgba(1,118,211,0.3)', borderRadius: 12, color: '#0176D3', padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>📋 {app.feedback ? 'Edit Feedback' : 'Add Feedback'}</button>
         )}
+        {!['rejected', 'selected'].includes(app.stage) && (
+          <button onClick={() => { setSchedModal(true); setSchedDone(null); }} style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 12, color: '#7C3AED', padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>📅 Send Scheduling Link</button>
+        )}
         {/* Assessment badge + review */}
         {assessmentId && (
           submission ? (
@@ -493,6 +526,83 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
           onClose={() => setShowFeedback(false)}
           onDone={(msg) => { onToast(msg); setShowFeedback(false); onRefresh(); }}
         />
+      )}
+
+      {schedModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 500, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Interview Scheduling</div>
+                <h3 style={{ color: '#fff', margin: 0, fontSize: 16, fontWeight: 800 }}>📅 Send Scheduling Link — {app.candidate?.name}</h3>
+              </div>
+              <button onClick={() => { setSchedModal(false); setSchedDone(null); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
+              {schedDone ? (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+                  <h4 style={{ color: '#059669', margin: '0 0 8px', fontWeight: 700 }}>Scheduling link sent!</h4>
+                  <p style={{ color: '#6B7280', fontSize: 13, margin: '0 0 16px' }}>The candidate has been emailed their scheduling link.</p>
+                  {schedDone.startsWith('http') && (
+                    <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, marginBottom: 4 }}>Direct link (copy if needed)</div>
+                      <code style={{ fontSize: 11, color: '#4C1D95', wordBreak: 'break-all' }}>{schedDone}</code>
+                    </div>
+                  )}
+                  <button onClick={() => { setSchedModal(false); setSchedDone(null); }} style={{ ...btnP, padding: '9px 20px', fontSize: 13 }}>Done</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Available Slots (datetime-local)</label>
+                    {schedSlots.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <input type="datetime-local" value={s} onChange={e => setSchedSlots(p => p.map((v, j) => j === i ? e.target.value : v))}
+                          style={{ ...inp, flex: 1, fontSize: 13 }} />
+                        {i > 0 && <button onClick={() => setSchedSlots(p => p.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 16, cursor: 'pointer', padding: 4 }}>✕</button>}
+                      </div>
+                    ))}
+                    {schedSlots.length < 10 && (
+                      <button onClick={() => setSchedSlots(p => [...p, ''])} style={{ background: 'rgba(124,58,237,0.08)', border: '1px dashed #7C3AED', borderRadius: 8, color: '#7C3AED', fontSize: 12, padding: '6px 14px', cursor: 'pointer', fontWeight: 600 }}>+ Add Slot</button>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Format</label>
+                    <select value={schedFormat} onChange={e => setSchedFormat(e.target.value)} style={{ ...inp, fontSize: 13 }}>
+                      <option value="video">📹 Video Call</option>
+                      <option value="phone">📞 Phone</option>
+                      <option value="in_person">🏢 In-Person</option>
+                    </select>
+                  </div>
+                  {schedFormat === 'video' && (
+                    <div>
+                      <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Video Link (optional)</label>
+                      <input value={schedVideoLink} onChange={e => setSchedVideoLink(e.target.value)} placeholder="https://meet.google.com/..." style={{ ...inp, fontSize: 13 }} />
+                    </div>
+                  )}
+                  {schedFormat === 'in_person' && (
+                    <div>
+                      <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Location</label>
+                      <input value={schedLocation} onChange={e => setSchedLocation(e.target.value)} placeholder="Office address…" style={{ ...inp, fontSize: 13 }} />
+                    </div>
+                  )}
+                  <div>
+                    <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Note to candidate (optional)</label>
+                    <textarea value={schedNotes} onChange={e => setSchedNotes(e.target.value)} rows={2} placeholder="Any preparation tips or details…" style={{ ...inp, fontSize: 13, resize: 'vertical' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setSchedModal(false)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F3F2F2', color: '#706E6B', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                    <button onClick={sendSchedulingLink} disabled={schedSending || schedSlots.filter(s => s).length === 0}
+                      style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: schedSending ? 0.7 : 1 }}>
+                      {schedSending ? 'Sending…' : '📅 Send Link'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
