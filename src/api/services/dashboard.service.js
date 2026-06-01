@@ -108,4 +108,7 @@ export const dashboardService = {
   async getPipelineHeatmap(days = 90) {
     return req('GET', `/dashboard/pipeline-heatmap?days=${days}`);
   },
+  async getTimeToFill(params = {}) {
+    return req('GET', `/dashboard/time-to-fill${qs(params)}`);
+  },
 };
