@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { api, setToken as setApiToken } from '../api/api.js';
