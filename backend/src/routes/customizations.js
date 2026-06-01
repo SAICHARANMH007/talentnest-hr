@@ -24,7 +24,7 @@ const COLLECTIONS = [
   'documentTypes', 'questionBank', 'offerVariables', 'notificationMessages',
   'departments', 'locations', 'sources', 'employmentTypes',
 ];
-const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings'];
+const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings', 'employerBrand'];
 
 function resolveOrgId(req) {
   // super_admin can pass ?orgId=... or uses their own tenantId
@@ -147,6 +147,15 @@ router.put('/:section', ...guard, asyncHandler(async (req, res) => {
     { new: true, upsert: true }
   );
   res.json({ success: true, data: doc[section] });
+}));
+
+// ── PUT /api/customizations/employer-brand/full — replace entire employerBrand object
+router.put('/employer-brand/full', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const orgId = resolveOrgId(req);
+  const { tagline, about, culture, mission, website, linkedIn, twitter, instagram, bannerImageUrl, perks, testimonials, techStack, accentColor } = req.body;
+  const update = { employerBrand: { tagline: tagline || '', about: about || '', culture: culture || '', mission: mission || '', website: website || '', linkedIn: linkedIn || '', twitter: twitter || '', instagram: instagram || '', bannerImageUrl: bannerImageUrl || '', perks: perks || [], testimonials: testimonials || [], techStack: techStack || [], accentColor: accentColor || '#0176D3' } };
+  const doc = await OrgCustomizations.findOneAndUpdate({ orgId }, { $set: update }, { new: true, upsert: true });
+  res.json({ success: true, data: doc.employerBrand });
 }));
 
 module.exports = router;

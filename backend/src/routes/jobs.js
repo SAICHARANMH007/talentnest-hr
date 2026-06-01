@@ -657,16 +657,21 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
 
-  const jobs = await Job.find({
-    tenantId: org._id,
-    isPublic: true,
-    status: 'active',
-    deletedAt: null,
-  }).select('title company companyName location jobType experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency careerPageSlug externalUrl createdAt numberOfOpenings').sort({ createdAt: -1 }).lean();
+  const [jobs, orgCustom] = await Promise.all([
+    Job.find({
+      tenantId: org._id,
+      isPublic: true,
+      status: 'active',
+      deletedAt: null,
+    }).select('title company companyName location jobType experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency careerPageSlug externalUrl createdAt numberOfOpenings applicationDeadline').sort({ createdAt: -1 }).lean(),
+    require('../models/OrgCustomizations').findOne({ orgId: org._id }).select('employerBrand brandColors').lean(),
+  ]);
 
   res.json({
     success: true,
     org: { name: org.name, logoUrl: org.logoUrl, slug: req.params.orgSlug },
+    employerBrand: orgCustom?.employerBrand || {},
+    brandColors: orgCustom?.brandColors || {},
     data: jobs.map(normalizeJob),
   });
 }));

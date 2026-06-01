@@ -28,6 +28,8 @@ export default function OrgCareersPage() {
 
   const [org, setOrg] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [employerBrand, setEmployerBrand] = useState(null);
+  const [brandColors, setBrandColors] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -44,6 +46,8 @@ export default function OrgCareersPage() {
         if (!res.success) { setError('Organisation not found or career page not available.'); return; }
         setOrg(res.org);
         setJobs(Array.isArray(res.data) ? res.data : []);
+        setEmployerBrand(res.employerBrand || null);
+        setBrandColors(res.brandColors || {});
         document.title = `${res.org?.name || 'Careers'} — Open Positions`;
       })
       .catch(() => setError('Could not load jobs. Please try again later.'))
@@ -129,6 +133,81 @@ export default function OrgCareersPage() {
             style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px 9px 32px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 14, outline: 'none', background: '#F8FAFC', WebkitAppearance: 'none' }} />
         </div>
       </div>}
+
+      {/* Employer Brand Section — shown for external orgs when brand data exists */}
+      {!isMainOrg && !embed && employerBrand && (employerBrand.about || employerBrand.perks?.length > 0 || employerBrand.tagline) && (() => {
+        const accent = employerBrand.accentColor || brandColors?.primary || '#0176D3';
+        return (
+          <div style={{ background: '#fff', borderBottom: '1px solid #E2E8F0' }}>
+            {/* Hero banner */}
+            {employerBrand.bannerImageUrl ? (
+              <div style={{ height: 200, background: `url(${employerBrand.bannerImageUrl}) center/cover no-repeat`, position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'flex-end', padding: '24px 32px' }}>
+                  <div>
+                    {org?.logoUrl && <img src={org.logoUrl} alt={org.name} style={{ height: 40, borderRadius: 8, background: '#fff', padding: '4px 10px', marginBottom: 8, display: 'block' }} />}
+                    {employerBrand.tagline && <p style={{ color: '#fff', fontWeight: 700, fontSize: 18, margin: 0, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{employerBrand.tagline}</p>}
+                  </div>
+                </div>
+              </div>
+            ) : employerBrand.tagline ? (
+              <div style={{ background: `linear-gradient(135deg, ${accent}, ${accent}CC)`, padding: '24px 28px' }}>
+                {org?.logoUrl && <img src={org.logoUrl} alt={org.name} style={{ height: 36, borderRadius: 8, background: '#fff', padding: '4px 10px', marginBottom: 10, display: 'block' }} />}
+                <p style={{ color: '#fff', fontWeight: 700, fontSize: 17, margin: 0 }}>{employerBrand.tagline}</p>
+              </div>
+            ) : null}
+
+            <div style={{ padding: '24px 28px', maxWidth: 900, margin: '0 auto' }}>
+              {/* About */}
+              {employerBrand.about && (
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ color: '#111827', fontSize: 16, fontWeight: 800, margin: '0 0 10px' }}>About Us</h3>
+                  <p style={{ color: '#374151', fontSize: 14, lineHeight: 1.7, margin: 0 }}>{employerBrand.about}</p>
+                </div>
+              )}
+
+              {/* Perks */}
+              {employerBrand.perks?.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ color: '#111827', fontSize: 16, fontWeight: 800, margin: '0 0 14px' }}>Perks & Benefits</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                    {employerBrand.perks.map((p, i) => (
+                      <div key={i} style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
+                        <div style={{ fontWeight: 700, color: '#111827', fontSize: 13, marginBottom: 4 }}>{p.title}</div>
+                        {p.description && <div style={{ color: '#6B7280', fontSize: 12, lineHeight: 1.5 }}>{p.description}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Testimonials */}
+              {employerBrand.testimonials?.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ color: '#111827', fontSize: 16, fontWeight: 800, margin: '0 0 14px' }}>Life at {org?.name}</h3>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                    {employerBrand.testimonials.map((t, i) => (
+                      <div key={i} style={{ flex: '1 1 260px', background: '#F8FAFC', borderRadius: 12, padding: '16px 18px', border: `1px solid ${accent}22`, borderLeft: `4px solid ${accent}` }}>
+                        <p style={{ color: '#374151', fontSize: 13, fontStyle: 'italic', margin: '0 0 10px', lineHeight: 1.6 }}>"{t.text}"</p>
+                        <div style={{ fontWeight: 700, color: '#111827', fontSize: 12 }}>{t.name}</div>
+                        {t.role && <div style={{ color: '#9CA3AF', fontSize: 11 }}>{t.role}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Social links */}
+              {(employerBrand.website || employerBrand.linkedIn || employerBrand.twitter) && (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {employerBrand.website && <a href={/^https?:\/\//.test(employerBrand.website) ? employerBrand.website : `https://${employerBrand.website}`} target="_blank" rel="noreferrer" style={{ color: accent, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>🌐 Website</a>}
+                  {employerBrand.linkedIn && <a href={employerBrand.linkedIn} target="_blank" rel="noreferrer" style={{ color: '#0A66C2', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>💼 LinkedIn</a>}
+                  {employerBrand.twitter  && <a href={employerBrand.twitter} target="_blank" rel="noreferrer" style={{ color: '#1DA1F2', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>🐦 Twitter</a>}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filter pills — professional scrollable row */}
       <div style={{ 

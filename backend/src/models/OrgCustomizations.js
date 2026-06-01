@@ -114,6 +114,22 @@ const OrgCustomizationsSchema = new Schema({
     bgPage:    { type: String, default: '#f4f6f8' },
   },
 
+  employerBrand: {
+    tagline        : { type: String, default: '' },
+    about          : { type: String, default: '' },
+    culture        : { type: String, default: '' },
+    mission        : { type: String, default: '' },
+    website        : { type: String, default: '' },
+    linkedIn       : { type: String, default: '' },
+    twitter        : { type: String, default: '' },
+    instagram      : { type: String, default: '' },
+    bannerImageUrl : { type: String, default: '' },
+    perks          : [{ title: { type: String }, description: { type: String } }],
+    testimonials   : [{ name: { type: String }, role: { type: String }, text: { type: String } }],
+    techStack      : [{ type: String }],
+    accentColor    : { type: String, default: '#0176D3' },
+  },
+
   offerLetterTemplate: {
     // Intro / opening paragraph
     introText: {
