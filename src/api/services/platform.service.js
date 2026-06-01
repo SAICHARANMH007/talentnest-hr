@@ -316,6 +316,14 @@ export const platformService = {
   async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
   async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
 
+  // ── Email Sequences ───────────────────────────────────────────────────────────
+  async getEmailSequences()                  { const r = await req('GET', '/email-sequences'); return r?.sequences || []; },
+  async createEmailSequence(data)            { const r = await req('POST', '/email-sequences', data); return r?.sequence || r; },
+  async updateEmailSequence(id, data)        { const r = await req('PATCH', `/email-sequences/${id}`, data); return r?.sequence || r; },
+  async deleteEmailSequence(id)              { return req('DELETE', `/email-sequences/${id}`); },
+  async enrollInSequence(seqId, candidateId) { return req('POST', `/email-sequences/${seqId}/enroll`, { candidateId }); },
+  async getSequenceEnrollments(seqId)        { const r = await req('GET', `/email-sequences/${seqId}/enrollments`); return r?.enrollments || []; },
+
   // ── Saved Search Templates ────────────────────────────────────────────────────
   async getSavedSearches(context)            { const r = await req('GET', `/saved-searches${context ? `?context=${context}` : ''}`); return r?.searches || []; },
   async saveSearch(name, context, filters)   { const r = await req('POST', '/saved-searches', { name, context, filters }); return r?.search || r; },

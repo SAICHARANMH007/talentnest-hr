@@ -203,6 +203,8 @@ app.use('/api/talent-pool', require('./src/routes/talentPool'));
 app.use('/api/onboarding-templates', require('./src/routes/onboardingTemplates'));
 // ── Saved Searches
 app.use('/api/saved-searches', require('./src/routes/savedSearches'));
+// ── Email Sequences
+app.use('/api/email-sequences', require('./src/routes/emailSequences'));
 
 function escHtml(v = '') {
   return String(v)
@@ -906,6 +908,7 @@ const { startPreBoardingJobs } = require('./src/jobs/preboardingCron');
 const { startJobAlertJobs }  = require('./src/jobs/jobAlertCron');
 const { startJobExpiryCron } = require('./src/jobs/jobExpiryCron');
 const { startDistributionRetryJob } = require('./src/jobs/distributionRetry');
+require('./src/jobs/sequenceProcessor'); // self-registering cron
 
 connectDB()
   .then(() => seed())
