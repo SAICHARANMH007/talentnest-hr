@@ -17,8 +17,12 @@ export default defineConfig({
         // Fine-grained manual chunks — each role group gets its own chunk so the
         // browser only downloads what the logged-in user actually needs.
         manualChunks(id) {
+          // ── Config: leaf module with no deps — must never be inside a page chunk ──
+          if (id.includes('src/api/config')) return 'util-config';
+
           // ── Vendor: only split heavy libs that are loaded lazily ──────────
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) return 'vendor-react';
+          if (id.includes('node_modules/socket.io') || id.includes('node_modules/engine.io')) return 'vendor-socket';
           if (id.includes('node_modules/react-router')) return 'vendor-router';
           // PDF + XLSX are only used in specific flows — keep isolated so the
           // main bundle never pays for them on initial load.
