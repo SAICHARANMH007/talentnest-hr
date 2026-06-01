@@ -672,6 +672,34 @@ export default function OrgSettings({ user }) {
           </div>
         </div>
       </div>
+
+      {/* ── JOB WIDGET EMBED ────────────────────────────────────────────── */}
+      {org?.slug && (() => {
+        const SITE = (typeof window !== 'undefined' ? window.location.origin : 'https://www.talentnesthr.com');
+        const careerUrl = `${SITE}/careers/${org.slug}`;
+        const iframeSnippet = `<iframe\n  src="${careerUrl}?embed=1"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="${org.name || 'Open Positions'} — Careers"\n  style="border:none;border-radius:12px;"\n  allow="geolocation"\n></iframe>`;
+        const copyToClipboard = (text) => { navigator.clipboard?.writeText(text).catch(() => {}); };
+        return (
+          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginTop: 24 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800 }}>🔗 Job Widget Embed</h2>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280' }}>Embed your live job listings on your company website. It updates automatically when you add or close jobs.</p>
+            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '14px 16px', marginBottom: 12, border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Career Page URL</span>
+                <button onClick={() => copyToClipboard(careerUrl)} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: '#EFF6FF', color: '#1D4ED8', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Copy</button>
+              </div>
+              <code style={{ fontSize: 12, color: '#1D4ED8', wordBreak: 'break-all' }}>{careerUrl}</code>
+            </div>
+            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>HTML Embed Code (iframe)</span>
+                <button onClick={() => copyToClipboard(iframeSnippet)} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: '#EFF6FF', color: '#1D4ED8', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Copy Code</button>
+              </div>
+              <pre style={{ fontSize: 11, color: '#374151', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>{iframeSnippet}</pre>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
