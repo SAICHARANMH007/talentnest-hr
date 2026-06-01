@@ -354,4 +354,11 @@ export const platformService = {
   async createRejectionTemplate(data)   { const r = await req('POST', '/rejection-templates', data); return r?.data || r; },
   async updateRejectionTemplate(id, d)  { const r = await req('PATCH', `/rejection-templates/${id}`, d); return r?.data || r; },
   async deleteRejectionTemplate(id)     { return req('DELETE', `/rejection-templates/${id}`); },
+
+  // ── Headcount Plans ───────────────────────────────────────────────────────────
+  async getHeadcountPlans()             { const r = await req('GET', '/headcount-plans'); return r?.data || []; },
+  async createHeadcountPlan(data)       { const r = await req('POST', '/headcount-plans', data); return r?.data || r; },
+  async getHeadcountPlan(id)            { const r = await req('GET', `/headcount-plans/${id}`); return r?.data || r; },
+  async updateHeadcountPlan(id, data)   { const r = await req('PATCH', `/headcount-plans/${id}`, data); return r?.data || r; },
+  async deleteHeadcountPlan(id)         { return req('DELETE', `/headcount-plans/${id}`); },
 };

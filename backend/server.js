@@ -207,6 +207,8 @@ app.use('/api/saved-searches', require('./src/routes/savedSearches'));
 app.use('/api/email-sequences', require('./src/routes/emailSequences'));
 // ── Rejection Templates
 app.use('/api/rejection-templates', require('./src/routes/rejectionTemplates'));
+// ── Headcount Plans
+app.use('/api/headcount-plans', require('./src/routes/headcountPlans'));
 
 function escHtml(v = '') {
   return String(v)
