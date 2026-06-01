@@ -22,7 +22,7 @@ const referralSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 referralSchema.index({ tenantId: 1 });
-referralSchema.index({ referralLinkToken: 1 });
+// referralLinkToken already indexed via unique:true on the field definition
 referralSchema.index({ tenantId: 1, status: 1 });
 
 referralSchema.virtual('id').get(function () { return this._id.toHexString(); });
