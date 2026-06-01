@@ -581,9 +581,17 @@ export default function AdminJobs({ user }) {
                     {j.approvalStatus === 'pending' && <Badge label="Pending Approval" color="#A07E00" />}
                   </div>
                   <div style={{ color: '#0176D3', fontSize: 13 }}>{j.company} · {j.location}</div>
-                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 3 }}>
-                    Recruiter: <strong style={{ color: '#3E3E3C' }}>{j.recruiterName || 'Unassigned'}</strong>
-                    {j.applicationDeadline && <span style={{ marginLeft: 12 }}>Deadline: {j.applicationDeadline}</span>}
+                  <div style={{ color: '#706E6B', fontSize: 12, marginTop: 3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <span>Recruiter: <strong style={{ color: '#3E3E3C' }}>{j.recruiterName || 'Unassigned'}</strong></span>
+                    {j.applicationDeadline && (() => {
+                      const dl    = new Date(j.applicationDeadline);
+                      const today = new Date(); today.setHours(0,0,0,0);
+                      const diff  = Math.ceil((dl - today) / 86400000);
+                      if (diff < 0)  return <span style={{ background:'rgba(186,5,23,0.1)', color:'#BA0517', fontWeight:700, fontSize:11, padding:'2px 8px', borderRadius:20, border:'1px solid rgba(186,5,23,0.25)' }}>⛔ Expired</span>;
+                      if (diff === 0) return <span style={{ background:'rgba(186,5,23,0.1)', color:'#BA0517', fontWeight:700, fontSize:11, padding:'2px 8px', borderRadius:20, border:'1px solid rgba(186,5,23,0.25)' }}>⚠️ Closes today</span>;
+                      if (diff <= 3)  return <span style={{ background:'rgba(160,126,0,0.1)', color:'#A07E00', fontWeight:700, fontSize:11, padding:'2px 8px', borderRadius:20, border:'1px solid rgba(160,126,0,0.25)' }}>⏳ Closes in {diff}d</span>;
+                      return <span style={{ color:'#706E6B', fontSize:11 }}>📅 Closes {dl.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>;
+                    })()}
                   </div>
                   <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
                     <span style={{ color: '#706E6B', fontSize: 12 }}>👥 {j.applicantsCount || 0} applicants</span>

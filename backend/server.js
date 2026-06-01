@@ -883,7 +883,8 @@ const { startWeeklyReportJob } = require('./src/jobs/weeklyReport');
 const { startSlaMonitorJob } = require('./src/jobs/slaMonitor');
 const { startNpsSchedulerJob } = require('./src/jobs/npsScheduler');
 const { startPreBoardingJobs } = require('./src/jobs/preboardingCron');
-const { startJobAlertJobs } = require('./src/jobs/jobAlertCron');
+const { startJobAlertJobs }  = require('./src/jobs/jobAlertCron');
+const { startJobExpiryCron } = require('./src/jobs/jobExpiryCron');
 const { startDistributionRetryJob } = require('./src/jobs/distributionRetry');
 
 connectDB()
@@ -933,6 +934,7 @@ connectDB()
     startNpsSchedulerJob();
     startPreBoardingJobs();
     startJobAlertJobs();
+    startJobExpiryCron();
     startDistributionRetryJob();
 
   })

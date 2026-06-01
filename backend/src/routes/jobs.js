@@ -49,10 +49,10 @@ const guard = [authMiddleware, tenantGuard];
 // ── PUBLIC — optimised for high traffic (millions of requests) ───────────────
 // Only select fields needed by the public job board — reduces payload ~60%.
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
-const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline';
 // Lean variant strips heavy text fields (description/requirements/benefits) — used by
 // the candidate matching pool fetch where only scoring fields are needed (~70% smaller).
-const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings';
+const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline';
 
 // ── PUBLIC: fetch one job by ID (for shared links — no auth) ─────────────────
 router.get('/public/single/:id', asyncHandler(async (req, res) => {
@@ -73,8 +73,16 @@ router.get('/public', asyncHandler(async (req, res) => {
   const requestedLimit = parseInt(req.query.limit) || 100;
   const limit = Math.min(requestedLimit, 10000); // Production Standard: High-capacity pool for 100% result visibility
   const { page, skip } = getPagination(req, { limit });
-  // Career portal: show active jobs that are non-deleted
-  const filter = { status: 'active', deletedAt: null };
+  // Career portal: show active, non-deleted jobs that haven't passed their deadline
+  const filter = {
+    status  : 'active',
+    deletedAt: null,
+    $and: [{ $or: [
+      { applicationDeadline: null },
+      { applicationDeadline: { $exists: false } },
+      { applicationDeadline: { $gte: new Date() } },
+    ]}],
+  };
 
   if (req.query.tenantId) filter.tenantId = req.query.tenantId;
   if (req.query.slug)     filter.careerPageSlug = req.query.slug;

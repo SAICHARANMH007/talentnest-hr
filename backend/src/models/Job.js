@@ -52,9 +52,10 @@ const jobSchema = new mongoose.Schema({
   alternateContactEmail: { type: String, trim: true, lowercase: true, default: '' },
   contactPhone: { type: String, trim: true, default: '' },
 
-  numberOfOpenings: { type: Number, default: 1 },
-  targetHireDate  : { type: Date },
-  applicationCount: { type: Number, default: 0 },
+  numberOfOpenings   : { type: Number, default: 1 },
+  targetHireDate     : { type: Date },
+  applicationDeadline: { type: Date, default: null },
+  applicationCount   : { type: Number, default: 0 },
   urgency         : { type: String, default: '' },
 
   status: {
@@ -110,6 +111,7 @@ jobSchema.index({ tenantId: 1, status: 1, deletedAt: 1 });        // active job 
 jobSchema.index({ tenantId: 1, deletedAt: 1, createdAt: -1 });    // tenant paginated lists
 jobSchema.index({ careerPageSlug: 1 });                           // public career page
 jobSchema.index({ tenantId: 1, isPublic: 1, status: 1 });         // org career listing
+jobSchema.index({ applicationDeadline: 1, status: 1, deletedAt: 1 }); // expiry cron
 jobSchema.index({ assignedRecruiters: 1, status: 1 });            // recruiter job lists
 jobSchema.index({ tenantId: 1, assignedRecruiters: 1, deletedAt: 1 }); // recruiter stats endpoint
 
