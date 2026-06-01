@@ -26,6 +26,8 @@ export default function SuperAdminPlatform({ onNavigate }) {
   const [orgHealth, setOrgHealth] = useState([]);
   const [broadcast, setBroadcast] = useState({ subject: '', message: '', sending: false, result: null });
   const [showBroadcast, setShowBroadcast] = useState(false);
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
 
   const runDedup = async () => {
     setDeduping(true); setDedupResult('');
@@ -88,6 +90,15 @@ export default function SuperAdminPlatform({ onNavigate }) {
     api.getPlatformRevenue().then(r => setRevenue(r?.data || null)).catch(() => {});
     api.getOrgHealth().then(r => setOrgHealth(Array.isArray(r?.data) ? r.data : [])).catch(() => {});
   }, []);
+
+  const loadSystemHealth = async () => {
+    setLoadingHealth(true);
+    try {
+      const r = await api.getSystemHealth();
+      setSystemHealth(r);
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setLoadingHealth(false);
+  };
 
   const sendBroadcast = async () => {
     if (!broadcast.subject.trim() || !broadcast.message.trim()) {
@@ -397,6 +408,81 @@ export default function SuperAdminPlatform({ onNavigate }) {
           <div style={{ textAlign: 'center', padding: 32, color: '#94A3B8' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
             <p style={{ margin: 0, fontSize: 13 }}>No payment records yet. Revenue data will appear here once payments are processed.</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── SYSTEM HEALTH DASHBOARD ──────────────────────────────────────────── */}
+      <div style={{ ...glass, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#059669,#10B981)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔧</div>
+            <div>
+              <h3 style={{ fontWeight: 700, color: '#0A1628', fontSize: 16, margin: 0 }}>Platform Health Dashboard</h3>
+              <p style={{ color: '#64748B', fontSize: 12, margin: 0 }}>Real-time system diagnostics</p>
+            </div>
+          </div>
+          <button onClick={loadSystemHealth} disabled={loadingHealth} style={{ background: '#059669', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', cursor: 'pointer', opacity: loadingHealth ? 0.7 : 1 }}>
+            {loadingHealth ? '⏳ Checking…' : systemHealth ? '🔄 Refresh' : '🔍 Run Health Check'}
+          </button>
+        </div>
+        {systemHealth ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            {/* Overall status */}
+            <div style={{ background: systemHealth.status === 'healthy' ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${systemHealth.status === 'healthy' ? '#86EFAC' : '#FECACA'}`, borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: systemHealth.status === 'healthy' ? '#166534' : '#BA0517', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Overall Status</div>
+              <div style={{ fontWeight: 800, color: systemHealth.status === 'healthy' ? '#059669' : '#BA0517', fontSize: 18 }}>{systemHealth.status === 'healthy' ? '✅ Healthy' : '⚠️ Degraded'}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Response: {systemHealth.responseTime}</div>
+            </div>
+            {/* Database */}
+            <div style={{ background: systemHealth.database?.status === 'ok' ? '#F0FDF4' : '#FEF2F2', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Database</div>
+              <div style={{ fontWeight: 800, color: systemHealth.database?.status === 'ok' ? '#059669' : '#BA0517', fontSize: 16 }}>{systemHealth.database?.status === 'ok' ? '✅ Connected' : '❌ Error'}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Latency: {systemHealth.database?.latencyMs}ms</div>
+            </div>
+            {/* Memory */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Memory</div>
+              <div style={{ fontWeight: 800, color: systemHealth.memory?.systemUsedPct > 85 ? '#BA0517' : '#111827', fontSize: 16 }}>{systemHealth.memory?.systemUsedPct}% used</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Heap: {systemHealth.memory?.heapUsedMB}/{systemHealth.memory?.heapTotalMB}MB</div>
+            </div>
+            {/* Uptime */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Uptime</div>
+              <div style={{ fontWeight: 800, color: '#111827', fontSize: 16 }}>{systemHealth.uptime}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Node {systemHealth.nodeVersion}</div>
+            </div>
+            {/* DB Stats */}
+            {systemHealth.database?.stats && (
+              <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', gridColumn: 'span 2' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Database Records</div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {Object.entries(systemHealth.database.stats).map(([k, v]) => (
+                    <div key={k} style={{ textAlign: 'center' }}>
+                      <div style={{ fontWeight: 800, color: '#0176D3', fontSize: 18 }}>{v.toLocaleString()}</div>
+                      <div style={{ fontSize: 10, color: '#9CA3AF', textTransform: 'capitalize' }}>{k}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Services */}
+            <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', gridColumn: 'span 2' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Services & Config</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {Object.entries(systemHealth.envChecks || {}).map(([k, v]) => (
+                  <span key={k} style={{ background: v ? 'rgba(5,150,105,0.1)' : 'rgba(186,5,23,0.1)', color: v ? '#059669' : '#BA0517', border: `1px solid ${v ? '#86EFAC' : '#FECACA'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                    {v ? '✅' : '⚠️'} {k.replace(/([A-Z])/g, ' $1').trim()}
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>Checked at: {new Date(systemHealth.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '28px 0', color: '#9CA3AF' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🔧</div>
+            <p style={{ margin: 0, fontSize: 13 }}>Click "Run Health Check" to see real-time platform diagnostics.</p>
           </div>
         )}
       </div>

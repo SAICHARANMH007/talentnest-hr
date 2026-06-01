@@ -123,6 +123,7 @@ export const platformService = {
   async getAuditLogs(qs)               { return req('GET', `/platform/audit-logs${qs ? `?${qs}` : ''}`); },
   async getPlatformRevenue()           { return req('GET', '/platform/revenue'); },
   async getOrgHealth()                 { return req('GET', '/platform/org-health'); },
+  async getSystemHealth()              { const r = await req('GET', '/platform/system-health'); return r?.data || r; },
   async broadcastAnnouncement(data)    { return req('POST', '/platform/broadcast', data); },
 
   // Candidate requests
