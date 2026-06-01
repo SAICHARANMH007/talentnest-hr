@@ -1072,6 +1072,50 @@ export default function RecruiterPipeline({ user }) {
       {/* ── No job selected: show all jobs as cards grid ─────────────────── */}
       {!selJob && (
         <div>
+          {/* Pipeline Snapshot — always visible when no job selected */}
+          {jobs.length > 0 && (() => {
+            const totalApps   = jobs.reduce((s, j) => s + (j.applicantsCount || 0), 0);
+            const urgentJobs  = jobs.filter(j => ['urgent','high'].includes((j.urgency||'').toLowerCase()));
+            const activeJobs  = jobs.filter(j => j.status === 'active' || j.status === 'Open');
+            const topJob      = [...jobs].sort((a,b) => (b.applicantsCount||0)-(a.applicantsCount||0))[0];
+            const closingSoon = jobs.filter(j => j.applicationDeadline && new Date(j.applicationDeadline) <= new Date(Date.now() + 3*86400000) && new Date(j.applicationDeadline) > new Date());
+            return (
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#F0FDF4)', border: '1px solid #BFDBFE', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#0176D3', letterSpacing: 1, marginBottom: 16 }}>📊 YOUR PIPELINE SNAPSHOT</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: urgentJobs.length > 0 || closingSoon.length > 0 ? 16 : 0 }}>
+                  {[
+                    { icon:'👥', label:'Total Applicants', val: totalApps, color:'#0176D3' },
+                    { icon:'💼', label:'Active Jobs', val: activeJobs.length, color:'#2E844A' },
+                    { icon:'🔴', label:'Urgent Roles', val: urgentJobs.length, color:'#BA0517' },
+                    { icon:'🏆', label:'Top Job', val: topJob ? `${topJob.applicantsCount||0} apps` : '—', sub: topJob?.title, color:'#7C3AED' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background:'#fff', borderRadius:12, padding:'12px 14px', border:'1px solid #E2E8F0' }}>
+                      <div style={{ fontSize:18, marginBottom:4 }}>{s.icon}</div>
+                      <div style={{ fontWeight:800, fontSize:18, color:s.color, lineHeight:1 }}>{s.val}</div>
+                      {s.sub && <div style={{ fontSize:10, color:'#706E6B', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.sub}</div>}
+                      <div style={{ fontSize:10, color:'#706E6B', marginTop:2, fontWeight:600 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {(urgentJobs.length > 0 || closingSoon.length > 0) && (
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                    {urgentJobs.slice(0,3).map(j => (
+                      <button key={j.id} onClick={() => selectJob(j.id)}
+                        style={{ background:'#FEE2E2', color:'#991B1B', border:'1px solid #FECACA', borderRadius:8, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        🔴 {j.title} — Urgent
+                      </button>
+                    ))}
+                    {closingSoon.slice(0,2).map(j => (
+                      <button key={j.id} onClick={() => selectJob(j.id)}
+                        style={{ background:'#FEF3C7', color:'#92400E', border:'1px solid #FCD34D', borderRadius:8, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        ⏳ {j.title} — Closes soon
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {jobs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#706E6B' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🗂️</div>

@@ -210,6 +210,65 @@ export default function SuperAdminPlatform({ onNavigate }) {
         ))}
       </div>
 
+      {/* ── Quick Actions + Monthly Highlights ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,300px),1fr))', gap: 20, marginBottom: 24 }}>
+        {/* Quick Actions */}
+        <div style={{ ...glass, background: 'linear-gradient(135deg,#032D60,#0176D3)', border: 'none' }}>
+          <div style={{ color: '#93C5FD', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 14 }}>⚡ QUICK ACTIONS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { icon: '🏢', label: 'Create New Organisation', action: () => onNavigate ? onNavigate('forms/create-org') : (window.location.href='/app/forms/create-org') },
+              { icon: '👤', label: 'Provision New Admin', action: () => onNavigate ? onNavigate('forms/provision') : (window.location.href='/app/forms/provision') },
+              { icon: '📣', label: 'Broadcast Announcement', action: () => setShowBroadcast(true) },
+              { icon: '🔍', label: 'View All Organisations', action: () => onNavigate ? onNavigate('organisations') : (window.location.href='/app/organisations') },
+              { icon: '📋', label: 'Audit Logs', action: () => onNavigate ? onNavigate('audit-logs') : (window.location.href='/app/audit-logs') },
+              { icon: '🛡️', label: 'Security Overview', action: () => onNavigate ? onNavigate('security') : (window.location.href='/app/security') },
+            ].map(a => (
+              <button key={a.label} onClick={a.action}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'}>
+                <span style={{ fontSize: 16 }}>{a.icon}</span>{a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Monthly Highlights */}
+        <div style={glass}>
+          <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 14 }}>📅 PLATFORM HIGHLIGHTS</div>
+          {(() => {
+            const now = new Date();
+            const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const newOrgs = orgs.filter(o => o.createdAt && new Date(o.createdAt) >= thisMonth);
+            const activeOrgs = orgs.filter(o => o.status === 'active' || (!o.status && o.plan !== 'free'));
+            const freeOrgs = orgs.filter(o => o.plan === 'free');
+            const paidOrgs = orgs.filter(o => o.plan && o.plan !== 'free' && o.plan !== 'trial');
+            const items = [
+              { icon: '🆕', label: 'New orgs this month', value: newOrgs.length, color: '#10B981' },
+              { icon: '✅', label: 'Active organisations', value: activeOrgs.length, color: '#0176D3' },
+              { icon: '💎', label: 'Paid subscribers', value: paidOrgs.length, color: '#7C3AED' },
+              { icon: '🆓', label: 'Free plan orgs', value: freeOrgs.length, color: '#F59E0B' },
+              { icon: '💼', label: 'Total jobs posted', value: counts.jobs, color: '#0176D3' },
+              { icon: '📋', label: 'Total applications', value: counts.apps, color: '#10B981' },
+            ];
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {items.map(it => (
+                  <div key={it.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#F8FAFC', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14 }}>{it.icon}</span>
+                      <span style={{ fontSize: 13, color: '#374151' }}>{it.label}</span>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: 16, color: it.color }}>{it.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* ── Subscription Health Alerts ── */}
       {(() => {
         const now = new Date();
