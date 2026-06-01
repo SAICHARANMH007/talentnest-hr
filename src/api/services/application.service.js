@@ -61,5 +61,9 @@ export const applicationService = {
     const fd = new FormData();
     fd.append('file', file);
     return req('POST', '/parse-resume', fd);
-  }
+  },
+  async getScorecards(jobId) {
+    const r = await req('GET', `/applications/scorecards?jobId=${jobId}`);
+    return r?.data || [];
+  },
 };

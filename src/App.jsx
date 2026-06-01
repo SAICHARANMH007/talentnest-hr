@@ -88,6 +88,7 @@ const OnboardingTemplates   = lazy(() => import('./pages/admin/OnboardingTemplat
 const AdminNPS              = lazy(() => import('./pages/admin/AdminNPS.jsx'));
 const EmailSequences        = lazy(() => import('./pages/admin/EmailSequences.jsx'));
 const PipelineHeatmap       = lazy(() => import('./pages/admin/PipelineHeatmap.jsx'));
+const InterviewScorecards   = lazy(() => import('./pages/admin/InterviewScorecards.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -593,6 +594,7 @@ export default function App() {
             <Route path="nps-dashboard" element={<AdminNPS />} />
             <Route path="email-sequences" element={<EmailSequences />} />
             <Route path="pipeline-heatmap" element={<PipelineHeatmap />} />
+            <Route path="interview-scorecards" element={<InterviewScorecards />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}
