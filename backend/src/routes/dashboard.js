@@ -2589,7 +2589,7 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
 
 // ── Time-to-Fill Tracker ─────────────────────────────────────────────────────
 // Per-job: time from job.createdAt to first Hired application movedAt
-router.get('/time-to-fill', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+router.get('/time-to-fill', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { startDate, endDate } = req.query;
   const matchCond = { tenantId: req.user.tenantId, deletedAt: null };
   if (startDate) matchCond.createdAt = { $gte: new Date(startDate) };
@@ -2632,7 +2632,7 @@ router.get('/time-to-fill', ...guard, allowRoles('admin', 'super_admin', 'recrui
 
 // ── Pipeline Heatmap ─────────────────────────────────────────────────────────
 // Returns application counts grouped by (day-of-week, stage) for the last N days
-router.get('/pipeline-heatmap', ...guard, asyncHandler(async (req, res) => {
+router.get('/pipeline-heatmap', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const days   = Math.min(parseInt(req.query.days || 90, 10), 365);
   const since  = new Date(Date.now() - days * 86400000);
 
