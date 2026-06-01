@@ -215,7 +215,7 @@ export default function CandidateProfile({ user }) {
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
     experience:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
-    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'',
+    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'',
   });
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
@@ -239,6 +239,7 @@ export default function CandidateProfile({ user }) {
           currentCTC: d.currentCTC||'', expectedCTC: d.expectedCTC||'',
           source: d.source||'', dateAdded: d.dateAdded||'',
           candidateStatus: d.candidateStatus||'', additionalDetails: d.additionalDetails||'',
+          gender: d.gender||'',
         });
         setWork(parseJ(d.workHistory));
         setEdu(parseJ(d.educationList));
@@ -569,6 +570,19 @@ export default function CandidateProfile({ user }) {
                 }}/>
               </label>
             </div>
+          </Section>
+          <Section title="⚖️ DIVERSITY & INCLUSION (Voluntary)">
+            <p style={{ color:'#706E6B', fontSize:11, marginBottom:12, lineHeight:1.6 }}>
+              This information is completely voluntary and confidential. It helps organizations track equal-opportunity hiring. You can choose not to answer.
+            </p>
+            <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:4 }}>Gender Identity</label>
+            <select value={form.gender} onChange={e=>sf('gender',e.target.value)} style={{ padding:'9px 12px', borderRadius:8, border:'1px solid #D1D5DB', fontSize:13, width:'100%', background:'#fff', boxSizing:'border-box' }}>
+              <option value="">Prefer not to say / Not answered</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
           </Section>
           <Section title="🚀 PROJECTS">
             <p style={{ color:'#706E6B', fontSize:11, marginBottom:8 }}>List your key projects — personal, professional, or academic.</p>

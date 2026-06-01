@@ -102,4 +102,7 @@ export const dashboardService = {
   async getUnregisteredCandidates(params = {}) {
     return req('GET', `/dashboard/unregistered-candidates${qs(params)}`);
   },
+  async getDiversityReport(params = {}) {
+    return req('GET', `/stats/diversity${qs(params)}`);
+  },
 };

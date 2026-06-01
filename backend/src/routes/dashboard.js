@@ -2478,4 +2478,97 @@ router.get('/source-effectiveness', authenticate, allowRoles('admin', 'super_adm
   res.json({ success: true, data });
 }));
 
+// ── GET /api/stats/diversity — DEI report ─────────────────────────────────────
+router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const Candidate   = require('../models/Candidate');
+  const Application = require('../models/Application');
+
+  const tid = req.user.tenantId;
+  const { startDate, endDate } = req.query;
+
+  // Date filter for applications
+  const dateMatch = {};
+  if (startDate) dateMatch.$gte = new Date(startDate);
+  if (endDate)   dateMatch.$lte = new Date(endDate);
+  const appFilter = { tenantId: tid, deletedAt: null };
+  if (Object.keys(dateMatch).length) appFilter.createdAt = dateMatch;
+
+  // Gender breakdown from applications → candidates
+  const [genderRows, stageByGender, hiresByGender] = await Promise.all([
+    // Overall gender breakdown of all candidates in pool
+    Candidate.aggregate([
+      { $match: { tenantId: tid, deletedAt: null } },
+      { $group: { _id: { $ifNull: ['$gender', 'not_disclosed'] }, count: { $sum: 1 } } },
+    ]),
+    // Applications by gender and current stage
+    Application.aggregate([
+      { $match: appFilter },
+      { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'cand' } },
+      { $unwind: { path: '$cand', preserveNullAndEmptyArrays: true } },
+      { $group: {
+        _id: {
+          gender: { $ifNull: ['$cand.gender', 'not_disclosed'] },
+          stage:  '$currentStage',
+        },
+        count: { $sum: 1 },
+      }},
+    ]),
+    // Hired candidates by gender
+    Application.aggregate([
+      { $match: { ...appFilter, status: 'hired' } },
+      { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'cand' } },
+      { $unwind: { path: '$cand', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: { $ifNull: ['$cand.gender', 'not_disclosed'] }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  // Source breakdown
+  const sourceRows = await Application.aggregate([
+    { $match: appFilter },
+    { $group: { _id: '$source', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  // Stage funnel for diversity (shortlisted vs applied by gender)
+  const genderStageMap = {};
+  stageByGender.forEach(r => {
+    const g = r._id.gender || 'not_disclosed';
+    if (!genderStageMap[g]) genderStageMap[g] = {};
+    genderStageMap[g][r._id.stage] = r.count;
+  });
+
+  const genderHireMap = {};
+  hiresByGender.forEach(r => { genderHireMap[r._id || 'not_disclosed'] = r.count; });
+
+  const totalCandidates = genderRows.reduce((s, r) => s + r.count, 0);
+  const totalApps = sourceRows.reduce((s, r) => s + r.count, 0);
+  const totalHired = hiresByGender.reduce((s, r) => s + r.count, 0);
+
+  const genderBreakdown = genderRows.map(r => {
+    const g = r._id || 'not_disclosed';
+    const applied      = Object.values(genderStageMap[g] || {}).reduce((s, c) => s + c, 0);
+    const shortlisted  = (genderStageMap[g] || {})['Shortlisted'] || 0;
+    const hired        = genderHireMap[g] || 0;
+    return {
+      gender: g,
+      total: r.count,
+      pct: totalCandidates > 0 ? Math.round((r.count / totalCandidates) * 100) : 0,
+      applied, shortlisted, hired,
+      shortlistRate: applied > 0 ? Math.round((shortlisted / applied) * 100) : 0,
+      hireRate:      applied > 0 ? Math.round((hired / applied) * 100) : 0,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      totalCandidates,
+      totalApplications: totalApps,
+      totalHired,
+      genderBreakdown,
+      sourceBreakdown: sourceRows.map(r => ({ source: r._id || 'direct', count: r.count })),
+    },
+  });
+}));
+
 module.exports = router;
