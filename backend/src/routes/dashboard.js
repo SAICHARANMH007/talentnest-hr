@@ -2571,6 +2571,49 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
   });
 }));
 
+// ── Time-to-Fill Tracker ─────────────────────────────────────────────────────
+// Per-job: time from job.createdAt to first Hired application movedAt
+router.get('/time-to-fill', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const matchCond = { tenantId: req.user.tenantId, deletedAt: null };
+  if (startDate) matchCond.createdAt = { $gte: new Date(startDate) };
+  if (endDate)   matchCond.createdAt = { ...(matchCond.createdAt || {}), $lte: new Date(endDate) };
+
+  const Job = require('../models/Job');
+  const jobs = await Job.find({ tenantId: req.user.tenantId, deletedAt: null }).select('title createdAt status').lean();
+
+  const results = await Promise.all(jobs.slice(0, 50).map(async (job) => {
+    const hiredApp = await Application.findOne({
+      tenantId: req.user.tenantId,
+      jobId   : job._id,
+      status  : 'hired',
+      deletedAt: null,
+    }).sort({ createdAt: 1 }).lean();
+
+    const hiredAt = hiredApp?.updatedAt;
+    const daysToFill = hiredAt
+      ? Math.round((new Date(hiredAt) - new Date(job.createdAt)) / 86400000)
+      : null;
+
+    const appCount = await Application.countDocuments({ jobId: job._id, deletedAt: null });
+
+    return {
+      jobId     : job._id,
+      title     : job.title,
+      status    : job.status,
+      createdAt : job.createdAt,
+      hiredAt,
+      daysToFill,
+      appCount,
+    };
+  }));
+
+  const filled   = results.filter(r => r.daysToFill !== null);
+  const avgDays  = filled.length ? Math.round(filled.reduce((s, r) => s + r.daysToFill, 0) / filled.length) : null;
+
+  res.json({ success: true, data: { jobs: results, avgDaysToFill: avgDays, filledCount: filled.length } });
+}));
+
 // ── Pipeline Heatmap ─────────────────────────────────────────────────────────
 // Returns application counts grouped by (day-of-week, stage) for the last N days
 router.get('/pipeline-heatmap', ...guard, asyncHandler(async (req, res) => {
