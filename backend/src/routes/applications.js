@@ -271,6 +271,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     stageHistory: [{ stage: 'Applied', movedAt: new Date(), notes: 'Applied via career page' }],
     screeningAnswers: Array.isArray(screeningAnswers) ? screeningAnswers : [],
     appliedFrom,
+    statusToken: crypto.randomBytes(24).toString('hex'),
   });
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
@@ -288,6 +289,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     // /register with email + name prefilled so account auto-links to their applications
     const registerLink = `${FRONTEND_URL}/login?email=${encodeURIComponent(emailLower)}&name=${encodeURIComponent(name.trim())}&ref=career_apply`;
+    const trackerLink  = `${FRONTEND_URL}/track/${app.statusToken}`;
     const orgName = job.companyName || job.company || 'TalentNest HR';
 
     email.sendEmailWithRetry?.(emailLower,
@@ -307,8 +309,15 @@ router.post('/public', asyncHandler(async (req, res) => {
           <div style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:24px;border:1px solid #E2E8F0">
             <p style="color:#0176D3;font-size:13px;font-weight:800;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📊 Track your application</p>
             <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
-              Create a free TalentNest account to see your application status in real time,
-              get interview notifications, and manage all your job applications in one place.
+              You can track the live status of your application at any time — no login required.
+            </p>
+            <div style="text-align:center;margin-bottom:16px">
+              <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:800;font-size:14px;letter-spacing:0.3px">
+                📍 Track Application Status →
+              </a>
+            </div>
+            <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
+              Or create a free account to manage all your applications in one place:
             </p>
             <div style="text-align:center">
               <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;letter-spacing:0.3px">
@@ -329,15 +338,19 @@ router.post('/public', asyncHandler(async (req, res) => {
       await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } });
     }).catch(() => {});
   } else if (existingUser) {
-    // They already have an account — send a simple "thanks" confirmation only
+    const FRONTEND_URL2 = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+    const trackerLink2  = `${FRONTEND_URL2}/track/${app.statusToken}`;
     email.sendEmailWithRetry?.(emailLower,
       `✅ Application confirmed — ${job.title}`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
         <h2 style="color:#032D60">Hi ${name.trim()},</h2>
-        <p>Your application for <strong>${job.title}</strong> has been received. Log in to your TalentNest account to track it.</p>
+        <p>Your application for <strong>${job.title}</strong> has been received.</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${process.env.FRONTEND_URL || 'https://www.talentnesthr.com'}/login" style="background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
-            Track Application →
+          <a href="${trackerLink2}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin-right:12px">
+            📍 Track Status →
+          </a>
+          <a href="${FRONTEND_URL2}/login" style="display:inline-block;background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
+            Login to Dashboard →
           </a>
         </div>
       </div>`
@@ -381,11 +394,13 @@ router.post('/public', asyncHandler(async (req, res) => {
   const { fireWebhooks: _fwh } = require('../services/webhookService');
   _fwh(job.tenantId, 'application.created', { applicationId: String(app._id), candidateName: candidate.name, jobTitle: job.title, source: 'career_page' }).catch(() => {});
 
+  const FRONTEND_URL3 = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
   res.status(201).json({
     success: true,
     data: normalizeApp(app),
     hasAccount: !!existingUser,
     candidateName: candidate.name,
+    trackerUrl: `${FRONTEND_URL3}/track/${app.statusToken}`,
   });
 }));
 
@@ -1572,6 +1587,33 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
   await Job.findByIdAndUpdate(app.jobId, { $inc: { applicationCount: -1 } });
   logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id });
   res.json({ success: true, message: 'Application withdrawn.' });
+}));
+
+// ── Public Application Status Tracker ────────────────────────────────────────
+// Returns a sanitized status snapshot for an applicant via a token link.
+router.get('/status/:token', asyncHandler(async (req, res) => {
+  const app = await Application.findOne({ statusToken: req.params.token, deletedAt: null })
+    .populate('jobId', 'title company companyName location jobType status')
+    .lean();
+  if (!app) return res.status(404).json({ message: 'Application not found or link expired.' });
+
+  const stages = (app.stageHistory || []).map(h => ({
+    stage  : h.stage,
+    movedAt: h.movedAt,
+  }));
+
+  res.json({
+    status       : app.status,
+    currentStage : app.currentStage,
+    stageHistory : stages,
+    createdAt    : app.createdAt,
+    job: {
+      title      : app.jobId?.title || '',
+      company    : app.jobId?.company || app.jobId?.companyName || '',
+      location   : app.jobId?.location || '',
+      type       : app.jobId?.jobType || '',
+    },
+  });
 }));
 
 module.exports = router;

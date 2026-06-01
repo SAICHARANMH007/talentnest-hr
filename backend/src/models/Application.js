@@ -158,6 +158,9 @@ const applicationSchema = new mongoose.Schema({
     enum   : ['pending', 'sent', 'opened', 'interested', 'accepted', 'declined'],
     default: null,
   },
+
+  // Public status-tracker token (emailed to applicant at submission time)
+  statusToken: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 applicationSchema.index({ tenantId: 1 });
