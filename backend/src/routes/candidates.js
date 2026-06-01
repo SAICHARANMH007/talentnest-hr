@@ -531,6 +531,44 @@ router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(as
   res.json(paginatedResponse(normalized, total, limit, page));
 }));
 
+// GET /api/candidates/find-duplicates — detect likely duplicate candidate records
+router.get('/find-duplicates', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tenantId = req.user.tenantId;
+  // Group by normalized email — most reliable duplicate signal
+  const emailGroups = await Candidate.aggregate([
+    { $match: { tenantId, deletedAt: null, email: { $exists: true, $ne: null, $ne: '' } } },
+    { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+    { $match: { count: { $gt: 1 } } },
+  ]);
+
+  // Group by name+phone for nameless-email duplicates
+  const phoneGroups = await Candidate.aggregate([
+    { $match: { tenantId, deletedAt: null, phone: { $exists: true, $ne: null, $ne: '' } } },
+    { $group: { _id: { name: { $toLower: '$name' }, phone: '$phone' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+    { $match: { count: { $gt: 1 } } },
+  ]);
+
+  const allIdSets = [...emailGroups, ...phoneGroups].map(g => g.ids.map(String));
+  // Deduplicate sets that share any common id
+  const merged = [];
+  const seen = new Set();
+  for (const set of allIdSets) {
+    const key = set.slice().sort().join(',');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(set);
+  }
+
+  const groups = await Promise.all(merged.slice(0, 50).map(async (ids) => {
+    const candidates = await Candidate.find({ _id: { $in: ids } })
+      .select('name email phone title location currentCompany resumeUrl photoUrl createdAt parsedProfile')
+      .lean();
+    return candidates;
+  }));
+
+  res.json({ success: true, data: groups.filter(g => g.length > 1) });
+}));
+
 // POST /api/candidates/merge — merge multiple candidates into one primary
 router.post('/merge', ...guard,
   allowRoles('admin', 'super_admin'),
