@@ -25,15 +25,19 @@ function GenerateModal({ jobs, onClose, onCreated }) {
   const [reward, setReward] = useState('');
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
+  const [genError, setGenError] = useState('');
 
   const generate = async () => {
     if (!jobId) return;
     setSaving(true);
+    setGenError('');
     try {
       const r = await api.generateReferralLink({ jobId, referrerName: name, referrerEmail: email, rewardAmount: reward ? Number(reward) : undefined });
       setResult(r?.link || r?.data?.link || '');
       onCreated?.();
-    } catch {}
+    } catch (e) {
+      setGenError(e?.message || 'Failed to generate link. Please try again.');
+    }
     setSaving(false);
   };
 
@@ -65,6 +69,7 @@ function GenerateModal({ jobs, onClose, onCreated }) {
               <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reward Amount (₹, optional)</label>
               <input style={inp} value={reward} onChange={e => setReward(e.target.value)} placeholder="e.g. 5000" type="number" min="0" />
             </div>
+            {genError && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 10, padding: '8px 10px', background: '#FEF2F2', borderRadius: 6 }}>{genError}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button style={btnG} onClick={onClose}>Cancel</button>
               <button style={btnP} onClick={generate} disabled={!jobId || saving}>{saving ? 'Generating…' : 'Generate Link'}</button>

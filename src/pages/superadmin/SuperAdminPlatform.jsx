@@ -201,14 +201,69 @@ export default function SuperAdminPlatform({ onNavigate }) {
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 160px),1fr))', gap: 20, marginBottom: 28 }}>
         {kpis.map(k => (
-          <TrendCard 
-            key={k.label} 
-            {...k} 
-            variant="glass" 
+          <TrendCard
+            key={k.label}
+            {...k}
+            variant="glass"
             sparkValues={k.sparkValues || undefined}
           />
         ))}
       </div>
+
+      {/* ── Subscription Health Alerts ── */}
+      {(() => {
+        const now = new Date();
+        const in7 = new Date(now.getTime() + 7 * 86400000);
+        const suspended = orgs.filter(o => o.status === 'suspended' || o.subscriptionStatus === 'suspended');
+        const expired   = orgs.filter(o => o.subscriptionStatus === 'expired' || (o.subscriptionExpiry && new Date(o.subscriptionExpiry) < now && o.plan !== 'free'));
+        const expiring  = orgs.filter(o => o.subscriptionExpiry && new Date(o.subscriptionExpiry) > now && new Date(o.subscriptionExpiry) <= in7);
+        const trialOld  = orgs.filter(o => (o.plan === 'trial' || o.status === 'trial') && o.createdAt && (now - new Date(o.createdAt)) > 21 * 86400000);
+        const alerts    = [...suspended, ...expired, ...expiring, ...trialOld];
+        if (alerts.length === 0) return null;
+        return (
+          <div style={{ ...glass, marginBottom: 24, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(254,242,242,0.6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>⚠️</span>
+                <span style={{ fontWeight: 800, fontSize: 14, color: '#991B1B' }}>Subscription Alerts — {alerts.length} org{alerts.length !== 1 ? 's' : ''} need attention</span>
+              </div>
+              <a href="/app/orgs" style={{ fontSize: 12, color: '#DC2626', fontWeight: 700, textDecoration: 'none' }}>Manage Orgs →</a>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {suspended.map(o => (
+                <div key={o._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 8, padding: '8px 12px', border: '1px solid #FECACA' }}>
+                  <span style={{ fontSize: 14 }}>🔴</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{o.name}</span>
+                  <span style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>SUSPENDED</span>
+                </div>
+              ))}
+              {expired.map(o => (
+                <div key={o._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 8, padding: '8px 12px', border: '1px solid #FCD34D' }}>
+                  <span style={{ fontSize: 14 }}>🟠</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{o.name}</span>
+                  <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>EXPIRED</span>
+                </div>
+              ))}
+              {expiring.map(o => (
+                <div key={o._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 8, padding: '8px 12px', border: '1px solid #FCD34D' }}>
+                  <span style={{ fontSize: 14 }}>🟡</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{o.name}</span>
+                  <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                    EXPIRES {new Date(o.subscriptionExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+              ))}
+              {trialOld.filter(o => !expired.includes(o) && !expiring.includes(o)).map(o => (
+                <div key={o._id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 8, padding: '8px 12px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: 14 }}>🕐</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{o.name}</span>
+                  <span style={{ background: '#F8FAFC', color: '#64748B', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>TRIAL — {Math.floor((now - new Date(o.createdAt)) / 86400000)}d old</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 20, marginBottom: 24 }}>
         {/* Platform Pulse (Audit Logs) */}

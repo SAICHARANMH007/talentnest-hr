@@ -331,7 +331,7 @@ export default function AdminJobs({ user }) {
                     {filtApps.map(a => {
                       const cand = a.candidateId || a.candidate;
                       const candId = cand?.id || cand?._id?.toString() || String(a.candidateId || '');
-                      const candName = cand?.name || a.candidateName || 'Candidate';
+                      const candName = cand?.name || a.candidateName || cand?.email?.split('@')[0] || a.email?.split('@')[0] || '—';
                       const s = SM[a.stage] || { color:'#706E6B', label: a.stage || 'Applied' };
                       // Build a full candidate object the drawer can use (fetches rest internally)
                       const openDrawer = () => {

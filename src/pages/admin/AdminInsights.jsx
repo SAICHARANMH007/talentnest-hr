@@ -254,143 +254,30 @@ export default function AdminInsights({ user }) {
         </div>
       )}
 
-      {/* ── SMART ALERTS ── */}
-      <div style={panel}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-          <p style={LABEL}>🚨 Smart Alerts</p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {totalAlerts > 0 && (
-              <span style={{ background: '#BA051710', border: '1px solid #BA051730', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700, color: '#BA0517' }}>
-                {totalAlerts} action{totalAlerts !== 1 ? 's' : ''} needed
-              </span>
-            )}
-            <button onClick={alertsSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
-          </div>
-        </div>
-
-        {alertsSection.loading && <SectionLoader />}
-        {alertsSection.error   && <SectionError onRetry={alertsSection.reload} />}
-        {!alertsSection.loading && !alertsSection.error && (
-          <>
-            {totalAlerts === 0 && (
-              <div style={{ textAlign: 'center', padding: '28px 20px', color: '#10B981' }}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>All clear — no alerts right now.</div>
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-              {/* Stale Jobs */}
-              {staleJobs.length > 0 && (
-                <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#92400E', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                    <span>⏳ Jobs open {alerts.thresholds?.staleJobDays || 30}+ days with no hire</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#92400E' }}>
-                      {staleJobs.length} job{staleJobs.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {staleSlice.map(j => (
-                      <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff8e7', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a', minWidth: 120 }}>{j.title}</span>
-                        <span style={{ fontSize: 11, color: '#64748B' }}>{j.company}</span>
-                        <span style={{ fontSize: 11, color: '#92400E', fontWeight: 800, background: '#FDE68A', padding: '2px 8px', borderRadius: 20 }}>{j.daysOpen}d open</span>
-                        {j.recruiters?.length > 0 && <span style={{ fontSize: 11, color: '#64748B' }}>👤 {j.recruiters.join(', ')}</span>}
-                      </div>
-                    ))}
-                  </div>
-                  <Paginator page={stalePage} setPage={setStalePage} total={staleJobs.length} />
-                </div>
-              )}
-
-              {/* Stuck Candidates */}
-              {stuckCands.length > 0 && (
-                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#991B1B', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                    <span>🔴 Candidates stuck {alerts.thresholds?.stuckCandDays || 7}+ days without stage move</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#991B1B' }}>
-                      {stuckCands.length} candidate{stuckCands.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {stuckSlice.map(c => (
-                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff5f5', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a', minWidth: 100 }}>{c.candidateName}</span>
-                        <Badge label={c.stage} color="#64748B" />
-                        <span style={{ fontSize: 11, color: '#991B1B', fontWeight: 800, background: '#FECACA', padding: '2px 8px', borderRadius: 20 }}>{c.daysStuck}d stuck</span>
-                        <span style={{ fontSize: 11, color: '#64748B', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.jobTitle}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Paginator page={stuckPage} setPage={setStuckPage} total={stuckCands.length} />
-                </div>
-              )}
-
-              {/* Pending Offers */}
-              {allPendingOffers.length > 0 && (
-                <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#1E40AF', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                    <span>📄 Unsigned offer letters</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#1E40AF' }}>
-                      {pendingOffers.length !== allPendingOffers.length
-                        ? `${pendingOffers.length} of ${allPendingOffers.length} offer${allPendingOffers.length !== 1 ? 's' : ''} (filtered)`
-                        : `${allPendingOffers.length} offer${allPendingOffers.length !== 1 ? 's' : ''}`}
-                    </span>
-                  </div>
-                  {/* Date filter */}
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: '#1E40AF', fontWeight: 700 }}>Filter by date:</span>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}>
-                      From
-                      <input
-                        type="date"
-                        value={offerDateFrom}
-                        onChange={e => { setOfferDateFrom(e.target.value); setOfferPage(1); }}
-                        style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #BFDBFE', background: '#fff', color: '#1E40AF' }}
-                      />
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#374151' }}>
-                      To
-                      <input
-                        type="date"
-                        value={offerDateTo}
-                        onChange={e => { setOfferDateTo(e.target.value); setOfferPage(1); }}
-                        style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #BFDBFE', background: '#fff', color: '#1E40AF' }}
-                      />
-                    </label>
-                    {(offerDateFrom || offerDateTo) && (
-                      <button
-                        onClick={() => { setOfferDateFrom(''); setOfferDateTo(''); setOfferPage(1); }}
-                        style={{ fontSize: 11, color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  {pendingOffers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '12px 0', color: '#94A3B8', fontSize: 12 }}>No offers match the selected date range.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {offerSlice.map(o => (
-                        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0f7ff', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: '#1a1a1a' }}>{o.candidateName}</span>
-                          <Badge label={o.status} color="#1E40AF" />
-                          <span style={{ fontSize: 11, color: '#1E40AF', fontWeight: 800, background: '#BFDBFE', padding: '2px 8px', borderRadius: 20 }}>{o.daysPending}d pending</span>
-                          {(o.sentAt || o.createdAt || o.offerDate) && (
-                            <span style={{ fontSize: 11, color: '#64748B' }}>
-                              Sent {new Date(o.sentAt || o.createdAt || o.offerDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Paginator page={offerPage} setPage={setOfferPage} total={pendingOffers.length} />
+      {/* ── SMART ALERTS SUMMARY ── compact card linking to full SLA Alerts page ── */}
+      <div style={{ ...panel, padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🚨</span>
+            <div>
+              <p style={{ ...LABEL, marginBottom: 0 }}>Smart Alerts</p>
+              {alertsSection.loading ? (
+                <span style={{ fontSize: 12, color: '#94A3B8' }}>Loading…</span>
+              ) : totalAlerts === 0 ? (
+                <span style={{ fontSize: 12, color: '#10B981', fontWeight: 700 }}>✅ All clear — no actions needed</span>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+                  {staleJobs.length > 0   && <span style={{ fontSize: 12, background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>⏳ {staleJobs.length} stale job{staleJobs.length !== 1 ? 's' : ''}</span>}
+                  {stuckCands.length > 0  && <span style={{ fontSize: 12, background: '#FEF2F2', color: '#991B1B', borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>🔴 {stuckCands.length} stuck candidate{stuckCands.length !== 1 ? 's' : ''}</span>}
+                  {allPendingOffers.length > 0 && <span style={{ fontSize: 12, background: '#EFF6FF', color: '#1E40AF', borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>📄 {allPendingOffers.length} pending offer{allPendingOffers.length !== 1 ? 's' : ''}</span>}
                 </div>
               )}
             </div>
-          </>
-        )}
+          </div>
+          <a href="/app/sla-alerts" style={{ fontSize: 12, fontWeight: 700, color: '#0176D3', textDecoration: 'none', background: '#EFF6FF', borderRadius: 8, padding: '6px 14px', border: '1px solid #BFDBFE', whiteSpace: 'nowrap' }}>
+            View SLA Alerts & Details →
+          </a>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>

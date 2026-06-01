@@ -106,8 +106,8 @@ export default function TalentPool({ user }) {
             <tbody>
               {filtered.map(p => {
                 const id    = p.id || p._id?.toString();
-                const cName = p.candidateId?.name  || 'Candidate';
                 const email = p.candidateId?.email || '';
+                const cName = p.candidateId?.name  || (email ? email.split('@')[0] : '—');
                 const jTitle= p.jobId?.title || '—';
                 const parkedAt = p.stageHistory?.findLast?.(h => h.stage === 'Talent Pool')?.movedAt || p.updatedAt;
                 return (
@@ -149,7 +149,7 @@ export default function TalentPool({ user }) {
 
       {pullTarget && (
         <Modal
-          title={`➕ Pull ${pullTarget.candidateId?.name || 'Candidate'} into a Job`}
+          title={`➕ Pull ${pullTarget.candidateId?.name || pullTarget.candidateId?.email?.split('@')[0] || 'candidate'} into a Job`}
           onClose={() => setPullTarget(null)}
           footer={
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
