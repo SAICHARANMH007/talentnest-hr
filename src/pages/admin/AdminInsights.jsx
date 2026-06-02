@@ -223,9 +223,9 @@ export default function AdminInsights({ user }) {
       {!statsSection.loading && statsData && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <StatBox label="Open Positions"    value={statsData.openJobs     ?? statsData.activeJobs   ?? statsData.openPositions ?? '—'} color="#0176D3" />
-          <StatBox label="Total Candidates"  value={statsData.applications ?? statsData.totalApps     ?? statsData.candidates    ?? '—'} color="#7C3AED" />
+          <StatBox label="Total Candidates"  value={statsData.candidates   ?? statsData.totalApps    ?? '—'} color="#7C3AED" />
           <StatBox label="New This Month"    value={statsData.appsLast30   ?? statsData.newThisMonth  ?? '—'} color="#F59E0B" sub="applications in last 30d" />
-          <StatBox label="Hires Made"        value={statsData.hired ?? statsData.totalHired ?? statsData.hiredCount ?? (statsData.pipeline ? (statsData.pipeline['Selected'] ?? statsData.pipeline['Hired'] ?? statsData.pipeline['selected'] ?? 0) : '—')} color="#10B981" />
+          <StatBox label="Hires Made"        value={statsData.placements   ?? statsData.hired         ?? (statsData.pipeline?.['Hired'] ?? '—')} color="#10B981" />
           {(statsData.totalRecruiters ?? statsData.recruiters) != null && (
             <StatBox label="Active Recruiters" value={statsData.totalRecruiters ?? statsData.recruiters} color="#064E3B" />
           )}
