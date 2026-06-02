@@ -41,6 +41,7 @@ export default function JobDetailPage() {
   const [quickApplying, setQuickApplying] = useState(false);
   const [quickDone, setQuickDone]         = useState(null); // { trackerUrl }
   const explicitOrg = searchParams.get('org');
+  const refToken    = searchParams.get('ref') || '';
   const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
 
   const handleQuickApply = async () => {
@@ -380,7 +381,7 @@ export default function JobDetailPage() {
       </section>
 
       {/* Apply modal */}
-      {applying && <PublicApplyModal job={job} onClose={() => setApplying(false)} />}
+      {applying && <PublicApplyModal job={job} refToken={refToken} onClose={() => setApplying(false)} />}
 
       <MarketingFooter />
     </div>

@@ -33,7 +33,7 @@ function MSelect({ label, value, onChange, options = [], highlight }) {
   );
 }
 
-export default function PublicApplyModal({ job, orgName, onClose }) {
+export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
   const navigate = useNavigate();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   // Pre-fill from sessionStorage if user is already logged in
@@ -221,7 +221,7 @@ export default function PublicApplyModal({ job, orgName, onClose }) {
     setSubmitting(true);
     setError('');
     try {
-      const payload = { ...form, screeningAnswers };
+      const payload = { ...form, screeningAnswers, ...(refToken ? { refToken } : {}) };
       if (finalGeo) {
         payload.geoLat      = finalGeo.lat;
         payload.geoLng      = finalGeo.lng;

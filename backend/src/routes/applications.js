@@ -5,6 +5,7 @@ const Application    = require('../models/Application');
 const Candidate      = require('../models/Candidate');
 const Job            = require('../models/Job');
 const Notification   = require('../models/Notification');
+const Referral       = require('../models/Referral');
 const OfferLetter    = require('../models/OfferLetter');
 const User           = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
@@ -256,7 +257,8 @@ router.post('/quick', authMiddleware, asyncHandler(async (req, res) => {
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
           title, currentCompany, experience, availability, industry, department,
-          geoLat, geoLng, geoAccuracy, geoCity, geoCountry, geoDeclined } = req.body;
+          geoLat, geoLng, geoAccuracy, geoCity, geoCountry, geoDeclined,
+          refToken } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
@@ -315,11 +317,12 @@ router.post('/public', asyncHandler(async (req, res) => {
     appliedFrom.method = 'denied';
   }
 
+  const appSource = refToken ? 'referral' : 'career_page';
   const app = await Application.create({
     tenantId: job.tenantId,
     jobId,
     candidateId: candidate._id,
-    source: 'career_page',
+    source: appSource,
     coverLetter: coverLetter || '',
     talentMatchScore: score,
     matchBreakdown: breakdown,
@@ -331,6 +334,14 @@ router.post('/public', asyncHandler(async (req, res) => {
   });
 
   await Job.findByIdAndUpdate(jobId, { $inc: { applicationCount: 1 } });
+
+  // Track referral if applied via referral link
+  if (refToken) {
+    Referral.findOneAndUpdate(
+      { referralLinkToken: refToken },
+      { $set: { candidateId: candidate._id, status: 'applied' } }
+    ).catch(() => {});
+  }
 
   // ── "Thanks for applying" + one-time "create account" invite ─────────────────
   // Rules:

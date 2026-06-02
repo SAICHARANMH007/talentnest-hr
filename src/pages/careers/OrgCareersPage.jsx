@@ -22,7 +22,8 @@ import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 export default function OrgCareersPage() {
   const { orgSlug } = useParams();
   const [searchParams] = useSearchParams();
-  const embed = searchParams.get('embed') === '1'; // when embedded as iframe
+  const embed    = searchParams.get('embed') === '1'; // when embedded as iframe
+  const refToken = searchParams.get('ref') || '';
   // TalentNest HR's own career page gets full Marketing nav + footer
   const isMainOrg = orgSlug === MAIN_ORG_SLUG;
 
@@ -154,7 +155,7 @@ export default function OrgCareersPage() {
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100dvh', background: '#F7F8FC' }}>
-      {applying && <PublicApplyModal job={applying} orgName={org?.name} onClose={() => setApplying(null)} />}
+      {applying && <PublicApplyModal job={applying} orgName={org?.name} refToken={refToken} onClose={() => setApplying(null)} />}
 
       {/* Full Marketing nav — only for TalentNest HR's own career page */}
       {isMainOrg && !embed && <MarketingNav active="careers" />}
