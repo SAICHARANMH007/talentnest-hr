@@ -450,21 +450,24 @@ function OrgIntelligence({ orgs, orgHealth }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#F9FAFB' }}>
-                  {['Organisation', 'Active Jobs', 'Applications', 'Hires', 'Health Score'].map(h => (
+                  {['Organisation', 'Active Jobs', 'Applications', 'Risk', 'Health Score'].map(h => (
                     <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: '#374151', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {orgHealth.slice(0, 10).map((o, i) => {
-                  const score = Math.min(100, Math.round(((o.activeJobs || 0) * 5 + (o.totalApplications || 0) * 0.5 + (o.hiredCount || 0) * 10)));
+                  const score = o.score ?? Math.min(100, Math.round(((o.activeJobs || 0) * 5 + (o.totalApps || o.totalApplications || 0) * 0.5)));
                   const color = score >= 70 ? '#16A34A' : score >= 40 ? '#F59E0B' : '#DC2626';
+                  const riskLabel = o.risk || (score >= 70 ? 'Healthy' : score >= 40 ? 'Medium' : 'High Risk');
                   return (
-                    <tr key={o._id || i} style={{ background: i % 2 === 0 ? '#fff' : '#F9FAFB' }}>
+                    <tr key={o._id || o.id || i} style={{ background: i % 2 === 0 ? '#fff' : '#F9FAFB' }}>
                       <td style={{ padding: '8px 10px', fontWeight: 600 }}>{o.name}</td>
                       <td style={{ padding: '8px 10px' }}>{o.activeJobs || 0}</td>
-                      <td style={{ padding: '8px 10px' }}>{o.totalApplications?.toLocaleString() || 0}</td>
-                      <td style={{ padding: '8px 10px' }}>{o.hiredCount || 0}</td>
+                      <td style={{ padding: '8px 10px' }}>{(o.totalApps || o.totalApplications || 0).toLocaleString()}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`, padding: '2px 7px', borderRadius: 4 }}>{riskLabel}</span>
+                      </td>
                       <td style={{ padding: '8px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <div style={{ flex: 1, background: '#F3F4F6', borderRadius: 3, height: 6 }}>
@@ -625,6 +628,117 @@ function RevenueIntelligence({ revenue, orgs }) {
   );
 }
 
+// ── Tab: Interview Kits (cross-org) ─────────────────────────────────────────
+function OrgInterviewKitsTab() {
+  const [kits, setKits]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState('');
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    api.getOrgInterviewKits()
+      .then(data => setKits(Array.isArray(data) ? data : []))
+      .catch(() => setKits([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>;
+
+  // Group by orgName
+  const grouped = kits.reduce((acc, kit) => {
+    const key = kit.orgName || 'Unknown Org';
+    if (!acc[key]) acc[key] = { domain: kit.orgDomain || '', kits: [] };
+    acc[key].kits.push(kit);
+    return acc;
+  }, {});
+
+  const q = search.toLowerCase();
+  const entries = Object.entries(grouped).filter(([orgName, { kits: orgKits }]) =>
+    !q || orgName.toLowerCase().includes(q) || orgKits.some(k => k.name?.toLowerCase().includes(q))
+  );
+
+  return (
+    <div>
+      <div style={{ ...card, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input style={{ ...inp, flex: 1, minWidth: 180 }} value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by org or kit name…" />
+          <div style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap' }}>
+            <strong>{kits.length}</strong> kits · <strong>{Object.keys(grouped).length}</strong> orgs
+          </div>
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <div style={{ ...card, textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+          <p style={{ color: '#6B7280', margin: 0 }}>{kits.length === 0 ? 'No interview kits created across any org yet.' : 'No results match your search.'}</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {entries.map(([orgName, { domain, kits: orgKits }]) => {
+            const isOpen = expanded === orgName;
+            return (
+              <div key={orgName} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                <div
+                  onClick={() => setExpanded(isOpen ? null : orgName)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer', background: isOpen ? '#F0F7FF' : '#fff', borderBottom: isOpen ? '1px solid #E2E8F0' : 'none' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#032D60,#0176D3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                      {orgName[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{orgName}</div>
+                      {domain && <div style={{ fontSize: 11, color: '#6B7280' }}>{domain}</div>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ background: '#EFF6FF', color: '#0176D3', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                      {orgKits.length} kit{orgKits.length !== 1 ? 's' : ''}
+                    </span>
+                    <span style={{ color: '#9CA3AF', fontSize: 14 }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {orgKits.map(kit => (
+                      <div key={kit._id} style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 16px', border: '1px solid #E2E8F0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: kit.description ? 4 : 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>{kit.name}</span>
+                            {kit.isDefault && (
+                              <span style={{ background: '#EFF6FF', color: '#0176D3', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>Default</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 11, color: '#9CA3AF' }}>{kit.questions?.length || 0} questions · max {(kit.questions || []).reduce((s, q) => s + (q.maxScore || 0), 0)}pts</span>
+                        </div>
+                        {kit.description && <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 8px', lineHeight: 1.5 }}>{kit.description}</p>}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {(kit.questions || []).map((q, qi) => (
+                            <span key={qi} style={{ background: '#F1F5F9', color: '#374151', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 500 }}>
+                              {q.competency} <span style={{ color: '#9CA3AF' }}>({q.maxScore}pt)</span>
+                            </span>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#9CA3AF' }}>
+                          Created {kit.createdAt ? new Date(kit.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tab: Platform Analytics ───────────────────────────────────────────────────
 function PlatformAnalytics({ counts, orgs }) {
   const activeOrgs   = orgs.filter(o => o.isActive !== false).length;
@@ -700,6 +814,7 @@ const TABS = [
   { id: 'orgs',       icon: '🏢', label: 'Org Intelligence' },
   { id: 'revenue',    icon: '💰', label: 'Revenue Insights' },
   { id: 'analytics',  icon: '📊', label: 'Platform Analytics' },
+  { id: 'kits',       icon: '📋', label: 'Interview Kits' },
 ];
 
 export default function SuperAdminCommandCenter({ onNavigate }) {
@@ -765,6 +880,7 @@ export default function SuperAdminCommandCenter({ onNavigate }) {
       {tab === 'orgs'      && <OrgIntelligence orgs={orgs} orgHealth={orgHealth} />}
       {tab === 'revenue'   && <RevenueIntelligence revenue={revenue} orgs={orgs} />}
       {tab === 'analytics' && <PlatformAnalytics counts={counts} orgs={orgs} />}
+      {tab === 'kits'      && <OrgInterviewKitsTab />}
     </div>
   );
 }

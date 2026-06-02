@@ -80,7 +80,7 @@ function BroadcastModal({ item, onClose }) {
           </p>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
-            <button onClick={() => { navigate?.('/app/dashboard'); dismiss(); }} style={{
+            <button onClick={() => { window.location.href = '/app/dashboard'; dismiss(); }} style={{
               background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 10,
               padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#374151',
             }}>

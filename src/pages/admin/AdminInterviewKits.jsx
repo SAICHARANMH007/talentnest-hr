@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import Modal from '../../components/ui/Modal.jsx';
 import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
@@ -41,88 +42,84 @@ function KitModal({ kit, onClose, onSave }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: '24px 16px' }}>
-      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 640, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
-        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Interview Kits</div>
-            <h3 style={{ color: '#fff', margin: 0, fontSize: 16, fontWeight: 800 }}>{isEdit ? '✏️ Edit Kit' : '+ New Interview Kit'}</h3>
-          </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>✕</button>
-        </div>
-        <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Kit Name *</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Backend Engineer Kit" style={{ ...inp, fontSize: 13 }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 1 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}>
-                <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} style={{ width: 16, height: 16 }} />
-                Default kit
-              </label>
-            </div>
-          </div>
-          <div>
-            <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Description</label>
-            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional description" style={{ ...inp, fontSize: 13 }} />
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 700 }}>Questions ({questions.length})</label>
-              <button onClick={addQ} style={{ ...btnP, padding: '5px 14px', fontSize: 12 }}>+ Add Question</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {questions.map((q, i) => (
-                <div key={i} style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E2E8F0', position: 'relative' }}>
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Competency *</label>
-                      <input
-                        value={q.competency}
-                        onChange={e => setQ(i, 'competency', e.target.value)}
-                        list={`comp-presets-${i}`}
-                        placeholder="e.g. Technical Skills"
-                        style={{ ...inp, fontSize: 12 }}
-                      />
-                      <datalist id={`comp-presets-${i}`}>
-                        {COMPETENCY_PRESETS.map(p => <option key={p} value={p} />)}
-                      </datalist>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600 }}>Max Score</label>
-                      <select value={q.maxScore} onChange={e => setQ(i, 'maxScore', Number(e.target.value))} style={{ ...inp, fontSize: 12, width: 72 }}>
-                        {[3, 4, 5, 7, 10].map(n => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                    {questions.length > 1 && (
-                      <button onClick={() => removeQ(i)} style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 8, color: '#BA0517', padding: '4px 8px', fontSize: 12, cursor: 'pointer', alignSelf: 'flex-end' }}>✕</button>
-                    )}
-                  </div>
-                  <div style={{ marginBottom: 6 }}>
-                    <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Question *</label>
-                    <input value={q.question} onChange={e => setQ(i, 'question', e.target.value)} placeholder="Enter interview question" style={{ ...inp, fontSize: 12 }} />
-                  </div>
-                  <div>
-                    <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Scoring Tip (optional)</label>
-                    <input value={q.scoringTip} onChange={e => setQ(i, 'scoringTip', e.target.value)} placeholder="What does a high score look like?" style={{ ...inp, fontSize: 12 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {err && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{err}</p>}
-        </div>
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+    <Modal
+      title={isEdit ? '✏️ Edit Interview Kit' : '📋 New Interview Kit'}
+      onClose={onClose}
+      footer={
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', width: '100%' }}>
           <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#F3F2F2', color: '#706E6B', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
           <button onClick={submit} disabled={saving} style={{ ...btnP, padding: '9px 20px', fontSize: 13, opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Kit'}
           </button>
         </div>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Kit Name *</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Backend Engineer Kit" style={{ ...inp, fontSize: 13 }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}>
+              <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} style={{ width: 16, height: 16 }} />
+              Default kit
+            </label>
+          </div>
+        </div>
+        <div>
+          <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Description</label>
+          <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional description" style={{ ...inp, fontSize: 13 }} />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <label style={{ color: '#3E3E3C', fontSize: 12, fontWeight: 700 }}>Questions ({questions.length})</label>
+            <button onClick={addQ} style={{ ...btnP, padding: '5px 14px', fontSize: 12 }}>+ Add Question</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {questions.map((q, i) => (
+              <div key={i} style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E2E8F0', position: 'relative' }}>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Competency *</label>
+                    <input
+                      value={q.competency}
+                      onChange={e => setQ(i, 'competency', e.target.value)}
+                      list={`comp-presets-${i}`}
+                      placeholder="e.g. Technical Skills"
+                      style={{ ...inp, fontSize: 12 }}
+                    />
+                    <datalist id={`comp-presets-${i}`}>
+                      {COMPETENCY_PRESETS.map(p => <option key={p} value={p} />)}
+                    </datalist>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600 }}>Max Score</label>
+                    <select value={q.maxScore} onChange={e => setQ(i, 'maxScore', Number(e.target.value))} style={{ ...inp, fontSize: 12, width: 72 }}>
+                      {[3, 4, 5, 7, 10].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  {questions.length > 1 && (
+                    <button onClick={() => removeQ(i)} style={{ background: 'rgba(186,5,23,0.08)', border: '1px solid rgba(186,5,23,0.2)', borderRadius: 8, color: '#BA0517', padding: '4px 8px', fontSize: 12, cursor: 'pointer', alignSelf: 'flex-end' }}>✕</button>
+                  )}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Question *</label>
+                  <input value={q.question} onChange={e => setQ(i, 'question', e.target.value)} placeholder="Enter interview question" style={{ ...inp, fontSize: 12 }} />
+                </div>
+                <div>
+                  <label style={{ color: '#6B7280', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Scoring Tip (optional)</label>
+                  <input value={q.scoringTip} onChange={e => setQ(i, 'scoringTip', e.target.value)} placeholder="What does a high score look like?" style={{ ...inp, fontSize: 12 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {err && <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{err}</p>}
       </div>
-    </div>
+    </Modal>
   );
 }
 

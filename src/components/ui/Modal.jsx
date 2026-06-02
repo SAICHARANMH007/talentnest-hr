@@ -24,7 +24,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
         WebkitBackdropFilter: isMobile ? 'none' : 'blur(8px)',
         zIndex: Z.MODAL,
         display: 'flex',
-        alignItems: isMobile ? 'flex-start' : 'flex-start',
+        alignItems: isMobile ? 'flex-start' : 'center',
         justifyContent: 'center',
         overflowY: isMobile ? 'hidden' : 'auto',
         padding: isMobile ? '0' : 'max(20px, env(safe-area-inset-top,20px)) 16px max(20px, env(safe-area-inset-bottom,20px))',

@@ -350,6 +350,30 @@ router.post('/broadcast', auth, allowRoles('super_admin'), asyncHandler(async (r
   res.json({ success: true, data: { total: targetUsers.length, notificationsSent: notifDocs.length, emailSent, emailFailed, targetRoles: roles } });
 }));
 
+// ── GET /api/platform/interview-kits — all kits across all orgs (super_admin only) ─────
+router.get('/interview-kits', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const InterviewKit = require('../models/InterviewKit');
+
+  const kits = await InterviewKit.find({ deletedAt: null })
+    .sort({ tenantId: 1, isDefault: -1, createdAt: -1 }).lean();
+
+  // Fetch org names for all unique tenantIds
+  const tenantIds = [...new Set(kits.map(k => k.tenantId?.toString()).filter(Boolean))];
+  let orgMap = {};
+  if (tenantIds.length) {
+    const orgs = await Organization.find({ _id: { $in: tenantIds } }).select('name domain').lean();
+    orgs.forEach(o => { orgMap[o._id.toString()] = { name: o.name, domain: o.domain }; });
+  }
+
+  const kitsWithOrg = kits.map(k => ({
+    ...k,
+    orgName  : orgMap[k.tenantId?.toString()]?.name   || 'Unknown Org',
+    orgDomain: orgMap[k.tenantId?.toString()]?.domain || '',
+  }));
+
+  res.json({ success: true, data: kitsWithOrg });
+}));
+
 // ── GET /api/platform/broadcasts — unread broadcasts for current user ─────────
 router.get('/broadcasts', auth, asyncHandler(async (req, res) => {
   const Notification = require('../models/Notification');
