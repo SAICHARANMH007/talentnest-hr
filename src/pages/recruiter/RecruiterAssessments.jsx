@@ -6,6 +6,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import { useNavigate } from 'react-router-dom';
 import { card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import * as XLSX from 'xlsx';
 
 const RESULT_STYLE = {
   pass:    { color: '#34d399', label: '✅ Passed' },
@@ -37,6 +38,52 @@ const BLANK_FORM = () => ({
 });
 
 const DIFFICULTY_COLOR = { easy: '#10B981', medium: '#F59E0B', hard: '#EF4444' };
+
+// ── Excel → Questions parser ─────────────────────────────────────────────────
+function parseExcelQuestions(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const questions = rows
+          .filter(r => String(r.question || r.Question || r.text || r.Text || '').trim())
+          .map(r => {
+            const text = String(r.question || r.Question || r.text || r.Text || '').trim();
+            const type = String(r.type || r.Type || 'text').toLowerCase().replace(/\s+/g,'_');
+            const marks = Number(r.marks || r.Marks || r.score || r.Score || 10) || 10;
+            const difficulty = String(r.difficulty || r.Difficulty || 'medium').toLowerCase();
+            const answer = String(r.answer || r.Answer || r.correct_answer || r.CorrectAnswer || '').trim();
+            // Parse options: option1,option2,option3,option4 columns or comma-separated options column
+            const rawOptions = r.options || r.Options || [r.option1||r.Option1, r.option2||r.Option2, r.option3||r.Option3, r.option4||r.Option4].filter(Boolean).join(',');
+            let options = [];
+            if ((type === 'mcq_single' || type === 'mcq_multi') && rawOptions) {
+              options = String(rawOptions).split(',').map(o => o.trim()).filter(Boolean).map(o => ({
+                id: `opt_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                text: o,
+                isCorrect: answer ? answer.toLowerCase().includes(o.toLowerCase()) : false,
+              }));
+            }
+            return {
+              id: `q_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+              text,
+              type: ['text','mcq_single','mcq_multi','code'].includes(type) ? type : 'text',
+              marks,
+              difficulty: ['easy','medium','hard'].includes(difficulty) ? difficulty : 'medium',
+              options,
+              placeholder: '',
+              maxChars: 2000,
+            };
+          });
+        resolve(questions);
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
 
 // ── Searchable job picker ──────────────────────────────────────────────────────
 function JobSearchPicker({ jobs, value, onChange, placeholder = 'Search jobs…' }) {
@@ -133,6 +180,8 @@ export default function RecruiterAssessments({ user }) {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(BLANK_FORM());
   const [creating, setCreating]     = useState(false);
+  const [xlsxImporting, setXlsxImporting] = useState(false);
+  const xlsxInputRef = React.useRef(null);
 
   const isDetail = !!assessment; // true = showing detail, false = showing list
 
@@ -211,6 +260,23 @@ export default function RecruiterAssessments({ user }) {
   const addQuestion    = () => setCreateForm(p => ({ ...p, questions: [...p.questions, BLANK_QUESTION()] }));
   const removeQuestion = (id) => setCreateForm(p => ({ ...p, questions: p.questions.filter(q => q.id !== id) }));
   const updateQuestion = (id, field, val) => setCreateForm(p => ({ ...p, questions: p.questions.map(q => q.id === id ? { ...q, [field]: val } : q) }));
+
+  const handleXlsxImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setXlsxImporting(true);
+    try {
+      const imported = await parseExcelQuestions(file);
+      if (!imported.length) { setToast('❌ No questions found. Check your Excel columns.'); return; }
+      setCreateForm(p => {
+        const existing = p.questions.filter(q => q.text.trim());
+        return { ...p, questions: [...existing, ...imported] };
+      });
+      setToast(`✅ Imported ${imported.length} questions from Excel`);
+    } catch { setToast('❌ Could not parse Excel file. Ensure it is .xlsx or .xls.'); }
+    finally { setXlsxImporting(false); }
+  };
 
   const passCount = submissions.filter(s => s.result === 'pass').length;
   const failCount = submissions.filter(s => s.result === 'fail').length;
@@ -455,8 +521,18 @@ export default function RecruiterAssessments({ user }) {
             <div style={{ borderTop:'1px solid #f1f5f9', paddingTop:16, marginBottom:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                 <span style={{ fontSize:13, fontWeight:700, color:'#032D60' }}>Questions ({createForm.questions.length})</span>
-                <button onClick={addQuestion} style={{ background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.25)', borderRadius:8, color:'#0176D3', padding:'5px 12px', fontSize:12, fontWeight:600, cursor:'pointer' }}>+ Add Question</button>
+                <div style={{ display:'flex', gap:6 }}>
+                  <input ref={xlsxInputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleXlsxImport} />
+                  <button onClick={() => xlsxInputRef.current?.click()} disabled={xlsxImporting}
+                    style={{ background:'rgba(5,150,105,0.08)', border:'1px solid rgba(5,150,105,0.3)', borderRadius:8, color:'#059669', padding:'5px 12px', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                    {xlsxImporting ? '⏳ Importing…' : '📥 Import Excel'}
+                  </button>
+                  <button onClick={addQuestion} style={{ background:'rgba(1,118,211,0.08)', border:'1px solid rgba(1,118,211,0.25)', borderRadius:8, color:'#0176D3', padding:'5px 12px', fontSize:12, fontWeight:600, cursor:'pointer' }}>+ Add Question</button>
+                </div>
               </div>
+              <p style={{ fontSize:11, color:'#9CA3AF', margin:'0 0 10px' }}>
+                Excel columns: <strong>question</strong>, type (text/mcq_single/mcq_multi/code), marks, difficulty (easy/medium/hard), options (comma-separated), answer
+              </p>
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                   {createForm.questions.map((q, idx) => (
                   <div key={q.id} style={{ background:'#f8fafc', borderRadius:10, padding:'14px', border:'1px solid #e2e8f0' }}>

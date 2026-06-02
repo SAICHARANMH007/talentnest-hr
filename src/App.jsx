@@ -78,6 +78,7 @@ const SuperAdminBgvTracker = lazy(() => import('./pages/superadmin/SuperAdminBgv
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
+const SuperAdminCommandCenter = lazy(() => import('./pages/superadmin/SuperAdminCommandCenter.jsx'));
 
 const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
@@ -656,6 +657,7 @@ export default function App() {
         {/* SuperAdmin Specific */}
         {rk === 'superadmin' && (
           <>
+            <Route path="command-center" element={<SuperAdminCommandCenter user={user} />} />
             <Route path="platform" element={<SuperAdminPlatform />} />
             <Route path="organisations" element={<SuperAdminOrgs />} />
             <Route path="forms/create-org" element={<CreateOrganisationPage user={user} onBack={() => window.history.back()} onSuccess={() => window.history.back()} />} />
@@ -671,6 +673,7 @@ export default function App() {
             <Route path="unregistered-candidates" element={<Suspense fallback={<PageLoader />}><SuperAdminUnregisteredCandidates /></Suspense>} />
             <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />
             <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
+            <Route path="referrals" element={<AdminReferrals user={user} />} />
           </>
         )}
 

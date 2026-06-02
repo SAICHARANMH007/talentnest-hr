@@ -271,45 +271,95 @@ router.get('/org-health', auth, allowRoles('super_admin'), asyncHandler(async (r
 }));
 
 // ── POST /api/platform/broadcast ─────────────────────────────────────────────
-// Send an announcement email to all org admins on the platform
+// Send in-platform notification + optional email to targeted users
 router.post('/broadcast', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const User   = require('../models/User');
+  const User         = require('../models/User');
+  const Notification = require('../models/Notification');
   const { sendEmailWithRetry } = require('../utils/email');
-  const { subject, message, targetPlans } = req.body;
+
+  const {
+    subject, message,
+    targetRoles  = ['admin'],          // 'all' or array of roles
+    templateStyle = 'announcement',    // announcement|warning|celebration|update|info
+    sendEmail    = true,
+    expiresInDays = 7,
+  } = req.body;
 
   if (!subject?.trim() || !message?.trim()) throw new AppError('subject and message are required.', 400);
 
-  const filter = { role: 'admin', isActive: true, deletedAt: null };
-  if (targetPlans?.length) {
-    // Filter by org plans — requires a join; use in-memory approach
-  }
+  // Build user filter
+  const roles = Array.isArray(targetRoles) ? targetRoles : [targetRoles];
+  const roleFilter = roles.includes('all')
+    ? { isActive: true, deletedAt: null }
+    : { role: { $in: roles }, isActive: true, deletedAt: null };
 
-  const admins = await User.find(filter).select('name email').lean();
-  if (!admins.length) throw new AppError('No admin users found.', 404);
+  const targetUsers = await User.find(roleFilter).select('_id name email role tenantId').lean();
+  if (!targetUsers.length) return res.json({ success: true, data: { total: 0, notificationsSent: 0, emailSent: 0 } });
 
-  const html = `
+  // Create in-platform Notification for every targeted user
+  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+  const notifDocs = targetUsers.map(u => ({
+    userId  : u._id,
+    tenantId: u.tenantId || undefined,
+    type    : 'system',
+    title   : subject.trim(),
+    message : message.trim(),
+    link    : '/app/dashboard',
+    read    : false,
+    metadata: { isBroadcast: true, templateStyle, fromAdmin: req.user.name || 'Platform', expiresAt },
+  }));
+
+  await Notification.insertMany(notifDocs, { ordered: false }).catch(() => {});
+
+  // Email to admins (optional)
+  const STYLES = {
+    announcement: { emoji: '📢', bg: 'linear-gradient(135deg,#032D60,#0176D3)', label: 'Platform Announcement' },
+    warning      : { emoji: '⚠️',  bg: 'linear-gradient(135deg,#92400E,#B45309)', label: 'Important Notice'      },
+    celebration  : { emoji: '🎉', bg: 'linear-gradient(135deg,#065F46,#059669)', label: 'Great News!'            },
+    update       : { emoji: '🔄', bg: 'linear-gradient(135deg,#3730A3,#6D28D9)', label: 'Platform Update'        },
+    info         : { emoji: 'ℹ️',  bg: 'linear-gradient(135deg,#0E7490,#0284C7)', label: 'Information'           },
+  };
+  const s = STYLES[templateStyle] || STYLES.announcement;
+
+  let emailSent = 0, emailFailed = 0;
+  if (sendEmail) {
+    const emailRecipients = roles.includes('all')
+      ? targetUsers.filter(u => ['admin','super_admin'].includes(u.role))
+      : targetUsers.filter(u => ['admin','super_admin'].includes(u.role));
+
+    const html = `
 <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff">
-  <div style="background:linear-gradient(135deg,#032D60,#0176D3);padding:32px;border-radius:12px 12px 0 0">
-    <h1 style="color:#fff;margin:0;font-size:20px;font-weight:800">📢 Platform Announcement</h1>
-    <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px">From TalentNest HR</p>
+  <div style="background:${s.bg};padding:32px;border-radius:12px 12px 0 0">
+    <h1 style="color:#fff;margin:0;font-size:20px;font-weight:800">${s.emoji} ${s.label}</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px">From TalentNest HR · ${new Date().toLocaleDateString()}</p>
   </div>
   <div style="padding:28px 32px;background:#F8FAFC;border-radius:0 0 12px 12px">
+    <h2 style="margin:0 0 12px;font-size:16px;color:#0A1628">${subject.trim()}</h2>
     <div style="white-space:pre-wrap;font-size:14px;color:#374151;line-height:1.7">${message.trim()}</div>
     <hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0" />
-    <p style="color:#94A3B8;font-size:11px;margin:0">You are receiving this because you are an admin on TalentNest HR.</p>
+    <p style="color:#94A3B8;font-size:11px;margin:0">You can also view this announcement inside TalentNest HR after logging in.</p>
   </div>
 </div>`;
-
-  let sent = 0, failed = 0;
-  for (const admin of admins) {
-    try {
-      await sendEmailWithRetry(admin.email, subject.trim(), html);
-      sent++;
-    } catch { failed++; }
+    for (const u of emailRecipients) {
+      try { await sendEmailWithRetry(u.email, subject.trim(), html); emailSent++; }
+      catch { emailFailed++; }
+    }
   }
 
-  logger.audit('Broadcast sent', req.user._id, null, { subject, sent, failed, total: admins.length });
-  res.json({ success: true, data: { total: admins.length, sent, failed } });
+  logger.audit('Broadcast sent', req.user._id, null, { subject, targetRoles: roles, templateStyle, total: targetUsers.length, emailSent });
+  res.json({ success: true, data: { total: targetUsers.length, notificationsSent: notifDocs.length, emailSent, emailFailed, targetRoles: roles } });
+}));
+
+// ── GET /api/platform/broadcasts — unread broadcasts for current user ─────────
+router.get('/broadcasts', auth, asyncHandler(async (req, res) => {
+  const Notification = require('../models/Notification');
+  const items = await Notification.find({
+    userId  : req.user._id,
+    type    : 'system',
+    read    : false,
+    'metadata.isBroadcast': true,
+  }).sort({ createdAt: -1 }).limit(5).lean();
+  res.json({ success: true, data: items });
 }));
 
 // ── GET /api/platform/system-health — real-time platform health ─────────────

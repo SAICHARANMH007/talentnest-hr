@@ -125,6 +125,7 @@ export const platformService = {
   async getOrgHealth()                 { return req('GET', '/platform/org-health'); },
   async getSystemHealth()              { const r = await req('GET', '/platform/system-health'); return r?.data || r; },
   async broadcastAnnouncement(data)    { return req('POST', '/platform/broadcast', data); },
+  async getActiveBroadcasts()          { const r = await req('GET', '/platform/broadcasts'); return r?.data || []; },
 
   // Candidate requests
   async getCandidateRequests(qs)              { return req('GET', `/candidate-requests${qs ? `?${qs}` : ''}`); },
