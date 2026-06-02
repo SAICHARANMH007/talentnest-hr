@@ -168,7 +168,7 @@ function DetailDrawer({ record, onClose }) {
         <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>Applicant Record</div>
-            <h2 style={{ margin: '4px 0 0', fontSize: 22, color: '#0A1628' }}>{record.candidateName || record.email || '—'}</h2>
+            <h2 style={{ margin: '4px 0 0', fontSize: 22, color: '#0A1628' }}>{record.candidateName || record.email?.split('@')[0] || `Applicant-${(record.applicationId||record.candidateId||'').slice(-4)}`}</h2>
           </div>
           <button onClick={onClose} style={{ width: 40, height: 40, border: 'none', borderRadius: 10, background: '#F8FAFC', cursor: 'pointer', fontSize: 18 }}>×</button>
         </div>
@@ -536,7 +536,7 @@ export default function ApplicantsRecordsPage({ user }) {
 
                       {/* Candidate — name + title/company */}
                       <td style={{ padding: '11px 12px' }}>
-                        <div style={{ fontWeight: 800, color: '#0A1628', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.candidateName || r.email || '—'}</div>
+                        <div style={{ fontWeight: 800, color: '#0A1628', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{r.candidateName || r.email?.split('@')[0] || `Applicant-${(r.applicationId||r.candidateId||'').slice(-4)}`}</div>
                         <div style={{ color: '#64748B', fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>
                           {[r.title, r.currentCompany].filter(Boolean).join(' · ') || '—'}
                         </div>
@@ -681,7 +681,7 @@ export default function ApplicantsRecordsPage({ user }) {
                   <div style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}
                     onClick={() => setEditRow(r)}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{r.candidateName || r.email || '—'}</div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{r.candidateName || r.email?.split('@')[0] || `Applicant-${(r.applicationId||r.candidateId||'').slice(-4)}`}</div>
                       <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
                         {[r.title, r.currentCompany].filter(Boolean).join(' · ') || '—'}
                       </div>
