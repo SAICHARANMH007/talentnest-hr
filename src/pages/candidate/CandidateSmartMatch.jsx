@@ -9,7 +9,7 @@ import Field from '../../components/ui/Field.jsx';
 import { api } from '../../api/api.js';
 import { matchJobsToCandidate } from '../../api/matching.js';
 
-export default function CandidateAIMatch({ user }) {
+export default function CandidateSmartMatch({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [results, setResults] = useState([]);

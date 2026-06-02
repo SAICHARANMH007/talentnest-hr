@@ -8,7 +8,7 @@ import { api } from '../../api/api.js';
 import { matchCandidatesToJob } from '../../api/matching.js';
 import PresenceBadge from '../../components/shared/PresenceBadge.jsx';
 
-export default function RecruiterAIMatch({ user }) {
+export default function RecruiterSmartMatch({ user }) {
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState("");
   const [results, setResults] = useState([]);

@@ -40,7 +40,7 @@ const CandidateApplications = lazy(() => import('./pages/candidate/CandidateAppl
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
 const CandidateExploreJobs = lazy(() => import('./pages/candidate/CandidateExploreJobs.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
-const CandidateAIMatch    = lazy(() => import('./pages/candidate/CandidateAIMatch.jsx'));
+const CandidateSmartMatch = lazy(() => import('./pages/candidate/CandidateSmartMatch.jsx'));
 const ResumeBuilder       = lazy(() => import('./pages/candidate/ResumeBuilder.jsx'));
 const CandidateBackgroundVerification = lazy(() => import('./pages/candidate/CandidateBackgroundVerification.jsx'));
 const RecruiterDashboard = lazy(() => import('./pages/recruiter/RecruiterDashboard.jsx'));
@@ -49,7 +49,7 @@ const RecruiterTalentMatch = lazy(() => import('./pages/recruiter/RecruiterTalen
 const RecruiterPipeline = lazy(() => import('./pages/recruiter/RecruiterPipeline.jsx'));
 const RecruiterCandidates = lazy(() => import('./pages/recruiter/RecruiterCandidates.jsx'));
 const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAssessments.jsx'));
-const RecruiterAIMatch     = lazy(() => import('./pages/recruiter/RecruiterAIMatch.jsx'));
+const RecruiterSmartMatch  = lazy(() => import('./pages/recruiter/RecruiterSmartMatch.jsx'));
 
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
@@ -576,7 +576,7 @@ export default function App() {
             <Route path="dashboard" element={<CandidateDashboard user={user} />} />
             <Route path="explore-jobs" element={<CandidateExploreJobs user={user} />} />
             <Route path="job-match" element={<CandidateJobMatch user={user} />} />
-            <Route path="smart-match" element={<CandidateAIMatch user={user} />} />
+            <Route path="smart-match" element={<CandidateSmartMatch user={user} />} />
             <Route path="resume-builder" element={<ResumeBuilder user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
@@ -599,7 +599,7 @@ export default function App() {
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="talent-match" element={<RecruiterTalentMatch user={user} />} />
-            {rk === 'recruiter' && <Route path="smart-match" element={<RecruiterAIMatch user={user} />} />}
+            {rk === 'recruiter' && <Route path="smart-match" element={<RecruiterSmartMatch user={user} />} />}
             <Route path="pipeline" element={rk === 'recruiter' ? <RecruiterPipeline user={user} /> : <AdminPipeline user={user} />} />
             <Route path="assessments" element={<RecruiterAssessments user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
