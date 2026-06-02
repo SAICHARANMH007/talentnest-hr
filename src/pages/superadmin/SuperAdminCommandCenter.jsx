@@ -588,12 +588,28 @@ function RevenueIntelligence({ revenue, orgs }) {
         ) : null)}
       </div>
 
-      {revenue && (
+      {revenue && Array.isArray(revenue.monthlyTrend) && revenue.monthlyTrend.length > 0 && (
         <div style={{ ...card }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700 }}>📈 Revenue Details</h3>
-          <pre style={{ fontSize: 12, color: '#374151', background: '#F8FAFC', borderRadius: 8, padding: 12, overflow: 'auto' }}>
-            {JSON.stringify(revenue, null, 2)}
-          </pre>
+          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700 }}>📈 Monthly Revenue Trend</h3>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 80 }}>
+            {revenue.monthlyTrend.map((m, i) => {
+              const maxVal = Math.max(...revenue.monthlyTrend.map(x => x.value || 0), 1);
+              const h = Math.max(((m.value || 0) / maxVal) * 80, 4);
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>₹{(m.value || 0).toLocaleString()}</div>
+                  <div style={{ width: '100%', height: h, background: 'linear-gradient(180deg,#0176D3,#0EA5E9)', borderRadius: '4px 4px 0 0' }} />
+                  <div style={{ fontSize: 9, color: '#9CA3AF', textAlign: 'center', wordBreak: 'break-word' }}>{m.label || ''}</div>
+                </div>
+              );
+            })}
+          </div>
+          {(revenue.totalPayments > 0 || revenue.avgPayment > 0) && (
+            <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+              {revenue.totalPayments > 0 && <div style={{ background: '#F0FDF4', borderRadius: 8, padding: '8px 14px', fontSize: 12 }}><span style={{ fontWeight: 700 }}>Total Payments:</span> {revenue.totalPayments}</div>}
+              {revenue.avgPayment > 0 && <div style={{ background: '#EFF6FF', borderRadius: 8, padding: '8px 14px', fontSize: 12 }}><span style={{ fontWeight: 700 }}>Avg Payment:</span> ₹{revenue.avgPayment?.toLocaleString()}</div>}
+            </div>
+          )}
         </div>
       )}
 

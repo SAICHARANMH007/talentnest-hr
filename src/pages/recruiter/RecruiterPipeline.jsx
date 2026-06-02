@@ -1084,7 +1084,7 @@ export default function RecruiterPipeline({ user }) {
                 <div style={{ fontSize: 12, fontWeight: 800, color: '#0176D3', letterSpacing: 1, marginBottom: 16 }}>📊 YOUR PIPELINE SNAPSHOT</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: urgentJobs.length > 0 || closingSoon.length > 0 ? 16 : 0 }}>
                   {[
-                    { icon:'👥', label:'Total Applicants', val: totalApps, color:'#0176D3' },
+                    { icon:'👥', label:'Active Pipeline', val: totalApps, color:'#0176D3' },
                     { icon:'💼', label:'Active Jobs', val: activeJobs.length, color:'#2E844A' },
                     { icon:'🔴', label:'Urgent Roles', val: urgentJobs.length, color:'#BA0517' },
                     { icon:'🏆', label:'Top Job', val: topJob ? `${topJob.applicantsCount||0} apps` : '—', sub: topJob?.title, color:'#7C3AED' },

@@ -31,7 +31,7 @@ export default function TalentPool({ user }) {
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([api.getTalentPool(), api.getJobs()])
+    Promise.all([api.getParkedCandidates(), api.getJobs()])
       .then(([poolRes, jobsRes]) => {
         setPool(Array.isArray(poolRes) ? poolRes : (poolRes?.data || []));
         const rawJobs = Array.isArray(jobsRes) ? jobsRes : (jobsRes?.data || []);

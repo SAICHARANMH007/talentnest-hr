@@ -298,7 +298,7 @@ export default function CandidateJobMatch({ user }) {
         return (
           <div key={r.jobId} style={{ ...card, marginBottom: 12, border: `1px solid ${r.matchScore >= 80 ? 'rgba(34,197,94,0.3)' : 'rgba(1,118,211,0.25)'}` }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => toggleExpand(r.jobId)}>
+              <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={(e) => { e.stopPropagation(); toggleExpand(r.jobId); }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ color: "#706E6B", fontSize: 11, fontWeight: 700 }}>#{i + 1}</span>
                   <span style={{ color: "#181818", fontWeight: 600, fontSize: 15 }}>{j.title}</span>
@@ -312,11 +312,11 @@ export default function CandidateJobMatch({ user }) {
                 <p style={{ color: "#706E6B", fontSize: 12, marginTop: 6, marginBottom: 0 }}>{r.reasoning}</p>
               </div>
 
-              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                <button onClick={() => toggleExpand(r.jobId)} style={{ ...btnG, padding: "6px 14px", fontSize: 12 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexShrink: 0 }}>
+                <button onClick={(e) => { e.stopPropagation(); toggleExpand(r.jobId); }} style={{ ...btnG, padding: "6px 14px", fontSize: 12 }}>
                   {isOpen ? '▲ Hide' : '▼ Details'}
                 </button>
-                <button onClick={() => apply(r.jobId)} disabled={isApplied} style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: isApplied ? 0.5 : 1 }}>
+                <button onClick={(e) => { e.stopPropagation(); apply(r.jobId); }} disabled={isApplied} style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: isApplied ? 0.5 : 1 }}>
                   {isApplied ? '✓ Applied' : 'Apply Now'}
                 </button>
               </div>

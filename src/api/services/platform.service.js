@@ -168,8 +168,8 @@ export const platformService = {
   // Duplicate detection
   async checkDuplicate(data)            { return req('POST', '/users/check-duplicate', data); },
 
-  // Talent pool
-  async getTalentPool()                 { return req('GET', '/applications/talent-pool'); },
+  // Talent pool (parked applications)
+  async getParkedCandidates()           { return req('GET', '/applications/talent-pool'); },
   async parkApplication(appId)          { return req('PATCH', `/applications/${appId}/park`); },
 
   // NPS
