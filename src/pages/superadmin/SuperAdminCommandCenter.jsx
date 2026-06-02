@@ -694,10 +694,15 @@ function OrgInterviewKitsTab() {
                       {domain && <div style={{ fontSize: 11, color: '#6B7280' }}>{domain}</div>}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ background: '#EFF6FF', color: '#0176D3', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
                       {orgKits.length} kit{orgKits.length !== 1 ? 's' : ''}
                     </span>
+                    {orgKits.some(k => (k.screeningQuestions?.length || 0) > 0) && (
+                      <span style={{ background: '#F0FDF4', color: '#059669', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                        🔍 {orgKits.reduce((s, k) => s + (k.screeningQuestions?.length || 0), 0)} screening
+                      </span>
+                    )}
                     <span style={{ color: '#9CA3AF', fontSize: 14 }}>{isOpen ? '▲' : '▼'}</span>
                   </div>
                 </div>
@@ -706,24 +711,43 @@ function OrgInterviewKitsTab() {
                   <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {orgKits.map(kit => (
                       <div key={kit._id} style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 16px', border: '1px solid #E2E8F0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: kit.description ? 4 : 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: kit.description ? 4 : 8, gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>{kit.name}</span>
                             {kit.isDefault && (
                               <span style={{ background: '#EFF6FF', color: '#0176D3', border: '1px solid #BFDBFE', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>Default</span>
                             )}
                           </div>
-                          <span style={{ fontSize: 11, color: '#9CA3AF' }}>{kit.questions?.length || 0} questions · max {(kit.questions || []).reduce((s, q) => s + (q.maxScore || 0), 0)}pts</span>
+                          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: 10, color: '#9CA3AF' }}>📋 {kit.questions?.length || 0} interview q · {(kit.questions || []).reduce((s, q) => s + (q.maxScore || 0), 0)}pts</span>
+                            {(kit.screeningQuestions?.length || 0) > 0 && (
+                              <span style={{ fontSize: 10, color: '#059669', fontWeight: 600 }}>🔍 {kit.screeningQuestions.length} screening q</span>
+                            )}
+                            {(kit.linkedJobIds?.length || 0) > 0 && (
+                              <span style={{ fontSize: 10, color: '#0176D3', fontWeight: 600 }}>💼 {kit.linkedJobIds.length} job{kit.linkedJobIds.length !== 1 ? 's' : ''}</span>
+                            )}
+                          </div>
                         </div>
                         {kit.description && <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 8px', lineHeight: 1.5 }}>{kit.description}</p>}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {/* Competency chips */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
                           {(kit.questions || []).map((q, qi) => (
                             <span key={qi} style={{ background: '#F1F5F9', color: '#374151', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 500 }}>
                               {q.competency} <span style={{ color: '#9CA3AF' }}>({q.maxScore}pt)</span>
                             </span>
                           ))}
                         </div>
-                        <div style={{ marginTop: 8, fontSize: 10, color: '#9CA3AF' }}>
+                        {/* Screening questions summary */}
+                        {(kit.screeningQuestions?.length || 0) > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                            {kit.screeningQuestions.map((sq, qi) => (
+                              <span key={qi} style={{ background: sq.knockout ? '#FEF2F2' : '#F0FDF4', color: sq.knockout ? '#BA0517' : '#166534', border: `1px solid ${sq.knockout ? '#FECACA' : '#BBF7D0'}`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 500 }}>
+                                {sq.knockout ? '🚫' : '🔍'} {sq.question.length > 40 ? sq.question.slice(0, 40) + '…' : sq.question}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, color: '#9CA3AF' }}>
                           Created {kit.createdAt ? new Date(kit.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                         </div>
                       </div>
