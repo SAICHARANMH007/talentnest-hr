@@ -139,6 +139,7 @@ const SecuritySettingsPage = lazy(() => import('./pages/shared/SecuritySettingsP
 const EmailSettingsPage = lazy(() => import('./pages/shared/EmailSettingsPage.jsx'));
 const ChangePasswordPage = lazy(() => import('./pages/shared/ChangePasswordPage.jsx'));
 const ResumeViewPage = lazy(() => import('./pages/shared/ResumeViewPage.jsx'));
+const PlatformModalsGuide = lazy(() => import('./pages/shared/PlatformModalsGuide.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -636,6 +637,7 @@ export default function App() {
         {/* Admin / SuperAdmin Roles */}
         {(rk === 'admin' || rk === 'superadmin') && (
           <>
+            <Route path="modal-guide" element={<PlatformModalsGuide user={user} />} />
             <Route path="analytics" element={<AdminAnalytics user={user} onNavigate={(p) => navigate(`/app/${p}`)} />} />
             <Route path="insights" element={<AdminInsights user={user} />} />
             <Route path="jobs/:jobId/distribution" element={<Suspense fallback={<PageLoader />}><JobDistribution user={user} /></Suspense>} />
