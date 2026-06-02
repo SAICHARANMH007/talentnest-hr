@@ -57,7 +57,9 @@ const jobSchema = new mongoose.Schema({
   applicationDeadline: { type: Date, default: null },
   videoJdUrl         : { type: String, default: '' }, // short video job description
   applicationCount   : { type: Number, default: 0 },
-  urgency         : { type: String, default: '' },
+  urgency            : { type: String, default: '' },
+  referralReward     : { type: Number, default: null },  // reward (₹) paid on successful hire via referral
+  referralEnabled    : { type: Boolean, default: true }, // whether Refer & Earn is open for this job
 
   status: {
     type   : String,

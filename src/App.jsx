@@ -645,7 +645,7 @@ export default function App() {
             <Route path="webhooks" element={<AdminWebhooks user={user} />} />
             <Route path="diversity" element={<DiversityReport user={user} />} />
             <Route path="reviews" element={<AdminReviews />} />
-            <Route path="referrals" element={<AdminReferrals />} />
+            <Route path="referrals" element={<AdminReferrals user={user} />} />
             <Route path="talent-pool" element={<AdminTalentPool />} />
             <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />

@@ -310,9 +310,12 @@ export const platformService = {
   async deleteJobVideoJd(jobId) { return req('DELETE', `/jobs/${jobId}/video-jd`); },
 
   // ── Referral Portal ───────────────────────────────────────────────────────────
-  async getReferrals()                   { const r = await req('GET', '/referrals'); return r?.data || r; },
+  async getReferrals(params)             { const qs = params ? `?${new URLSearchParams(params)}` : ''; const r = await req('GET', `/referrals${qs}`); return r?.data || r; },
   async generateReferralLink(data)       { const r = await req('POST', '/referrals/generate', data); return r?.data || r; },
-  async getReferralStats()               { return req('GET', '/referrals/stats'); },
+  async getReferralStats(params)         { const qs = params ? `?${new URLSearchParams(params)}` : ''; return req('GET', `/referrals/stats${qs}`); },
+  async getMyReferrals()                 { const r = await req('GET', '/referrals/my'); return r?.data || r; },
+  async getReferralByToken(token)        { const r = await req('GET', `/referrals/token/${token}`, null, false); return r?.data || r; },
+  async setJobReferralReward(jobId, data){ const r = await req('PATCH', `/referrals/jobs/${jobId}/reward`, data); return r?.data || r; },
   async markReferralHired(id)            { return req('PATCH', `/referrals/${id}/mark-hired`); },
   async payReferralReward(id)            { return req('PATCH', `/referrals/${id}/pay-reward`); },
 

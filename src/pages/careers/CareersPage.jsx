@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import MarketingNav from '../marketing/MarketingNav.jsx';
 import { requestGeolocation } from '../../utils/geolocation.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
+import ReferEarnModal from '../../components/modals/ReferEarnModal.jsx';
 import { getCompanyCareerUrl } from '../../utils/url.js';
 
 const TYPE_COLOR = { High: '#BA0517', Medium: '#F59E0B', Low: '#10b981' };
@@ -154,6 +155,7 @@ export default function CareersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [applying, setApplying] = useState(null);
+  const [referJob, setReferJob] = useState(null);
   const [totalJobs, setTotalJobs] = useState(0);
   const [stats, setStats] = useState({ urgent: 0, companies: 0 });
   const [toast, setToast] = useState('');
@@ -647,6 +649,12 @@ export default function CareersPage() {
                         <button onClick={() => { const jj = { ...j, id: j._id || j.id }; setApplying(jj); setViewingJob(jj); }} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
                           {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
+                        {j.referralEnabled !== false && (
+                          <button onClick={() => setReferJob({ ...j, id: j._id || j.id })}
+                            style={{ whiteSpace: 'nowrap', fontSize: 12, padding: '8px 14px', borderRadius: 8, border: '1px solid #F59E0B', background: '#FEF3C7', color: '#92400E', fontWeight: 700, cursor: 'pointer' }}>
+                            🤝 Refer{j.referralReward ? ` ₹${j.referralReward?.toLocaleString()}` : ' & Earn'}
+                          </button>
+                        )}
                         {getCompanyCareerUrl(j.externalUrl) && (
                           <span style={{ color: '#94a3b8', fontSize: '0.7rem', textAlign: 'right', maxWidth: 160, lineHeight: 1.4 }}>
                             We save your profile, then redirect you
@@ -713,6 +721,7 @@ export default function CareersPage() {
       <MarketingFooter />
 
       {applying && <PublicApplyModal job={applying} refToken={refToken} onClose={() => setApplying(null)} />}
+      {referJob && <ReferEarnModal job={referJob} onClose={() => setReferJob(null)} />}
 
       {/* ── Crawler-visible content (noscript + paginated links) ────────────
            Bots that don't execute JS see this static HTML with real job links.

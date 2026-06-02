@@ -36,6 +36,16 @@ function MSelect({ label, value, onChange, options = [], highlight }) {
 export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
   const navigate = useNavigate();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const [referralInfo, setReferralInfo] = React.useState(null);
+
+  // Fetch referral info to show "referred by" banner
+  React.useEffect(() => {
+    if (!refToken) return;
+    api.getReferralByToken(refToken)
+      .then(r => { if (r?.referredByName || r?.referredByEmail) setReferralInfo(r); })
+      .catch(() => {});
+  }, [refToken]);
+
   // Pre-fill from sessionStorage if user is already logged in
   const prefill = (() => {
     try {
@@ -58,7 +68,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
   const [prefillState, setPrefillState]   = useState(null); // null | { isRegistered, hasPhone, fields[] }
   const prefillFields = prefillState?.fields || [];
   const [error, setError] = useState('');
-  const [createAccount, setCreateAccount] = useState(false); // inline account creation
+  const [createAccount, setCreateAccount] = useState(!!refToken); // auto-check for referred candidates
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -383,6 +393,21 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
       }
     >
       {/* ── Banners ── */}
+      {referralInfo && (
+        <div style={{ marginBottom: 16, padding: '12px 14px', background: 'linear-gradient(135deg,#FEF3C7,#FDE68A)', borderRadius: 10, border: '1px solid #F59E0B' }}>
+          <p style={{ color: '#92400E', margin: 0, fontSize: 13, fontWeight: 700 }}>
+            🤝 Referred by {referralInfo.referredByName || referralInfo.referredByEmail}!
+          </p>
+          {referralInfo.rewardAmount > 0 && (
+            <p style={{ color: '#B45309', margin: '3px 0 0', fontSize: 12 }}>
+              💰 Your referrer earns ₹{referralInfo.rewardAmount?.toLocaleString()} if you get hired!
+            </p>
+          )}
+          <p style={{ color: '#92400E', margin: '6px 0 0', fontSize: 12, lineHeight: 1.5 }}>
+            Create a free account after applying to track your application and stay connected.
+          </p>
+        </div>
+      )}
       {assessmentInfo?.hasAssessment && (
         <div style={{ marginBottom: 16, padding: '12px 14px', background: '#F5F3FF', borderRadius: 10, border: '1px solid #DDD6FE', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>📝</span>

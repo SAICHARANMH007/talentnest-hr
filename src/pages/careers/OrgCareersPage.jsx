@@ -16,6 +16,7 @@ const URGENCY_LABEL = { High: '🔥 Emergency', Medium: '⚡ High Priority', Low
 
 import { Link } from 'react-router-dom';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
+import ReferEarnModal from '../../components/modals/ReferEarnModal.jsx';
 
 
 // ── Main embeddable careers page ──────────────────────────────────────────────
@@ -37,6 +38,7 @@ export default function OrgCareersPage() {
   const [urgency, setUrgency] = useState('All');
   const [location, setLocation] = useState('All');
   const [applying, setApplying] = useState(null);
+  const [referJob, setReferJob] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(null);
@@ -156,6 +158,7 @@ export default function OrgCareersPage() {
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100dvh', background: '#F7F8FC' }}>
       {applying && <PublicApplyModal job={applying} orgName={org?.name} refToken={refToken} onClose={() => setApplying(null)} />}
+      {referJob && <ReferEarnModal job={referJob} onClose={() => setReferJob(null)} />}
 
       {/* Full Marketing nav — only for TalentNest HR's own career page */}
       {isMainOrg && !embed && <MarketingNav active="careers" />}
@@ -414,6 +417,12 @@ export default function OrgCareersPage() {
                           style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
+                        {j.referralEnabled !== false && (
+                          <button onClick={e => { e.stopPropagation(); setReferJob(j); }}
+                            style={{ background: '#FEF3C7', border: '1px solid #F59E0B', color: '#92400E', borderRadius: 10, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            🤝 Refer{j.referralReward ? ` ₹${j.referralReward?.toLocaleString()}` : ' & Earn'}
+                          </button>
+                        )}
                         {getCompanyCareerUrl(j.externalUrl) && (
                           <span style={{ color: '#94a3b8', fontSize: '0.7rem', textAlign: 'right', maxWidth: 160, lineHeight: 1.4 }}>
                             We save your profile, then redirect you

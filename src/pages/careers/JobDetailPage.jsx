@@ -19,6 +19,7 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { btnP, btnG } from '../../constants/styles.js';
 import Modal from '../../components/ui/Modal.jsx';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
+import ReferEarnModal from '../../components/modals/ReferEarnModal.jsx';
 
 const SITEURL = 'https://www.talentnesthr.com';
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
@@ -43,6 +44,7 @@ export default function JobDetailPage() {
   const explicitOrg = searchParams.get('org');
   const refToken    = searchParams.get('ref') || '';
   const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
+  const [showRefer, setShowRefer] = useState(false);
 
   const handleQuickApply = async () => {
     if (!job) return;
@@ -264,6 +266,12 @@ export default function JobDetailPage() {
                   style={{ background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
                   {job.externalUrl ? '🌐 Apply on Company Site →' : (isLoggedIn ? '📝 Apply with Cover Letter' : '🚀 Apply Now →')}
                 </button>
+                {job.referralEnabled !== false && (
+                  <button onClick={() => setShowRefer(true)}
+                    style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#fff', border: 'none', padding: '13px 22px', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+                    🤝 Refer & Earn{job.referralReward ? ` ₹${job.referralReward?.toLocaleString()}` : ''}
+                  </button>
+                )}
               </>
             )}
             <Link to="/careers" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', padding: '13px 20px', borderRadius: 12, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
@@ -330,6 +338,12 @@ export default function JobDetailPage() {
                   style={{ width: '100%', background: 'linear-gradient(135deg,#0176D3,#00C2CB)', color: '#fff', border: 'none', padding: '12px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                   {job.externalUrl ? 'Apply on Company Site →' : (isLoggedIn ? '📝 Apply with Cover Letter' : 'Apply Now →')}
                 </button>
+                {job.referralEnabled !== false && (
+                  <button onClick={() => setShowRefer(true)}
+                    style={{ width: '100%', background: 'linear-gradient(135deg,#FEF3C7,#FDE68A)', color: '#92400E', border: '1px solid #F59E0B', padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 6 }}>
+                    🤝 Refer Someone{job.referralReward ? ` — Earn ₹${job.referralReward?.toLocaleString()}` : ' & Earn'}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -382,6 +396,7 @@ export default function JobDetailPage() {
 
       {/* Apply modal */}
       {applying && <PublicApplyModal job={job} refToken={refToken} onClose={() => setApplying(false)} />}
+      {showRefer && <ReferEarnModal job={job} onClose={() => setShowRefer(false)} />}
 
       <MarketingFooter />
     </div>
