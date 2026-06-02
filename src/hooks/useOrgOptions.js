@@ -2,12 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../constants/picklists.js';
 import { STAGES, DB_TO_FRONTEND_STAGE } from '../constants/stages.js';
-
-const DEFAULT_SOURCES = [
-  'platform', 'career_page', 'linkedin', 'naukri', 'indeed',
-  'glassdoor', 'monster', 'shine', 'social_media', 'referral',
-  'direct', 'invite', 'bulk_import', 'others',
-];
+import { DEFAULT_SOURCES } from '../constants/sources.js';
 
 // Module-level cache so every component re-render doesn't re-fetch
 let _cache = null;

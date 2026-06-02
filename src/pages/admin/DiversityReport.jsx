@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnG } from '../../constants/styles.js';
+import { sourceLabel } from '../../constants/sources.js';
 
 const GENDER_LABELS = {
   male:              'Male',
@@ -172,7 +173,7 @@ export default function DiversityReport({ user }) {
                   return (
                     <div key={s.source}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>{s.source || 'Direct'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{sourceLabel(s.source || 'direct')}</span>
                         <span style={{ fontSize: 12, color: '#6B7280' }}>{s.count} ({pct}%)</span>
                       </div>
                       <PctBar value={pct} color="#0176D3" />

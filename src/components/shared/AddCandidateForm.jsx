@@ -10,23 +10,7 @@ import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES } from '../../constants/picklists.js';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
-
-const SOURCE_LABELS = {
-  platform    : 'Platform',
-  career_page : 'Career Page',
-  linkedin    : 'LinkedIn',
-  naukri      : 'Naukri',
-  indeed      : 'Indeed',
-  glassdoor   : 'Glassdoor',
-  monster     : 'Monster',
-  shine       : 'Shine',
-  social_media: 'Social Media',
-  referral    : 'Referral',
-  direct      : 'Direct',
-  invite      : 'Invite',
-  bulk_import : 'Bulk Import',
-  others      : 'Others',
-};
+import { SOURCE_LABELS } from '../../constants/sources.js';
 
 // Duplicate warning banner — defined outside component
 const DupWarning = ({ dupes, onIgnore }) => (

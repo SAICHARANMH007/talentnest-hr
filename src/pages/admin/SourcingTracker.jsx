@@ -1,27 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/api.js';
 import { card } from '../../constants/styles.js';
+import { SOURCE_ICONS, SOURCE_COLORS as SOURCE_COLOR_MAP, sourceLabel } from '../../constants/sources.js';
 
-const SOURCE_ICONS = {
-  linkedin    : '🔗',
-  referral    : '👥',
-  career_page : '🏢',
-  platform    : '💻',
-  naukri      : '📋',
-  indeed      : '🔍',
-  glassdoor   : '🪟',
-  monster     : '👾',
-  shine       : '✨',
-  social_media: '📱',
-  social      : '📱',
-  direct      : '📩',
-  bulk_import : '📦',
-  invite      : '✉️',
-  others      : '🌐',
-  other       : '🌐',
-};
-
-const SOURCE_COLORS = [
+const SOURCE_COLOR_LIST = [
   '#0176D3', '#059669', '#D97706', '#DC2626', '#7C3AED',
   '#0891B2', '#BE185D', '#047857', '#B45309', '#4338CA',
 ];
@@ -32,8 +14,8 @@ function SourceBar({ source, count, pct, total, color }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 16 }}>{SOURCE_ICONS[source] || SOURCE_ICONS.other}</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
-            {source.replace(/_/g, ' ')}
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+            {sourceLabel(source)}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -110,7 +92,7 @@ export default function SourcingTracker() {
                 count={s.count}
                 pct={s.percentage}
                 total={total}
-                color={SOURCE_COLORS[i % SOURCE_COLORS.length]}
+                color={SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length]}
               />
             ))}
           </div>
@@ -119,8 +101,8 @@ export default function SourcingTracker() {
           {topSources.map((s, i) => (
             <div key={s.source} style={{ ...card, textAlign: 'center', padding: 20 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>{SOURCE_ICONS[s.source] || SOURCE_ICONS.other}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: SOURCE_COLORS[i] }}>{s.count.toLocaleString()}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize', margin: '4px 0 2px' }}>{s.source.replace(/_/g, ' ')}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: SOURCE_COLOR_MAP[s.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length] }}>{s.count.toLocaleString()}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize', margin: '4px 0 2px' }}>{sourceLabel(s.source)}</div>
               <div style={{ fontSize: 12, color: '#6B7280' }}>{s.percentage}% of total</div>
               {i === 0 && <div style={{ marginTop: 8, background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, display: 'inline-block' }}>Top Source</div>}
             </div>
@@ -141,13 +123,13 @@ export default function SourcingTracker() {
                   <tr key={s.source} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '11px 16px', fontWeight: 600, fontSize: 14 }}>
                       <span style={{ marginRight: 8 }}>{SOURCE_ICONS[s.source] || SOURCE_ICONS.other}</span>
-                      <span style={{ textTransform: 'capitalize' }}>{s.source.replace(/_/g, ' ')}</span>
+                      <span style={{ textTransform: 'capitalize' }}>{sourceLabel(s.source)}</span>
                     </td>
-                    <td style={{ padding: '11px 16px', fontWeight: 700, color: SOURCE_COLORS[i % SOURCE_COLORS.length] }}>{s.count.toLocaleString()}</td>
+                    <td style={{ padding: '11px 16px', fontWeight: 700, color: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length] }}>{s.count.toLocaleString()}</td>
                     <td style={{ padding: '11px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1, height: 5, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden', maxWidth: 100 }}>
-                          <div style={{ width: `${s.percentage}%`, height: '100%', background: SOURCE_COLORS[i % SOURCE_COLORS.length], borderRadius: 4 }} />
+                          <div style={{ width: `${s.percentage}%`, height: '100%', background: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length], borderRadius: 4 }} />
                         </div>
                         <span style={{ fontSize: 12, color: '#6B7280' }}>{s.percentage}%</span>
                       </div>

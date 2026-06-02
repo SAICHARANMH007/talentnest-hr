@@ -5,6 +5,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import { SOURCE_LABELS, SOURCE_COLORS, sourceLabel } from '../../constants/sources.js';
 
 const panel = { ...card, padding: 24, marginBottom: 20 };
 const LABEL = { fontSize: 10, fontWeight: 700, color: '#706E6B', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16, margin: '0 0 16px' };
@@ -66,16 +67,6 @@ function Paginator({ page, setPage, total, pageSize = PG }) {
   );
 }
 
-const SOURCE_LABELS = {
-  manual: 'Manual Add', resume_upload: 'Resume Upload', bulk_import: 'Bulk Import',
-  invite_link: 'Invite Link', career_page: 'Career Page', referral: 'Referral',
-  platform: 'Platform', direct: 'Direct', talent_match: 'Talent Match',
-};
-const SOURCE_COLORS = {
-  manual: '#0176D3', resume_upload: '#7c3aed', bulk_import: '#F59E0B',
-  invite_link: '#10b981', career_page: '#ef4444', referral: '#06b6d4',
-  platform: '#014486', direct: '#94a3b8', talent_match: '#7c3aed',
-};
 
 function useSection(fetcher) {
   const [state, setState] = useState({ loading: true, error: null, data: null });
@@ -380,7 +371,7 @@ export default function AdminInsights({ user }) {
                       <td style={{ padding: '11px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 10, height: 10, borderRadius: '50%', background: SOURCE_COLORS[s.source] || '#94A3B8', flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0A1628' }}>{SOURCE_LABELS[s.source] || s.source}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0A1628' }}>{sourceLabel(s.source)}</span>
                         </div>
                       </td>
                       <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 700, color: '#374151' }}>{s.applications.toLocaleString()}</td>

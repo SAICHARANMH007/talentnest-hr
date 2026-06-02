@@ -129,6 +129,7 @@ export default function CareersPage() {
   const jobParam     = searchParams.get('job')     || '';
   const searchParam  = searchParams.get('search')  || '';
   const companyParam = searchParams.get('company') || '';
+  const refToken     = searchParams.get('ref')     || '';
   const [brand, setBrand] = useState(null); // { name, logoUrl, brandColor }
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -711,7 +712,7 @@ export default function CareersPage() {
 
       <MarketingFooter />
 
-      {applying && <PublicApplyModal job={applying} onClose={() => setApplying(null)} />}
+      {applying && <PublicApplyModal job={applying} refToken={refToken} onClose={() => setApplying(null)} />}
 
       {/* ── Crawler-visible content (noscript + paginated links) ────────────
            Bots that don't execute JS see this static HTML with real job links.

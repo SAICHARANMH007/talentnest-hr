@@ -13,4 +13,9 @@ export const scheduleService = {
     const r = await req('POST', `/schedule/${token}/confirm`, { selectedSlot });
     return r?.data || r;
   },
+  // Update a video room's scheduled time (used by MeetingRoom reschedule UI)
+  async updateInterview(roomId, data) {
+    const r = await req('PATCH', `/video-rooms/${roomId}`, data);
+    return r?.data || r;
+  },
 };

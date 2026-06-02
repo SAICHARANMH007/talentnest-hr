@@ -15,6 +15,7 @@ import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import ErrorReportBoundary from '../../components/shared/ErrorReportBoundary.jsx';
 import { STAGES as MASTER_STAGES, SM, DB_TO_FRONTEND_STAGE, FRONTEND_TO_DB_STAGE } from '../../constants/stages.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import { SOURCE_COLORS, sourceLabel } from '../../constants/sources.js';
 
 function fmtDate(d) {
   if (!d) return '';
@@ -121,15 +122,6 @@ const PERIODS = [
   { label: 'Custom',       days: -1 },
 ];
 
-const SOURCE_COLORS = {
-  manual       : '#0176D3',
-  resume_upload: '#7c3aed',
-  bulk_import  : '#F59E0B',
-  invite_link  : '#10b981',
-  career_page  : '#ef4444',
-  referral     : '#06b6d4',
-  direct       : '#94a3b8',
-};
 
 const extractId = (v) => {
   if (!v) return '';
@@ -563,7 +555,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
     const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((s, e) => s + e[1], 0);
     return entries.map(([source, count], i) => ({
-      label: source,
+      label: sourceLabel(source),
       value: count,
       percentage: total > 0 ? Math.round((count / total) * 100) : 0,
       color: SOURCE_COLORS[source] || STAGE_COLORS[i % STAGE_COLORS.length],
@@ -1207,7 +1199,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
             if (!rows.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No source data available</div>;
             const total = rows.reduce((s, r) => s + (r.count || 0), 0);
             const segments = rows.map(r => ({
-              label: r.source || 'direct',
+              label: sourceLabel(r.source || 'direct'),
               value: r.count,
               color: SOURCE_COLORS[r.source] || '#94a3b8',
               stageKey: r.source || 'direct',
@@ -1500,7 +1492,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                                   </span>
                                 ) : null}
                               {item.organisation && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.organisation}</span>}
-                              {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.source}</span>}
+                              {item.source && <span style={{ background: '#FFF7ED', color: '#9A3412', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{sourceLabel(item.source)}</span>}
                               {item.currentCompany && <span style={{ background: '#F8FAFC', color: '#475569', fontSize: 11, padding: '3px 8px', borderRadius: 20 }}>{item.currentCompany}</span>}
                               {item.skills && <span style={{ background: '#F5F3FF', color: '#6D28D9', fontSize: 11, padding: '3px 8px', borderRadius: 20, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.skills}</span>}
                             </div>

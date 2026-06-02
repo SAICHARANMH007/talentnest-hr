@@ -160,4 +160,16 @@ router.get('/turn-credentials', asyncHandler(async (req, res) => {
   });
 }));
 
+// PATCH /api/video-rooms/:id — update scheduledAt (reschedule from meeting room UI)
+router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { scheduledAt } = req.body;
+  const room = await VideoRoom.findOneAndUpdate(
+    { _id: req.params.id },
+    { $set: { ...(scheduledAt ? { scheduledAt: new Date(scheduledAt) } : {}) } },
+    { new: true }
+  ).lean();
+  if (!room) throw new AppError('Room not found', 404);
+  res.json({ success: true, data: room });
+}));
+
 module.exports = router;

@@ -209,7 +209,7 @@ export default function TalentPool() {
                   <div key={String(c._id || c)} style={S.memberRow}>
                     <div style={S.avatar}>{initials(c)}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0A1628' }}>{c.firstName} {c.lastName}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0A1628' }}>{c.name || c.email?.split('@')[0] || '—'}</div>
                       <div style={{ fontSize: 12, color: '#6B7280' }}>{c.email}{c.currentRole ? ` · ${c.currentRole}` : ''}</div>
                       {m.notes && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>📝 {m.notes}</div>}
                     </div>

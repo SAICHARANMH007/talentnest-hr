@@ -163,7 +163,7 @@ async function resolveRecentNames(apps) {
   if (!needName.length) return apps.map(a => ({
     ...a,
     id: a._id?.toString() || a.id,
-    candidateName: (a.candidateId?.name) || (a.candidateId?.email ? a.candidateId.email.split('@')[0] : `Applicant-${(a._id?.toString() || '').slice(-6)}`),
+    candidateName: (a.candidateId?.name) || (a.candidateId?.email ? a.candidateId.email.split('@')[0] : '') || a.candidateId?.phone || `Applicant-${(a._id?.toString() || '').slice(-6)}`,
     candidate: a.candidateId || null,
   }));
 
@@ -181,7 +181,7 @@ async function resolveRecentNames(apps) {
     let name  = c?.name || '';
     if (!name) {
       const u = idMap.get(c?.userId?.toString()) || emailMap.get((c?.email || '').toLowerCase());
-      name = u?.name || (c?.email ? c.email.split('@')[0] : '');
+      name = u?.name || (c?.email ? c.email.split('@')[0] : '') || c?.phone || '';
     }
     const fallbackId = (a._id?.toString() || a.id || '').slice(-6);
     const displayName = name || `Applicant-${fallbackId}`;
@@ -281,8 +281,8 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     applicationId: app?._id?.toString() || '',
     candidateId: candidate?._id?.toString() || '',
     userId: user?._id?.toString() || candidate?.userId?.toString() || '',
-    name: candidate?.name || user?.name || (candidate?.email || user?.email || '').split('@')[0] || '',
-    candidateName: candidate?.name || user?.name || (candidate?.email || user?.email || '').split('@')[0] || '',
+    name: candidate?.name || user?.name || (candidate?.email || user?.email || '').split('@')[0] || candidate?.phone || user?.phone || '',
+    candidateName: candidate?.name || user?.name || (candidate?.email || user?.email || '').split('@')[0] || candidate?.phone || user?.phone || '',
     email: candidate?.email || user?.email || '',
     phone: candidate?.phone || user?.phone || '',
     title: candidate?.title || user?.title || user?.jobRole || '',

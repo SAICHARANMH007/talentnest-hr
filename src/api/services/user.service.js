@@ -87,6 +87,16 @@ export const userService = {
   },
   async adminResetPassword(userId, newPassword) { return req('PATCH', `/users/${userId}/change-password`, { newPassword }); },
 
+  // Search/list Candidate model records (distinct from User model)
+  async getCandidates(params = {}) {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+    });
+    const r = await req('GET', `/candidates?${q.toString()}`);
+    return r;
+  },
+
   // Candidate-model (separate from User model) — used by pipeline/application populate
   async getCandidate(id) {
     const r = await req('GET', `/candidates/${id}`);
