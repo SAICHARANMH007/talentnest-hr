@@ -30,7 +30,7 @@ const WIDGET_GROUPS = [
     role: 'Candidate',
     icon: '🎯',
     widgets: [
-      { key: 'candidate_job_matches',         label: 'Job Match Suggestions',    desc: 'AI-matched jobs based on candidate profile' },
+      { key: 'candidate_job_matches',         label: 'Job Match Suggestions',    desc: 'Smart-matched jobs based on candidate profile' },
       { key: 'candidate_application_status',  label: 'Application Status Feed',  desc: 'Latest updates on active applications' },
       { key: 'candidate_upcoming_interviews', label: 'Upcoming Interviews',       desc: "Interviews the candidate has been scheduled for" },
     ],

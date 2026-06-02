@@ -576,7 +576,7 @@ export default function App() {
             <Route path="dashboard" element={<CandidateDashboard user={user} />} />
             <Route path="explore-jobs" element={<CandidateExploreJobs user={user} />} />
             <Route path="job-match" element={<CandidateJobMatch user={user} />} />
-            <Route path="ai-match" element={<CandidateAIMatch user={user} />} />
+            <Route path="smart-match" element={<CandidateAIMatch user={user} />} />
             <Route path="resume-builder" element={<ResumeBuilder user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
@@ -599,7 +599,7 @@ export default function App() {
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="talent-match" element={<RecruiterTalentMatch user={user} />} />
-            {rk === 'recruiter' && <Route path="ai-match" element={<RecruiterAIMatch user={user} />} />}
+            {rk === 'recruiter' && <Route path="smart-match" element={<RecruiterAIMatch user={user} />} />}
             <Route path="pipeline" element={rk === 'recruiter' ? <RecruiterPipeline user={user} /> : <AdminPipeline user={user} />} />
             <Route path="assessments" element={<RecruiterAssessments user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />

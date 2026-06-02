@@ -116,7 +116,7 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
           <span style={{ fontSize: 18 }}>📄</span>
           <div>
             <div style={{ color: '#181818', fontWeight: 600, fontSize: 13 }}>Upload Job Description</div>
-            <div style={{ color: '#706E6B', fontSize: 11 }}>Upload a JD file (PDF or .txt) — fields auto-fill instantly · no AI, zero cost</div>
+            <div style={{ color: '#706E6B', fontSize: 11 }}>Upload a JD file (PDF or .txt) — fields auto-fill instantly · zero cost</div>
           </div>
         </div>
         <UploadZone label="Upload JD (PDF or text file)" onFile={handleJD} loading={parsing} fileName={jdFile} accept=".pdf,.txt,.doc,.docx" />

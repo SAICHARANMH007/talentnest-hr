@@ -626,7 +626,7 @@ export default function ApplicantsRecordsPage({ user }) {
                         {r.noticePeriodDays ? <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>{r.noticePeriodDays}d notice</div> : null}
                       </td>
 
-                      {/* AI Score */}
+                      {/* Smart Score */}
                       <td style={{ padding: '11px 12px', textAlign: 'center' }}>
                         {r.aiMatchScore != null && r.aiMatchScore !== '' ? (
                           <div>
