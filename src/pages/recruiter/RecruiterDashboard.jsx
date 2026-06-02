@@ -201,48 +201,62 @@ export default function RecruiterDashboard({ user }) {
         </div>
       )}
 
-      {/* ── Today's Interview Schedule ── */}
-      {upcomingInterviews.filter(iv => iv.dateObj.toDateString() === new Date().toDateString()).length > 0 && (
-        <div style={{ ...card, marginBottom:20, border:'1px solid rgba(124,58,237,0.2)', background:'linear-gradient(135deg,#F5F3FF,#fff)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-            <span style={{ fontSize:18 }}>📅</span>
-            <span style={{ fontWeight:800, fontSize:13, color:'#7C3AED' }}>TODAY'S INTERVIEW SCHEDULE</span>
-            <span style={{ background:'#7C3AED', color:'#fff', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:700 }}>{upcomingInterviews.filter(iv => iv.dateObj.toDateString() === new Date().toDateString()).length}</span>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {upcomingInterviews
-              .filter(iv => iv.dateObj.toDateString() === new Date().toDateString())
-              .map((iv, i) => {
-                const timeStr = iv.dateObj.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
-                const now = new Date();
-                const minsUntil = Math.round((iv.dateObj - now) / 60000);
-                const isPast = minsUntil < 0;
-                const isNow = minsUntil >= -5 && minsUntil <= 15;
-                const meetLink = iv.interviewRounds?.[0]?.meetLink;
-                return (
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background: isNow ? 'rgba(124,58,237,0.08)' : '#F8FAFC', borderRadius:10, border:`1px solid ${isNow ? 'rgba(124,58,237,0.3)' : '#E2E8F0'}` }}>
-                    <div style={{ textAlign:'center', minWidth:52, flexShrink:0 }}>
-                      <div style={{ fontWeight:800, color: isNow ? '#7C3AED' : '#374151', fontSize:14 }}>{timeStr}</div>
-                      <div style={{ fontSize:10, color: isPast ? '#9CA3AF' : isNow ? '#7C3AED' : '#6B7280', fontWeight:600 }}>{isPast ? 'Done' : isNow ? '🔴 Now' : `in ${minsUntil}m`}</div>
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:13, color:'#0A1628', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {iv._displayName || iv.candidateName || iv.candidateId?.name || 'Candidate'}
+      {/* ── Today's Interview Schedule — always visible ── */}
+      {(() => {
+        const todayIvs = upcomingInterviews.filter(iv => iv.dateObj.toDateString() === new Date().toDateString());
+        return (
+          <div style={{ ...card, marginBottom:20, border:'1px solid rgba(124,58,237,0.2)', background:'linear-gradient(135deg,#F5F3FF,#fff)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:18 }}>📅</span>
+                <span style={{ fontWeight:800, fontSize:13, color:'#7C3AED' }}>TODAY'S INTERVIEW SCHEDULE</span>
+                <span style={{ background: todayIvs.length > 0 ? '#7C3AED' : '#9CA3AF', color:'#fff', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:700 }}>{todayIvs.length}</span>
+              </div>
+              <button onClick={() => navigate('/app/interviews')} style={{ background:'none', border:'none', color:'#7C3AED', fontSize:11, fontWeight:700, cursor:'pointer' }}>All Interviews →</button>
+            </div>
+            {todayIvs.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'14px 0', color:'#9CA3AF' }}>
+                <div style={{ fontSize:28, marginBottom:4 }}>✓</div>
+                <div style={{ fontSize:13 }}>No interviews scheduled for today — enjoy the clear runway!</div>
+                {upcomingInterviews.length > 0 && (
+                  <div style={{ marginTop:8, fontSize:12, color:'#7C3AED', fontWeight:600 }}>Next: {upcomingInterviews[0].dateObj.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric'})} with {upcomingInterviews[0]._displayName || 'Candidate'}</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {todayIvs.map((iv, i) => {
+                  const timeStr = iv.dateObj.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+                  const now = new Date();
+                  const minsUntil = Math.round((iv.dateObj - now) / 60000);
+                  const isPast = minsUntil < 0;
+                  const isNow = minsUntil >= -5 && minsUntil <= 15;
+                  const meetLink = iv.interviewRounds?.[0]?.meetLink;
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background: isNow ? 'rgba(124,58,237,0.08)' : '#F8FAFC', borderRadius:10, border:`1px solid ${isNow ? 'rgba(124,58,237,0.3)' : '#E2E8F0'}`, cursor:'pointer' }}
+                      onClick={() => navigate('/app/interviews')}>
+                      <div style={{ textAlign:'center', minWidth:52, flexShrink:0 }}>
+                        <div style={{ fontWeight:800, color: isNow ? '#7C3AED' : '#374151', fontSize:14 }}>{timeStr}</div>
+                        <div style={{ fontSize:10, color: isPast ? '#9CA3AF' : isNow ? '#7C3AED' : '#6B7280', fontWeight:600 }}>{isPast ? 'Done' : isNow ? '🔴 Now' : `in ${minsUntil}m`}</div>
                       </div>
-                      <div style={{ fontSize:11, color:'#6B7280' }}>{iv.jobId?.title || 'Interview'} · Round {iv.interviewRounds?.[0]?.round || 1}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:13, color:'#0A1628', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {iv._displayName || iv.candidateName || iv.candidateId?.name || 'Candidate'}
+                        </div>
+                        <div style={{ fontSize:11, color:'#6B7280' }}>{iv.jobId?.title || 'Interview'} · Round {iv.interviewRounds?.[0]?.round || 1}</div>
+                      </div>
+                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                        {meetLink && <a href={meetLink} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ background:'#7C3AED', color:'#fff', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, textDecoration:'none' }}>Join →</a>}
+                      </div>
                     </div>
-                    <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                      {meetLink && <a href={meetLink} target="_blank" rel="noreferrer" style={{ background:'#7C3AED', color:'#fff', borderRadius:8, padding:'6px 12px', fontSize:11, fontWeight:700, textDecoration:'none' }}>Join →</a>}
-                      <button onClick={() => navigate('/app/pipeline')} style={{ background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.25)', color:'#7C3AED', borderRadius:8, padding:'6px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>Pipeline</button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* ── Pipeline Bottleneck Detector ── */}
+      {/* ── Pipeline Bottleneck Detector — tap to drill down ── */}
       {(() => {
         const bottlenecks = STAGES.filter(st => {
           const cnt = Object.entries(pipelineMap).reduce((n,[k,v]) => n + ((DB_STAGE_MAP[k]||k) === st.id ? v : 0), 0);
@@ -255,17 +269,24 @@ export default function RecruiterDashboard({ user }) {
               <span style={{ fontSize:18 }}>🚨</span>
               <span style={{ fontWeight:800, fontSize:13, color:'#B45309' }}>PIPELINE BOTTLENECK ALERT</span>
             </div>
-            <p style={{ margin:'0 0 10px', fontSize:12, color:'#92400E' }}>Stages with 5+ candidates may be slowing your time-to-hire:</p>
+            <p style={{ margin:'0 0 10px', fontSize:12, color:'#92400E' }}>Tap a stage to see who's stuck — 5+ candidates may be slowing your time-to-hire:</p>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               {bottlenecks.map(st => {
                 const cnt = Object.entries(pipelineMap).reduce((n,[k,v]) => n + ((DB_STAGE_MAP[k]||k) === st.id ? v : 0), 0);
+                const stageActs = recentActs.filter(a => (DB_STAGE_MAP[a.stage]||a.stage) === st.id || a.stage === st.id);
                 return (
-                  <button key={st.id} onClick={() => navigate(`/app/pipeline?stage=${st.id}`)}
+                  <button key={st.id} onClick={() => {
+                    if (stageActs.length > 0) {
+                      setDrillDown({ title: `${st.icon} ${st.label} — ${cnt} candidates`, items: stageActs, navTo: `/app/pipeline?stage=${st.id}` });
+                    } else {
+                      navigate(`/app/pipeline?stage=${st.id}`);
+                    }
+                  }}
                     style={{ background:'#fff', border:`1.5px solid ${st.color}`, borderRadius:10, padding:'8px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
                     <span>{st.icon}</span>
                     <span style={{ fontWeight:700, color:st.color, fontSize:13 }}>{cnt}</span>
                     <span style={{ fontSize:12, color:'#374151' }}>{st.label}</span>
-                    <span style={{ color:'#9CA3AF', fontSize:11 }}>→</span>
+                    <span style={{ color:'#9CA3AF', fontSize:11 }}>tap →</span>
                   </button>
                 );
               })}
@@ -647,6 +668,14 @@ export default function RecruiterDashboard({ user }) {
                 );
               })}
             </div>
+            {drillDown?.navTo && (
+              <div style={{ padding:'12px 28px', borderTop:'1px solid #F1F5F9', display:'flex', justifyContent:'center' }}>
+                <button onClick={() => { setDrillDown(null); navigate(drillDown.navTo); }}
+                  style={{ background:'linear-gradient(135deg,#0176D3,#014486)', color:'#fff', border:'none', borderRadius:10, padding:'10px 24px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  View All in Pipeline →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

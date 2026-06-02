@@ -683,6 +683,7 @@ export default function RecruiterPipeline({ user }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const [selJob, setSelJob] = useState(() => searchParams.get('jobId') || '');
   const [jobSearch, setJobSearch] = useState('');
   const [presetTags, setPresetTags] = useState(DEFAULT_PRESET_TAGS);
@@ -699,13 +700,15 @@ export default function RecruiterPipeline({ user }) {
   const [bulkEmailForm, setBulkEmailForm] = useState({ subject: '', body: '' });
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [assessmentData, setAssessmentData] = useState(null); // { id, submissionsMap: { [candidateId]: submission } }
-  const [stageFilter, setSF] = useState('all');
+  const [stageFilter, setSF] = useState(() => searchParams.get('stage') || 'all');
   const [statusFilter, setStatusFilter] = useState('active'); // active, parked, all
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 1 });
   const [movingAppId, setMovingAppId] = useState(null);
   const [recruiterHistory, setRecruiterHistory] = useState([]);
+  const [pipelineStats, setPipelineStats] = useState(null);
 
   useEffect(() => {
+    api.getRecruiterStats().then(r => setPipelineStats(r?.data || r)).catch(() => {});
     api.getJobs({ minimal: true }).then(j => {
       const raw = Array.isArray(j) ? j : (j?.data || []);
       const map = new Map();
@@ -714,7 +717,7 @@ export default function RecruiterPipeline({ user }) {
         if (id) map.set(id, { ...item, id });
       });
       setJobs(Array.from(map.values()));
-    }).catch(() => setJobs([]));
+    }).catch(() => setJobs([])).finally(() => setJobsLoading(false));
     api.getUser(user.id).then(r => setRecruiter(r?.data || r)).catch(() => {});
     // Load org custom tags
     api.getCustomizations().then(r => {
@@ -1084,7 +1087,7 @@ export default function RecruiterPipeline({ user }) {
                 <div style={{ fontSize: 12, fontWeight: 800, color: '#0176D3', letterSpacing: 1, marginBottom: 16 }}>📊 YOUR PIPELINE SNAPSHOT</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: urgentJobs.length > 0 || closingSoon.length > 0 ? 16 : 0 }}>
                   {[
-                    { icon:'👥', label:'Active Pipeline', val: totalApps, color:'#0176D3' },
+                    { icon:'👥', label:'Total Applicants', val: pipelineStats?.totalApplicants ?? totalApps, color:'#0176D3' },
                     { icon:'💼', label:'Active Jobs', val: activeJobs.length, color:'#2E844A' },
                     { icon:'🔴', label:'Urgent Roles', val: urgentJobs.length, color:'#BA0517' },
                     { icon:'🏆', label:'Top Job', val: topJob ? `${topJob.applicantsCount||0} apps` : '—', sub: topJob?.title, color:'#7C3AED' },
@@ -1116,7 +1119,12 @@ export default function RecruiterPipeline({ user }) {
               </div>
             );
           })()}
-          {jobs.length === 0 ? (
+          {jobsLoading ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <Spinner />
+              <p style={{ color: '#94A3B8', marginTop: 12, fontSize: 13 }}>Loading your pipeline…</p>
+            </div>
+          ) : jobs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#706E6B' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🗂️</div>
               <p style={{ fontWeight: 700, fontSize: 16, margin: '0 0 6px', color: '#0F172A' }}>No jobs assigned yet</p>
