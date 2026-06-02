@@ -18,6 +18,7 @@ import KpiCard from '../../components/charts/KpiCard.jsx';
 
 import HorizBar from '../../components/charts/HorizBar.jsx';
 import InterviewCountdown from '../../components/misc/InterviewCountdown.jsx';
+import ReferralHub from '../../components/candidate/ReferralHub.jsx';
 import { STAGES } from '../../constants/stages.js';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -422,49 +423,7 @@ export default function CandidateDashboard({ user }) {
         </div>
       )}
       {/* ── Refer & Earn Badge Progress ─────────────────────────────────── */}
-      {(() => {
-        const total     = referrals.length;
-        const hired     = referrals.filter(r => r.status === 'hired').length;
-        const applied   = referrals.filter(r => r.status === 'applied' || r.status === 'hired').length;
-        const hasBadge  = hired >= 30;
-        const progress  = Math.min(hired / 30 * 100, 100);
-        return (
-          <div style={{ ...card, marginBottom:20, background: hasBadge ? 'linear-gradient(135deg,#F0FDF4,#D1FAE5)' : '#fff', border: hasBadge ? '1.5px solid #34D399' : '1px solid #F3F2F2' }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-              <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>🤝 REFER &amp; EARN</p>
-              <button onClick={() => navigate("/app/profile")} style={{ ...btnG, padding:"4px 10px", fontSize:10 }}>My Referrals →</button>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-              <div style={{ fontSize: hasBadge ? 44 : 36 }}>{hasBadge ? '🏆' : '🤝'}</div>
-              <div style={{ flex:1 }}>
-                {hasBadge ? (
-                  <div>
-                    <div style={{ fontWeight:800, fontSize:14, color:'#065F46', marginBottom:2 }}>TalentNest Badge Earned! 🎉</div>
-                    <div style={{ fontSize:12, color:'#047857' }}>Your profile is now shown to recruiters for free. You've referred {hired} hired candidates!</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:13, color:'#0A1628', marginBottom:4 }}>
-                      {hired}/30 hired referrals for TalentNest Badge
-                    </div>
-                    <div style={{ background:'#F1F5F9', borderRadius:99, height:8, overflow:'hidden', marginBottom:4 }}>
-                      <div style={{ background:'linear-gradient(90deg,#0176D3,#0EA5E9)', height:'100%', width:`${progress}%`, borderRadius:99, transition:'width 0.5s' }} />
-                    </div>
-                    <div style={{ fontSize:11, color:'#6B7280' }}>{total} referrals sent · {applied} applied · {hired} hired</div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {!hasBadge && (
-              <div style={{ marginTop:12, display:"flex", gap:8 }}>
-                <button onClick={() => navigate("/app/job-match")} style={{ flex:1, background:'linear-gradient(135deg,#0176D3,#0369A1)', color:'#fff', border:'none', borderRadius:8, padding:'9px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                  🔗 Browse Jobs to Refer
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      <ReferralHub referrals={referrals} user={user} />
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
         <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>🎯 JOB MATCH HEURISTICS</p>
