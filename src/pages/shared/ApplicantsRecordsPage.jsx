@@ -27,12 +27,21 @@ const SOURCE_OPTIONS = [
   { value: '', label: 'All sources' },
   { value: 'platform', label: 'Platform' },
   { value: 'career_page', label: 'Career page' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'naukri', label: 'Naukri' },
+  { value: 'indeed', label: 'Indeed' },
+  { value: 'glassdoor', label: 'Glassdoor' },
+  { value: 'monster', label: 'Monster' },
+  { value: 'shine', label: 'Shine' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'direct', label: 'Direct' },
   { value: 'invite', label: 'Invite' },
   { value: 'admin_assign', label: 'Admin assign' },
   { value: 'manual', label: 'Manual' },
   { value: 'bulk_import', label: 'Bulk import' },
   { value: 'resume_upload', label: 'Resume upload' },
-  { value: 'referral', label: 'Referral' },
+  { value: 'others', label: 'Others' },
 ];
 
 const STATUS_OPTIONS = [

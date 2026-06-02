@@ -3,17 +3,22 @@ import { api } from '../../api/api.js';
 import { card } from '../../constants/styles.js';
 
 const SOURCE_ICONS = {
-  linkedin: '🔗',
-  referral: '👥',
-  career_page: '🏢',
-  platform: '💻',
-  naukri: '📋',
-  indeed: '🔍',
-  direct: '📩',
-  bulk_import: '📦',
-  invite: '✉️',
-  social: '📱',
-  other: '🌐',
+  linkedin    : '🔗',
+  referral    : '👥',
+  career_page : '🏢',
+  platform    : '💻',
+  naukri      : '📋',
+  indeed      : '🔍',
+  glassdoor   : '🪟',
+  monster     : '👾',
+  shine       : '✨',
+  social_media: '📱',
+  social      : '📱',
+  direct      : '📩',
+  bulk_import : '📦',
+  invite      : '✉️',
+  others      : '🌐',
+  other       : '🌐',
 };
 
 const SOURCE_COLORS = [

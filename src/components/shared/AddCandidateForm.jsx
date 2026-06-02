@@ -11,6 +11,23 @@ import { api } from '../../api/api.js';
 import { INDUSTRIES } from '../../constants/picklists.js';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
+const SOURCE_LABELS = {
+  platform    : 'Platform',
+  career_page : 'Career Page',
+  linkedin    : 'LinkedIn',
+  naukri      : 'Naukri',
+  indeed      : 'Indeed',
+  glassdoor   : 'Glassdoor',
+  monster     : 'Monster',
+  shine       : 'Shine',
+  social_media: 'Social Media',
+  referral    : 'Referral',
+  direct      : 'Direct',
+  invite      : 'Invite',
+  bulk_import : 'Bulk Import',
+  others      : 'Others',
+};
+
 // Duplicate warning banner — defined outside component
 const DupWarning = ({ dupes, onIgnore }) => (
   <div style={{ background: 'rgba(245,158,11,0.1)', border: '1.5px solid rgba(245,158,11,0.4)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
@@ -429,7 +446,7 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
               label="Application Source"
               value={form.source}
               onChange={v => sf('source', v)}
-              options={[{ value: '', label: 'Select source…' }, ...sources.map(s => ({ value: s, label: s }))]}
+              options={[{ value: '', label: 'Select source…' }, ...sources.map(s => ({ value: s, label: SOURCE_LABELS[s] || s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }))]}
               hint="Where did this candidate come from?"
             />
           )}

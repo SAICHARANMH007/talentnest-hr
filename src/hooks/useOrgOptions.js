@@ -3,6 +3,12 @@ import { api } from '../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../constants/picklists.js';
 import { STAGES, DB_TO_FRONTEND_STAGE } from '../constants/stages.js';
 
+const DEFAULT_SOURCES = [
+  'platform', 'career_page', 'linkedin', 'naukri', 'indeed',
+  'glassdoor', 'monster', 'shine', 'social_media', 'referral',
+  'direct', 'invite', 'bulk_import', 'others',
+];
+
 // Module-level cache so every component re-render doesn't re-fetch
 let _cache = null;
 let _cacheAt = 0;
@@ -56,9 +62,9 @@ export function useOrgOptions() {
       const orgLocs = (data.locations || []).map(l => l.name || l).filter(Boolean);
       setLocations(orgLocs);
 
-      // Org sources
+      // Org sources merged with defaults
       const orgSrcs = (data.sources || []).map(s => s.name || s).filter(Boolean);
-      setSources(orgSrcs);
+      setSources(Array.from(new Set([...DEFAULT_SOURCES, ...orgSrcs])));
 
       // Org pipeline stages — overlay colors onto defaults, append custom stages
       const orgStatuses = (data.pipelineStatuses || [])
