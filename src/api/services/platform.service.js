@@ -366,4 +366,6 @@ export const platformService = {
   async getHeadcountPlan(id)            { const r = await req('GET', `/headcount-plans/${id}`); return r?.data || r; },
   async updateHeadcountPlan(id, data)   { const r = await req('PATCH', `/headcount-plans/${id}`, data); return r?.data || r; },
   async deleteHeadcountPlan(id)         { return req('DELETE', `/headcount-plans/${id}`); },
+  async linkJobToEntry(planId, entryId, jobId) { return req('PATCH', `/headcount-plans/${planId}/entries/${entryId}/link`, { jobId }); },
+  async createJobFromEntry(planId, entryId)    { const r = await req('POST', `/headcount-plans/${planId}/entries/${entryId}/create-job`); return r?.data || r; },
 };
