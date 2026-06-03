@@ -2644,9 +2644,9 @@ router.get('/time-to-fill', authenticate, allowRoles('admin', 'super_admin', 're
     const hiredApp = await Application.findOne({
       tenantId: req.user.tenantId,
       jobId   : job._id,
-      status  : 'hired',
+      $or: [{ currentStage: 'Hired' }, { status: 'hired' }],
       deletedAt: null,
-    }).sort({ createdAt: 1 }).lean();
+    }).sort({ updatedAt: -1 }).lean();
 
     const hiredAt = hiredApp?.updatedAt;
     const daysToFill = hiredAt
