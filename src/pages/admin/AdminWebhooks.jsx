@@ -105,8 +105,8 @@ function WebhookModal({ hook, onClose, onSaved }) {
           <input style={inp} value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://hooks.example.com/tn" />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={lbl}>Secret (optional — used for HMAC SHA-256 signature)</label>
-          <input style={inp} value={form.secret} onChange={e => setForm(f => ({ ...f, secret: e.target.value }))} placeholder="Leave blank to skip signing" type="password" />
+          <label style={lbl}>Security Key (optional — verifies that requests really come from TalentNest)</label>
+          <input style={inp} value={form.secret} onChange={e => setForm(f => ({ ...f, secret: e.target.value }))} placeholder="Leave blank to skip — or enter any secret phrase" type="password" />
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -230,24 +230,15 @@ export default function AdminWebhooks({ user }) {
 
       {/* Info card */}
       <div style={{ ...card, background: '#EFF6FF', border: '1px solid #BFDBFE', marginBottom: 20, padding: '16px 20px' }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: '#1D4ED8', marginBottom: 8 }}>How Webhooks Work</div>
-        <div style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.6 }}>
-          When a subscribed event occurs, TalentNest sends an HTTP <strong>POST</strong> request to your endpoint with a JSON payload.
-          If a secret is configured, we include an <code style={{ background: 'rgba(255,255,255,0.5)', padding: '1px 5px', borderRadius: 4 }}>X-TalentNest-Signature: sha256=…</code> header for HMAC-SHA256 verification.
-          Your endpoint must return a <strong>2xx</strong> status within <strong>10 seconds</strong> — otherwise the delivery is marked as failed.
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#1D4ED8', marginBottom: 8 }}>What are Webhooks?</div>
+        <div style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.7 }}>
+          Webhooks let TalentNest automatically notify your other tools whenever something important happens — like a candidate being hired, an offer being sent, or an interview being scheduled.
+          Choose which events to watch, add the URL of the tool you want to notify, and TalentNest will send the update instantly — no manual work needed.
         </div>
-        <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', marginBottom: 6 }}>Sample payload (application.hired):</div>
-          <pre style={{ margin: 0, fontSize: 10, color: '#1e3a8a', whiteSpace: 'pre-wrap', fontFamily: 'monospace', lineHeight: 1.5 }}>{`{
-  "event": "application.hired",
-  "timestamp": "2025-06-03T08:00:00.000Z",
-  "data": {
-    "applicationId": "abc123",
-    "candidateName": "Ravi Kumar",
-    "jobTitle": "Frontend Engineer",
-    "stage": "hired"
-  }
-}`}</pre>
+        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {['Notify Slack when a hire is made', 'Update your HR system when an offer is accepted', 'Trigger a Zapier workflow on stage changes'].map(ex => (
+            <span key={ex} style={{ fontSize: 11, background: 'rgba(255,255,255,0.7)', border: '1px solid #BFDBFE', borderRadius: 20, padding: '3px 10px', color: '#1D4ED8', fontWeight: 500 }}>✓ {ex}</span>
+          ))}
         </div>
       </div>
 

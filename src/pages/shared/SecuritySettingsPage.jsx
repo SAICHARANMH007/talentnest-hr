@@ -19,7 +19,7 @@ export default function SecuritySettingsPage({ user, onBack }) {
 
       <PageHeader 
         title="🛡️ Security & Privacy" 
-        subtitle="Manage your multi-factor authentication, active sessions, and access logs."
+        subtitle="Keep your account safe — set up a second login step, see where you're signed in, and review recent activity."
       />
 
       <div style={{ marginTop: 24 }}>

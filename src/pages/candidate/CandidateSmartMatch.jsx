@@ -75,7 +75,7 @@ export default function CandidateSmartMatch({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast("")} />
-      <PageHeader title="Smart Job Search" subtitle="Your profile powers the matching engine" />
+      <PageHeader title="Smart Job Search" subtitle="Jobs selected for you based on your skills, experience, and preferences" />
 
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 10 }}>

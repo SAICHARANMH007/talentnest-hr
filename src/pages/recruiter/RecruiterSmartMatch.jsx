@@ -85,7 +85,7 @@ export default function RecruiterSmartMatch({ user }) {
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader
         title="Talent Match"
-        subtitle="Our high-precision matching engine finds the best candidates based on skills, experience, and role alignment."
+        subtitle="Find the best-fit candidates for any role instantly — ranked by their skills, experience, and background."
       />
 
       <div style={{ ...card, marginBottom: 24, padding: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)', border: '1px solid #e0e8f5' }}>

@@ -30,7 +30,7 @@ export default function PipelineHeatmap() {
   useEffect(() => load(days), [days]);
 
   if (loading) return <div style={{ padding: 48, textAlign: 'center', color: '#9CA3AF' }}>Loading heatmap…</div>;
-  if (!data)   return <div style={{ padding: 48, textAlign: 'center', color: '#9CA3AF' }}>No data available.</div>;
+  if (!data)   return <div style={{ padding: 48, textAlign: 'center', color: '#9CA3AF' }}>No pipeline activity yet. Start moving candidates through stages to see the heatmap.</div>;
 
   // Build calendar grid from daily data
   const dailyMap = {};

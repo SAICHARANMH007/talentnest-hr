@@ -208,7 +208,7 @@ export default function PlatformModalsGuide({ user }) {
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <PageHeader
         title="Platform Modals Guide"
-        subtitle={`${MODALS.length} modals across the platform — what each one does, who sees it, and what it produces`}
+        subtitle={`${MODALS.length} screens and pop-ups across the platform — what each one is for and who can access it`}
       />
 
       {/* Summary cards */}

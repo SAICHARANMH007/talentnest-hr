@@ -19,7 +19,7 @@ export default function ChangePasswordPage({ user, onBack }) {
 
       <PageHeader 
         title="🔒 Change Password" 
-        subtitle="Keep your account secure by rotating your credentials regularly."
+        subtitle="Update your password to keep your account safe."
       />
 
       <div style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>

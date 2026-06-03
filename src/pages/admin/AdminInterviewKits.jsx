@@ -394,7 +394,7 @@ export default function AdminInterviewKits({ user }) {
       <Toast message={toast} onClose={() => setToast('')} />
       <PageHeader
         title="Interview Kits"
-        subtitle="Define structured question sets with screening filters for consistent, scored interviews"
+        subtitle="Create standard question sets so every interviewer asks the same questions and rates candidates fairly"
         action={<button onClick={() => setModal('new')} style={{ ...btnP, padding: '9px 20px', fontSize: 13 }}>+ New Kit</button>}
       />
 

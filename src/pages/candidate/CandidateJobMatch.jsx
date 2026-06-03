@@ -164,7 +164,7 @@ export default function CandidateJobMatch({ user }) {
       <Toast msg={toast} onClose={() => setToast("")} />
       <PageHeader 
         title="Job Match & Career Explorer" 
-        subtitle="Our deterministic matching engine analyzes your profile against every open position to find your perfect next role." 
+        subtitle="We compare your skills and experience against every open role and show you the ones that fit you best."
       />
 
       {/* ── Search Hero Section ── */}

@@ -19,7 +19,7 @@ export default function EmailSettingsPage({ user, onBack }) {
 
       <PageHeader 
         title="📧 Email Delivery Settings" 
-        subtitle="Configure how you send job invitations and updates to candidates. Support for Resend and custom SMTP."
+        subtitle="Set up your email so candidates receive invitations and updates from your company's address — not a generic one."
       />
 
       <div style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>

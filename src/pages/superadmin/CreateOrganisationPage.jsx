@@ -46,7 +46,7 @@ export default function CreateOrganisationPage({ user, onBack, onSuccess }) {
 
       <PageHeader 
         title="🏢 Create New Organisation" 
-        subtitle="Provision a new tenant environment and define core business parameters." 
+        subtitle="Add a new company to TalentNest — fill in their details and they're ready to start hiring."
       />
 
       <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>

@@ -212,7 +212,7 @@ export default function AdminInsights({ user }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 10 }}>
         <PageHeader
           title="📊 Hiring Insights"
-          subtitle="Live org KPIs, smart alerts, SLA compliance, pipeline velocity, source effectiveness, and offer analytics"
+          subtitle="Your hiring health at a glance — team performance, pipeline alerts, speed tracking, and offer results"
         />
         <button onClick={reloadAll} style={{ ...btnG, padding: '9px 18px', fontSize: 12, flexShrink: 0 }}>
           ↻ Refresh All
@@ -223,7 +223,7 @@ export default function AdminInsights({ user }) {
       {!statsSection.loading && statsData && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <StatBox label="Open Positions"    value={statsData.openJobs     ?? statsData.activeJobs   ?? statsData.openPositions ?? '—'} color="#0176D3" />
-          <StatBox label="Total Candidates"  value={statsData.candidates   ?? statsData.totalApps    ?? '—'} color="#7C3AED" />
+          <StatBox label="Total Candidates"  value={statsData.candidates   ?? statsData.totalCandidates ?? '—'} color="#7C3AED" />
           <StatBox label="New This Month"    value={statsData.appsLast30   ?? statsData.newThisMonth  ?? '—'} color="#F59E0B" sub="applications in last 30d" />
           <StatBox label="Hires Made"        value={statsData.placements   ?? statsData.hired         ?? (statsData.pipeline?.['Hired'] ?? '—')} color="#10B981" />
           {(statsData.totalRecruiters ?? statsData.recruiters) != null && (
@@ -266,7 +266,7 @@ export default function AdminInsights({ user }) {
             </div>
           </div>
           <a href="/app/sla-alerts" style={{ fontSize: 12, fontWeight: 700, color: '#0176D3', textDecoration: 'none', background: '#EFF6FF', borderRadius: 8, padding: '6px 14px', border: '1px solid #BFDBFE', whiteSpace: 'nowrap' }}>
-            View SLA Alerts & Details →
+            View Hiring Alerts & Details →
           </a>
         </div>
       </div>
@@ -520,7 +520,7 @@ export default function AdminInsights({ user }) {
         {/* SLA Compliance */}
         <div style={panel}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <p style={{ ...LABEL, marginBottom: 0 }}>🕐 SLA Compliance</p>
+            <p style={{ ...LABEL, marginBottom: 0 }}>🕐 On-Time Hiring Goals</p>
             <button onClick={slaSection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
           </div>
           {slaSection.loading && <SectionLoader />}
@@ -531,7 +531,7 @@ export default function AdminInsights({ user }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '14px 16px', background: slaCompRate >= 80 ? 'rgba(16,185,129,0.07)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)', border: `1px solid ${slaCompRate >= 80 ? 'rgba(16,185,129,0.2)' : slaCompRate >= 60 ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12 }}>
                   <div style={{ fontSize: 32, fontWeight: 900, color: slaCompRate >= 80 ? '#10B981' : slaCompRate >= 60 ? '#F59E0B' : '#EF4444' }}>{slaCompRate}%</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>Overall SLA Compliance</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>Hiring Goals On Track</div>
                     <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                       {slaRaw.onTrackCount != null ? `${slaRaw.onTrackCount} on track` : ''}
                       {slaRaw.breachedCount != null ? ` · ${slaRaw.breachedCount} breached` : ''}
@@ -579,7 +579,7 @@ export default function AdminInsights({ user }) {
         {/* Stage Velocity */}
         <div style={panel}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <p style={{ ...LABEL, marginBottom: 0 }}>⚡ Stage Velocity</p>
+            <p style={{ ...LABEL, marginBottom: 0 }}>⚡ Average Time Per Stage</p>
             <button onClick={velocitySection.reload} style={{ ...btnG, padding: '5px 12px', fontSize: 11 }}>↻</button>
           </div>
           {velocitySection.loading && <SectionLoader />}

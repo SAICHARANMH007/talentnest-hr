@@ -53,8 +53,8 @@ export default function SlaAlerts() {
   return (
     <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0A1628', margin: 0 }}>SLA Alerts</h1>
-        <p style={{ color: '#6B7280', fontSize: 14, margin: '4px 0 0' }}>Monitor stale jobs, stuck candidates, and SLA compliance</p>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0A1628', margin: 0 }}>🚨 Hiring Alerts</h1>
+        <p style={{ color: '#6B7280', fontSize: 14, margin: '4px 0 0' }}>Spot problems early — jobs with no activity, candidates stuck too long, and offers awaiting response</p>
       </div>
 
       {/* Threshold config */}
@@ -86,7 +86,7 @@ export default function SlaAlerts() {
             <StatCard icon="⚠️" label="Stale Jobs" value={alerts?.totals?.staleJobs ?? 0} color="#D97706" />
             <StatCard icon="🕒" label="Stuck Candidates" value={alerts?.totals?.stuckCandidates ?? 0} color="#DC2626" />
             <StatCard icon="📄" label="Pending Offers" value={alerts?.totals?.pendingOffers ?? 0} color="#7C3AED" />
-            <StatCard icon="✅" label="SLA Compliance" value={sla ? `${sla.complianceRate}%` : '—'} color={sla?.complianceRate >= 80 ? '#059669' : '#DC2626'} />
+            <StatCard icon="✅" label="On-Time Rate" value={sla ? `${sla.complianceRate}%` : '—'} color={sla?.complianceRate >= 80 ? '#059669' : '#DC2626'} />
           </div>
 
           {/* Stuck Candidates */}
@@ -173,10 +173,10 @@ export default function SlaAlerts() {
             )}
           </SectionTable>
 
-          {/* SLA Compliance by Stage */}
+          {/* On-Time Rate by Stage */}
           {sla?.byStage?.length > 0 && (
             <div style={{ ...card }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 14 }}>📊 SLA Compliance by Stage</div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 14 }}>📊 On-Time Rate by Stage</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>

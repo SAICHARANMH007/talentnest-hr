@@ -64,7 +64,7 @@ export default function FormsHub({ user }) {
     <div className="tn-forms-hub" style={{ maxWidth: 1200, margin: '0 auto', animation: 'tn-fadein 0.3s ease both' }}>
       <PageHeader 
         title="📋 Forms & Workflows" 
-        subtitle="The centralized hub for all platform interactions. Access any form or configuration page directly."
+        subtitle="Quick access to all the tools and settings you need — add candidates, schedule interviews, generate offers, and more."
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 40, marginTop: 12 }}>

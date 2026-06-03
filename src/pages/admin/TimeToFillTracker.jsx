@@ -81,7 +81,8 @@ export default function TimeToFillTracker() {
       ) : !data ? (
         <div style={{ ...card, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
-          <div style={{ color: '#9CA3AF' }}>No data available.</div>
+          <div style={{ color: '#374151', fontWeight: 600, marginBottom: 6 }}>No hiring data yet</div>
+          <div style={{ color: '#9CA3AF', fontSize: 13 }}>Once candidates are hired, you'll see how long each position took to fill.</div>
         </div>
       ) : (
         <>
