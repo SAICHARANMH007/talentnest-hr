@@ -40,7 +40,7 @@ router.get('/:id', ...guard, adminOrRecruiter, asyncHandler(async (req, res) => 
   const pool = await TalentPool.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
   if (!pool) return res.status(404).json({ message: 'Pool not found' });
   pool.members = (pool.members || []).filter(m => m.candidateId != null);
-  await TalentPool.populate([pool], { path: 'members.candidateId', select: 'name email avatarUrl skills' });
+  await TalentPool.populate([pool], { path: 'members.candidateId', select: 'name email avatarUrl skills userId title location' });
   res.json({ pool });
 }));
 

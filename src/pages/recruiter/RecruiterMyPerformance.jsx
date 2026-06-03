@@ -39,8 +39,8 @@ export default function RecruiterMyPerformance({ user }) {
 
   useEffect(() => {
     Promise.allSettled([
-      api.getJobs({ recruiterId: user.id, limit: 200 }),
-      api.getApplications({ recruiterId: user.id, limit: 500 }),
+      api.getJobs({ recruiterId: user.id }),
+      api.getApplications({ recruiterId: user.id }),
     ]).then(([jr, ar]) => {
       if (jr.status === 'fulfilled') {
         const list = Array.isArray(jr.value) ? jr.value : (jr.value?.data || []);

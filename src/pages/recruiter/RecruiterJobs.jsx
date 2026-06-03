@@ -170,39 +170,40 @@ export default function RecruiterJobs({ user }) {
   const [editingJob, setEditingJob] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const postJobRef = useRef(null);
+  const searchDebounceRef = useRef(null);
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
 
-  const load = () => {
+  const PAGE_SIZE_JOBS = 20;
+  const [pgMeta, setPgMeta] = useState({ page: 1, pages: 1, total: 0 });
+
+  const load = (pg = 1, srch = search, sFilter = statusFilter) => {
     setLoad(true);
-    api.getJobs({ recruiterId: user.id, limit: 500 })
+    const statusMap = { 'Open': 'active', 'Closed': 'closed', 'Draft': 'draft' };
+    const params = { recruiterId: user.id, limit: PAGE_SIZE_JOBS, page: pg };
+    if (srch) params.search = srch;
+    if (sFilter !== 'All') params.status = statusMap[sFilter];
+    api.getJobs(params)
       .then(r => {
         const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
-        // Deduplicate by ID to prevent ghost/duplicate items
+        const pg2 = r?.pagination || {};
         const map = new Map();
-        raw.forEach(item => {
-          const job = normalizeJob(item);
-          if (job.id) map.set(job.id, job);
-        });
+        raw.forEach(item => { const job = normalizeJob(item); if (job.id) map.set(job.id, job); });
         setJobs(Array.from(map.values()));
+        setPgMeta({ page: pg2.page || pg, pages: pg2.pages || 1, total: pg2.total || raw.length });
       })
       .catch(() => setJobs([]))
       .finally(() => setLoad(false));
   };
-  useEffect(load, [user.id]);
+  useEffect(() => { load(1); }, [user.id]); // eslint-disable-line
 
-  const filteredJobs = jobs.filter(j => {
-    if (search) {
-      const skillsStr = Array.isArray(j.skills) ? j.skills.join(', ') : (j.skills || '');
-      const haystack = `${j.title} ${j.company} ${skillsStr}`;
-      if (genericSearchMatch(haystack, search) === 0) return false;
-    }
-    // Handle both backend 'active' and frontend 'Open' labels
-    const mappedStatus = (j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft');
-    if (statusFilter !== 'All' && mappedStatus !== statusFilter) return false;
-    if (urgencyFilter !== 'All' && j.urgency !== urgencyFilter) return false;
-    return true;
-  });
+  useEffect(() => {
+    clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => load(1, search, statusFilter), 400);
+    return () => clearTimeout(searchDebounceRef.current);
+  }, [search, statusFilter]); // eslint-disable-line
+
+  const filteredJobs = urgencyFilter !== 'All' ? jobs.filter(j => j.urgency === urgencyFilter) : jobs;
   const hasJobFilters = !!(search || statusFilter!=='All' || urgencyFilter!=='All');
   const fSel = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#706E6B', fontSize:13, outline:'none', cursor:'pointer' };
   const resetModal = () => { setShow(false); setShowAssessment(false); setAssessmentQuestions([]); setAssessmentSettings({ title: '', instructions: '', timeLimitMins: 0, passingScore: 0, isActive: true, autoAdvance: false }); postJobRef.current?.reset?.(); };
@@ -217,23 +218,23 @@ export default function RecruiterJobs({ user }) {
       if (assessmentQuestions.length > 0) {
         try {
           await api.createAssessment({ jobId: job.id, ...assessmentSettings, title: assessmentSettings.title || `${form.title} — Screening`, questions: assessmentQuestions });
-        } catch (ae) { setToast(`✅ Job posted! (Assessment error: ${ae.message})`); setSaving(false); resetModal(); load(); return; }
+        } catch (ae) { setToast(`✅ Job posted! (Assessment error: ${ae.message})`); setSaving(false); resetModal(); load(1); return; }
       }
       setToast("✅ Job posted!" + (assessmentQuestions.length > 0 ? " Assessment attached." : ""));
-      resetModal(); load();
+      resetModal(); load(1);
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSaving(false);
   };
   const del = async (id) => {
     if (!window.confirm("Delete this job posting? This will also remove all applicant data for this job.")) return;
-    try { await api.deleteJob(id); load(); setToast("✅ Job deleted"); }
+    try { await api.deleteJob(id); load(1); setToast("✅ Job deleted"); }
     catch (e) { setToast(`❌ ${e.message}`); }
   };
   const toggle = async (id, status) => {
     const isClosed = status === 'closed' || status === 'Closed';
     try {
       await api.patchJob(id, { status: isClosed ? 'active' : 'closed' });
-      load();
+      load(1);
       setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`);
     } catch (e) { setToast(`❌ ${e.message}`); }
   };
@@ -325,7 +326,7 @@ export default function RecruiterJobs({ user }) {
                     try {
                       await api.patchJob(j.id, { approvalStatus: 'pending_approval' });
                       setToast('✅ Submitted for admin approval');
-                      load();
+                      load(1);
                     } catch (e) { setToast(`❌ ${e.message}`); }
                   }},
                   { label: (j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close', onClick: () => toggle(j.id, j.status) },
@@ -334,6 +335,24 @@ export default function RecruiterJobs({ user }) {
               </div>
             </div>
           ))}
+          {/* Pagination */}
+          {pgMeta.total > PAGE_SIZE_JOBS && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid #F1F5F9', marginTop: 8 }}>
+              <span style={{ fontSize: 13, color: '#6B7280' }}>
+                {pgMeta.total} total · page {pgMeta.page} of {pgMeta.pages}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button disabled={pgMeta.page <= 1} onClick={() => load(pgMeta.page - 1)}
+                  style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid #E2E8F0', background: pgMeta.page <= 1 ? '#F9FAFB' : '#fff', color: pgMeta.page <= 1 ? '#9CA3AF' : '#374151', cursor: pgMeta.page <= 1 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  ← Prev
+                </button>
+                <button disabled={pgMeta.page >= pgMeta.pages} onClick={() => load(pgMeta.page + 1)}
+                  style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid #E2E8F0', background: pgMeta.page >= pgMeta.pages ? '#F9FAFB' : '#fff', color: pgMeta.page >= pgMeta.pages ? '#9CA3AF' : '#374151', cursor: pgMeta.page >= pgMeta.pages ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {showModal && (
@@ -414,7 +433,7 @@ export default function RecruiterJobs({ user }) {
                 await api.patchJob(editingJob.id, payload);
                 setToast('✅ Job updated!');
                 setEditingJob(null);
-                load();
+                load(1);
               } catch (e) { setToast(`❌ ${e.message}`); }
               setEditSaving(false);
             }}

@@ -94,65 +94,88 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.08)'; }}
          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = card.boxShadow; }}>
 
-      {/* ── Header: avatar + identity + resume button ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, background: 'linear-gradient(135deg,#0176D3 0%,#014486 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 18 : 22, boxShadow: '0 4px 12px rgba(1,118,211,0.25)' }}>
-            {(c.name || '?')[0].toUpperCase()}
-          </div>
-        </div>
-
-        {/* Identity */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', marginBottom: 2 }}>
-            <div style={{ color: '#0F172A', fontWeight: 800, fontSize: isMobile ? 15 : 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, letterSpacing: '-0.3px' }}>
-              {c.name || '—'}
+      {/* ── Header: avatar + identity + action buttons ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, background: 'linear-gradient(135deg,#0176D3 0%,#014486 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 18 : 22, boxShadow: '0 4px 12px rgba(1,118,211,0.25)' }}>
+              {(c.name || '?')[0].toUpperCase()}
             </div>
-            <PresenceBadge userId={c.id || c._id} showLabel={true} />
           </div>
 
-          {/* Title */}
-          {c.title && (
-            <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {c.title}
+          {/* Identity */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', marginBottom: 2 }}>
+              <div style={{ color: '#0F172A', fontWeight: 800, fontSize: isMobile ? 15 : 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, letterSpacing: '-0.3px' }}>
+                {c.name || '—'}
+              </div>
+              <PresenceBadge userId={c.id || c._id} showLabel={true} />
+            </div>
+
+            {/* Title */}
+            {c.title && (
+              <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {c.title}
+              </div>
+            )}
+
+            {/* Meta row — location / exp / phone */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {c.location && (
+                <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>
+                  📍 {c.location}
+                </span>
+              )}
+              {exp > 0 && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>⏱ {exp}y exp</span>}
+              {c.phone && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>📞 {c.phone}</span>}
+            </div>
+
+            {/* Email & Placement Meta */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+              <div style={{ color: '#64748B', fontSize: 11, opacity: 0.8 }}>✉ {c.email}</div>
+              {c.expectedCTC && <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700 }}>💰 {c.expectedCTC} Expected</div>}
+              {c.availability && <div style={{ color: '#2E844A', fontSize: 11, fontWeight: 700 }}>⚡ {c.availability}</div>}
+            </div>
+          </div>
+
+          {/* Desktop buttons (shown inline on desktop only) */}
+          {!isMobile && (
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => onEditProfile(c)}
+                style={{ ...btnP, padding: '8px 14px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                ✏️ Edit
+              </button>
+              <button onClick={() => onPark?.(c)}
+                style={{ background: '#fff', border: '1.5px solid #F59E0B', color: '#F59E0B', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#F59E0B'; }}>
+                🅿️ Park
+              </button>
+              <button onClick={() => onViewResume(c)}
+                style={{ ...btnG, padding: '8px 14px', fontSize: 12, borderRadius: 8, color: '#0176D3', borderColor: 'rgba(1,118,211,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                📋 Resume
+              </button>
             </div>
           )}
-
-          {/* Meta row — location / exp / phone */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {c.location && (
-              <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>
-                📍 {c.location}
-              </span>
-            )}
-            {exp > 0 && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>⏱ {exp}y exp</span>}
-            {c.phone && <span style={{ color: '#64748B', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: '#F1F5F9', padding: '2px 8px', borderRadius: 6 }}>📞 {c.phone}</span>}
-          </div>
-
-          {/* Email & Placement Meta */}
-          <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-            <div style={{ color: '#64748B', fontSize: 11, opacity: 0.8 }}>✉ {c.email}</div>
-            {c.expectedCTC && <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700 }}>💰 {c.expectedCTC} Expected</div>}
-            {c.availability && <div style={{ color: '#2E844A', fontSize: 11, fontWeight: 700 }}>⚡ {c.availability}</div>}
-          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button onClick={() => onEditProfile(c)}
-            style={{ ...btnP, padding: '8px 14px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            ✏️ Edit
-          </button>
-          <button onClick={() => onPark?.(c)}
-            style={{ background: '#fff', border: '1.5px solid #F59E0B', color: '#F59E0B', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#F59E0B'; }}>
-            🅿️ Park
-          </button>
-          <button onClick={() => onViewResume(c)}
-            style={{ ...btnG, padding: '8px 14px', fontSize: 12, borderRadius: 8, color: '#0176D3', borderColor: 'rgba(1,118,211,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            📋 Resume
-          </button>
-        </div>
+        {/* Mobile buttons (shown as full-width row below identity) */}
+        {isMobile && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => onEditProfile(c)}
+              style={{ ...btnP, flex: 1, padding: '9px 0', fontSize: 13, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              ✏️ Edit
+            </button>
+            <button onClick={() => onPark?.(c)}
+              style={{ flex: 1, background: '#fff', border: '1.5px solid #F59E0B', color: '#F59E0B', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              🅿️ Park
+            </button>
+            <button onClick={() => onViewResume(c)}
+              style={{ flex: 1, ...btnG, padding: '9px 0', fontSize: 13, borderRadius: 8, color: '#0176D3', borderColor: 'rgba(1,118,211,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              📋 Resume
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Skills ── */}
@@ -211,7 +234,7 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
 
       {/* ── Add to pipeline ── */}
       <div style={{ paddingTop: 14, borderTop: '1px solid #F1F5F9', marginTop: 4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 240, position: 'relative' }} ref={dropRef}>
+        <div style={{ flex: 1, minWidth: isMobile ? 0 : 200, position: 'relative' }} ref={dropRef}>
           <label style={{ color: '#64748B', fontSize: 10, fontWeight: 800, marginBottom: 6, display: 'block', letterSpacing: 0.5 }}>QUICK ADD TO JOB</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -382,7 +405,7 @@ export default function RecruiterCandidates({ user }) {
       try {
         const [res, myJobs] = await Promise.all([
           api.getUsers(buildServerParams(1)),
-          api.getJobs({ recruiterId: user.id, limit: 200 }),
+          api.getJobs({ recruiterId: user.id }),
         ]);
         const rawCands = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
         const pg = res?.pagination || {};

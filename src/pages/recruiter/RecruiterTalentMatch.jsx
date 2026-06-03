@@ -26,7 +26,14 @@ export default function RecruiterTalentMatch({ user }) {
   const [actionLoading, setActionLoading] = useState({});
   const [jobsLoading, setJobsLoad] = useState(true);
   const [profileCandidate, setProfileCandidate] = useState(null);
+  const [jobGridPage, setJobGridPage] = useState(1);
   const [resumeCandidate, setResumeCandidate] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const jobPickerRef = useRef(null);
 
   useEffect(() => {
@@ -38,7 +45,7 @@ export default function RecruiterTalentMatch({ user }) {
 
   useEffect(() => {
     const jobParam = searchParams.get('job');
-    api.getJobs({ recruiterId: user.id, limit: 200 })
+    api.getJobs({ recruiterId: user.id })
       .then(j => {
         const list = Array.isArray(j) ? j : (j?.data || []);
         setJobs(list);
@@ -83,6 +90,8 @@ export default function RecruiterTalentMatch({ user }) {
   useEffect(() => {
     if (selJob) run(selJob);
   }, [selJob]);
+
+  useEffect(() => setJobGridPage(1), [selJob]); // eslint-disable-line
 
   const performAction = async (candidateId, action) => {
     setActionLoading(prev => ({ ...prev, [candidateId + action]: true }));
@@ -207,7 +216,7 @@ export default function RecruiterTalentMatch({ user }) {
                 {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} — click any card to run candidate match
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>
-                {filteredJobs.slice(0, 60).map(j => {
+                {filteredJobs.slice((jobGridPage - 1) * 20, jobGridPage * 20).map(j => {
                   const jid = String(j.id || j._id);
                   const isOpen = j.status === 'active' || j.status === 'open';
                   return (
@@ -227,6 +236,24 @@ export default function RecruiterTalentMatch({ user }) {
                     </button>
                   );
                 })}
+                {/* pagination controls */}
+                {filteredJobs.length > 20 && (
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid #E2E8F0', marginTop: 8 }}>
+                    <button
+                      disabled={jobGridPage <= 1}
+                      onClick={() => setJobGridPage(p => p - 1)}
+                      style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: jobGridPage <= 1 ? '#F9FAFB' : '#fff', color: jobGridPage <= 1 ? '#9CA3AF' : '#374151', cursor: jobGridPage <= 1 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                    >← Prev</button>
+                    <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
+                      {(jobGridPage - 1) * 20 + 1}–{Math.min(jobGridPage * 20, filteredJobs.length)} of {filteredJobs.length} jobs
+                    </span>
+                    <button
+                      disabled={jobGridPage * 20 >= filteredJobs.length}
+                      onClick={() => setJobGridPage(p => p + 1)}
+                      style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: jobGridPage * 20 >= filteredJobs.length ? '#F9FAFB' : '#fff', color: jobGridPage * 20 >= filteredJobs.length ? '#9CA3AF' : '#374151', cursor: jobGridPage * 20 >= filteredJobs.length ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                    >Next →</button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -298,8 +325,8 @@ export default function RecruiterTalentMatch({ user }) {
                   e.currentTarget.style.borderColor = `${rc[r.recommendation] || "#0176D3"}25`;
                 }}
               >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: "50%", background: rc[r.recommendation] || "#0176D3", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 900, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>{i + 1}</div>
                       <span style={{ color: "#181818", fontSize: 19, fontWeight: 800, letterSpacing: '-0.3px' }}>{r.candidate.name}</span>
@@ -314,11 +341,9 @@ export default function RecruiterTalentMatch({ user }) {
                       {r._reachedOut && <Badge label="Reach Out Sent" color="#0176D3" />}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📍 <span style={{ color: '#1E293B' }}>{r.candidate.location || "Remote"}</span></span>
-                      <span style={{ opacity: 0.3 }}>|</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>💼 <span style={{ color: '#1E293B' }}>{r.candidate.title || "Professional"}</span></span>
-                      <span style={{ opacity: 0.3 }}>|</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📅 <span style={{ color: '#1E293B' }}>{r.candidate.experience || 0} Yrs</span></span>
                     </div>
 
@@ -378,7 +403,7 @@ export default function RecruiterTalentMatch({ user }) {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 170 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: isMobile ? 0 : 170, width: isMobile ? '100%' : 'auto' }}>
                     <button
                       onClick={() => performAction(r.candidate.id || r.candidate?._id, 'shortlist')}
                       disabled={actionLoading[(r.candidate.id || r.candidate?._id) + 'shortlist'] || r._shortlisted}

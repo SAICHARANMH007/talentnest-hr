@@ -212,7 +212,7 @@ export default function TalentPool({ user }) {
                           <td style={S.td}>
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
-                                onClick={() => setDetailUser({ ...cand, role: 'candidate', _partial: true })}
+                                onClick={() => setDetailUser({ ...cand, id: String(cand.userId?._id || cand.userId || cand._id), role: 'candidate', _partial: true })}
                                 style={{ ...btnG, fontSize: 12, padding: '6px 12px' }}>
                                 👁️ View
                               </button>

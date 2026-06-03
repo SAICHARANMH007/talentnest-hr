@@ -18,7 +18,7 @@ export default function RecruiterSmartMatch({ user }) {
   const [jobsLoading, setJobsLoad] = useState(true);
 
   useEffect(() => {
-    api.getJobs({ recruiterId: user.id, limit: 200 })
+    api.getJobs({ recruiterId: user.id })
       .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
       .catch(() => { })
       .finally(() => setJobsLoad(false));
