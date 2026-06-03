@@ -6,7 +6,7 @@ export default function CandidateReferEarn({ user }) {
   return (
     <div style={{ maxWidth: 600, margin: '0 auto' }}>
       <PageHeader
-        title="Refer & Earn"
+        title="Refer & Grow"
         subtitle="Invite friends to TalentNest HR, earn coins, and unlock exclusive profile badges"
       />
       <ReferralHub user={user} />
