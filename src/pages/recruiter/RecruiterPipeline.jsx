@@ -380,7 +380,7 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
       {tags.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {tags.map(tag => (
-            <span key={tag} style={{ background: `${TAG_COLORS[tag] || '#0176D3'}22`, border: `1px solid ${TAG_COLORS[tag] || '#0176D3'}44`, color: TAG_COLORS[tag] || '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>
+            <span key={tag} style={{ background: `${tagColors[tag] || '#0176D3'}22`, border: `1px solid ${tagColors[tag] || '#0176D3'}44`, color: tagColors[tag] || '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>
               {tag}
             </span>
           ))}
@@ -475,13 +475,13 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
             <button onClick={() => setShowTags(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}>✕</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {PRESET_TAGS.map(tag => {
+            {presetTags.map(tag => {
               const active = tags.includes(tag);
               return (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
-                  style={{ background: active ? `${TAG_COLORS[tag]}22` : '#FFFFFF', border: `1px solid ${active ? TAG_COLORS[tag] : '#DDDBDA'}`, borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: active ? 700 : 400, color: active ? (TAG_COLORS[tag] || '#0176D3') : '#706E6B', cursor: 'pointer', transition: 'all 0.15s' }}
+                  style={{ background: active ? `${tagColors[tag]}22` : '#FFFFFF', border: `1px solid ${active ? tagColors[tag] : '#DDDBDA'}`, borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: active ? 700 : 400, color: active ? (tagColors[tag] || '#0176D3') : '#706E6B', cursor: 'pointer', transition: 'all 0.15s' }}
                 >
                   {active ? '✓ ' : ''}{tag}
                 </button>
