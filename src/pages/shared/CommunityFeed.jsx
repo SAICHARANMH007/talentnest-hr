@@ -910,7 +910,7 @@ export default function CommunityFeed({ user }) {
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>
                     {networkOnly
-                      ? connections.length === 0 ? 'Build your network first' : 'Your connections haven't posted yet'
+                      ? connections.length === 0 ? 'Build your network first' : "Your connections haven't posted yet"
                       : isFiltered ? 'No posts match' : 'No posts yet'}
                   </div>
                   <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
