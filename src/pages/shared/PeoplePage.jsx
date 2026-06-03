@@ -99,18 +99,39 @@ function PersonCard({ person, onAction, loading }) {
   );
 }
 
+// ── Suggestion reason chip ─────────────────────────────────────────────────────
+function ReasonChip({ reason }) {
+  if (!reason) return null;
+  const icon =
+    reason.includes('invited')         ? '📨' :
+    reason.includes('mutual')          ? '🤝' :
+    reason.includes('similar role') || reason.includes('Same role') ? '👥' :
+    reason.includes('Applied')         ? '💼' :
+    reason.includes('skill')           ? '⚡' :
+    reason.includes('department')      ? '🏢' : '✨';
+  return (
+    <div style={{ fontSize: 10, color: '#6B7280', background: '#F3F4F6', borderRadius: 20, padding: '3px 8px', marginTop: 4, display: 'inline-block' }}>
+      {icon} {reason}
+    </div>
+  );
+}
+
 // ── Person Grid Card (for suggestions) ────────────────────────────────────────
 function PersonGridCard({ person, onAction, loading }) {
   return (
-    <div style={{ ...card, padding: '20px 16px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10 }}>
-      <div style={{ position: 'relative' }}>
-        <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={60} role={person.role} />
-      </div>
+    <div style={{ ...card, padding: '20px 16px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 8 }}>
+      <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={60} role={person.role} />
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
         <RoleBadge role={person.role} />
-        {person.title && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>{person.title}</div>}
-        {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>📍 {person.location}</div>}
+        {person.title && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 5 }}>{person.title}</div>}
+        {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
+        {person.mutualConnections > 0 && (
+          <div style={{ fontSize: 11, color: '#059669', marginTop: 4, fontWeight: 600 }}>
+            🤝 {person.mutualConnections} mutual connection{person.mutualConnections !== 1 ? 's' : ''}
+          </div>
+        )}
+        <ReasonChip reason={person.suggestionReason} />
       </div>
       <ConnectionButton person={person} onAction={onAction} loading={loading} />
     </div>
@@ -337,7 +358,10 @@ export default function PeoplePage({ user }) {
                     </div>
                   ) : (
                     <>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>People you may know</div>
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>People you may know</div>
+                        <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Based on your role, skills, mutual connections, and job applications</div>
+                      </div>
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                         {suggestions.filter(p => String(p._id || p.id) !== uid).map(person => (
                           <PersonGridCard
