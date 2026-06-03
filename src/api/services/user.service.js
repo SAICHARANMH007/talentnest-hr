@@ -36,8 +36,8 @@ export const userService = {
     const toArr = r => Array.isArray(r) ? r : (Array.isArray(r?.candidates) ? r.candidates : (Array.isArray(r?.data) ? r.data : []));
     if (typeof params === 'string') {
       const url = params === 'candidate'
-        ? '/users/candidates?limit=100'
-        : `/users?role=${params}&limit=100`;
+        ? '/users/candidates?limit=10000000'
+        : `/users?role=${params}&limit=10000000`;
       return toArr(await req('GET', url));
     }
     
@@ -49,8 +49,7 @@ export const userService = {
       }
     });
 
-    // Default limit to 50 if not provided
-    if (!q.has('limit')) q.set('limit', '50');
+    if (!q.has('limit')) q.set('limit', '10000000');
     
     const url = (rest.role === 'candidate' ? '/users/candidates?' : '/users?') + q.toString();
     const res = await req('GET', url);
@@ -64,7 +63,7 @@ export const userService = {
         q.set(k, Array.isArray(v) ? v.join(',') : String(v));
       }
     });
-    if (!q.has('limit')) q.set('limit', '50');
+    if (!q.has('limit')) q.set('limit', '10000000');
     return req('GET', `/users?${q.toString()}`);
   },
   async getUserCount(role)      { return req('GET', `/users/count${role ? `?role=${role}` : ''}`); },

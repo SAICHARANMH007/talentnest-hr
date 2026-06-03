@@ -11,7 +11,7 @@ export const applicationService = {
     return Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
   },
   async getApplications(opts = {}) {
-    const { jobId, candidateId, stage, status, limit = 50, page, recruiterId, platform, startDate, endDate, email } = opts;
+    const { jobId, candidateId, stage, status, limit = 10000000, page, recruiterId, platform, startDate, endDate, email } = opts;
     const params = new URLSearchParams();
     if (jobId)       params.set('jobId', jobId);
     if (candidateId) params.set('candidateId', candidateId);
