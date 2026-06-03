@@ -36,16 +36,12 @@ export default function RecruiterMyPerformance({ user }) {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [apps, setApps] = useState([]);
-  const [interviews, setInterviews] = useState([]);
-  const [offers, setOffers] = useState([]);
 
   useEffect(() => {
     Promise.allSettled([
       api.getJobs({ recruiterId: user.id, limit: 200 }),
       api.getApplications({ recruiterId: user.id, limit: 500 }),
-      api.getInterviews({ recruiterId: user.id }),
-      api.getOffers({ recruiterId: user.id }),
-    ]).then(([jr, ar, ir, or_]) => {
+    ]).then(([jr, ar]) => {
       if (jr.status === 'fulfilled') {
         const list = Array.isArray(jr.value) ? jr.value : (jr.value?.data || []);
         setJobs(list);
@@ -53,14 +49,6 @@ export default function RecruiterMyPerformance({ user }) {
       if (ar.status === 'fulfilled') {
         const list = Array.isArray(ar.value) ? ar.value : (ar.value?.data || []);
         setApps(list);
-      }
-      if (ir.status === 'fulfilled') {
-        const list = Array.isArray(ir.value) ? ir.value : (ir.value?.data || []);
-        setInterviews(list);
-      }
-      if (or_.status === 'fulfilled') {
-        const list = Array.isArray(or_.value) ? or_.value : (or_.value?.data || []);
-        setOffers(list);
       }
       setLoading(false);
     });
@@ -78,16 +66,17 @@ export default function RecruiterMyPerformance({ user }) {
   const activeJobs = jobs.filter(j => j.status === 'active' || j.status === 'published').length;
   const totalJobs = jobs.length;
 
-  const hired = apps.filter(a => a.stage === 'hired' || a.status === 'hired').length;
-  const offered = apps.filter(a => ['offer', 'offered', 'offer_sent'].includes(a.stage || a.status)).length;
-  const screening = apps.filter(a => ['screening', 'shortlisted', 'interview'].includes(a.stage || a.status)).length;
   const totalApps = apps.length;
 
-  const interviewsDone = interviews.filter(i => i.status === 'completed').length;
-  const interviewsUpcoming = interviews.filter(i => i.status === 'scheduled' || i.status === 'pending').length;
+  // Derive stage counts from currentStage field on applications
+  const stageOf = a => (a.currentStage || a.stage || a.status || '').toLowerCase();
+  const hired = apps.filter(a => stageOf(a) === 'hired').length;
+  const interviewsInPipeline = apps.filter(a => stageOf(a).includes('interview')).length;
+  const interviewsDone = apps.filter(a => stageOf(a).includes('interview') && (a.interviewStatus === 'completed' || stageOf(a) === 'interviewed')).length;
+  const interviewsUpcoming = interviewsInPipeline - interviewsDone;
 
-  const offersAccepted = offers.filter(o => o.status === 'accepted' || o.status === 'signed').length;
-  const offersSent = offers.filter(o => ['sent', 'accepted', 'signed', 'pending'].includes(o.status)).length;
+  const offersSent = apps.filter(a => stageOf(a).includes('offer')).length;
+  const offersAccepted = apps.filter(a => ['offer accepted', 'hired'].includes(stageOf(a))).length;
   const offerAcceptRate = offersSent > 0 ? Math.round((offersAccepted / offersSent) * 100) : 0;
 
   // Avg time to fill (days from job createdAt to first hired app on that job)

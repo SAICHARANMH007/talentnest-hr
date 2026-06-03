@@ -482,9 +482,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
     // Priority 1: Use Backend Aggregates (Most Reliable for High Volume)
     // serverStats.openJobs comes from a real DB countDocuments — no cap.
     // Never use the frontend job list length, which is limited to 1000.
-    const hiredCount  = serverStats?.placements ?? localAppStats.pipeline.selected ?? 0;
-    const totalApps   = serverStats?.applications ?? localAppStats.total ?? 0;
-    const candCount   = serverStats?.candidates ?? allCandidates.length ?? 0;
+    // Fallback chain: serverStats → analyticsData.overview → localAppStats → 0
+    const anaTotal    = analyticsData?.overview?.totalApplications || 0;
+    const anaHired    = analyticsData?.overview?.hired || 0;
+    const stagesSum   = analyticsData?.byStage?.reduce((s, b) => s + b.count, 0) || 0;
+    const hiredCount  = serverStats?.placements || anaHired || localAppStats.pipeline.selected || 0;
+    const totalApps   = serverStats?.applications || anaTotal || localAppStats.total || stagesSum || 0;
+    const candCount   = serverStats?.candidates || stagesSum || allCandidates.length || 0;
     // Always prefer server aggregate for open jobs count (no limit)
     const activeJobs  = serverStats?.openJobs || jobCounts.active || 0;
     const totalJobs   = serverStats?.totalJobs || jobCounts.total || 0;
@@ -514,7 +518,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
       fillRate:        totalJobs > 0 ? Math.round((hiredCount / totalJobs) * 100) : 0,
       avgTimeToHire:   null,
     };
-  }, [serverStats, allCandidates, jobCounts, localAppStats]);
+  }, [serverStats, allCandidates, jobCounts, localAppStats, analyticsData]);
   
   const stageBreakdown = useMemo(() => {
     // 1. Priority: Backend Aggregates — only when byStage has actual data.
@@ -963,7 +967,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
 
       {/* ── KPI Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-        <KPICard loading={loading} label="Total Candidates" value={analyticsData?.total ?? stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
+        <KPICard loading={loading} label="Total Candidates" value={stats.totalCandidates} icon="👤" color="#0176D3" onClick={openCandidatesDrill} />
         <KPICard loading={loading} label="PLATFORM REVENUE" value={`₹${(stats.revenue || 0).toLocaleString('en-IN')}`} icon="💰" color="#10B981" />
         <KPICard loading={loading} label="OPEN POSITIONS" value={stats.activeJobs} icon="💼" color="#F59E0B" onClick={openActiveJobsDrill} />
         <KPICard loading={loading} label="Total Applications" value={stats.totalApps} icon="📨" color="#7c3aed"
