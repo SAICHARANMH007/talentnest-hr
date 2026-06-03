@@ -12,15 +12,21 @@ function timeAgo(date) {
   return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const ROLE_COLOR = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' };
-const ROLE_LABEL = { admin: 'HR Admin', recruiter: 'Recruiter', candidate: 'Candidate', super_admin: 'Super Admin', superadmin: 'Super Admin' };
+const ROLE_COLOR = {
+  admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669',
+  super_admin: '#DC2626', superadmin: '#DC2626',
+};
+const ROLE_LABEL = {
+  admin: 'HR Admin', recruiter: 'Recruiter', candidate: 'Candidate',
+  super_admin: 'Super Admin', superadmin: 'Super Admin',
+};
 
 function Avatar({ name, src, size = 40, role }) {
   const bg = ROLE_COLOR[role] || '#0176D3';
   if (src) return (
     <img src={src} alt={name}
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${bg}22` }}
-      onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+      onError={e => { e.currentTarget.style.display = 'none'; }}
     />
   );
   return (
@@ -40,8 +46,13 @@ function RoleBadge({ role }) {
   );
 }
 
-function VerifiedBadge() {
-  return <span title="Verified member" style={{ fontSize: 13, lineHeight: 1 }}>✓</span>;
+// "1st" degree connection badge — shown on posts from connections
+function ConnectionDegree() {
+  return (
+    <span title="1st degree connection" style={{ fontSize: 10, fontWeight: 700, background: '#D1FAE5', color: '#065F46', borderRadius: 4, padding: '2px 6px', letterSpacing: '0.02em' }}>
+      1st
+    </span>
+  );
 }
 
 function PostTypeBadge({ type }) {
@@ -67,7 +78,7 @@ function ContentWithHashtags({ text, onHashtagClick }) {
       {parts.map((p, i) =>
         p.startsWith('#')
           ? <span key={i} onClick={() => onHashtagClick?.(p.toLowerCase())}
-              style={{ color: '#0176D3', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}
+              style={{ color: '#0176D3', fontWeight: 600, cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
               onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
               {p}
@@ -78,17 +89,33 @@ function ContentWithHashtags({ text, onHashtagClick }) {
   );
 }
 
+// ── Inline connect button (shown on stranger posts) ────────────────────────────
+function InlineConnectButton({ authorId, authorName, pendingIds, onConnect }) {
+  const isPending = pendingIds.has(String(authorId));
+  return (
+    <button
+      onClick={() => onConnect(authorId)}
+      disabled={isPending}
+      style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${isPending ? '#D1D5DB' : '#0176D3'}`, background: isPending ? '#F9FAFB' : '#EFF6FF', color: isPending ? '#9CA3AF' : '#1D4ED8', fontSize: 11, fontWeight: 700, cursor: isPending ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s' }}
+      title={isPending ? 'Request sent' : `Connect with ${authorName}`}
+      onMouseEnter={e => { if (!isPending) { e.currentTarget.style.background = '#0176D3'; e.currentTarget.style.color = '#fff'; } }}
+      onMouseLeave={e => { if (!isPending) { e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.color = '#1D4ED8'; } }}>
+      {isPending ? '✓ Sent' : '+ Connect'}
+    </button>
+  );
+}
+
 // ── Image Lightbox ─────────────────────────────────────────────────────────────
 function Lightbox({ images, index, onClose }) {
   const [cur, setCur] = useState(index);
   useEffect(() => {
-    const handler = (e) => {
+    const h = (e) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowRight') setCur(c => Math.min(c + 1, images.length - 1));
-      if (e.key === 'ArrowLeft') setCur(c => Math.max(c - 1, 0));
+      if (e.key === 'ArrowLeft')  setCur(c => Math.max(c - 1, 0));
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, [images.length, onClose]);
 
   return (
@@ -120,13 +147,10 @@ function ImageGrid({ images }) {
   const [lightbox, setLightbox] = useState(null);
   if (!images?.length) return null;
   const n = images.length;
-  const gridStyle = n === 1
-    ? { gridTemplateColumns: '1fr' }
-    : n === 2
-      ? { gridTemplateColumns: '1fr 1fr' }
-      : n === 3
-        ? { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto' }
-        : { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
+  const gridStyle = n === 1 ? { gridTemplateColumns: '1fr' }
+    : n === 2 ? { gridTemplateColumns: '1fr 1fr' }
+    : n === 3 ? { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto' }
+    : { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
 
   return (
     <>
@@ -151,10 +175,10 @@ function ImageGrid({ images }) {
 
 // ── Reactions ─────────────────────────────────────────────────────────────────
 const REACTIONS = [
-  { type: 'like',       emoji: '👍', label: 'Like',      color: '#1D4ED8' },
-  { type: 'celebrate',  emoji: '🎉', label: 'Celebrate', color: '#B45309' },
-  { type: 'support',    emoji: '💙', label: 'Support',   color: '#0369A1' },
-  { type: 'insightful', emoji: '💡', label: 'Insightful',color: '#7C3AED' },
+  { type: 'like',       emoji: '👍', label: 'Like',       color: '#1D4ED8' },
+  { type: 'celebrate',  emoji: '🎉', label: 'Celebrate',  color: '#B45309' },
+  { type: 'support',    emoji: '💙', label: 'Support',    color: '#0369A1' },
+  { type: 'insightful', emoji: '💡', label: 'Insightful', color: '#7C3AED' },
 ];
 
 function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) {
@@ -164,23 +188,17 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
   const counts = {};
   (post.reactions || []).forEach(r => { counts[r.type] = (counts[r.type] || 0) + 1; });
   const totalReactions = post.reactions?.length || 0;
-  const totalComments  = post.comments?.length || 0;
-
+  const totalComments  = post.comments?.length  || 0;
   const rDef = myReaction ? REACTIONS.find(r => r.type === myReaction.type) : REACTIONS[0];
 
   return (
     <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 14, paddingTop: 10 }}>
-      {/* Reaction summary row */}
       {(totalReactions > 0 || totalComments > 0) && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 2px' }}>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
             {Object.entries(counts).map(([type, count]) => {
               const r = REACTIONS.find(x => x.type === type);
-              return r ? (
-                <span key={type} style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <span>{r.emoji}</span><span>{count}</span>
-                </span>
-              ) : null;
+              return r ? <span key={type} style={{ fontSize: 12, color: '#6B7280' }}>{r.emoji} {count}</span> : null;
             })}
             {totalReactions > 0 && <span style={{ fontSize: 12, color: '#9CA3AF' }}>{totalReactions} reaction{totalReactions !== 1 ? 's' : ''}</span>}
           </div>
@@ -193,9 +211,8 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
         </div>
       )}
 
-      {/* Action buttons */}
       <div style={{ display: 'flex', gap: 2 }}>
-        {/* React button with hover picker */}
+        {/* Like / react */}
         <div style={{ position: 'relative' }}
           onMouseEnter={() => { clearTimeout(timerRef.current); setShowPicker(true); }}
           onMouseLeave={() => { timerRef.current = setTimeout(() => setShowPicker(false), 300); }}>
@@ -220,7 +237,7 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
           )}
         </div>
 
-        {/* Comment button */}
+        {/* Comment */}
         <button onClick={onToggleComments}
           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: showComments ? '#F3F4F6' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: showComments ? 600 : 500, color: '#6B7280', transition: 'background 0.12s' }}
           onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
@@ -228,7 +245,6 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
           💬 Comment
         </button>
 
-        {/* Share button */}
         <ShareButton postId={post._id} />
       </div>
     </div>
@@ -239,9 +255,7 @@ function ShareButton({ postId }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
     const url = `${window.location.origin}/app/feed#${postId}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: 'TalentNest Post', url }); return; } catch {}
-    }
+    if (navigator.share) { try { await navigator.share({ title: 'TalentNest Post', url }); return; } catch {} }
     await navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -270,16 +284,14 @@ function BookmarkButton({ postId, bookmarks, onToggle }) {
 
 // ── Comment Section ────────────────────────────────────────────────────────────
 function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus }) {
-  const [text, setText] = useState('');
-  const [expanded, setExpanded] = useState(false);
+  const [text,       setText]       = useState('');
+  const [expanded,   setExpanded]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
   const comments = post.comments || [];
   const visible  = expanded ? comments : comments.slice(-3);
 
-  useEffect(() => {
-    if (autoFocus) inputRef.current?.focus();
-  }, [autoFocus]);
+  useEffect(() => { if (autoFocus) inputRef.current?.focus(); }, [autoFocus]);
 
   const submit = async () => {
     if (!text.trim() || submitting) return;
@@ -311,7 +323,7 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4 }}>
                 <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
-                {(String(c.userId) === String(userId)) && (
+                {String(c.userId) === String(userId) && (
                   <button onClick={() => onDeleteComment(post._id, String(c._id))}
                     style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
                     Delete
@@ -322,10 +334,8 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
           </div>
         ))}
       </div>
-
-      {/* Add comment */}
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-        <Avatar name={''} size={32} role={'candidate'} />
+        <Avatar name={''} size={32} role={''} />
         <div style={{ flex: 1, display: 'flex', gap: 6 }}>
           <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
@@ -346,24 +356,18 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
 }
 
 // ── Post Card ──────────────────────────────────────────────────────────────────
-function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComment, onDelete, bookmarks, onToggleBookmark, onHashtagClick }) {
+function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, bookmarks, onToggleBookmark, onHashtagClick }) {
   const [showComments, setShowComments] = useState(false);
-  const [commentAutoFocus, setCommentAutoFocus] = useState(false);
-  const isOwnPost = String(post.authorId) === String(userId);
-  const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
-  const isVerified = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
-
-  const toggleComments = (focus = false) => {
-    setShowComments(v => !v);
-    setCommentAutoFocus(focus);
-  };
+  const isOwnPost   = String(post.authorId) === String(userId);
+  const isAdmin     = ['admin', 'super_admin', 'superadmin'].includes(userRole);
+  const isVerified  = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
+  const isConnected = connectionIds.has(String(post.authorId));
+  const showConnect = !isOwnPost && !isConnected;
 
   return (
-    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : undefined }}>
+    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9' }}>
       {post.isPinned && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>
-          📌 Pinned post
-        </div>
+        <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>📌 Pinned post</div>
       )}
 
       {/* Header */}
@@ -372,7 +376,8 @@ function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComme
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
             <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{post.authorName || 'Member'}</span>
-            {isVerified && <VerifiedBadge />}
+            {isVerified  && <span title="Verified member" style={{ fontSize: 11, color: '#059669' }}>✓</span>}
+            {isConnected && <ConnectionDegree />}
             <RoleBadge role={post.authorRole} />
             {post.postType && post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
           </div>
@@ -381,16 +386,22 @@ function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComme
             {timeAgo(post.createdAt)}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+          {showConnect && (
+            <InlineConnectButton
+              authorId={post.authorId}
+              authorName={post.authorName}
+              pendingIds={pendingIds}
+              onConnect={onConnect}
+            />
+          )}
           <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
           {(isOwnPost || isAdmin) && (
             <button onClick={() => onDelete(post._id)}
               style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4, transition: 'color 0.15s' }}
               title="Delete post"
               onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
-              onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>
-              ×
-            </button>
+              onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>×</button>
           )}
         </div>
       </div>
@@ -400,26 +411,23 @@ function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComme
         <ContentWithHashtags text={post.content} onHashtagClick={onHashtagClick} />
       </div>
 
-      {/* Images */}
       <ImageGrid images={post.images} />
 
-      {/* Reaction bar */}
       <ReactionBar
         post={post}
         userId={userId}
         onReact={onReact}
-        onToggleComments={() => { setShowComments(v => !v); setCommentAutoFocus(false); }}
+        onToggleComments={() => setShowComments(v => !v)}
         showComments={showComments}
       />
 
-      {/* Comments */}
       {showComments && (
         <CommentSection
           post={post}
           userId={userId}
           onAddComment={onAddComment}
           onDeleteComment={onDeleteComment}
-          autoFocus={commentAutoFocus}
+          autoFocus={false}
         />
       )}
     </div>
@@ -428,11 +436,10 @@ function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComme
 
 // ── Create Post ────────────────────────────────────────────────────────────────
 function CreatePost({ user, onCreate }) {
-  const [text, setText] = useState('');
-  const [postType, setPostType] = useState('update');
+  const [text,       setText]       = useState('');
+  const [postType,   setPostType]   = useState('update');
   const [submitting, setSubmitting] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const textRef = useRef(null);
+  const [expanded,   setExpanded]   = useState(false);
 
   const POST_TYPES = [
     { value: 'update',        label: '💬 Update' },
@@ -449,20 +456,17 @@ function CreatePost({ user, onCreate }) {
     try {
       await onCreate({ content: text.trim(), postType });
       setText(''); setPostType('update'); setExpanded(false);
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const charLeft = 3000 - text.length;
 
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 12, borderRadius: 14 }}>
+    <div style={{ ...card, padding: '16px 18px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
         <div style={{ flex: 1 }}>
           <textarea
-            ref={textRef}
             value={text}
             onChange={e => setText(e.target.value)}
             onFocus={() => setExpanded(true)}
@@ -475,7 +479,6 @@ function CreatePost({ user, onCreate }) {
           />
           {expanded && (
             <div style={{ marginTop: 10 }}>
-              {/* Post type chips */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                 {POST_TYPES.map(t => (
                   <button key={t.value} onClick={() => setPostType(t.value)}
@@ -486,12 +489,12 @@ function CreatePost({ user, onCreate }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
-                  {charLeft < 500 ? `${charLeft} characters left` : ''}
+                  {charLeft < 500 ? `${charLeft} left` : ''}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => { setExpanded(false); setText(''); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
                   <button onClick={submit} disabled={!text.trim() || submitting}
-                    style={{ ...btnP, fontSize: 13, padding: '7px 18px', opacity: (!text.trim() || submitting) ? 0.6 : 1, cursor: (!text.trim() || submitting) ? 'default' : 'pointer' }}>
+                    style={{ ...btnP, fontSize: 13, padding: '7px 18px', opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
                     {submitting ? 'Posting…' : 'Post'}
                   </button>
                 </div>
@@ -504,11 +507,11 @@ function CreatePost({ user, onCreate }) {
   );
 }
 
-// ── Sidebar Components ─────────────────────────────────────────────────────────
-function ProfileSidebar({ user }) {
+// ── Sidebars ───────────────────────────────────────────────────────────────────
+function ProfileSidebar({ user, connectionCount }) {
   const bg = ROLE_COLOR[user?.role] || '#0176D3';
   return (
-    <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12, borderRadius: 14 }}>
+    <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
       <div style={{ height: 70, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)` }} />
       <div style={{ padding: '0 16px 16px', marginTop: -32 }}>
         <div style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #fff', overflow: 'hidden', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, color: '#fff' }}>
@@ -521,8 +524,13 @@ function ProfileSidebar({ user }) {
           <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, marginBottom: 6 }}>{user?.title || user?.role || 'TalentNest Member'}</div>
           <RoleBadge role={user?.role} />
         </div>
+        {/* Connection count — prominent below name */}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 20, fontWeight: 900, color: '#0176D3' }}>{connectionCount}</span>
+          <span style={{ fontSize: 12, color: '#6B7280' }}>connection{connectionCount !== 1 ? 's' : ''}</span>
+        </div>
         {user?.email && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', fontSize: 12, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ marginTop: 8, fontSize: 12, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user.email}
           </div>
         )}
@@ -531,15 +539,15 @@ function ProfileSidebar({ user }) {
   );
 }
 
-function QuickStats({ myPosts, myReactions, myComments, bookmarkCount }) {
+function QuickStats({ myPosts, myReactions, bookmarkCount }) {
   const stats = [
-    { label: 'Posts',     value: myPosts,      color: '#0176D3' },
-    { label: 'Reactions', value: myReactions,   color: '#7C3AED' },
-    { label: 'Saved',     value: bookmarkCount, color: '#F59E0B' },
+    { label: 'Posts',     value: myPosts,     color: '#0176D3' },
+    { label: 'Reactions', value: myReactions,  color: '#7C3AED' },
+    { label: 'Saved',     value: bookmarkCount,color: '#F59E0B' },
   ];
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Activity</div>
+    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your Activity</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
         {stats.map(s => (
           <div key={s.label} style={{ textAlign: 'center', padding: '6px 4px' }}>
@@ -561,8 +569,8 @@ function TrendingHashtags({ posts, onHashtagClick, activeHashtag }) {
 
   if (!counts.length) return null;
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Trending Topics</div>
+    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Trending Topics</div>
       {counts.map(([tag, count]) => (
         <div key={tag} onClick={() => onHashtagClick(tag === activeHashtag ? null : tag)}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 6, background: activeHashtag === tag ? '#EFF6FF' : 'transparent', transition: 'background 0.12s' }}
@@ -576,24 +584,25 @@ function TrendingHashtags({ posts, onHashtagClick, activeHashtag }) {
   );
 }
 
-function PeoplePanel({ posts, currentUserId }) {
+// People panel — non-connections with inline Connect button
+function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnect }) {
   const people = useMemo(() => {
     const seen = new Set();
     const list = [];
     (posts || []).forEach(p => {
       const id = String(p.authorId);
-      if (!seen.has(id) && id !== String(currentUserId)) {
+      if (!seen.has(id) && id !== String(currentUserId) && !connectionIds.has(id)) {
         seen.add(id);
         list.push({ id, name: p.authorName, avatar: p.authorAvatar, role: p.authorRole, title: p.authorTitle });
       }
     });
-    return list.slice(0, 5);
-  }, [posts, currentUserId]);
+    return list.slice(0, 6);
+  }, [posts, connectionIds, currentUserId]);
 
   if (!people.length) return null;
   return (
-    <div style={{ ...card, padding: '14px 16px', borderRadius: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>People on Platform</div>
+    <div style={{ ...card, padding: '14px 16px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grow Your Network</div>
       {people.map(p => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <Avatar name={p.name} src={p.avatar} size={34} role={p.role} />
@@ -601,6 +610,12 @@ function PeoplePanel({ posts, currentUserId }) {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Member'}</div>
             <div style={{ fontSize: 10, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
           </div>
+          <button
+            onClick={() => onConnect(p.id)}
+            disabled={pendingIds.has(p.id)}
+            style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${pendingIds.has(p.id) ? '#D1D5DB' : '#0176D3'}`, background: 'transparent', color: pendingIds.has(p.id) ? '#9CA3AF' : '#0176D3', fontSize: 11, fontWeight: 700, cursor: pendingIds.has(p.id) ? 'default' : 'pointer', flexShrink: 0 }}>
+            {pendingIds.has(p.id) ? '✓' : '+'}
+          </button>
         </div>
       ))}
     </div>
@@ -612,14 +627,11 @@ function SearchBar({ value, onChange }) {
   return (
     <div style={{ position: 'relative', marginBottom: 12 }}>
       <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Search posts…"
+      <input value={value} onChange={e => onChange(e.target.value)}
+        placeholder="Search posts, people, hashtags…"
         style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
         onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
-        onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
-      />
+        onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
       {value && (
         <button onClick={() => onChange('')}
           style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
@@ -628,15 +640,14 @@ function SearchBar({ value, onChange }) {
   );
 }
 
-// ── Saved Posts View ───────────────────────────────────────────────────────────
 function SavedPostsView({ posts, bookmarks, ...props }) {
   const saved = posts.filter(p => bookmarks.includes(p._id));
   if (!saved.length) {
     return (
       <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>★</div>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No saved posts yet</div>
-        <div style={{ fontSize: 13, color: '#9CA3AF' }}>Click the ☆ on any post to save it here.</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No saved posts</div>
+        <div style={{ fontSize: 13, color: '#9CA3AF' }}>Click ☆ on any post to save it here.</div>
       </div>
     );
   }
@@ -645,28 +656,27 @@ function SavedPostsView({ posts, bookmarks, ...props }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 const BOOKMARK_KEY = 'tn_feed_bookmarks';
-
-function loadBookmarks() {
-  try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch { return []; }
-}
-function saveBookmarks(ids) {
-  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ids));
-}
+function loadBookmarks() { try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch { return []; } }
+function saveBookmarks(ids) { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ids)); }
 
 export default function CommunityFeed({ user }) {
-  const [posts,       setPosts]       = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page,        setPage]        = useState(1);
-  const [hasMore,     setHasMore]     = useState(true);
-  const [filter,      setFilter]      = useState('all');
-  const [search,      setSearch]      = useState('');
-  const [activeHash,  setActiveHash]  = useState(null);
-  const [tab,         setTab]         = useState('feed'); // 'feed' | 'saved'
-  const [bookmarks,   setBookmarks]   = useState(loadBookmarks);
-  const [seeding,     setSeeding]     = useState(false);
-  const [seedMsg,     setSeedMsg]     = useState('');
-  const [isMobile,    setMobile]      = useState(() => window.innerWidth < 900);
+  const [posts,        setPosts]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+  const [page,         setPage]         = useState(1);
+  const [hasMore,      setHasMore]      = useState(true);
+  const [filter,       setFilter]       = useState('all');
+  const [networkOnly,  setNetworkOnly]  = useState(false); // "My Network" filter
+  const [search,       setSearch]       = useState('');
+  const [activeHash,   setActiveHash]   = useState(null);
+  const [tab,          setTab]          = useState('feed');
+  const [bookmarks,    setBookmarks]    = useState(loadBookmarks);
+  // Connections
+  const [connections,  setConnections]  = useState([]);
+  const [pendingIds,   setPendingIds]   = useState(new Set());
+  const [seeding,      setSeeding]      = useState(false);
+  const [seedMsg,      setSeedMsg]      = useState('');
+  const [isMobile,     setMobile]       = useState(() => window.innerWidth < 900);
 
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 900);
@@ -674,10 +684,18 @@ export default function CommunityFeed({ user }) {
     return () => window.removeEventListener('resize', h);
   }, []);
 
+  // Load connections silently in background — doesn't block the feed
+  useEffect(() => {
+    api.getConnections().then(r => setConnections(r?.data || [])).catch(() => {});
+  }, []);
+
+  const connectionIds = useMemo(() => new Set((connections || []).map(c => String(c._id || c.id))), [connections]);
+
   const loadPosts = useCallback(async (p = 1, type = 'all', append = false) => {
     if (p === 1) setLoading(true); else setLoadingMore(true);
     try {
-      const r = await api.getPosts({ page: p, limit: 15, ...(type !== 'all' ? { type } : {}) });
+      const limit = networkOnly ? 50 : 15; // load more when filtering to network
+      const r = await api.getPosts({ page: p, limit, ...(type !== 'all' ? { type } : {}) });
       const items = r?.data || [];
       setPosts(prev => append ? [...prev, ...items] : items);
       setHasMore(r?.hasMore ?? false);
@@ -688,11 +706,9 @@ export default function CommunityFeed({ user }) {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [networkOnly]);
 
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
-
-  // Reset hashtag filter when type filter changes
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
   const handleCreate = async (data) => {
@@ -723,14 +739,20 @@ export default function CommunityFeed({ user }) {
 
   const handleToggleBookmark = (postId) => {
     const next = bookmarks.includes(postId) ? bookmarks.filter(id => id !== postId) : [...bookmarks, postId];
-    setBookmarks(next);
-    saveBookmarks(next);
+    setBookmarks(next); saveBookmarks(next);
   };
 
-  const handleHashtagClick = (tag) => {
-    setActiveHash(tag);
-    setFilter('all');
-    setSearch('');
+  const handleHashtagClick = (tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); };
+
+  // Inline connect from post card or people panel
+  const handleConnect = async (authorId) => {
+    const id = String(authorId);
+    setPendingIds(prev => new Set([...prev, id]));
+    try {
+      await api.sendConnectionRequest(id);
+    } catch {
+      setPendingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
   };
 
   const handleSeed = async () => {
@@ -741,13 +763,11 @@ export default function CommunityFeed({ user }) {
       loadPosts(1, filter);
     } catch (e) {
       setSeedMsg(e?.message || 'Seed failed.');
-    } finally {
-      setSeeding(false);
-    }
+    } finally { setSeeding(false); }
   };
 
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
-  const uid = user?.id || user?._id;
+  const uid     = user?.id || user?._id;
 
   const FILTERS = [
     { value: 'all',          label: 'All' },
@@ -759,10 +779,11 @@ export default function CommunityFeed({ user }) {
     { value: 'announcement', label: '📢 News' },
   ];
 
-  // Client-side filtering (search + hashtag)
+  // Client-side filtering
   const visiblePosts = useMemo(() => {
     let list = posts;
-    if (activeHash) list = list.filter(p => (p.hashtags || []).includes(activeHash));
+    if (networkOnly) list = list.filter(p => String(p.authorId) === String(uid) || connectionIds.has(String(p.authorId)));
+    if (activeHash)  list = list.filter(p => (p.hashtags || []).includes(activeHash));
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(p =>
@@ -772,20 +793,22 @@ export default function CommunityFeed({ user }) {
       );
     }
     return list;
-  }, [posts, activeHash, search]);
+  }, [posts, networkOnly, activeHash, search, uid, connectionIds]);
 
   const myPosts     = useMemo(() => posts.filter(p => String(p.authorId) === String(uid)), [posts, uid]);
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
-
-  const isFiltered = !!activeHash || !!search.trim();
+  const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
   const sharedPostProps = {
     userId: uid,
     userRole: user?.role,
+    connectionIds,
+    pendingIds,
     onReact: handleReact,
     onAddComment: handleAddComment,
     onDeleteComment: handleDeleteComment,
     onDelete: handleDelete,
+    onConnect: handleConnect,
     bookmarks,
     onToggleBookmark: handleToggleBookmark,
     onHashtagClick: handleHashtagClick,
@@ -802,8 +825,7 @@ export default function CommunityFeed({ user }) {
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
-            <button onClick={handleSeed} disabled={seeding}
-              style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>
+            <button onClick={handleSeed} disabled={seeding} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>
               {seeding ? 'Creating…' : '+ Sample Posts'}
             </button>
           </div>
@@ -812,7 +834,10 @@ export default function CommunityFeed({ user }) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #F1F5F9' }}>
-        {[{ id: 'feed', label: 'Feed' }, { id: 'saved', label: `★ Saved (${bookmarks.length})` }].map(t => (
+        {[
+          { id: 'feed',  label: 'Feed' },
+          { id: 'saved', label: `★ Saved (${bookmarks.length})` },
+        ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ padding: '8px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s' }}>
             {t.label}
@@ -822,11 +847,17 @@ export default function CommunityFeed({ user }) {
 
       {tab === 'feed' && (
         <>
-          {/* Filters */}
+          {/* Filters row */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
+            {/* My Network chip */}
+            <button
+              onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }}
+              style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${networkOnly ? '#059669' : '#E5E7EB'}`, background: networkOnly ? '#D1FAE5' : '#F9FAFB', color: networkOnly ? '#065F46' : '#6B7280', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', display: 'flex', alignItems: 'center', gap: 4 }}>
+              🤝 My Network {networkOnly && connections.length > 0 && <span style={{ background: '#059669', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>{connections.length}</span>}
+            </button>
             {FILTERS.map(f => (
-              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); }}
-                style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f.value && !activeHash ? '#0176D3' : '#E5E7EB'}`, background: filter === f.value && !activeHash ? '#EFF6FF' : '#F9FAFB', color: filter === f.value && !activeHash ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s' }}>
+              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); }}
+                style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f.value && !activeHash && !networkOnly ? '#0176D3' : '#E5E7EB'}`, background: filter === f.value && !activeHash && !networkOnly ? '#EFF6FF' : '#F9FAFB', color: filter === f.value && !activeHash && !networkOnly ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s' }}>
                 {f.label}
               </button>
             ))}
@@ -846,40 +877,44 @@ export default function CommunityFeed({ user }) {
         {/* Left sidebar */}
         {!isMobile && tab === 'feed' && (
           <div style={{ position: 'sticky', top: 16 }}>
-            <ProfileSidebar user={user} />
-            <QuickStats myPosts={myPosts.length} myReactions={myReactions} myComments={0} bookmarkCount={bookmarks.length} />
+            <ProfileSidebar user={user} connectionCount={connections.length} />
+            <QuickStats myPosts={myPosts.length} myReactions={myReactions} bookmarkCount={bookmarks.length} />
           </div>
         )}
-        {/* Spacer when tab is saved */}
         {!isMobile && tab === 'saved' && <div />}
 
-        {/* Main content */}
+        {/* Feed */}
         <div style={{ padding: isMobile ? '0 12px' : 0 }}>
           {tab === 'feed' && (
             <>
-              {/* Search */}
               <SearchBar value={search} onChange={setSearch} />
-
-              {/* Create post */}
               <CreatePost user={user} onCreate={handleCreate} />
 
-              {/* Posts */}
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
                   <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
                   Loading feed…
                 </div>
               ) : visiblePosts.length === 0 ? (
-                <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 14 }}>
-                  <div style={{ fontSize: 52, marginBottom: 14 }}>📭</div>
+                <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+                  <div style={{ fontSize: 52, marginBottom: 14 }}>
+                    {networkOnly ? '🤝' : '📭'}
+                  </div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>
-                    {isFiltered ? 'No posts match your search' : filter === 'all' ? 'No posts yet' : `No ${filter} posts yet`}
+                    {networkOnly
+                      ? connections.length === 0 ? 'Build your network first' : 'Your connections haven't posted yet'
+                      : isFiltered ? 'No posts match' : 'No posts yet'}
                   </div>
                   <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
-                    {isFiltered ? 'Try a different search or hashtag.' : 'Be the first — share a career update, a job opening, or a hiring tip!'}
+                    {networkOnly && connections.length === 0
+                      ? 'Connect with colleagues from the "My Network" page and their posts will show here.'
+                      : isFiltered ? 'Try a different filter or search.'
+                      : 'Be the first — share a career update, job opening, or hiring tip!'}
                   </div>
-                  {isFiltered && <button onClick={() => { setSearch(''); setActiveHash(null); }} style={btnG}>Clear filters</button>}
-                  {!isFiltered && isAdmin && (
+                  {networkOnly && connections.length === 0 && (
+                    <a href="/app/people" style={{ ...btnP, textDecoration: 'none', display: 'inline-block' }}>Find People to Connect</a>
+                  )}
+                  {!isFiltered && !networkOnly && isAdmin && (
                     <button onClick={handleSeed} disabled={seeding} style={btnP}>
                       {seeding ? 'Creating…' : '🌱 Create sample posts'}
                     </button>
@@ -903,9 +938,7 @@ export default function CommunityFeed({ user }) {
             </>
           )}
 
-          {tab === 'saved' && (
-            <SavedPostsView posts={posts} {...sharedPostProps} />
-          )}
+          {tab === 'saved' && <SavedPostsView posts={posts} {...sharedPostProps} />}
         </div>
 
         {/* Right sidebar */}
@@ -914,16 +947,20 @@ export default function CommunityFeed({ user }) {
             {tab === 'feed' && (
               <>
                 <TrendingHashtags posts={posts} onHashtagClick={handleHashtagClick} activeHashtag={activeHash} />
-                <PeoplePanel posts={posts} currentUserId={uid} />
+                <PeoplePanel
+                  posts={posts}
+                  connectionIds={connectionIds}
+                  pendingIds={pendingIds}
+                  currentUserId={uid}
+                  onConnect={handleConnect}
+                />
               </>
             )}
           </div>
         )}
       </div>
 
-      <style>{`
-        @keyframes tn-spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
