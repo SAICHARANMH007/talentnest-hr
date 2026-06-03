@@ -410,10 +410,10 @@ export default function App() {
 
   // Capture platform referral code from URL on first visit (stored until user registers)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const ref = params.get('platformRef');
     if (ref && !user) localStorage.setItem('tn_platform_ref', ref);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After a new user registers and logs in, credit their referrer
   useEffect(() => {
@@ -559,6 +559,7 @@ export default function App() {
 
       {/* ── HR Portal ── */}
       <Route path="/login" element={authRedirect} />
+      <Route path="/auth"  element={authRedirect} />
       <Route path="/set-password" element={<Suspense fallback={<PageLoader />}><SetPasswordPage /></Suspense>} />
 
       <Route path="/app" element={
