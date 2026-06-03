@@ -1,4 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return m;
+}
+
+function JobActionsMenu({ actions, isMobile }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  if (!isMobile) {
+    return (
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+        {actions.map(a => (
+          <button key={a.label} onClick={e => { e.stopPropagation(); a.onClick(e); }}
+            style={a.danger ? btnD : a.primary ? { ...btnP, padding: '7px 12px', fontSize: 11 } : { ...btnG, padding: '7px 12px', fontSize: 11 }}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+      <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid #E2E8F0', background: open ? '#F8FAFC' : '#fff', color: '#374151', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, minHeight: 36 }}>
+        ⋮ Actions
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', zIndex: 9999, minWidth: 180, overflow: 'hidden' }}>
+          {actions.map(a => (
+            <button key={a.label} onClick={e => { e.stopPropagation(); setOpen(false); a.onClick(e); }}
+              style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid #F1F5F9', textAlign: 'left', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: a.danger ? '#BA0517' : '#374151' }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
@@ -57,6 +110,7 @@ export default function AdminJobs({ user }) {
   const [editSaving, setEditSaving] = useState(false);
   const [listingOrg, setListingOrg] = useState(null);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const normalizeJob = j => ({ ...j, id: j.id || j._id?.toString() || String(j._id || '') });
 
@@ -599,28 +653,26 @@ export default function AdminJobs({ user }) {
                     {j.skills && <span style={{ color: '#706E6B', fontSize: 12 }}>🛠 {(Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)).slice(0,3).join(', ')}</span>}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                  <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '7px 12px', fontSize: 11 }}>View Details</button>
-                  <button onClick={e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>✏️ Edit</button>
-                  <button onClick={e => { e.stopPropagation(); navigate(`/app/jobs/${j.id}/distribution`); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }} title="Job Distribution Status">📡 Distribute</button>
-                  <button onClick={async e => {
+                <JobActionsMenu isMobile={isMobile} actions={[
+                  { label: 'View Details', primary: true, onClick: () => setSelectedJob(j) },
+                  { label: '✏️ Edit', onClick: e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); } },
+                  { label: '📡 Distribute', onClick: e => { e.stopPropagation(); navigate(`/app/jobs/${j.id}/distribution`); } },
+                  { label: '👥 Applicants', onClick: async e => {
                     e.stopPropagation(); setApplicantsLoading(true); setApplicantsJob({ job: j, apps: [] });
                     try {
                       const r = await api.getApplications({ jobId: j.id, limit: 100 }).catch(() => ({ data: [] }));
-                      const list = Array.isArray(r) ? r : (r?.data || []);
-                      setApplicantsJob({ job: j, apps: list });
-                    } finally {
-                      setApplicantsLoading(false);
-                    }
-                  }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👥 Applicants</button>
-                  <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📣 Share</button>
-                  <button onClick={e => { e.stopPropagation(); setAssessmentJob(j); }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>📋 Assessment</button>
-                  <button onClick={e => { e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');
+                      setApplicantsJob({ job: j, apps: Array.isArray(r) ? r : (r?.data || []) });
+                    } finally { setApplicantsLoading(false); }
+                  }},
+                  { label: '📣 Share', onClick: () => setShareJob(j) },
+                  { label: '📋 Assessment', onClick: e => { e.stopPropagation(); setAssessmentJob(j); } },
+                  { label: '👤 Assign', onClick: e => {
+                    e.stopPropagation(); setAssigningJob(j); setAssignTab('recruiter'); setSelectedCandIds([]); setCandSearch('');
                     api.getApplications({ jobId: j.id, limit: 100 }).then(r => setJobApplications(Array.isArray(r) ? r : (r?.data || []))).catch(() => setJobApplications([]));
-                  }} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>👤 Assign</button>
-                  <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '7px 12px', fontSize: 11 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
-                  <button onClick={() => del(j.id)} style={btnD}>Delete</button>
-                </div>
+                  }},
+                  { label: (j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close', onClick: () => toggle(j.id, j.status) },
+                  { label: 'Delete', danger: true, onClick: () => del(j.id) },
+                ]} />
               </div>
             </div>
           ))}

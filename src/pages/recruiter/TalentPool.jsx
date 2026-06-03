@@ -23,6 +23,10 @@ export default function TalentPool({ user }) {
   const [jobs,      setJobs]      = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [toast,     setToast]     = useState('');
+  const [orgPools,  setOrgPools]  = useState([]);
+  const [orgPoolsLoading, setOrgPoolsLoading] = useState(true);
+  const [expandedPool, setExpandedPool] = useState(null);
+  const [activeTab, setActiveTab] = useState('org'); // 'org' | 'parked'
   const [pullTarget,setPullTarget]= useState(null);
   const [selJob,    setSelJob]    = useState('');
   const [pulling,   setPulling]   = useState(false);
@@ -41,6 +45,14 @@ export default function TalentPool({ user }) {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    setOrgPoolsLoading(true);
+    api.getTalentPools()
+      .then(data => setOrgPools(Array.isArray(data) ? data : []))
+      .catch(() => setOrgPools([]))
+      .finally(() => setOrgPoolsLoading(false));
+  }, []);
+
   useEffect(() => { load(); }, [load]);
 
   const handleUnpark = async (appId) => {
@@ -57,7 +69,9 @@ export default function TalentPool({ user }) {
     try {
       const candidateId = pullTarget.candidateId?.id || pullTarget.candidateId?._id?.toString();
       await api.applyToJob(selJob, candidateId);
-      await api.parkApplication(pullTarget.id || pullTarget._id?.toString());
+      if (!pullTarget._fromOrgPool) {
+        await api.parkApplication(pullTarget.id || pullTarget._id?.toString());
+      }
       setToast('✅ Candidate pulled into pipeline');
       setPullTarget(null);
       setSelJob('');
@@ -78,8 +92,104 @@ export default function TalentPool({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <PageHeader title="🅿️ Talent Pool" subtitle="Parked candidates available for future opportunities" />
+      <PageHeader title="Talent Pool" subtitle="Org-curated talent pools and your parked candidates" />
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #E2E8F0' }}>
+        {[
+          { id: 'org', label: `🏢 Org Pools${orgPools.length ? ` (${orgPools.length})` : ''}` },
+          { id: 'parked', label: `🅿️ My Parked${pool.length ? ` (${pool.length})` : ''}` },
+        ].map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            style={{ padding: '10px 20px', border: 'none', borderBottom: `3px solid ${activeTab === t.id ? '#0176D3' : 'transparent'}`, background: 'none', fontSize: 14, fontWeight: activeTab === t.id ? 700 : 500, color: activeTab === t.id ? '#0176D3' : '#64748b', cursor: 'pointer', marginBottom: -2 }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Org Talent Pools tab ── */}
+      {activeTab === 'org' && (
+        <div>
+          {orgPoolsLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
+          ) : orgPools.length === 0 ? (
+            <div style={{ ...card, ...S.empty }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🏢</div>
+              <div style={{ fontWeight: 600 }}>No org talent pools yet</div>
+              <div style={{ fontSize: 12, marginTop: 6 }}>Admins can create curated talent pools from the admin panel</div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 }}>
+              {orgPools.map(op => (
+                <div key={op._id} style={{ ...card, padding: 20, cursor: 'pointer', border: expandedPool?._id === op._id ? '2px solid #0176D3' : '1px solid #E2E8F0' }}
+                  onClick={() => setExpandedPool(expandedPool?._id === op._id ? null : op)}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A', marginBottom: 6 }}>{op.name}</div>
+                  {op.description && <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10, lineHeight: 1.5 }}>{op.description}</div>}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {(op.tags || []).map(t => <span key={t} style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>{t}</span>)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>{op.members?.length || 0} candidate{op.members?.length !== 1 ? 's' : ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Expanded pool members */}
+          {expandedPool && (
+            <div style={{ ...card, marginTop: 20, padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: '#0F172A' }}>{expandedPool.name} — Members</div>
+                <button onClick={() => setExpandedPool(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' }}>✕</button>
+              </div>
+              {(!expandedPool.members || expandedPool.members.length === 0) ? (
+                <div style={{ ...S.empty }}>
+                  <div>No candidates in this pool yet.</div>
+                </div>
+              ) : (
+                <table style={S.table}>
+                  <thead>
+                    <tr>{['Candidate','Title','Notes','Action'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {expandedPool.members.map(m => {
+                      const cand = m.candidateId || {};
+                      const cName = cand.name || cand.email?.split('@')[0] || '—';
+                      return (
+                        <tr key={m._id || cand._id}
+                          onMouseEnter={e => e.currentTarget.style.background = '#FAFAF9'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}>
+                          <td style={S.td}>
+                            <div style={{ fontWeight: 600 }}>{cName}</div>
+                            {cand.email && <div style={{ fontSize: 11, color: '#706E6B' }}>{cand.email}</div>}
+                          </td>
+                          <td style={S.td}>{cand.title || '—'}</td>
+                          <td style={S.td}><span style={{ fontSize: 12, color: '#64748b' }}>{m.notes || '—'}</span></td>
+                          <td style={S.td}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => setDetailUser({ ...cand, role: 'candidate', _partial: true })}
+                                style={{ ...btnG, fontSize: 12, padding: '6px 12px' }}>
+                                👁️ View
+                              </button>
+                              <button
+                                onClick={() => { setPullTarget({ candidateId: cand, _fromOrgPool: true }); setSelJob(''); }}
+                                style={{ ...btnP, fontSize: 12, padding: '6px 14px' }}>
+                                ➕ Pull into Job
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Parked Candidates tab ── */}
+      {activeTab === 'parked' && (<>
       <div style={{ ...card, marginBottom: 16 }}>
         <input
           value={search}
@@ -181,6 +291,7 @@ export default function TalentPool({ user }) {
           onUpdated={load}
         />
       )}
+      </>)}
     </div>
   );
 }

@@ -2,17 +2,54 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnP, btnD, btnG } from '../../constants/styles.js';
 
-const EVENTS = [
-  { value: 'application.created',       label: 'Application Created' },
-  { value: 'application.stage_changed', label: 'Stage Changed' },
-  { value: 'application.hired',         label: 'Candidate Hired' },
-  { value: 'application.rejected',      label: 'Candidate Rejected' },
-  { value: 'interview.scheduled',       label: 'Interview Scheduled' },
-  { value: 'offer.sent',                label: 'Offer Sent' },
-  { value: 'offer.accepted',            label: 'Offer Accepted' },
-  { value: 'job.created',               label: 'Job Created' },
-  { value: 'job.closed',                label: 'Job Closed' },
+const EVENT_GROUPS = [
+  {
+    group: '📋 Applications',
+    events: [
+      { value: 'application.created',       label: 'Application Created',        desc: 'Fires when a new application is submitted' },
+      { value: 'application.stage_changed', label: 'Stage Changed',              desc: 'Fires when an application moves to a new stage' },
+      { value: 'application.hired',         label: 'Candidate Hired',            desc: 'Fires when a candidate is moved to Hired stage' },
+      { value: 'application.rejected',      label: 'Candidate Rejected',         desc: 'Fires when a candidate is rejected' },
+      { value: 'application.shortlisted',   label: 'Candidate Shortlisted',      desc: 'Fires when a candidate is shortlisted' },
+      { value: 'application.withdrawn',     label: 'Application Withdrawn',      desc: 'Fires when a candidate withdraws their application' },
+    ],
+  },
+  {
+    group: '📅 Interviews',
+    events: [
+      { value: 'interview.scheduled',       label: 'Interview Scheduled',        desc: 'Fires when an interview is booked' },
+      { value: 'interview.completed',       label: 'Interview Completed',        desc: 'Fires when an interview is marked as done' },
+      { value: 'interview.cancelled',       label: 'Interview Cancelled',        desc: 'Fires when an interview is cancelled' },
+    ],
+  },
+  {
+    group: '📄 Offers',
+    events: [
+      { value: 'offer.sent',                label: 'Offer Sent',                 desc: 'Fires when an offer letter is sent to a candidate' },
+      { value: 'offer.accepted',            label: 'Offer Accepted',             desc: 'Fires when a candidate accepts an offer' },
+      { value: 'offer.declined',            label: 'Offer Declined',             desc: 'Fires when a candidate declines an offer' },
+    ],
+  },
+  {
+    group: '💼 Jobs',
+    events: [
+      { value: 'job.created',               label: 'Job Created',                desc: 'Fires when a new job is posted' },
+      { value: 'job.published',             label: 'Job Published',              desc: 'Fires when a job is published to the careers page' },
+      { value: 'job.closed',                label: 'Job Closed',                 desc: 'Fires when a job is closed' },
+      { value: 'job.approved',              label: 'Job Approved',               desc: 'Fires when a job is approved by admin' },
+    ],
+  },
+  {
+    group: '🎯 Onboarding & BGV',
+    events: [
+      { value: 'onboarding.initiated',      label: 'Onboarding Started',         desc: 'Fires when pre-boarding is initiated for a candidate' },
+      { value: 'onboarding.completed',      label: 'Onboarding Completed',       desc: 'Fires when pre-boarding tasks are all done' },
+      { value: 'bgv.submitted',             label: 'BGV Submitted',              desc: 'Fires when a candidate submits BGV documents' },
+    ],
+  },
 ];
+
+const EVENTS = EVENT_GROUPS.flatMap(g => g.events);
 
 const STATUS_DOT = { width: 10, height: 10, borderRadius: '50%', display: 'inline-block', marginRight: 6 };
 
@@ -73,15 +110,35 @@ function WebhookModal({ hook, onClose, onSaved }) {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>Events to subscribe</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {EVENTS.map(ev => (
-              <label key={ev.value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, background: form.events.includes(ev.value) ? '#EFF6FF' : '#F9FAFB', border: `1px solid ${form.events.includes(ev.value) ? '#93C5FD' : '#E5E7EB'}` }}>
-                <input type="checkbox" checked={form.events.includes(ev.value)} onChange={() => toggleEvent(ev.value)} style={{ cursor: 'pointer' }} />
-                {ev.label}
-              </label>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <label style={lbl}>Events to subscribe</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" onClick={() => setForm(f => ({ ...f, events: EVENTS.map(e => e.value) }))}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #D1D5DB', background: '#F9FAFB', cursor: 'pointer', color: '#374151', fontWeight: 600 }}>
+                Select All
+              </button>
+              <button type="button" onClick={() => setForm(f => ({ ...f, events: [] }))}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #D1D5DB', background: '#F9FAFB', cursor: 'pointer', color: '#374151', fontWeight: 600 }}>
+                Clear
+              </button>
+            </div>
           </div>
+          {EVENT_GROUPS.map(g => (
+            <div key={g.group} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>{g.group}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                {g.events.map(ev => (
+                  <label key={ev.value} title={ev.desc} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, cursor: 'pointer', padding: '7px 8px', borderRadius: 6, background: form.events.includes(ev.value) ? '#EFF6FF' : '#F9FAFB', border: `1px solid ${form.events.includes(ev.value) ? '#93C5FD' : '#E5E7EB'}` }}>
+                    <input type="checkbox" checked={form.events.includes(ev.value)} onChange={() => toggleEvent(ev.value)} style={{ cursor: 'pointer', marginTop: 1, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: form.events.includes(ev.value) ? 700 : 500, color: form.events.includes(ev.value) ? '#1D4ED8' : '#374151' }}>{ev.label}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.4 }}>{ev.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div style={{ marginBottom: 18 }}>
@@ -172,12 +229,26 @@ export default function AdminWebhooks({ user }) {
       </div>
 
       {/* Info card */}
-      <div style={{ ...card, background: '#EFF6FF', border: '1px solid #BFDBFE', marginBottom: 20, padding: '14px 18px' }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#1D4ED8' }}>
-          <strong>How it works:</strong> When a subscribed event occurs, TalentNest sends a POST request to your endpoint with a JSON payload.
-          If a secret is set, we include a <code>X-TalentNest-Signature: sha256=...</code> header for verification.
-          Endpoints should return 2xx within 10 seconds.
-        </p>
+      <div style={{ ...card, background: '#EFF6FF', border: '1px solid #BFDBFE', marginBottom: 20, padding: '16px 20px' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#1D4ED8', marginBottom: 8 }}>How Webhooks Work</div>
+        <div style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.6 }}>
+          When a subscribed event occurs, TalentNest sends an HTTP <strong>POST</strong> request to your endpoint with a JSON payload.
+          If a secret is configured, we include an <code style={{ background: 'rgba(255,255,255,0.5)', padding: '1px 5px', borderRadius: 4 }}>X-TalentNest-Signature: sha256=…</code> header for HMAC-SHA256 verification.
+          Your endpoint must return a <strong>2xx</strong> status within <strong>10 seconds</strong> — otherwise the delivery is marked as failed.
+        </div>
+        <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '10px 14px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', marginBottom: 6 }}>Sample payload (application.hired):</div>
+          <pre style={{ margin: 0, fontSize: 10, color: '#1e3a8a', whiteSpace: 'pre-wrap', fontFamily: 'monospace', lineHeight: 1.5 }}>{`{
+  "event": "application.hired",
+  "timestamp": "2025-06-03T08:00:00.000Z",
+  "data": {
+    "applicationId": "abc123",
+    "candidateName": "Ravi Kumar",
+    "jobTitle": "Frontend Engineer",
+    "stage": "hired"
+  }
+}`}</pre>
+        </div>
       </div>
 
       {loading ? (

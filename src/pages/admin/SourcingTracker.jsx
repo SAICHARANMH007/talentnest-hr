@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/api.js';
 import { card } from '../../constants/styles.js';
-import { SOURCE_ICONS, SOURCE_COLORS as SOURCE_COLOR_MAP, sourceLabel } from '../../constants/sources.js';
+import { SOURCE_ICONS, SOURCE_COLORS as SOURCE_COLOR_MAP, sourceLabel, SOURCE_LABELS } from '../../constants/sources.js';
 
 const SOURCE_COLOR_LIST = [
   '#0176D3', '#059669', '#D97706', '#DC2626', '#7C3AED',
   '#0891B2', '#BE185D', '#047857', '#B45309', '#4338CA',
 ];
+
+// Job board sources that should always be visible even with 0 candidates
+const JOB_BOARD_SOURCES = ['linkedin', 'naukri', 'indeed', 'glassdoor', 'monster', 'shine', 'social_media', 'referral', 'direct', 'invite', 'talent_match', 'bulk_import', 'resume_upload'];
 
 function SourceBar({ source, count, pct, total, color }) {
   return (
@@ -40,9 +43,18 @@ export default function SourcingTracker() {
     setLoading(true);
     api.getSourceBreakdown(start && end ? { startDate: start, endDate: end } : {})
       .then(r => {
-        const arr = r?.data || [];
-        setData(arr);
-        setTotal(r?.total || arr.reduce((s, x) => s + x.count, 0));
+        const apiArr = r?.data || [];
+        const apiTotal = r?.total || apiArr.reduce((s, x) => s + x.count, 0);
+        // Merge API data with known job board sources — show all boards even with 0 count
+        const seen = new Set(apiArr.map(s => s.source));
+        const merged = [...apiArr];
+        JOB_BOARD_SOURCES.forEach(src => {
+          if (!seen.has(src)) merged.push({ source: src, count: 0, percentage: 0 });
+        });
+        // Sort: non-zero first by count desc, then zero entries alphabetically
+        merged.sort((a, b) => b.count - a.count || (sourceLabel(a.source) < sourceLabel(b.source) ? -1 : 1));
+        setData(merged);
+        setTotal(apiTotal);
       })
       .catch(() => setData([]))
       .finally(() => setLoading(false));

@@ -16,6 +16,59 @@ import AssessmentBuilder from '../../components/assessments/AssessmentBuilder.js
 import JobDetailDrawer from '../../components/shared/JobDetailDrawer.jsx';
 import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
 
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return m;
+}
+
+function JobActionsMenu({ actions, isMobile }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  if (!isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }} onClick={e => e.stopPropagation()}>
+        {actions.map(a => a.hidden ? null : (
+          <button key={a.label} onClick={e => { e.stopPropagation(); a.onClick(e); }}
+            style={a.danger ? { ...btnD, padding: '6px 14px', fontSize: 12 } : a.primary ? { ...btnP, padding: '6px 14px', fontSize: 12 } : a.submit ? { background: 'rgba(46,132,74,0.15)', border: '1px solid rgba(46,132,74,0.4)', borderRadius: 8, color: '#2E844A', padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 } : { ...btnG, padding: '6px 14px', fontSize: 12 }}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+      <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid #E2E8F0', background: open ? '#F8FAFC' : '#fff', color: '#374151', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, minHeight: 36 }}>
+        ⋮ Actions
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', zIndex: 9999, minWidth: 180, overflow: 'hidden' }}>
+          {actions.map(a => a.hidden ? null : (
+            <button key={a.label} onClick={e => { e.stopPropagation(); setOpen(false); a.onClick(e); }}
+              style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid #F1F5F9', textAlign: 'left', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: a.danger ? '#BA0517' : '#374151' }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Applicants Panel ──────────────────────────────────────────────────────────
 function ApplicantsPanel({ job, onClose }) {
   const navigate = useNavigate();
@@ -102,6 +155,7 @@ function ApplicantsPanel({ job, onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RecruiterJobs({ user }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [jobs, setJobs] = useState([]); const [loading, setLoad] = useState(true); const [showModal, setShow] = useState(false);
   const [saving, setSaving] = useState(false); const [toast, setToast] = useState("");
   const [applicantsJob, setApplicantsJob] = useState(null);
@@ -262,34 +316,21 @@ export default function RecruiterJobs({ user }) {
                     <span style={{ color: "#2E844A", fontSize: 12 }}>🎉 {j.selectedCount} hired</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-                  <button onClick={() => setSelectedJob(j)} style={{ ...btnP, padding: '6px 14px', fontSize: 12 }}>View Details</button>
-                  <button onClick={() => setShareJob(j)} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>📣 Share</button>
-                  <button
-                    onClick={() => setApplicantsJob(j)}
-                    style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}
-                  >
-                    👥 {j.applicantsCount > 0 ? `${j.applicantsCount} Applicant${j.applicantsCount !== 1 ? 's' : ''}` : 'Applicants'}
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); }} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>✏️ Edit</button>
-                  {j.status === 'draft' && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          // Correct flow: set approvalStatus=pending_approval, keep status=draft
-                          await api.patchJob(j.id, { approvalStatus: 'pending_approval' });
-                          setToast('✅ Submitted for admin approval');
-                          load();
-                        } catch (e) { setToast(`❌ ${e.message}`); }
-                      }}
-                      style={{ background: 'rgba(46,132,74,0.15)', border: '1px solid rgba(46,132,74,0.4)', borderRadius: 8, color: '#2E844A', padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      🚀 Submit for Approval
-                    </button>
-                  )}
-                  <button onClick={() => toggle(j.id, j.status)} style={{ ...btnG, padding: '6px 14px', fontSize: 12 }}>{(j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close'}</button>
-                  <button onClick={() => del(j.id)} style={{ ...btnD, padding: '6px 14px', fontSize: 12 }}>Delete</button>
-                </div>
+                <JobActionsMenu isMobile={isMobile} actions={[
+                  { label: 'View Details', primary: true, onClick: () => setSelectedJob(j) },
+                  { label: '📣 Share', onClick: () => setShareJob(j) },
+                  { label: `👥 ${j.applicantsCount > 0 ? `${j.applicantsCount} Applicant${j.applicantsCount !== 1 ? 's' : ''}` : 'Applicants'}`, onClick: () => setApplicantsJob(j) },
+                  { label: '✏️ Edit', onClick: e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); } },
+                  { label: '🚀 Submit for Approval', submit: true, hidden: j.status !== 'draft', onClick: async () => {
+                    try {
+                      await api.patchJob(j.id, { approvalStatus: 'pending_approval' });
+                      setToast('✅ Submitted for admin approval');
+                      load();
+                    } catch (e) { setToast(`❌ ${e.message}`); }
+                  }},
+                  { label: (j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close', onClick: () => toggle(j.id, j.status) },
+                  { label: 'Delete', danger: true, onClick: () => del(j.id) },
+                ]} />
               </div>
             </div>
           ))}

@@ -93,6 +93,70 @@ export default function HiringManagerDashboard({ user }) {
         subtitle={`View-only hiring overview · ${totalApps} total candidates`}
       />
 
+      {/* ── Today's Priority Board ── */}
+      {(() => {
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayInterviews = apps.filter(a => {
+          const lastRound = Array.isArray(a.interviewRounds) && a.interviewRounds.length
+            ? a.interviewRounds[a.interviewRounds.length - 1] : null;
+          if (!lastRound?.scheduledAt) return false;
+          const d = new Date(lastRound.scheduledAt);
+          return d >= todayStart && d <= todayEnd;
+        });
+        const stale = apps.filter(a => {
+          if (!['Screening','screening'].includes(a.currentStage || a.stage)) return false;
+          const updated = new Date(a.updatedAt || a.createdAt || 0);
+          return (Date.now() - updated.getTime()) > 3 * 86400000;
+        });
+        const pendingFeedback = apps.filter(a =>
+          ['interview_completed','Interview Round 1','Interview Round 2','Technical Interview'].includes(a.currentStage || a.stage) && !a.feedback
+        );
+        const hasBoard = todayInterviews.length > 0 || stale.length > 0 || pendingFeedback.length > 0;
+        if (!hasBoard) return null;
+        return (
+          <div style={{ marginBottom: 24, background: 'linear-gradient(135deg,#EFF6FF,#F5F3FF)', border: '1.5px solid rgba(1,118,211,0.2)', borderRadius: 16, padding: '16px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              <span style={{ fontSize:18 }}>⚡</span>
+              <span style={{ fontWeight:800, fontSize:14, color:'#0176D3' }}>Today's Priority Board</span>
+              <span style={{ fontSize:11, color:'#706E6B' }}>{new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</span>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
+              {todayInterviews.length > 0 && (
+                <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', border:'1.5px solid rgba(124,58,237,0.25)' }}>
+                  <div style={{ fontSize:22, marginBottom:4 }}>📅</div>
+                  <div style={{ fontWeight:900, fontSize:22, color:'#7C3AED' }}>{todayInterviews.length}</div>
+                  <div style={{ fontSize:11, color:'#706E6B', fontWeight:600 }}>Interview{todayInterviews.length !== 1 ? 's' : ''} Today</div>
+                  <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
+                    {todayInterviews.slice(0,3).map(a => (
+                      <div key={a.id||a._id} style={{ fontSize:11, color:'#374151', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        • {a.candidateId?.name || a.candidate?.name || 'Candidate'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {stale.length > 0 && (
+                <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', border:'1.5px solid rgba(245,158,11,0.35)' }}>
+                  <div style={{ fontSize:22, marginBottom:4 }}>⏳</div>
+                  <div style={{ fontWeight:900, fontSize:22, color:'#D97706' }}>{stale.length}</div>
+                  <div style={{ fontSize:11, color:'#706E6B', fontWeight:600 }}>Stuck in Screening</div>
+                  <div style={{ fontSize:10, color:'#9CA3AF', marginTop:4 }}>Waiting 3+ days — needs attention</div>
+                </div>
+              )}
+              {pendingFeedback.length > 0 && (
+                <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', border:'1.5px solid rgba(5,150,105,0.25)' }}>
+                  <div style={{ fontSize:22, marginBottom:4 }}>📝</div>
+                  <div style={{ fontWeight:900, fontSize:22, color:'#059669' }}>{pendingFeedback.length}</div>
+                  <div style={{ fontSize:11, color:'#706E6B', fontWeight:600 }}>Feedback Pending</div>
+                  <div style={{ fontSize:10, color:'#9CA3AF', marginTop:4 }}>Interviews done — awaiting evaluation</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14, marginBottom: 24 }}>
         <KpiCard icon="👤" label="Total Candidates"   value={totalApps}      color="#0176D3" sparkValues={[0, 2, 4, totalApps > 4 ? totalApps - 3 : 0, totalApps]} />

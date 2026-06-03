@@ -40,6 +40,7 @@ const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.j
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
 const CandidateSmartMatch = lazy(() => import('./pages/candidate/CandidateSmartMatch.jsx'));
 const CandidateReferEarn  = lazy(() => import('./pages/candidate/CandidateReferEarn.jsx'));
+const CandidateCareerJourney = lazy(() => import('./pages/candidate/CandidateCareerJourney.jsx'));
 const CandidateBackgroundVerification = lazy(() => import('./pages/candidate/CandidateBackgroundVerification.jsx'));
 const RecruiterDashboard = lazy(() => import('./pages/recruiter/RecruiterDashboard.jsx'));
 const RecruiterJobs = lazy(() => import('./pages/recruiter/RecruiterJobs.jsx'));
@@ -48,6 +49,7 @@ const RecruiterPipeline = lazy(() => import('./pages/recruiter/RecruiterPipeline
 const RecruiterCandidates = lazy(() => import('./pages/recruiter/RecruiterCandidates.jsx'));
 const RecruiterAssessments = lazy(() => import('./pages/recruiter/RecruiterAssessments.jsx'));
 const RecruiterSmartMatch  = lazy(() => import('./pages/recruiter/RecruiterSmartMatch.jsx'));
+const RecruiterMyPerformance = lazy(() => import('./pages/recruiter/RecruiterMyPerformance.jsx'));
 
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
@@ -594,6 +596,7 @@ export default function App() {
             <Route path="dashboard" element={<CandidateDashboard user={user} />} />
             <Route path="smart-match" element={<CandidateSmartMatch user={user} />} />
             <Route path="refer-earn" element={<CandidateReferEarn user={user} />} />
+            <Route path="career-journey" element={<CandidateCareerJourney user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
@@ -620,6 +623,7 @@ export default function App() {
             <Route path="assessments" element={<RecruiterAssessments user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
             <Route path="offers" element={<RecruiterOffers user={user} />} />
+            {rk === 'recruiter' && <Route path="my-performance" element={<RecruiterMyPerformance user={user} />} />}
             {rk === 'recruiter' && <Route path="talent-pool" element={<TalentPool user={user} />} />}
             <Route path="onboarding" element={<AdminOnboarding user={user} />} />
             <Route path="onboarding-templates" element={<OnboardingTemplates />} />

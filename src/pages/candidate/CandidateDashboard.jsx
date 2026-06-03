@@ -461,6 +461,52 @@ export default function CandidateDashboard({ user }) {
           );
         })}
       </div>
+      {/* ── Skills Gap Analyzer ── */}
+      {(() => {
+        const mySkills = new Set(
+          (Array.isArray(profile?.skills) ? profile.skills : (profile?.skills || user?.skills || '').split(','))
+            .map(s => s.trim().toLowerCase()).filter(Boolean)
+        );
+        const missingSkills = [];
+        const seen = new Set();
+        jobs.slice(0, 6).forEach(j => {
+          const jobSkills = Array.isArray(j.skills) ? j.skills : (j.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+          jobSkills.forEach(s => {
+            const sk = s.trim().toLowerCase();
+            if (sk && !mySkills.has(sk) && !seen.has(sk)) {
+              seen.add(sk);
+              missingSkills.push({ skill: s.trim(), job: j.title });
+            }
+          });
+        });
+        if (!missingSkills.length) return null;
+        return (
+          <div style={{ ...card, marginTop:20, marginBottom:12, background:'linear-gradient(135deg,rgba(124,58,237,0.04),rgba(1,118,211,0.03))', border:'1.5px solid rgba(124,58,237,0.18)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, flexWrap:'wrap', gap:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:20 }}>🎯</span>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:13, color:'#5B21B6' }}>Skills Gap Analyzer</div>
+                  <div style={{ fontSize:11, color:'#706E6B', marginTop:1 }}>Add these to your profile to improve match scores</div>
+                </div>
+              </div>
+              <button onClick={() => navigate("/app/profile")} style={{ ...btnP, padding:'6px 14px', fontSize:11, background:'#7C3AED', flexShrink:0 }}>
+                Update Profile →
+              </button>
+            </div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {missingSkills.slice(0, 10).map(({ skill, job }) => (
+                <span key={skill} title={`Required for: ${job}`} style={{ padding:'4px 10px', borderRadius:99, background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.25)', color:'#5B21B6', fontSize:11, fontWeight:700, cursor:'default' }}>
+                  + {skill}
+                </span>
+              ))}
+            </div>
+            <div style={{ fontSize:10, color:'#9CA3AF', marginTop:8 }}>
+              Based on your top {Math.min(jobs.length, 6)} matched jobs — tap skill to learn more
+            </div>
+          </div>
+        );
+      })()}
       <style>{`
         @keyframes tn-fadein {
           from { opacity: 0; transform: translateY(10px); }

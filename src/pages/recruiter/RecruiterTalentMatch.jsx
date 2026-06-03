@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
@@ -16,13 +16,25 @@ export default function RecruiterTalentMatch({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [selJob, setSelJob] = useState("");
+  const [selJobTitle, setSelJobTitle] = useState("");
+  const [jobSearch, setJobSearch] = useState("");
+  const [showJobList, setShowJobList] = useState(false);
+  const [candSearch, setCandSearch] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoad] = useState(false);
   const [toast, setToast] = useState("");
   const [actionLoading, setActionLoading] = useState({});
   const [jobsLoading, setJobsLoad] = useState(true);
   const [profileCandidate, setProfileCandidate] = useState(null);
-  const [resumeCandidate, setResumeCandidate] = useState(null); // shown in inline modal
+  const [resumeCandidate, setResumeCandidate] = useState(null);
+  const jobPickerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showJobList) return;
+    const h = e => { if (jobPickerRef.current && !jobPickerRef.current.contains(e.target)) setShowJobList(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showJobList]);
 
   useEffect(() => {
     const jobParam = searchParams.get('job');
@@ -30,8 +42,13 @@ export default function RecruiterTalentMatch({ user }) {
       .then(j => {
         const list = Array.isArray(j) ? j : (j?.data || []);
         setJobs(list);
-        if (jobParam && list.some(jj => String(jj.id || jj._id) === jobParam)) {
-          setSelJob(jobParam);
+        if (jobParam) {
+          const found = list.find(jj => String(jj.id || jj._id) === jobParam);
+          if (found) {
+            setSelJob(jobParam);
+            setSelJobTitle(`${found.title} @ ${found.companyName || found.company || ''}`);
+            setJobSearch(`${found.title} @ ${found.companyName || found.company || ''}`);
+          }
         }
       })
       .catch(() => { })
@@ -94,6 +111,19 @@ export default function RecruiterTalentMatch({ user }) {
 
   const rc = { "Exceptional Match": "#2E844A", "Strong Match": "#0176D3", "Good Match": "#A07E00", "Possible Match": "#706E6B" };
 
+  const filteredJobs = jobs.filter(j => {
+    const q = jobSearch.toLowerCase();
+    return !q || j.title?.toLowerCase().includes(q) || (j.companyName || j.company || '').toLowerCase().includes(q) || j.location?.toLowerCase().includes(q);
+  });
+
+  const filteredResults = candSearch
+    ? results.filter(r =>
+        r.candidate?.name?.toLowerCase().includes(candSearch.toLowerCase()) ||
+        r.candidate?.email?.toLowerCase().includes(candSearch.toLowerCase()) ||
+        r.candidate?.title?.toLowerCase().includes(candSearch.toLowerCase())
+      )
+    : results;
+
   return (
     <div style={{ paddingBottom: 60, animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
@@ -134,23 +164,59 @@ export default function RecruiterTalentMatch({ user }) {
           </div>
         </div>
       )}
-      <PageHeader 
-        title="Talent Match"
-        subtitle="Rank your best internal and external candidates instantly using our smart matching engine."
+      <PageHeader
+        title="Job Match"
+        subtitle="Search a job posting and instantly rank the best-fit candidates using our smart matching engine."
       />
 
       <div style={{ ...card, marginBottom: 24, padding: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)', border: '1px solid #e0e8f5' }}>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 280 }}>
+          <div ref={jobPickerRef} style={{ flex: 1, minWidth: 280, position: 'relative' }}>
             <label style={{ color: "#0176D3", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Job Opportunity</label>
-            <select 
-              value={selJob} 
-              onChange={e => { setSelJob(e.target.value); }} 
-              style={{ ...inp, height: 48, borderRadius: 12, border: '2px solid #e0e8f5', fontSize: 14 }}
-            >
-              <option value="">— Select a job posting —</option>
-              {jobs.map(j => <option key={j.id || j._id} value={j.id || j._id}>{j.title} @ {j.companyName || j.company}</option>)}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={jobSearch}
+                onChange={e => {
+                  setJobSearch(e.target.value);
+                  setSelJob("");
+                  setSelJobTitle("");
+                  setShowJobList(true);
+                }}
+                onFocus={() => setShowJobList(true)}
+                placeholder={jobsLoading ? "Loading jobs..." : "Search job title, company, or location…"}
+                disabled={jobsLoading}
+                style={{ ...inp, height: 48, borderRadius: 12, border: `2px solid ${selJob ? '#0176D3' : '#e0e8f5'}`, fontSize: 14, paddingRight: 36, width: '100%', boxSizing: 'border-box' }}
+              />
+              {jobSearch && (
+                <button onClick={() => { setJobSearch(""); setSelJob(""); setSelJobTitle(""); setResults([]); setCandSearch(""); setShowJobList(false); }}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#94a3b8', lineHeight: 1 }}>
+                  ✕
+                </button>
+              )}
+            </div>
+            {showJobList && filteredJobs.length > 0 && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', borderRadius: 12, border: '1.5px solid #e0e8f5', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 9999, maxHeight: 280, overflowY: 'auto' }}>
+                {filteredJobs.slice(0, 50).map(j => {
+                  const jid = j.id || j._id;
+                  const label = `${j.title} @ ${j.companyName || j.company || ''}`;
+                  return (
+                    <button key={jid} onClick={() => { setSelJob(jid); setSelJobTitle(label); setJobSearch(label); setShowJobList(false); }}
+                      style={{ display: 'block', width: '100%', padding: '12px 16px', background: selJob === jid ? 'rgba(1,118,211,0.06)' : 'none', border: 'none', borderBottom: '1px solid #f1f5f9', textAlign: 'left', cursor: 'pointer', fontSize: 13, color: '#1e293b', fontWeight: selJob === jid ? 700 : 500 }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(1,118,211,0.05)'}
+                      onMouseLeave={e => e.currentTarget.style.background = selJob === jid ? 'rgba(1,118,211,0.06)' : 'none'}>
+                      <div style={{ fontWeight: 600, color: '#0F172A', marginBottom: 2 }}>{j.title}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>{j.companyName || j.company || ''}{j.location ? ` · ${j.location}` : ''}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {showJobList && jobSearch && filteredJobs.length === 0 && !jobsLoading && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', borderRadius: 12, border: '1.5px solid #e0e8f5', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 9999, padding: '16px', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                No jobs match "{jobSearch}"
+              </div>
+            )}
           </div>
           <button 
             onClick={() => run()} 
@@ -196,8 +262,31 @@ export default function RecruiterTalentMatch({ user }) {
       )}
 
       {!loading && results.length > 0 && (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {results.map((r, i) => (
+        <>
+          {/* Candidate search + results summary row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
+              <input
+                type="text"
+                value={candSearch}
+                onChange={e => setCandSearch(e.target.value)}
+                placeholder="Filter candidates by name, email or title…"
+                style={{ ...inp, height: 42, borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, paddingRight: 34, width: '100%', boxSizing: 'border-box' }}
+              />
+              {candSearch && (
+                <button onClick={() => setCandSearch("")}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#94a3b8' }}>
+                  ✕
+                </button>
+              )}
+            </div>
+            <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {candSearch ? `${filteredResults.length} of ${results.length}` : results.length} candidate{results.length !== 1 ? 's' : ''} matched
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16 }}>
+          {filteredResults.map((r, i) => (
               <div 
                 key={r.candidate?.id || r.candidate?._id || i} 
                 style={{ 
@@ -360,7 +449,8 @@ export default function RecruiterTalentMatch({ user }) {
                 </div>
               </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
