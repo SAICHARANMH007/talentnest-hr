@@ -141,10 +141,11 @@ const EmailSettingsPage = lazy(() => import('./pages/shared/EmailSettingsPage.js
 const ChangePasswordPage = lazy(() => import('./pages/shared/ChangePasswordPage.jsx'));
 const ResumeViewPage = lazy(() => import('./pages/shared/ResumeViewPage.jsx'));
 const PlatformModalsGuide = lazy(() => import('./pages/shared/PlatformModalsGuide.jsx'));
-const CommunityFeed   = lazy(() => import('./pages/shared/CommunityFeed.jsx'));
-const PeoplePage      = lazy(() => import('./pages/shared/PeoplePage.jsx'));
-const CommunitiesPage = lazy(() => import('./pages/shared/CommunitiesPage.jsx'));
-const PostPublicPage  = lazy(() => import('./pages/public/PostPublicPage.jsx'));
+const CommunityFeed        = lazy(() => import('./pages/shared/CommunityFeed.jsx'));
+const PeoplePage           = lazy(() => import('./pages/shared/PeoplePage.jsx'));
+const CommunitiesPage      = lazy(() => import('./pages/shared/CommunitiesPage.jsx'));
+const CommunityDetailPage  = lazy(() => import('./pages/shared/CommunityDetailPage.jsx'));
+const PostPublicPage       = lazy(() => import('./pages/public/PostPublicPage.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -612,6 +613,7 @@ export default function App() {
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
+            <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
           </>
         )}
 
@@ -661,6 +663,7 @@ export default function App() {
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
+            <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
           </>
         )}
 
@@ -725,6 +728,7 @@ export default function App() {
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
+            <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
           </>
         )}
         {rk === 'client' && (
@@ -736,6 +740,7 @@ export default function App() {
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
+            <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
           </>
         )}
       </Route>

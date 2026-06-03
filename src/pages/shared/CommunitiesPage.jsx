@@ -1,5 +1,6 @@
 'use strict';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
@@ -19,14 +20,16 @@ const CATEGORY_LABEL = {
   other   : 'Other',
 };
 
-function CommunityCard({ community, onJoin, onLeave, loading }) {
+function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
   const isMember = community.isMember;
   const color    = community.coverColor || CATEGORY_COLOR[community.category] || '#0176D3';
 
   return (
-    <div style={{ ...card, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', border: isMember ? `2px solid ${color}33` : '1px solid #F1F5F9', transition: 'box-shadow 0.2s', cursor: 'default' }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.10)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
+    <div
+      onClick={() => onNavigate(community.slug)}
+      style={{ ...card, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', border: isMember ? `2px solid ${color}33` : '1px solid #F1F5F9', transition: 'box-shadow 0.2s, transform 0.15s', cursor: 'pointer' }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; }}>
 
       {/* Cover strip */}
       <div style={{ height: 72, background: `linear-gradient(135deg, ${color} 0%, ${color}bb 100%)`, position: 'relative', flexShrink: 0 }}>
@@ -53,7 +56,7 @@ function CommunityCard({ community, onJoin, onLeave, loading }) {
             👥 {community.memberCount || 0} member{community.memberCount !== 1 ? 's' : ''}
           </span>
           <button
-            onClick={() => isMember ? onLeave(community.slug) : onJoin(community.slug)}
+            onClick={(e) => { e.stopPropagation(); isMember ? onLeave(community.slug) : onJoin(community.slug); }}
             disabled={loading}
             style={{
               padding: '7px 18px', borderRadius: 8, border: `1px solid ${isMember ? '#D1D5DB' : color}`,
@@ -77,6 +80,7 @@ function CommunityCard({ community, onJoin, onLeave, loading }) {
 }
 
 export default function CommunitiesPage({ user }) {
+  const navigate     = useNavigate();
   const [communities, setCommunities] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [actionSlug,  setActionSlug]  = useState(null);
@@ -204,6 +208,7 @@ export default function CommunitiesPage({ user }) {
               onJoin={handleJoin}
               onLeave={handleLeave}
               loading={actionSlug === c.slug}
+              onNavigate={(slug) => navigate(`communities/${slug}`)}
             />
           ))}
         </div>

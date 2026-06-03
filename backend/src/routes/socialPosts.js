@@ -77,7 +77,7 @@ const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 
 
 // POST /api/social-posts
 router.post('/', asyncHandler(async (req, res) => {
-  const { content, images, postType } = req.body;
+  const { content, images, postType, communityId, communitySlug } = req.body;
   if (!content?.trim()) throw new AppError('Post content is required.', 400);
   const safeType = VALID_POST_TYPES.includes(postType) ? postType : 'update';
   const u = req.user;
@@ -92,6 +92,7 @@ router.post('/', asyncHandler(async (req, res) => {
     images      : Array.isArray(images) ? images.slice(0, 4) : [],
     hashtags    : extractHashtags(content),
     postType    : safeType,
+    ...(communityId ? { communityId, communitySlug: communitySlug || '' } : {}),
   });
   res.status(201).json({ success: true, data: post });
 }));

@@ -10,6 +10,79 @@ const AppError     = require('../utils/AppError');
 
 router.use(auth);
 
+// ─── Hashtag & keyword maps per community slug ────────────────────────────────
+const SLUG_HASHTAGS = {
+  'java':               ['#java','#springboot','#spring','#jvm','#maven'],
+  'cybersecurity':      ['#security','#cybersecurity','#infosec','#hacking','#vulnerability'],
+  'datascience':        ['#datascience','#machinelearning','#ml','#analytics','#ai','#data'],
+  'fullstack':          ['#fullstack','#webdev','#developer','#engineering','#backend','#frontend'],
+  'python':             ['#python','#django','#flask','#automation','#scripting'],
+  'javascript':         ['#javascript','#nodejs','#typescript','#reactjs','#webdev'],
+  'react-frontend':     ['#react','#reactjs','#frontend','#ui','#ux','#css'],
+  'devops':             ['#devops','#kubernetes','#docker','#cicd','#cloud','#aws'],
+  'mobile':             ['#mobile','#ios','#android','#flutter','#reactnative'],
+  'machine-learning':   ['#machinelearning','#ml','#deeplearning','#nlp','#ai'],
+  'web3':               ['#web3','#blockchain','#crypto','#defi'],
+  'cloud':              ['#cloud','#aws','#azure','#gcp','#devops','#terraform'],
+  'qa-testing':         ['#testing','#qa','#automation','#selenium'],
+  'open-source':        ['#opensource','#github','#contribution'],
+  'database':           ['#database','#sql','#nosql','#mongodb','#postgresql'],
+  'architecture':       ['#architecture','#microservices','#systemdesign','#scalability'],
+  'dotnet':             ['#dotnet','#csharp','#aspnet','#microsoft'],
+  'recruiters':         ['#recruiting','#hiring','#sourcing','#talentacquisition','#hiringdoneright','#recruitment'],
+  'hr-pros':            ['#hr','#humanresources','#hrmanagement','#hrmetrics','#hiringops','#interviewkit'],
+  'talent-acquisition': ['#talentacquisition','#hiring','#recruiting','#sourcing'],
+  'learning':           ['#learning','#training','#upskilling','#career','#development'],
+  'comp-benefits':      ['#compensation','#benefits','#salary','#equity'],
+  'dei':                ['#dei','#diversity','#inclusion','#inclusivehiring'],
+  'people-analytics':   ['#hranalytics','#peopleanalytics','#data','#metrics'],
+  'employee-experience':['#candidateexperience','#interviewexperience','#engagement','#culture'],
+  'sales':              ['#sales','#businessdev','#b2b','#revenue'],
+  'marketing':          ['#marketing','#growth','#seo','#content','#digital'],
+  'finance':            ['#finance','#accounting','#revenue','#budget'],
+  'operations':         ['#operations','#strategy','#process','#efficiency'],
+  'entrepreneurship':   ['#startup','#entrepreneurship','#founder','#fundraising'],
+  'leadership':         ['#leadership','#management','#mentoring'],
+  'customer-success':   ['#customersuccess','#retention','#onboarding','#candidateexperience'],
+  'project-management': ['#projectmanagement','#agile','#scrum','#pmp'],
+  'supply-chain':       ['#supplychain','#logistics','#procurement'],
+  'product':            ['#product','#productmanagement','#ux','#design','#roadmap'],
+  'ux-research':        ['#ux','#userresearch','#usability','#design'],
+  'graphic-design':     ['#design','#graphicdesign','#branding','#figma'],
+  'brand':              ['#brand','#branding','#identity','#marketing'],
+  'motion':             ['#motion','#animation','#design','#creative'],
+  'healthcare':         ['#healthcare','#biotech','#medtech','#pharma'],
+  'edtech':             ['#edtech','#education','#elearning','#teaching'],
+  'media-content':      ['#content','#media','#journalism','#writing'],
+  'remote-work':        ['#remotework','#remote','#wfh','#async'],
+  'early-careers':      ['#earlycareer','#freshers','#internship','#graduate','#newjob','#nextchapter'],
+  'legal':              ['#legal','#compliance','#law'],
+  'women-in-tech':      ['#womenintech','#diversity','#inclusion','#stem'],
+};
+
+const CATEGORY_HASHTAGS = {
+  tech:     ['#coding','#software','#tech','#developer','#engineering','#openrole'],
+  hr:       ['#hr','#hiring','#recruiting','#talentmanagement','#hrquestion'],
+  business: ['#business','#management','#strategy'],
+  design:   ['#design','#creative','#ui','#ux'],
+  other:    ['#career','#networking','#talentnest'],
+};
+
+function getCommunityHashtags(community) {
+  const bySlug     = SLUG_HASHTAGS[community.slug]     || [];
+  const byCategory = CATEGORY_HASHTAGS[community.category] || [];
+  return [...new Set([...bySlug, ...byCategory])];
+}
+
+function roleTitle(role) {
+  return { admin: 'HR Administrator', recruiter: 'Talent Acquisition Specialist', candidate: 'Job Seeker', super_admin: 'Platform Admin', superadmin: 'Platform Admin' }[role] || 'TalentNest Member';
+}
+
+function extractHashtags(text) {
+  const m = (text || '').match(/#[a-zA-Z0-9_]+/g);
+  return m ? [...new Set(m.map(h => h.toLowerCase()))] : [];
+}
+
 // ─── Default community definitions ───────────────────────────────────────────
 const DEFAULTS = [
   // ── Technology ──────────────────────────────────────────────────────────────
@@ -160,23 +233,163 @@ router.post('/:slug/leave', asyncHandler(async (req, res) => {
   res.json({ success: true, memberCount: community.memberCount, isMember: false });
 }));
 
-// ─── GET /api/communities/:slug/feed — paginated posts for community ─────────
+// ─── GET /api/communities/:slug/feed — smart-filtered posts for community ────
 router.get('/:slug/feed', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
   const { page = 1, limit = 20 } = req.query;
-  const skip = (Math.max(1, parseInt(page)) - 1) * Math.min(50, parseInt(limit));
+  const lim  = Math.min(50, parseInt(limit));
+  const skip = (Math.max(1, parseInt(page)) - 1) * lim;
 
   const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
-  const filter = { tenantId, communityId: community._id, isDeleted: false };
+  const hashtags = getCommunityHashtags(community);
+
+  // Show posts explicitly tagged to this community OR posts with matching hashtags
+  const filter = {
+    tenantId,
+    isDeleted: false,
+    $or: [
+      { communityId: community._id },
+      { hashtags: { $in: hashtags } },
+    ],
+  };
 
   const [posts, total] = await Promise.all([
-    FeedPost.find(filter).sort({ isPinned: -1, createdAt: -1 }).skip(skip).limit(Math.min(50, parseInt(limit))).lean(),
+    FeedPost.find(filter).sort({ isPinned: -1, createdAt: -1 }).skip(skip).limit(lim).lean(),
     FeedPost.countDocuments(filter),
   ]);
 
-  res.json({ success: true, data: posts, total, page: parseInt(page), hasMore: skip + posts.length < total });
+  res.json({ success: true, data: posts, total, page: parseInt(page), hasMore: skip + posts.length < total, community });
+}));
+
+// ─── GET /api/communities/:slug/members — paginated community members ─────────
+router.get('/:slug/members', asyncHandler(async (req, res) => {
+  const tenantId = req.user.tenantId;
+  const { page = 1, limit = 20 } = req.query;
+  const lim  = Math.min(50, parseInt(limit));
+  const skip = (Math.max(1, parseInt(page)) - 1) * lim;
+
+  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  if (!community) throw new AppError('Community not found.', 404);
+
+  const memberIds = (community.memberIds || []);
+  const paginated = memberIds.slice(skip, skip + lim);
+
+  const members = await User.find({
+    _id: { $in: paginated },
+    tenantId,
+    deletedAt: null,
+  }).select('name role title avatarUrl photoUrl location department').lean();
+
+  res.json({ success: true, data: members, total: memberIds.length, hasMore: skip + members.length < memberIds.length });
+}));
+
+// ─── GET /api/communities/:slug/jobs — relevant jobs for community ─────────
+router.get('/:slug/jobs', asyncHandler(async (req, res) => {
+  const tenantId = req.user.tenantId;
+  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  if (!community) throw new AppError('Community not found.', 404);
+
+  const Job = require('../models/Job');
+
+  // Build keyword regex from community slug + name words
+  const hashtags = getCommunityHashtags(community);
+  const rawWords = hashtags.map(h => h.replace('#', ''));
+  // Also add words from community name
+  const nameWords = community.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const keywords  = [...new Set([...rawWords, ...nameWords])];
+  const regexStr  = keywords.join('|');
+  const rx        = new RegExp(regexStr, 'i');
+
+  const jobs = await Job.find({
+    tenantId,
+    status: 'active',
+    deletedAt: null,
+    $or: [
+      { title:       rx },
+      { department:  rx },
+      { description: rx },
+      { skills:      { $elemMatch: { $regex: regexStr, $options: 'i' } } },
+    ],
+  })
+    .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt')
+    .sort({ updatedAt: -1 })
+    .limit(15)
+    .lean();
+
+  res.json({ success: true, data: jobs });
+}));
+
+// ─── POST /api/communities/:slug/seed-posts — seed sample posts for community ─
+router.post('/:slug/seed-posts', asyncHandler(async (req, res) => {
+  const tenantId  = req.user.tenantId;
+  const community = await Community.findOne({ tenantId, slug: req.params.slug });
+  if (!community) throw new AppError('Community not found.', 404);
+
+  // Only seed if fewer than 3 community-specific posts exist
+  const existing = await FeedPost.countDocuments({ tenantId, communityId: community._id, isDeleted: false });
+  if (existing >= 3) return res.json({ success: true, message: 'Posts already seeded.', count: existing });
+
+  const users = await User.find({ tenantId, deletedAt: null }).select('name role title avatarUrl').limit(6).lean();
+  if (!users.length) return res.json({ success: false, message: 'No users found.' });
+
+  // Build community-specific seed posts
+  const hashtags = (getCommunityHashtags(community).slice(0, 3)).join(' ');
+  const name = community.name;
+  const POSTS = [
+    {
+      content: `Welcome to ${name}! 🎉 This is your space to share insights, ask questions, and connect with professionals in this space. Drop an introduction below!\n\n${hashtags} #Community`,
+      postType: 'announcement',
+    },
+    {
+      content: `What's the one skill or tool in ${name} that changed how you work? Share below — this community learns best when we share real experience! 💡\n\n${hashtags} #CareerAdvice`,
+      postType: 'question',
+    },
+    {
+      content: `Pro tip for anyone in ${name}: the best way to grow is to teach what you know. Start small — a post, a thread, a comment. Knowledge compounds. 🚀\n\n${hashtags} #ProTip #Learning`,
+      postType: 'tip',
+    },
+    {
+      content: `Excited to see this ${name} community growing! The conversations here are exactly what professionals in this field need. Let's build something great together. 🤝\n\n${hashtags} #Networking`,
+      postType: 'update',
+    },
+    {
+      content: `Resource alert 📎: Looking for great resources related to ${name}? Drop your top links, books, or courses in the comments. Let's build a community resource list!\n\n${hashtags} #FreeResource #Learning`,
+      postType: 'resource',
+    },
+  ];
+
+  const REACTION_TYPES = ['like', 'celebrate', 'support', 'insightful'];
+  const created = [];
+  for (let i = 0; i < Math.min(5, POSTS.length); i++) {
+    const author = users[i % users.length];
+    const hoursAgo = (i + 1) * 6;
+    const createdAt = new Date(Date.now() - hoursAgo * 3600000);
+    const post = await FeedPost.create({
+      tenantId,
+      authorId    : author._id,
+      authorName  : author.name || 'TalentNest Member',
+      authorRole  : author.role || 'candidate',
+      authorAvatar: author.avatarUrl || '',
+      authorTitle : author.title || roleTitle(author.role),
+      content     : POSTS[i].content,
+      postType    : POSTS[i].postType,
+      hashtags    : extractHashtags(POSTS[i].content),
+      communityId  : community._id,
+      communitySlug: community.slug,
+      createdAt,
+      updatedAt   : createdAt,
+    });
+    // Add a couple of reactions
+    for (const reactor of users.filter(u => String(u._id) !== String(author._id)).slice(0, 2)) {
+      post.reactions.push({ userId: reactor._id, type: REACTION_TYPES[i % REACTION_TYPES.length] });
+    }
+    await post.save();
+    created.push(post._id);
+  }
+
+  res.json({ success: true, message: `${created.length} posts seeded for ${name}.`, count: created.length });
 }));
 
 module.exports = router;
