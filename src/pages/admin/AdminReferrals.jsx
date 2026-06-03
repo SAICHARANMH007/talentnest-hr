@@ -265,7 +265,7 @@ export default function AdminReferrals({ user }) {
                     </td>
                     <td style={{ padding: '10px 12px' }}>{r.jobId?.title || '—'}</td>
                     {isSuperAdmin && viewAll && (
-                      <td style={{ padding: '10px 12px', fontSize: 11, color: '#6B7280' }}>{r.tenantId?.slice(-6) || '—'}</td>
+                      <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: '#374151' }}>{r.orgName || r.jobId?.companyName || r.jobId?.company || '—'}</td>
                     )}
                     <td style={{ padding: '10px 12px' }}>{r.candidateId?.name || '—'}</td>
                     <td style={{ padding: '10px 12px' }}>

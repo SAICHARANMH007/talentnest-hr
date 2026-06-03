@@ -8,6 +8,7 @@ const { allowRoles }   = require('../middleware/rbac');
 const asyncHandler     = require('../utils/asyncHandler');
 const AppError         = require('../utils/AppError');
 const Referral         = require('../models/Referral');
+const Tenant           = require('../models/Tenant');
 const Job              = require('../models/Job');
 const Candidate        = require('../models/Candidate');
 const Application      = require('../models/Application');
@@ -26,7 +27,21 @@ router.get('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), async
     .sort({ createdAt: -1 })
     .limit(500)
     .lean();
-  res.json({ success: true, data: refs });
+
+  // For super_admin all-orgs view: attach org name from Tenant
+  let tenantMap = {};
+  if (req.user.role === 'super_admin' && req.query.all === '1') {
+    const tenantIds = [...new Set(refs.map(r => r.tenantId?.toString()).filter(Boolean))];
+    const tenants = await Tenant.find({ _id: { $in: tenantIds } }).select('name').lean();
+    tenants.forEach(t => { tenantMap[t._id.toString()] = t.name; });
+  }
+
+  const data = refs.map(r => ({
+    ...r,
+    orgName: tenantMap[r.tenantId?.toString()] || null,
+  }));
+
+  res.json({ success: true, data });
 }));
 
 // GET /api/referrals/token/:token — public; return referrer info for the apply page banner
