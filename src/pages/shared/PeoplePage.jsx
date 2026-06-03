@@ -208,7 +208,12 @@ export default function PeoplePage({ user }) {
         api.getSentRequests().catch(() => ({ data: [] })),
       ]);
       setConnections(conRes?.data || []);
-      setPending(penRes?.data || []);
+      // Backend returns [{ requestId, from: {...user} }] — flatten to user object with requestId
+      setPending((penRes?.data || []).map(r => ({
+        ...(r.from || r),
+        requestId: r.requestId || r._id,
+        connectionStatus: 'pending_received',
+      })));
       setSuggestions(sugRes?.data || []);
       setSent(sentRes?.data || []);
     } catch (e) {

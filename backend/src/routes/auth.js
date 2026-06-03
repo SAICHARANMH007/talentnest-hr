@@ -165,7 +165,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       }
 
       // 2. Create user
-      const { title, currentCompany, experience, availability } = req.body;
+      const { title, currentCompany, experience, availability, industry, department } = req.body;
       const [user] = await User.create([{
         tenantId: tenant._id,
         name: name.trim(),
@@ -181,6 +181,8 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
         ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
         ...(availability   ? { availability }                        : {}),
+        ...(industry       ? { industry }                            : {}),
+        ...(department     ? { department }                          : {}),
       }], { session });
 
       // 3. Auto-link/create Candidate profile(s) for self-registered job seekers.
@@ -200,6 +202,8 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             ...(currentCompany ? { currentCompany: currentCompany?.trim() }   : {}),
             ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
             ...(availability   ? { availability }                              : {}),
+            ...(industry       ? { industry }                                  : {}),
+            ...(department     ? { department }                                : {}),
           }], { session });
         }
       }

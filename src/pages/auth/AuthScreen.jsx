@@ -7,6 +7,7 @@ import Field from '../../components/ui/Field.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
+import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -405,6 +406,8 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [currentCompany, setCompany]  = useState('');
   const [experience, setExperience]   = useState('');
   const [availability, setAvailability] = useState('');
+  const [industry, setIndustry]       = useState('');
+  const [department, setDepartment]   = useState('');
   const [agreed, setAgreed]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [toast, setToast]       = useState('');
@@ -544,7 +547,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           return;
         }
       } else {
-        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability });
+        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability, industry: industry || undefined, department: department || undefined });
       }
       onAuth(d.user, d.token);
       navigate('/app');
@@ -778,6 +781,22 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                     <option value="45 days">45 Days Notice</option>
                     <option value="60 days">60 Days Notice</option>
                     <option value="90 days">90 Days Notice</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>INDUSTRY</label>
+                  <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ ...INP, cursor: 'pointer', color: industry ? '#FFFFFF' : '#9CA3AF' }}>
+                    <option value="">Select industry…</option>
+                    {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>DEPARTMENT</label>
+                  <select value={department} onChange={e => setDepartment(e.target.value)} style={{ ...INP, cursor: 'pointer', color: department ? '#FFFFFF' : '#9CA3AF' }}>
+                    <option value="">Select department…</option>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
