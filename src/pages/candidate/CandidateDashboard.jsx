@@ -49,21 +49,17 @@ export default function CandidateDashboard({ user }) {
     }).catch(() => setLocBanner(true));
   }, []);
 
-  const [referrals, setReferrals] = useState([]);
-
   const loadData = () => {
     let cancelled = false;
     Promise.all([
       api.getMatchedJobs(user.id),
       api.getMyApplications(),
       api.getUser(user.id),
-      api.getMyReferrals().catch(() => []),
-    ]).then(([j,a,p,refs]) => {
+    ]).then(([j,a,p]) => {
       if (!cancelled) {
         setJobs(Array.isArray(j)?j:(j?.data||[]));
         setApps(Array.isArray(a)?a:(a?.data||[]));
         setProfile(p?.data||p);
-        setReferrals(Array.isArray(refs)?refs:(refs?.data||[]));
       }
     }).catch(() => { if (!cancelled) { setJobs([]); setApps([]); } })
       .finally(() => { if (!cancelled) setLoad(false); });
@@ -396,7 +392,7 @@ export default function CandidateDashboard({ user }) {
           <div style={{ ...card, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:8, background:"rgba(1,118,211,0.04)" }}>
             <span style={{ fontSize:32 }}>📅</span>
             <p style={{ color:"#706E6B", fontSize:13, margin:0 }}>No upcoming interviews</p>
-            <button onClick={() => navigate("/app/job-match")} style={{ ...btnP, padding:"7px 16px", fontSize:12, marginTop:4 }}>🎯 Find matching jobs</button>
+            <button onClick={() => navigate("/app/smart-match")} style={{ ...btnP, padding:"7px 16px", fontSize:12, marginTop:4 }}>✨ Find matching jobs</button>
           </div>
         )}
       </div>
@@ -426,8 +422,8 @@ export default function CandidateDashboard({ user }) {
       <ReferralHub user={user} />
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-        <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>🎯 JOB MATCH HEURISTICS</p>
-        <button onClick={() => navigate("/app/job-match")} style={{ ...btnG, padding:"5px 12px", fontSize:11 }}>Search more →</button>
+        <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>✨ MATCHED JOBS</p>
+        <button onClick={() => navigate("/app/smart-match")} style={{ ...btnG, padding:"5px 12px", fontSize:11 }}>See all →</button>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
         {jobs.slice(0,4).map(j => {
@@ -437,7 +433,7 @@ export default function CandidateDashboard({ user }) {
             return aid === jStrId;
           });
           return (
-            <div key={String(j._id || j.id)} onClick={() => navigate("/app/job-match")} style={{ ...card, border:"1px solid #F3F2F2", cursor:"pointer" }}>
+            <div key={String(j._id || j.id)} onClick={() => navigate("/app/smart-match")} style={{ ...card, border:"1px solid #F3F2F2", cursor:"pointer" }}>
               <div className="tn-job-card-row" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>

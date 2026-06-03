@@ -63,7 +63,7 @@ export default function HiringManagerDashboard({ user }) {
     color: STAGE_COLOR[s],
   })).filter(s => s.value > 0);
 
-  // Avg AI score
+  // Avg Smart Match score
   const scored = apps.filter(a => a.aiMatchScore > 0);
   const avgScore = scored.length > 0 ? Math.round(scored.reduce((s, a) => s + a.aiMatchScore, 0) / scored.length) : 0;
 
