@@ -96,12 +96,22 @@ router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [responses, recentFeedback] = await Promise.all([
-    CandidateNPS.find({ tenantId, respondedAt: { $exists: true }, score: { $exists: true } })
+  const { startDate, endDate } = req.query;
+  const dateFilter = {};
+  if (startDate) dateFilter.$gte = new Date(startDate);
+  if (endDate)   dateFilter.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+
+  const baseQuery = { tenantId, respondedAt: { $exists: true }, score: { $exists: true } };
+  if (startDate || endDate) baseQuery.respondedAt = { ...baseQuery.respondedAt, ...dateFilter };
+
+  const [allSent, responses, recentFeedback] = await Promise.all([
+    CandidateNPS.countDocuments({ tenantId }),
+    CandidateNPS.find(baseQuery)
       .select('score wouldRecommend feedbackText applicationOutcome respondedAt')
       .sort({ respondedAt: -1 })
       .lean(),
-    CandidateNPS.find({ tenantId, feedbackText: { $exists: true, $ne: '' }, respondedAt: { $exists: true } })
+    CandidateNPS.find({ tenantId, feedbackText: { $exists: true, $ne: '' }, respondedAt: { $exists: true },
+      ...(startDate || endDate ? { respondedAt: { ...dateFilter } } : {}) })
       .select('feedbackText applicationOutcome respondedAt score')
       .sort({ respondedAt: -1 })
       .limit(20)
@@ -109,19 +119,28 @@ router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
   ]);
 
   const thisMonth = responses.filter(r => new Date(r.respondedAt) >= monthStart);
+  const avgScore  = (arr) => arr.length ? (arr.reduce((s, r) => s + r.score, 0) / arr.length).toFixed(1) : null;
+  const hired     = responses.filter(r => r.applicationOutcome === 'hired');
+  const rejected  = responses.filter(r => r.applicationOutcome === 'rejected');
 
-  const avgScore = (arr) => arr.length ? (arr.reduce((s, r) => s + r.score, 0) / arr.length).toFixed(1) : null;
-
-  const hired    = responses.filter(r => r.applicationOutcome === 'hired');
-  const rejected = responses.filter(r => r.applicationOutcome === 'rejected');
+  const promoters  = responses.filter(r => r.score >= 9).length;
+  const passives   = responses.filter(r => r.score >= 7 && r.score < 9).length;
+  const detractors = responses.filter(r => r.score < 7).length;
+  const total      = responses.length;
+  const npsScore   = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : null;
 
   res.json({
     success: true,
     data: {
-      totalResponses : responses.length,
-      avgScoreMonth  : avgScore(thisMonth),
-      avgScoreHired  : avgScore(hired),
+      totalResponses  : total,
+      totalSent       : allSent,
+      avgScoreMonth   : avgScore(thisMonth),
+      avgScoreHired   : avgScore(hired),
       avgScoreRejected: avgScore(rejected),
+      promoters,
+      passives,
+      detractors,
+      npsScore,
       recentFeedback,
     },
   });

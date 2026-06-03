@@ -86,10 +86,21 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const skillList = (Array.isArray(form.skills) ? form.skills : (form.skills || '').split(',').map(s => s.trim()).filter(Boolean));
 
   const handleSave = () => {
+    if (saving) return;
     if (!form.title?.trim())    { alert('Job title is required.');          return; }
     if (!form.description?.trim()) { alert('Job description is required.'); return; }
     if (!form.industry?.trim()) { alert('Please select an Industry for this job.'); return; }
     if (!form.department?.trim()) { alert('Please select a Department for this job.'); return; }
+    const minS = Number(form.salaryMin), maxS = Number(form.salaryMax);
+    if (form.salaryMin !== '' && form.salaryMax !== '' && minS > maxS) {
+      alert('Salary Min cannot be greater than Salary Max.'); return;
+    }
+    if (form.applicationDeadline) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (new Date(form.applicationDeadline) < today) {
+        alert('Application deadline cannot be in the past.'); return;
+      }
+    }
     const eu = (form.externalUrl || '').trim();
     const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
     const payload = {

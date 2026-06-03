@@ -112,6 +112,13 @@ function VideoResumeSection({ candidateId, existingUrl, onSaved }) {
   const timerRef   = useRef(null);
   const streamRef  = useRef(null);
 
+  useEffect(() => {
+    return () => {
+      clearInterval(timerRef.current);
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
   const startRecording = async () => {
     setError('');
     try {
@@ -254,7 +261,7 @@ export default function CandidateProfile({ user }) {
   const save = async () => {
     if (!form.name?.trim()) { setToast('❌ Full name is required'); setTab('personal'); return; }
     if (!form.email?.trim()) { setToast('❌ Email address is required'); setTab('personal'); return; }
-    if (form.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(form.linkedinUrl)) {
+    if (form.linkedinUrl && !/^https?:\/\/(www\.)?linkedin\.com\/in\//i.test(form.linkedinUrl.replace(/\/+$/, ''))) {
       setToast('❌ LinkedIn URL must start with https://linkedin.com/in/'); setTab('personal'); return;
     }
     setSaving(true);

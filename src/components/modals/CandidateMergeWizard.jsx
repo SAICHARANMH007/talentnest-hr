@@ -100,7 +100,7 @@ export default function CandidateMergeWizard({ isOpen, onClose, candidates, onMe
               <div style={{ padding: '20px', border: '1px solid #E2E8F0', borderRadius: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                   <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#0176D3', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 20 }}>
-                    {primary.name[0]}
+                    {primary?.name?.[0] || '?'}
                   </div>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 800 }}>{primary.name}</div>

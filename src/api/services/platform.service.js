@@ -174,7 +174,13 @@ export const platformService = {
   async parkApplication(appId)          { return req('PATCH', `/applications/${appId}/park`); },
 
   // NPS
-  async getNpsStats()                        { return req('GET', '/nps/stats'); },
+  async getNpsStats(params = {})             {
+    const q = new URLSearchParams();
+    if (params.startDate) q.set('startDate', params.startDate);
+    if (params.endDate)   q.set('endDate',   params.endDate);
+    const qs = q.toString();
+    return req('GET', `/nps/stats${qs ? `?${qs}` : ''}`);
+  },
 
   // Candidate Documents
   async getCandidateDocuments(candidateId)   { return req('GET', `/candidates/${candidateId}/documents`); },

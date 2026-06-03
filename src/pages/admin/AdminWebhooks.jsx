@@ -73,8 +73,9 @@ function WebhookModal({ hook, onClose, onSaved }) {
   const save = async () => {
     if (!form.name.trim()) return setError('Name is required.');
     if (!form.url.trim())  return setError('URL is required.');
-    try { new URL(form.url); } catch { return setError('Enter a valid URL (must start with https://).'); }
+    try { new URL(form.url); } catch { return setError('Enter a valid URL (e.g. https://hooks.example.com/tn).'); }
     if (!form.events.length) return setError('Select at least one event.');
+    if (!form.url.startsWith('https://')) return setError('Endpoint URL must start with https://');
     setSaving(true); setError('');
     try {
       if (isEdit) await api.updateWebhook(hook._id, form);
@@ -85,6 +86,13 @@ function WebhookModal({ hook, onClose, onSaved }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const generateSecret = () => {
+    const arr = new Uint8Array(24);
+    crypto.getRandomValues(arr);
+    const secret = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    setForm(f => ({ ...f, secret }));
   };
 
   const inp = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, boxSizing: 'border-box', outline: 'none' };
@@ -105,8 +113,15 @@ function WebhookModal({ hook, onClose, onSaved }) {
           <input style={inp} value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://hooks.example.com/tn" />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={lbl}>Security Key (optional — verifies that requests really come from TalentNest)</label>
-          <input style={inp} value={form.secret} onChange={e => setForm(f => ({ ...f, secret: e.target.value }))} placeholder="Leave blank to skip — or enter any secret phrase" type="password" />
+          <label style={lbl}>Signing Secret <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(optional — TalentNest signs every request so you can verify it's genuine)</span></label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input style={{ ...inp, flex: 1 }} value={form.secret} onChange={e => setForm(f => ({ ...f, secret: e.target.value }))} placeholder="Leave blank, or click Generate for a secure random secret" type="text" />
+            <button type="button" onClick={generateSecret}
+              style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
+              ⚡ Generate
+            </button>
+          </div>
+          {form.secret && <p style={{ fontSize: 11, color: '#6B7280', margin: '4px 0 0' }}>Copy this secret now — you won't see it again after saving.</p>}
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -183,13 +198,16 @@ export default function AdminWebhooks({ user }) {
   const [testing, setTesting]   = useState(null); // hookId being tested
   const [testResult, setTestResult] = useState({}); // { [hookId]: result }
   const [expanded, setExpanded] = useState(null);
+  const [actionError, setActionError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api.getWebhooks();
       setHooks(Array.isArray(r) ? r : (r?.data || []));
-    } catch {}
+    } catch (e) {
+      setActionError(e?.message || 'Failed to load webhooks.');
+    }
     setLoading(false);
   }, []);
 
@@ -197,7 +215,8 @@ export default function AdminWebhooks({ user }) {
 
   const del = async (id) => {
     if (!window.confirm('Delete this webhook?')) return;
-    try { await api.deleteWebhook(id); load(); } catch {}
+    try { await api.deleteWebhook(id); load(); }
+    catch (e) { setActionError(e?.message || 'Delete failed.'); }
   };
 
   const test = async (hook) => {
@@ -215,7 +234,7 @@ export default function AdminWebhooks({ user }) {
     try {
       await api.updateWebhook(hook._id, { isActive: !hook.isActive });
       load();
-    } catch {}
+    } catch (e) { setActionError(e?.message || 'Update failed.'); }
   };
 
   return (
@@ -241,6 +260,8 @@ export default function AdminWebhooks({ user }) {
           ))}
         </div>
       </div>
+
+      {actionError && <p style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{actionError}</p>}
 
       {loading ? (
         <p style={{ color: '#9CA3AF' }}>Loading webhooks…</p>

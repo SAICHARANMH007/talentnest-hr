@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnG } from '../../constants/styles.js';
-import { sourceLabel } from '../../constants/sources.js';
 
 const GENDER_LABELS = {
   male:              'Male',
@@ -146,7 +145,7 @@ export default function DiversityReport({ user }) {
                         <td style={{ padding: '8px 12px' }}>{g.applied}</td>
                         <td style={{ padding: '8px 12px' }}>{g.shortlisted}</td>
                         <td style={{ padding: '8px 12px' }}>
-                          <span style={{ background: g.shortlistRate >= 50 ? '#D1FAE5' : '#FEE2E2', color: g.shortlistRate >= 50 ? '#065F46' : '#991B1B', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                          <span style={{ background: '#F3F4F6', color: '#374151', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
                             {g.shortlistRate}%
                           </span>
                         </td>
@@ -158,28 +157,6 @@ export default function DiversityReport({ user }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          )}
-
-          {/* Source breakdown */}
-          {data.sourceBreakdown && data.sourceBreakdown.length > 0 && (
-            <div style={{ ...card, marginBottom: 20 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>Applications by Source</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {data.sourceBreakdown.slice(0, 10).map(s => {
-                  const total = data.totalApplications || 1;
-                  const pct = Math.round((s.count / total) * 100);
-                  return (
-                    <div key={s.source}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{sourceLabel(s.source || 'direct')}</span>
-                        <span style={{ fontSize: 12, color: '#6B7280' }}>{s.count} ({pct}%)</span>
-                      </div>
-                      <PctBar value={pct} color="#0176D3" />
-                    </div>
-                  );
-                })}
               </div>
             </div>
           )}
