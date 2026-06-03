@@ -42,6 +42,10 @@ const userSchema = new mongoose.Schema({
   bgvVerified         : { type: Boolean, default: false },
   bgvVerifiedAt       : { type: Date,    default: null },
 
+  // ── Platform Referral Verified Badge ─────────────────────────
+  platformVerified    : { type: Boolean, default: false },
+  platformVerifiedAt  : { type: Date,    default: null },
+
   // ── Auth helpers ──────────────────────────────────────────
   googleId            : { type: String },
   twoFactorEnabled    : { type: Boolean, default: false },

@@ -361,15 +361,13 @@ export default function CandidateOnboarding({ user }) {
                           <button onClick={()=>viewDoc(task.fileUrl, task.fileName)} style={{ ...btnG, padding:'6px 12px', fontSize:12 }}>
                             👁 View
                           </button>
-                          {vs !== 'verified' && (
-                            <button
-                              onClick={()=>deleteDoc(task._id)}
-                              disabled={deleting[task._id]}
-                              style={{ background:'rgba(186,5,23,0.08)', border:'1px solid rgba(186,5,23,0.25)', borderRadius:8, color:'#BA0517', fontWeight:600, fontSize:12, padding:'6px 12px', cursor:'pointer' }}
-                            >
-                              {deleting[task._id] ? '…' : '🗑 Delete'}
-                            </button>
-                          )}
+                          <button
+                            onClick={()=>deleteDoc(task._id)}
+                            disabled={deleting[task._id]}
+                            style={{ background:'rgba(186,5,23,0.08)', border:'1px solid rgba(186,5,23,0.25)', borderRadius:8, color:'#BA0517', fontWeight:600, fontSize:12, padding:'6px 12px', cursor:'pointer' }}
+                          >
+                            {deleting[task._id] ? '…' : '🗑 Delete'}
+                          </button>
                         </>
                       )}
                     </div>

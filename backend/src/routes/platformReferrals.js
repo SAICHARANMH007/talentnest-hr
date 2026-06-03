@@ -9,7 +9,8 @@ const User                   = require('../models/User');
 
 const router = express.Router();
 
-const COINS_PER_REFERRAL = 25;
+const COINS_PER_REFERRAL  = 25;
+const VERIFIED_BADGE_COST = 100;
 
 const BADGE_TIERS = [
   { name: 'Diamond', icon: '💎', threshold: 1000 },
@@ -26,33 +27,60 @@ function resolveTiers(coins) {
 
 // GET /api/platform-referrals/my-stats
 router.get('/my-stats', auth, asyncHandler(async (req, res) => {
-  const userId = req.user.id || req.user._id;
-  const referrals = await PlatformReferral.find({ referrerId: userId }).sort({ createdAt: -1 }).lean();
-  const coins = referrals.reduce((s, r) => s + (r.coinsAwarded || 0), 0);
+  const userId  = req.user.id || req.user._id;
+  const userDoc = await User.findById(userId).select('platformVerified platformVerifiedAt').lean();
+  const allRecs = await PlatformReferral.find({ referrerId: userId }).sort({ createdAt: -1 }).lean();
+
+  // Coins come only from signed_up/active records (invited rows award 0)
+  const coins = allRecs.reduce((s, r) => s + (r.coinsAwarded || 0), 0);
   const { earned: badgeTier, next: nextTier } = resolveTiers(coins);
   const baseUrl = process.env.FRONTEND_URL || 'https://talentnesthr.com';
 
+  const invitesSent = allRecs.filter(r => r.status === 'invited').length;
+  const joined      = allRecs.filter(r => r.status === 'signed_up' || r.status === 'active').length;
+
   res.json({
-    referralCode : userId.toString(),
-    referralLink : `${baseUrl}/auth?platformRef=${userId}`,
+    referralCode    : userId.toString(),
+    referralLink    : `${baseUrl}/auth?platformRef=${userId}`,
     coins,
     badgeTier,
     nextTier,
-    referrals    : referrals.map(r => ({
+    verifiedBadgeCost: VERIFIED_BADGE_COST,
+    isVerified      : userDoc?.platformVerified || false,
+    verifiedAt      : userDoc?.platformVerifiedAt || null,
+    invitesSent,
+    joined,
+    referrals       : allRecs.map(r => ({
       id           : r._id,
-      referredName : r.referredName || 'Someone',
-      referredEmail: r.referredEmail,
+      referredName : r.referredName || null,
+      referredEmail: r.referredEmail || null,
       status       : r.status,
       coinsAwarded : r.coinsAwarded,
       createdAt    : r.createdAt,
     })),
-    totalReferrals : referrals.length,
-    activeReferrals: referrals.filter(r => r.status === 'active').length,
+    totalReferrals  : allRecs.length,
   });
 }));
 
+// POST /api/platform-referrals/track-invite
+// Called by the referrer's browser when they copy/share their link.
+// Creates an 'invited' record to show link was shared, even before anyone signs up.
+router.post('/track-invite', auth, asyncHandler(async (req, res) => {
+  const referrerId = req.user.id || req.user._id;
+
+  await PlatformReferral.create({
+    referrerId,
+    referrerName  : req.user.name,
+    referrerEmail : req.user.email,
+    status        : 'invited',
+    coinsAwarded  : 0,
+  });
+
+  res.json({ success: true });
+}));
+
 // POST /api/platform-referrals/credit
-// Called by the new user's browser immediately after registration (authenticated as new user)
+// Called by the new user's browser immediately after first login with a referral code stored in localStorage.
 router.post('/credit', auth, asyncHandler(async (req, res) => {
   const { referralCode } = req.body;
 
@@ -62,12 +90,11 @@ router.post('/credit', auth, asyncHandler(async (req, res) => {
 
   const newUserId = (req.user.id || req.user._id).toString();
 
-  // Self-referral guard
   if (referralCode === newUserId) {
     return res.status(400).json({ error: 'Self-referral not allowed' });
   }
 
-  // Idempotency — one credit per new user
+  // Idempotency — one coin credit per new user ever
   const existing = await PlatformReferral.findOne({ referredUserId: newUserId });
   if (existing) return res.json({ success: false, message: 'Already credited' });
 
@@ -87,6 +114,46 @@ router.post('/credit', auth, asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, coinsAwarded: COINS_PER_REFERRAL });
+}));
+
+// POST /api/platform-referrals/redeem-verified-badge
+// Candidate spends 100 coins to get a TalentNest Verified badge on their profile.
+router.post('/redeem-verified-badge', auth, asyncHandler(async (req, res) => {
+  const userId = req.user.id || req.user._id;
+
+  // Check if already verified
+  const userDoc = await User.findById(userId).select('platformVerified').lean();
+  if (userDoc?.platformVerified) {
+    return res.json({ success: false, message: 'Already verified' });
+  }
+
+  // Compute current coin balance
+  const allRecs = await PlatformReferral.find({ referrerId: userId }).lean();
+  const coins   = allRecs.reduce((s, r) => s + (r.coinsAwarded || 0), 0);
+
+  if (coins < VERIFIED_BADGE_COST) {
+    return res.status(400).json({
+      error: `Not enough coins. You need ${VERIFIED_BADGE_COST} coins — you have ${coins}.`,
+    });
+  }
+
+  // Create deduction record and mark user as verified atomically
+  await Promise.all([
+    PlatformReferral.create({
+      referrerId   : userId,
+      referrerName : req.user.name,
+      referrerEmail: req.user.email,
+      status       : 'signed_up',
+      coinsAwarded : -VERIFIED_BADGE_COST, // negative = deduction
+      referredName : 'TalentNest Verified Badge',
+    }),
+    User.findByIdAndUpdate(userId, {
+      platformVerified  : true,
+      platformVerifiedAt: new Date(),
+    }),
+  ]);
+
+  res.json({ success: true, message: 'Verified badge activated!' });
 }));
 
 // GET /api/platform-referrals/admin/all  (super_admin only)
@@ -115,10 +182,11 @@ router.get('/admin/all', auth, allowRoles('super_admin'), asyncHandler(async (re
 
 // GET /api/platform-referrals/admin/stats  (super_admin only)
 router.get('/admin/stats', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const [total, coinsAgg, topReferrers] = await Promise.all([
-    PlatformReferral.countDocuments(),
+  const [total, coinsAgg, topReferrers, verifiedCount] = await Promise.all([
+    PlatformReferral.countDocuments({ status: { $in: ['signed_up', 'active'] }, coinsAwarded: { $gt: 0 } }),
     PlatformReferral.aggregate([{ $group: { _id: null, total: { $sum: '$coinsAwarded' } } }]),
     PlatformReferral.aggregate([
+      { $match: { coinsAwarded: { $gt: 0 } } },
       { $group: {
           _id  : '$referrerId',
           name : { $first: '$referrerName' },
@@ -129,13 +197,16 @@ router.get('/admin/stats', auth, allowRoles('super_admin'), asyncHandler(async (
       { $sort: { count: -1 } },
       { $limit: 10 },
     ]),
+    User.countDocuments({ platformVerified: true }),
   ]);
 
   res.json({
     total,
     totalCoinsAwarded: coinsAgg[0]?.total || 0,
     topReferrers,
+    verifiedCandidates: verifiedCount,
     badgeTiers: BADGE_TIERS,
+    verifiedBadgeCost: VERIFIED_BADGE_COST,
   });
 }));
 

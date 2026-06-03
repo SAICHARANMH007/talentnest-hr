@@ -8,7 +8,7 @@ const platformReferralSchema = new mongoose.Schema({
   referredUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   referredName  : { type: String },
   referredEmail : { type: String, lowercase: true, trim: true },
-  status        : { type: String, enum: ['signed_up', 'active'], default: 'signed_up' },
+  status        : { type: String, enum: ['invited', 'signed_up', 'active'], default: 'invited' },
   coinsAwarded  : { type: Number, default: 25 },
   convertedAt   : { type: Date },
 }, { timestamps: true });

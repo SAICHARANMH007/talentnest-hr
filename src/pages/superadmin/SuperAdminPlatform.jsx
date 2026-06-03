@@ -584,11 +584,19 @@ export default function SuperAdminPlatform({ onNavigate }) {
             <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', gridColumn: 'span 2' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Services & Config</div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {Object.entries(systemHealth.envChecks || {}).map(([k, v]) => (
-                  <span key={k} style={{ background: v ? 'rgba(5,150,105,0.1)' : 'rgba(186,5,23,0.1)', color: v ? '#059669' : '#BA0517', border: `1px solid ${v ? '#86EFAC' : '#FECACA'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
-                    {v ? '✅' : '⚠️'} {k.replace(/([A-Z])/g, ' $1').trim()}
-                  </span>
-                ))}
+                {Object.entries(systemHealth.envChecks || {}).map(([k, v]) => {
+                  const isOptional = k.toLowerCase().includes('vapid');
+                  const bg     = v ? 'rgba(5,150,105,0.1)'   : isOptional ? 'rgba(100,116,139,0.08)' : 'rgba(186,5,23,0.1)';
+                  const color  = v ? '#059669'                : isOptional ? '#64748B'                : '#BA0517';
+                  const border = v ? '#86EFAC'                : isOptional ? '#CBD5E1'                : '#FECACA';
+                  const icon   = v ? '✅'                     : isOptional ? 'ℹ️'                     : '⚠️';
+                  const label  = k.replace(/([A-Z])/g, ' $1').trim() + (isOptional && !v ? ' (optional)' : '');
+                  return (
+                    <span key={k} style={{ background: bg, color, border: `1px solid ${border}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                      {icon} {label}
+                    </span>
+                  );
+                })}
               </div>
               <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>Checked at: {new Date(systemHealth.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</div>
             </div>
