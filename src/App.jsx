@@ -35,13 +35,11 @@ const OfferApprovalPage    = lazy(() => import('./pages/public/OfferApprovalPage
 const OrgCareersPage = lazy(() => import('./pages/careers/OrgCareersPage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
-const CandidateJobMatch = lazy(() => import('./pages/candidate/CandidateJobMatch.jsx'));
 const CandidateApplications = lazy(() => import('./pages/candidate/CandidateApplications.jsx'));
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
-const CandidateExploreJobs = lazy(() => import('./pages/candidate/CandidateExploreJobs.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
 const CandidateSmartMatch = lazy(() => import('./pages/candidate/CandidateSmartMatch.jsx'));
-const ResumeBuilder       = lazy(() => import('./pages/candidate/ResumeBuilder.jsx'));
+const CandidateReferEarn  = lazy(() => import('./pages/candidate/CandidateReferEarn.jsx'));
 const CandidateBackgroundVerification = lazy(() => import('./pages/candidate/CandidateBackgroundVerification.jsx'));
 const RecruiterDashboard = lazy(() => import('./pages/recruiter/RecruiterDashboard.jsx'));
 const RecruiterJobs = lazy(() => import('./pages/recruiter/RecruiterJobs.jsx'));
@@ -78,6 +76,7 @@ const SuperAdminCandidateRequests = lazy(() => import('./pages/superadmin/SuperA
 const SuperAdminAuditLogs = lazy(() => import('./pages/superadmin/SuperAdminAuditLogs.jsx'));
 const SuperAdminBlogs     = lazy(() => import('./pages/superadmin/SuperAdminBlogs.jsx'));
 const SuperAdminBgvTracker = lazy(() => import('./pages/superadmin/SuperAdminBgvTracker.jsx'));
+const SuperAdminPlatformReferrals = lazy(() => import('./pages/superadmin/SuperAdminPlatformReferrals.jsx'));
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
@@ -242,7 +241,7 @@ const APP_PRELOADERS = {
   ],
   candidate: [
     () => import('./pages/candidate/CandidateDashboard.jsx'),
-    () => import('./pages/candidate/CandidateExploreJobs.jsx'),
+    () => import('./pages/candidate/CandidateSmartMatch.jsx'),
     () => import('./pages/candidate/CandidateApplications.jsx'),
     () => import('./pages/candidate/CandidateProfile.jsx'),
   ],
@@ -406,6 +405,24 @@ export default function App() {
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => scheduleAppPreload(user?.role), [user?.role]);
+
+  // Capture platform referral code from URL on first visit (stored until user registers)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('platformRef');
+    if (ref && !user) localStorage.setItem('tn_platform_ref', ref);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After a new user registers and logs in, credit their referrer
+  useEffect(() => {
+    if (!user) return;
+    const ref = localStorage.getItem('tn_platform_ref');
+    if (!ref) return;
+    localStorage.removeItem('tn_platform_ref');
+    import('./api/api.js').then(({ default: api }) => {
+      api.creditPlatformReferral({ referralCode: ref }).catch(() => {});
+    });
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Capture candidate login location once per session (non-blocking)
   // Super admin can see lastLoginLocation on user records
@@ -575,10 +592,8 @@ export default function App() {
         {rk === 'candidate' && (
           <>
             <Route path="dashboard" element={<CandidateDashboard user={user} />} />
-            <Route path="explore-jobs" element={<CandidateExploreJobs user={user} />} />
-            <Route path="job-match" element={<CandidateJobMatch user={user} />} />
             <Route path="smart-match" element={<CandidateSmartMatch user={user} />} />
-            <Route path="resume-builder" element={<ResumeBuilder user={user} />} />
+            <Route path="refer-earn" element={<CandidateReferEarn user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
@@ -682,6 +697,7 @@ export default function App() {
             <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />
             <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
             <Route path="referrals" element={<AdminReferrals user={user} />} />
+            <Route path="platform-referrals" element={<SuperAdminPlatformReferrals />} />
           </>
         )}
 

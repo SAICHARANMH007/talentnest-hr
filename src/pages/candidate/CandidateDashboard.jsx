@@ -423,7 +423,7 @@ export default function CandidateDashboard({ user }) {
         </div>
       )}
       {/* ── Refer & Earn Badge Progress ─────────────────────────────────── */}
-      <ReferralHub referrals={referrals} user={user} />
+      <ReferralHub user={user} />
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
         <p style={{ color:"#0176D3", fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>🎯 JOB MATCH HEURISTICS</p>

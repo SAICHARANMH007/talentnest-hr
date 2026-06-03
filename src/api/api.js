@@ -20,6 +20,7 @@ import { importedCandidateService } from './services/importedCandidate.service.j
 import { scheduleService }          from './services/schedule.service.js';
 import { interviewKitService }      from './services/interviewKit.service.js';
 import { webhookService }           from './services/webhook.service.js';
+import { platformReferralService }  from './services/platformReferral.service.js';
 
 // Re-export the 401 handler and auth initializer for global app subscription
 export const set401Handler = _set401;
@@ -47,6 +48,7 @@ export const api = {
   ...scheduleService,
   ...interviewKitService,
   ...webhookService,
+  ...platformReferralService,
 };
 
 // Default export for convenience

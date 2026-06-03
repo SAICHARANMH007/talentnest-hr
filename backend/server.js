@@ -195,8 +195,10 @@ app.use('/api/interview-kits', require('./src/routes/interviewKits'));
 app.use('/api/webhooks', require('./src/routes/webhooks'));
 // ── Company Reviews
 app.use('/api/company-reviews', require('./src/routes/companyReviews'));
-// ── Referral Portal
+// ── Referral Portal (job referrals)
 app.use('/api/referrals', require('./src/routes/referrals'));
+// ── Platform Referral Programme (candidate invites platform users, earns coins/badges)
+app.use('/api/platform-referrals', require('./src/routes/platformReferrals'));
 // ── Talent Pool
 app.use('/api/talent-pool', require('./src/routes/talentPool'));
 // ── Onboarding Templates
