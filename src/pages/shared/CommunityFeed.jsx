@@ -57,11 +57,14 @@ function ConnectionDegree() {
 
 function PostTypeBadge({ type }) {
   const cfg = {
-    achievement : { label: '🏆 Achievement', bg: '#FEF3C7', color: '#92400E' },
-    milestone   : { label: '🎯 Milestone',   bg: '#D1FAE5', color: '#065F46' },
-    hiring      : { label: '💼 Hiring',      bg: '#EFF6FF', color: '#1D4ED8' },
-    announcement: { label: '📢 Announcement',bg: '#FEF2F2', color: '#991B1B' },
-    resource    : { label: '💡 Resource',    bg: '#F5F3FF', color: '#6D28D9' },
+    achievement : { label: '🏆 Achievement',   bg: '#FEF3C7', color: '#92400E' },
+    milestone   : { label: '🎯 Milestone',     bg: '#D1FAE5', color: '#065F46' },
+    hiring      : { label: '💼 Hiring',        bg: '#EFF6FF', color: '#1D4ED8' },
+    announcement: { label: '📢 Announcement',  bg: '#FEF2F2', color: '#991B1B' },
+    resource    : { label: '📎 Resource',      bg: '#F5F3FF', color: '#6D28D9' },
+    tip         : { label: '💡 Pro Tip',       bg: '#FFFBEB', color: '#B45309' },
+    feedback    : { label: '⭐ Feedback',       bg: '#F0FDF4', color: '#166534' },
+    question    : { label: '❓ Question',       bg: '#EFF6FF', color: '#1E40AF' },
   }[type];
   if (!cfg) return null;
   return (
@@ -443,11 +446,14 @@ function CreatePost({ user, onCreate }) {
 
   const POST_TYPES = [
     { value: 'update',        label: '💬 Update' },
+    { value: 'tip',           label: '💡 Pro Tip' },
+    { value: 'question',      label: '❓ Ask Community' },
     { value: 'achievement',   label: '🏆 Achievement' },
-    { value: 'milestone',     label: '🎯 Milestone' },
     { value: 'hiring',        label: '💼 Hiring' },
+    { value: 'feedback',      label: '⭐ Feedback' },
+    { value: 'resource',      label: '📎 Resource' },
+    { value: 'milestone',     label: '🎯 Milestone' },
     { value: 'announcement',  label: '📢 Announce' },
-    { value: 'resource',      label: '💡 Resource' },
   ];
 
   const submit = async () => {
@@ -771,10 +777,12 @@ export default function CommunityFeed({ user }) {
 
   const FILTERS = [
     { value: 'all',          label: 'All' },
-    { value: 'update',       label: '💬 Updates' },
-    { value: 'achievement',  label: '🏆 Wins' },
     { value: 'hiring',       label: '💼 Hiring' },
-    { value: 'resource',     label: '💡 Resources' },
+    { value: 'tip',          label: '💡 Tips' },
+    { value: 'question',     label: '❓ Questions' },
+    { value: 'achievement',  label: '🏆 Wins' },
+    { value: 'feedback',     label: '⭐ Feedback' },
+    { value: 'resource',     label: '📎 Resources' },
     { value: 'milestone',    label: '🎯 Milestones' },
     { value: 'announcement', label: '📢 News' },
   ];

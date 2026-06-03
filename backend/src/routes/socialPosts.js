@@ -41,10 +41,13 @@ router.get('/user/:userId', asyncHandler(async (req, res) => {
   res.json({ success: true, data: posts });
 }));
 
+const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'];
+
 // POST /api/social-posts
 router.post('/', asyncHandler(async (req, res) => {
   const { content, images, postType } = req.body;
   if (!content?.trim()) throw new AppError('Post content is required.', 400);
+  const safeType = VALID_POST_TYPES.includes(postType) ? postType : 'update';
   const u = req.user;
   const post = await FeedPost.create({
     tenantId    : u.tenantId,
@@ -56,7 +59,7 @@ router.post('/', asyncHandler(async (req, res) => {
     content     : content.trim(),
     images      : Array.isArray(images) ? images.slice(0, 4) : [],
     hashtags    : extractHashtags(content),
-    postType    : postType || 'update',
+    postType    : safeType,
   });
   res.status(201).json({ success: true, data: post });
 }));
@@ -131,7 +134,7 @@ router.post('/seed', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
 
   const existing = await FeedPost.countDocuments({ tenantId });
-  if (existing >= 8) return res.json({ success: true, message: 'Seed data already exists.', count: existing });
+  if (existing >= 10) return res.json({ success: true, message: 'Seed data already exists.', count: existing });
 
   const users = await User.find({ tenantId, deletedAt: null }).select('name role title avatarUrl').limit(6).lean();
   if (!users.length) return res.json({ success: false, message: 'No users found.' });
@@ -140,13 +143,15 @@ router.post('/seed', asyncHandler(async (req, res) => {
     { content: "Excited to be part of this amazing platform! Looking forward to connecting with everyone here and exploring new opportunities. This is the future of hiring! 🚀\n\n#NewBeginnings #TalentNest #Excited", postType: 'update' },
     { content: "Just wrapped up 3 interviews this week — the scheduling was seamless and feedback came within 24 hours. Shoutout to the whole recruiting team! 🙌\n\n#CandidateExperience #HiringDoneRight", postType: 'achievement' },
     { content: "🎉 Big milestone — we filled all 5 open engineering roles this quarter! Huge thank you to every recruiter who hustled and every candidate who trusted us with their career journey.\n\n#Milestone #TeamWork #Hiring", postType: 'milestone' },
-    { content: "Career tip: tailor your resume for EACH job application. Generic resumes get generic results. Spend 10 extra minutes per application — it pays off every time. 💡\n\n#CareerAdvice #JobSearch #Tips", postType: 'resource' },
-    { content: "We're hiring! 🔥 Looking for passionate Full-Stack Developers who love clean code and great culture. Remote-friendly, competitive package, and a team that actually cares.\n\nCheck our jobs page for details! #OpenRole #Engineering #Hiring", postType: 'hiring' },
+    { content: "Pro tip: tailor your resume for EACH job application. Generic resumes get generic results. Spend 10 extra minutes per application — it pays off every time. 💡\n\n#CareerAdvice #JobSearch #ProTip", postType: 'tip' },
+    { content: "We're hiring! 🔥 Looking for passionate Full-Stack Developers who love clean code and great culture. Remote-friendly, competitive package, and a team that actually cares.\n\nDM me or check our jobs page! #OpenRole #Engineering #Hiring", postType: 'hiring' },
     { content: "Officially accepted my offer today! 🎊 This platform made the entire process so transparent and human. From first application to offer letter — exactly how hiring should feel.\n\n#NewJob #Grateful #NextChapter", postType: 'achievement' },
-    { content: "Building diverse teams isn't a trend — it's a competitive advantage. We updated our job descriptions this quarter to be more inclusive. Early results show 23% more applicants. 📊\n\n#DEI #InclusiveHiring #Data", postType: 'announcement' },
-    { content: "Interview prep secret: use the STAR method for every behavioral question. Situation → Task → Action → Result. Makes your answers crisp, specific, and memorable. ⭐\n\nSave this for your next interview! #InterviewTips #CareerGrowth", postType: 'resource' },
+    { content: "Building diverse teams isn't a trend — it's a competitive advantage. We updated our job descriptions this quarter to be more inclusive. Early results: 23% more applicants. 📊\n\n#DEI #InclusiveHiring #Data", postType: 'announcement' },
+    { content: "My interview experience at TechCorp was exceptional — they responded within 24 hours, the process was transparent, and the interviewers genuinely cared about fit both ways. That's how it should be.\n\n⭐⭐⭐⭐⭐\n\n#InterviewExperience #CandidateFeedback #GreatCompany", postType: 'feedback' },
     { content: "Our time-to-hire dropped 40% this quarter. The secret? Faster feedback loops and a clear hiring rubric. When the process is clear, everyone moves faster. 🏎️\n\n#HRMetrics #Efficiency #HiringOps", postType: 'milestone' },
-    { content: "What's the most underrated interview skill? Asking great questions at the end. It shows you're genuinely curious and helps YOU decide if the role is right. Ask about day-1 priorities, team challenges, growth paths. 🎯\n\n#Interviews #CareerTips", postType: 'resource' },
+    { content: "Has anyone else noticed a rise in salary expectation gaps this year? Candidates are asking for 30-40% more than posted ranges in tech roles. How are you handling this in your offers?\n\nWould love to hear how other recruiters are navigating this 🤔\n\n#HRQuestion #Recruiting #Salaries", postType: 'question' },
+    { content: "Resource alert: The best free template for structured interview scorecards that I've ever used. Consistent scoring = fairer decisions = better hires.\n\nLink in our company jobs page under Resources tab!\n\n#InterviewKit #HR #FreeResource", postType: 'resource' },
+    { content: "Just hit 100 connections on TalentNest! The quality of professional conversations here is genuinely different — focused on careers, hiring, and real growth. Not noise. 🎯\n\n#Networking #TalentNest #Community", postType: 'achievement' },
   ];
 
   const REACTION_TYPES = ['like', 'celebrate', 'support', 'insightful'];

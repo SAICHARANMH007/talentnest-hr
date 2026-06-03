@@ -31,7 +31,7 @@ const feedPostSchema = new Schema({
   comments    : [commentSchema],
   postType    : {
     type   : String,
-    enum   : ['update', 'achievement', 'job_update', 'announcement', 'milestone', 'hiring', 'resource'],
+    enum   : ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'],
     default: 'update',
   },
   isPinned : { type: Boolean, default: false },
