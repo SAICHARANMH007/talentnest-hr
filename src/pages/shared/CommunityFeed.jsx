@@ -1,36 +1,47 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
-  if (s < 60)  return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 60)     return 'just now';
+  if (s < 3600)   return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400)  return `${Math.floor(s / 3600)}h ago`;
   if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
-  return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+const ROLE_COLOR = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' };
+const ROLE_LABEL = { admin: 'HR Admin', recruiter: 'Recruiter', candidate: 'Candidate', super_admin: 'Super Admin', superadmin: 'Super Admin' };
+
 function Avatar({ name, src, size = 40, role }) {
-  const bg = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' }[role] || '#0176D3';
-  if (src) return <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+  const bg = ROLE_COLOR[role] || '#0176D3';
+  if (src) return (
+    <img src={src} alt={name}
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${bg}22` }}
+      onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+    />
+  );
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.38, flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: size * 0.38, flexShrink: 0 }}>
       {(name || '?')[0].toUpperCase()}
     </div>
   );
 }
 
 function RoleBadge({ role }) {
-  const cfg = {
-    admin     : { label: 'HR Admin',    bg: '#EFF6FF', color: '#1D4ED8' },
-    recruiter : { label: 'Recruiter',   bg: '#F5F3FF', color: '#7C3AED' },
-    candidate : { label: 'Candidate',   bg: '#ECFDF5', color: '#059669' },
-    super_admin:{ label: 'Super Admin', bg: '#FEF2F2', color: '#DC2626' },
-    superadmin :{ label: 'Super Admin', bg: '#FEF2F2', color: '#DC2626' },
-  }[role] || { label: role || 'Member', bg: '#F3F4F6', color: '#374151' };
-  return <span style={{ fontSize: 10, fontWeight: 700, background: cfg.bg, color: cfg.color, borderRadius: 4, padding: '2px 6px' }}>{cfg.label}</span>;
+  const color = ROLE_COLOR[role] || '#374151';
+  const label = ROLE_LABEL[role] || (role || 'Member');
+  return (
+    <span style={{ fontSize: 10, fontWeight: 700, background: color + '18', color, borderRadius: 4, padding: '2px 6px', letterSpacing: '0.02em' }}>
+      {label}
+    </span>
+  );
+}
+
+function VerifiedBadge() {
+  return <span title="Verified member" style={{ fontSize: 13, lineHeight: 1 }}>✓</span>;
 }
 
 function PostTypeBadge({ type }) {
@@ -40,33 +51,113 @@ function PostTypeBadge({ type }) {
     hiring      : { label: '💼 Hiring',      bg: '#EFF6FF', color: '#1D4ED8' },
     announcement: { label: '📢 Announcement',bg: '#FEF2F2', color: '#991B1B' },
     resource    : { label: '💡 Resource',    bg: '#F5F3FF', color: '#6D28D9' },
-    job_update  : { label: '📋 Job Update',  bg: '#ECFDF5', color: '#065F46' },
   }[type];
   if (!cfg) return null;
-  return <span style={{ fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, borderRadius: 20, padding: '2px 10px' }}>{cfg.label}</span>;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, borderRadius: 20, padding: '3px 10px' }}>
+      {cfg.label}
+    </span>
+  );
 }
 
-function ContentWithHashtags({ text }) {
+function ContentWithHashtags({ text, onHashtagClick }) {
   const parts = text.split(/(#[a-zA-Z0-9_]+)/g);
   return (
     <span>
       {parts.map((p, i) =>
         p.startsWith('#')
-          ? <span key={i} style={{ color: '#0176D3', fontWeight: 600, cursor: 'pointer' }}>{p}</span>
+          ? <span key={i} onClick={() => onHashtagClick?.(p.toLowerCase())}
+              style={{ color: '#0176D3', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}
+              onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+              {p}
+            </span>
           : <span key={i}>{p}</span>
       )}
     </span>
   );
 }
 
+// ── Image Lightbox ─────────────────────────────────────────────────────────────
+function Lightbox({ images, index, onClose }) {
+  const [cur, setCur] = useState(index);
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setCur(c => Math.min(c + 1, images.length - 1));
+      if (e.key === 'ArrowLeft') setCur(c => Math.max(c - 1, 0));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [images.length, onClose]);
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer', borderRadius: '50%', width: 40, height: 40 }}>×</button>
+      {cur > 0 && (
+        <button onClick={e => { e.stopPropagation(); setCur(c => c - 1); }}
+          style={{ position: 'absolute', left: 20, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer', borderRadius: '50%', width: 48, height: 48 }}>‹</button>
+      )}
+      <img src={images[cur]} alt="" onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }} />
+      {cur < images.length - 1 && (
+        <button onClick={e => { e.stopPropagation(); setCur(c => c + 1); }}
+          style={{ position: 'absolute', right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer', borderRadius: '50%', width: 48, height: 48 }}>›</button>
+      )}
+      {images.length > 1 && (
+        <div style={{ position: 'absolute', bottom: 20, display: 'flex', gap: 6 }}>
+          {images.map((_, i) => (
+            <div key={i} onClick={e => { e.stopPropagation(); setCur(i); }}
+              style={{ width: 8, height: 8, borderRadius: '50%', background: i === cur ? '#fff' : 'rgba(255,255,255,0.4)', cursor: 'pointer' }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImageGrid({ images }) {
+  const [lightbox, setLightbox] = useState(null);
+  if (!images?.length) return null;
+  const n = images.length;
+  const gridStyle = n === 1
+    ? { gridTemplateColumns: '1fr' }
+    : n === 2
+      ? { gridTemplateColumns: '1fr 1fr' }
+      : n === 3
+        ? { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto' }
+        : { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
+
+  return (
+    <>
+      <div style={{ display: 'grid', gap: 4, marginTop: 12, borderRadius: 12, overflow: 'hidden', ...gridStyle }}>
+        {images.slice(0, 4).map((img, i) => (
+          <div key={i} style={{ position: 'relative', ...(n === 3 && i === 0 ? { gridColumn: '1 / -1' } : {}) }}>
+            <img src={img} alt="" onClick={() => setLightbox(i)}
+              style={{ width: '100%', height: n === 1 ? 380 : 200, objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
+            {i === 3 && images.length > 4 && (
+              <div onClick={() => setLightbox(3)}
+                style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <span style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>+{images.length - 4}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {lightbox !== null && <Lightbox images={images} index={lightbox} onClose={() => setLightbox(null)} />}
+    </>
+  );
+}
+
+// ── Reactions ─────────────────────────────────────────────────────────────────
 const REACTIONS = [
-  { type: 'like',        emoji: '👍', label: 'Like' },
-  { type: 'celebrate',   emoji: '🎉', label: 'Celebrate' },
-  { type: 'support',     emoji: '💙', label: 'Support' },
-  { type: 'insightful',  emoji: '💡', label: 'Insightful' },
+  { type: 'like',       emoji: '👍', label: 'Like',      color: '#1D4ED8' },
+  { type: 'celebrate',  emoji: '🎉', label: 'Celebrate', color: '#B45309' },
+  { type: 'support',    emoji: '💙', label: 'Support',   color: '#0369A1' },
+  { type: 'insightful', emoji: '💡', label: 'Insightful',color: '#7C3AED' },
 ];
 
-function ReactionBar({ post, userId, onReact }) {
+function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) {
   const [showPicker, setShowPicker] = useState(false);
   const timerRef = useRef(null);
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
@@ -75,40 +166,52 @@ function ReactionBar({ post, userId, onReact }) {
   const totalReactions = post.reactions?.length || 0;
   const totalComments  = post.comments?.length || 0;
 
-  const handleReact = (type) => {
-    setShowPicker(false);
-    onReact(post._id, type);
-  };
+  const rDef = myReaction ? REACTIONS.find(r => r.type === myReaction.type) : REACTIONS[0];
 
   return (
-    <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 12, paddingTop: 10 }}>
-      {totalReactions > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-          {Object.entries(counts).map(([type, count]) => {
-            const r = REACTIONS.find(r => r.type === type);
-            return r ? <span key={type} style={{ fontSize: 12, color: '#6B7280' }}>{r.emoji} {count}</span> : null;
-          })}
-          {totalReactions > 0 && <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 4 }}>{totalReactions} reaction{totalReactions !== 1 ? 's' : ''}</span>}
-          {totalComments > 0 && <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>{totalComments} comment{totalComments !== 1 ? 's' : ''}</span>}
+    <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 14, paddingTop: 10 }}>
+      {/* Reaction summary row */}
+      {(totalReactions > 0 || totalComments > 0) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 2px' }}>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+            {Object.entries(counts).map(([type, count]) => {
+              const r = REACTIONS.find(x => x.type === type);
+              return r ? (
+                <span key={type} style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span>{r.emoji}</span><span>{count}</span>
+                </span>
+              ) : null;
+            })}
+            {totalReactions > 0 && <span style={{ fontSize: 12, color: '#9CA3AF' }}>{totalReactions} reaction{totalReactions !== 1 ? 's' : ''}</span>}
+          </div>
+          {totalComments > 0 && (
+            <button onClick={onToggleComments}
+              style={{ background: 'none', border: 'none', fontSize: 12, color: '#6B7280', cursor: 'pointer', padding: '2px 4px', fontWeight: 500 }}>
+              {totalComments} comment{totalComments !== 1 ? 's' : ''}
+            </button>
+          )}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 4, position: 'relative' }}>
-        <div
-          style={{ position: 'relative' }}
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 2 }}>
+        {/* React button with hover picker */}
+        <div style={{ position: 'relative' }}
           onMouseEnter={() => { clearTimeout(timerRef.current); setShowPicker(true); }}
-          onMouseLeave={() => { timerRef.current = setTimeout(() => setShowPicker(false), 300); }}
-        >
+          onMouseLeave={() => { timerRef.current = setTimeout(() => setShowPicker(false), 300); }}>
           <button
-            onClick={() => handleReact(myReaction?.type === 'like' ? 'like' : 'like')}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1px solid ${myReaction ? '#BFDBFE' : '#E5E7EB'}`, background: myReaction ? '#EFF6FF' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: myReaction ? '#1D4ED8' : '#6B7280' }}>
-            {myReaction ? REACTIONS.find(r => r.type === myReaction.type)?.emoji || '👍' : '👍'} {myReaction ? REACTIONS.find(r => r.type === myReaction.type)?.label || 'Like' : 'Like'}
+            onClick={() => onReact(post._id, myReaction?.type || 'like')}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: myReaction ? '#EFF6FF' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: myReaction ? 700 : 500, color: myReaction ? (rDef?.color || '#1D4ED8') : '#6B7280', transition: 'background 0.12s' }}
+            onMouseEnter={e => { if (!myReaction) e.currentTarget.style.background = '#F3F4F6'; }}
+            onMouseLeave={e => { if (!myReaction) e.currentTarget.style.background = 'transparent'; }}>
+            {rDef?.emoji || '👍'} {rDef?.label || 'Like'}
           </button>
           {showPicker && (
-            <div style={{ position: 'absolute', bottom: '110%', left: 0, display: 'flex', gap: 4, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 24, padding: '6px 10px', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', zIndex: 100 }}>
+            <div style={{ position: 'absolute', bottom: '115%', left: 0, display: 'flex', gap: 6, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 28, padding: '8px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 200 }}>
               {REACTIONS.map(r => (
-                <button key={r.type} title={r.label} onClick={() => handleReact(r.type)}
-                  style={{ fontSize: 22, background: 'none', border: 'none', cursor: 'pointer', borderRadius: '50%', padding: '2px 4px', transition: 'transform 0.15s', lineHeight: 1 }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.35)'}
+                <button key={r.type} title={r.label} onClick={() => { onReact(post._id, r.type); setShowPicker(false); }}
+                  style={{ fontSize: 24, background: myReaction?.type === r.type ? r.color + '18' : 'none', border: 'none', cursor: 'pointer', borderRadius: '50%', padding: '4px 6px', transition: 'transform 0.15s', lineHeight: 1 }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.4)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
                   {r.emoji}
                 </button>
@@ -116,20 +219,67 @@ function ReactionBar({ post, userId, onReact }) {
             </div>
           )}
         </div>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: '1px solid #E5E7EB', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6B7280' }}>
+
+        {/* Comment button */}
+        <button onClick={onToggleComments}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: showComments ? '#F3F4F6' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: showComments ? 600 : 500, color: '#6B7280', transition: 'background 0.12s' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+          onMouseLeave={e => { if (!showComments) e.currentTarget.style.background = 'transparent'; }}>
           💬 Comment
         </button>
+
+        {/* Share button */}
+        <ShareButton postId={post._id} />
       </div>
     </div>
   );
 }
 
-function CommentSection({ post, userId, onAddComment, onDeleteComment }) {
+function ShareButton({ postId }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const url = `${window.location.origin}/app/feed#${postId}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'TalentNest Post', url }); return; } catch {}
+    }
+    await navigator.clipboard.writeText(url).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={share}
+      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: copied ? '#059669' : '#6B7280', transition: 'all 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      {copied ? '✓ Copied' : '↗ Share'}
+    </button>
+  );
+}
+
+function BookmarkButton({ postId, bookmarks, onToggle }) {
+  const saved = bookmarks.includes(postId);
+  return (
+    <button onClick={() => onToggle(postId)} title={saved ? 'Remove bookmark' : 'Save post'}
+      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: saved ? '#F59E0B' : '#D1D5DB', transition: 'color 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.color = '#F59E0B'}
+      onMouseLeave={e => { if (!saved) e.currentTarget.style.color = '#D1D5DB'; }}>
+      {saved ? '★' : '☆'}
+    </button>
+  );
+}
+
+// ── Comment Section ────────────────────────────────────────────────────────────
+function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus }) {
   const [text, setText] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef(null);
   const comments = post.comments || [];
-  const visible  = expanded ? comments : comments.slice(-2);
+  const visible  = expanded ? comments : comments.slice(-3);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   const submit = async () => {
     if (!text.trim() || submitting) return;
@@ -140,108 +290,158 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment }) {
   };
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F8FAFC' }}>
-      {comments.length > 2 && !expanded && (
-        <button onClick={() => setExpanded(true)} style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
+      {comments.length > 3 && !expanded && (
+        <button onClick={() => setExpanded(true)}
+          style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10, padding: 0 }}>
           View all {comments.length} comments
         </button>
       )}
-      {visible.map(c => (
-        <div key={String(c._id)} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <Avatar name={c.userName} src={c.userAvatar} size={30} role={c.userRole} />
-          <div style={{ flex: 1 }}>
-            <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '8px 12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0A1628' }}>{c.userName || 'Member'}</span>
-                <RoleBadge role={c.userRole} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {visible.map(c => (
+          <div key={String(c._id)} style={{ display: 'flex', gap: 8 }}>
+            <Avatar name={c.userName} src={c.userAvatar} size={32} role={c.userRole} />
+            <div style={{ flex: 1 }}>
+              <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '8px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0A1628' }}>{c.userName || 'Member'}</span>
+                  <RoleBadge role={c.userRole} />
+                </div>
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>{c.content}</div>
               </div>
-              <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{c.content}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
-              <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
-              {(String(c.userId) === String(userId)) && (
-                <button onClick={() => onDeleteComment(post._id, String(c._id))}
-                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer', padding: 0 }}>Delete</button>
-              )}
+              <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4 }}>
+                <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
+                {(String(c.userId) === String(userId)) && (
+                  <button onClick={() => onDeleteComment(post._id, String(c._id))}
+                    style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-        <div style={{ width: 30, flexShrink: 0 }} />
+        ))}
+      </div>
+
+      {/* Add comment */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <Avatar name={''} size={32} role={'candidate'} />
         <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-          <input value={text} onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submit()}
-            placeholder="Add a comment…"
-            style={{ flex: 1, padding: '8px 12px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
-          <button onClick={submit} disabled={!text.trim() || submitting}
-            style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: text.trim() ? '#0176D3' : '#E5E7EB', color: text.trim() ? '#fff' : '#9CA3AF', fontSize: 12, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>
-            Post
-          </button>
+          <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            placeholder="Write a comment…"
+            style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
+            onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
+            onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
+          {text.trim() && (
+            <button onClick={submit} disabled={submitting}
+              style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              {submitting ? '…' : '→'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComment, onDelete }) {
+// ── Post Card ──────────────────────────────────────────────────────────────────
+function PostCard({ post, userId, userRole, onReact, onAddComment, onDeleteComment, onDelete, bookmarks, onToggleBookmark, onHashtagClick }) {
   const [showComments, setShowComments] = useState(false);
+  const [commentAutoFocus, setCommentAutoFocus] = useState(false);
   const isOwnPost = String(post.authorId) === String(userId);
   const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
+  const isVerified = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
+
+  const toggleComments = (focus = false) => {
+    setShowComments(v => !v);
+    setCommentAutoFocus(focus);
+  };
 
   return (
-    <div style={{ ...card, padding: '18px 20px', marginBottom: 12 }}>
+    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : undefined }}>
+      {post.isPinned && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>
+          📌 Pinned post
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-        <Avatar name={post.authorName} src={post.authorAvatar} size={44} role={post.authorRole} />
+        <Avatar name={post.authorName} src={post.authorAvatar} size={46} role={post.authorRole} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{post.authorName || 'Member'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+            <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{post.authorName || 'Member'}</span>
+            {isVerified && <VerifiedBadge />}
             <RoleBadge role={post.authorRole} />
-            {post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
+            {post.postType && post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
           </div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>
-            {post.authorTitle || ''}{post.authorTitle ? ' · ' : ''}{timeAgo(post.createdAt)}
+          <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+            {post.authorTitle && <span>{post.authorTitle} · </span>}
+            {timeAgo(post.createdAt)}
           </div>
         </div>
-        {(isOwnPost || isAdmin) && (
-          <button onClick={() => onDelete(post._id)}
-            style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
-            title="Delete post">×</button>
-        )}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
+          {(isOwnPost || isAdmin) && (
+            <button onClick={() => onDelete(post._id)}
+              style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4, transition: 'color 0.15s' }}
+              title="Delete post"
+              onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+              onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
-      <div style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        <ContentWithHashtags text={post.content} />
+      <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 2 }}>
+        <ContentWithHashtags text={post.content} onHashtagClick={onHashtagClick} />
       </div>
 
-      {post.images?.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          {post.images.map((img, i) => (
-            <img key={i} src={img} alt="" style={{ maxWidth: '100%', borderRadius: 10, maxHeight: 400, objectFit: 'cover', cursor: 'pointer' }} />
-          ))}
-        </div>
-      )}
+      {/* Images */}
+      <ImageGrid images={post.images} />
 
       {/* Reaction bar */}
-      <div onClick={e => { if (e.target.textContent === '💬 Comment') setShowComments(v => !v); }}>
-        <ReactionBar post={post} userId={userId} onReact={onReact} />
-      </div>
+      <ReactionBar
+        post={post}
+        userId={userId}
+        onReact={onReact}
+        onToggleComments={() => { setShowComments(v => !v); setCommentAutoFocus(false); }}
+        showComments={showComments}
+      />
 
       {/* Comments */}
       {showComments && (
-        <CommentSection post={post} userId={userId} onAddComment={onAddComment} onDeleteComment={onDeleteComment} />
+        <CommentSection
+          post={post}
+          userId={userId}
+          onAddComment={onAddComment}
+          onDeleteComment={onDeleteComment}
+          autoFocus={commentAutoFocus}
+        />
       )}
     </div>
   );
 }
 
+// ── Create Post ────────────────────────────────────────────────────────────────
 function CreatePost({ user, onCreate }) {
   const [text, setText] = useState('');
   const [postType, setPostType] = useState('update');
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const textRef = useRef(null);
+
+  const POST_TYPES = [
+    { value: 'update',        label: '💬 Update' },
+    { value: 'achievement',   label: '🏆 Achievement' },
+    { value: 'milestone',     label: '🎯 Milestone' },
+    { value: 'hiring',        label: '💼 Hiring' },
+    { value: 'announcement',  label: '📢 Announce' },
+    { value: 'resource',      label: '💡 Resource' },
+  ];
 
   const submit = async () => {
     if (!text.trim() || submitting) return;
@@ -254,48 +454,47 @@ function CreatePost({ user, onCreate }) {
     }
   };
 
-  const POST_TYPES = [
-    { value: 'update',       label: '💬 Update' },
-    { value: 'achievement',  label: '🏆 Achievement' },
-    { value: 'milestone',    label: '🎯 Milestone' },
-    { value: 'hiring',       label: '💼 Hiring' },
-    { value: 'announcement', label: '📢 Announce' },
-    { value: 'resource',     label: '💡 Resource' },
-  ];
+  const charLeft = 3000 - text.length;
 
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 16 }}>
+    <div style={{ ...card, padding: '16px 18px', marginBottom: 12, borderRadius: 14 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <Avatar name={user?.name} src={user?.avatarUrl} size={40} role={user?.role} />
+        <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
         <div style={{ flex: 1 }}>
           <textarea
+            ref={textRef}
             value={text}
             onChange={e => setText(e.target.value)}
             onFocus={() => setExpanded(true)}
-            placeholder={`Share something with your team, ${user?.name?.split(' ')[0] || 'there'}…`}
+            placeholder={`What's on your mind, ${user?.name?.split(' ')[0] || 'there'}?`}
             rows={expanded ? 4 : 2}
             maxLength={3000}
-            style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 10, padding: '10px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.6, background: '#F8FAFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
-            onFocusCapture={e => e.currentTarget.style.border = '1px solid #0176D3'}
-            onBlurCapture={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
+            style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }}
+            onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {expanded && (
-            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 10 }}>
+              {/* Post type chips */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                 {POST_TYPES.map(t => (
                   <button key={t.value} onClick={() => setPostType(t.value)}
-                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, border: `1px solid ${postType === t.value ? '#0176D3' : '#E5E7EB'}`, background: postType === t.value ? '#EFF6FF' : '#F9FAFB', color: postType === t.value ? '#1D4ED8' : '#6B7280', cursor: 'pointer', fontWeight: 600 }}>
+                    style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: `1px solid ${postType === t.value ? '#0176D3' : '#E5E7EB'}`, background: postType === t.value ? '#EFF6FF' : '#F9FAFB', color: postType === t.value ? '#1D4ED8' : '#6B7280', cursor: 'pointer', fontWeight: 600, transition: 'all 0.12s' }}>
                     {t.label}
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: text.length > 2700 ? '#EF4444' : '#9CA3AF' }}>{text.length}/3000</span>
-                <button onClick={() => { setExpanded(false); setText(''); }} style={btnG}>Cancel</button>
-                <button onClick={submit} disabled={!text.trim() || submitting}
-                  style={{ ...btnP, opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
-                  {submitting ? 'Posting…' : 'Post'}
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
+                  {charLeft < 500 ? `${charLeft} characters left` : ''}
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setExpanded(false); setText(''); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
+                  <button onClick={submit} disabled={!text.trim() || submitting}
+                    style={{ ...btnP, fontSize: 13, padding: '7px 18px', opacity: (!text.trim() || submitting) ? 0.6 : 1, cursor: (!text.trim() || submitting) ? 'default' : 'pointer' }}>
+                    {submitting ? 'Posting…' : 'Post'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -305,79 +504,173 @@ function CreatePost({ user, onCreate }) {
   );
 }
 
+// ── Sidebar Components ─────────────────────────────────────────────────────────
 function ProfileSidebar({ user }) {
-  const bg = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' }[user?.role] || '#0176D3';
+  const bg = ROLE_COLOR[user?.role] || '#0176D3';
   return (
-    <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12 }}>
-      <div style={{ height: 64, background: `linear-gradient(135deg, ${bg}, ${bg}88)` }} />
-      <div style={{ padding: '0 16px 16px', marginTop: -28 }}>
-        <Avatar name={user?.name} src={user?.avatarUrl} size={56} role={user?.role} />
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#0A1628' }}>{user?.name || 'You'}</div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{user?.title || user?.role || 'TalentNest Member'}</div>
+    <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12, borderRadius: 14 }}>
+      <div style={{ height: 70, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)` }} />
+      <div style={{ padding: '0 16px 16px', marginTop: -32 }}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #fff', overflow: 'hidden', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, color: '#fff' }}>
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (user?.name || '?')[0].toUpperCase()}
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628' }}>{user?.name || 'You'}</div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, marginBottom: 6 }}>{user?.title || user?.role || 'TalentNest Member'}</div>
           <RoleBadge role={user?.role} />
         </div>
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', fontSize: 12, color: '#6B7280' }}>
-          {user?.email || ''}
-        </div>
+        {user?.email && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', fontSize: 12, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user.email}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function QuickStats({ posts }) {
-  const myPosts   = posts?.length || 0;
-  const reactions = posts?.reduce((s, p) => s + (p.reactions?.length || 0), 0) || 0;
+function QuickStats({ myPosts, myReactions, myComments, bookmarkCount }) {
+  const stats = [
+    { label: 'Posts',     value: myPosts,      color: '#0176D3' },
+    { label: 'Reactions', value: myReactions,   color: '#7C3AED' },
+    { label: 'Saved',     value: bookmarkCount, color: '#F59E0B' },
+  ];
   return (
-    <div style={{ ...card, padding: '12px 16px', marginBottom: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Your activity</div>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#0176D3' }}>{myPosts}</div>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>Posts</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#059669' }}>{reactions}</div>
-          <div style={{ fontSize: 11, color: '#6B7280' }}>Reactions</div>
-        </div>
+    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Activity</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ textAlign: 'center', padding: '6px 4px' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function TrendingHashtags({ posts }) {
-  const counts = {};
-  (posts || []).forEach(p => (p.hashtags || []).forEach(h => { counts[h] = (counts[h] || 0) + 1; }));
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  if (!sorted.length) return null;
+function TrendingHashtags({ posts, onHashtagClick, activeHashtag }) {
+  const counts = useMemo(() => {
+    const c = {};
+    (posts || []).forEach(p => (p.hashtags || []).forEach(h => { c[h] = (c[h] || 0) + 1; }));
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  }, [posts]);
+
+  if (!counts.length) return null;
   return (
-    <div style={{ ...card, padding: '14px 16px' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Trending topics</div>
-      {sorted.map(([tag, count]) => (
-        <div key={tag} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Trending Topics</div>
+      {counts.map(([tag, count]) => (
+        <div key={tag} onClick={() => onHashtagClick(tag === activeHashtag ? null : tag)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 6, background: activeHashtag === tag ? '#EFF6FF' : 'transparent', transition: 'background 0.12s' }}
+          onMouseEnter={e => { if (activeHashtag !== tag) e.currentTarget.style.background = '#F9FAFB'; }}
+          onMouseLeave={e => { if (activeHashtag !== tag) e.currentTarget.style.background = 'transparent'; }}>
           <span style={{ fontSize: 13, color: '#0176D3', fontWeight: 600 }}>{tag}</span>
-          <span style={{ fontSize: 11, color: '#9CA3AF' }}>{count} post{count !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 11, color: '#9CA3AF', background: '#F3F4F6', borderRadius: 10, padding: '1px 6px' }}>{count}</span>
         </div>
       ))}
     </div>
   );
 }
 
+function PeoplePanel({ posts, currentUserId }) {
+  const people = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    (posts || []).forEach(p => {
+      const id = String(p.authorId);
+      if (!seen.has(id) && id !== String(currentUserId)) {
+        seen.add(id);
+        list.push({ id, name: p.authorName, avatar: p.authorAvatar, role: p.authorRole, title: p.authorTitle });
+      }
+    });
+    return list.slice(0, 5);
+  }, [posts, currentUserId]);
+
+  if (!people.length) return null;
+  return (
+    <div style={{ ...card, padding: '14px 16px', borderRadius: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>People on Platform</div>
+      {people.map(p => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <Avatar name={p.name} src={p.avatar} size={34} role={p.role} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Member'}</div>
+            <div style={{ fontSize: 10, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Search Bar ─────────────────────────────────────────────────────────────────
+function SearchBar({ value, onChange }) {
+  return (
+    <div style={{ position: 'relative', marginBottom: 12 }}>
+      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Search posts…"
+        style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
+        onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
+        onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
+      />
+      {value && (
+        <button onClick={() => onChange('')}
+          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+      )}
+    </div>
+  );
+}
+
+// ── Saved Posts View ───────────────────────────────────────────────────────────
+function SavedPostsView({ posts, bookmarks, ...props }) {
+  const saved = posts.filter(p => bookmarks.includes(p._id));
+  if (!saved.length) {
+    return (
+      <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>★</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No saved posts yet</div>
+        <div style={{ fontSize: 13, color: '#9CA3AF' }}>Click the ☆ on any post to save it here.</div>
+      </div>
+    );
+  }
+  return <>{saved.map(post => <PostCard key={post._id} post={post} {...props} bookmarks={bookmarks} />)}</>;
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
+const BOOKMARK_KEY = 'tn_feed_bookmarks';
+
+function loadBookmarks() {
+  try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch { return []; }
+}
+function saveBookmarks(ids) {
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ids));
+}
+
 export default function CommunityFeed({ user }) {
-  const [posts, setPosts]         = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [posts,       setPosts]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage]           = useState(1);
-  const [hasMore, setHasMore]     = useState(true);
-  const [filter, setFilter]       = useState('all');
-  const [seeding, setSeeding]     = useState(false);
-  const [seedMsg, setSeedMsg]     = useState('');
-  const [isMobile, setMobile]     = useState(window.innerWidth < 900);
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [filter,      setFilter]      = useState('all');
+  const [search,      setSearch]      = useState('');
+  const [activeHash,  setActiveHash]  = useState(null);
+  const [tab,         setTab]         = useState('feed'); // 'feed' | 'saved'
+  const [bookmarks,   setBookmarks]   = useState(loadBookmarks);
+  const [seeding,     setSeeding]     = useState(false);
+  const [seedMsg,     setSeedMsg]     = useState('');
+  const [isMobile,    setMobile]      = useState(() => window.innerWidth < 900);
 
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 900);
-    window.addEventListener('resize', h);
+    window.addEventListener('resize', h, { passive: true });
     return () => window.removeEventListener('resize', h);
   }, []);
 
@@ -389,12 +682,18 @@ export default function CommunityFeed({ user }) {
       setPosts(prev => append ? [...prev, ...items] : items);
       setHasMore(r?.hasMore ?? false);
       setPage(p);
+    } catch {
+      if (!append) setPosts([]);
     } finally {
-      setLoading(false); setLoadingMore(false);
+      setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
+
+  // Reset hashtag filter when type filter changes
+  useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
   const handleCreate = async (data) => {
     await api.createPost(data);
@@ -422,6 +721,18 @@ export default function CommunityFeed({ user }) {
     setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: (p.comments || []).filter(c => String(c._id) !== commentId) } : p));
   };
 
+  const handleToggleBookmark = (postId) => {
+    const next = bookmarks.includes(postId) ? bookmarks.filter(id => id !== postId) : [...bookmarks, postId];
+    setBookmarks(next);
+    saveBookmarks(next);
+  };
+
+  const handleHashtagClick = (tag) => {
+    setActiveHash(tag);
+    setFilter('all');
+    setSearch('');
+  };
+
   const handleSeed = async () => {
     setSeeding(true); setSeedMsg('');
     try {
@@ -430,117 +741,189 @@ export default function CommunityFeed({ user }) {
       loadPosts(1, filter);
     } catch (e) {
       setSeedMsg(e?.message || 'Seed failed.');
+    } finally {
+      setSeeding(false);
     }
-    setSeeding(false);
   };
 
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
+  const uid = user?.id || user?._id;
 
   const FILTERS = [
-    { value: 'all',          label: '🌐 All' },
+    { value: 'all',          label: 'All' },
     { value: 'update',       label: '💬 Updates' },
-    { value: 'achievement',  label: '🏆 Achievements' },
+    { value: 'achievement',  label: '🏆 Wins' },
     { value: 'hiring',       label: '💼 Hiring' },
     { value: 'resource',     label: '💡 Resources' },
     { value: 'milestone',    label: '🎯 Milestones' },
+    { value: 'announcement', label: '📢 News' },
   ];
 
-  const myPosts = posts.filter(p => String(p.authorId) === String(user?.id || user?._id));
+  // Client-side filtering (search + hashtag)
+  const visiblePosts = useMemo(() => {
+    let list = posts;
+    if (activeHash) list = list.filter(p => (p.hashtags || []).includes(activeHash));
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(p =>
+        p.content?.toLowerCase().includes(q) ||
+        p.authorName?.toLowerCase().includes(q) ||
+        (p.hashtags || []).some(h => h.includes(q))
+      );
+    }
+    return list;
+  }, [posts, activeHash, search]);
+
+  const myPosts     = useMemo(() => posts.filter(p => String(p.authorId) === String(uid)), [posts, uid]);
+  const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
+
+  const isFiltered = !!activeHash || !!search.trim();
+
+  const sharedPostProps = {
+    userId: uid,
+    userRole: user?.role,
+    onReact: handleReact,
+    onAddComment: handleAddComment,
+    onDeleteComment: handleDeleteComment,
+    onDelete: handleDelete,
+    bookmarks,
+    onToggleBookmark: handleToggleBookmark,
+    onHashtagClick: handleHashtagClick,
+  };
 
   return (
-    <div style={{ padding: isMobile ? '12px 0' : '24px clamp(12px,3vw,24px)', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0 }}>
+    <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#0A1628' }}>Community Feed</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Stay connected with your team and discover what's happening</p>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Community</h1>
+          <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Connect, share, and grow with your network</p>
         </div>
         {isAdmin && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {seedMsg && <span style={{ fontSize: 12, color: '#059669' }}>{seedMsg}</span>}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
             <button onClick={handleSeed} disabled={seeding}
-              style={{ ...btnG, fontSize: 12 }}>
-              {seeding ? 'Creating…' : '+ Test Data'}
+              style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>
+              {seeding ? 'Creating…' : '+ Sample Posts'}
             </button>
           </div>
         )}
       </div>
 
-      {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
-        {FILTERS.map(f => (
-          <button key={f.value} onClick={() => setFilter(f.value)}
-            style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f.value ? '#0176D3' : '#E5E7EB'}`, background: filter === f.value ? '#EFF6FF' : '#F9FAFB', color: filter === f.value ? '#1D4ED8' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {f.label}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #F1F5F9' }}>
+        {[{ id: 'feed', label: 'Feed' }, { id: 'saved', label: `★ Saved (${bookmarks.length})` }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ padding: '8px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s' }}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr 240px', gap: 16, alignItems: 'start' }}>
+      {tab === 'feed' && (
+        <>
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
+            {FILTERS.map(f => (
+              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); }}
+                style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f.value && !activeHash ? '#0176D3' : '#E5E7EB'}`, background: filter === f.value && !activeHash ? '#EFF6FF' : '#F9FAFB', color: filter === f.value && !activeHash ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Active hashtag banner */}
+          {activeHash && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '8px 14px', marginBottom: 14, marginLeft: isMobile ? 12 : 0, marginRight: isMobile ? 12 : 0 }}>
+              <span style={{ fontSize: 13, color: '#1D4ED8', fontWeight: 600 }}>Filtering by {activeHash}</span>
+              <button onClick={() => setActiveHash(null)} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: 16, lineHeight: 1, marginLeft: 'auto' }}>×</button>
+            </div>
+          )}
+        </>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr 260px', gap: 16, alignItems: 'start' }}>
         {/* Left sidebar */}
-        {!isMobile && (
+        {!isMobile && tab === 'feed' && (
           <div style={{ position: 'sticky', top: 16 }}>
             <ProfileSidebar user={user} />
-            <QuickStats posts={myPosts} />
+            <QuickStats myPosts={myPosts.length} myReactions={myReactions} myComments={0} bookmarkCount={bookmarks.length} />
           </div>
         )}
+        {/* Spacer when tab is saved */}
+        {!isMobile && tab === 'saved' && <div />}
 
-        {/* Feed center */}
-        <div>
-          <CreatePost user={user} onCreate={handleCreate} />
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-              Loading feed…
-            </div>
-          ) : posts.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: '48px 24px' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>
-                {filter === 'all' ? 'No posts yet' : `No ${filter} posts yet`}
-              </div>
-              <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
-                Be the first to share something with your team!
-              </div>
-              {isAdmin && (
-                <button onClick={handleSeed} disabled={seeding} style={btnP}>
-                  {seeding ? 'Creating sample posts…' : '🌱 Create sample posts'}
-                </button>
-              )}
-            </div>
-          ) : (
+        {/* Main content */}
+        <div style={{ padding: isMobile ? '0 12px' : 0 }}>
+          {tab === 'feed' && (
             <>
-              {posts.map(post => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  userId={user?.id || user?._id}
-                  userRole={user?.role}
-                  onReact={handleReact}
-                  onAddComment={handleAddComment}
-                  onDeleteComment={handleDeleteComment}
-                  onDelete={handleDelete}
-                />
-              ))}
-              {hasMore && (
-                <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
-                  <button onClick={() => loadPosts(page + 1, filter, true)} disabled={loadingMore}
-                    style={{ ...btnG, padding: '10px 28px' }}>
-                    {loadingMore ? 'Loading…' : 'Load more posts'}
-                  </button>
+              {/* Search */}
+              <SearchBar value={search} onChange={setSearch} />
+
+              {/* Create post */}
+              <CreatePost user={user} onCreate={handleCreate} />
+
+              {/* Posts */}
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
+                  <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+                  Loading feed…
                 </div>
+              ) : visiblePosts.length === 0 ? (
+                <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 14 }}>
+                  <div style={{ fontSize: 52, marginBottom: 14 }}>📭</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>
+                    {isFiltered ? 'No posts match your search' : filter === 'all' ? 'No posts yet' : `No ${filter} posts yet`}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
+                    {isFiltered ? 'Try a different search or hashtag.' : 'Be the first to share something with the community!'}
+                  </div>
+                  {isFiltered && <button onClick={() => { setSearch(''); setActiveHash(null); }} style={btnG}>Clear filters</button>}
+                  {!isFiltered && isAdmin && (
+                    <button onClick={handleSeed} disabled={seeding} style={btnP}>
+                      {seeding ? 'Creating…' : '🌱 Create sample posts'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {visiblePosts.map(post => (
+                    <PostCard key={post._id} post={post} {...sharedPostProps} />
+                  ))}
+                  {hasMore && !isFiltered && (
+                    <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
+                      <button onClick={() => loadPosts(page + 1, filter, true)} disabled={loadingMore}
+                        style={{ ...btnG, padding: '10px 28px', fontSize: 13 }}>
+                        {loadingMore ? 'Loading…' : 'Load more'}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
+          )}
+
+          {tab === 'saved' && (
+            <SavedPostsView posts={posts} {...sharedPostProps} />
           )}
         </div>
 
         {/* Right sidebar */}
         {!isMobile && (
-          <div style={{ position: 'sticky', top: 16 }}>
-            <TrendingHashtags posts={posts} />
+          <div style={{ position: 'sticky', top: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {tab === 'feed' && (
+              <>
+                <TrendingHashtags posts={posts} onHashtagClick={handleHashtagClick} activeHashtag={activeHash} />
+                <PeoplePanel posts={posts} currentUserId={uid} />
+              </>
+            )}
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes tn-spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
