@@ -346,7 +346,9 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
 
     const patchFilter = { _id: req.params.id, deletedAt: null };
     if (req.user.role !== 'super_admin') patchFilter.tenantId = req.user.tenantId;
-    const prevJob = await Job.findOne(patchFilter).select('status').lean();
+    const prevJob = await Job.findOne(patchFilter).select('status closedAt').lean();
+    if (updates.status === 'closed' && prevJob?.status !== 'closed') updates.closedAt = new Date();
+    if (updates.status === 'active' && prevJob?.status === 'closed') updates.closedAt = null;
     const job = await Job.findOneAndUpdate(patchFilter, { $set: updates }, { new: true });
     if (!job) throw new AppError('Job not found.', 404);
 

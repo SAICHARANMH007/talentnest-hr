@@ -178,7 +178,7 @@ export default function AdminReferrals({ user }) {
       const [refs, st, js] = await Promise.all([
         api.getReferrals(params),
         api.getReferralStats(params),
-        api.getJobs({ limit: 200 }),
+        api.getJobs({ limit: 10000000 }),
       ]);
       setReferrals(Array.isArray(refs) ? refs : (refs?.data || []));
       setStats(st?.data || st);

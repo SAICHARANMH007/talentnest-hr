@@ -45,7 +45,7 @@ export default function CustomHiringStages() {
   const [msg, setMsg]           = useState('');
 
   useEffect(() => {
-    api.getJobs({ limit: 200, status: 'active' })
+    api.getJobs({ limit: 10000000, status: 'active' })
       .then(r => setJobs(Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : [])))
       .catch(() => setJobs([]))
       .finally(() => setLJ(false));

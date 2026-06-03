@@ -152,6 +152,81 @@ function ApplicantsPanel({ job, onClose }) {
     </>
   );
 }
+
+// ── Closed Job Analytics Card ─────────────────────────────────────────────────
+function ClosedJobCard({ j, onReopen, onDelete, onViewApplicants, onViewDetails, onEdit, isMobile }) {
+  const closedOn = j.closedAt ? new Date(j.closedAt) : (j.updatedAt ? new Date(j.updatedAt) : null);
+  const postedOn = j.createdAt ? new Date(j.createdAt) : null;
+  const daysToClose = (closedOn && postedOn)
+    ? Math.round((closedOn - postedOn) / (1000 * 60 * 60 * 24))
+    : null;
+  const conversion = j.applicantsCount > 0
+    ? Math.round((j.selectedCount / j.applicantsCount) * 100)
+    : 0;
+
+  return (
+    <div style={{ ...card, borderLeft: '4px solid #9CA3AF', background: '#FAFAFA', position: 'relative' }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ color: '#181818', fontWeight: 700 }}>{j.title}</span>
+            <Badge label="Closed" color="#BA0517" />
+            {j.urgency && <Badge label={j.urgency} color={j.urgency === 'High' ? '#BA0517' : j.urgency === 'Medium' ? '#A07E00' : '#2E844A'} />}
+          </div>
+          <div style={{ color: '#0176D3', fontSize: 12, marginBottom: 8 }}>{j.company} · {j.location} · {j.experience}</div>
+          {/* Skills */}
+          {j.skills && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+              {(Array.isArray(j.skills) ? j.skills : (j.skills||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s => <Badge key={s} label={s} color="#706E6B" />)}
+            </div>
+          )}
+          {/* Analytics strip */}
+          <div style={{ display: 'flex', gap: isMobile ? 10 : 20, flexWrap: 'wrap', padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #E5E7EB' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#374151' }}>{j.applicantsCount || 0}</div>
+              <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>APPLICANTS</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#2E844A' }}>{j.selectedCount || 0}</div>
+              <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>HIRED</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: conversion >= 20 ? '#2E844A' : '#A07E00' }}>{conversion}%</div>
+              <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>CONVERSION</div>
+            </div>
+            {daysToClose !== null && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: daysToClose <= 30 ? '#2E844A' : '#A07E00' }}>{daysToClose}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>DAYS TO CLOSE</div>
+              </div>
+            )}
+            {postedOn && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{postedOn.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>POSTED ON</div>
+              </div>
+            )}
+            {closedOn && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#BA0517' }}>{closedOn.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>CLOSED ON</div>
+              </div>
+            )}
+          </div>
+        </div>
+        <JobActionsMenu isMobile={isMobile} actions={[
+          { label: 'View Details', primary: true, onClick: () => onViewDetails(j) },
+          { label: `👥 ${j.applicantsCount > 0 ? `${j.applicantsCount} Applicants` : 'Applicants'}`, onClick: () => onViewApplicants(j) },
+          { label: '✏️ Edit', onClick: () => onEdit(j) },
+          { label: '🔄 Reopen', onClick: () => onReopen(j.id, j.status) },
+          { label: 'Delete', danger: true, onClick: () => onDelete(j.id) },
+        ]} />
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function RecruiterJobs({ user }) {
   const navigate = useNavigate();
@@ -165,10 +240,11 @@ export default function RecruiterJobs({ user }) {
   const [assessmentSettings, setAssessmentSettings] = useState({ title: '', instructions: '', timeLimitMins: 0, passingScore: 0, isActive: true, autoAdvance: false });
   const [assessmentQuestions, setAssessmentQuestions] = useState([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [activeTab, setActiveTab] = useState('active');
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const [editingJob, setEditingJob] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [tabCounts, setTabCounts] = useState({ active: 0, closed: 0, draft: 0, all: 0 });
   const postJobRef = useRef(null);
   const searchDebounceRef = useRef(null);
 
@@ -177,12 +253,14 @@ export default function RecruiterJobs({ user }) {
   const PAGE_SIZE_JOBS = 20;
   const [pgMeta, setPgMeta] = useState({ page: 1, pages: 1, total: 0 });
 
-  const load = (pg = 1, srch = search, sFilter = statusFilter) => {
+  const tabStatusMap = { active: 'active', closed: 'closed', draft: 'draft', all: null };
+
+  const load = (pg = 1, srch = search, tab = activeTab) => {
     setLoad(true);
-    const statusMap = { 'Open': 'active', 'Closed': 'closed', 'Draft': 'draft' };
     const params = { recruiterId: user.id, limit: PAGE_SIZE_JOBS, page: pg };
     if (srch) params.search = srch;
-    if (sFilter !== 'All') params.status = statusMap[sFilter];
+    const statusVal = tabStatusMap[tab];
+    if (statusVal) params.status = statusVal;
     api.getJobs(params)
       .then(r => {
         const raw = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
@@ -195,16 +273,30 @@ export default function RecruiterJobs({ user }) {
       .catch(() => setJobs([]))
       .finally(() => setLoad(false));
   };
-  useEffect(() => { load(1); }, [user.id]); // eslint-disable-line
+
+  // Fetch tab counts once on mount
+  const loadTabCounts = () => {
+    const base = { recruiterId: user.id, limit: 1, page: 1 };
+    Promise.allSettled([
+      api.getJobs({ ...base, status: 'active' }),
+      api.getJobs({ ...base, status: 'closed' }),
+      api.getJobs({ ...base, status: 'draft' }),
+      api.getJobs({ ...base }),
+    ]).then(([a, c, d, all]) => {
+      const cnt = r => (r.status === 'fulfilled' ? (r.value?.pagination?.total || 0) : 0);
+      setTabCounts({ active: cnt(a), closed: cnt(c), draft: cnt(d), all: cnt(all) });
+    });
+  };
+
+  useEffect(() => { load(1); loadTabCounts(); }, [user.id]); // eslint-disable-line
 
   useEffect(() => {
     clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => load(1, search, statusFilter), 400);
+    searchDebounceRef.current = setTimeout(() => load(1, search, activeTab), 400);
     return () => clearTimeout(searchDebounceRef.current);
-  }, [search, statusFilter]); // eslint-disable-line
+  }, [search, activeTab]); // eslint-disable-line
 
   const filteredJobs = urgencyFilter !== 'All' ? jobs.filter(j => j.urgency === urgencyFilter) : jobs;
-  const hasJobFilters = !!(search || statusFilter!=='All' || urgencyFilter!=='All');
   const fSel = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#706E6B', fontSize:13, outline:'none', cursor:'pointer' };
   const resetModal = () => { setShow(false); setShowAssessment(false); setAssessmentQuestions([]); setAssessmentSettings({ title: '', instructions: '', timeLimitMins: 0, passingScore: 0, isActive: true, autoAdvance: false }); postJobRef.current?.reset?.(); };
   const save = async (form) => {
@@ -218,26 +310,45 @@ export default function RecruiterJobs({ user }) {
       if (assessmentQuestions.length > 0) {
         try {
           await api.createAssessment({ jobId: job.id, ...assessmentSettings, title: assessmentSettings.title || `${form.title} — Screening`, questions: assessmentQuestions });
-        } catch (ae) { setToast(`✅ Job posted! (Assessment error: ${ae.message})`); setSaving(false); resetModal(); load(1); return; }
+        } catch (ae) { setToast(`✅ Job posted! (Assessment error: ${ae.message})`); setSaving(false); resetModal(); load(1); loadTabCounts(); return; }
       }
       setToast("✅ Job posted!" + (assessmentQuestions.length > 0 ? " Assessment attached." : ""));
-      resetModal(); load(1);
+      resetModal(); load(1); loadTabCounts();
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSaving(false);
   };
   const del = async (id) => {
     if (!window.confirm("Delete this job posting? This will also remove all applicant data for this job.")) return;
-    try { await api.deleteJob(id); load(1); setToast("✅ Job deleted"); }
+    try { await api.deleteJob(id); load(1); loadTabCounts(); setToast("✅ Job deleted"); }
     catch (e) { setToast(`❌ ${e.message}`); }
   };
   const toggle = async (id, status) => {
     const isClosed = status === 'closed' || status === 'Closed';
     try {
       await api.patchJob(id, { status: isClosed ? 'active' : 'closed' });
-      load(1);
+      load(1); loadTabCounts();
       setToast(`✅ Job ${isClosed ? 'reopened' : 'closed'}`);
     } catch (e) { setToast(`❌ ${e.message}`); }
   };
+
+  // ── Closed jobs aggregate stats (from current page) ──────────────────────
+  const closedStats = activeTab === 'closed' ? (() => {
+    const totalHired = filteredJobs.reduce((s, j) => s + (j.selectedCount || 0), 0);
+    const totalApps = filteredJobs.reduce((s, j) => s + (j.applicantsCount || 0), 0);
+    const days = filteredJobs
+      .filter(j => j.closedAt && j.createdAt)
+      .map(j => Math.round((new Date(j.closedAt) - new Date(j.createdAt)) / (1000 * 60 * 60 * 24)));
+    const avgDays = days.length > 0 ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : null;
+    return { totalHired, totalApps, avgDays };
+  })() : null;
+
+  // ── Tab bar ───────────────────────────────────────────────────────────────
+  const tabs = [
+    { key: 'active', label: 'Active', count: tabCounts.active, color: '#2E844A' },
+    { key: 'closed', label: 'Closed', count: tabCounts.closed, color: '#BA0517' },
+    { key: 'draft',  label: 'Draft',  count: tabCounts.draft,  color: '#A07E00' },
+    { key: 'all',    label: 'All',    count: tabCounts.all,    color: '#374151' },
+  ];
 
   return (
     <div>
@@ -255,42 +366,103 @@ export default function RecruiterJobs({ user }) {
         />
       )}
       {applicantsJob && <ApplicantsPanel job={applicantsJob} onClose={() => setApplicantsJob(null)} />}
-      <PageHeader 
-        title="My Job Postings" 
-        subtitle={hasJobFilters ? `${filteredJobs.length} of ${jobs.length} roles` : `${jobs.filter(j => j.status === 'active' || j.status === 'Open').length} open roles out of ${jobs.length} total`} 
-        action={<button onClick={() => setShow(true)} style={btnP}>+ Post Job</button>} 
+      <PageHeader
+        title="My Job Postings"
+        subtitle={`${tabCounts.active} active · ${tabCounts.closed} closed · ${tabCounts.draft} draft`}
+        action={<button onClick={() => setShow(true)} style={btnP}>+ Post Job</button>}
       />
 
-      {!loading && jobs.length > 0 && (
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, padding:'12px 16px', background:'#fff', borderRadius:12, border:'1px solid #F3F2F2', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-          <input placeholder="Search title or company…" value={search} onChange={e=>setSearch(e.target.value)}
-            style={{ flex:'1 1 180px', minWidth:150, padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none' }} />
-          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={fSel}>
-            <option value="All">All Status</option>
-            <option value="Open">Open</option>
-            <option value="Closed">Closed</option>
-          </select>
+      {/* ── Tab bar ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => { setActiveTab(t.key); setPgMeta({ page: 1, pages: 1, total: 0 }); }}
+            style={{
+              padding: '8px 18px', borderRadius: 24, border: activeTab === t.key ? `2px solid ${t.color}` : '1.5px solid #E2E8F0',
+              background: activeTab === t.key ? `${t.color}12` : '#fff',
+              color: activeTab === t.key ? t.color : '#6B7280',
+              fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s'
+            }}>
+            {t.label}
+            {t.count > 0 && (
+              <span style={{ background: activeTab === t.key ? t.color : '#E5E7EB', color: activeTab === t.key ? '#fff' : '#374151', borderRadius: 12, fontSize: 11, fontWeight: 800, padding: '1px 7px', minWidth: 20, textAlign: 'center' }}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Closed jobs stats strip ── */}
+      {activeTab === 'closed' && !loading && filteredJobs.length > 0 && closedStats && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+          {[
+            { label: 'Total Closed', value: pgMeta.total, icon: '🔒', color: '#BA0517' },
+            { label: 'Total Hired', value: closedStats.totalHired, icon: '🎉', color: '#2E844A' },
+            { label: 'Total Applicants', value: closedStats.totalApps, icon: '👥', color: '#0176D3' },
+            closedStats.avgDays !== null ? { label: 'Avg Days to Close', value: closedStats.avgDays, icon: '⏱', color: '#A07E00' } : null,
+          ].filter(Boolean).map(s => (
+            <div key={s.label} style={{ flex: '1 1 120px', background: '#fff', border: `1px solid ${s.color}25`, borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 22 }}>{s.icon}</span>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Search + urgency filter ── */}
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16, padding:'12px 16px', background:'#fff', borderRadius:12, border:'1px solid #F3F2F2', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+        <input placeholder={`Search ${activeTab === 'all' ? '' : activeTab + ' '}jobs…`} value={search} onChange={e=>setSearch(e.target.value)}
+          style={{ flex:'1 1 180px', minWidth:150, padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none' }} />
+        {activeTab !== 'closed' && (
           <select value={urgencyFilter} onChange={e=>setUrgencyFilter(e.target.value)} style={{ ...fSel, color:urgencyFilter!=='All'?'#0176D3':'#706E6B' }}>
             <option value="All">All Urgency</option>
             <option value="High">🔴 High</option>
             <option value="Medium">🟡 Medium</option>
             <option value="Low">🟢 Low</option>
           </select>
-          {hasJobFilters && (
-            <button onClick={()=>{setSearch('');setStatusFilter('All');setUrgencyFilter('All');}}
-              style={{ background:'none', border:'none', color:'#BA0517', fontSize:12, cursor:'pointer', fontWeight:600 }}>✕ Clear</button>
-          )}
-        </div>
-      )}
+        )}
+        {(search || urgencyFilter !== 'All') && (
+          <button onClick={()=>{setSearch('');setUrgencyFilter('All');}}
+            style={{ background:'none', border:'none', color:'#BA0517', fontSize:12, cursor:'pointer', fontWeight:600 }}>✕ Clear</button>
+        )}
+      </div>
 
       {loading ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#706E6B', padding: '40px 0', justifyContent: 'center' }}><Spinner /> Loading jobs...</div> : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {jobs.length === 0 && <p style={{ color: "#706E6B" }}>No jobs posted yet.</p>}
+          {jobs.length === 0 && (
+            <div style={{ ...card, textAlign: 'center', padding: '40px 24px', color: '#9CA3AF' }}>
+              {activeTab === 'closed'
+                ? <><div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div><div style={{ fontWeight: 700, color: '#374151', marginBottom: 4 }}>No closed jobs</div><div style={{ fontSize: 13 }}>When you close a job posting it will appear here with full analytics.</div></>
+                : activeTab === 'draft'
+                ? <><div style={{ fontSize: 40, marginBottom: 12 }}>📝</div><div style={{ fontWeight: 700, color: '#374151', marginBottom: 4 }}>No draft jobs</div><div style={{ fontSize: 13 }}>Draft jobs you haven't submitted for approval will show here.</div></>
+                : <p>No jobs {search ? 'match your search' : 'posted yet'}.</p>
+              }
+            </div>
+          )}
           {filteredJobs.length === 0 && jobs.length > 0 && <p style={{ color:'#9E9D9B', textAlign:'center', padding:'32px 0' }}>No jobs match your filters.</p>}
-          {filteredJobs.map(j => (
+
+          {/* ── Closed tab: analytics cards ── */}
+          {activeTab === 'closed' && filteredJobs.map(j => (
+            <ClosedJobCard
+              key={j.id}
+              j={j}
+              isMobile={isMobile}
+              onReopen={(id, status) => toggle(id, status)}
+              onDelete={(id) => del(id)}
+              onViewApplicants={(job) => setApplicantsJob(job)}
+              onViewDetails={(job) => setSelectedJob(job)}
+              onEdit={(job) => setEditingJob({ ...job })}
+            />
+          ))}
+
+          {/* ── All other tabs: standard cards ── */}
+          {activeTab !== 'closed' && filteredJobs.map(j => (
             <div key={j.id} style={card}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
                     <span style={{ color: "#181818", fontWeight: 600 }}>{j.title}</span>
                     <Badge label={(j.status === 'active' || j.status === 'Open') ? 'Open' : (j.status === 'closed' || j.status === 'Closed' ? 'Closed' : 'Draft')} color={(j.status === 'closed' || j.status === 'Closed') ? '#BA0517' : (j.status === 'draft' ? '#A07E00' : '#2E844A')} />
@@ -319,23 +491,24 @@ export default function RecruiterJobs({ user }) {
                 </div>
                 <JobActionsMenu isMobile={isMobile} actions={[
                   { label: 'View Details', primary: true, onClick: () => setSelectedJob(j) },
-                  { label: '📣 Share', onClick: () => setShareJob(j) },
+                  { label: '📣 Share', onClick: () => setShareJob(j), hidden: j.status !== 'active' },
                   { label: `👥 ${j.applicantsCount > 0 ? `${j.applicantsCount} Applicant${j.applicantsCount !== 1 ? 's' : ''}` : 'Applicants'}`, onClick: () => setApplicantsJob(j) },
                   { label: '✏️ Edit', onClick: e => { e.stopPropagation(); setSelectedJob(null); setEditingJob({ ...j }); } },
                   { label: '🚀 Submit for Approval', submit: true, hidden: j.status !== 'draft', onClick: async () => {
                     try {
                       await api.patchJob(j.id, { approvalStatus: 'pending_approval' });
                       setToast('✅ Submitted for admin approval');
-                      load(1);
+                      load(1); loadTabCounts();
                     } catch (e) { setToast(`❌ ${e.message}`); }
                   }},
-                  { label: (j.status === 'closed' || j.status === 'Closed') ? 'Reopen' : 'Close', onClick: () => toggle(j.id, j.status) },
+                  { label: (j.status === 'closed' || j.status === 'Closed') ? '🔄 Reopen' : '🔒 Close', onClick: () => toggle(j.id, j.status) },
                   { label: 'Delete', danger: true, onClick: () => del(j.id) },
                 ]} />
               </div>
             </div>
           ))}
-          {/* Pagination */}
+
+          {/* ── Pagination ── */}
           {pgMeta.total > PAGE_SIZE_JOBS && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid #F1F5F9', marginTop: 8 }}>
               <span style={{ fontSize: 13, color: '#6B7280' }}>
@@ -364,7 +537,6 @@ export default function RecruiterJobs({ user }) {
             <button onClick={resetModal} style={btnG}>Cancel</button>
           </>}>
           <PostJobForm ref={postJobRef} saving={saving} onSave={save} onCancel={resetModal} hideButtons>
-            {/* Assessment section — recruiter-only add-on */}
             <div style={{ borderTop: '1px solid rgba(1,118,211,0.1)', paddingTop: 14, marginTop: 4 }}>
               <button
                 onClick={() => setShowAssessment(!showAssessment)}
@@ -424,16 +596,12 @@ export default function RecruiterJobs({ user }) {
               setEditSaving(true);
               try {
                 const eu = (form.externalUrl || '').trim();
-                const payload = {
-                  ...form,
-                  externalUrl: eu,
-                  numberOfOpenings: form.openings ? Number(form.openings) : undefined,
-                };
+                const payload = { ...form, externalUrl: eu, numberOfOpenings: form.openings ? Number(form.openings) : undefined };
                 delete payload.openings;
                 await api.patchJob(editingJob.id, payload);
                 setToast('✅ Job updated!');
                 setEditingJob(null);
-                load(1);
+                load(1); loadTabCounts();
               } catch (e) { setToast(`❌ ${e.message}`); }
               setEditSaving(false);
             }}

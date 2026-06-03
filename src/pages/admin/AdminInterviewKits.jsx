@@ -359,7 +359,7 @@ export default function AdminInterviewKits({ user }) {
   useEffect(() => {
     load();
     // Load jobs for the job picker (non-blocking)
-    api.getJobs({ limit: 200 })
+    api.getJobs({ limit: 10000000 })
       .then(r => {
         const list = Array.isArray(r) ? r : (r?.data || r?.jobs || []);
         setJobs(list.map(j => ({ ...j, _id: (j._id || j.id)?.toString(), id: (j._id || j.id)?.toString() })));

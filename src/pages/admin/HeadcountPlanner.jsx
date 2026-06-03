@@ -327,7 +327,7 @@ export default function HeadcountPlanner() {
     setLoading(true);
     Promise.allSettled([
       api.getHeadcountPlans(),
-      api.getJobs({ limit: 200 }),
+      api.getJobs({ limit: 10000000 }),
     ]).then(([pr, jr]) => {
       if (pr.status === 'fulfilled') {
         const list = Array.isArray(pr.value) ? pr.value : (pr.value?.data || pr.value || []);

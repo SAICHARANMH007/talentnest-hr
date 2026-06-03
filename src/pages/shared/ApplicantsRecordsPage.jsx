@@ -212,8 +212,8 @@ export default function ApplicantsRecordsPage({ user }) {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      canManage ? api.getUsers({ role: 'recruiter', limit: 500 }).catch(() => []) : Promise.resolve([]),
-      api.getJobs({ limit: 500 }).catch(() => []),
+      canManage ? api.getUsers({ role: 'recruiter', limit: 10000000 }).catch(() => []) : Promise.resolve([]),
+      api.getJobs({ limit: 10000000 }).catch(() => []),
     ]).then(([recruiterRes, jobRes]) => {
       if (!alive) return;
       setRecruiters(toArray(recruiterRes));

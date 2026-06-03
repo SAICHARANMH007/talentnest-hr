@@ -195,7 +195,7 @@ export default function OrgSettings({ user }) {
       try {
         const orgId = o.id || o._id;
         if (orgId) {
-          const members = await api.getUsers({ orgId, limit: 200 });
+          const members = await api.getUsers({ orgId, limit: 10000000 });
           const list = Array.isArray(members?.data) ? members.data : (Array.isArray(members) ? members : []);
           setTeamMembers(list.filter(m => ['admin','super_admin','recruiter','hiring_manager'].includes(m.role)));
         }

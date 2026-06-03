@@ -665,7 +665,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
     if (recruiters.length === 0) {
       setLoadingRecruiters(true);
       try {
-        const res = await api.getUsers({ role: 'recruiter', limit: 200 });
+        const res = await api.getUsers({ role: 'recruiter', limit: 10000000 });
         const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
         setRecruiters(list);
       } catch { setRecruiters([]); }

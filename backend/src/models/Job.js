@@ -67,6 +67,8 @@ const jobSchema = new mongoose.Schema({
     default: 'draft',
   },
 
+  closedAt: { type: Date, default: null },
+
   approvalStatus: {
     type   : String,
     enum   : ['pending_approval', 'approved', 'rejected'],

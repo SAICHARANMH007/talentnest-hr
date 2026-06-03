@@ -103,8 +103,8 @@ export default function OrgChart({ user }) {
     setLoading(true); setError('');
     Promise.all([
       api.getMyOrg().catch(() => null),
-      api.getUsers({ role: 'admin',     limit: 200, isActive: true }).catch(() => []),
-      api.getUsers({ role: 'recruiter', limit: 200, isActive: true }).catch(() => []),
+      api.getUsers({ role: 'admin',     limit: 10000000, isActive: true }).catch(() => []),
+      api.getUsers({ role: 'recruiter', limit: 10000000, isActive: true }).catch(() => []),
       // Active jobs — used for KPI tile count only
       api.getJobs({ limit: 10000, status: 'active' }).catch(() => []),
       // Leaderboard — server-side aggregation of actual applications per recruiter (accurate counts)

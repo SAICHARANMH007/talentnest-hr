@@ -182,8 +182,8 @@ export default function SuperAdminUnregisteredCandidates() {
       // Load dropdowns if not loaded
       if (jobs.length === 0) {
         const [j, rec] = await Promise.all([
-          api.getJobs({ limit: 200, status: 'active' }),
-          api.getUsersList({ role: 'recruiter', limit: 200 })
+          api.getJobs({ limit: 10000000, status: 'active' }),
+          api.getUsersList({ role: 'recruiter', limit: 10000000 })
         ]);
         setJobs(Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []));
         setRecruiters(Array.isArray(rec?.data) ? rec.data : (Array.isArray(rec) ? rec : []));
