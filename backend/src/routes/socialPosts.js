@@ -129,23 +129,31 @@ router.post('/', asyncHandler(async (req, res) => {
 
 // GET /api/social-posts/reported — admin/super_admin only
 router.get('/reported', asyncHandler(async (req, res) => {
-  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  const isAdmin     = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
   if (!isAdmin) throw new AppError('Not authorized.', 403);
+  const isSuperAdmin = ['super_admin', 'superadmin'].includes(req.user.role);
 
-  const reports = await PostReport.find({ status: 'pending' })
+  // super_admin sees platform-wide; regular admin sees only their tenant
+  const reportFilter = { status: 'pending' };
+  if (!isSuperAdmin) reportFilter.tenantId = req.user.tenantId;
+
+  const reports = await PostReport.find(reportFilter)
     .sort({ createdAt: -1 })
     .lean();
 
   if (!reports.length) return res.json({ success: true, data: [] });
 
   const postIds = [...new Set(reports.map(r => r.postId))];
-  const posts   = await FeedPost.find({ _id: { $in: postIds } }).lean();
+  // Exclude already-deleted posts from the view
+  const posts   = await FeedPost.find({ _id: { $in: postIds }, isDeleted: false }).lean();
   const postMap = Object.fromEntries(posts.map(p => [String(p._id), p]));
 
   const grouped = {};
   for (const report of reports) {
     const pid = String(report.postId);
-    if (!grouped[pid]) grouped[pid] = { post: postMap[pid] || null, reports: [] };
+    // Skip reports whose post was already deleted
+    if (!postMap[pid]) continue;
+    if (!grouped[pid]) grouped[pid] = { post: postMap[pid], reports: [] };
     grouped[pid].reports.push(report);
   }
 
@@ -221,7 +229,7 @@ router.post('/:id/report', asyncHandler(async (req, res) => {
   const { reason, details } = req.body;
   if (!VALID_REASONS.includes(reason)) throw new AppError('Invalid report reason.', 400);
 
-  const post = await FeedPost.findOne({ _id: req.params.id, isDeleted: false }).lean();
+  const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId, isDeleted: false }).lean();
   if (!post) throw new AppError('Post not found.', 404);
 
   const uid = String(req.user._id || req.user.id);
@@ -244,7 +252,7 @@ router.post('/:id/report', asyncHandler(async (req, res) => {
   (async () => {
     try {
       const Notification = require('../models/Notification');
-      const superAdmins = await User.find({ role: { $in: ['super_admin', 'superadmin'] } }).select('_id').lean();
+      const superAdmins = await User.find({ role: { $in: ['super_admin', 'superadmin'] }, tenantId: req.user.tenantId }).select('_id').lean();
       if (!superAdmins.length) return;
       const REASON_LABEL = { spam: 'Spam', harassment: 'Harassment', misinformation: 'Misinformation', inappropriate: 'Inappropriate Content', hate_speech: 'Hate Speech', other: 'Other' };
       const snippet = (post.content || '').slice(0, 60) + (post.content?.length > 60 ? '…' : '');

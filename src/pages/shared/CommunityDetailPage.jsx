@@ -121,7 +121,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
               {REPORT_REASONS.map(r => (
                 <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${reportReason === r.value ? '#0176D3' : '#E5E7EB'}`, background: reportReason === r.value ? '#EFF6FF' : '#F9FAFB', cursor: 'pointer', fontSize: 13, fontWeight: reportReason === r.value ? 700 : 400 }}>
-                  <input type="radio" name="reason" value={r.value} checked={reportReason === r.value} onChange={() => setReportReason(r.value)} style={{ accentColor: '#0176D3' }} />
+                  <input type="radio" name={`reason-${post._id}`} value={r.value} checked={reportReason === r.value} onChange={() => setReportReason(r.value)} style={{ accentColor: '#0176D3' }} />
                   {r.label}
                 </label>
               ))}
