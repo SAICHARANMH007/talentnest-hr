@@ -176,13 +176,19 @@ export default function PeoplePage({ user }) {
   const [tab,          setTab]         = useState('discover');
   const [connections,  setConnections] = useState([]);
   const [pending,      setPending]     = useState([]);
+  const [sent,         setSent]        = useState([]);
   const [suggestions,  setSuggestions] = useState([]);
   const [searchResults,setSearchResults] = useState([]);
   const [searchQuery,  setSearchQuery] = useState('');
   const [loading,      setLoading]     = useState(true);
-  const [actionLoading,setActionLoading] = useState(null); // userId being actioned
+  const [actionLoading,setActionLoading] = useState(null);
   const [error,        setError]       = useState('');
   const [isMobile,     setMobile]      = useState(() => window.innerWidth < 768);
+  // Contact sync state
+  const [syncOpen,     setSyncOpen]    = useState(false);
+  const [syncPaste,    setSyncPaste]   = useState('');
+  const [syncResults,  setSyncResults] = useState(null);
+  const [syncing,      setSyncing]     = useState(false);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -195,14 +201,16 @@ export default function PeoplePage({ user }) {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [conRes, penRes, sugRes] = await Promise.all([
+      const [conRes, penRes, sugRes, sentRes] = await Promise.all([
         api.getConnections().catch(() => ({ data: [] })),
         api.getPendingRequests().catch(() => ({ data: [] })),
         api.getConnectionSuggestions().catch(() => ({ data: [] })),
+        api.getSentRequests().catch(() => ({ data: [] })),
       ]);
       setConnections(conRes?.data || []);
       setPending(penRes?.data || []);
       setSuggestions(sugRes?.data || []);
+      setSent(sentRes?.data || []);
     } catch (e) {
       setError('Failed to load people data.');
     } finally {
@@ -232,11 +240,12 @@ export default function PeoplePage({ user }) {
     setError('');
     try {
       if (action === 'connect') {
-        await api.sendConnectionRequest(id);
-        // Optimistic update
-        const update = p => String(p._id || p.id) === id ? { ...p, connectionStatus: 'pending_sent' } : p;
+        const result = await api.sendConnectionRequest(id);
+        const requestId = result?.data?._id || result?.data?.id;
+        const update = p => String(p._id || p.id) === id ? { ...p, connectionStatus: 'pending_sent', requestId } : p;
         setSuggestions(s => s.map(update));
         setSearchResults(s => s.map(update));
+        setSent(prev => [...prev, { requestId, createdAt: new Date(), to: suggestions.find(p => String(p._id || p.id) === id) }]);
       } else if (action === 'accept') {
         await api.acceptConnectionRequest(reqId);
         setPending(p => p.filter(x => String(x._id || x.id) !== id));
@@ -253,9 +262,10 @@ export default function PeoplePage({ user }) {
         setSearchResults(s => s.map(update));
       } else if (action === 'cancel') {
         await api.cancelConnectionRequest(reqId);
-        const update = p => String(p._id || p.id) === id ? { ...p, connectionStatus: null } : p;
+        const update = p => String(p._id || p.id) === id ? { ...p, connectionStatus: null, requestId: undefined } : p;
         setSuggestions(s => s.map(update));
         setSearchResults(s => s.map(update));
+        setSent(s => s.filter(r => String(r.requestId) !== reqId && String(r.to?._id || r.to?.id || '') !== id));
       }
     } catch (e) {
       setError(e?.message || 'Action failed. Please try again.');
@@ -265,10 +275,22 @@ export default function PeoplePage({ user }) {
   };
 
   const tabs = [
-    { id: 'discover',    label: 'Discover People' },
-    { id: 'connections', label: `My Network (${connections.length})` },
+    { id: 'discover',    label: 'Discover' },
+    { id: 'connections', label: `Network (${connections.length})` },
     { id: 'pending',     label: `Requests (${pending.length})` },
+    { id: 'sent',        label: `Sent (${sent.length})` },
   ];
+
+  const handleContactSync = async () => {
+    const emails = syncPaste.split(/[\n,;]+/).map(e => e.trim().toLowerCase()).filter(e => e.includes('@'));
+    if (!emails.length) return;
+    setSyncing(true);
+    try {
+      const r = await api.syncContacts(emails.map(email => ({ email })));
+      setSyncResults(r);
+    } catch { setSyncResults({ matched: [], unmatched: [] }); }
+    finally { setSyncing(false); }
+  };
 
   const uid = String(user?.id || user?._id || '');
 
@@ -424,6 +446,131 @@ export default function PeoplePage({ user }) {
                     </div>
                   )}
                 </>
+              )}
+
+              {/* Sent tab */}
+              {tab === 'sent' && (
+                <>
+                  {sent.length === 0 ? (
+                    <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+                      <div style={{ fontSize: 48, marginBottom: 12 }}>📤</div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 6 }}>No sent requests</div>
+                      <div style={{ fontSize: 13, color: '#9CA3AF' }}>Requests you send will be tracked here. You can withdraw them anytime.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {sent.map(item => {
+                        const person = item.to || {};
+                        const pId = String(person._id || person.id || '');
+                        return (
+                          <div key={String(item.requestId)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{person.name || 'Member'}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                                <RoleBadge role={person.role} />
+                                {person.title && <span style={{ fontSize: 12, color: '#6B7280' }}>{person.title}</span>}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                                Sent {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleAction('cancel', { ...person, requestId: item.requestId })}
+                              disabled={actionLoading === pId}
+                              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; }}>
+                              Withdraw
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Contact Sync section — shown in discover tab */}
+              {tab === 'discover' && (
+                <div style={{ ...card, padding: '16px 18px', borderRadius: 14, marginTop: 16, border: '1px solid #E0F2FE', background: '#F0F9FF' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: syncOpen ? 12 : 0 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0C4A6E' }}>📇 Find contacts on TalentNest</div>
+                      <div style={{ fontSize: 12, color: '#0369A1', marginTop: 2 }}>Paste email addresses to see who's already here</div>
+                    </div>
+                    <button onClick={() => { setSyncOpen(v => !v); setSyncResults(null); setSyncPaste(''); }}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #0284C7', background: syncOpen ? '#0284C7' : '#fff', color: syncOpen ? '#fff' : '#0284C7', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                      {syncOpen ? 'Close' : 'Import Contacts'}
+                    </button>
+                  </div>
+                  {syncOpen && (
+                    <>
+                      <textarea
+                        value={syncPaste}
+                        onChange={e => setSyncPaste(e.target.value)}
+                        placeholder="Paste email addresses separated by commas, spaces, or new lines…&#10;e.g. john@example.com, jane@company.com"
+                        rows={3}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #BAE6FD', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff', marginBottom: 8 }}
+                      />
+                      <button onClick={handleContactSync} disabled={syncing || !syncPaste.trim()}
+                        style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#0284C7', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !syncPaste.trim() ? 0.6 : 1 }}>
+                        {syncing ? 'Searching…' : 'Find on TalentNest'}
+                      </button>
+                      {syncResults && (
+                        <div style={{ marginTop: 14 }}>
+                          {syncResults.matched?.length > 0 && (
+                            <>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 8 }}>
+                                ✓ {syncResults.matched.length} contact{syncResults.matched.length !== 1 ? 's' : ''} found on TalentNest
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {syncResults.matched.map(person => (
+                                  <PersonCard
+                                    key={String(person._id || person.id)}
+                                    person={person}
+                                    onAction={handleAction}
+                                    loading={actionLoading === String(person._id || person.id)}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {syncResults.unmatched?.length > 0 && (
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>
+                                {syncResults.unmatched.length} contact{syncResults.unmatched.length !== 1 ? 's' : ''} not on TalentNest yet
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {syncResults.unmatched.slice(0, 5).map((c, i) => (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #E5E7EB' }}>
+                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>👤</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{c.name || c.email}</div>
+                                      {c.name && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{c.email}</div>}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const link = `${window.location.origin}/auth?invite=true&email=${encodeURIComponent(c.email || '')}`;
+                                        navigator.clipboard?.writeText(link).catch(() => {});
+                                        alert('Invite link copied! Share it with your contact.');
+                                      }}
+                                      style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                                      Invite
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && (
+                            <div style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', padding: '12px 0' }}>No valid email addresses found. Check the format and try again.</div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}

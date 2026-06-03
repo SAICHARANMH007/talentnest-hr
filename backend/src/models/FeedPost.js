@@ -34,6 +34,8 @@ const feedPostSchema = new Schema({
     enum   : ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'],
     default: 'update',
   },
+  communityId  : { type: Types.ObjectId, ref: 'Community', default: null },
+  communitySlug: { type: String, default: null },
   isPinned : { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });

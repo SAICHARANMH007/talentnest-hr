@@ -813,6 +813,7 @@ if (HAS_DIST) {
 // ── Video rooms REST
 app.use('/api/video-rooms', require('./src/routes/videoRooms'));
 app.use('/api/feed',         require('./src/routes/feed'));
+app.use('/api/communities',  require('./src/routes/communities'));
 app.use('/api/social-posts', require('./src/routes/socialPosts'));
 app.use('/api/connections',  require('./src/routes/connections'));
 app.use('/api/distribution', require('./src/routes/distribution'));

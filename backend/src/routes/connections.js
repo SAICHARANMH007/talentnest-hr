@@ -20,6 +20,8 @@ function toId(v) {
   return String(v._id || v.id || v);
 }
 
+const toObjId = id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+
 // ─── GET /api/connections — accepted connections list ─────────────────────────
 router.get('/', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
@@ -120,8 +122,6 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
     excludedIds.add(String(c.fromUserId));
     excludedIds.add(String(c.toUserId));
   });
-
-  const toObjId = id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
 
   // ── Step 2: load current user's profile for scoring ──────────────────────────
   const me = await User.findById(uid).select('role skills department invitedBy').lean();
@@ -285,7 +285,7 @@ router.get('/search', asyncHandler(async (req, res) => {
     tenantId,
     deletedAt: null,
     _id      : { $ne: uid },
-    $or      : [{ name: regex }, { email: regex }],
+    $or      : [{ name: regex }, { email: regex }, { phone: regex }],
   }).select(USER_PUBLIC_FIELDS + ' email').limit(20).lean();
 
   // Fetch all connections involving the current user for status resolution
@@ -321,6 +321,67 @@ router.get('/search', asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, data, total: data.length });
+}));
+
+// ─── POST /api/connections/sync-contacts ─────────────────────────────────────
+router.post('/sync-contacts', asyncHandler(async (req, res) => {
+  const uid      = toId(req.user);
+  const tenantId = req.user.tenantId;
+  const { contacts = [] } = req.body; // [{name?, email?, phone?}]
+
+  if (!Array.isArray(contacts) || contacts.length === 0) {
+    return res.json({ success: true, matched: [], unmatched: [] });
+  }
+
+  const emails = contacts.map(c => c.email?.toLowerCase().trim()).filter(Boolean);
+  const phones = contacts.map(c => c.phone?.replace(/\D/g,'').slice(-10)).filter(Boolean);
+
+  const matchedUsers = await User.find({
+    tenantId,
+    deletedAt: null,
+    _id: { $ne: toObjId(uid) },
+    $or: [
+      ...(emails.length ? [{ email: { $in: emails } }] : []),
+      ...(phones.length ? [{ phone: { $in: phones } }] : []),
+    ],
+  }).select(USER_PUBLIC_FIELDS + ' email phone').lean();
+
+  // Get existing connections for status
+  const matchedIds = matchedUsers.map(u => u._id);
+  const existingConns = await Connection.find({
+    tenantId,
+    $or: [
+      { fromUserId: uid, toUserId: { $in: matchedIds } },
+      { toUserId: uid, fromUserId: { $in: matchedIds } },
+    ],
+  }).lean();
+  const connMap = {};
+  existingConns.forEach(c => {
+    const peerId = String(c.fromUserId) === uid ? String(c.toUserId) : String(c.fromUserId);
+    connMap[peerId] = c;
+  });
+
+  const matchedEmailSet = new Set(matchedUsers.map(u => u.email?.toLowerCase()));
+  const matchedPhoneSet = new Set(matchedUsers.map(u => u.phone?.replace(/\D/g,'').slice(-10)));
+
+  const matched = matchedUsers.map(u => {
+    const conn = connMap[String(u._id)];
+    let connectionStatus = null;
+    if (conn) {
+      connectionStatus = conn.status === 'accepted' ? 'accepted'
+        : conn.status === 'pending' ? (String(conn.fromUserId) === uid ? 'pending_sent' : 'pending_received')
+        : null;
+    }
+    return { ...u, connectionStatus };
+  });
+
+  const unmatched = contacts.filter(c => {
+    const email = c.email?.toLowerCase().trim();
+    const phone = c.phone?.replace(/\D/g,'').slice(-10);
+    return (!email || !matchedEmailSet.has(email)) && (!phone || !matchedPhoneSet.has(phone));
+  });
+
+  res.json({ success: true, matched, unmatched });
 }));
 
 // ─── POST /api/connections/request/:userId — send connection request ──────────

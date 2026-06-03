@@ -1,4 +1,5 @@
-import { req } from '../client.js';
+import { req, getToken } from '../client.js';
+import { API_BASE_URL } from '../config.js';
 
 export const feedPostService = {
   async getPosts(params = {}) {
@@ -28,5 +29,20 @@ export const feedPostService = {
   },
   async seedTestData() {
     return req('POST', '/social-posts/seed', {});
+  },
+  async uploadFeedImage(formData) {
+    const token = getToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/social-posts/upload-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    return res.json();
+  },
+  async getPublicPost(id) {
+    const res = await fetch(`${API_BASE_URL}/social-posts/public/${id}`);
+    return res.json();
   },
 };

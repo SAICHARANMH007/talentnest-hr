@@ -257,8 +257,8 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
 function ShareButton({ postId }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
-    const url = `${window.location.origin}/app/feed#${postId}`;
-    if (navigator.share) { try { await navigator.share({ title: 'TalentNest Post', url }); return; } catch {} }
+    const url = `${window.location.origin}/post/${postId}`;
+    if (navigator.share) { try { await navigator.share({ title: 'TalentNest Post', text: 'Check out this post on TalentNest!', url }); return; } catch {} }
     await navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -443,6 +443,9 @@ function CreatePost({ user, onCreate }) {
   const [postType,   setPostType]   = useState('update');
   const [submitting, setSubmitting] = useState(false);
   const [expanded,   setExpanded]   = useState(false);
+  const [images,     setImages]     = useState([]);
+  const [uploading,  setUploading]  = useState(false);
+  const fileRef = useRef(null);
 
   const POST_TYPES = [
     { value: 'update',        label: '💬 Update' },
@@ -456,12 +459,32 @@ function CreatePost({ user, onCreate }) {
     { value: 'announcement',  label: '📢 Announce' },
   ];
 
+  const handleImageSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    const uploaded = [];
+    for (const file of files.slice(0, 4 - images.length)) {
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        const r = await api.uploadFeedImage(formData);
+        if (r?.url) uploaded.push(r.url);
+      } catch {}
+    }
+    setImages(prev => [...prev, ...uploaded].slice(0, 4));
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const removeImage = (idx) => setImages(p => p.filter((_, i) => i !== idx));
+
   const submit = async () => {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await onCreate({ content: text.trim(), postType });
-      setText(''); setPostType('update'); setExpanded(false);
+      await onCreate({ content: text.trim(), postType, images });
+      setText(''); setPostType('update'); setExpanded(false); setImages([]);
     } finally { setSubmitting(false); }
   };
 
@@ -480,11 +503,12 @@ function CreatePost({ user, onCreate }) {
             rows={expanded ? 4 : 2}
             maxLength={3000}
             style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; setExpanded(true); }}
             onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {expanded && (
             <div style={{ marginTop: 10 }}>
+              {/* Post type chips */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                 {POST_TYPES.map(t => (
                   <button key={t.value} onClick={() => setPostType(t.value)}
@@ -493,12 +517,43 @@ function CreatePost({ user, onCreate }) {
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
-                  {charLeft < 500 ? `${charLeft} left` : ''}
-                </span>
+
+              {/* Image previews */}
+              {images.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {images.map((img, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <img src={img} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #E5E7EB' }} />
+                      <button onClick={() => removeImage(i)}
+                        style={{ position: 'absolute', top: -6, right: -6, background: '#EF4444', border: 'none', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}>
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {uploading && (
+                    <div style={{ width: 80, height: 80, borderRadius: 10, border: '1px dashed #D1D5DB', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB' }}>
+                      <div style={{ width: 20, height: 20, border: '2px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Toolbar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={images.length >= 4 || uploading}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 600, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1 }}>
+                    📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
+                  <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
+                    {charLeft < 500 ? `${charLeft} left` : ''}
+                  </span>
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setExpanded(false); setText(''); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
+                  <button onClick={() => { setExpanded(false); setText(''); setImages([]); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
                   <button onClick={submit} disabled={!text.trim() || submitting}
                     style={{ ...btnP, fontSize: 13, padding: '7px 18px', opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
                     {submitting ? 'Posting…' : 'Post'}
@@ -682,10 +737,10 @@ export default function CommunityFeed({ user }) {
   const [pendingIds,   setPendingIds]   = useState(new Set());
   const [seeding,      setSeeding]      = useState(false);
   const [seedMsg,      setSeedMsg]      = useState('');
-  const [isMobile,     setMobile]       = useState(() => window.innerWidth < 900);
+  const [isMobile,     setMobile]       = useState(() => window.innerWidth < 1100);
 
   useEffect(() => {
-    const h = () => setMobile(window.innerWidth < 900);
+    const h = () => setMobile(window.innerWidth < 1100);
     window.addEventListener('resize', h, { passive: true });
     return () => window.removeEventListener('resize', h);
   }, []);
@@ -830,14 +885,9 @@ export default function CommunityFeed({ user }) {
           <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Career Community</h1>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Share wins, hiring updates, career tips, and resources with your professional network</p>
         </div>
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
-            <button onClick={handleSeed} disabled={seeding} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>
-              {seeding ? 'Creating…' : '+ Sample Posts'}
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -922,9 +972,9 @@ export default function CommunityFeed({ user }) {
                   {networkOnly && connections.length === 0 && (
                     <a href="/app/people" style={{ ...btnP, textDecoration: 'none', display: 'inline-block' }}>Find People to Connect</a>
                   )}
-                  {!isFiltered && !networkOnly && isAdmin && (
+                  {!isFiltered && !networkOnly && (
                     <button onClick={handleSeed} disabled={seeding} style={btnP}>
-                      {seeding ? 'Creating…' : '🌱 Create sample posts'}
+                      {seeding ? 'Creating…' : '🌱 Load sample posts'}
                     </button>
                   )}
                 </div>

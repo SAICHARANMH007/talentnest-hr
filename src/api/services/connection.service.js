@@ -31,4 +31,7 @@ export const connectionService = {
   async cancelConnectionRequest(requestId) {
     return req('DELETE', `/connections/cancel/${requestId}`);
   },
+  async syncContacts(contacts) {
+    return req('POST', '/connections/sync-contacts', { contacts });
+  },
 };

@@ -141,8 +141,10 @@ const EmailSettingsPage = lazy(() => import('./pages/shared/EmailSettingsPage.js
 const ChangePasswordPage = lazy(() => import('./pages/shared/ChangePasswordPage.jsx'));
 const ResumeViewPage = lazy(() => import('./pages/shared/ResumeViewPage.jsx'));
 const PlatformModalsGuide = lazy(() => import('./pages/shared/PlatformModalsGuide.jsx'));
-const CommunityFeed = lazy(() => import('./pages/shared/CommunityFeed.jsx'));
-const PeoplePage    = lazy(() => import('./pages/shared/PeoplePage.jsx'));
+const CommunityFeed   = lazy(() => import('./pages/shared/CommunityFeed.jsx'));
+const PeoplePage      = lazy(() => import('./pages/shared/PeoplePage.jsx'));
+const CommunitiesPage = lazy(() => import('./pages/shared/CommunitiesPage.jsx'));
+const PostPublicPage  = lazy(() => import('./pages/public/PostPublicPage.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -609,6 +611,7 @@ export default function App() {
             <Route path="offer-comparison" element={<OfferComparison user={user} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
+            <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
           </>
         )}
 
@@ -657,6 +660,7 @@ export default function App() {
             <Route path="forms/reject" element={<CandidateRejectionPage user={user} onBack={() => window.history.back()} onDone={() => window.history.back()} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
+            <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
           </>
         )}
 
@@ -720,6 +724,7 @@ export default function App() {
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
+            <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
           </>
         )}
         {rk === 'client' && (
@@ -730,9 +735,13 @@ export default function App() {
             <Route path="placements" element={<ClientPlacements user={user} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
+            <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
           </>
         )}
       </Route>
+
+      {/* Public shareable post page — no auth required */}
+      <Route path="/post/:id" element={<Suspense fallback={<PageLoader />}><PostPublicPage /></Suspense>} />
 
       {/* Org-specific career page — no nav, embeddable */}
       <Route path="/:orgSlug/careers" element={

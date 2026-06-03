@@ -6,6 +6,38 @@ const User         = require('../models/User');
 const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
+const multer       = require('multer');
+const cloudinary   = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key   : process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// GET /api/social-posts/public/:id — no auth required
+router.get('/public/:id', asyncHandler(async (req, res) => {
+  const post = await FeedPost.findOne({ _id: req.params.id, isDeleted: false }).lean();
+  if (!post) throw new AppError('Post not found.', 404);
+  const preview = {
+    _id          : post._id,
+    authorName   : post.authorName,
+    authorRole   : post.authorRole,
+    authorAvatar : post.authorAvatar,
+    authorTitle  : post.authorTitle,
+    content      : post.content,
+    images       : post.images,
+    hashtags     : post.hashtags,
+    postType     : post.postType,
+    reactionCount: post.reactions?.length || 0,
+    commentCount : post.comments?.length || 0,
+    createdAt    : post.createdAt,
+    communitySlug: post.communitySlug || null,
+  };
+  res.json({ success: true, data: preview });
+}));
 
 router.use(auth);
 
@@ -127,10 +159,8 @@ router.delete('/:postId/comment/:commentId', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// POST /api/social-posts/seed — create sample posts (admin only, safe to run multiple times)
+// POST /api/social-posts/seed — create sample posts (safe to run multiple times)
 router.post('/seed', asyncHandler(async (req, res) => {
-  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
-  if (!isAdmin) throw new AppError('Admin access required.', 403);
   const tenantId = req.user.tenantId;
 
   const existing = await FeedPost.countDocuments({ tenantId });
@@ -212,6 +242,19 @@ router.post('/seed', asyncHandler(async (req, res) => {
   }
 
   res.json({ success: true, message: `Created ${created.length} sample posts.`, count: created.length });
+}));
+
+// POST /api/social-posts/upload-image
+router.post('/upload-image', upload.single('image'), asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('No image provided.', 400);
+  const result = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'talentnest/feed', resource_type: 'image', transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }] },
+      (err, r) => err ? reject(err) : resolve(r)
+    );
+    stream.end(req.file.buffer);
+  });
+  res.json({ success: true, url: result.secure_url });
 }));
 
 module.exports = router;
