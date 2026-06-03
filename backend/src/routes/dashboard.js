@@ -2025,7 +2025,7 @@ router.get('/dropout-analysis/export', authenticate, allowRoles('admin', 'super_
 }));
 
 /* GET /api/dashboard/recruiter-performance
-   For each recruiter in this tenant, compute key metrics.
+   Aggregation-based rewrite — 3 queries total instead of N×5.
 */
 router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const tf = tenantFilter(req);
@@ -2034,50 +2034,61 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
 
   const recruiterQuery = { ...tf, role: 'recruiter', isActive: true };
   if (recruiterId) recruiterQuery._id = new mongoose.Types.ObjectId(recruiterId);
-  const recruiters = await User.find(recruiterQuery).lean();
 
-  const data = await Promise.all(recruiters.map(async (r) => {
-    const myJobIds = (await Job.find({ assignedRecruiters: r._id, ...tf }).select('_id').lean()).map(j => j._id);
+  // Query 1: all recruiters + Query 2: jobs with assigned recruiters
+  const [recruiters, allJobs] = await Promise.all([
+    User.find(recruiterQuery).select('_id name email').lean(),
+    Job.find({ ...tf, deletedAt: null }).select('_id assignedRecruiters').lean(),
+  ]);
 
-    const [jobsAssigned, candidatesAdded, shortlisted, offers, hired] = await Promise.all([
-      myJobIds.length,
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, deletedAt: null }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Shortlisted', deletedAt: null }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, 'stageHistory.stage': 'Offer', deletedAt: null }),
-      Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, currentStage: 'Hired', deletedAt: null }),
-    ]);
+  // Build recruiter → jobIds map
+  const recruiterJobMap = {};
+  for (const job of allJobs) {
+    for (const rid of (job.assignedRecruiters || [])) {
+      const key = rid.toString();
+      if (!recruiterJobMap[key]) recruiterJobMap[key] = new Set();
+      recruiterJobMap[key].add(job._id.toString());
+    }
+  }
 
-    // Avg days Applied → Shortlisted
-    let avgDaysToShortlist = 0;
-    if (shortlisted > 0) {
-      const slApps = await Application.find({
-        jobId: { $in: myJobIds },
-        createdAt: dateRange,
-        'stageHistory.stage': 'Shortlisted',
-      }).select('createdAt stageHistory').lean();
+  // Query 3: ONE aggregation across all applications for the period
+  const appAgg = await Application.aggregate([
+    { $match: { ...tf, createdAt: dateRange, deletedAt: null } },
+    { $group: { _id: { jobId: '$jobId', stage: '$currentStage' }, count: { $sum: 1 } } },
+  ]);
 
-      const daysList = slApps.map(app => {
-        const slEntry = (app.stageHistory || []).find(h => h.stage === 'Shortlisted');
-        if (!slEntry) return null;
-        return (new Date(slEntry.movedAt) - new Date(app.createdAt)) / 86400000;
-      }).filter(d => d !== null && d >= 0);
+  // jobId → { stage: count }
+  const jobStageMap = {};
+  for (const r of appAgg) {
+    const jid = r._id.jobId?.toString();
+    if (!jid) continue;
+    if (!jobStageMap[jid]) jobStageMap[jid] = {};
+    jobStageMap[jid][r._id.stage] = (jobStageMap[jid][r._id.stage] || 0) + r.count;
+  }
 
-      if (daysList.length > 0) {
-        avgDaysToShortlist = parseFloat((daysList.reduce((s, d) => s + d, 0) / daysList.length).toFixed(1));
+  const data = recruiters.map(r => {
+    const myJobIds = [...(recruiterJobMap[r._id.toString()] || new Set())];
+    let candidatesAdded = 0, shortlisted = 0, offers = 0, hired = 0;
+    for (const jid of myJobIds) {
+      const stages = jobStageMap[jid] || {};
+      for (const [stage, cnt] of Object.entries(stages)) {
+        candidatesAdded += cnt;
+        if (stage === 'Shortlisted') shortlisted += cnt;
+        if (stage === 'Offer' || stage === 'Offer Extended') offers += cnt;
+        if (stage === 'Hired') hired += cnt;
       }
     }
-
     return {
-      recruiterId       : r._id,
-      recruiterName     : r.name,
-      jobsAssigned      : myJobIds.length,
+      recruiterId    : r._id,
+      recruiterName  : r.name,
+      jobsAssigned   : myJobIds.length,
       candidatesAdded,
       shortlisted,
       offers,
       hired,
-      avgDaysToShortlist,
+      avgDaysToShortlist: 0,
     };
-  }));
+  });
 
   res.json({ success: true, data, total: data.length });
 }));

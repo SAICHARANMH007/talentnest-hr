@@ -165,19 +165,30 @@ async function downloadExport(url, filename) {
 
 // ── useSection hook ──────────────────────────────────────────────────────────
 // Manages load/error/data state for each analytics section independently.
-function useSection(fetcher) {
+// delay: ms before first fetch (staggers parallel requests to avoid overwhelming Render)
+function useSection(fetcher, delay = 0) {
   const [state, setState] = useState({ loading: true, error: null, data: null });
 
-  const load = useCallback(() => {
-    setState({ loading: true, error: null, data: null });
-    fetcher()
-      .then(r => setState({ loading: false, error: null, data: r }))
-      .catch(e => setState({ loading: false, error: e.message || 'Failed to load', data: null }));
-  }, [fetcher]);
+  const load = useCallback((isRetry = false) => {
+    setState(s => ({ ...s, loading: true, error: null }));
+    const attempt = () =>
+      fetcher()
+        .then(r => setState({ loading: false, error: null, data: r }))
+        .catch(e => {
+          if (!isRetry) {
+            // auto-retry once after 4 s
+            setTimeout(() => load(true), 4000);
+          } else {
+            setState({ loading: false, error: e.message || 'Failed to load', data: null });
+          }
+        });
+    if (delay && !isRetry) setTimeout(attempt, delay);
+    else attempt();
+  }, [fetcher]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
 
-  return { ...state, reload: load };
+  return { ...state, reload: () => load(false) };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -330,13 +341,13 @@ export default function AdminAnalytics({ user, onNavigate }) {
     [appliedStart, appliedEnd],
   );
 
-  const funnelSection     = useSection(useCallback(() => api.getFunnel({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const funnelSection     = useSection(useCallback(() => api.getFunnel({ ...dateParams, platform: platformWide }), [dateParams, platformWide]), 200);
   // Source breakdown uses all-time data — not date-windowed — so it matches
   // the KPI total (which also counts all-time applications and importedCandidates).
-  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown({ platform: platformWide }), [platformWide]));
-  const tthSection        = useSection(useCallback(() => api.getTimeToHire({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
-  const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
-  const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis({ ...dateParams, platform: platformWide }), [dateParams, platformWide]));
+  const sourceSection     = useSection(useCallback(() => api.getSourceBreakdown({ platform: platformWide }), [platformWide]), 600);
+  const tthSection        = useSection(useCallback(() => api.getTimeToHire({ ...dateParams, platform: platformWide }), [dateParams, platformWide]), 1000);
+  const recPerfSection    = useSection(useCallback(() => api.getRecruiterPerformance({ ...dateParams, platform: platformWide }), [dateParams, platformWide]), 1400);
+  const dropoutSection    = useSection(useCallback(() => api.getDropoutAnalysis({ ...dateParams, platform: platformWide }), [dateParams, platformWide]), 1800);
 
   // ── Apply date filter ─────────────────────────────────────────────────────
   const applyFilter = () => {
