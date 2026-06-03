@@ -92,46 +92,60 @@ export default function AdminNPS() {
         </div>
       </div>
 
-      {/* NPS Score — the headline metric */}
-      {nps !== null && (
-        <div style={{ ...card, padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 56, fontWeight: 900, color: npsColor(nps), lineHeight: 1 }}>{nps > 0 ? `+${nps}` : nps}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 4 }}>Net Promoter Score</div>
-            <div style={{ fontSize: 12, color: npsColor(nps), fontWeight: 600, marginTop: 2 }}>{npsLabel(nps)}</div>
+      {total === 0 ? (
+        /* Empty state — no NPS responses yet */
+        <div style={{ ...card, textAlign: 'center', padding: '48px 32px', marginBottom: 24 }}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>💬</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>No NPS responses yet</div>
+          <div style={{ fontSize: 13, color: '#9CA3AF', maxWidth: 460, margin: '0 auto', lineHeight: 1.6 }}>
+            NPS surveys are sent automatically to candidates after they are hired or rejected.
+            Data appears here as candidates respond.
           </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>NPS = % Promoters (9–10) − % Detractors (0–6)</div>
-            {[
-              { label: 'Promoters (9–10)', count: promoters, color: '#059669', bg: '#D1FAE5' },
-              { label: 'Passives (7–8)',   count: passives,  color: '#D97706', bg: '#FEF3C7' },
-              { label: 'Detractors (0–6)', count: detractors,color: '#DC2626', bg: '#FEE2E2' },
-            ].map(row => (
-              <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 12, height: 12, borderRadius: '50%', background: row.color, flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 12, color: '#374151', fontWeight: 500 }}>{row.label}</div>
-                <span style={{ background: row.bg, color: row.color, borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 700 }}>{row.count}</span>
-                <span style={{ fontSize: 11, color: '#9CA3AF', minWidth: 34, textAlign: 'right' }}>{total > 0 ? Math.round((row.count / total) * 100) : 0}%</span>
+        </div>
+      ) : (
+        <>
+          {/* NPS Score — the headline metric */}
+          {nps !== null && (
+            <div style={{ ...card, padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 56, fontWeight: 900, color: npsColor(nps), lineHeight: 1 }}>{nps > 0 ? `+${nps}` : nps}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 4 }}>Net Promoter Score</div>
+                <div style={{ fontSize: 12, color: npsColor(nps), fontWeight: 600, marginTop: 2 }}>{npsLabel(nps)}</div>
               </div>
-            ))}
-          </div>
-          {responseRate !== null && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: '#7C3AED' }}>{responseRate}%</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginTop: 4 }}>Response Rate</div>
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{total} of {sent} surveys</div>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>NPS = % Promoters (9–10) − % Detractors (0–6)</div>
+                {[
+                  { label: 'Promoters (9–10)', count: promoters, color: '#059669', bg: '#D1FAE5' },
+                  { label: 'Passives (7–8)',   count: passives,  color: '#D97706', bg: '#FEF3C7' },
+                  { label: 'Detractors (0–6)', count: detractors,color: '#DC2626', bg: '#FEE2E2' },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: '50%', background: row.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: 12, color: '#374151', fontWeight: 500 }}>{row.label}</div>
+                    <span style={{ background: row.bg, color: row.color, borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 700 }}>{row.count}</span>
+                    <span style={{ fontSize: 11, color: '#9CA3AF', minWidth: 34, textAlign: 'right' }}>{total > 0 ? Math.round((row.count / total) * 100) : 0}%</span>
+                  </div>
+                ))}
+              </div>
+              {responseRate !== null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#7C3AED' }}>{responseRate}%</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginTop: 4 }}>Response Rate</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{total} of {sent} surveys</div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
-        <StatCard label="Total Responses" value={total} color="#0176D3" />
-        <StatCard label="Avg Score (This Month)" value={avgAll != null ? `${avgAll}/10` : '—'} sub={scoreLabel(parseFloat(avgAll))} color={scoreColor(parseFloat(avgAll))} />
-        <StatCard label="Avg Score (Hired)" value={data.avgScoreHired != null ? `${data.avgScoreHired}/10` : '—'} sub="Hired candidates" color={scoreColor(parseFloat(data.avgScoreHired))} />
-        <StatCard label="Avg Score (Rejected)" value={data.avgScoreRejected != null ? `${data.avgScoreRejected}/10` : '—'} sub="Rejected candidates" color={scoreColor(parseFloat(data.avgScoreRejected))} />
-      </div>
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
+            <StatCard label="Total Responses" value={total} color="#0176D3" />
+            <StatCard label="Avg Score (This Month)" value={avgAll != null ? `${avgAll}/10` : '—'} sub={scoreLabel(parseFloat(avgAll))} color={scoreColor(parseFloat(avgAll))} />
+            <StatCard label="Avg Score (Hired)" value={data.avgScoreHired != null ? `${data.avgScoreHired}/10` : '—'} sub="Hired candidates" color={scoreColor(parseFloat(data.avgScoreHired))} />
+            <StatCard label="Avg Score (Rejected)" value={data.avgScoreRejected != null ? `${data.avgScoreRejected}/10` : '—'} sub="Rejected candidates" color={scoreColor(parseFloat(data.avgScoreRejected))} />
+          </div>
+        </>
+      )}
 
       {/* What NPS means */}
       <div style={{ ...card, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '12px 16px', marginBottom: 24 }}>

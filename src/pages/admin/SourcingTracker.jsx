@@ -8,8 +8,10 @@ const SOURCE_COLOR_LIST = [
   '#0891B2', '#BE185D', '#047857', '#B45309', '#4338CA',
 ];
 
-// Job board sources that should always be visible even with 0 candidates
-const JOB_BOARD_SOURCES = ['linkedin', 'naukri', 'indeed', 'glassdoor', 'monster', 'shine', 'social_media', 'referral', 'direct', 'invite_link', 'talent_match', 'bulk_import', 'resume_upload', 'career_page', 'manual'];
+// Job board / known sources that should always be visible even with 0 candidates.
+// 'career_page' and 'manual' are excluded — they appear naturally from Application.source data.
+// 'invite' matches what the invites.js backend actually sets on Application.source.
+const JOB_BOARD_SOURCES = ['linkedin', 'naukri', 'indeed', 'glassdoor', 'monster', 'shine', 'social_media', 'referral', 'direct', 'invite', 'talent_match', 'bulk_import', 'resume_upload', 'platform'];
 
 function SourceBar({ source, count, pct, total, color }) {
   return (
@@ -86,10 +88,13 @@ export default function SourcingTracker() {
 
       {loading ? (
         <div style={{ color: '#9CA3AF', textAlign: 'center', padding: 64 }}>Loading sourcing data…</div>
-      ) : data.length === 0 ? (
+      ) : (data.length === 0 || (data.every(s => s.count === 0) && total === 0)) ? (
         <div style={{ ...card, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
-          <div style={{ color: '#9CA3AF' }}>No sourcing data available.</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No application data yet</div>
+          <div style={{ color: '#9CA3AF', fontSize: 13, maxWidth: 420, margin: '0 auto' }}>
+            As candidates apply through different channels, their sources will appear here automatically.
+          </div>
         </div>
       ) : (
         <>
@@ -125,45 +130,65 @@ export default function SourcingTracker() {
                   color={SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length]} />
               ))}
               {data.every(s => s.count === 0) && (
-                <p style={{ color: '#9CA3AF', textAlign: 'center', padding: '20px 0' }}>No sourcing data for this period.</p>
+                <p style={{ color: '#9CA3AF', textAlign: 'center', padding: '20px 0' }}>No candidates in this date range.</p>
               )}
             </div>
           )}
 
-          {view === 'table' && (
-            <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC' }}>
-                      {['Source', 'Candidates', 'Share'].map(h => (
-                        <th key={h} style={{ padding: '10px 16px', fontWeight: 700, fontSize: 12, color: '#374151', textAlign: 'left', borderBottom: '2px solid #E5E7EB' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.map((s, i) => (
-                      <tr key={s.source} style={{ borderBottom: '1px solid #F1F5F9', opacity: s.count === 0 ? 0.45 : 1 }}>
-                        <td style={{ padding: '10px 16px', fontWeight: 600, fontSize: 13 }}>
-                          <span style={{ marginRight: 8 }}>{SOURCE_ICONS[s.source] || SOURCE_ICONS.other}</span>
-                          <span style={{ textTransform: 'capitalize' }}>{sourceLabel(s.source)}</span>
-                        </td>
-                        <td style={{ padding: '10px 16px', fontWeight: 700, color: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length] }}>{s.count.toLocaleString()}</td>
-                        <td style={{ padding: '10px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ flex: 1, height: 5, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden', maxWidth: 100 }}>
-                              <div style={{ width: `${s.percentage}%`, height: '100%', background: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length], borderRadius: 4 }} />
-                            </div>
-                            <span style={{ fontSize: 12, color: '#6B7280', minWidth: 36 }}>{s.percentage}%</span>
-                          </div>
-                        </td>
+          {view === 'table' && (() => {
+            const activeSources = data.filter(s => s.count > 0);
+            const zeroSources   = data.filter(s => s.count === 0);
+            return (
+              <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC' }}>
+                        {['Source', 'Candidates', 'Share'].map(h => (
+                          <th key={h} style={{ padding: '10px 16px', fontWeight: 700, fontSize: 12, color: '#374151', textAlign: 'left', borderBottom: '2px solid #E5E7EB' }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {activeSources.map((s, i) => (
+                        <tr key={s.source} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '10px 16px', fontWeight: 600, fontSize: 13 }}>
+                            <span style={{ marginRight: 8 }}>{SOURCE_ICONS[s.source] || SOURCE_ICONS.other}</span>
+                            <span style={{ textTransform: 'capitalize' }}>{sourceLabel(s.source)}</span>
+                          </td>
+                          <td style={{ padding: '10px 16px', fontWeight: 700, color: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length] }}>{s.count.toLocaleString()}</td>
+                          <td style={{ padding: '10px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 5, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden', maxWidth: 100 }}>
+                                <div style={{ width: `${s.percentage}%`, height: '100%', background: SOURCE_COLOR_MAP[s?.source] || SOURCE_COLOR_LIST[i % SOURCE_COLOR_LIST.length], borderRadius: 4 }} />
+                              </div>
+                              <span style={{ fontSize: 12, color: '#6B7280', minWidth: 36 }}>{s.percentage}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Zero-count sources — collapsed chips section */}
+                {zeroSources.length > 0 && (
+                  <div style={{ padding: '10px 16px', borderTop: '1px solid #F1F5F9', background: '#FAFAFA' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', marginBottom: 6 }}>
+                      Other channels (0 candidates)
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {zeroSources.map(s => (
+                        <span key={s.source} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#F1F5F9', color: '#9CA3AF', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 500 }}>
+                          <span style={{ fontSize: 13 }}>{SOURCE_ICONS[s.source] || SOURCE_ICONS.other}</span>
+                          {sourceLabel(s.source)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
     </div>

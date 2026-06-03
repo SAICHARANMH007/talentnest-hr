@@ -141,6 +141,7 @@ const EmailSettingsPage = lazy(() => import('./pages/shared/EmailSettingsPage.js
 const ChangePasswordPage = lazy(() => import('./pages/shared/ChangePasswordPage.jsx'));
 const ResumeViewPage = lazy(() => import('./pages/shared/ResumeViewPage.jsx'));
 const PlatformModalsGuide = lazy(() => import('./pages/shared/PlatformModalsGuide.jsx'));
+const CommunityFeed = lazy(() => import('./pages/shared/CommunityFeed.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -605,6 +606,7 @@ export default function App() {
             <Route path="background-verification" element={<CandidateBackgroundVerification user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />
             <Route path="offer-comparison" element={<OfferComparison user={user} />} />
+            <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
           </>
         )}
 
@@ -651,6 +653,7 @@ export default function App() {
             <Route path="forms/interview" element={<ScheduleInterviewPage user={user} onBack={() => window.history.back()} onDone={() => window.history.back()} />} />
             <Route path="forms/offer" element={<GenerateOfferPage user={user} onBack={() => window.history.back()} onSuccess={() => window.history.back()} />} />
             <Route path="forms/reject" element={<CandidateRejectionPage user={user} onBack={() => window.history.back()} onDone={() => window.history.back()} />} />
+            <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
           </>
         )}
 
@@ -712,6 +715,7 @@ export default function App() {
             <Route path="dashboard" element={<HiringManagerDashboard user={user} />} />
             <Route path="pipeline" element={<AdminPipeline user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
+            <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
           </>
         )}
         {rk === 'client' && (
@@ -720,6 +724,7 @@ export default function App() {
             <Route path="shortlists" element={<ClientShortlists user={user} />} />
             <Route path="interviews" element={<ClientInterviews user={user} />} />
             <Route path="placements" element={<ClientPlacements user={user} />} />
+            <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
           </>
         )}
       </Route>

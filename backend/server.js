@@ -813,6 +813,7 @@ if (HAS_DIST) {
 // ── Video rooms REST
 app.use('/api/video-rooms', require('./src/routes/videoRooms'));
 app.use('/api/feed',         require('./src/routes/feed'));
+app.use('/api/social-posts', require('./src/routes/socialPosts'));
 app.use('/api/distribution', require('./src/routes/distribution'));
 // Sitemap + robots at root level
 app.get('/sitemap.xml', (req, res) => res.redirect('/api/feed/sitemap.xml'));
