@@ -15,8 +15,8 @@ const CATEGORY_LABEL = {
   tech    : 'Technology',
   hr      : 'HR & Recruiting',
   business: 'Business',
-  design  : 'Product & Design',
-  other   : 'General',
+  design  : 'Design',
+  other   : 'Other',
 };
 
 function CommunityCard({ community, onJoin, onLeave, loading }) {
@@ -126,6 +126,7 @@ export default function CommunitiesPage({ user }) {
     { id: 'hr',       label: '🎯 HR & Recruiting' },
     { id: 'business', label: '📈 Business' },
     { id: 'design',   label: '🎨 Design' },
+    { id: 'other',    label: '🌍 Other' },
   ];
 
   const visible = communities.filter(c => {
