@@ -2,6 +2,7 @@
 const express      = require('express');
 const router       = express.Router();
 const FeedPost     = require('../models/FeedPost');
+const PostReport   = require('../models/PostReport');
 const User         = require('../models/User');
 const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
@@ -94,7 +95,61 @@ router.post('/', asyncHandler(async (req, res) => {
     postType    : safeType,
     ...(communityId ? { communityId, communitySlug: communitySlug || '' } : {}),
   });
+
+  // If posted in a community, notify other members (up to 20, non-blocking)
+  if (communityId) {
+    (async () => {
+      try {
+        const Community = require('../models/Community');
+        const Notification = require('../models/Notification');
+        const authorId = String(u._id || u.id);
+        const community = await Community.findById(communityId).select('name slug memberIds').lean();
+        if (!community) return;
+        const notifyIds = (community.memberIds || [])
+          .map(id => String(id))
+          .filter(id => id !== authorId)
+          .slice(0, 20);
+        if (!notifyIds.length) return;
+        const snippet = content.trim().slice(0, 80) + (content.length > 80 ? '…' : '');
+        await Notification.insertMany(notifyIds.map(uid => ({
+          userId  : uid,
+          tenantId: u.tenantId,
+          type    : 'system',
+          title   : `New post in ${community.name}`,
+          message : `${u.name || 'Someone'}: "${snippet}"`,
+          link    : `/app/communities/${community.slug}`,
+          read    : false,
+        })));
+      } catch {}
+    })();
+  }
+
   res.status(201).json({ success: true, data: post });
+}));
+
+// GET /api/social-posts/reported — admin/super_admin only
+router.get('/reported', asyncHandler(async (req, res) => {
+  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  if (!isAdmin) throw new AppError('Not authorized.', 403);
+
+  const reports = await PostReport.find({ status: 'pending' })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!reports.length) return res.json({ success: true, data: [] });
+
+  const postIds = [...new Set(reports.map(r => r.postId))];
+  const posts   = await FeedPost.find({ _id: { $in: postIds } }).lean();
+  const postMap = Object.fromEntries(posts.map(p => [String(p._id), p]));
+
+  const grouped = {};
+  for (const report of reports) {
+    const pid = String(report.postId);
+    if (!grouped[pid]) grouped[pid] = { post: postMap[pid] || null, reports: [] };
+    grouped[pid].reports.push(report);
+  }
+
+  res.json({ success: true, data: Object.values(grouped) });
 }));
 
 // DELETE /api/social-posts/:id
@@ -157,6 +212,79 @@ router.delete('/:postId/comment/:commentId', asyncHandler(async (req, res) => {
   if (String(post.comments[idx].userId) !== uid && String(post.authorId) !== uid && !isAdmin) throw new AppError('Not authorized.', 403);
   post.comments.splice(idx, 1);
   await post.save();
+  res.json({ success: true });
+}));
+
+// POST /api/social-posts/:id/report
+router.post('/:id/report', asyncHandler(async (req, res) => {
+  const VALID_REASONS = ['spam', 'harassment', 'misinformation', 'inappropriate', 'hate_speech', 'other'];
+  const { reason, details } = req.body;
+  if (!VALID_REASONS.includes(reason)) throw new AppError('Invalid report reason.', 400);
+
+  const post = await FeedPost.findOne({ _id: req.params.id, isDeleted: false }).lean();
+  if (!post) throw new AppError('Post not found.', 404);
+
+  const uid = String(req.user._id || req.user.id);
+  if (String(post.authorId) === uid) throw new AppError('You cannot report your own post.', 400);
+
+  const existing = await PostReport.findOne({ postId: post._id, reportedBy: uid });
+  if (existing) return res.json({ success: true, message: 'Already reported.' });
+
+  await PostReport.create({
+    postId      : post._id,
+    reportedBy  : uid,
+    reporterName: req.user.name || '',
+    reporterRole: req.user.role || '',
+    tenantId    : req.user.tenantId,
+    reason,
+    details: (details || '').trim().slice(0, 500),
+  });
+
+  // Notify super_admins non-blocking
+  (async () => {
+    try {
+      const Notification = require('../models/Notification');
+      const superAdmins = await User.find({ role: { $in: ['super_admin', 'superadmin'] } }).select('_id').lean();
+      if (!superAdmins.length) return;
+      const REASON_LABEL = { spam: 'Spam', harassment: 'Harassment', misinformation: 'Misinformation', inappropriate: 'Inappropriate Content', hate_speech: 'Hate Speech', other: 'Other' };
+      const snippet = (post.content || '').slice(0, 60) + (post.content?.length > 60 ? '…' : '');
+      await Notification.insertMany(superAdmins.map(sa => ({
+        userId  : String(sa._id),
+        tenantId: req.user.tenantId,
+        type    : 'system',
+        title   : `Post reported: ${REASON_LABEL[reason]}`,
+        message : `${req.user.name || 'A user'} reported a post: "${snippet}"`,
+        link    : '/app/reported-posts',
+        read    : false,
+      })));
+    } catch {}
+  })();
+
+  res.json({ success: true, message: 'Post reported successfully.' });
+}));
+
+// PATCH /api/social-posts/reports/:reportId/dismiss — admin only
+router.patch('/reports/:reportId/dismiss', asyncHandler(async (req, res) => {
+  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  if (!isAdmin) throw new AppError('Not authorized.', 403);
+  const report = await PostReport.findById(req.params.reportId);
+  if (!report) throw new AppError('Report not found.', 404);
+  report.status     = 'dismissed';
+  report.resolvedBy = req.user._id || req.user.id;
+  report.resolvedAt = new Date();
+  await report.save();
+  res.json({ success: true });
+}));
+
+// DELETE /api/social-posts/reports/:reportId/delete-post — admin only
+router.delete('/reports/:reportId/delete-post', asyncHandler(async (req, res) => {
+  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  if (!isAdmin) throw new AppError('Not authorized.', 403);
+  const report = await PostReport.findById(req.params.reportId);
+  if (!report) throw new AppError('Report not found.', 404);
+
+  await FeedPost.findByIdAndUpdate(report.postId, { isDeleted: true });
+  await PostReport.updateMany({ postId: report.postId }, { status: 'reviewed', resolvedBy: req.user._id || req.user.id, resolvedAt: new Date() });
   res.json({ success: true });
 }));
 

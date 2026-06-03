@@ -4,6 +4,9 @@ export const communityService = {
   async getCommunities() {
     return req('GET', '/communities');
   },
+  async createCommunity(data) {
+    return req('POST', '/communities', data);
+  },
   async getCommunity(slug) {
     return req('GET', `/communities/${slug}`);
   },

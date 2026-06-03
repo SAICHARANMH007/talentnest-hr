@@ -59,11 +59,26 @@ function RoleBadge({ role }) {
   return <span style={{ fontSize: 10, fontWeight: 700, background: color + '18', color, borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>{label}</span>;
 }
 
+const REPORT_REASONS = [
+  { value: 'spam',           label: '🚫 Spam' },
+  { value: 'harassment',     label: '😡 Harassment' },
+  { value: 'misinformation', label: '❌ Misinformation' },
+  { value: 'inappropriate',  label: '🔞 Inappropriate Content' },
+  { value: 'hate_speech',    label: '🤬 Hate Speech' },
+  { value: 'other',          label: '📋 Other' },
+];
+
 // ── Post Card (community-specific, lightweight) ────────────────────────────────
 function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const [showComments, setShowComments] = useState(false);
   const [comment,      setComment]      = useState('');
   const [submitting,   setSubmitting]   = useState(false);
+  const [showMenu,     setShowMenu]     = useState(false);
+  const [showReport,   setShowReport]   = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails,setReportDetails]= useState('');
+  const [reporting,    setReporting]    = useState(false);
+  const [reported,     setReported]     = useState(false);
   const isOwnPost = String(post.authorId) === String(userId);
   const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
@@ -77,14 +92,51 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
     try {
       await api.addComment(post._id, comment.trim());
       setComment('');
-      // Refresh handled by parent
     } catch {}
     setSubmitting(false);
   };
 
+  const handleReport = async () => {
+    setReporting(true);
+    try {
+      await api.reportPost(post._id, reportReason, reportDetails);
+      setReported(true);
+      setShowReport(false);
+    } catch (e) { alert(e?.message || 'Failed to submit report'); }
+    setReporting(false);
+  };
+
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9' }}>
+    <div style={{ ...card, padding: '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
       {post.isPinned && <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 8 }}>📌 Pinned</div>}
+
+      {/* Report modal */}
+      {showReport && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setShowReport(false)}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: '24px', maxWidth: 420, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800, color: '#0A1628' }}>Report Post</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280' }}>Help us keep the community safe. Select a reason:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+              {REPORT_REASONS.map(r => (
+                <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${reportReason === r.value ? '#0176D3' : '#E5E7EB'}`, background: reportReason === r.value ? '#EFF6FF' : '#F9FAFB', cursor: 'pointer', fontSize: 13, fontWeight: reportReason === r.value ? 700 : 400 }}>
+                  <input type="radio" name="reason" value={r.value} checked={reportReason === r.value} onChange={() => setReportReason(r.value)} style={{ accentColor: '#0176D3' }} />
+                  {r.label}
+                </label>
+              ))}
+            </div>
+            <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} placeholder="Additional details (optional)…"
+              rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowReport(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={handleReport} disabled={reporting} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                {reporting ? 'Reporting…' : 'Submit Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
@@ -100,11 +152,38 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
             {timeAgo(post.createdAt)}
           </div>
         </div>
-        {(isOwnPost || isAdmin) && (
-          <button onClick={() => onDelete(post._id)} style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 18, padding: '2px 6px', borderRadius: 4 }}
-            onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
-            onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>×</button>
-        )}
+        {/* Action menu */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setShowMenu(v => !v)}
+            style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18, padding: '2px 8px', borderRadius: 4, lineHeight: 1 }}
+            onMouseEnter={e => e.currentTarget.style.color = '#374151'}
+            onMouseLeave={e => e.currentTarget.style.color = '#9CA3AF'}>⋯</button>
+          {showMenu && (
+            <div style={{ position: 'absolute', right: 0, top: '100%', background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #F1F5F9', minWidth: 160, zIndex: 100, overflow: 'hidden' }}
+              onMouseLeave={() => setShowMenu(false)}>
+              {(isOwnPost || isAdmin) && (
+                <button onClick={() => { setShowMenu(false); onDelete(post._id); }}
+                  style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  🗑️ Delete Post
+                </button>
+              )}
+              {!isOwnPost && (
+                reported ? (
+                  <div style={{ padding: '10px 16px', fontSize: 13, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 8 }}>✅ Reported</div>
+                ) : (
+                  <button onClick={() => { setShowMenu(false); setShowReport(true); }}
+                    style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#FEF9C3'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                    🚩 Report Post
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -183,11 +262,34 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
 
 // ── Create Post in Community ───────────────────────────────────────────────────
 function CreateCommunityPost({ user, community, onCreate }) {
-  const [text,      setText]      = useState('');
-  const [postType,  setPostType]  = useState('update');
-  const [expanded,  setExpanded]  = useState(false);
-  const [submitting,setSubmitting] = useState(false);
+  const [text,       setText]       = useState('');
+  const [postType,   setPostType]   = useState('update');
+  const [expanded,   setExpanded]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [images,     setImages]     = useState([]);   // uploaded URLs
+  const [uploading,  setUploading]  = useState(false);
+  const fileRef = useRef(null);
   const bg = community?.coverColor || '#0176D3';
+
+  const handleImagePick = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remaining = 4 - images.length;
+    if (remaining <= 0) return;
+    setUploading(true);
+    const uploaded = [];
+    for (const file of files.slice(0, remaining)) {
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+        const r = await api.uploadFeedImage(fd);
+        if (r?.url) uploaded.push(r.url);
+      } catch {}
+    }
+    setImages(prev => [...prev, ...uploaded]);
+    setUploading(false);
+    e.target.value = '';
+  };
 
   const handleSubmit = async () => {
     if (!text.trim() || submitting) return;
@@ -196,10 +298,12 @@ function CreateCommunityPost({ user, community, onCreate }) {
       await api.createPost({
         content      : text.trim(),
         postType,
+        images,
         communityId  : community._id,
         communitySlug: community.slug,
       });
       setText('');
+      setImages([]);
       setExpanded(false);
       setPostType('update');
       onCreate && onCreate();
@@ -222,14 +326,44 @@ function CreateCommunityPost({ user, community, onCreate }) {
             onMouseEnter={e => e.currentTarget.style.borderColor = bg}
             onMouseLeave={e => { if (!expanded) e.currentTarget.style.borderColor = '#E5E7EB'; }}
           />
+
+          {/* Image previews */}
+          {images.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              {images.map((url, i) => (
+                <div key={i} style={{ position: 'relative', width: 80, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
+                    style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 18, height: 18, borderRadius: '50%', cursor: 'pointer', fontSize: 11, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                </div>
+              ))}
+              {uploading && (
+                <div style={{ width: 80, height: 80, borderRadius: 8, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#9CA3AF' }}>
+                  <div style={{ width: 18, height: 18, border: '2px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                </div>
+              )}
+            </div>
+          )}
+
           {expanded && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-              <select value={postType} onChange={e => setPostType(e.target.value)}
-                style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12, outline: 'none', background: '#F9FAFB', cursor: 'pointer' }}>
-                {POST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <select value={postType} onChange={e => setPostType(e.target.value)}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12, outline: 'none', background: '#F9FAFB', cursor: 'pointer' }}>
+                  {POST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                {images.length < 4 && (
+                  <>
+                    <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImagePick} />
+                    <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {uploading ? '⏳' : '🖼️'} Photo
+                    </button>
+                  </>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); }}
+                <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); }}
                   style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>

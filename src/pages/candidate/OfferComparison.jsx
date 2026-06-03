@@ -2,21 +2,61 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../api/api.js';
 import { card } from '../../constants/styles.js';
 
+// Parse CTC string like "8,00,000", "₹8L", "12 LPA", "1200000" into a number
+function parseCtcString(str) {
+  if (!str) return 0;
+  const cleaned = String(str).replace(/[₹$,\s]/gi, '').toLowerCase();
+  const lMatch = cleaned.match(/^([\d.]+)\s*l/);
+  if (lMatch) return Math.round(parseFloat(lMatch[1]) * 100000);
+  const kMatch = cleaned.match(/^([\d.]+)\s*k/);
+  if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1000);
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : Math.round(num);
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str; // return as-is if unparseable
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Flatten templateData fields into a top-level shape the comparison table understands
+function normalizeOffer(raw) {
+  const d = raw.templateData || {};
+  const ctcNum = parseCtcString(d.ctc || raw.ctc || raw.totalCtc || raw.salary || '');
+  return {
+    _id        : raw._id || raw.id,
+    jobTitle   : d.designation || raw.jobTitle || raw.role || '—',
+    company    : d.companyName || raw.company || raw.companyName || '—',
+    ctc        : ctcNum,
+    ctcRaw     : d.ctc || raw.ctc || '',
+    location   : raw.location || '—',
+    joiningDate: d.joiningDate || raw.joiningDate || null,
+    sentAt     : raw.sentAt || null,
+    status     : raw.status || '—',
+    _fromApp   : raw._fromApp || false,
+  };
+}
+
 const fmtSalary = (offer) => {
-  const ctc = offer.ctc || offer.totalCtc || offer.salary || offer.salaryAmount;
-  if (!ctc) return '—';
+  const ctc = offer.ctc;
+  if (!ctc) return offer.ctcRaw || '—';
   if (ctc >= 100000) return `₹${(ctc / 100000).toFixed(1)}L`;
   return `₹${(ctc / 1000).toFixed(0)}K`;
 };
 
 const ROW_LABELS = [
-  { key: 'job',         label: 'Job Title',   fn: o => o.jobTitle || o.role || '—' },
-  { key: 'company',     label: 'Company',     fn: o => o.company || o.companyName || '—' },
+  { key: 'job',         label: 'Job Title',   fn: o => o.jobTitle || '—' },
+  { key: 'company',     label: 'Company',     fn: o => o.company || '—' },
   { key: 'ctc',         label: 'Total CTC',   fn: o => fmtSalary(o) },
   { key: 'location',    label: 'Location',    fn: o => o.location || '—' },
-  { key: 'joiningDate', label: 'Joining Date',fn: o => o.joiningDate ? new Date(o.joiningDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
-  { key: 'deadline',    label: 'Accept By',   fn: o => (o.deadline || o.expiresAt) ? new Date(o.deadline || o.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
-  { key: 'status',      label: 'Status',      fn: o => o.status || '—' },
+  { key: 'joiningDate', label: 'Joining Date',fn: o => fmtDate(o.joiningDate) },
+  { key: 'sentAt',      label: 'Offer Date',  fn: o => fmtDate(o.sentAt) },
+  { key: 'status',      label: 'Status',      fn: o => {
+    const s = o.status;
+    return s === 'signed' ? '✅ Signed' : s === 'sent' ? '📨 Offer Sent' : s === 'Hired' ? '🏆 Hired' : s || '—';
+  }},
 ];
 
 function ScoreBar({ value, max, color }) {
@@ -40,9 +80,10 @@ function appToOffer(app) {
     company  : job.companyName || job.company || app.company || '—',
     location : job.location || '—',
     status   : stage === 'selected' ? 'Hired' : 'Offer Extended',
-    ctc      : app.offeredCTC || app.salary || null,
+    ctc      : parseCtcString(app.offeredCTC || app.salary || ''),
+    ctcRaw   : app.offeredCTC || app.salary || '',
     joiningDate: app.joiningDate || null,
-    deadline : app.offerDeadline || null,
+    sentAt   : app.updatedAt || null,
     _fromApp : true,
   };
 }
@@ -57,11 +98,11 @@ export default function OfferComparison({ user }) {
       api.getMyOffers(),
       api.getMyApplications(),
     ]).then(([offerRes, appRes]) => {
-      // Formal offer letters
+      // Formal offer letters — normalize templateData fields to top-level
       const formalOffers = (() => {
         const r = offerRes.status === 'fulfilled' ? offerRes.value : [];
         const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
-        return list.filter(o => o.status !== 'draft');
+        return list.filter(o => o.status !== 'draft').map(normalizeOffer);
       })();
 
       // Applications in offer/hired stage → treat as offers if no formal offer exists
@@ -92,10 +133,7 @@ export default function OfferComparison({ user }) {
 
   const compared = offers.filter(o => selected.includes(String(o._id || o.id)));
 
-  const maxCtc = compared.reduce((m, o) => {
-    const v = o.ctc || o.totalCtc || o.salary || o.salaryAmount || 0;
-    return Math.max(m, v);
-  }, 0);
+  const maxCtc = compared.reduce((m, o) => Math.max(m, o.ctc || 0), 0);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Loading offers…</div>;
 
@@ -120,8 +158,8 @@ export default function OfferComparison({ user }) {
               {offers.map(o => {
                 const id  = String(o._id || o.id);
                 const sel = selected.includes(id);
-                const ctc = o.ctc || o.totalCtc || o.salary || o.salaryAmount;
-                const statusColor = o.status === 'Hired' ? '#2E844A' : '#0176D3';
+                const statusColor = (o.status === 'Hired' || o.status === '🏆 Hired') ? '#2E844A' : '#0176D3';
+                const ctcDisplay = fmtSalary(o);
                 return (
                   <button key={id} onClick={() => toggle(id)} style={{
                     border: sel ? '2px solid #4F46E5' : '1px solid #E2E8F0',
@@ -129,14 +167,14 @@ export default function OfferComparison({ user }) {
                     cursor: 'pointer', textAlign: 'left', minWidth: 180,
                     boxShadow: sel ? '0 0 0 3px rgba(79,70,229,0.15)' : 'none',
                   }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 2 }}>{o.jobTitle || o.role || 'Offer'}</div>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>{o.company || o.companyName || 'Company'}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 2 }}>{o.jobTitle || 'Offer'}</div>
+                    <div style={{ fontSize: 12, color: '#6B7280' }}>{o.company || 'Company'}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: statusColor, marginTop: 3 }}>
-                      {o.status === 'Hired' ? '🏆 Hired' : '🎉 Offer Extended'}
+                      {o.status === 'Hired' ? '🏆 Hired' : o.status === 'signed' ? '✅ Signed' : '🎉 Offer Sent'}
                     </div>
-                    {ctc && <div style={{ fontSize: 12, fontWeight: 700, color: '#4F46E5', marginTop: 2 }}>{fmtSalary(o)}</div>}
+                    {ctcDisplay !== '—' && <div style={{ fontSize: 12, fontWeight: 700, color: '#4F46E5', marginTop: 2 }}>{ctcDisplay}</div>}
                     <div style={{ fontSize: 11, color: sel ? '#6366F1' : '#9CA3AF', marginTop: 4 }}>
-                      {sel ? '✓ Selected' : (selected.length >= 3 ? 'Max 3' : 'Click to select')}
+                      {sel ? '✓ Selected' : (selected.length >= 3 ? 'Max 3 reached' : 'Click to select')}
                     </div>
                   </button>
                 );
@@ -165,7 +203,7 @@ export default function OfferComparison({ user }) {
                       {compared.map((o, ci) => {
                         const val = row.fn(o);
                         const isCtc = row.key === 'ctc';
-                        const ctcVal = isCtc ? (o.ctc || o.totalCtc || o.salary || o.salaryAmount || 0) : 0;
+                        const ctcVal = isCtc ? (o.ctc || 0) : 0;
                         const isBestCtc = isCtc && ctcVal === maxCtc && ctcVal > 0;
                         return (
                           <td key={ci} style={{ padding: '12px 16px', fontSize: 14, textAlign: 'center', borderBottom: '1px solid #F1F5F9', color: isBestCtc ? '#059669' : '#0A1628', fontWeight: isBestCtc ? 800 : 400 }}>
@@ -183,7 +221,7 @@ export default function OfferComparison({ user }) {
               </table>
 
               {maxCtc > 0 && (() => {
-                const best = compared.find(o => (o.ctc || o.totalCtc || o.salary || o.salaryAmount || 0) === maxCtc);
+                const best = compared.find(o => (o.ctc || 0) === maxCtc);
                 return (
                   <div style={{ marginTop: 16, background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 12, padding: '16px 20px' }}>
                     <div style={{ fontWeight: 700, color: '#065F46', fontSize: 15 }}>

@@ -181,6 +181,7 @@ export const platformService = {
     const qs = q.toString();
     return req('GET', `/nps/stats${qs ? `?${qs}` : ''}`);
   },
+  async seedNPS()                            { return req('POST', '/nps/seed', {}); },
 
   // Candidate Documents
   async getCandidateDocuments(candidateId)   { return req('GET', `/candidates/${candidateId}/documents`); },

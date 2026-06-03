@@ -41,6 +41,7 @@ export default function DiversityReport({ user }) {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate]     = useState('');
+  const [seeding, setSeeding]     = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,6 +69,10 @@ export default function DiversityReport({ user }) {
           <input type="date" style={inp} value={endDate} onChange={e => setEndDate(e.target.value)} placeholder="End" />
           <button style={btnG} onClick={load}>Filter</button>
           {(startDate || endDate) && <button style={btnG} onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</button>}
+          <button onClick={async () => { setSeeding(true); try { await api.seedDiversityData(); load(); } catch {} setSeeding(false); }} disabled={seeding}
+            style={{ padding: '7px 14px', borderRadius: 7, border: '1px dashed #7C3AED', background: '#F5F3FF', color: '#5B21B6', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {seeding ? 'Updating…' : '📊 Populate Diversity Data'}
+          </button>
         </div>
       </div>
 

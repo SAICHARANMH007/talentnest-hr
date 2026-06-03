@@ -359,16 +359,41 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
 }
 
 // ── Post Card ──────────────────────────────────────────────────────────────────
+const FEED_REPORT_REASONS = [
+  { value: 'spam',           label: '🚫 Spam' },
+  { value: 'harassment',     label: '😡 Harassment' },
+  { value: 'misinformation', label: '❌ Misinformation' },
+  { value: 'inappropriate',  label: '🔞 Inappropriate Content' },
+  { value: 'hate_speech',    label: '🤬 Hate Speech' },
+  { value: 'other',          label: '📋 Other' },
+];
+
 function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, bookmarks, onToggleBookmark, onHashtagClick, isMobile }) {
-  const [showComments, setShowComments] = useState(false);
+  const [showComments,  setShowComments]  = useState(false);
+  const [showMenu,      setShowMenu]      = useState(false);
+  const [showReport,    setShowReport]    = useState(false);
+  const [reportReason,  setReportReason]  = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reporting,     setReporting]     = useState(false);
+  const [reported,      setReported]      = useState(false);
   const isOwnPost   = String(post.authorId) === String(userId);
   const isAdmin     = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const isVerified  = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
   const isConnected = connectionIds.has(String(post.authorId));
   const showConnect = !isOwnPost && !isConnected;
 
+  const handleReport = async () => {
+    setReporting(true);
+    try {
+      await api.reportPost(post._id, reportReason, reportDetails);
+      setReported(true);
+      setShowReport(false);
+    } catch (e) { alert(e?.message || 'Failed to submit report'); }
+    setReporting(false);
+  };
+
   const actionButtons = (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
       {showConnect && (
         <InlineConnectButton
           authorId={post.authorId}
@@ -378,18 +403,71 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
         />
       )}
       <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
-      {(isOwnPost || isAdmin) && (
-        <button onClick={() => onDelete(post._id)}
-          style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4, transition: 'color 0.15s' }}
-          title="Delete post"
-          onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
-          onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>×</button>
-      )}
+      {/* ⋯ menu for delete + report */}
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => setShowMenu(v => !v)}
+          style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18, padding: '2px 8px', borderRadius: 4, lineHeight: 1 }}
+          onMouseEnter={e => e.currentTarget.style.color = '#374151'}
+          onMouseLeave={e => e.currentTarget.style.color = '#9CA3AF'}>⋯</button>
+        {showMenu && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #F1F5F9', minWidth: 160, zIndex: 200, overflow: 'hidden' }}
+            onMouseLeave={() => setShowMenu(false)}>
+            {(isOwnPost || isAdmin) && (
+              <button onClick={() => { setShowMenu(false); onDelete(post._id); }}
+                style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#DC2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                🗑️ Delete Post
+              </button>
+            )}
+            {!isOwnPost && (
+              reported ? (
+                <div style={{ padding: '10px 16px', fontSize: 13, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 8 }}>✅ Reported</div>
+              ) : (
+                <button onClick={() => { setShowMenu(false); setShowReport(true); }}
+                  style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FEF9C3'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  🚩 Report Post
+                </button>
+              )
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9' }}>
+    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+      {/* Report modal */}
+      {showReport && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setShowReport(false)}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: '24px', maxWidth: 420, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800, color: '#0A1628' }}>Report Post</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280' }}>Help us keep the community safe. Select a reason:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+              {FEED_REPORT_REASONS.map(r => (
+                <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${reportReason === r.value ? '#0176D3' : '#E5E7EB'}`, background: reportReason === r.value ? '#EFF6FF' : '#F9FAFB', cursor: 'pointer', fontSize: 13, fontWeight: reportReason === r.value ? 700 : 400 }}>
+                  <input type="radio" name={`reason-${post._id}`} value={r.value} checked={reportReason === r.value} onChange={() => setReportReason(r.value)} style={{ accentColor: '#0176D3' }} />
+                  {r.label}
+                </label>
+              ))}
+            </div>
+            <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} placeholder="Additional details (optional)…"
+              rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowReport(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={handleReport} disabled={reporting} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                {reporting ? 'Reporting…' : 'Submit Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {post.isPinned && (
         <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>📌 Pinned post</div>
       )}

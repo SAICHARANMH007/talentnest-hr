@@ -79,6 +79,77 @@ function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
   );
 }
 
+const canCreate = (role) => ['admin','super_admin','superadmin','recruiter'].includes(role);
+
+function CreateCommunityModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({ name: '', description: '', icon: '💬', category: 'other', coverColor: '#0176D3' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+  const ICONS = ['💬','💡','🚀','🎯','🏆','🌐','🔬','📚','🎨','⚡','🤝','📈','🎓','🏅','🌱','💼','🔧','🌍'];
+  const COLORS = ['#0176D3','#059669','#7C3AED','#D97706','#EC4899','#0891B2','#DC2626','#374151'];
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { setErr('Name is required.'); return; }
+    setSaving(true); setErr('');
+    try {
+      const r = await api.createCommunity(form);
+      onCreate(r?.data || r);
+      onClose();
+    } catch(ex) { setErr(ex?.message || 'Failed to create community.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 800, color: '#0A1628' }}>Create Community</h2>
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 4 }}>Community Name *</label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. AI Engineers Network" style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid #D1D5DB', fontSize: 14, boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 4 }}>Description</label>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What's this community about?" rows={2} style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid #D1D5DB', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Category</label>
+            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13 }}>
+              <option value="tech">💻 Technology</option>
+              <option value="hr">🎯 HR & Recruiting</option>
+              <option value="business">📈 Business</option>
+              <option value="design">🎨 Design</option>
+              <option value="other">🌍 Other</option>
+            </select>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Icon</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {ICONS.map(ic => (
+                <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))} style={{ width: 36, height: 36, fontSize: 20, borderRadius: 8, border: form.icon === ic ? '2px solid #0176D3' : '1px solid #E5E7EB', background: form.icon === ic ? '#EFF6FF' : '#F9FAFB', cursor: 'pointer' }}>{ic}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Cover Color</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {COLORS.map(col => (
+                <button key={col} type="button" onClick={() => setForm(f => ({ ...f, coverColor: col }))} style={{ width: 28, height: 28, borderRadius: '50%', background: col, border: form.coverColor === col ? '3px solid #0A1628' : '2px solid #fff', outline: form.coverColor === col ? '2px solid #0176D3' : 'none', cursor: 'pointer' }} />
+              ))}
+            </div>
+          </div>
+          {err && <div style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{err}</div>}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#0176D3', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Creating…' : 'Create Community'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function CommunitiesPage({ user }) {
   const navigate     = useNavigate();
   const [communities, setCommunities] = useState([]);
@@ -86,6 +157,7 @@ export default function CommunitiesPage({ user }) {
   const [actionSlug,  setActionSlug]  = useState(null);
   const [filter,      setFilter]      = useState('all'); // all | joined | tech | hr | business | design
   const [search,      setSearch]      = useState('');
+  const [showCreate,  setShowCreate]  = useState(false);
   const [isMobile,    setMobile]      = useState(() => window.innerWidth < 768);
 
   useEffect(() => {
@@ -148,12 +220,19 @@ export default function CommunitiesPage({ user }) {
   return (
     <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: 20, padding: isMobile ? '0 12px' : 0 }}>
-        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Communities</h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9CA3AF' }}>
-          Join communities of professionals with shared skills and interests
-          {myCount > 0 && <span style={{ color: '#0176D3', fontWeight: 600 }}> · {myCount} joined</span>}
-        </p>
+      <div style={{ marginBottom: 20, padding: isMobile ? '0 12px' : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Communities</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9CA3AF' }}>
+            Join communities of professionals with shared skills and interests
+            {myCount > 0 && <span style={{ color: '#0176D3', fontWeight: 600 }}> · {myCount} joined</span>}
+          </p>
+        </div>
+        {canCreate(user?.role) && (
+          <button onClick={() => setShowCreate(true)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: '#0176D3', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            + Create Community
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -215,6 +294,16 @@ export default function CommunitiesPage({ user }) {
       )}
 
       <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
+
+      {showCreate && (
+        <CreateCommunityModal
+          onClose={() => setShowCreate(false)}
+          onCreate={(newCommunity) => {
+            setCommunities(prev => [{ ...newCommunity, isMember: true }, ...prev]);
+            setShowCreate(false);
+          }}
+        />
+      )}
     </div>
   );
 }

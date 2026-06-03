@@ -49,6 +49,7 @@ export default function AdminNPS() {
   const [loading, setLoad]    = useState(true);
   const [startDate, setStart] = useState('');
   const [endDate, setEnd]     = useState('');
+  const [seeding, setSeeding] = useState(false);
 
   const load = (s, e) => {
     setLoad(true);
@@ -101,6 +102,10 @@ export default function AdminNPS() {
             NPS surveys are sent automatically to candidates after they are hired or rejected.
             Data appears here as candidates respond.
           </div>
+          <button onClick={async () => { setSeeding(true); try { await api.seedNPS(); load('',''); } catch {} setSeeding(false); }} disabled={seeding}
+            style={{ marginTop: 20, padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            {seeding ? 'Loading demo data…' : '📥 Load 20 Demo NPS Responses'}
+          </button>
         </div>
       ) : (
         <>

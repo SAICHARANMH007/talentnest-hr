@@ -45,4 +45,16 @@ export const feedPostService = {
     const res = await fetch(`${API_BASE_URL}/social-posts/public/${id}`);
     return res.json();
   },
+  async reportPost(id, reason, details = '') {
+    return req('POST', `/social-posts/${id}/report`, { reason, details });
+  },
+  async getReportedPosts() {
+    return req('GET', '/social-posts/reported');
+  },
+  async dismissReport(reportId) {
+    return req('PATCH', `/social-posts/reports/${reportId}/dismiss`, {});
+  },
+  async deleteReportedPost(reportId) {
+    return req('DELETE', `/social-posts/reports/${reportId}/delete-post`);
+  },
 };

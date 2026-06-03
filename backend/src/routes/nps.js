@@ -90,6 +90,58 @@ router.post('/survey/:token', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+// POST /api/nps/seed — admin: create 20 demo NPS responses
+router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
+  const tenantId = req.user.tenantId;
+  const existing = await CandidateNPS.countDocuments({ tenantId });
+  if (existing >= 10) return res.json({ success: true, message: 'Seed data already exists.', count: existing });
+
+  const mongoose = require('mongoose');
+  const OUTCOMES = ['hired', 'rejected', 'hired', 'hired', 'rejected', 'hired', 'rejected', 'hired', 'hired', 'rejected'];
+  const SCORES   = [9, 10, 8, 7, 5, 10, 6, 9, 10, 4, 8, 9, 10, 7, 5, 9, 10, 8, 3, 9];
+  const FEEDBACK = [
+    'The entire process was smooth and professional. I felt respected throughout.',
+    'Interview scheduling was seamless and the team was very responsive.',
+    'Great experience! The hiring team was transparent about every step.',
+    'Decent process but feedback took longer than expected after the final round.',
+    'The rejection was handled professionally with constructive feedback. Appreciated.',
+    'Amazing team! They were prompt, professional, and genuinely interested in me.',
+    'Process was okay but communication could be improved between rounds.',
+    'One of the best interview experiences I have had. Highly recommend applying here.',
+    'The recruiter was extremely helpful and kept me updated throughout.',
+    'Was not selected but the experience was fair. Would apply again.',
+    'Loved the structured interviews and clear evaluation criteria.',
+    'Very professional onboarding after selection. Felt welcome from day one.',
+    'The team genuinely cares about candidate experience. Impressive.',
+    'Communication was timely and the process was efficient.',
+    'Rejected but received useful feedback. Rare and appreciated.',
+    'Smooth process from application to offer. Highly satisfied.',
+    'Outstanding recruiter support. Always available for questions.',
+    'Interview was well-structured with clear expectations set upfront.',
+    'The timeline was longer than expected but eventually worth it.',
+    'Best hiring experience in my career so far. Truly candidate-first.',
+  ];
+  const WOULD_RECOMMEND = [true, true, true, true, false, true, false, true, true, false, true, true, true, true, true, true, true, true, false, true];
+
+  const now = Date.now();
+  const records = SCORES.map((score, i) => ({
+    tenantId,
+    applicationId: new mongoose.Types.ObjectId(),
+    candidateId  : new mongoose.Types.ObjectId(),
+    jobId        : new mongoose.Types.ObjectId(),
+    score,
+    wouldRecommend    : WOULD_RECOMMEND[i],
+    feedbackText      : FEEDBACK[i] || '',
+    applicationOutcome: OUTCOMES[i % OUTCOMES.length],
+    surveyToken       : require('crypto').randomBytes(24).toString('hex'),
+    emailSentAt       : new Date(now - (SCORES.length - i) * 2 * 24 * 3600000),
+    respondedAt       : new Date(now - (SCORES.length - i) * 2 * 24 * 3600000 + 3600000),
+  }));
+
+  await CandidateNPS.insertMany(records);
+  res.json({ success: true, message: `Seeded ${records.length} demo NPS responses.`, count: records.length });
+}));
+
 // GET /api/nps/stats — admin: NPS dashboard data
 router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;

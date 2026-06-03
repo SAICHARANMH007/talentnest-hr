@@ -23,4 +23,5 @@ export const webhookService = {
   async getAdminReviews()              { const r = await req('GET', '/company-reviews'); return r?.data || r; },
   async approveReview(id)              { return req('PATCH', `/company-reviews/${id}/approve`); },
   async deleteReview(id)               { return req('DELETE', `/company-reviews/${id}`); },
+  async seedReviews()                  { return req('POST', '/company-reviews/seed', {}); },
 };

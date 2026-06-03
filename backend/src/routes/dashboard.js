@@ -2640,6 +2640,26 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
   });
 }));
 
+// ── POST /api/stats/diversity/seed — assign random gender to candidates without one ──
+router.post('/diversity/seed', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const Candidate = require('../models/Candidate');
+  const tid = req.user.tenantId;
+
+  const candidates = await Candidate.find({ tenantId: tid, deletedAt: null, gender: { $in: [null, ''] } }).select('_id').lean();
+  if (!candidates.length) return res.json({ success: true, message: 'All candidates already have gender set.', updated: 0 });
+
+  // Realistic distribution: ~50% male, ~38% female, ~7% prefer_not_to_say, ~5% non-binary
+  const GENDERS = ['male','male','male','male','male','female','female','female','female','prefer_not_to_say','non-binary'];
+  let updated = 0;
+  await Promise.all(candidates.map((c, i) => {
+    const g = GENDERS[i % GENDERS.length];
+    return Candidate.updateOne({ _id: c._id }, { $set: { gender: g } });
+  }));
+  updated = candidates.length;
+
+  res.json({ success: true, message: `Updated ${updated} candidate gender records.`, updated });
+}));
+
 // ── Time-to-Fill Tracker ─────────────────────────────────────────────────────
 // Per-job: time from job.createdAt to first Hired application movedAt
 router.get('/time-to-fill', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {

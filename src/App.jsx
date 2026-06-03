@@ -83,6 +83,7 @@ const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdmi
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
 const SuperAdminCommandCenter = lazy(() => import('./pages/superadmin/SuperAdminCommandCenter.jsx'));
+const SuperAdminReportedPosts = lazy(() => import('./pages/superadmin/SuperAdminReportedPosts.jsx'));
 
 const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
@@ -716,6 +717,7 @@ export default function App() {
             <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
             <Route path="referrals" element={<AdminReferrals user={user} />} />
             <Route path="platform-referrals" element={<SuperAdminPlatformReferrals />} />
+            <Route path="reported-posts" element={<Suspense fallback={<PageLoader />}><SuperAdminReportedPosts /></Suspense>} />
           </>
         )}
 

@@ -16,6 +16,7 @@ export default function AdminReviews() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState('pending');
   const [error, setError]     = useState('');
+  const [seeding, setSeeding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -39,6 +40,13 @@ export default function AdminReviews() {
     if (!window.confirm('Delete this review?')) return;
     try { await api.deleteReview(id); load(); }
     catch (e) { setError(e?.message || 'Delete failed.'); }
+  };
+
+  const seed = async () => {
+    setSeeding(true); setError('');
+    try { await api.seedReviews(); load(); }
+    catch (e) { setError(e?.message || 'Seed failed.'); }
+    finally { setSeeding(false); }
   };
 
   const { pendingCount, approvedCount, filtered, avgRating, ratingDist } = useMemo(() => {
@@ -67,7 +75,14 @@ export default function AdminReviews() {
 
   return (
     <div style={{ padding: 'clamp(16px,3vw,32px)', maxWidth: 800, margin: '0 auto' }}>
-      <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>⭐ Company Reviews</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 6 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>⭐ Company Reviews</h1>
+        {reviews.length < 5 && (
+          <button onClick={seed} disabled={seeding} style={{ padding: '8px 16px', borderRadius: 9, border: '1px dashed #D97706', background: '#FEF3C7', color: '#92400E', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {seeding ? 'Seeding…' : '📥 Load 20 Demo Reviews'}
+          </button>
+        )}
+      </div>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6B7280' }}>Approve or remove reviews shown on your careers page.</p>
 
       {/* Aggregate stats */}

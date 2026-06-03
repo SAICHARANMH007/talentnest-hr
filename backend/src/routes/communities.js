@@ -138,6 +138,41 @@ const DEFAULTS = [
   { name: 'Women in Tech',           slug: 'women-in-tech',      icon: '👩', category: 'other',    coverColor: '#EC4899', description: 'Supporting and celebrating women in technology, engineering, and product roles.' },
 ];
 
+// ─── POST /api/communities — create a new community (admin/recruiter/superadmin) ──
+router.post('/', asyncHandler(async (req, res) => {
+  const role = req.user.role;
+  if (!['admin', 'super_admin', 'superadmin', 'recruiter'].includes(role)) {
+    throw new AppError('Only admins and recruiters can create communities.', 403);
+  }
+  const tenantId = req.user.tenantId;
+  const { name, description, icon, category, coverColor } = req.body;
+  if (!name?.trim()) throw new AppError('Community name is required.', 400);
+
+  // Generate slug from name
+  const baseSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  let slug = baseSlug;
+  let attempt = 0;
+  while (await Community.exists({ tenantId, slug })) {
+    attempt++;
+    slug = `${baseSlug}-${attempt}`;
+  }
+
+  const community = await Community.create({
+    tenantId,
+    name: name.trim(),
+    slug,
+    description: description?.trim() || '',
+    icon: icon || '💬',
+    category: ['tech','hr','business','design','other'].includes(category) ? category : 'other',
+    coverColor: coverColor || '#0176D3',
+    memberIds: [req.user._id || req.user.id],
+    memberCount: 1,
+    createdBy: req.user._id || req.user.id,
+  });
+
+  res.status(201).json({ success: true, data: community });
+}));
+
 // ─── GET /api/communities — list all communities for the tenant ───────────────
 router.get('/', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
@@ -174,10 +209,10 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
-  // Top 10 members
+  // Top 10 members (cross-tenant visible — any user who joined is shown)
   const memberIds = (community.memberIds || []).slice(0, 10);
   const members   = await User.find({
-    _id: { $in: memberIds }, tenantId, deletedAt: null,
+    _id: { $in: memberIds }, deletedAt: null,
   }).select('name role title avatarUrl photoUrl').lean();
 
   // Recent posts count (last 30 days)
@@ -201,6 +236,7 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 router.post('/:slug/join', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
   const userId   = req.user._id || req.user.id;
+  const userName = req.user.name || 'A member';
 
   const community = await Community.findOne({ tenantId, slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);
@@ -210,6 +246,21 @@ router.post('/:slug/join', asyncHandler(async (req, res) => {
     community.memberIds.push(userId);
     community.memberCount = community.memberIds.length;
     await community.save();
+
+    // Notify community creator (if different from joiner)
+    const creatorId = community.createdBy;
+    if (creatorId && String(creatorId) !== String(userId)) {
+      const Notification = require('../models/Notification');
+      Notification.create({
+        userId  : creatorId,
+        tenantId,
+        type    : 'system',
+        title   : `New member joined ${community.name}`,
+        message : `${userName} joined the "${community.name}" community you manage.`,
+        link    : `/app/communities/${community.slug}`,
+        read    : false,
+      }).catch(() => {});
+    }
   }
 
   res.json({ success: true, memberCount: community.memberCount, isMember: true });
@@ -278,8 +329,7 @@ router.get('/:slug/members', asyncHandler(async (req, res) => {
 
   const members = await User.find({
     _id: { $in: paginated },
-    tenantId,
-    deletedAt: null,
+    deletedAt: null,  // cross-tenant: any user who joined is visible
   }).select('name role title avatarUrl photoUrl location department').lean();
 
   res.json({ success: true, data: members, total: memberIds.length, hasMore: skip + members.length < memberIds.length });

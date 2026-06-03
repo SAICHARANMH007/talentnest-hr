@@ -429,16 +429,34 @@ router.post('/accept/:requestId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
 
-  let connection = await Connection.findOne({
-    _id     : req.params.requestId,
-    tenantId,
-    status  : 'pending',
-  });
+  const mongoose = require('mongoose');
+  const isValidId = mongoose.Types.ObjectId.isValid(req.params.requestId);
 
-  // Fallback: requestId might be the sender's userId (from older clients)
-  if (!connection) {
+  let connection = isValidId
+    ? await Connection.findOne({ _id: req.params.requestId, tenantId, status: 'pending' })
+    : null;
+
+  // Fallback 1: requestId might be the sender's userId (older client behaviour)
+  if (!connection && isValidId) {
     connection = await Connection.findOne({
       tenantId,
+      fromUserId: req.params.requestId,
+      toUserId  : uid,
+      status    : 'pending',
+    });
+  }
+
+  // Fallback 2: find by _id without tenantId filter (handles cross-tenant edge cases)
+  if (!connection && isValidId) {
+    const any = await Connection.findOne({ _id: req.params.requestId, status: 'pending' }).lean();
+    if (any && String(any.toUserId) === uid) {
+      connection = await Connection.findById(any._id); // get mutable doc
+    }
+  }
+
+  // Fallback 3: find any pending request TO this user FROM the given userId
+  if (!connection && isValidId) {
+    connection = await Connection.findOne({
       fromUserId: req.params.requestId,
       toUserId  : uid,
       status    : 'pending',
