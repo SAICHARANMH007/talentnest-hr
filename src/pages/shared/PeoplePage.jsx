@@ -250,7 +250,7 @@ export default function PeoplePage({ user }) {
         const update = p => String(p._id || p.id) === id ? { ...p, connectionStatus: 'pending_sent', requestId } : p;
         setSuggestions(s => s.map(update));
         setSearchResults(s => s.map(update));
-        setSent(prev => [...prev, { requestId, createdAt: new Date(), to: suggestions.find(p => String(p._id || p.id) === id) }]);
+        setSent(prev => [...prev, { requestId, createdAt: new Date(), to: suggestions.find(p => String(p._id || p.id) === id) || searchResults.find(p => String(p._id || p.id) === id) }]);
       } else if (action === 'accept') {
         await api.acceptConnectionRequest(reqId);
         setPending(p => p.filter(x => String(x._id || x.id) !== id));
