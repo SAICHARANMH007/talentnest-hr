@@ -121,23 +121,18 @@ export default function SecuritySettings({ user }) {
       {/* Two-Factor Authentication */}
       <div style={S.card}>
         <h3 style={S.h3}>🔐 Two-Factor Authentication (2FA)</h3>
-        <p style={S.sub}>Add an extra layer of security. An OTP will be sent to your {user?.phone ? 'phone via SMS' : 'email'} on each login.</p>
+        <p style={S.sub}>Add an extra layer of security. An OTP will be sent to your email on each login.</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#181818' }}>
               {twoFA ? '✅ 2FA is enabled' : '⬜ 2FA is disabled'}
             </span>
-            {user?.phone && (
-              <div style={{ fontSize: 11, color: '#706E6B', marginTop: 3 }}>OTP will be sent to {user.phone}</div>
+            {user?.email && (
+              <div style={{ fontSize: 11, color: '#706E6B', marginTop: 3 }}>OTP will be sent to {user.email}</div>
             )}
           </div>
           <Toggle on={twoFA} onChange={handleToggle2FA} disabled={toggling} />
         </div>
-        {!user?.phone && (
-          <div style={{ marginTop: 12, fontSize: 11, color: '#706E6B', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px' }}>
-            💡 Add a phone number to your profile to receive OTP via SMS instead of email.
-          </div>
-        )}
       </div>
 
       {/* Logout from all devices */}
