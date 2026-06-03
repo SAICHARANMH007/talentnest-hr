@@ -317,7 +317,14 @@ router.get('/search', asyncHandler(async (req, res) => {
         connectionStatus = String(conn.fromUserId) === uid ? 'pending_sent' : 'pending_received';
       }
     }
-    return { ...u, connectionStatus };
+    return {
+      ...u,
+      connectionStatus,
+      // Include requestId so the frontend can accept/reject from search results
+      ...(conn && conn.status === 'pending' && connectionStatus === 'pending_received'
+        ? { requestId: conn._id }
+        : {}),
+    };
   });
 
   res.json({ success: true, data, total: data.length });
@@ -422,11 +429,21 @@ router.post('/accept/:requestId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
 
-  const connection = await Connection.findOne({
+  let connection = await Connection.findOne({
     _id     : req.params.requestId,
     tenantId,
     status  : 'pending',
   });
+
+  // Fallback: requestId might be the sender's userId (from older clients)
+  if (!connection) {
+    connection = await Connection.findOne({
+      tenantId,
+      fromUserId: req.params.requestId,
+      toUserId  : uid,
+      status    : 'pending',
+    });
+  }
 
   if (!connection) throw new AppError('Connection request not found.', 404);
   if (String(connection.toUserId) !== uid) throw new AppError('Not authorized to accept this request.', 403);

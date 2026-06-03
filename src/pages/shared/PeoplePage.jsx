@@ -2,6 +2,104 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
+// ── User Profile Drawer ────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (d < 60) return 'just now';
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  if (d < 604800) return `${Math.floor(d / 86400)}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
+  const [posts, setPosts]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const bg = ROLE_COLOR[person.role] || '#0176D3';
+  const uid = String(person._id || person.id);
+
+  useEffect(() => {
+    setLoading(true);
+    api.getUserPosts(uid)
+      .then(r => setPosts(Array.isArray(r?.data) ? r.data.slice(0, 5) : []))
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false));
+  }, [uid]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }} />
+      {/* Drawer */}
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
+        {/* Header banner */}
+        <div style={{ height: 90, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+
+        <div style={{ padding: '0 20px 24px', flex: 1 }}>
+          {/* Avatar */}
+          <div style={{ marginTop: -36, marginBottom: 12 }}>
+            <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={72} role={person.role} />
+          </div>
+
+          {/* Name & info */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
+            <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 4, padding: '3px 8px' }}>
+              {ROLE_LABEL[person.role] || person.role || 'Member'}
+            </span>
+            {person.title && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 8 }}>{person.title}</div>}
+            {person.department && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>🏢 {person.department}</div>}
+            {person.location && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => { window.location.href = `mailto:?subject=Message via TalentNest`; }}
+              style={{ flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              ✉️ Message
+            </button>
+            <button
+              onClick={() => { onRemove(person); onClose(); }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}>
+              Remove
+            </button>
+          </div>
+
+          {/* Recent posts */}
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Recent Posts</div>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '24px 0', fontSize: 13 }}>Loading…</div>
+          ) : posts.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '24px 0', fontSize: 13 }}>No posts yet</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {posts.map(p => (
+                <div key={p._id} style={{ ...card, padding: '12px 14px', borderRadius: 10, border: '1px solid #F1F5F9' }}>
+                  <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>{timeAgo(p.createdAt)}</div>
+                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {p.content}
+                  </div>
+                  {p.reactions?.length > 0 && (
+                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                      {p.reactions.length} reaction{p.reactions.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ROLE_COLOR = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' };
 const ROLE_LABEL = { admin: 'HR Admin', recruiter: 'Recruiter', candidate: 'Candidate', super_admin: 'Super Admin', superadmin: 'Super Admin' };
@@ -83,18 +181,23 @@ function ConnectionButton({ person, onAction, loading }) {
 // ── Person Card ────────────────────────────────────────────────────────────────
 function PersonCard({ person, onAction, loading }) {
   return (
-    <div style={{ ...card, padding: '16px 18px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={52} role={person.role} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 3 }}>{person.name || 'Member'}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-          <RoleBadge role={person.role} />
-          {person.department && <span style={{ fontSize: 11, color: '#9CA3AF' }}>{person.department}</span>}
+    <div style={{ ...card, padding: '14px 16px', borderRadius: 14 }}
+      onClick={e => e.stopPropagation()}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name || 'Member'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+            <RoleBadge role={person.role} />
+            {person.department && <span style={{ fontSize: 11, color: '#9CA3AF' }}>{person.department}</span>}
+          </div>
+          {person.title && <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.title}</div>}
+          {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>📍 {person.location}</div>}
         </div>
-        {person.title && <div style={{ fontSize: 12, color: '#6B7280' }}>{person.title}</div>}
-        {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>📍 {person.location}</div>}
+        <div style={{ flexShrink: 0 }}>
+          <ConnectionButton person={person} onAction={onAction} loading={loading} />
+        </div>
       </div>
-      <ConnectionButton person={person} onAction={onAction} loading={loading} />
     </div>
   );
 }
@@ -184,6 +287,7 @@ export default function PeoplePage({ user }) {
   const [actionLoading,setActionLoading] = useState(null);
   const [error,        setError]       = useState('');
   const [isMobile,     setMobile]      = useState(() => window.innerWidth < 768);
+  const [profilePerson,setProfilePerson] = useState(null);
   // Contact sync state
   const [syncOpen,     setSyncOpen]    = useState(false);
   const [syncPaste,    setSyncPaste]   = useState('');
@@ -417,12 +521,15 @@ export default function PeoplePage({ user }) {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {connections.map(person => (
-                        <PersonCard
-                          key={String(person._id || person.id)}
-                          person={{ ...person, connectionStatus: 'accepted' }}
-                          onAction={handleAction}
-                          loading={actionLoading === String(person._id || person.id)}
-                        />
+                        <div key={String(person._id || person.id)}
+                          onClick={() => setProfilePerson(person)}
+                          style={{ cursor: 'pointer' }}>
+                          <PersonCard
+                            person={{ ...person, connectionStatus: 'accepted' }}
+                            onAction={(action, p) => { handleAction(action, p); }}
+                            loading={actionLoading === String(person._id || person.id)}
+                          />
+                        </div>
                       ))}
                     </div>
                   )}
@@ -585,6 +692,16 @@ export default function PeoplePage({ user }) {
       <style>{`
         @keyframes tn-spin { to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* User profile drawer */}
+      {profilePerson && (
+        <UserProfileDrawer
+          person={profilePerson}
+          currentUserId={uid}
+          onClose={() => setProfilePerson(null)}
+          onRemove={(person) => handleAction('remove', person)}
+        />
+      )}
     </div>
   );
 }

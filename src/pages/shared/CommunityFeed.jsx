@@ -359,13 +359,34 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
 }
 
 // ── Post Card ──────────────────────────────────────────────────────────────────
-function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, bookmarks, onToggleBookmark, onHashtagClick }) {
+function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, bookmarks, onToggleBookmark, onHashtagClick, isMobile }) {
   const [showComments, setShowComments] = useState(false);
   const isOwnPost   = String(post.authorId) === String(userId);
   const isAdmin     = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const isVerified  = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
   const isConnected = connectionIds.has(String(post.authorId));
   const showConnect = !isOwnPost && !isConnected;
+
+  const actionButtons = (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      {showConnect && (
+        <InlineConnectButton
+          authorId={post.authorId}
+          authorName={post.authorName}
+          pendingIds={pendingIds}
+          onConnect={onConnect}
+        />
+      )}
+      <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
+      {(isOwnPost || isAdmin) && (
+        <button onClick={() => onDelete(post._id)}
+          style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4, transition: 'color 0.15s' }}
+          title="Delete post"
+          onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+          onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>×</button>
+      )}
+    </div>
+  );
 
   return (
     <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9' }}>
@@ -375,37 +396,27 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-        <Avatar name={post.authorName} src={post.authorAvatar} size={46} role={post.authorRole} />
+        <Avatar name={post.authorName} src={post.authorAvatar} size={40} role={post.authorRole} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628' }}>{post.authorName || 'Member'}</span>
-            {isVerified  && <span title="Verified member" style={{ fontSize: 11, color: '#059669' }}>✓</span>}
-            {isConnected && <ConnectionDegree />}
-            <RoleBadge role={post.authorRole} />
-            {post.postType && post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{post.authorName || 'Member'}</span>
+                {isVerified  && <span title="Verified member" style={{ fontSize: 11, color: '#059669', flexShrink: 0 }}>✓</span>}
+                {isConnected && <ConnectionDegree />}
+                <RoleBadge role={post.authorRole} />
+                {post.postType && post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
+              </div>
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
+                {post.authorTitle && <span>{post.authorTitle} · </span>}
+                {timeAgo(post.createdAt)}
+              </div>
+            </div>
+            {/* Desktop: actions inline */}
+            {!isMobile && <div style={{ flexShrink: 0 }}>{actionButtons}</div>}
           </div>
-          <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-            {post.authorTitle && <span>{post.authorTitle} · </span>}
-            {timeAgo(post.createdAt)}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-          {showConnect && (
-            <InlineConnectButton
-              authorId={post.authorId}
-              authorName={post.authorName}
-              pendingIds={pendingIds}
-              onConnect={onConnect}
-            />
-          )}
-          <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
-          {(isOwnPost || isAdmin) && (
-            <button onClick={() => onDelete(post._id)}
-              style={{ background: 'none', border: 'none', color: '#D1D5DB', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 4, transition: 'color 0.15s' }}
-              title="Delete post"
-              onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
-              onMouseLeave={e => e.currentTarget.style.color = '#D1D5DB'}>×</button>
-          )}
+          {/* Mobile: actions below name row */}
+          {isMobile && <div style={{ marginTop: 6 }}>{actionButtons}</div>}
         </div>
       </div>
 
@@ -875,6 +886,7 @@ export default function CommunityFeed({ user }) {
     bookmarks,
     onToggleBookmark: handleToggleBookmark,
     onHashtagClick: handleHashtagClick,
+    isMobile,
   };
 
   return (
