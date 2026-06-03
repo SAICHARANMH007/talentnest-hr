@@ -124,6 +124,16 @@ export default function RecruiterTalentMatch({ user }) {
       )
     : results;
 
+  const selectJob = (j) => {
+    const jid = String(j.id || j._id);
+    const label = `${j.title} @ ${j.companyName || j.company || ''}`;
+    setSelJob(jid);
+    setSelJobTitle(label);
+    setJobSearch(label);
+    setShowJobList(false);
+    run(jid);
+  };
+
   return (
     <div style={{ paddingBottom: 60, animation: 'tn-fadein 0.3s ease both' }}>
       <Toast msg={toast} onClose={() => setToast("")} />
@@ -135,116 +145,93 @@ export default function RecruiterTalentMatch({ user }) {
         />
       )}
 
-      {/* ── Inline Resume Modal — uses data already in memory, no fetch needed ── */}
+      {/* ── Inline Resume Modal ── */}
       {resumeCandidate && (
         <div style={{ position:'fixed', inset:0, background:'rgba(5,13,26,0.78)', backdropFilter:'blur(8px)', zIndex:10001, display:'flex', alignItems:'flex-start', justifyContent:'center', overflowY:'auto', padding:'20px 16px' }}>
           <div style={{ width:'100%', maxWidth:900, margin:'auto 0', borderRadius:20, overflow:'hidden', boxShadow:'0 32px 64px rgba(0,0,0,0.35)' }}>
-            {/* Toolbar */}
             <div style={{ background:'#032D60', padding:'12px 20px', display:'flex', alignItems:'center', gap:12 }}>
-              <button
-                onClick={() => setResumeCandidate(null)}
-                style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}
-              >
-                ✕ Close
-              </button>
-              <div style={{ flex:1, color:'#fff', fontWeight:700, fontSize:15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                📋 Resume — {resumeCandidate.name || resumeCandidate.email?.split('@')[0] || '—'}
-              </div>
-              <button
-                onClick={() => window.print()}
-                style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}
-              >
-                🖨️ Print / Save PDF
-              </button>
+              <button onClick={() => setResumeCandidate(null)} style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>✕ Close</button>
+              <div style={{ flex:1, color:'#fff', fontWeight:700, fontSize:15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>📋 Resume — {resumeCandidate.name || resumeCandidate.email?.split('@')[0] || '—'}</div>
+              <button onClick={() => window.print()} style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', borderRadius:8, padding:'7px 14px', cursor:'pointer', fontSize:13, fontWeight:600 }}>🖨️ Print / Save PDF</button>
             </div>
-            {/* Resume content */}
-            <div style={{ background:'#F3F2F2', padding:'24px 16px 40px' }}>
-              <ResumeCard candidate={resumeCandidate} />
-            </div>
+            <div style={{ background:'#F3F2F2', padding:'24px 16px 40px' }}><ResumeCard candidate={resumeCandidate} /></div>
           </div>
         </div>
       )}
-      <PageHeader
-        title="Job Match"
-        subtitle="Search a job posting and instantly rank the best-fit candidates using our smart matching engine."
-      />
 
-      <div style={{ ...card, marginBottom: 24, padding: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)', border: '1px solid #e0e8f5' }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div ref={jobPickerRef} style={{ flex: 1, minWidth: 280, position: 'relative' }}>
-            <label style={{ color: "#0176D3", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Job Opportunity</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={jobSearch}
-                onChange={e => {
-                  setJobSearch(e.target.value);
-                  setSelJob("");
-                  setSelJobTitle("");
-                  setShowJobList(true);
-                }}
-                onFocus={() => setShowJobList(true)}
-                placeholder={jobsLoading ? "Loading jobs..." : "Search job title, company, or location…"}
-                disabled={jobsLoading}
-                style={{ ...inp, height: 48, borderRadius: 12, border: `2px solid ${selJob ? '#0176D3' : '#e0e8f5'}`, fontSize: 14, paddingRight: 36, width: '100%', boxSizing: 'border-box' }}
-              />
-              {jobSearch && (
-                <button onClick={() => { setJobSearch(""); setSelJob(""); setSelJobTitle(""); setResults([]); setCandSearch(""); setShowJobList(false); }}
-                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#94a3b8', lineHeight: 1 }}>
-                  ✕
-                </button>
-              )}
+      <PageHeader title="Job Match" subtitle="Pick a job below and instantly rank the best-fit candidates." />
+
+      {/* ── Search / filter bar ── */}
+      <div style={{ ...card, marginBottom: 16, padding: '16px 20px', background: 'linear-gradient(135deg,#fff,#f8fbff)', border: '1px solid #e0e8f5' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
+            <input
+              type="text"
+              value={jobSearch}
+              onChange={e => { setJobSearch(e.target.value); setSelJob(''); setSelJobTitle(''); setResults([]); setCandSearch(''); }}
+              placeholder={jobsLoading ? 'Loading jobs…' : `Search ${jobs.length} jobs by title, company or location…`}
+              disabled={jobsLoading}
+              style={{ ...inp, height: 44, borderRadius: 10, border: `2px solid ${selJob ? '#0176D3' : '#e0e8f5'}`, fontSize: 14, paddingRight: 36, width: '100%', boxSizing: 'border-box' }}
+            />
+            {jobSearch && (
+              <button onClick={() => { setJobSearch(''); setSelJob(''); setSelJobTitle(''); setResults([]); setCandSearch(''); }}
+                style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:16, color:'#94a3b8' }}>✕</button>
+            )}
+          </div>
+          {selJob && (
+            <button onClick={() => run()} disabled={loading}
+              style={{ ...btnP, height:44, padding:'0 20px', borderRadius:10, display:'flex', alignItems:'center', gap:6, opacity:loading ? 0.6 : 1 }}>
+              {loading ? <><Spinner /> Matching…</> : <>🔄 Re-run</>}
+            </button>
+          )}
+        </div>
+        {selJob && (
+          <div style={{ marginTop: 10, padding:'8px 12px', background:'rgba(1,118,211,0.06)', borderRadius:8, fontSize:13, color:'#0176D3', fontWeight:600 }}>
+            ✅ Selected: {selJobTitle}
+          </div>
+        )}
+      </div>
+
+      {/* ── Job cards grid ── */}
+      {!selJob && (
+        <div style={{ marginBottom: 24 }}>
+          {jobsLoading ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:48 }}><Spinner size={36} color="#0176D3" /></div>
+          ) : filteredJobs.length === 0 ? (
+            <div style={{ ...card, textAlign:'center', padding:'48px 24px', color:'#94a3b8', fontSize:14 }}>
+              {jobSearch ? `No jobs match "${jobSearch}"` : 'No job postings available yet.'}
             </div>
-            {showJobList && filteredJobs.length > 0 && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', borderRadius: 12, border: '1.5px solid #e0e8f5', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 9999, maxHeight: 280, overflowY: 'auto' }}>
-                {filteredJobs.slice(0, 50).map(j => {
-                  const jid = j.id || j._id;
-                  const label = `${j.title} @ ${j.companyName || j.company || ''}`;
+          ) : (
+            <>
+              <div style={{ fontSize:12, color:'#64748b', fontWeight:600, marginBottom:10 }}>
+                {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} — click any card to run candidate match
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>
+                {filteredJobs.slice(0, 60).map(j => {
+                  const jid = String(j.id || j._id);
+                  const isOpen = j.status === 'active' || j.status === 'open';
                   return (
-                    <button key={jid} onClick={() => { setSelJob(jid); setSelJobTitle(label); setJobSearch(label); setShowJobList(false); }}
-                      style={{ display: 'block', width: '100%', padding: '12px 16px', background: selJob === jid ? 'rgba(1,118,211,0.06)' : 'none', border: 'none', borderBottom: '1px solid #f1f5f9', textAlign: 'left', cursor: 'pointer', fontSize: 13, color: '#1e293b', fontWeight: selJob === jid ? 700 : 500 }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(1,118,211,0.05)'}
-                      onMouseLeave={e => e.currentTarget.style.background = selJob === jid ? 'rgba(1,118,211,0.06)' : 'none'}>
-                      <div style={{ fontWeight: 600, color: '#0F172A', marginBottom: 2 }}>{j.title}</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>{j.companyName || j.company || ''}{j.location ? ` · ${j.location}` : ''}</div>
+                    <button key={jid} onClick={() => selectJob(j)}
+                      style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:14, padding:'16px 18px', textAlign:'left', cursor:'pointer', transition:'all 0.18s', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor='#0176D3'; e.currentTarget.style.boxShadow='0 6px 20px rgba(1,118,211,0.12)'; e.currentTarget.style.transform='translateY(-2px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor='#e2e8f0'; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; e.currentTarget.style.transform='none'; }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+                        <div style={{ fontWeight:800, fontSize:14, color:'#0F172A', lineHeight:1.3, flex:1, marginRight:8 }}>{j.title}</div>
+                        <span style={{ flexShrink:0, fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background:isOpen ? 'rgba(5,150,105,0.1)' : 'rgba(107,114,128,0.1)', color:isOpen ? '#059669' : '#6B7280' }}>
+                          {isOpen ? 'Open' : (j.status || 'Draft')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize:12, color:'#64748b', marginBottom:4 }}>{j.companyName || j.company || '—'}</div>
+                      {j.location && <div style={{ fontSize:11, color:'#94a3b8' }}>📍 {j.location}</div>}
+                      <div style={{ marginTop:10, fontSize:11, color:'#0176D3', fontWeight:700 }}>Click to match candidates →</div>
                     </button>
                   );
                 })}
               </div>
-            )}
-            {showJobList && jobSearch && filteredJobs.length === 0 && !jobsLoading && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', borderRadius: 12, border: '1.5px solid #e0e8f5', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 9999, padding: '16px', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
-                No jobs match "{jobSearch}"
-              </div>
-            )}
-          </div>
-          <button 
-            onClick={() => run()} 
-            disabled={!selJob || loading} 
-            style={{ 
-              ...btnP, 
-              height: 48, 
-              padding: '0 24px', 
-              borderRadius: 12, 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 8,
-              boxShadow: '0 4px 12px rgba(1, 118, 211, 0.2)',
-              opacity: (!selJob || loading) ? 0.6 : 1 
-            }}
-          >
-            {loading ? <><Spinner /> Matching...</> : <><span style={{fontSize:18}}>🎯</span> Run Analysis</>}
-          </button>
+            </>
+          )}
         </div>
-        
-        {!jobsLoading && jobs.length === 0 && (
-          <div style={{ marginTop: 16, padding: "16px", background: "#fdf4f4", borderRadius: 12, border: "1px solid #facaca" }}>
-            <p style={{ color: "#c23934", fontSize: 13, margin: 0 }}>
-              <b>No job postings available.</b> You need an active job post to match candidates.
-            </p>
-          </div>
-        )}
-      </div>
+      )}
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>

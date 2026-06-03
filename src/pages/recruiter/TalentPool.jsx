@@ -32,6 +32,10 @@ export default function TalentPool({ user }) {
   const [pulling,   setPulling]   = useState(false);
   const [search,    setSearch]    = useState('');
   const [detailUser,setDetailUser]= useState(null);
+  const [addToPoolTarget, setAddToPoolTarget] = useState(null); // parked app to add to org pool
+  const [selPool,   setSelPool]   = useState('');
+  const [addingToPool, setAddingToPool] = useState(false);
+  const [syncing,   setSyncing]   = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -45,13 +49,49 @@ export default function TalentPool({ user }) {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    setOrgPoolsLoading(true);
-    api.getTalentPools()
+  const loadOrgPools = (showSpinner = true) => {
+    if (showSpinner) setOrgPoolsLoading(true);
+    return api.getTalentPools()
       .then(data => setOrgPools(Array.isArray(data) ? data : []))
       .catch(() => setOrgPools([]))
       .finally(() => setOrgPoolsLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadOrgPools(); }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    await Promise.all([
+      loadOrgPools(false),
+      new Promise(resolve => {
+        setLoading(true);
+        Promise.all([api.getParkedCandidates(), api.getJobs()])
+          .then(([poolRes, jobsRes]) => {
+            setPool(Array.isArray(poolRes) ? poolRes : (poolRes?.data || []));
+            const rawJobs = Array.isArray(jobsRes) ? jobsRes : (jobsRes?.data || []);
+            setJobs(rawJobs.map(j => ({ ...j, id: j.id || j._id?.toString() })));
+          })
+          .catch(e => setToast(`❌ ${e.message}`))
+          .finally(() => { setLoading(false); resolve(); });
+      }),
+    ]);
+    setSyncing(false);
+    setToast('✅ Talent pool synced');
+  };
+
+  const handleAddToPool = async () => {
+    if (!addToPoolTarget || !selPool) return;
+    setAddingToPool(true);
+    try {
+      const candidateId = addToPoolTarget.candidateId?._id || addToPoolTarget.candidateId?.id;
+      await api.addTalentPoolMember(selPool, { candidateId });
+      setToast('✅ Candidate added to org pool');
+      setAddToPoolTarget(null);
+      setSelPool('');
+      loadOrgPools(false);
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setAddingToPool(false);
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -92,7 +132,13 @@ export default function TalentPool({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <PageHeader title="Talent Pool" subtitle="Org-curated talent pools and your parked candidates" />
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12, marginBottom:4 }}>
+        <PageHeader title="Talent Pool" subtitle="Org-curated talent pools and your parked candidates" />
+        <button onClick={handleSync} disabled={syncing}
+          style={{ ...btnG, display:'flex', alignItems:'center', gap:6, height:38, padding:'0 16px', fontSize:13, flexShrink:0, marginTop:4 }}>
+          {syncing ? <><Spinner size={14} /> Syncing…</> : <>🔄 Sync</>}
+        </button>
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #E2E8F0' }}>
@@ -231,7 +277,7 @@ export default function TalentPool({ user }) {
                     <td style={S.td}>{jTitle}</td>
                     <td style={S.td}>{fmtDateShort(parkedAt)}</td>
                     <td style={S.td}>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           onClick={() => setDetailUser({ ...p.candidateId, role: 'candidate', _partial: true })}
                           style={{ ...btnG, fontSize: 12, padding: '6px 12px' }}>
@@ -239,9 +285,16 @@ export default function TalentPool({ user }) {
                         </button>
                         <button
                           onClick={() => { setPullTarget(p); setSelJob(''); }}
-                          style={{ ...btnP, fontSize: 12, padding: '6px 14px' }}>
+                          style={{ ...btnP, fontSize: 12, padding: '6px 12px' }}>
                           ➕ Pull into Job
                         </button>
+                        {orgPools.length > 0 && (
+                          <button
+                            onClick={() => { setAddToPoolTarget(p); setSelPool(''); }}
+                            style={{ fontSize:12, padding:'6px 12px', background:'#fff', border:'1.5px solid #7C3AED', color:'#7C3AED', borderRadius:6, fontWeight:700, cursor:'pointer' }}>
+                            🏢 Add to Pool
+                          </button>
+                        )}
                         <button
                           onClick={() => handleUnpark(id)}
                           style={{ ...btnD, fontSize: 12, padding: '6px 10px' }}>
@@ -284,6 +337,31 @@ export default function TalentPool({ user }) {
           </div>
         </Modal>
       )}
+      {addToPoolTarget && (
+        <Modal
+          title={`🏢 Add ${addToPoolTarget.candidateId?.name || addToPoolTarget.candidateId?.email?.split('@')[0] || 'candidate'} to Org Pool`}
+          onClose={() => { setAddToPoolTarget(null); setSelPool(''); }}
+          footer={
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button onClick={() => { setAddToPoolTarget(null); setSelPool(''); }} style={btnG}>Cancel</button>
+              <button onClick={handleAddToPool} disabled={!selPool || addingToPool}
+                style={{ background:'#7C3AED', color:'#fff', border:'none', borderRadius:8, padding:'8px 20px', fontWeight:700, fontSize:13, cursor:!selPool||addingToPool?'not-allowed':'pointer', opacity:!selPool||addingToPool?0.5:1 }}>
+                {addingToPool ? 'Adding…' : '🏢 Add to Pool'}
+              </button>
+            </div>
+          }>
+          <div>
+            <p style={{ color:'#706E6B', fontSize:13, marginBottom:16 }}>Select an org talent pool to add this candidate to.</p>
+            <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:6 }}>SELECT POOL *</label>
+            <select value={selPool} onChange={e => setSelPool(e.target.value)}
+              style={{ width:'100%', padding:'9px 12px', border:'1px solid #DDDBDA', borderRadius:4, fontSize:13, outline:'none' }}>
+              <option value="">— Choose a pool —</option>
+              {orgPools.map(op => <option key={op._id} value={op._id}>{op.name}{op.members?.length ? ` (${op.members.length} members)` : ''}</option>)}
+            </select>
+          </div>
+        </Modal>
+      )}
+
       {detailUser && (
         <UserDetailDrawer
           user={detailUser}
