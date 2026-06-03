@@ -466,7 +466,7 @@ function CreatePost({ user, onCreate }) {
             value={text}
             onChange={e => setText(e.target.value)}
             onFocus={() => setExpanded(true)}
-            placeholder={`What's on your mind, ${user?.name?.split(' ')[0] || 'there'}?`}
+            placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}…`}
             rows={expanded ? 4 : 2}
             maxLength={3000}
             style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
@@ -796,8 +796,8 @@ export default function CommunityFeed({ user }) {
       {/* Header */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Community</h1>
-          <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Connect, share, and grow with your network</p>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Career Community</h1>
+          <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Share wins, hiring updates, career tips, and resources with your professional network</p>
         </div>
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -876,7 +876,7 @@ export default function CommunityFeed({ user }) {
                     {isFiltered ? 'No posts match your search' : filter === 'all' ? 'No posts yet' : `No ${filter} posts yet`}
                   </div>
                   <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
-                    {isFiltered ? 'Try a different search or hashtag.' : 'Be the first to share something with the community!'}
+                    {isFiltered ? 'Try a different search or hashtag.' : 'Be the first — share a career update, a job opening, or a hiring tip!'}
                   </div>
                   {isFiltered && <button onClick={() => { setSearch(''); setActiveHash(null); }} style={btnG}>Clear filters</button>}
                   {!isFiltered && isAdmin && (

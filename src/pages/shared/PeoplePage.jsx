@@ -256,7 +256,7 @@ export default function PeoplePage({ user }) {
       {/* Header */}
       <div style={{ marginBottom: 20, padding: isMobile ? '0 12px' : 0 }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>My Network</h1>
-        <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Grow your professional network within TalentNest</p>
+        <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Connect with candidates, recruiters, and HR professionals on TalentNest</p>
       </div>
 
       {/* Search bar */}
