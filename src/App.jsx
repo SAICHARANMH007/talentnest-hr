@@ -84,6 +84,7 @@ const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCan
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
 const SuperAdminCommandCenter = lazy(() => import('./pages/superadmin/SuperAdminCommandCenter.jsx'));
 const SuperAdminReportedPosts = lazy(() => import('./pages/superadmin/SuperAdminReportedPosts.jsx'));
+const CompanyReviewsPage      = lazy(() => import('./pages/shared/CompanyReviewsPage.jsx'));
 
 const AdminPipeline = lazy(() => import('./pages/admin/AdminPipeline.jsx'));
 const AdminCandidateRequest = lazy(() => import('./pages/admin/AdminCandidateRequest.jsx'));
@@ -615,6 +616,7 @@ export default function App() {
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
+            <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
           </>
         )}
 
@@ -665,6 +667,7 @@ export default function App() {
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
+            <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
           </>
         )}
 

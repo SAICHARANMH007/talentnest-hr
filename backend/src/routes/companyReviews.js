@@ -47,6 +47,33 @@ router.post('/public/:orgSlug', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Review submitted for approval. Thank you!' });
 }));
 
+// GET /api/company-reviews/my-org — authenticated: list approved reviews for own org
+router.get('/my-org', ...guard, asyncHandler(async (req, res) => {
+  const reviews = await CompanyReview.find({ tenantId: req.tenantId, isApproved: true, deletedAt: null })
+    .sort({ createdAt: -1 }).lean();
+  const avg = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+  res.json({ success: true, data: reviews, avgRating: avg, total: reviews.length });
+}));
+
+// POST /api/company-reviews/my-org — authenticated: submit a review for own org
+router.post('/my-org', ...guard, asyncHandler(async (req, res) => {
+  const { rating, title, pros, cons, role, isAnonymous } = req.body;
+  if (!rating || rating < 1 || rating > 5) throw new AppError('Rating between 1 and 5 is required.', 400);
+  const u = req.user;
+  await CompanyReview.create({
+    tenantId    : req.tenantId,
+    reviewerName: isAnonymous ? 'Anonymous' : (u.name?.trim() || 'Anonymous'),
+    role        : (role || u.title || u.role || '').trim().slice(0, 100),
+    rating      : Math.round(Number(rating)),
+    title       : (title || '').trim().slice(0, 150),
+    pros        : (pros || '').trim().slice(0, 1000),
+    cons        : (cons || '').trim().slice(0, 1000),
+    isAnonymous : isAnonymous !== false,
+    isApproved  : false,
+  });
+  res.json({ success: true, message: 'Review submitted! It will appear after admin approval.' });
+}));
+
 // POST /api/company-reviews/seed — admin: create 20 demo reviews
 router.post('/seed', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const existing = await CompanyReview.countDocuments({ tenantId: req.tenantId, deletedAt: null });

@@ -103,10 +103,19 @@ function PlanModal({ plan, onSave, onClose }) {
   );
 }
 
-function LinkJobModal({ planId, entryId, jobs, onLink, onClose }) {
+function LinkJobModal({ planId, entryId, onLink, onClose }) {
+  const [jobs,     setJobs]     = useState([]);
+  const [jobsLoaded, setJobsLoaded] = useState(false);
   const [selJobId, setSelJobId] = useState('');
-  const [search, setSearch] = useState('');
-  const [linking, setLinking] = useState(false);
+  const [search,   setSearch]   = useState('');
+  const [linking,  setLinking]  = useState(false);
+
+  useEffect(() => {
+    api.getJobs({ limit: 500 }).then(r => {
+      setJobs(Array.isArray(r) ? r : (r?.data || []));
+      setJobsLoaded(true);
+    }).catch(() => setJobsLoaded(true));
+  }, []);
 
   const filtered = jobs.filter(j => {
     const q = search.toLowerCase();
@@ -131,7 +140,9 @@ function LinkJobModal({ planId, entryId, jobs, onLink, onClose }) {
           style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }}
         />
         <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, marginBottom: 14 }}>
-          {filtered.length === 0 ? (
+          {!jobsLoaded ? (
+            <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Loading jobs…</div>
+          ) : filtered.length === 0 ? (
             <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No jobs found.</div>
           ) : filtered.map(j => {
             const jid = String(j._id || j.id);
@@ -162,7 +173,7 @@ function LinkJobModal({ planId, entryId, jobs, onLink, onClose }) {
   );
 }
 
-function EntryRow({ entry, planId, jobs, onAction }) {
+function EntryRow({ entry, planId, onAction }) {
   const [busyCreate, setBusyCreate] = useState(false);
   const [busyUnlink, setBusyUnlink] = useState(false);
   const [showLink, setShowLink] = useState(false);
@@ -248,7 +259,6 @@ function EntryRow({ entry, planId, jobs, onAction }) {
         <LinkJobModal
           planId={planId}
           entryId={String(entry._id)}
-          jobs={jobs}
           onLink={handleLink}
           onClose={() => setShowLink(false)}
         />
@@ -257,7 +267,7 @@ function EntryRow({ entry, planId, jobs, onAction }) {
   );
 }
 
-function PlanCard({ plan, jobs, onEdit, onDelete, onReload }) {
+function PlanCard({ plan, onEdit, onDelete, onReload }) {
   const filled = plan.entries.reduce((s, e) => s + (e.filled || 0), 0);
   const totalTarget = plan.entries.reduce((s, e) => s + e.targetCount, 0);
   const pct = totalTarget > 0 ? Math.round((filled / totalTarget) * 100) : 0;
@@ -301,7 +311,7 @@ function PlanCard({ plan, jobs, onEdit, onDelete, onReload }) {
             </thead>
             <tbody>
               {plan.entries.map((e, i) => (
-                <EntryRow key={e._id || i} entry={e} planId={plan._id} jobs={jobs} onAction={onReload} />
+                <EntryRow key={e._id || i} entry={e} planId={plan._id} onAction={onReload} />
               ))}
             </tbody>
           </table>
@@ -317,7 +327,6 @@ function PlanCard({ plan, jobs, onEdit, onDelete, onReload }) {
 
 export default function HeadcountPlanner() {
   const [plans, setPlans]     = useState([]);
-  const [jobs, setJobs]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -325,20 +334,10 @@ export default function HeadcountPlanner() {
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.allSettled([
-      api.getHeadcountPlans(),
-      api.getJobs({ limit: 10000000 }),
-    ]).then(([pr, jr]) => {
-      if (pr.status === 'fulfilled') {
-        const list = Array.isArray(pr.value) ? pr.value : (pr.value?.data || pr.value || []);
-        setPlans(list);
-      }
-      if (jr.status === 'fulfilled') {
-        const list = Array.isArray(jr.value) ? jr.value : (jr.value?.data || []);
-        setJobs(list);
-      }
-      setLoading(false);
-    });
+    api.getHeadcountPlans()
+      .then(r => setPlans(Array.isArray(r) ? r : (r?.data || r || [])))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(load, [load]);
@@ -387,7 +386,6 @@ export default function HeadcountPlanner() {
           <PlanCard
             key={plan._id}
             plan={plan}
-            jobs={jobs}
             onEdit={() => { setEditing(plan); setShowModal(true); }}
             onDelete={() => handleDelete(plan._id)}
             onReload={load}
