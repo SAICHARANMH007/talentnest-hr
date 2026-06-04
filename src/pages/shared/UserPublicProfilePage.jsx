@@ -76,7 +76,7 @@ export default function UserPublicProfilePage({ user: currentUser }) {
     if (!userId) return;
     setLoading(true);
     api.getUser(userId)
-      .then(u => { setPerson(u); setError(''); })
+      .then(res => { setPerson(res?.data || res); setError(''); })
       .catch(e => setError(e?.message || 'Could not load profile'))
       .finally(() => setLoading(false));
 

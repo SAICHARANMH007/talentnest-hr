@@ -752,6 +752,7 @@ async function seedMassiveJobs(tnOrg, adminUserId) {
           company:        company,
           companyName:    company,
           department:     cat.dept,
+          industry:       cat.cat,
           location,
           jobType:        'Full-Time',
           workMode:       companyIndex % 3 === 0 ? 'Remote' : companyIndex % 3 === 1 ? 'Hybrid' : 'Onsite',
