@@ -23,7 +23,9 @@ export const webhookService = {
   async getMyOrgReviews()              { return req('GET', '/company-reviews/my-org'); },
   async submitMyOrgReview(data)        { return req('POST', '/company-reviews/my-org', data); },
   async getAdminReviews()              { const r = await req('GET', '/company-reviews'); return r?.data || r; },
-  async approveReview(id)              { return req('PATCH', `/company-reviews/${id}/approve`); },
+  async getReportedReviews()           { const r = await req('GET', '/company-reviews/reported'); return r?.data || r; },
+  async reportReview(id, reason)       { return req('PATCH', `/company-reviews/${id}/report`, { reason }); },
+  async unreportReview(id)             { return req('PATCH', `/company-reviews/${id}/unreport`); },
   async deleteReview(id)               { return req('DELETE', `/company-reviews/${id}`); },
   async seedReviews()                  { return req('POST', '/company-reviews/seed', {}); },
 };

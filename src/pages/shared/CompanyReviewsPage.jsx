@@ -85,8 +85,8 @@ function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany }) {
   if (done) return (
     <div style={{ ...card, padding: '28px', textAlign: 'center', borderRadius: 14, border: '1px solid #BBF7D0', background: '#F0FDF4' }}>
       <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
-      <div style={{ fontWeight: 700, fontSize: 15, color: '#166534', marginBottom: 6 }}>Review submitted!</div>
-      <div style={{ fontSize: 13, color: '#374151' }}>It will appear after admin approval. Thank you!</div>
+      <div style={{ fontWeight: 700, fontSize: 15, color: '#166534', marginBottom: 6 }}>Review posted!</div>
+      <div style={{ fontSize: 13, color: '#374151' }}>Your review is now live. Thank you for sharing your experience!</div>
       <button onClick={() => { setDone(false); setForm({ ...EMPTY_FORM }); setSearch(''); }} style={{ ...btnG, marginTop: 16 }}>Write another</button>
     </div>
   );
@@ -159,7 +159,7 @@ function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany }) {
         </button>
       </div>
       <div style={{ marginTop: 10, fontSize: 11, color: '#9CA3AF' }}>
-        Reviews are moderated before appearing publicly. Your identity is kept confidential when posting anonymously.
+        Your review will be visible immediately. Your identity is kept confidential when posting anonymously.
       </div>
     </div>
   );
