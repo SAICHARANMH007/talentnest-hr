@@ -113,9 +113,9 @@ const VALUE_PILLARS = [
 ];
 
 const HERO_SPOTLIGHTS = [
-  { label: 'Time to Shortlist', value: '< 72 Hours', tone: '#00C2CB' },
+  { label: 'Time to Shortlist', value: '< 72 Hrs', tone: '#00C2CB' },
   { label: 'Replacement Policy', value: '90-Day Free', tone: '#FF6B35' },
-  { label: 'Industries', value: 'All Sectors', tone: '#38BDF8' },
+  { label: 'Placements Done', value: '300+', tone: '#38BDF8' },
 ];
 
 const HERO_VALUE_CARDS = [
@@ -286,13 +286,15 @@ export default function LandingPage() {
               Browse thousands of jobs in IT, Finance, Marketing, HR, Operations, and more. Employers — post a role, track every applicant, and close hires faster with India's smartest hiring platform.
             </p>
 
-            <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
-              {HERO_SPOTLIGHTS.map(item => (
-                <div key={item.label} className="mkt-glass" style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '16px 20px', minWidth: 140, backdropFilter: 'blur(12px)', boxShadow: 'var(--shadow-lg)' }}>
-                  <span style={{ color: item.tone, fontSize: 11, fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{item.label}</span>
-                  <span style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>{item.value}</span>
-                </div>
-              ))}
+            <div className="mkt-reveal-delayed" style={{ marginBottom: 36 }}>
+              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', backdropFilter: 'blur(16px)' }}>
+                {HERO_SPOTLIGHTS.map((item, i) => (
+                  <div key={item.label} style={{ flex: 1, textAlign: 'center', padding: '16px 10px', borderRight: i < HERO_SPOTLIGHTS.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+                    <div style={{ fontSize: 'clamp(17px,2.5vw,22px)', fontWeight: 900, color: item.tone, letterSpacing: '-0.03em', lineHeight: 1 }}>{item.value}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 5 }}>{item.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="mkt-reveal-delayed" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 48 }}>
@@ -300,16 +302,16 @@ export default function LandingPage() {
               <Link to="/careers" className="btn btn-outline btn-lg" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', borderRadius: 14 }}>Browse Open Roles</Link>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               {[
-                { icon: '⚡', text: 'Rapid Shortlist Delivery', color: '#00C2CB' },
-                { icon: '✓',  text: '90-Day Replacement Support', color: '#34D399' },
-                { icon: '🔒', text: '100% Confidential', color: '#A78BFA' },
+                { text: 'Fast Shortlist Delivery', color: '#00C2CB' },
+                { text: '90-Day Replacement', color: '#34D399' },
+                { text: '100% Confidential', color: '#A78BFA' },
               ].map(p => (
-                <div key={p.text} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 100, padding: '7px 16px' }}>
-                  <span style={{ fontSize: 13, color: p.color }}>{p.icon}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 700 }}>{p.text}</span>
-                </div>
+                <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 100, padding: '6px 13px' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                  <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: 600 }}>{p.text}</span>
+                </span>
               ))}
             </div>
 
