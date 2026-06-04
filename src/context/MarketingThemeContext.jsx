@@ -39,6 +39,9 @@ export const THEMES = {
     darkRgb:    '15,23,42',
     // Extra semantics
     textHeading: '#F1F5F9',
+    statsBg:       '#141C2E',
+    statsTextColor:'#F1F5F9',
+    statsLabelColor:'rgba(241,245,249,0.6)',
   },
   light: {
     id: 'light',
@@ -71,6 +74,9 @@ export const THEMES = {
     accentRgb:   '8,145,178',
     darkRgb:     '30,58,95',
     textHeading: '#111827',
+    statsBg:       '#EEF2FF',
+    statsTextColor:'#1E3A5F',
+    statsLabelColor:'rgba(30,58,95,0.65)',
   },
   mixed: {
     id: 'mixed',
@@ -104,6 +110,9 @@ export const THEMES = {
     accentRgb:   '139,92,246',
     darkRgb:     '30,27,75',
     textHeading: '#FFFFFF',
+    statsBg:       '#1A1740',
+    statsTextColor:'#E0E7FF',
+    statsLabelColor:'rgba(199,210,254,0.6)',
   },
 };
 
@@ -138,6 +147,11 @@ export function MarketingThemeProvider({ children }) {
     r.style.setProperty('--mkt-grad-end',      theme.gradEnd);
     r.style.setProperty('--mkt-primary-rgb',   theme.primaryRgb);
     r.style.setProperty('--mkt-accent-rgb',    theme.accentRgb);
+
+    // Stats bar
+    r.style.setProperty('--mkt-stats-bg',        theme.statsBg);
+    r.style.setProperty('--mkt-stats-text',       theme.statsTextColor);
+    r.style.setProperty('--mkt-stats-label',      theme.statsLabelColor);
 
     // Surface / section
     r.style.setProperty('--mkt-section-bg',    theme.sectionBg);

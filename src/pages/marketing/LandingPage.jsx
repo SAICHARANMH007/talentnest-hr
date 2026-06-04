@@ -438,12 +438,12 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════ */}
-      <section className="mkt-reveal" style={{ background: 'var(--mkt-primary-dark)', padding: 'clamp(40px, 8vw, 60px) 0', boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)' }}>
+      <section className="mkt-reveal" style={{ background: 'var(--mkt-stats-bg)', padding: 'clamp(40px, 8vw, 60px) 0', borderTop: '1px solid var(--mkt-card-border)', borderBottom: '1px solid var(--mkt-card-border)' }}>
         <div className="tn-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'clamp(20px, 4vw, 32px)' }}>
           {STATS.map((s, i) => (
             <div key={i} className="mkt-stat-item" style={{ textAlign: 'center', padding: '12px 10px' }}>
-              <div style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{getStatNum(s)}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.label}</div>
+              <div style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 900, color: 'var(--mkt-stats-text)', letterSpacing: '-0.04em', lineHeight: 1 }}>{getStatNum(s)}</div>
+              <div style={{ fontSize: 10, color: 'var(--mkt-stats-label)', marginTop: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.label}</div>
             </div>
           ))}
         </div>
