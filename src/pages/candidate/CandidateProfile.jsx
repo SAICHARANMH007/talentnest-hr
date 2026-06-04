@@ -216,7 +216,7 @@ export default function CandidateProfile({ user }) {
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState('');
   const [tab, setTab]         = useState('personal');
-  const [myPosts, setMyPosts] = useState([]);
+  const [myPosts, setMyPosts] = useState(null);
   const [postsLoading, setPostsLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -229,9 +229,6 @@ export default function CandidateProfile({ user }) {
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
   const [certList, setCerts]    = useState([]);
-  const [myPosts, setMyPosts]       = useState(null);
-  const [postsLoading, setPostsLoad] = useState(false);
-
   useEffect(() => {
     api.getUser(user.id)
       .then(res => {
@@ -262,19 +259,21 @@ export default function CandidateProfile({ user }) {
 
   useEffect(() => {
     if (tab !== 'posts' || myPosts !== null) return;
-    setPostsLoad(true);
-    api.getUserPosts(user.id)
+    setPostsLoading(true);
+    const uid = user?.id || user?._id;
+    api.getUserPosts(String(uid))
       .then(res => setMyPosts(Array.isArray(res) ? res : (res?.data || res?.posts || [])))
       .catch(() => setMyPosts([]))
-      .finally(() => setPostsLoad(false));
-  }, [tab, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+      .finally(() => setPostsLoading(false));
+  }, [tab, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteMyPost = async (postId) => {
+    if (!window.confirm('Delete this post permanently?')) return;
     try {
       await api.deletePost(postId);
-      setMyPosts(prev => (prev || []).filter(p => (p._id || p.id) !== postId));
+      setMyPosts(prev => (prev || []).filter(p => String(p._id || p.id) !== String(postId)));
       setToast('✅ Post deleted');
-    } catch (e) { setToast(`❌ ${e.message}`); }
+    } catch { setToast('❌ Failed to delete post'); }
   };
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -325,27 +324,6 @@ export default function CandidateProfile({ user }) {
   const resumeData = { ...form, experience: parseInt(form.experience) || 0, workHistory, educationList: eduList, certifications: certList };
 
   if (loading) return <div style={{ color:'#706E6B', padding:40, display:'flex', gap:10 }}><Spinner/> Loading...</div>;
-
-  // Load my posts when switching to posts tab
-  useEffect(() => {
-    if (tab !== 'posts') return;
-    const uid = profile?.userId || profile?._id || user?.id;
-    if (!uid) return;
-    setPostsLoading(true);
-    api.getUserPosts(String(uid))
-      .then(r => setMyPosts(Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : [])))
-      .catch(() => setMyPosts([]))
-      .finally(() => setPostsLoading(false));
-  }, [tab, profile, user]);
-
-  const deleteMyPost = async (postId) => {
-    if (!window.confirm('Delete this post permanently?')) return;
-    try {
-      await api.deletePost(postId);
-      setMyPosts(p => p.filter(x => String(x._id) !== String(postId)));
-      setToast('✅ Post deleted');
-    } catch { setToast('❌ Failed to delete post'); }
-  };
 
   // Tab definitions — emoji-only label on mobile, full label on desktop
   const TABS = [
