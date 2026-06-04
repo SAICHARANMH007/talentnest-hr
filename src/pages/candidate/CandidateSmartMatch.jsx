@@ -24,12 +24,12 @@ export default function CandidateSmartMatch({ user }) {
   const [companyReviews, setCompanyReviews] = useState({}); // companyName → reviews array
 
   useEffect(() => {
-    // Fetch profile and jobs in parallel
     Promise.allSettled([
       api.getUser(user.id),
       api.getPublicJobs(),
       api.getMyApplications(),
-    ]).then(([profRes, jobsRes, appsRes]) => {
+      api.getMyOrgReviews(),
+    ]).then(([profRes, jobsRes, appsRes, reviewsRes]) => {
       const p = profRes.status === 'fulfilled' ? (profRes.value?.data || profRes.value) : null;
       if (p) setProfile(p);
       const jobArr = jobsRes.status === 'fulfilled'
@@ -39,6 +39,15 @@ export default function CandidateSmartMatch({ user }) {
       if (appsRes.status === 'fulfilled') {
         const apps = appsRes.value || [];
         setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
+      }
+      if (reviewsRes.status === 'fulfilled') {
+        const allReviews = reviewsRes.value?.data || [];
+        const byCompany = {};
+        allReviews.forEach(rv => {
+          const cn = (rv.companyName || '').trim();
+          if (cn) { if (!byCompany[cn]) byCompany[cn] = []; byCompany[cn].push(rv); }
+        });
+        setCompanyReviews(byCompany);
       }
     });
   }, [user.id]);
@@ -86,17 +95,6 @@ export default function CandidateSmartMatch({ user }) {
       api.getAssessmentForJob(jobId)
         .then(r => setAssessments(prev => ({ ...prev, [jobId]: r?.data || r || null })))
         .catch(() => setAssessments(prev => ({ ...prev, [jobId]: null })));
-    }
-    // Fetch company reviews for this job's company
-    const jobResult = results.find(r => r.jobId === jobId);
-    const companyName = jobResult?.job?.companyName || jobResult?.job?.company;
-    if (companyName && companyReviews[companyName] === undefined) {
-      api.getCompanyReviews(companyName)
-        .then(r => {
-          const list = Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [];
-          setCompanyReviews(prev => ({ ...prev, [companyName]: list }));
-        })
-        .catch(() => setCompanyReviews(prev => ({ ...prev, [companyName]: [] })));
     }
   };
 

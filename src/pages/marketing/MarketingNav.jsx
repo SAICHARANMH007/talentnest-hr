@@ -70,9 +70,9 @@ export default function MarketingNav({ active = 'home' }) {
   const navTextColor   = onDarkHero ? 'rgba(255,255,255,0.9)' : 'var(--mkt-nav-text)';
   const logoNameColor  = onDarkHero ? '#fff'                  : 'var(--mkt-nav-text)';
   const logoSubColor   = onDarkHero ? 'rgba(255,255,255,0.55)': 'var(--mkt-text-muted)';
-  const hamburgerColor = onDarkHero ? '#fff'                  : 'var(--mkt-nav-text)';
-  const hamburgerBg   = 'rgba(var(--mkt-accent-rgb), 0.1)';
-  const hamburgerBorder = '1px solid rgba(var(--mkt-accent-rgb), 0.2)';
+  const hamburgerColor  = onDarkHero ? '#fff'                         : 'var(--mkt-nav-text)';
+  const hamburgerBg     = onDarkHero ? 'rgba(255,255,255,0.15)'       : 'rgba(var(--mkt-accent-rgb),0.1)';
+  const hamburgerBorder = onDarkHero ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(var(--mkt-accent-rgb),0.25)';
 
   // Theme switcher pill colors
   const switcherBg     = 'var(--mkt-surface-bg)';
