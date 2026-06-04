@@ -67,7 +67,7 @@ export const THEMES = {
     navBg:       'rgba(255,255,255,0.97)',
     navText:     '#1E293B',
     navActive:   '#0176D3',
-    heroOverlay: 'linear-gradient(160deg, rgba(30,58,95,0.88) 0%, rgba(1,118,211,0.82) 100%)',
+    heroOverlay: 'linear-gradient(160deg, rgba(3,17,38,0.96) 0%, rgba(1,36,86,0.94) 100%)',
     dot:         '#0176D3',
     dotGradient: 'linear-gradient(135deg, #0176D3, #06B6D4)',
     primaryRgb:  '1,118,211',

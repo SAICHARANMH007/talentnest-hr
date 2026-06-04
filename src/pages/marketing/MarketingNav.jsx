@@ -129,6 +129,16 @@ export default function MarketingNav({ active = 'home' }) {
           font-family: ${ff};
           animation: tn-slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
+        [data-mkt-theme="light"] .tn-mobile-nav {
+          background: #EEF3FB;
+        }
+        [data-mkt-theme="light"] .tn-mobile-footer {
+          background: #DDE7F7 !important;
+          border-top-color: #C5D5EC !important;
+        }
+        [data-mkt-theme="light"] .tn-mobile-header {
+          border-bottom-color: #C5D5EC !important;
+        }
         .tn-mobile-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 20px;
@@ -201,7 +211,7 @@ export default function MarketingNav({ active = 'home' }) {
         // Scrolled: solid dark nav background  |  Top: subtle gradient so white text stays readable
         background: scrolled
           ? 'var(--mkt-nav-bg)'
-          : 'linear-gradient(to bottom, rgba(3,13,26,0.72) 0%, rgba(3,13,26,0) 100%)',
+          : 'linear-gradient(to bottom, rgba(3,13,26,0.92) 0%, rgba(3,13,26,0) 100%)',
         backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
