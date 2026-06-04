@@ -29,6 +29,17 @@ const jobSchema = new mongoose.Schema({
   department : { type: String, trim: true, default: '' },
   industry   : { type: String, trim: true, default: '' },
 
+  // Extended company profile — shown in candidate job detail view
+  companyDescription: { type: String, trim: true, default: '' },
+  hqCity            : { type: String, trim: true, default: '' },
+  hqCountry         : { type: String, trim: true, default: '' },
+  foundedYear       : { type: String, trim: true, default: '' },
+  employeeCount     : { type: String, trim: true, default: '' },
+  website           : { type: String, trim: true, default: '' },
+  productsServices  : { type: String, trim: true, default: '' },
+  cultureNotes      : { type: String, trim: true, default: '' },
+  successStories    : { type: String, trim: true, default: '' },
+
 
   skills           : { type: [String], default: [] },
   niceToHaveSkills : { type: [String], default: [] },

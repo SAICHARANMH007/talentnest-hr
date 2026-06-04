@@ -233,15 +233,22 @@ export default function CandidateSmartMatch({ user }) {
                   </div>
                 )}
                 {/* Company Overview */}
-                {(j.description || j.hqCity || j.employeeCount || j.foundedYear || j.productsServices || j.cultureNotes || j.successStories) && (
+                {(j.companyName || j.company) && (
                   <div style={{ marginBottom: 14, background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
                     <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>🏢 ABOUT {(j.companyName || j.company || '').toUpperCase()}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: j.cultureNotes || j.productsServices || j.successStories ? 10 : 0 }}>
-                      {j.hqCity && <span style={{ fontSize: 12, color: '#374151' }}>📍 {j.hqCity}{j.hqCountry ? `, ${j.hqCountry}` : ''}</span>}
+                    {/* Always-visible basics from job fields */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                      {(j.hqCity || j.location) && <span style={{ fontSize: 12, color: '#374151' }}>📍 {j.hqCity ? `${j.hqCity}${j.hqCountry ? `, ${j.hqCountry}` : ''}` : j.location}</span>}
+                      {j.industry && <span style={{ fontSize: 12, color: '#374151' }}>🏭 {j.industry}</span>}
                       {j.foundedYear && <span style={{ fontSize: 12, color: '#374151' }}>📅 Founded {j.foundedYear}</span>}
-                      {j.employeeCount && <span style={{ fontSize: 12, color: '#374151' }}>👥 {Number(j.employeeCount).toLocaleString()} employees</span>}
-                      {j.website && <a href={j.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none', fontWeight: 600 }}>🌐 Website ↗</a>}
+                      {j.employeeCount && <span style={{ fontSize: 12, color: '#374151' }}>👥 {j.employeeCount} employees</span>}
+                      {j.website && <a href={j.website.startsWith('http') ? j.website : `https://${j.website}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none', fontWeight: 600 }}>🌐 Website ↗</a>}
                     </div>
+                    {j.companyDescription && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{j.companyDescription}</div>
+                      </div>
+                    )}
                     {j.productsServices && (
                       <div style={{ marginBottom: 8 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 3 }}>PRODUCTS & SERVICES</div>
@@ -259,6 +266,9 @@ export default function CandidateSmartMatch({ user }) {
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 3 }}>ACHIEVEMENTS & MILESTONES</div>
                         <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{j.successStories}</div>
                       </div>
+                    )}
+                    {!j.companyDescription && !j.productsServices && !j.cultureNotes && !j.successStories && !j.foundedYear && !j.employeeCount && !j.website && (
+                      <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>Company details not yet provided by the recruiter.</div>
                     )}
                   </div>
                 )}

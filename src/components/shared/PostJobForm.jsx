@@ -17,6 +17,9 @@ const EMPTY = {
   skills: '', description: '', requirements: '', benefits: '',
   education: '', externalUrl: '', isPublic: true,
   screeningQuestions: [],
+  // Extended company profile
+  companyDescription: '', hqCity: '', hqCountry: '', foundedYear: '',
+  employeeCount: '', website: '', productsServices: '', cultureNotes: '', successStories: '',
 };
 
 const EMPTY_Q = { question: '', type: 'text', options: '', required: false };
@@ -197,6 +200,29 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
             placeholder="Must-have qualifications, certifications, experience requirements (one per line)…" />
           <Field label="Benefits & Perks" value={form.benefits} onChange={v => sf('benefits', v)} rows={2}
             placeholder="Health insurance, flexible hours, remote work, annual bonus, stock options…" />
+        </div>
+      </div>
+
+      {/* ── Section: Company Information ── */}
+      <div style={{ ...card, padding: 16 }}>
+        <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, letterSpacing: '1px', margin: '0 0 4px' }}>🏢 COMPANY INFORMATION</p>
+        <p style={{ fontSize: 11, color: '#706E6B', margin: '0 0 12px' }}>Shown to candidates on the job detail page — helps them learn about your company</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="Company Description" value={form.companyDescription} onChange={v => sf('companyDescription', v)} rows={3}
+            placeholder="Brief overview of what your company does, your mission and vision…" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(180px,100%),1fr))', gap: 12 }}>
+            <Field label="HQ City"       value={form.hqCity}         onChange={v => sf('hqCity', v)}         placeholder="Hyderabad" />
+            <Field label="HQ Country"    value={form.hqCountry}      onChange={v => sf('hqCountry', v)}      placeholder="India" />
+            <Field label="Founded Year"  value={form.foundedYear}    onChange={v => sf('foundedYear', v)}    placeholder="2015" />
+            <Field label="Team Size"     value={form.employeeCount}  onChange={v => sf('employeeCount', v)}  placeholder="500-1000" />
+            <Field label="Website"       value={form.website}        onChange={v => sf('website', v)}        placeholder="https://company.com" type="url" />
+          </div>
+          <Field label="Products & Services" value={form.productsServices} onChange={v => sf('productsServices', v)} rows={2}
+            placeholder="What does your company build or offer? Key products and services…" />
+          <Field label="Culture & Work Environment" value={form.cultureNotes} onChange={v => sf('cultureNotes', v)} rows={2}
+            placeholder="What's it like to work here? Values, team culture, work-life balance…" />
+          <Field label="Achievements & Milestones" value={form.successStories} onChange={v => sf('successStories', v)} rows={2}
+            placeholder="Key achievements, awards, growth milestones, notable clients…" />
         </div>
       </div>
 
