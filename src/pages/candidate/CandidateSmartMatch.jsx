@@ -224,7 +224,7 @@ export default function CandidateSmartMatch({ user }) {
 
             {/* ── Expanded job details ── */}
             {isOpen && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #FAFAF9' }}>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--app-card-border, #FAFAF9)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginBottom: 14 }}>
                   {[
                     ['🏢 Company', j.companyName || j.company],
@@ -232,9 +232,9 @@ export default function CandidateSmartMatch({ user }) {
                     ['🧑‍💼 Experience', j.experience || '—'],
                     ['⚡ Urgency', j.urgency || '—'],
                   ].map(([label, val]) => (
-                    <div key={label} style={{ background: '#FAFAFA', borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ color: '#0176D3', fontSize: 10, marginBottom: 3 }}>{label}</div>
-                      <div style={{ color: '#181818', fontSize: 13, fontWeight: 500 }}>{val}</div>
+                    <div key={label} style={{ background: 'var(--app-input-bg, #FAFAFA)', borderRadius: 10, padding: '10px 14px', border: '1px solid var(--app-card-border, transparent)' }}>
+                      <div style={{ color: 'var(--app-primary, #0176D3)', fontSize: 10, marginBottom: 3 }}>{label}</div>
+                      <div style={{ color: 'var(--app-text, #181818)', fontSize: 13, fontWeight: 500 }}>{val}</div>
                     </div>
                   ))}
                 </div>
@@ -251,7 +251,7 @@ export default function CandidateSmartMatch({ user }) {
                 {j.description && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ color: '#0176D3', fontSize: 11, marginBottom: 6, fontWeight: 600 }}>JOB DESCRIPTION</div>
-                    <p style={{ color: '#706E6B', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.description}</p>
+                    <p style={{ color: 'var(--app-text-sec, #706E6B)', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.description}</p>
                   </div>
                 )}
 
@@ -269,7 +269,7 @@ export default function CandidateSmartMatch({ user }) {
                 )}
                 {/* Company Overview */}
                 {(j.companyName || j.company) && (
-                  <div style={{ marginBottom: 14, background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
+                  <div style={{ marginBottom: 14, background: 'var(--app-input-bg, #F8FAFC)', borderRadius: 12, padding: '14px 16px', border: '1px solid var(--app-card-border, #E5E7EB)' }}>
                     <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>🏢 ABOUT {(j.companyName || j.company || '').toUpperCase()}</div>
                     {/* Always-visible basics from job fields */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>

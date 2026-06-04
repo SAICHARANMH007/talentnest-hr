@@ -2030,3 +2030,153 @@ button:not(:disabled):active {
   background: var(--app-card-bg) !important;
   color: var(--app-text) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DARK/OCEAN THEME — EXTENDED INLINE-STYLE OVERRIDES (v2)
+   ───────────────────────────────────────────────────────────────────────
+   Root cause: Chrome lowercases hex letters in serialised inline styles
+   (#706E6B → #706e6b), so uppercase selectors miss them.
+   Fix: CSS Level 4 case-insensitive attribute selectors ( i flag) plus
+   the additional near-white background values not in the base rules above.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Near-white / light-gray backgrounds → dark card surface ── */
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #FAFAFA" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #FAFAF9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F9FAFB" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F8F8F8" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F7F7F7" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F5F5F5" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F4F4F4" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F3F2F2" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F1F5F9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F0F4F8" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #EFEFEF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #EFF6FF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #EEF2FF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #E5E7EB" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #ECF0F1" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #FAFAFA" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #FAFAF9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #F9FAFB" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #F8F8F8" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #F5F5F5" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #F3F2F2" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #F1F5F9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #EFEFEF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #EFF6FF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="background-color: #E5E7EB" i] {
+  background: var(--app-card-bg) !important;
+  border-color: var(--app-card-border) !important;
+  color: var(--app-text) !important;
+}
+
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #FAFAFA" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #FAFAF9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F9FAFB" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F8F8F8" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F7F7F7" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F5F5F5" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F4F4F4" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F3F2F2" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F1F5F9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F0F4F8" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #EFEFEF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #EFF6FF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #EEF2FF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #E5E7EB" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #ECF0F1" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #FAFAFA" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #FAFAF9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #F9FAFB" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #F8F8F8" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #F5F5F5" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #F3F2F2" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #F1F5F9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #EFEFEF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #EFF6FF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="background-color: #E5E7EB" i] {
+  background: var(--app-card-bg) !important;
+  border-color: var(--app-card-border) !important;
+  color: var(--app-text) !important;
+}
+
+/* ── Primary dark text colors (case-insensitive) → theme text ── */
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #0A1628" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #032D60" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #1B1B1B" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #0A0C1B" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #1F2937" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #2D3748" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #14213D" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #0D1B2A" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #1A1A2E" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #16213E" i] { color: var(--app-text) !important; }
+
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #0A1628" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #032D60" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #1B1B1B" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #0A0C1B" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #1F2937" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #2D3748" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #14213D" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #0D1B2A" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #1A1A2E" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #16213E" i] { color: var(--app-text) !important; }
+
+/* ── Secondary dark text colors (case-insensitive) → theme secondary text ── */
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #706E6B" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #3E3E3C" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #6B7280" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #4B5563" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #9CA3AF" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #4A5568" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #718096" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #A0AEC0" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #8899AA" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="color: #7F8C8D" i] { color: var(--app-text-sec) !important; }
+
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #706E6B" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #3E3E3C" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #6B7280" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #4B5563" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #9CA3AF" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #4A5568" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #718096" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #A0AEC0" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #8899AA" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="color: #7F8C8D" i] { color: var(--app-text-sec) !important; }
+
+/* ── Light border colors → theme border ── */
+[data-mkt-theme="dark"] .tn-main-content [style*="border-top: 1px solid #FAFAF9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border-top: 1px solid #F3F2F2" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border-top: 1px solid #E5E7EB" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border-bottom: 1px solid #FAFAF9" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border-bottom: 1px solid #F3F2F2" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border: 1.5px solid #E2E8F0" i],
+[data-mkt-theme="dark"] .tn-main-content [style*="border: 1.5px solid #D1D5DB" i] {
+  border-color: var(--app-card-border) !important;
+}
+
+[data-mkt-theme="mixed"] .tn-main-content [style*="border-top: 1px solid #FAFAF9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border-top: 1px solid #F3F2F2" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border-top: 1px solid #E5E7EB" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border-bottom: 1px solid #FAFAF9" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border-bottom: 1px solid #F3F2F2" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border: 1.5px solid #E2E8F0" i],
+[data-mkt-theme="mixed"] .tn-main-content [style*="border: 1.5px solid #D1D5DB" i] {
+  border-color: var(--app-card-border) !important;
+}
+
+/* ── Ensure text inside overridden background boxes is readable ── */
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #FAFAFA" i] *,
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #FAFAF9" i] *,
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F8F8F8" i] *,
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #F5F5F5" i] *,
+[data-mkt-theme="dark"] .tn-main-content [style*="background: #EFEFEF" i] * { color: var(--app-text) !important; }
+
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #FAFAFA" i] *,
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #FAFAF9" i] *,
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F8F8F8" i] *,
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #F5F5F5" i] *,
+[data-mkt-theme="mixed"] .tn-main-content [style*="background: #EFEFEF" i] * { color: var(--app-text) !important; }
