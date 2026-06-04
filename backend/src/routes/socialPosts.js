@@ -106,13 +106,12 @@ router.post('/', asyncHandler(async (req, res) => {
         const community = await Community.findById(communityId).select('name slug memberIds').lean();
         if (!community) return;
         const notifyIds = (community.memberIds || [])
-          .map(id => String(id))
-          .filter(id => id !== authorId)
+          .filter(id => String(id) !== authorId)
           .slice(0, 20);
         if (!notifyIds.length) return;
         const snippet = content.trim().slice(0, 80) + (content.length > 80 ? '…' : '');
-        await Notification.insertMany(notifyIds.map(uid => ({
-          userId  : uid,
+        await Notification.insertMany(notifyIds.map(memberId => ({
+          userId  : memberId,
           tenantId: u.tenantId,
           type    : 'system',
           title   : `New post in ${community.name}`,
@@ -232,15 +231,16 @@ router.post('/:id/report', asyncHandler(async (req, res) => {
   const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId, isDeleted: false }).lean();
   if (!post) throw new AppError('Post not found.', 404);
 
-  const uid = String(req.user._id || req.user.id);
+  const reporterId = req.user._id || req.user.id;
+  const uid = String(reporterId);
   if (String(post.authorId) === uid) throw new AppError('You cannot report your own post.', 400);
 
-  const existing = await PostReport.findOne({ postId: post._id, reportedBy: uid });
+  const existing = await PostReport.findOne({ postId: post._id, reportedBy: reporterId });
   if (existing) return res.json({ success: true, message: 'Already reported.' });
 
   await PostReport.create({
     postId      : post._id,
-    reportedBy  : uid,
+    reportedBy  : reporterId,
     reporterName: req.user.name || '',
     reporterRole: req.user.role || '',
     tenantId    : req.user.tenantId,
@@ -257,7 +257,7 @@ router.post('/:id/report', asyncHandler(async (req, res) => {
       const REASON_LABEL = { spam: 'Spam', harassment: 'Harassment', misinformation: 'Misinformation', inappropriate: 'Inappropriate Content', hate_speech: 'Hate Speech', other: 'Other' };
       const snippet = (post.content || '').slice(0, 60) + (post.content?.length > 60 ? '…' : '');
       await Notification.insertMany(superAdmins.map(sa => ({
-        userId  : String(sa._id),
+        userId  : sa._id,
         tenantId: req.user.tenantId,
         type    : 'system',
         title   : `Post reported: ${REASON_LABEL[reason]}`,
