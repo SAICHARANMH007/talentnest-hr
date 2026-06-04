@@ -148,6 +148,7 @@ const PeoplePage           = lazy(() => import('./pages/shared/PeoplePage.jsx'))
 const CommunitiesPage      = lazy(() => import('./pages/shared/CommunitiesPage.jsx'));
 const CommunityDetailPage  = lazy(() => import('./pages/shared/CommunityDetailPage.jsx'));
 const PostPublicPage       = lazy(() => import('./pages/public/PostPublicPage.jsx'));
+const CommunityPreviewPage = lazy(() => import('./pages/marketing/CommunityPreviewPage.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -489,6 +490,8 @@ export default function App() {
     setUser(u);
     // Pending assessment deep-link (from invite email)
     const pendingJobId = sessionStorage.getItem('tn_pending_assessment_job');
+    // Post-login redirect (e.g. from community share link /c/:slug)
+    const postLoginRedirect = sessionStorage.getItem('tn_post_login_redirect');
     if (pendingJobId && u.role === 'candidate') {
       sessionStorage.removeItem('tn_pending_assessment_job');
       import('./api/api.js').then(({ api: apiModule }) => {
@@ -496,6 +499,9 @@ export default function App() {
           navigate(assessment?.id ? `/app/assessment/${assessment.id}` : '/app/dashboard', { replace: true });
         }).catch(() => navigate('/app/dashboard', { replace: true }));
       }).catch(() => navigate('/app/dashboard', { replace: true }));
+    } else if (postLoginRedirect) {
+      sessionStorage.removeItem('tn_post_login_redirect');
+      navigate(postLoginRedirect, { replace: true });
     } else {
       navigate(`/app/${ROLE_DEFAULT[u.role] || 'dashboard'}`, { replace: true });
     }
@@ -539,6 +545,7 @@ export default function App() {
       <Route path="/blog/:slug" element={<Suspense fallback={<PageLoader />}><BlogPostPage /></Suspense>} />
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={<PageLoader />}><TermsPage /></Suspense>} />
+      <Route path="/c/:slug" element={<Suspense fallback={<PageLoader />}><CommunityPreviewPage /></Suspense>} />
 
       {/* ── Public job board + Companies ── */}
       <Route path="/meeting/:roomToken" element={<Suspense fallback={<PageLoader />}><MeetingRoom /></Suspense>} />

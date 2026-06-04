@@ -739,6 +739,22 @@ export default function CommunityDetailPage({ user }) {
               {community.icon}
             </div>
             <button
+              onClick={() => {
+                const shareUrl = `${window.location.origin}/c/${community.slug}`;
+                navigator.clipboard?.writeText(shareUrl).then(() => {
+                  const btn = document.getElementById('tn-share-btn');
+                  if (btn) { btn.textContent = '✓ Link Copied!'; setTimeout(() => { if (btn) btn.textContent = '🔗 Share'; }, 2000); }
+                }).catch(() => {
+                  if (navigator.share) {
+                    navigator.share({ title: community.name, text: community.description, url: shareUrl }).catch(() => {});
+                  }
+                });
+              }}
+              id="tn-share-btn"
+              style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>
+              🔗 Share
+            </button>
+            <button
               onClick={isMember ? handleLeave : handleJoin}
               disabled={joining}
               style={{ padding: '9px 22px', borderRadius: 10, border: `2px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#F9FAFB' : bg, color: isMember ? '#6B7280' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>

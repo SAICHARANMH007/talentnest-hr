@@ -19,6 +19,8 @@ export default function CandidateSmartMatch({ user }) {
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
   const [assessments, setAssessments] = useState({}); // jobId → assessment (null = none, obj = found)
+  const [companyInfo, setCompanyInfo] = useState({}); // companyName → org data
+  const [companyReviews, setCompanyReviews] = useState({}); // companyName → reviews array
 
   useEffect(() => {
     api.getPublicJobs().then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
@@ -69,6 +71,17 @@ export default function CandidateSmartMatch({ user }) {
       api.getAssessmentForJob(jobId)
         .then(r => setAssessments(prev => ({ ...prev, [jobId]: r?.data || r || null })))
         .catch(() => setAssessments(prev => ({ ...prev, [jobId]: null })));
+    }
+    // Fetch company reviews for this job's company
+    const jobResult = results.find(r => r.jobId === jobId);
+    const companyName = jobResult?.job?.companyName || jobResult?.job?.company;
+    if (companyName && companyReviews[companyName] === undefined) {
+      api.getCompanyReviews(companyName)
+        .then(r => {
+          const list = Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : [];
+          setCompanyReviews(prev => ({ ...prev, [companyName]: list }));
+        })
+        .catch(() => setCompanyReviews(prev => ({ ...prev, [companyName]: [] })));
     }
   };
 
@@ -204,6 +217,67 @@ export default function CandidateSmartMatch({ user }) {
                     </button>
                   </div>
                 )}
+                {/* Company Overview */}
+                {(j.description || j.hqCity || j.employeeCount || j.foundedYear || j.productsServices || j.cultureNotes || j.successStories) && (
+                  <div style={{ marginBottom: 14, background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px solid #E5E7EB' }}>
+                    <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>🏢 ABOUT {(j.companyName || j.company || '').toUpperCase()}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: j.cultureNotes || j.productsServices || j.successStories ? 10 : 0 }}>
+                      {j.hqCity && <span style={{ fontSize: 12, color: '#374151' }}>📍 {j.hqCity}{j.hqCountry ? `, ${j.hqCountry}` : ''}</span>}
+                      {j.foundedYear && <span style={{ fontSize: 12, color: '#374151' }}>📅 Founded {j.foundedYear}</span>}
+                      {j.employeeCount && <span style={{ fontSize: 12, color: '#374151' }}>👥 {Number(j.employeeCount).toLocaleString()} employees</span>}
+                      {j.website && <a href={j.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none', fontWeight: 600 }}>🌐 Website ↗</a>}
+                    </div>
+                    {j.productsServices && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 3 }}>PRODUCTS & SERVICES</div>
+                        <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{j.productsServices}</div>
+                      </div>
+                    )}
+                    {j.cultureNotes && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 3 }}>CULTURE & ENVIRONMENT</div>
+                        <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{j.cultureNotes}</div>
+                      </div>
+                    )}
+                    {j.successStories && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 3 }}>ACHIEVEMENTS & MILESTONES</div>
+                        <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{j.successStories}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Company Reviews */}
+                {(() => {
+                  const cName = j.companyName || j.company;
+                  const reviews = cName ? companyReviews[cName] : undefined;
+                  if (!reviews || reviews.length === 0) return null;
+                  const avg = reviews.reduce((s, rv) => s + (rv.rating || 0), 0) / reviews.length;
+                  const stars = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+                  return (
+                    <div style={{ marginBottom: 14, background: '#FFFBEB', borderRadius: 12, padding: '14px 16px', border: '1px solid #FDE68A' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <span style={{ color: '#92400E', fontSize: 11, fontWeight: 700 }}>⭐ COMPANY REVIEWS</span>
+                        <span style={{ color: '#F59E0B', fontSize: 14, fontWeight: 800 }}>{stars}</span>
+                        <span style={{ fontSize: 12, color: '#78350F', fontWeight: 700 }}>{avg.toFixed(1)} / 5</span>
+                        <span style={{ fontSize: 11, color: '#92400E' }}>({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {reviews.slice(0, 3).map((rv, idx) => (
+                          <div key={idx} style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', border: '1px solid #FDE68A' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{rv.reviewerName || 'Anonymous'}</span>
+                              <span style={{ color: '#F59E0B', fontSize: 12 }}>{'★'.repeat(rv.rating || 0)}{'☆'.repeat(5 - (rv.rating || 0))}</span>
+                            </div>
+                            {rv.comment && <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6 }}>{rv.comment}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div style={{ paddingTop: 14, borderTop: '1px solid #F3F2F2', display: 'flex', gap: 10 }}>
                   {isApplied ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
