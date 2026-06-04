@@ -865,18 +865,38 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
-  // Migrate: when posts load, populate bookmarkData for any IDs that are missing data
+  // When "Saved" tab opens, fetch any bookmark IDs that have no stored data
   useEffect(() => {
-    if (bookmarks.length === 0 || posts.length === 0) return;
+    if (tab !== 'saved' || bookmarks.length === 0) return;
     const missing = bookmarks.filter(id => !bookmarkData[id]);
     if (missing.length === 0) return;
-    const found = posts.filter(p => missing.includes(String(p._id)));
-    if (found.length === 0) return;
-    const nextData = { ...bookmarkData };
-    found.forEach(p => { nextData[String(p._id)] = p; });
-    setBookmarkData(nextData);
-    saveBookmarkData(nextData);
-  }, [posts]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // First check if any are in the already-loaded feed posts
+    const inFeed = posts.filter(p => missing.includes(String(p._id)));
+    let nextData = { ...bookmarkData };
+    inFeed.forEach(p => { nextData[String(p._id)] = p; });
+    const stillMissing = missing.filter(id => !nextData[id]);
+
+    // For the rest, fetch from the public endpoint
+    Promise.allSettled(stillMissing.map(id => api.getPublicPost(id)))
+      .then(results => {
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled' && r.value && r.value._id) {
+            nextData[String(r.value._id)] = r.value;
+          }
+        });
+        if (Object.keys(nextData).length > Object.keys(bookmarkData).length) {
+          setBookmarkData(nextData);
+          saveBookmarkData(nextData);
+        }
+      });
+
+    // Apply the in-feed finds immediately without waiting for API
+    if (inFeed.length > 0) {
+      setBookmarkData(nextData);
+      saveBookmarkData(nextData);
+    }
+  }, [tab, bookmarks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async (data) => {
     await api.createPost(data);
