@@ -379,7 +379,7 @@ export default function MarketingNav({ active = 'home' }) {
       }}>
         {[
           { id: 'light', icon: '☀️', label: 'Light' },
-          { id: 'mixed', icon: '◑', label: 'Mixed' },
+          { id: 'mixed', icon: '🌊', label: 'Ocean' },
           { id: 'dark',  icon: '🌙', label: 'Dark' }
         ].map((t) => {
           const isActive = themeId === t.id;
@@ -503,7 +503,7 @@ export default function MarketingNav({ active = 'home' }) {
               <div style={{ display: 'flex', background: 'var(--mkt-surface-bg)', borderRadius: 16, padding: 4, border: '1px solid var(--mkt-card-border)' }}>
                 {[
                   { id: 'light', icon: '☀️', label: 'Light' },
-                  { id: 'mixed', icon: '◑', label: 'Mixed' },
+                  { id: 'mixed', icon: '🌊', label: 'Ocean' },
                   { id: 'dark',  icon: '🌙', label: 'Dark' }
                 ].map(t => (
                   <button

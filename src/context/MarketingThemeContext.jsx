@@ -82,40 +82,40 @@ export const THEMES = {
   },
   mixed: {
     id: 'mixed',
-    label: 'Indigo',
-    primary:     '#6366F1',
-    primaryDark: '#4F46E5',
-    accent:      '#8B5CF6',
-    accentDark:  '#7C3AED',
-    dark:        '#1E1B4B',
-    darker:      '#0F0E2A',
-    gradStart:   '#1E1B4B',
-    gradEnd:     '#4F46E5',
-    // Rich deep indigo — unmistakably different from both white and dark-slate
-    sectionBg:   '#13112E',
-    surfaceBg:   '#1A1740',
-    cardBg:      '#201D52',
-    cardBorder:  'rgba(139,92,246,0.25)',
-    // Light text on dark indigo bg
-    textPrimary:   '#E0E7FF',
-    textSecondary: '#C7D2FE',
-    textMuted:     'rgba(199,210,254,0.6)',
+    label: 'Ocean',
+    primary:     '#00B4D8',
+    primaryDark: '#0096C7',
+    accent:      '#06D6A0',
+    accentDark:  '#059669',
+    dark:        '#023E58',
+    darker:      '#011929',
+    gradStart:   '#012A3A',
+    gradEnd:     '#005F73',
+    // Deep ocean midnight
+    sectionBg:   '#03111F',
+    surfaceBg:   '#071E33',
+    cardBg:      '#0A2744',
+    cardBorder:  'rgba(0,180,216,0.22)',
+    // Crisp white-cyan text — maximum readability
+    textPrimary:   '#E8F8FF',
+    textSecondary: '#A8D8EA',
+    textMuted:     'rgba(168,216,234,0.75)',
     textOnDark:    '#ffffff',
-    textOnDarkMuted: 'rgba(255,255,255,0.75)',
-    navBg:       'rgba(15,14,42,0.97)',
-    navText:     '#C7D2FE',
-    navActive:   '#818CF8',
-    heroOverlay: 'linear-gradient(160deg, rgba(10,5,40,0.96) 0%, rgba(30,20,80,0.92) 60%, rgba(70,50,200,0.86) 100%)',
-    navUnscrolledBg: 'rgba(10,5,40,0.95)',
-    dot:         '#8B5CF6',
-    dotGradient: 'linear-gradient(135deg, #4F46E5, #8B5CF6)',
-    primaryRgb:  '99,102,241',
-    accentRgb:   '139,92,246',
-    darkRgb:     '30,27,75',
+    textOnDarkMuted: 'rgba(255,255,255,0.8)',
+    navBg:       'rgba(3,17,31,0.97)',
+    navText:     '#A8D8EA',
+    navActive:   '#00B4D8',
+    heroOverlay: 'linear-gradient(160deg, rgba(1,10,22,0.97) 0%, rgba(2,30,55,0.93) 60%, rgba(0,80,110,0.88) 100%)',
+    navUnscrolledBg: 'rgba(1,10,22,0.96)',
+    dot:         '#00B4D8',
+    dotGradient: 'linear-gradient(135deg, #0096C7, #06D6A0)',
+    primaryRgb:  '0,180,216',
+    accentRgb:   '6,214,160',
+    darkRgb:     '2,62,88',
     textHeading: '#FFFFFF',
-    statsBg:       '#1A1740',
-    statsTextColor:'#E0E7FF',
-    statsLabelColor:'rgba(199,210,254,0.6)',
+    statsBg:       '#071E33',
+    statsTextColor:'#E8F8FF',
+    statsLabelColor:'rgba(168,216,234,0.7)',
   },
 };
 
@@ -202,6 +202,11 @@ export function MarketingThemeProvider({ children }) {
     r.style.setProperty('--mkt-section-bg-rgb',      hexToRgb(theme.sectionBg));
     r.style.setProperty('--mkt-dark-rgb',             theme.darkRgb);
     r.style.setProperty('--mkt-nav-unscrolled-bg',    theme.navUnscrolledBg || 'rgba(5,10,20,0.95)');
+
+    // Text selection highlight color matches theme accent
+    let selStyle = document.getElementById('tn-selection-style');
+    if (!selStyle) { selStyle = document.createElement('style'); selStyle.id = 'tn-selection-style'; document.head.appendChild(selStyle); }
+    selStyle.textContent = `::selection { background: ${theme.primary}55; color: ${themeId === 'light' ? '#fff' : theme.textOnDark}; }`;
 
     // Set data attribute for CSS selector overrides (on html so it works before React renders too)
     document.documentElement.setAttribute('data-mkt-theme', themeId);
