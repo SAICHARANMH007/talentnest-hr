@@ -499,6 +499,13 @@ export default function PeoplePage({ user }) {
     } catch { /* user dismissed or permission denied */ }
   };
 
+  const handleConnectAll = async (matched) => {
+    const toConnect = matched.filter(p => p.connectionStatus !== 'accepted' && p.connectionStatus !== 'pending_sent');
+    for (const person of toConnect) {
+      try { await handleAction('connect', person); } catch {}
+    }
+  };
+
   const uid = String(user?.id || user?._id || '');
 
   return (
@@ -597,8 +604,15 @@ export default function PeoplePage({ user }) {
             <div style={{ marginTop: 12 }}>
               {syncResults.matched?.length > 0 && (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#D1FAE5', padding: '4px 12px', borderRadius: 20 }}>✓ {syncResults.matched.length} contact{syncResults.matched.length !== 1 ? 's' : ''} found on TalentNest</span>
+                    {syncResults.matched.some(p => p.connectionStatus !== 'accepted' && p.connectionStatus !== 'pending_sent') && (
+                      <button
+                        onClick={() => handleConnectAll(syncResults.matched)}
+                        style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                        🤝 Connect All
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                     {syncResults.matched.map(person => (

@@ -124,10 +124,12 @@ router.post('/seed', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(
   res.json({ success: true, message: `Seeded ${toCreate.length} demo reviews.`, count: toCreate.length });
 }));
 
-// GET /api/company-reviews — admin: list all reviews in own org
+// GET /api/company-reviews — admin: own org; super_admin: all orgs
 router.get('/', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const reviews = await CompanyReview.find({ tenantId: req.tenantId, deletedAt: null })
-    .sort({ createdAt: -1 }).lean();
+  const filter = req.user.role === 'super_admin'
+    ? { deletedAt: null }
+    : { tenantId: req.tenantId, deletedAt: null };
+  const reviews = await CompanyReview.find(filter).sort({ createdAt: -1 }).lean();
   res.json({ success: true, data: reviews });
 }));
 

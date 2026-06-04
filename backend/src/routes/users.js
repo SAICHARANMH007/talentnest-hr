@@ -334,10 +334,19 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
 // GET /api/users/:id — Detailed user
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const isOwn = req.params.id === (req.user._id || req.user.id).toString();
-  if (!isOwn && !['admin','super_admin'].includes(req.user.role)) throw new AppError('Access denied.', 403);
+  const isAdmin = ['admin','super_admin'].includes(req.user.role);
 
   const user = await User.findById(req.params.id).select('-password').lean();
   if (!user) throw new AppError('User not found.', 404);
+
+  // Same-tenant users can view each other's profiles (My Network, connections).
+  // Super admins can view any profile cross-tenant; regular users restricted to own tenant.
+  if (!isOwn && !isAdmin) {
+    if (String(user.tenantId) !== String(req.user.tenantId)) {
+      throw new AppError('Access denied.', 403);
+    }
+  }
+
   res.json({ success: true, data: userService.normalize(user) });
 }));
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
@@ -16,7 +16,6 @@ export default function CandidateSmartMatch({ user }) {
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoad] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [totalJobs, setTotalJobs] = useState(0);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
@@ -24,17 +23,20 @@ export default function CandidateSmartMatch({ user }) {
   const [assessments, setAssessments] = useState({}); // jobId → assessment (null = none, obj = found)
   const [companyInfo, setCompanyInfo] = useState({}); // companyName → org data
   const [companyReviews, setCompanyReviews] = useState({}); // companyName → reviews array
+  const [filterCompany, setFilterCompany] = useState('all');
+  const [filterIndustry, setFilterIndustry] = useState('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
+  const [displayLimit, setDisplayLimit] = useState(100);
 
   const extractJobs = (res) =>
     Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
 
   useEffect(() => {
     let cancelled = false;
-    const BATCH = 200;
 
     Promise.allSettled([
       api.getUser(user.id),
-      api.getPublicJobs(`?limit=${BATCH}&page=1`),
+      api.getPublicJobs(),
       api.getMyApplications(),
       api.getMyOrgReviews(),
     ]).then(([profRes, jobsRes, appsRes, reviewsRes]) => {
@@ -42,10 +44,10 @@ export default function CandidateSmartMatch({ user }) {
       const p = profRes.status === 'fulfilled' ? (profRes.value?.data || profRes.value) : null;
       if (p) setProfile(p);
 
-      const firstBatch = jobsRes.status === 'fulfilled' ? extractJobs(jobsRes.value) : [];
-      const total = jobsRes.status === 'fulfilled' ? (jobsRes.value?.total || firstBatch.length) : 0;
+      const allJobs = jobsRes.status === 'fulfilled' ? extractJobs(jobsRes.value) : [];
+      const total = jobsRes.status === 'fulfilled' ? (jobsRes.value?.total || allJobs.length) : 0;
       setTotalJobs(total);
-      setJobs(firstBatch);
+      setJobs(allJobs);
 
       if (appsRes.status === 'fulfilled') {
         const apps = appsRes.value || [];
@@ -59,27 +61,6 @@ export default function CandidateSmartMatch({ user }) {
           if (cn) { if (!byCompany[cn]) byCompany[cn] = []; byCompany[cn].push(rv); }
         });
         setCompanyReviews(byCompany);
-      }
-
-      // Background-load remaining pages so all jobs eventually appear
-      if (total > BATCH) {
-        const totalPages = Math.ceil(total / BATCH);
-        setLoadingMore(true);
-        const pagePromises = [];
-        for (let pg = 2; pg <= totalPages; pg++) {
-          pagePromises.push(api.getPublicJobs(`?limit=${BATCH}&page=${pg}`).then(extractJobs).catch(() => []));
-        }
-        Promise.all(pagePromises).then(pages => {
-          if (cancelled) return;
-          const allExtra = pages.flat();
-          if (allExtra.length > 0) {
-            setJobs(prev => {
-              const combined = [...prev, ...allExtra];
-              return combined;
-            });
-          }
-          setLoadingMore(false);
-        });
       }
     });
     return () => { cancelled = true; };
@@ -131,6 +112,36 @@ export default function CandidateSmartMatch({ user }) {
     }
   };
 
+  // Derive unique filter options from loaded jobs
+  const companyOptions = useMemo(() => {
+    const s = new Set(jobs.map(j => (j.companyName || j.company || '').trim()).filter(Boolean));
+    return [...s].sort();
+  }, [jobs]);
+  const industryOptions = useMemo(() => {
+    const s = new Set(jobs.map(j => (j.industry || '').trim()).filter(Boolean));
+    return [...s].sort();
+  }, [jobs]);
+  const departmentOptions = useMemo(() => {
+    const s = new Set(jobs.map(j => (j.department || '').trim()).filter(Boolean));
+    return [...s].sort();
+  }, [jobs]);
+
+  // Apply secondary filters on top of match results
+  const filteredResults = useMemo(() => {
+    let out = results;
+    if (filterCompany !== 'all') out = out.filter(r => (r.job?.companyName || r.job?.company || '') === filterCompany);
+    if (filterIndustry !== 'all') out = out.filter(r => (r.job?.industry || '').toLowerCase().includes(filterIndustry.toLowerCase()));
+    if (filterDepartment !== 'all') out = out.filter(r => (r.job?.department || '').toLowerCase().includes(filterDepartment.toLowerCase()));
+    return out;
+  }, [results, filterCompany, filterIndustry, filterDepartment]);
+
+  // Reset display limit when the filtered set changes
+  useEffect(() => { setDisplayLimit(100); }, [filteredResults]);
+
+  const displayResults = filteredResults.slice(0, displayLimit);
+
+  const selStyle = { flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid var(--app-card-border, #E2E8F0)', fontSize: 13, background: 'var(--app-input-bg, #F8FAFC)', color: 'var(--app-text, #181818)', outline: 'none' };
+
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast("")} />
@@ -148,30 +159,43 @@ export default function CandidateSmartMatch({ user }) {
             {loading ? <><Spinner /> Matching…</> : "📊 Refresh Match"}
           </button>
         </div>
+        {/* Filters row */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} style={selStyle}>
+            <option value="all">🏢 All Companies</option>
+            {companyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} style={selStyle}>
+            <option value="all">🏭 All Industries</option>
+            {industryOptions.map(i => <option key={i} value={i}>{i}</option>)}
+          </select>
+          <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} style={selStyle}>
+            <option value="all">📂 All Departments</option>
+            {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
         {jobs.length > 0 && (
-          <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            Searching across {jobs.length}{totalJobs > jobs.length ? `/${totalJobs}` : ''} open positions · Real-time smart matching based on your profile
-            {loadingMore && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0176D3', fontWeight: 600 }}><span style={{ width: 10, height: 10, border: '2px solid #BFDBFE', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-sm-spin 0.8s linear infinite', display: 'inline-block' }} />Loading more…</span>}
+          <p style={{ color: 'var(--app-text-muted, #64748b)', fontSize: 11, marginTop: 8, marginBottom: 0 }}>
+            Searching across {jobs.length} open positions · showing {displayResults.length}{filteredResults.length > displayLimit ? ` of ${filteredResults.length}` : ''} matches
           </p>
         )}
-        <style>{`@keyframes tn-sm-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
 
-      {results.length === 0 && !loading && jobs.length > 0 && (
-        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
+      {displayResults.length === 0 && !loading && jobs.length > 0 && (
+        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: 'var(--app-text-sec, #706E6B)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginBottom: 6 }}>No exact matches found</p>
-          <p style={{ fontSize: 13 }}>Try adjusting your search keyword or updating your profile to see more roles.</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--app-text, #3E3E3C)', marginBottom: 6 }}>No matches found</p>
+          <p style={{ fontSize: 13 }}>Try adjusting the filters, search keyword, or updating your profile.</p>
         </div>
       )}
       {jobs.length === 0 && loading && (
-        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: '#706E6B' }}>
+        <div style={{ ...card, textAlign: 'center', padding: '40px 20px', color: 'var(--app-text-sec, #706E6B)' }}>
           <Spinner size={32} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#3E3E3C', marginTop: 12 }}>Loading open positions...</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--app-text, #3E3E3C)', marginTop: 12 }}>Loading open positions...</p>
         </div>
       )}
 
-      {results.map((r, i) => {
+      {displayResults.map((r, i, arr) => {
         const isOpen = expanded === r.jobId;
         const isApplied = applied.has(String(r.jobId));
         const j = r.job;
@@ -358,6 +382,17 @@ export default function CandidateSmartMatch({ user }) {
           </div>
         );
       })}
+
+      {filteredResults.length > displayLimit && (
+        <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 8 }}>
+          <button
+            onClick={() => setDisplayLimit(prev => prev + 100)}
+            style={{ ...btnG, padding: '10px 28px', fontSize: 13, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}
+          >
+            Load more ({filteredResults.length - displayLimit} remaining)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

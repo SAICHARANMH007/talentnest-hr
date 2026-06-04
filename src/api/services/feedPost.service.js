@@ -37,11 +37,12 @@ export const feedPostService = {
     const res = await fetch(`${API_BASE_URL}/social-posts/upload-image`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: formData,
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Upload failed (${res.status})`);
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || e.message || `Upload failed (${res.status})`);
     }
     return res.json();
   },

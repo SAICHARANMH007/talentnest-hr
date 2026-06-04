@@ -229,6 +229,8 @@ export default function CandidateProfile({ user }) {
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
   const [certList, setCerts]    = useState([]);
+  const [myPosts, setMyPosts]       = useState(null);
+  const [postsLoading, setPostsLoad] = useState(false);
 
   useEffect(() => {
     api.getUser(user.id)
@@ -257,6 +259,23 @@ export default function CandidateProfile({ user }) {
       .catch(e => setToast(`Failed to load: ${e.message}`))
       .finally(() => setLoad(false));
   }, [user.id]);
+
+  useEffect(() => {
+    if (tab !== 'posts' || myPosts !== null) return;
+    setPostsLoad(true);
+    api.getUserPosts(user.id)
+      .then(res => setMyPosts(Array.isArray(res) ? res : (res?.data || res?.posts || [])))
+      .catch(() => setMyPosts([]))
+      .finally(() => setPostsLoad(false));
+  }, [tab, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const deleteMyPost = async (postId) => {
+    try {
+      await api.deletePost(postId);
+      setMyPosts(prev => (prev || []).filter(p => (p._id || p.id) !== postId));
+      setToast('✅ Post deleted');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+  };
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 

@@ -70,7 +70,7 @@ router.get('/', asyncHandler(async (req, res) => {
 // GET /api/social-posts/user/:userId
 router.get('/user/:userId', asyncHandler(async (req, res) => {
   const posts = await FeedPost.find({ tenantId: req.user.tenantId, authorId: req.params.userId, isDeleted: false })
-    .sort({ createdAt: -1 }).limit(30).lean();
+    .sort({ createdAt: -1 }).lean();
   res.json({ success: true, data: posts });
 }));
 
