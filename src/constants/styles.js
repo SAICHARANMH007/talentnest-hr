@@ -1,8 +1,10 @@
-/* Salesforce Lightning Design System – base style constants */
+/* Salesforce Lightning Design System – base style constants
+   Colors use CSS variables so all 3 themes (Light / Dark / Ocean) apply
+   across the entire app without touching individual page components. */
 
 export const card = {
-  background: '#FFFFFF',
-  border: '1px solid #E5E7EB',
+  background: 'var(--app-card-bg, #FFFFFF)',
+  border: '1px solid var(--app-card-border, #E5E7EB)',
   borderRadius: 16,
   padding: 'clamp(14px, 2.5vw, 24px)',
   boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
@@ -45,10 +47,10 @@ export const Z = {
 };
 
 export const inp = {
-  background: '#FFFFFF',
-  border: '1.5px solid #E5E7EB',
+  background: 'var(--app-input-bg, #FFFFFF)',
+  border: '1.5px solid var(--app-input-border, #E5E7EB)',
   borderRadius: 10,
-  color: '#181818',
+  color: 'var(--app-text, #181818)',
   padding: '10px 14px',
   fontSize: 14,
   outline: 'none',
@@ -59,7 +61,7 @@ export const inp = {
 };
 
 export const btnP = {
-  background: 'linear-gradient(135deg, #0176D3 0%, #0154A4 100%)',
+  background: 'linear-gradient(135deg, var(--app-primary, #0176D3) 0%, color-mix(in srgb, var(--app-primary, #0176D3) 80%, #000) 100%)',
   color: '#fff',
   border: 'none',
   borderRadius: 10,
@@ -69,13 +71,13 @@ export const btnP = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
   transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-  boxShadow: '0 4px 12px rgba(1, 118, 211, 0.25)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
 };
 
 export const btnG = {
-  background: '#FFFFFF',
-  color: '#0176D3',
-  border: '1.5px solid #E5E7EB',
+  background: 'var(--app-btn-ghost, #FFFFFF)',
+  color: 'var(--app-btn-ghost-text, #0176D3)',
+  border: '1.5px solid var(--app-btn-ghost-border, #E5E7EB)',
   borderRadius: 10,
   padding: '10px 20px',
   fontSize: 14,
@@ -86,7 +88,7 @@ export const btnG = {
 };
 
 export const btnD = {
-  background: '#FFFFFF',
+  background: 'transparent',
   color: '#BA0517',
   border: '1px solid #BA0517',
   borderRadius: 4,

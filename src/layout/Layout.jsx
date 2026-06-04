@@ -432,7 +432,7 @@ function NotificationBell({ userRole, compact = false }) {
         >
           <div style={{ background: '#fff', borderRadius: isMobile ? '24px 24px 0 0' : 20, width: '100%', maxWidth: isMobile ? '100%' : 460, maxHeight: isMobile ? '90dvh' : 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: isMobile ? 'notifSlideUp 0.3s cubic-bezier(0.32,0.72,0,1) both' : 'none', paddingBottom: isMobile ? 'max(16px, env(safe-area-inset-bottom, 16px))' : 0 }}>
             {/* Modal header */}
-            <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ background: 'linear-gradient(135deg, var(--app-sidebar-bg, #032D60), var(--app-primary, #0176D3))', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                   {TYPE_ICONS[detail.type] || '🔔'}
@@ -1097,9 +1097,9 @@ export default function Layout({ user, onLogout }) {
         </div>
 
         {/* Main Content */}
-        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: '24px', background: '#F3F2F2', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
+        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: '24px', background: 'var(--app-bg, #F3F2F2)', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
           {/* Mobile Hamburger Header */}
-          <div className="tn-hamburger" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, background: '#032D60', borderRadius: 12, padding: '10px 14px' }}>
+          <div className="tn-hamburger" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, background: 'var(--app-hamburger-bg, #032D60)', borderRadius: 12, padding: '10px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, width: '100%' }}>
               <button className="tn-app-icon-btn" onClick={() => setMobileOpen(true)} aria-label="Open navigation menu" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>☰</button>
               <div className="tn-hamburger-logo" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}><Logo size="sm" variant="full" theme="dark" customLogoUrl={customLogoUrl || orgLogo} /></div>

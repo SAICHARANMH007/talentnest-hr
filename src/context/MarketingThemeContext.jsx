@@ -4,6 +4,21 @@ export const THEMES = {
   dark: {
     id: 'dark',
     label: 'Dark',
+    // App dashboard colors
+    appBg:          '#070D1A',
+    appSidebarBg:   '#040910',
+    appCardBg:      '#111827',
+    appCardBorder:  'rgba(255,255,255,0.08)',
+    appText:        '#F1F5F9',
+    appTextSec:     '#94A3B8',
+    appTextMuted:   'rgba(255,255,255,0.45)',
+    appInputBg:     '#0F172A',
+    appInputBorder: 'rgba(255,255,255,0.12)',
+    appHamburgerBg: '#040910',
+    appPrimary:     '#3B82F6',
+    appBtnGhost:    '#0F172A',
+    appBtnGhostBorder: 'rgba(255,255,255,0.15)',
+    appBtnGhostText:'#93C5FD',
     // Brand colors
     primary:     '#3B82F6',
     primaryDark: '#1D4ED8',
@@ -47,6 +62,21 @@ export const THEMES = {
   light: {
     id: 'light',
     label: 'Light',
+    // App dashboard colors — current look preserved
+    appBg:          '#F3F2F2',
+    appSidebarBg:   '#032D60',
+    appCardBg:      '#FFFFFF',
+    appCardBorder:  '#E5E7EB',
+    appText:        '#181818',
+    appTextSec:     '#3E3E3C',
+    appTextMuted:   '#706E6B',
+    appInputBg:     '#FFFFFF',
+    appInputBorder: '#E5E7EB',
+    appHamburgerBg: '#032D60',
+    appPrimary:     '#0176D3',
+    appBtnGhost:    '#FFFFFF',
+    appBtnGhostBorder: '#E5E7EB',
+    appBtnGhostText:'#0176D3',
     primary:     '#0176D3',
     primaryDark: '#014486',
     accent:      '#0891B2',
@@ -83,6 +113,21 @@ export const THEMES = {
   mixed: {
     id: 'mixed',
     label: 'Ocean',
+    // App dashboard colors — deep ocean midnight
+    appBg:          '#03111F',
+    appSidebarBg:   '#011829',
+    appCardBg:      '#0A2744',
+    appCardBorder:  'rgba(0,180,216,0.18)',
+    appText:        '#E8F8FF',
+    appTextSec:     '#A8D8EA',
+    appTextMuted:   'rgba(168,216,234,0.6)',
+    appInputBg:     '#071E33',
+    appInputBorder: 'rgba(0,180,216,0.22)',
+    appHamburgerBg: '#011829',
+    appPrimary:     '#00B4D8',
+    appBtnGhost:    '#071E33',
+    appBtnGhostBorder: 'rgba(0,180,216,0.3)',
+    appBtnGhostText:'#00B4D8',
     primary:     '#00B4D8',
     primaryDark: '#0096C7',
     accent:      '#06D6A0',
@@ -198,6 +243,22 @@ export function MarketingThemeProvider({ children }) {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '255,255,255';
     };
+    // App dashboard CSS variables — applied globally so all pages theme correctly
+    r.style.setProperty('--app-bg',              theme.appBg);
+    r.style.setProperty('--app-sidebar-bg',      theme.appSidebarBg);
+    r.style.setProperty('--app-card-bg',         theme.appCardBg);
+    r.style.setProperty('--app-card-border',     theme.appCardBorder);
+    r.style.setProperty('--app-text',            theme.appText);
+    r.style.setProperty('--app-text-sec',        theme.appTextSec);
+    r.style.setProperty('--app-text-muted',      theme.appTextMuted);
+    r.style.setProperty('--app-input-bg',        theme.appInputBg);
+    r.style.setProperty('--app-input-border',    theme.appInputBorder);
+    r.style.setProperty('--app-hamburger-bg',    theme.appHamburgerBg);
+    r.style.setProperty('--app-primary',         theme.appPrimary);
+    r.style.setProperty('--app-btn-ghost',       theme.appBtnGhost);
+    r.style.setProperty('--app-btn-ghost-border',theme.appBtnGhostBorder);
+    r.style.setProperty('--app-btn-ghost-text',  theme.appBtnGhostText);
+
     r.style.setProperty('--mkt-surface-bg-rgb',      hexToRgb(theme.surfaceBg));
     r.style.setProperty('--mkt-section-bg-rgb',      hexToRgb(theme.sectionBg));
     r.style.setProperty('--mkt-dark-rgb',             theme.darkRgb);

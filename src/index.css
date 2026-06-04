@@ -323,8 +323,8 @@ body {
 html, body, #root {
   height: 100%;
   font-family: 'Plus Jakarta Sans', 'Salesforce Sans', Arial, sans-serif;
-  background: var(--sf-bg);
-  color: var(--sf-text);
+  background: var(--app-bg, var(--sf-bg, #F3F2F2));
+  color: var(--app-text, var(--sf-text, #181818));
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
@@ -332,10 +332,33 @@ html, body, #root {
 a { color: var(--sf-blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ── Global app theme overrides — applied when dark/ocean theme active ── */
+[data-mkt-theme="dark"] .tn-main-content,
+[data-mkt-theme="mixed"] .tn-main-content {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+[data-mkt-theme="dark"] .tn-main-content h1,
+[data-mkt-theme="dark"] .tn-main-content h2,
+[data-mkt-theme="dark"] .tn-main-content h3,
+[data-mkt-theme="dark"] .tn-main-content h4,
+[data-mkt-theme="mixed"] .tn-main-content h1,
+[data-mkt-theme="mixed"] .tn-main-content h2,
+[data-mkt-theme="mixed"] .tn-main-content h3,
+[data-mkt-theme="mixed"] .tn-main-content h4 {
+  color: var(--app-text) !important;
+}
+[data-mkt-theme="dark"] .tn-main-content p,
+[data-mkt-theme="dark"] .tn-main-content span:not([class*="badge"]):not([class*="chip"]):not([class*="tag"]),
+[data-mkt-theme="mixed"] .tn-main-content p,
+[data-mkt-theme="mixed"] .tn-main-content span:not([class*="badge"]):not([class*="chip"]):not([class*="tag"]) {
+  color: inherit;
+}
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #F1F5F9; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 5px; border: 2px solid #F1F5F9; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+::-webkit-scrollbar-track { background: var(--app-bg, #F1F5F9); }
+::-webkit-scrollbar-thumb { background: var(--app-card-border, #CBD5E1); border-radius: 5px; border: 2px solid var(--app-bg, #F1F5F9); }
+::-webkit-scrollbar-thumb:hover { background: var(--app-text-sec, #94A3B8); }
 
 /* Salesforce focus ring */
 *:focus-visible {
@@ -1151,12 +1174,12 @@ textarea:focus-visible {
    (iOS Safari, Android Chrome, in-app browsers, PWA mode).
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Base sidebar — always dark navy */
+/* Base sidebar — color driven by active theme */
 .tn-sidebar,
 .tn-sidebar-mobile {
   display: flex;
   flex-direction: column;
-  background: #032D60;
+  background: var(--app-sidebar-bg, #032D60);
 }
 
 /* ── Desktop & Tablet (≥768px): fixed sidebar, main content offset ── */
