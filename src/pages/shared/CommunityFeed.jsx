@@ -865,6 +865,19 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
+  // Migrate: when posts load, populate bookmarkData for any IDs that are missing data
+  useEffect(() => {
+    if (bookmarks.length === 0 || posts.length === 0) return;
+    const missing = bookmarks.filter(id => !bookmarkData[id]);
+    if (missing.length === 0) return;
+    const found = posts.filter(p => missing.includes(String(p._id)));
+    if (found.length === 0) return;
+    const nextData = { ...bookmarkData };
+    found.forEach(p => { nextData[String(p._id)] = p; });
+    setBookmarkData(nextData);
+    saveBookmarkData(nextData);
+  }, [posts]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleCreate = async (data) => {
     await api.createPost(data);
     loadPosts(1, filter);

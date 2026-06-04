@@ -12,9 +12,10 @@ import { matchJobsToCandidate } from '../../api/matching.js';
 export default function CandidateSmartMatch({ user }) {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
-  const [loading, setLoad] = useState(false);
+  const [loading, setLoad] = useState(true);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
@@ -23,38 +24,52 @@ export default function CandidateSmartMatch({ user }) {
   const [companyReviews, setCompanyReviews] = useState({}); // companyName → reviews array
 
   useEffect(() => {
-    api.getPublicJobs().then(r => setJobs(Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : [])));
-    // load already-applied jobs for this candidate via the /mine endpoint
-    api.getMyApplications().then(apps => {
-      setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
-    }).catch(() => {});
+    // Fetch profile and jobs in parallel
+    Promise.allSettled([
+      api.getUser(user.id),
+      api.getPublicJobs(),
+      api.getMyApplications(),
+    ]).then(([profRes, jobsRes, appsRes]) => {
+      const p = profRes.status === 'fulfilled' ? (profRes.value?.data || profRes.value) : null;
+      if (p) setProfile(p);
+      const jobArr = jobsRes.status === 'fulfilled'
+        ? (Array.isArray(jobsRes.value) ? jobsRes.value : (Array.isArray(jobsRes.value?.data) ? jobsRes.value.data : []))
+        : [];
+      setJobs(jobArr);
+      if (appsRes.status === 'fulfilled') {
+        const apps = appsRes.value || [];
+        setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
+      }
+    });
   }, [user.id]);
 
-  const run = async (currentQuery = query) => {
+  const run = (currentQuery = query, jobList = jobs, prof = profile) => {
+    if (!prof || jobList.length === 0) return;
     setLoad(true);
-    try {
-      const profileRes = await api.getUser(user.id);
-      const profile = profileRes.data || profileRes;
-      setResults(matchJobsToCandidate(profile, jobs, currentQuery));
-    } catch (e) { setToast(`❌ Matching failed: ${e.message}`); }
-    setLoad(false);
+    // Run matching asynchronously to avoid blocking the UI thread
+    setTimeout(() => {
+      try {
+        setResults(matchJobsToCandidate(prof, jobList, currentQuery));
+      } catch (e) { setToast(`❌ Matching failed: ${e.message}`); }
+      setLoad(false);
+    }, 0);
   };
 
-  // Auto-run when jobs are loaded
+  // Auto-run once both jobs and profile are ready
   useEffect(() => {
-    if (jobs.length > 0) {
-      run(query);
+    if (jobs.length > 0 && profile) {
+      run(query, jobs, profile);
     }
-  }, [jobs]);
+  }, [jobs, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced search
+  // Debounced search on query change
   useEffect(() => {
-    if (jobs.length === 0) return;
+    if (jobs.length === 0 || !profile) return;
     const timer = setTimeout(() => {
-      run(query);
+      run(query, jobs, profile);
     }, 400);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apply = async (jobId) => {
     if (!jobId) return;
@@ -98,7 +113,7 @@ export default function CandidateSmartMatch({ user }) {
             placeholder="Search by role, skill, or location..."
             style={{ flex: 1 }}
           />
-          <button onClick={() => run(query)} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
+          <button onClick={() => run(query, jobs, profile)} disabled={loading} style={{ ...btnP, opacity: loading ? 0.6 : 1 }}>
             {loading ? <><Spinner /> Matching…</> : "📊 Refresh Match"}
           </button>
         </div>

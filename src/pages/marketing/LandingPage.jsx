@@ -133,7 +133,7 @@ const HERO_VALUE_CARDS = [
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function LandingPage() {
-  useMarketingTheme();
+  const { theme } = useMarketingTheme();
   const [liveStats, setLiveStats] = useState(null);
   const [applying, setApplying]   = useState(null);
   const [isMobile, setIsMobile]   = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -256,10 +256,10 @@ export default function LandingPage() {
       <section className="mkt-hero-section" style={{ minHeight: isMobile ? 'auto' : '100vh', position: 'relative', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', overflow: 'hidden', paddingTop: 80 }}>
         {/* BG */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1600&auto=format&fit=crop&q=65')", backgroundSize: 'cover', backgroundPosition: 'center top' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(3,17,38,0.96) 0%,rgba(1,36,86,0.92) 100%)' }} />
-        {/* Glow orbs */}
-        <div style={{ position: 'absolute', top: '-10%', left: '-5%', width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle,rgba(1,118,211,0.25) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-15%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle,rgba(0,194,203,0.2) 0%,transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--mkt-hero-overlay)', transition: 'background 0.5s ease' }} />
+        {/* Glow orbs — theme-aware */}
+        <div style={{ position: 'absolute', top: '-10%', left: '-5%', width: 700, height: 700, borderRadius: '50%', background: `radial-gradient(circle,${theme.primary}40 0%,transparent 70%)`, pointerEvents: 'none', transition: 'background 0.5s ease' }} />
+        <div style={{ position: 'absolute', bottom: '-15%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: `radial-gradient(circle,${theme.accent}33 0%,transparent 70%)`, pointerEvents: 'none', transition: 'background 0.5s ease' }} />
         {/* Grid */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
@@ -718,7 +718,7 @@ export default function LandingPage() {
       <style>{`
         @keyframes tn-float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
         
-        .mkt-stat-item { border-right: 1px solid rgba(255,255,255,0.1); }
+        .mkt-stat-item { border-right: 1px solid var(--mkt-card-border); }
         .mkt-stat-item:last-child { border-right: none; }
 
         @media(max-width:768px){

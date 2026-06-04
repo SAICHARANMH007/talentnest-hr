@@ -153,6 +153,9 @@ export function MarketingThemeProvider({ children }) {
     r.style.setProperty('--mkt-stats-text',       theme.statsTextColor);
     r.style.setProperty('--mkt-stats-label',      theme.statsLabelColor);
 
+    // Hero overlay (photo section tinted gradient)
+    r.style.setProperty('--mkt-hero-overlay',    theme.heroOverlay);
+
     // Surface / section
     r.style.setProperty('--mkt-section-bg',    theme.sectionBg);
     r.style.setProperty('--mkt-surface-bg',    theme.surfaceBg);
