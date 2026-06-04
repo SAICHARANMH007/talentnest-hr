@@ -32,13 +32,17 @@ export const feedPostService = {
   },
   async uploadFeedImage(formData) {
     const token = getToken();
-    const headers = {};
+    const headers = { 'X-Requested-With': 'TalentNest' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE_URL}/social-posts/upload-image`, {
       method: 'POST',
       headers,
       body: formData,
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Upload failed (${res.status})`);
+    }
     return res.json();
   },
   async getPublicPost(id) {

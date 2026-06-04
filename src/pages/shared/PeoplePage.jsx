@@ -460,15 +460,43 @@ export default function PeoplePage({ user }) {
     { id: 'sent',        label: `Sent (${sent.length})` },
   ];
 
-  const handleContactSync = async () => {
-    const emails = syncPaste.split(/[\n,;]+/).map(e => e.trim().toLowerCase()).filter(e => e.includes('@'));
-    if (!emails.length) return;
+  const runSync = async (contacts) => {
+    if (!contacts.length) return;
     setSyncing(true);
+    setSyncResults(null);
     try {
-      const r = await api.syncContacts(emails.map(email => ({ email })));
-      setSyncResults(r);
+      const r = await api.syncContacts(contacts);
+      setSyncResults(r?.data || r);
     } catch { setSyncResults({ matched: [], unmatched: [] }); }
     finally { setSyncing(false); }
+  };
+
+  const handleContactSync = async () => {
+    const tokens = syncPaste.split(/[\n,;]+/).map(t => t.trim()).filter(Boolean);
+    const contacts = tokens.map(t => {
+      const clean = t.toLowerCase();
+      if (clean.includes('@')) return { email: clean };
+      const digits = t.replace(/\D/g, '');
+      if (digits.length >= 7) return { phone: digits };
+      return null;
+    }).filter(Boolean);
+    if (!contacts.length) return;
+    await runSync(contacts);
+  };
+
+  const handlePhoneContactsSync = async () => {
+    if (!('contacts' in navigator)) return;
+    try {
+      setSyncOpen(true);
+      const cts = await navigator.contacts.select(['name', 'email', 'tel'], { multiple: true });
+      const mapped = cts.flatMap(c => {
+        const items = [];
+        (c.email || []).forEach(e => { if (e?.includes('@')) items.push({ email: e.trim().toLowerCase(), name: c.name?.[0] || '' }); });
+        (c.tel || []).forEach(t => { const d = t.replace(/\D/g, ''); if (d.length >= 7) items.push({ phone: d, name: c.name?.[0] || '' }); });
+        return items;
+      });
+      if (mapped.length) await runSync(mapped);
+    } catch { /* user dismissed or permission denied */ }
   };
 
   const uid = String(user?.id || user?._id || '');
@@ -515,6 +543,121 @@ export default function PeoplePage({ user }) {
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── WhatsApp-style Contact Sync Banner ── */}
+      {!searchQuery.trim() && (
+        <div style={{ padding: isMobile ? '0 12px' : 0, marginBottom: 16 }}>
+          <div style={{ background: 'linear-gradient(135deg, #064E3B 0%, #065F46 40%, #047857 100%)', borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 4px 20px rgba(6,78,59,0.25)' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>📱</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, marginBottom: 2 }}>Find people you know on TalentNest</div>
+              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Sync phone contacts — see who's here and invite those who aren't, just like WhatsApp</div>
+            </div>
+            {'contacts' in navigator ? (
+              <button
+                onClick={handlePhoneContactsSync}
+                disabled={syncing}
+                style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(37,211,102,0.4)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {syncing ? '⏳ Syncing…' : '📲 Sync Phone Contacts'}
+              </button>
+            ) : (
+              <button
+                onClick={() => { setSyncOpen(v => !v); setSyncResults(null); setSyncPaste(''); }}
+                style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(37,211,102,0.4)' }}>
+                {syncOpen ? '✕ Close' : '✉️ Find by Email / Phone'}
+              </button>
+            )}
+          </div>
+
+          {/* Paste input — shown when native contacts not available, or as fallback */}
+          {(syncOpen || !('contacts' in navigator)) && (
+            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '0 0 14px 14px', marginTop: -8, paddingTop: 16, padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Paste email addresses or phone numbers (one per line, comma, or semicolon)</div>
+              <textarea
+                id="tn-sync-textarea"
+                value={syncPaste}
+                onChange={e => setSyncPaste(e.target.value)}
+                placeholder={'john@email.com\n+919876543210\njane@company.com, 9876001234'}
+                rows={4}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #D1D5DB', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#FAFBFC', marginBottom: 10 }}
+              />
+              <button
+                onClick={handleContactSync}
+                disabled={syncing || !syncPaste.trim()}
+                style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: !syncPaste.trim() ? '#E5E7EB' : '#059669', color: !syncPaste.trim() ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: !syncPaste.trim() ? 'not-allowed' : 'pointer' }}>
+                {syncing ? '🔍 Searching…' : '🔍 Find on TalentNest'}
+              </button>
+            </div>
+          )}
+
+          {/* Sync results */}
+          {syncResults && (
+            <div style={{ marginTop: 12 }}>
+              {syncResults.matched?.length > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#D1FAE5', padding: '4px 12px', borderRadius: 20 }}>✓ {syncResults.matched.length} contact{syncResults.matched.length !== 1 ? 's' : ''} found on TalentNest</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {syncResults.matched.map(person => (
+                      <PersonCard
+                        key={String(person._id || person.id)}
+                        person={person}
+                        onAction={handleAction}
+                        loading={actionLoading === String(person._id || person.id)}
+                        onCardClick={person.connectionStatus === 'accepted' ? () => navigate(`/app/profile/${String(person._id || person.id)}`) : undefined}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {syncResults.unmatched?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>
+                    {syncResults.unmatched.length} contact{syncResults.unmatched.length !== 1 ? 's' : ''} not on TalentNest yet — invite them to join
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {syncResults.unmatched.map((c, i) => {
+                      const key = c.email || c.phone || i;
+                      const invited = invitedSet.has(key);
+                      const inviteLink = `${window.location.origin}/auth?ref=invite${c.email ? `&email=${encodeURIComponent(c.email)}` : ''}`;
+                      const inviteMsg = `Hi ${c.name ? c.name.split(' ')[0] : 'there'}! I'm using TalentNest for career networking. Join me: ${inviteLink}`;
+                      return (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                            {c.name ? c.name[0].toUpperCase() : '👤'}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.email || c.phone}</div>
+                            {c.name && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{c.email || c.phone}</div>}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (c.phone) {
+                                window.open(`https://wa.me/?text=${encodeURIComponent(inviteMsg)}`, '_blank');
+                              } else if (c.email) {
+                                window.open(`mailto:${c.email}?subject=Join me on TalentNest&body=${encodeURIComponent(inviteMsg)}`, '_blank');
+                              } else {
+                                navigator.clipboard?.writeText(inviteMsg).catch(() => {});
+                              }
+                              setInvitedSet(s => new Set([...s, key]));
+                            }}
+                            style={{ padding: '7px 14px', borderRadius: 8, border: invited ? '1px solid #D1D5DB' : '1px solid #25D366', background: invited ? '#F9FAFB' : '#F0FDF4', color: invited ? '#6B7280' : '#065F46', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                            {invited ? '✓ Invited' : c.phone ? '📲 WhatsApp Invite' : '✉️ Email Invite'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '16px', color: '#6B7280', fontSize: 13, background: '#F9FAFB', borderRadius: 10 }}>No contacts matched. Check the format (emails or phone numbers) and try again.</div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -671,131 +814,6 @@ export default function PeoplePage({ user }) {
                 </>
               )}
 
-              {/* Contact Sync section — shown in discover tab */}
-              {tab === 'discover' && (
-                <div style={{ ...card, padding: '20px', borderRadius: 16, marginTop: 16, background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)', border: '1px solid #BAE6FD' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: syncOpen ? 16 : 0 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>📱</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0C4A6E', marginBottom: 2 }}>Find Friends on TalentNest</div>
-                      <div style={{ fontSize: 12, color: '#0369A1', lineHeight: 1.5 }}>See which of your contacts are already here. Like WhatsApp — sync your phone contacts or paste emails.</div>
-                    </div>
-                    <button onClick={() => { setSyncOpen(v => !v); setSyncResults(null); setSyncPaste(''); }}
-                      style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: syncOpen ? '#E0F2FE' : '#0284C7', color: syncOpen ? '#0369A1' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {syncOpen ? 'Close' : '📱 Sync Contacts'}
-                    </button>
-                  </div>
-                  {syncOpen && (
-                    <>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                        {'contacts' in navigator ? (
-                          <button
-                            onClick={async () => {
-                              try {
-                                const contacts = await navigator.contacts.select(['email', 'tel', 'name'], { multiple: true });
-                                const mapped = contacts.flatMap(c => {
-                                  const entries = [];
-                                  (c.email || []).forEach(e => entries.push({ email: e, name: c.name?.[0] || '' }));
-                                  (c.tel || []).forEach(t => entries.push({ phone: t, name: c.name?.[0] || '' }));
-                                  return entries;
-                                }).filter(x => x.email || x.phone);
-                                if (!mapped.length) return;
-                                setSyncing(true);
-                                try {
-                                  const r = await api.syncContacts(mapped);
-                                  setSyncResults(r);
-                                } catch { setSyncResults({ matched: [], unmatched: [] }); }
-                                finally { setSyncing(false); }
-                              } catch {}
-                            }}
-                            disabled={syncing}
-                            style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#059669', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {syncing ? '⏳ Syncing…' : '📲 Use Phone Contacts'}
-                          </button>
-                        ) : null}
-                        <button onClick={() => document.getElementById('tn-sync-textarea')?.focus()}
-                          style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #0284C7', background: '#fff', color: '#0284C7', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                          ✉️ Paste Emails
-                        </button>
-                      </div>
-                      <textarea
-                        id="tn-sync-textarea"
-                        value={syncPaste}
-                        onChange={e => setSyncPaste(e.target.value)}
-                        placeholder={'Paste email addresses or phone numbers here…\ne.g. john@example.com, +919876543210, jane@company.com'}
-                        rows={3}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #BAE6FD', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}
-                      />
-                      <button onClick={handleContactSync} disabled={syncing || !syncPaste.trim()}
-                        style={{ padding: '9px 22px', borderRadius: 10, border: 'none', background: !syncPaste.trim() ? '#E5E7EB' : '#0284C7', color: !syncPaste.trim() ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: !syncPaste.trim() ? 'not-allowed' : 'pointer', marginBottom: 14 }}>
-                        {syncing ? '🔍 Searching…' : '🔍 Find on TalentNest'}
-                      </button>
-                      {syncResults && (
-                        <div>
-                          {syncResults.matched?.length > 0 && (
-                            <>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#D1FAE5', padding: '3px 10px', borderRadius: 20 }}>✓ {syncResults.matched.length} found on TalentNest</span>
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                                {syncResults.matched.map(person => (
-                                  <PersonCard
-                                    key={String(person._id || person.id)}
-                                    person={person}
-                                    onAction={handleAction}
-                                    loading={actionLoading === String(person._id || person.id)}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          {syncResults.unmatched?.length > 0 && (
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', background: '#F3F4F6', padding: '3px 10px', borderRadius: 20 }}>{syncResults.unmatched.length} not on TalentNest yet</span>
-                                <span style={{ fontSize: 11, color: '#9CA3AF' }}>— invite them to join!</span>
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {syncResults.unmatched.map((c, i) => {
-                                  const key = c.email || c.phone || i;
-                                  const invited = invitedSet.has(key);
-                                  const inviteMsg = `Hi ${c.name ? c.name.split(' ')[0] : 'there'}! I'm using TalentNest for career networking. Join me here: ${window.location.origin}/auth?ref=invite${c.email ? `&email=${encodeURIComponent(c.email)}` : ''}`;
-                                  return (
-                                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB' }}>
-                                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                                        {c.name ? c.name[0].toUpperCase() : '👤'}
-                                      </div>
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.email || c.phone}</div>
-                                        {c.name && <div style={{ fontSize: 11, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || c.phone}</div>}
-                                      </div>
-                                      <button
-                                        onClick={() => {
-                                          if (c.email) {
-                                            window.open(`mailto:${c.email}?subject=Join me on TalentNest&body=${encodeURIComponent(inviteMsg)}`, '_blank');
-                                          } else {
-                                            navigator.clipboard?.writeText(inviteMsg).catch(() => {});
-                                          }
-                                          setInvitedSet(s => new Set([...s, key]));
-                                        }}
-                                        style={{ padding: '6px 14px', borderRadius: 8, border: invited ? '1px solid #D1D5DB' : '1px solid #0176D3', background: invited ? '#F9FAFB' : '#EFF6FF', color: invited ? '#6B7280' : '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                                        {invited ? '✓ Invited' : c.email ? '✉️ Invite' : '📋 Copy Invite'}
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                          {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '16px 0', color: '#6B7280', fontSize: 13 }}>No contacts found. Check the format and try again.</div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </>

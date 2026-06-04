@@ -542,6 +542,7 @@ function CreatePost({ user, onCreate }) {
   const [expanded,   setExpanded]   = useState(false);
   const [images,     setImages]     = useState([]);
   const [uploading,  setUploading]  = useState(false);
+  const [uploadErr,  setUploadErr]  = useState('');
   const fileRef = useRef(null);
 
   const POST_TYPES = [
@@ -560,16 +561,20 @@ function CreatePost({ user, onCreate }) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
+    setUploadErr('');
     const uploaded = [];
+    let failed = 0;
     for (const file of files.slice(0, 4 - images.length)) {
       try {
         const formData = new FormData();
         formData.append('image', file);
         const r = await api.uploadFeedImage(formData);
         if (r?.url) uploaded.push(r.url);
-      } catch {}
+        else failed++;
+      } catch (err) { failed++; }
     }
     setImages(prev => [...prev, ...uploaded].slice(0, 4));
+    if (failed > 0) setUploadErr(`${failed} photo${failed > 1 ? 's' : ''} failed to upload. Please try again.`);
     setUploading(false);
     e.target.value = '';
   };
@@ -639,12 +644,13 @@ function CreatePost({ user, onCreate }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <button
-                    onClick={() => fileRef.current?.click()}
+                    onClick={() => { setUploadErr(''); fileRef.current?.click(); }}
                     disabled={images.length >= 4 || uploading}
                     style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 600, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1 }}>
                     📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
                   </button>
                   <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
+                  {uploadErr && <span style={{ fontSize: 11, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '3px 8px' }}>⚠️ {uploadErr}</span>}
                   <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
                     {charLeft < 500 ? `${charLeft} left` : ''}
                   </span>
