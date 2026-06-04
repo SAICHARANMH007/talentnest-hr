@@ -273,10 +273,10 @@ function ShareButton({ postId }) {
   );
 }
 
-function BookmarkButton({ postId, bookmarks, onToggle }) {
-  const saved = bookmarks.includes(postId);
+function BookmarkButton({ post, bookmarks, onToggle }) {
+  const saved = bookmarks.includes(post._id);
   return (
-    <button onClick={() => onToggle(postId)} title={saved ? 'Remove bookmark' : 'Save post'}
+    <button onClick={() => onToggle(post._id, post)} title={saved ? 'Remove bookmark' : 'Save post'}
       style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: saved ? '#F59E0B' : '#D1D5DB', transition: 'color 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.color = '#F59E0B'}
       onMouseLeave={e => { if (!saved) e.currentTarget.style.color = '#D1D5DB'; }}>
@@ -402,7 +402,7 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
           onConnect={onConnect}
         />
       )}
-      <BookmarkButton postId={post._id} bookmarks={bookmarks} onToggle={onToggleBookmark} />
+      <BookmarkButton post={post} bookmarks={bookmarks} onToggle={onToggleBookmark} />
       {/* ⋯ menu for delete + report */}
       <div style={{ position: 'relative' }}>
         <button onClick={() => setShowMenu(v => !v)}
@@ -790,8 +790,8 @@ function SearchBar({ value, onChange }) {
   );
 }
 
-function SavedPostsView({ posts, bookmarks, ...props }) {
-  const saved = posts.filter(p => bookmarks.includes(p._id));
+function SavedPostsView({ bookmarks, bookmarkData, ...props }) {
+  const saved = bookmarks.map(id => bookmarkData[id]).filter(Boolean);
   if (!saved.length) {
     return (
       <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
@@ -806,8 +806,11 @@ function SavedPostsView({ posts, bookmarks, ...props }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 const BOOKMARK_KEY = 'tn_feed_bookmarks';
+const BOOKMARK_DATA_KEY = 'tn_feed_bookmark_data';
 function loadBookmarks() { try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch { return []; } }
+function loadBookmarkData() { try { return JSON.parse(localStorage.getItem(BOOKMARK_DATA_KEY) || '{}'); } catch { return {}; } }
 function saveBookmarks(ids) { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ids)); }
+function saveBookmarkData(data) { try { localStorage.setItem(BOOKMARK_DATA_KEY, JSON.stringify(data)); } catch {} }
 
 export default function CommunityFeed({ user }) {
   const [posts,        setPosts]        = useState([]);
@@ -821,6 +824,7 @@ export default function CommunityFeed({ user }) {
   const [activeHash,   setActiveHash]   = useState(null);
   const [tab,          setTab]          = useState('feed');
   const [bookmarks,    setBookmarks]    = useState(loadBookmarks);
+  const [bookmarkData, setBookmarkData] = useState(loadBookmarkData);
   // Connections
   const [connections,  setConnections]  = useState([]);
   const [pendingIds,   setPendingIds]   = useState(new Set());
@@ -887,9 +891,19 @@ export default function CommunityFeed({ user }) {
     setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: (p.comments || []).filter(c => String(c._id) !== commentId) } : p));
   };
 
-  const handleToggleBookmark = (postId) => {
-    const next = bookmarks.includes(postId) ? bookmarks.filter(id => id !== postId) : [...bookmarks, postId];
-    setBookmarks(next); saveBookmarks(next);
+  const handleToggleBookmark = (postId, post) => {
+    if (bookmarks.includes(postId)) {
+      const next = bookmarks.filter(id => id !== postId);
+      const nextData = { ...bookmarkData };
+      delete nextData[postId];
+      setBookmarks(next); saveBookmarks(next);
+      setBookmarkData(nextData); saveBookmarkData(nextData);
+    } else {
+      const next = [...bookmarks, postId];
+      const nextData = { ...bookmarkData, [postId]: post };
+      setBookmarks(next); saveBookmarks(next);
+      setBookmarkData(nextData); saveBookmarkData(nextData);
+    }
   };
 
   const handleHashtagClick = (tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); };
@@ -962,6 +976,7 @@ export default function CommunityFeed({ user }) {
     onDelete: handleDelete,
     onConnect: handleConnect,
     bookmarks,
+    bookmarkData,
     onToggleBookmark: handleToggleBookmark,
     onHashtagClick: handleHashtagClick,
     isMobile,
@@ -1086,7 +1101,7 @@ export default function CommunityFeed({ user }) {
             </>
           )}
 
-          {tab === 'saved' && <SavedPostsView posts={posts} {...sharedPostProps} />}
+          {tab === 'saved' && <SavedPostsView {...sharedPostProps} />}
         </div>
 
         {/* Right sidebar */}

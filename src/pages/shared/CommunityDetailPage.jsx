@@ -271,22 +271,28 @@ function CreateCommunityPost({ user, community, onCreate }) {
   const fileRef = useRef(null);
   const bg = community?.coverColor || '#0176D3';
 
+  const [uploadError, setUploadError] = useState('');
+
   const handleImagePick = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const remaining = 4 - images.length;
     if (remaining <= 0) return;
     setUploading(true);
+    setUploadError('');
     const uploaded = [];
+    let failed = 0;
     for (const file of files.slice(0, remaining)) {
       try {
         const fd = new FormData();
         fd.append('image', file);
         const r = await api.uploadFeedImage(fd);
         if (r?.url) uploaded.push(r.url);
-      } catch {}
+        else failed++;
+      } catch { failed++; }
     }
-    setImages(prev => [...prev, ...uploaded]);
+    if (uploaded.length) setImages(prev => [...prev, ...uploaded]);
+    if (failed > 0) setUploadError(`${failed} photo${failed > 1 ? 's' : ''} failed to upload. Check your connection.`);
     setUploading(false);
     e.target.value = '';
   };
@@ -343,6 +349,10 @@ function CreateCommunityPost({ user, community, onCreate }) {
                 </div>
               )}
             </div>
+          )}
+
+          {uploadError && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '6px 10px' }}>⚠️ {uploadError}</div>
           )}
 
           {expanded && (
@@ -446,6 +456,115 @@ function MembersTab({ members, loading, total }) {
             {m.location && <div style={{ fontSize: 10, color: '#9CA3AF' }}>📍 {m.location}</div>}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── About / Guidelines Tab ─────────────────────────────────────────────────────
+const COMMUNITY_POST_GUIDELINES = {
+  tech    : ['Share coding tips, tutorials, and tech news', 'Ask questions about programming, tools, or frameworks', 'Post job openings relevant to developers', 'Share project showcases or achievements', 'Discuss industry trends and best practices'],
+  hr      : ['Share hiring tips and recruiting best practices', 'Post job openings for HR roles', 'Discuss talent acquisition strategies', 'Share interview techniques and compensation trends', 'Post HR policy updates or compliance news'],
+  business: ['Share business growth strategies and case studies', 'Post networking events and business opportunities', 'Discuss market trends and industry insights', 'Share entrepreneurship tips and startup resources', 'Post B2B collaboration opportunities'],
+  design  : ['Share design inspiration and portfolio work', 'Post UX/UI tips and design resources', 'Discuss design tools, trends, and methodologies', 'Share creative challenges and feedback requests', 'Post design job openings and freelance work'],
+  other   : ['Share relevant news and updates', 'Ask questions and seek advice from members', 'Post opportunities and announcements', 'Share resources and learning materials', 'Engage respectfully and professionally'],
+};
+
+const COMMUNITY_RULES = [
+  'Be respectful and professional at all times',
+  'Only post content relevant to this community',
+  'No spam, self-promotion, or unsolicited links',
+  'Credit original sources and authors',
+  'No harassment, hate speech, or offensive content',
+  'Keep discussions constructive and on-topic',
+];
+
+function AboutTab({ community }) {
+  const bg = community?.coverColor || '#0176D3';
+  const guidelines = COMMUNITY_POST_GUIDELINES[community?.category] || COMMUNITY_POST_GUIDELINES.other;
+  const createdDate = community?.createdAt ? new Date(community.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* About */}
+      <div style={{ ...card, padding: '20px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: bg + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>ℹ️</span>
+          About this Community
+        </div>
+        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 14 }}>{community?.description || 'A professional community for members to connect, share, and grow together.'}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 16 }}>👥</span>
+            <span><strong style={{ color: '#0A1628' }}>{community?.memberCount || 0}</strong> members</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 16 }}>🏷️</span>
+            <span>Category: <strong style={{ color: '#0A1628', textTransform: 'capitalize' }}>{community?.category || 'Other'}</strong></span>
+          </div>
+          {createdDate && (
+            <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 16 }}>📅</span>
+              <span>Created <strong style={{ color: '#0A1628' }}>{createdDate}</strong></span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* What to post */}
+      <div style={{ ...card, padding: '20px', borderRadius: 14, border: `1px solid ${bg}22`, background: bg + '06' }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>✏️</span>
+          What to Post Here
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {guidelines.map((g, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#374151' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+              {g}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Post types available */}
+      <div style={{ ...card, padding: '20px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📝</span>
+          Post Types Allowed
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[
+            { type: 'update',       emoji: '💬', label: 'Update',       bg: '#F3F4F6', color: '#374151' },
+            { type: 'tip',          emoji: '💡', label: 'Pro Tip',      bg: '#FEF9C3', color: '#854D0E' },
+            { type: 'question',     emoji: '❓', label: 'Question',     bg: '#EDE9FE', color: '#6D28D9' },
+            { type: 'achievement',  emoji: '🏆', label: 'Achievement',  bg: '#D1FAE5', color: '#065F46' },
+            { type: 'hiring',       emoji: '💼', label: 'Hiring',       bg: '#DBEAFE', color: '#1E40AF' },
+            { type: 'resource',     emoji: '📎', label: 'Resource',     bg: '#E0F2FE', color: '#0369A1' },
+            { type: 'milestone',    emoji: '🎯', label: 'Milestone',    bg: '#FCE7F3', color: '#9D174D' },
+            { type: 'announcement', emoji: '📢', label: 'Announcement', bg: '#FEF3C7', color: '#92400E' },
+          ].map(t => (
+            <span key={t.type} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: t.bg, color: t.color, borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700 }}>
+              {t.emoji} {t.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Community Rules */}
+      <div style={{ ...card, padding: '20px', borderRadius: 14, border: '1px solid #FEE2E2', background: '#FFF5F5' }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📜</span>
+          Community Rules
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {COMMUNITY_RULES.map((rule, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: '#374151' }}>
+              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{['🚫','💬','📣','📚','🤝','🎯'][i]}</span>
+              {rule}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -577,6 +696,7 @@ export default function CommunityDetailPage({ user }) {
     { id: 'posts',   label: `💬 Posts` },
     { id: 'jobs',    label: `💼 Jobs` },
     { id: 'members', label: `👥 Members (${community?.memberCount || 0})` },
+    { id: 'about',   label: `ℹ️ About` },
   ];
 
   if (loading) {
@@ -629,6 +749,10 @@ export default function CommunityDetailPage({ user }) {
             <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 4 }}>{community.name}</div>
             <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>{community.memberCount || 0} members · {community.category}</div>
             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>{community.description}</div>
+            <button onClick={() => setTab('about')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 10, padding: '4px 12px', borderRadius: 20, background: bg + '15', border: `1px solid ${bg}33`, color: bg, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              📜 View Guidelines
+            </button>
           </div>
           {/* Seed posts button (small, for generating content) */}
           {!postsLoading && posts.length < 3 && (
@@ -687,6 +811,7 @@ export default function CommunityDetailPage({ user }) {
 
         {tab === 'jobs' && <JobsTab jobs={jobs} loading={jobsLoading} />}
         {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} />}
+        {tab === 'about' && <AboutTab community={community} />}
       </div>
     </div>
   );

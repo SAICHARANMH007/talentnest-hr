@@ -13,9 +13,27 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
+function maskPhone(p) {
+  if (!p) return null;
+  const s = String(p).replace(/\D/g,'');
+  if (s.length < 6) return '••••••';
+  return s.slice(0,2) + '•'.repeat(s.length - 4) + s.slice(-2);
+}
+function maskEmail(e) {
+  if (!e) return null;
+  const [local, domain] = e.split('@');
+  if (!domain) return e[0] + '•'.repeat(Math.max(1, e.length - 2)) + e.slice(-1);
+  return local[0] + '•'.repeat(Math.max(1, local.length - 1)) + '@' + domain;
+}
+
 function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
-  const [posts, setPosts]     = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [compose, setCompose]     = useState(false);
+  const [msgText, setMsgText]     = useState('');
+  const [sending, setSending]     = useState(false);
+  const [msgSent, setMsgSent]     = useState(false);
+  const [reqSent, setReqSent]     = useState(false);
   const bg = ROLE_COLOR[person.role] || '#0176D3';
   const uid = String(person._id || person.id);
 
@@ -27,24 +45,36 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
       .finally(() => setLoading(false));
   }, [uid]);
 
+  const sendMsg = async () => {
+    if (!msgText.trim()) return;
+    setSending(true);
+    try {
+      await api.sendMessage({ toUserId: uid, message: msgText.trim() });
+      setMsgSent(true); setMsgText(''); setCompose(false);
+    } catch {}
+    setSending(false);
+  };
+
+  const requestContact = async () => {
+    setReqSent(true);
+    try {
+      await api.sendMessage({ toUserId: uid, message: `Hi ${person.name?.split(' ')[0] || 'there'}, I'd like to connect and exchange contact details on TalentNest.` });
+    } catch {}
+  };
+
   return (
     <>
-      {/* Backdrop */}
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }} />
-      {/* Drawer */}
       <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
-        {/* Header banner */}
         <div style={{ height: 90, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
         <div style={{ padding: '0 20px 24px', flex: 1 }}>
-          {/* Avatar */}
           <div style={{ marginTop: -36, marginBottom: 12 }}>
             <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={72} role={person.role} />
           </div>
 
-          {/* Name & info */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
             <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 4, padding: '3px 8px' }}>
@@ -55,21 +85,64 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
             {person.location && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
           </div>
 
+          {/* Privacy-masked contact info */}
+          <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px', marginBottom: 16, border: '1px solid #E5E7EB' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Contact Info</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                {person.phone && <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>📞 {maskPhone(person.phone)}</div>}
+                {person.email && <div style={{ fontSize: 12, color: '#6B7280' }}>✉️ {maskEmail(person.email)}</div>}
+                {!person.phone && !person.email && <div style={{ fontSize: 12, color: '#9CA3AF' }}>Contact details private</div>}
+              </div>
+              {!reqSent ? (
+                <button onClick={requestContact}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  Request Info
+                </button>
+              ) : (
+                <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>✓ Request sent</span>
+              )}
+            </div>
+          </div>
+
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => { window.location.href = `mailto:?subject=Message via TalentNest`; }}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <button onClick={() => setCompose(v => !v)}
               style={{ flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              ✉️ Message
+              ✉️ {compose ? 'Cancel' : 'Message'}
             </button>
-            <button
-              onClick={() => { onRemove(person); onClose(); }}
+            <button onClick={() => { onRemove(person); onClose(); }}
               style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}>
               Remove
             </button>
           </div>
+
+          {/* Inline message compose */}
+          {msgSent && (
+            <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#166534', fontWeight: 600 }}>
+              ✅ Message sent to {person.name?.split(' ')[0]}!
+            </div>
+          )}
+          {compose && (
+            <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Message {person.name?.split(' ')[0] || 'member'}</div>
+              <textarea
+                value={msgText} onChange={e => setMsgText(e.target.value)}
+                placeholder="Write your message…" rows={3}
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, gap: 8 }}>
+                <button onClick={() => { setCompose(false); setMsgText(''); }}
+                  style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={sendMsg} disabled={!msgText.trim() || sending}
+                  style={{ padding: '7px 18px', borderRadius: 8, border: 'none', background: bg, color: '#fff', fontSize: 12, fontWeight: 700, cursor: !msgText.trim() || sending ? 'not-allowed' : 'pointer', opacity: !msgText.trim() || sending ? 0.6 : 1 }}>
+                  {sending ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Recent posts */}
           <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Recent Posts</div>
@@ -82,14 +155,8 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
               {posts.map(p => (
                 <div key={p._id} style={{ ...card, padding: '12px 14px', borderRadius: 10, border: '1px solid #F1F5F9' }}>
                   <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>{timeAgo(p.createdAt)}</div>
-                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {p.content}
-                  </div>
-                  {p.reactions?.length > 0 && (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
-                      {p.reactions.length} reaction{p.reactions.length !== 1 ? 's' : ''}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.content}</div>
+                  {p.reactions?.length > 0 && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>{p.reactions.length} reaction{p.reactions.length !== 1 ? 's' : ''}</div>}
                 </div>
               ))}
             </div>
@@ -179,10 +246,10 @@ function ConnectionButton({ person, onAction, loading }) {
 }
 
 // ── Person Card ────────────────────────────────────────────────────────────────
-function PersonCard({ person, onAction, loading }) {
+function PersonCard({ person, onAction, loading, onCardClick }) {
   return (
-    <div style={{ ...card, padding: '14px 16px', borderRadius: 14 }}
-      onClick={e => e.stopPropagation()}>
+    <div style={{ ...card, padding: '14px 16px', borderRadius: 14, cursor: onCardClick ? 'pointer' : 'default' }}
+      onClick={onCardClick}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -194,7 +261,7 @@ function PersonCard({ person, onAction, loading }) {
           {person.title && <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.title}</div>}
           {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>📍 {person.location}</div>}
         </div>
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           <ConnectionButton person={person} onAction={onAction} loading={loading} />
         </div>
       </div>
@@ -293,6 +360,7 @@ export default function PeoplePage({ user }) {
   const [syncPaste,    setSyncPaste]   = useState('');
   const [syncResults,  setSyncResults] = useState(null);
   const [syncing,      setSyncing]     = useState(false);
+  const [invitedSet,   setInvitedSet]  = useState(new Set());
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -521,15 +589,13 @@ export default function PeoplePage({ user }) {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {connections.map(person => (
-                        <div key={String(person._id || person.id)}
-                          onClick={() => setProfilePerson(person)}
-                          style={{ cursor: 'pointer' }}>
-                          <PersonCard
-                            person={{ ...person, connectionStatus: 'accepted' }}
-                            onAction={(action, p) => { handleAction(action, p); }}
-                            loading={actionLoading === String(person._id || person.id)}
-                          />
-                        </div>
+                        <PersonCard
+                          key={String(person._id || person.id)}
+                          person={{ ...person, connectionStatus: 'accepted' }}
+                          onAction={handleAction}
+                          loading={actionLoading === String(person._id || person.id)}
+                          onCardClick={() => setProfilePerson(person)}
+                        />
                       ))}
                     </div>
                   )}
@@ -605,38 +671,71 @@ export default function PeoplePage({ user }) {
 
               {/* Contact Sync section — shown in discover tab */}
               {tab === 'discover' && (
-                <div style={{ ...card, padding: '16px 18px', borderRadius: 14, marginTop: 16, border: '1px solid #E0F2FE', background: '#F0F9FF' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: syncOpen ? 12 : 0 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0C4A6E' }}>📇 Find contacts on TalentNest</div>
-                      <div style={{ fontSize: 12, color: '#0369A1', marginTop: 2 }}>Paste email addresses to see who's already here</div>
+                <div style={{ ...card, padding: '20px', borderRadius: 16, marginTop: 16, background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)', border: '1px solid #BAE6FD' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: syncOpen ? 16 : 0 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>📱</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0C4A6E', marginBottom: 2 }}>Find Friends on TalentNest</div>
+                      <div style={{ fontSize: 12, color: '#0369A1', lineHeight: 1.5 }}>See which of your contacts are already here. Like WhatsApp — sync your phone contacts or paste emails.</div>
                     </div>
                     <button onClick={() => { setSyncOpen(v => !v); setSyncResults(null); setSyncPaste(''); }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #0284C7', background: syncOpen ? '#0284C7' : '#fff', color: syncOpen ? '#fff' : '#0284C7', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                      {syncOpen ? 'Close' : 'Import Contacts'}
+                      style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: syncOpen ? '#E0F2FE' : '#0284C7', color: syncOpen ? '#0369A1' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      {syncOpen ? 'Close' : '📱 Sync Contacts'}
                     </button>
                   </div>
                   {syncOpen && (
                     <>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                        {'contacts' in navigator ? (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const contacts = await navigator.contacts.select(['email', 'tel', 'name'], { multiple: true });
+                                const mapped = contacts.flatMap(c => {
+                                  const entries = [];
+                                  (c.email || []).forEach(e => entries.push({ email: e, name: c.name?.[0] || '' }));
+                                  (c.tel || []).forEach(t => entries.push({ phone: t, name: c.name?.[0] || '' }));
+                                  return entries;
+                                }).filter(x => x.email || x.phone);
+                                if (!mapped.length) return;
+                                setSyncing(true);
+                                try {
+                                  const r = await api.syncContacts(mapped);
+                                  setSyncResults(r);
+                                } catch { setSyncResults({ matched: [], unmatched: [] }); }
+                                finally { setSyncing(false); }
+                              } catch {}
+                            }}
+                            disabled={syncing}
+                            style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#059669', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {syncing ? '⏳ Syncing…' : '📲 Use Phone Contacts'}
+                          </button>
+                        ) : null}
+                        <button onClick={() => document.getElementById('tn-sync-textarea')?.focus()}
+                          style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #0284C7', background: '#fff', color: '#0284C7', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          ✉️ Paste Emails
+                        </button>
+                      </div>
                       <textarea
+                        id="tn-sync-textarea"
                         value={syncPaste}
                         onChange={e => setSyncPaste(e.target.value)}
-                        placeholder="Paste email addresses separated by commas, spaces, or new lines…&#10;e.g. john@example.com, jane@company.com"
+                        placeholder={'Paste email addresses or phone numbers here…\ne.g. john@example.com, +919876543210, jane@company.com'}
                         rows={3}
-                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #BAE6FD', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff', marginBottom: 8 }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #BAE6FD', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}
                       />
                       <button onClick={handleContactSync} disabled={syncing || !syncPaste.trim()}
-                        style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#0284C7', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !syncPaste.trim() ? 0.6 : 1 }}>
-                        {syncing ? 'Searching…' : 'Find on TalentNest'}
+                        style={{ padding: '9px 22px', borderRadius: 10, border: 'none', background: !syncPaste.trim() ? '#E5E7EB' : '#0284C7', color: !syncPaste.trim() ? '#9CA3AF' : '#fff', fontSize: 13, fontWeight: 700, cursor: !syncPaste.trim() ? 'not-allowed' : 'pointer', marginBottom: 14 }}>
+                        {syncing ? '🔍 Searching…' : '🔍 Find on TalentNest'}
                       </button>
                       {syncResults && (
-                        <div style={{ marginTop: 14 }}>
+                        <div>
                           {syncResults.matched?.length > 0 && (
                             <>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 8 }}>
-                                ✓ {syncResults.matched.length} contact{syncResults.matched.length !== 1 ? 's' : ''} found on TalentNest
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#D1FAE5', padding: '3px 10px', borderRadius: 20 }}>✓ {syncResults.matched.length} found on TalentNest</span>
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                                 {syncResults.matched.map(person => (
                                   <PersonCard
                                     key={String(person._id || person.id)}
@@ -649,34 +748,45 @@ export default function PeoplePage({ user }) {
                             </>
                           )}
                           {syncResults.unmatched?.length > 0 && (
-                            <div style={{ marginTop: 12 }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>
-                                {syncResults.unmatched.length} contact{syncResults.unmatched.length !== 1 ? 's' : ''} not on TalentNest yet
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', background: '#F3F4F6', padding: '3px 10px', borderRadius: 20 }}>{syncResults.unmatched.length} not on TalentNest yet</span>
+                                <span style={{ fontSize: 11, color: '#9CA3AF' }}>— invite them to join!</span>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {syncResults.unmatched.slice(0, 5).map((c, i) => (
-                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #E5E7EB' }}>
-                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>👤</div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{c.name || c.email}</div>
-                                      {c.name && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{c.email}</div>}
+                                {syncResults.unmatched.map((c, i) => {
+                                  const key = c.email || c.phone || i;
+                                  const invited = invitedSet.has(key);
+                                  const inviteMsg = `Hi ${c.name ? c.name.split(' ')[0] : 'there'}! I'm using TalentNest for career networking. Join me here: ${window.location.origin}/auth?ref=invite${c.email ? `&email=${encodeURIComponent(c.email)}` : ''}`;
+                                  return (
+                                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB' }}>
+                                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                                        {c.name ? c.name[0].toUpperCase() : '👤'}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.email || c.phone}</div>
+                                        {c.name && <div style={{ fontSize: 11, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || c.phone}</div>}
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          if (c.email) {
+                                            window.open(`mailto:${c.email}?subject=Join me on TalentNest&body=${encodeURIComponent(inviteMsg)}`, '_blank');
+                                          } else {
+                                            navigator.clipboard?.writeText(inviteMsg).catch(() => {});
+                                          }
+                                          setInvitedSet(s => new Set([...s, key]));
+                                        }}
+                                        style={{ padding: '6px 14px', borderRadius: 8, border: invited ? '1px solid #D1D5DB' : '1px solid #0176D3', background: invited ? '#F9FAFB' : '#EFF6FF', color: invited ? '#6B7280' : '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                        {invited ? '✓ Invited' : c.email ? '✉️ Invite' : '📋 Copy Invite'}
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        const link = `${window.location.origin}/auth?invite=true&email=${encodeURIComponent(c.email || '')}`;
-                                        navigator.clipboard?.writeText(link).catch(() => {});
-                                        alert('Invite link copied! Share it with your contact.');
-                                      }}
-                                      style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#0176D3', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                                      Invite
-                                    </button>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
                           {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && (
-                            <div style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', padding: '12px 0' }}>No valid email addresses found. Check the format and try again.</div>
+                            <div style={{ textAlign: 'center', padding: '16px 0', color: '#6B7280', fontSize: 13 }}>No contacts found. Check the format and try again.</div>
                           )}
                         </div>
                       )}

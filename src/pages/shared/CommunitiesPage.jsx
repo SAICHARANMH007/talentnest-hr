@@ -287,7 +287,7 @@ export default function CommunitiesPage({ user }) {
               onJoin={handleJoin}
               onLeave={handleLeave}
               loading={actionSlug === c.slug}
-              onNavigate={(slug) => navigate(`communities/${slug}`)}
+              onNavigate={(slug) => navigate(slug)}
             />
           ))}
         </div>
