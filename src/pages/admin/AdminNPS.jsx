@@ -104,7 +104,7 @@ export default function AdminNPS() {
           </div>
           <button onClick={async () => { setSeeding(true); try { await api.seedNPS(); load('',''); } catch {} setSeeding(false); }} disabled={seeding}
             style={{ marginTop: 20, padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            {seeding ? 'Loading demo data…' : '📥 Load 20 Demo NPS Responses'}
+            {seeding ? 'Adding sample data…' : '📥 Load Sample NPS Data'}
           </button>
         </div>
       ) : (

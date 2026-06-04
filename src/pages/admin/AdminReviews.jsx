@@ -144,7 +144,7 @@ export default function AdminReviews({ user }) {
         </div>
         {reviews.length < 5 && (
           <button onClick={seed} disabled={seeding} style={{ padding: '8px 16px', borderRadius: 9, border: '1px dashed #D97706', background: '#FEF3C7', color: '#92400E', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {seeding ? 'Seeding…' : '📥 Load Demo Reviews'}
+            {seeding ? 'Adding sample data…' : '📥 Load Sample Reviews'}
           </button>
         )}
       </div>

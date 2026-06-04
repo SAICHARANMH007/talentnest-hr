@@ -879,13 +879,14 @@ export default function RecruiterPipeline({ user }) {
   const selectedJob = jobs.find(j => String(j.id) === String(selJob));
 
   // Jobs filtered by the search input in the pill bar
-  const filteredJobs = jobSearch.trim()
+  const filteredJobs = (jobSearch.trim()
     ? jobs.filter(j =>
         (j.title || '').toLowerCase().includes(jobSearch.toLowerCase()) ||
         (j.company || j.companyName || '').toLowerCase().includes(jobSearch.toLowerCase()) ||
         (j.location || '').toLowerCase().includes(jobSearch.toLowerCase())
       )
-    : jobs;
+    : [...jobs]
+  ).sort((a, b) => (b.applicantsCount || b.applicationCount || 0) - (a.applicantsCount || a.applicationCount || 0));
 
   // Unified handler for selecting a job (pill, card, or any other entry point)
   const selectJob = (id) => {
