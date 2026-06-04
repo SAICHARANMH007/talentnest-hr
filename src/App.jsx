@@ -696,6 +696,7 @@ export default function App() {
             <Route path="org-chart" element={<OrgChart user={user} />} />
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
+            <Route path="reported-posts" element={<Suspense fallback={<PageLoader />}><SuperAdminReportedPosts /></Suspense>} />
           </>
         )}
 
@@ -720,7 +721,6 @@ export default function App() {
             <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
             <Route path="referrals" element={<AdminReferrals user={user} />} />
             <Route path="platform-referrals" element={<SuperAdminPlatformReferrals />} />
-            <Route path="reported-posts" element={<Suspense fallback={<PageLoader />}><SuperAdminReportedPosts /></Suspense>} />
           </>
         )}
 
@@ -734,6 +734,7 @@ export default function App() {
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
+            <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
           </>
         )}
         {rk === 'client' && (
@@ -746,6 +747,7 @@ export default function App() {
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
+            <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
           </>
         )}
       </Route>
