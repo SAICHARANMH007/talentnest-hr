@@ -149,6 +149,7 @@ const CommunitiesPage      = lazy(() => import('./pages/shared/CommunitiesPage.j
 const CommunityDetailPage  = lazy(() => import('./pages/shared/CommunityDetailPage.jsx'));
 const PostPublicPage       = lazy(() => import('./pages/public/PostPublicPage.jsx'));
 const CommunityPreviewPage = lazy(() => import('./pages/marketing/CommunityPreviewPage.jsx'));
+const UserPublicProfilePage = lazy(() => import('./pages/shared/UserPublicProfilePage.jsx'));
 // ── Page loading fallback ──────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -590,6 +591,9 @@ export default function App() {
           user?.role === 'super_admin' ? 'analytics' :
             user?.role === 'admin' ? 'analytics' : 'dashboard'
         } replace />} />
+
+        {/* Public user profile — view any user's full profile */}
+        <Route path="profile/:userId" element={<Suspense fallback={<PageLoader />}><UserPublicProfilePage user={user} /></Suspense>} />
 
         {/* Shared / General Routes — profile is role-aware */}
         <Route path="profile" element={

@@ -64,9 +64,9 @@ export default function MarketingNav({ active = 'home' }) {
 
 
 
-  // When not scrolled the nav floats over the dark hero — always use white text.
-  // When scrolled in light theme the nav gets a white background — switch to dark text.
-  const onDarkHero     = !scrolled;
+  // Light theme always uses a white nav (never dark hero) — dark text for contrast.
+  // Dark/ocean themes float over the dark hero when unscrolled — white text.
+  const onDarkHero     = themeId === 'light' ? false : !scrolled;
   const navTextColor   = onDarkHero ? 'rgba(255,255,255,0.9)' : 'var(--mkt-nav-text)';
   const logoNameColor  = onDarkHero ? '#fff'                  : 'var(--mkt-nav-text)';
   const logoSubColor   = onDarkHero ? 'rgba(255,255,255,0.55)': 'var(--mkt-text-muted)';
@@ -208,14 +208,18 @@ export default function MarketingNav({ active = 'home' }) {
       `}</style>
 
       <header style={{
-        // Scrolled: solid dark nav background  |  Top: subtle gradient so white text stays readable
+        // Scrolled: solid nav background  |  Top: subtle gradient/glass
         background: scrolled
           ? 'var(--mkt-nav-bg)'
           : 'var(--mkt-nav-unscrolled-bg)',
-        backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.25)' : 'none',
+        backdropFilter: (scrolled || themeId === 'light') ? 'blur(24px) saturate(180%)' : 'none',
+        WebkitBackdropFilter: (scrolled || themeId === 'light') ? 'blur(24px) saturate(180%)' : 'none',
+        borderBottom: scrolled
+          ? themeId === 'light' ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.08)'
+          : themeId === 'light' ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent',
+        boxShadow: scrolled
+          ? themeId === 'light' ? '0 2px 24px rgba(0,0,0,0.08)' : '0 4px 30px rgba(0,0,0,0.25)'
+          : themeId === 'light' ? '0 1px 20px rgba(0,0,0,0.06)' : 'none',
         height: 66,
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 1000,

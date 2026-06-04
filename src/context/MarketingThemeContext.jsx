@@ -99,7 +99,7 @@ export const THEMES = {
     navText:     '#1E293B',
     navActive:   '#0176D3',
     heroOverlay: 'linear-gradient(160deg, rgba(0,20,70,0.95) 0%, rgba(0,50,140,0.88) 50%, rgba(0,80,180,0.82) 100%)',
-    navUnscrolledBg: 'rgba(0,18,65,0.95)',
+    navUnscrolledBg: 'rgba(255,255,255,0.97)',
     dot:         '#0176D3',
     dotGradient: 'linear-gradient(135deg, #0176D3, #06B6D4)',
     primaryRgb:  '1,118,211',

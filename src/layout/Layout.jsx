@@ -744,7 +744,7 @@ function NotificationBell({ userRole, compact = false }) {
 function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs }) {
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
-  const { themeId, setTheme } = useMarketingTheme();
+  const { themeId, setThemeId } = useMarketingTheme();
   const THEMES = [
     { id: 'dark',  label: '🌙 Dark',  title: 'Dark' },
     { id: 'light', label: '☀️ Light', title: 'Light' },
@@ -752,7 +752,7 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
   ];
   const nextTheme = () => {
     const idx = THEMES.findIndex(t => t.id === themeId);
-    setTheme(THEMES[(idx + 1) % THEMES.length].id);
+    setThemeId(THEMES[(idx + 1) % THEMES.length].id);
   };
   const sidebarText = '#F8FBFF';
   const sidebarMuted = 'rgba(248,251,255,0.78)';
