@@ -843,6 +843,129 @@ router.get('/talent-pool', ...guard, asyncHandler(async (req, res) => {
   res.json({ success: true, data });
 }));
 
+// ── GET /api/applications/pipeline-smart-match/:jobId — Talent Mirror ──────────
+// Scores every Applied/Screening applicant against the shortlisted/interviewed
+// benchmark profile. Must be before /:id to avoid route shadowing.
+router.get('/pipeline-smart-match/:jobId',
+  ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter'),
+  asyncHandler(async (req, res) => {
+    const { buildIdealProfile, scoreCandidate } = require('../utils/pipelineSmartMatch');
+    const { jobId } = req.params;
+    const threshold = parseInt(req.query.threshold) || 60;
+    const maxResults = parseInt(req.query.limit) || 50;
+
+    const job = await Job.findOne({ _id: jobId, tenantId: req.tenantId }).lean();
+    if (!job) throw new AppError('Job not found', 404);
+
+    const CANDIDATE_POP = 'name title skills experience location parsedProfile workHistory educationList summary avatarUrl photoUrl resumeUrl';
+    const apps = await Application.find({
+      jobId,
+      tenantId: req.tenantId,
+      status: { $nin: ['withdrawn'] },
+      deletedAt: null,
+    })
+      .populate('candidateId', CANDIDATE_POP)
+      .lean();
+
+    const BENCHMARK_STAGES = new Set(['Shortlisted', 'Interview Round 1', 'Interview Round 2', 'Offer', 'Hired']);
+    const EVALUATE_STAGES  = new Set(['Applied', 'Screening']);
+
+    const benchmarkApps  = apps.filter(a => BENCHMARK_STAGES.has(a.currentStage) && a.candidateId);
+    const evaluateApps   = apps.filter(a => EVALUATE_STAGES.has(a.currentStage)  && a.candidateId);
+
+    if (benchmarkApps.length === 0) {
+      // No benchmarks — return all applicants sorted by existing talentMatchScore
+      const sorted = evaluateApps
+        .sort((a, b) => (b.talentMatchScore || 0) - (a.talentMatchScore || 0))
+        .slice(0, maxResults)
+        .map(a => ({
+          applicationId: String(a._id),
+          candidateId:   String(a.candidateId._id),
+          candidate: {
+            name:       a.candidateId.name,
+            title:      a.candidateId.title,
+            experience: a.candidateId.experience,
+            skills:     a.candidateId.skills || [],
+            avatarUrl:  a.candidateId.avatarUrl || a.candidateId.photoUrl,
+            resumeUrl:  a.candidateId.resumeUrl,
+            location:   a.candidateId.location,
+          },
+          currentStage:    a.currentStage,
+          talentMatchScore: a.talentMatchScore || 0,
+          smartScore:      null,
+          breakdown:       null,
+          matchedSkills:   [],
+          missingCoreSkills: [],
+          appliedAt:       a.createdAt,
+          noBenchmark:     true,
+        }));
+
+      return res.json({
+        hasBenchmarks: false,
+        benchmarkCount: 0,
+        idealProfile: null,
+        suggestions: sorted,
+        totalEvaluated: evaluateApps.length,
+        message: 'No shortlisted candidates yet. Showing top applicants by initial match score.',
+      });
+    }
+
+    const benchmarkCandidates = benchmarkApps.map(a => a.candidateId);
+    const idealProfile        = buildIdealProfile(benchmarkCandidates);
+
+    const scored = evaluateApps
+      .map(a => {
+        const r = scoreCandidate(a.candidateId, idealProfile);
+        return {
+          applicationId: String(a._id),
+          candidateId:   String(a.candidateId._id),
+          candidate: {
+            name:       a.candidateId.name,
+            title:      a.candidateId.title,
+            experience: a.candidateId.experience,
+            skills:     a.candidateId.skills || [],
+            avatarUrl:  a.candidateId.avatarUrl || a.candidateId.photoUrl,
+            resumeUrl:  a.candidateId.resumeUrl,
+            location:   a.candidateId.location,
+          },
+          currentStage:     a.currentStage,
+          talentMatchScore: a.talentMatchScore || 0,
+          smartScore:       r.score,
+          breakdown:        r.breakdown,
+          matchedSkills:    r.matchedSkills,
+          coreSkillsMatched:r.coreSkillsMatched,
+          missingCoreSkills:r.missingCoreSkills,
+          expMatch:         r.expMatch,
+          appliedAt:        a.createdAt,
+        };
+      })
+      .filter(r => r.smartScore >= threshold)
+      .sort((a, b) => b.smartScore - a.smartScore)
+      .slice(0, maxResults);
+
+    const idealSummary = {
+      benchmarkCount: benchmarkApps.length,
+      benchmarkStages: [...new Set(benchmarkApps.map(a => a.currentStage))],
+      coreSkills:     idealProfile.coreSkills.slice(0, 12),
+      importantSkills:idealProfile.importantSkills.slice(0, 20),
+      allSkills:      idealProfile.allSkills.slice(0, 30),
+      avgExp:         Math.round(idealProfile.avgExp * 10) / 10,
+      expRange:       `${Math.round(idealProfile.minExp)}–${Math.round(idealProfile.maxExp)} yrs`,
+    };
+
+    res.json({
+      hasBenchmarks:  true,
+      benchmarkCount: benchmarkApps.length,
+      benchmarkStages:[...new Set(benchmarkApps.map(a => a.currentStage))],
+      idealProfile:   idealSummary,
+      suggestions:    scored,
+      totalEvaluated: evaluateApps.length,
+      threshold,
+    });
+  })
+);
+
 // GET /api/applications/export — export pipeline to Excel
 // MUST be before /:id — otherwise Express matches 'export' as the :id param
 router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {

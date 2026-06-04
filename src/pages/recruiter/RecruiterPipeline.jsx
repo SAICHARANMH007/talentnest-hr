@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import StageTracker from '../../components/pipeline/StageTracker.jsx';
 import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
 import CandidateActivityTimeline from '../../components/shared/CandidateActivityTimeline.jsx';
+import TalentMirror from '../../components/recruiter/TalentMirror.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { STAGES, SM, NEXT } from '../../constants/stages.js';
 import { btnP, btnG, btnD, card, inp } from '../../constants/styles.js';
@@ -706,6 +707,7 @@ export default function RecruiterPipeline({ user }) {
   const [movingAppId, setMovingAppId] = useState(null);
   const [recruiterHistory, setRecruiterHistory] = useState([]);
   const [pipelineStats, setPipelineStats] = useState(null);
+  const [showTalentMirror, setShowTalentMirror] = useState(false);
 
   useEffect(() => {
     api.getRecruiterStats().then(r => setPipelineStats(r?.data || r)).catch(() => {});
@@ -923,6 +925,14 @@ export default function RecruiterPipeline({ user }) {
           onDone={(msg) => { setToast(msg); setOfferModalApp(null); refresh(); }}
         />
       )}
+      {showTalentMirror && selJob && (
+        <TalentMirror
+          jobId={selJob}
+          jobTitle={selectedJob?.title}
+          onClose={() => setShowTalentMirror(false)}
+          onRefreshPipeline={refresh}
+        />
+      )}
 
       <PageHeader title="Applicant Pipeline" subtitle="Full hiring funnel management" />
 
@@ -1004,6 +1014,14 @@ export default function RecruiterPipeline({ user }) {
           {selJob && (
             <button onClick={() => navigate(`/app/talent-match?job=${selJob}`)} style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
               🎯 Find Matches
+            </button>
+          )}
+          {selJob && (
+            <button
+              onClick={() => setShowTalentMirror(true)}
+              style={{ background: 'linear-gradient(135deg,#0F172A,#1E3A5F,#0176D3)', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 2px 12px rgba(1,118,211,0.35)' }}
+            >
+              🔮 Talent Mirror
             </button>
           )}
           {selJob && (
