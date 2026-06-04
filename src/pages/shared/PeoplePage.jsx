@@ -698,35 +698,66 @@ export default function PeoplePage({ user }) {
                   </div>
                   {syncOpen && (
                     <>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                        {'contacts' in navigator ? (
-                          <button
-                            onClick={async () => {
-                              try {
-                                const contacts = await navigator.contacts.select(['email', 'tel', 'name'], { multiple: true });
-                                const mapped = contacts.flatMap(c => {
-                                  const entries = [];
-                                  (c.email || []).forEach(e => entries.push({ email: e, name: c.name?.[0] || '' }));
-                                  (c.tel || []).forEach(t => entries.push({ phone: t, name: c.name?.[0] || '' }));
-                                  return entries;
-                                }).filter(x => x.email || x.phone);
-                                if (!mapped.length) return;
-                                setSyncing(true);
+                      {'contacts' in navigator && (
+                        <div style={{ background: 'rgba(2,132,199,0.07)', border: '1px solid #BAE6FD', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#0C4A6E', marginBottom: 6 }}>📱 Import from Phone Contacts</div>
+                          <div style={{ fontSize: 11, color: '#0369A1', marginBottom: 10, lineHeight: 1.5 }}>
+                            Tap either button below — when the contact picker opens, use <b>"Select All"</b> at the top to bulk-import your entire contact list at once.
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={async () => {
                                 try {
-                                  const r = await api.syncContacts(mapped);
-                                  setSyncResults(r);
-                                } catch { setSyncResults({ matched: [], unmatched: [] }); }
-                                finally { setSyncing(false); }
-                              } catch {}
-                            }}
-                            disabled={syncing}
-                            style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#059669', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {syncing ? '⏳ Syncing…' : '📲 Use Phone Contacts'}
-                          </button>
-                        ) : null}
+                                  const contacts = await navigator.contacts.select(['email', 'tel', 'name'], { multiple: true });
+                                  const mapped = contacts.flatMap(c => {
+                                    const entries = [];
+                                    (c.email || []).forEach(e => entries.push({ email: e, name: c.name?.[0] || '' }));
+                                    (c.tel || []).forEach(t => entries.push({ phone: t, name: c.name?.[0] || '' }));
+                                    return entries;
+                                  }).filter(x => x.email || x.phone);
+                                  if (!mapped.length) return;
+                                  setSyncing(true);
+                                  try {
+                                    const r = await api.syncContacts(mapped);
+                                    setSyncResults(r);
+                                  } catch { setSyncResults({ matched: [], unmatched: [] }); }
+                                  finally { setSyncing(false); }
+                                } catch {}
+                              }}
+                              disabled={syncing}
+                              style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#059669', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {syncing ? '⏳ Syncing…' : '📥 Import All Contacts'}
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const contacts = await navigator.contacts.select(['email', 'tel', 'name'], { multiple: true });
+                                  const mapped = contacts.flatMap(c => {
+                                    const entries = [];
+                                    (c.email || []).forEach(e => entries.push({ email: e, name: c.name?.[0] || '' }));
+                                    (c.tel || []).forEach(t => entries.push({ phone: t, name: c.name?.[0] || '' }));
+                                    return entries;
+                                  }).filter(x => x.email || x.phone);
+                                  if (!mapped.length) return;
+                                  setSyncing(true);
+                                  try {
+                                    const r = await api.syncContacts(mapped);
+                                    setSyncResults(r);
+                                  } catch { setSyncResults({ matched: [], unmatched: [] }); }
+                                  finally { setSyncing(false); }
+                                } catch {}
+                              }}
+                              disabled={syncing}
+                              style={{ padding: '9px 18px', borderRadius: 9, border: '1.5px solid #059669', background: '#F0FDF4', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                              📲 Pick Specific Contacts
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                         <button onClick={() => document.getElementById('tn-sync-textarea')?.focus()}
                           style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #0284C7', background: '#fff', color: '#0284C7', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                          ✉️ Paste Emails
+                          ✉️ Paste Emails / Numbers
                         </button>
                       </div>
                       <textarea
