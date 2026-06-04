@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(date) {
@@ -376,6 +378,7 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
   const [reportDetails, setReportDetails] = useState('');
   const [reporting,     setReporting]     = useState(false);
   const [reported,      setReported]      = useState(false);
+  const [reportErr,     setReportErr]     = useState('');
   const isOwnPost   = String(post.authorId) === String(userId);
   const isAdmin     = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const isVerified  = ['admin', 'recruiter', 'super_admin', 'superadmin'].includes(post.authorRole);
@@ -384,12 +387,16 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
 
   const handleReport = async () => {
     setReporting(true);
+    setReportErr('');
     try {
       await api.reportPost(post._id, reportReason, reportDetails);
       setReported(true);
       setShowReport(false);
-    } catch (e) { alert(e?.message || 'Failed to submit report'); }
-    setReporting(false);
+    } catch (e) {
+      setReportErr(e?.message || 'Failed to submit report. Please try again.');
+    } finally {
+      setReporting(false);
+    }
   };
 
   const actionButtons = (
@@ -458,8 +465,9 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
             </div>
             <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} placeholder="Additional details (optional)…"
               rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} />
+            {reportErr && <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{reportErr}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowReport(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={() => { setShowReport(false); setReportErr(''); }} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
               <button onClick={handleReport} disabled={reporting} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {reporting ? 'Reporting…' : 'Submit Report'}
               </button>
@@ -735,7 +743,7 @@ function TrendingHashtags({ posts, onHashtagClick, activeHashtag }) {
 }
 
 // People panel — non-connections with inline Connect button
-function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnect }) {
+function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnect, onViewProfile }) {
   const people = useMemo(() => {
     const seen = new Set();
     const list = [];
@@ -755,8 +763,10 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
       <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grow Your Network</div>
       {people.map(p => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Avatar name={p.name} src={p.avatar} size={34} role={p.role} />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0 }}>
+            <Avatar name={p.name} src={p.avatar} size={34} role={p.role} />
+          </div>
+          <div onClick={() => onViewProfile?.(p.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Member'}</div>
             <div style={{ fontSize: 10, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
           </div>
@@ -813,6 +823,7 @@ function saveBookmarks(ids) { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(
 function saveBookmarkData(data) { try { localStorage.setItem(BOOKMARK_DATA_KEY, JSON.stringify(data)); } catch {} }
 
 export default function CommunityFeed({ user }) {
+  const navigate = useNavigate();
   const [posts,        setPosts]        = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [loadingMore,  setLoadingMore]  = useState(false);
@@ -880,15 +891,24 @@ export default function CommunityFeed({ user }) {
     // For the rest, fetch from the public endpoint
     Promise.allSettled(stillMissing.map(id => api.getPublicPost(id)))
       .then(results => {
+        const orphaned = [];
         results.forEach((r, i) => {
           if (r.status === 'fulfilled' && r.value && r.value._id) {
             nextData[String(r.value._id)] = r.value;
+          } else {
+            // Post deleted or inaccessible — remove from bookmarks
+            orphaned.push(stillMissing[i]);
           }
         });
-        if (Object.keys(nextData).length > Object.keys(bookmarkData).length) {
-          setBookmarkData(nextData);
-          saveBookmarkData(nextData);
+        if (orphaned.length > 0) {
+          setBookmarks(prev => {
+            const next = prev.filter(id => !orphaned.includes(id));
+            saveBookmarks(next);
+            return next;
+          });
         }
+        setBookmarkData(nextData);
+        saveBookmarkData(nextData);
       });
 
     // Apply the in-feed finds immediately without waiting for API
@@ -907,6 +927,21 @@ export default function CommunityFeed({ user }) {
     if (!window.confirm('Delete this post?')) return;
     await api.deletePost(postId);
     setPosts(prev => prev.filter(p => p._id !== postId));
+    // Also clean from saved bookmarks
+    const strId = String(postId);
+    setBookmarks(prev => {
+      if (!prev.includes(strId)) return prev;
+      const next = prev.filter(id => id !== strId);
+      saveBookmarks(next);
+      return next;
+    });
+    setBookmarkData(prev => {
+      if (!prev[strId]) return prev;
+      const next = { ...prev };
+      delete next[strId];
+      saveBookmarkData(next);
+      return next;
+    });
   };
 
   const handleReact = async (postId, type) => {
@@ -941,6 +976,10 @@ export default function CommunityFeed({ user }) {
 
   const handleHashtagClick = (tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); };
 
+  const handleViewProfile = (userId) => {
+    navigate(`/app/profile/${userId}`);
+  };
+
   // Inline connect from post card or people panel
   const handleConnect = async (authorId) => {
     const id = String(authorId);
@@ -965,6 +1004,27 @@ export default function CommunityFeed({ user }) {
 
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
   const uid     = user?.id || user?._id;
+
+  // Real-time sync: remove deleted posts from feed for all users
+  usePlatformEvents({
+    'post:deleted': ({ postId }) => {
+      const strId = String(postId);
+      setPosts(prev => prev.filter(p => String(p._id) !== strId));
+      setBookmarks(prev => {
+        if (!prev.includes(strId)) return prev;
+        const next = prev.filter(id => id !== strId);
+        saveBookmarks(next);
+        return next;
+      });
+      setBookmarkData(prev => {
+        if (!prev[strId]) return prev;
+        const next = { ...prev };
+        delete next[strId];
+        saveBookmarkData(next);
+        return next;
+      });
+    },
+  });
 
   const FILTERS = [
     { value: 'all',          label: 'All' },
@@ -1032,7 +1092,7 @@ export default function CommunityFeed({ user }) {
       <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #F1F5F9' }}>
         {[
           { id: 'feed',  label: 'Feed' },
-          { id: 'saved', label: `★ Saved (${bookmarks.length})` },
+          { id: 'saved', label: `★ Saved (${bookmarks.filter(id => bookmarkData[id]).length})` },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ padding: '8px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s' }}>
@@ -1149,6 +1209,7 @@ export default function CommunityFeed({ user }) {
                   pendingIds={pendingIds}
                   currentUserId={uid}
                   onConnect={handleConnect}
+                  onViewProfile={handleViewProfile}
                 />
               </>
             )}

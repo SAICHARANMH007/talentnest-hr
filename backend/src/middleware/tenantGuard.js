@@ -86,8 +86,9 @@ const tenantGuard = async (req, res, next) => {
     }
 
     // Attach to request for downstream use (billing, limits, etc.)
-    req.tenant = org;
-    req.org    = org; // alias — some routes use req.org
+    req.tenant   = org;
+    req.org      = org;      // alias — some routes use req.org
+    req.tenantId = tenantId; // convenience alias — routes use req.tenantId
 
     // ── Senior Optimization: Hierarchical Access ─────────────────────────────
     // If this is a Parent Org, find all child Tenants/Vendors.

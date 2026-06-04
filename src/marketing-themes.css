@@ -323,64 +323,64 @@
 
 
 /* ════════════════════════════════════════════════════════════════════════
-   INDIGO THEME (mixed) — rich deep indigo/violet dark aesthetic.
+   OCEAN THEME (mixed) — deep ocean midnight. Cyan/teal accent palette.
    Completely distinct from Light (white) and Dark (slate).
    ════════════════════════════════════════════════════════════════════════ */
 
 [data-mkt-theme="mixed"] .mkt-page {
-  background: #13112E;
-  color: #E0E7FF;
+  background: var(--mkt-section-bg);
+  color: var(--mkt-text);
 }
 
-/* Legacy alias vars for indigo theme */
+/* Legacy alias vars for ocean theme */
 [data-mkt-theme="mixed"] {
-  --dark:     #E0E7FF;
-  --gray-50:  #1A1740;
-  --gray-100: #201D52;
-  --gray-200: rgba(139,92,246,0.15);
-  --gray-400: #A5B4FC;
-  --gray-600: #C7D2FE;
-  --gray-700: #E0E7FF;
-  --gradient-primary: linear-gradient(135deg, #4F46E5, #8B5CF6);
-  --gradient-accent:  linear-gradient(135deg, #6366F1, #8B5CF6);
+  --dark:     #E8F8FF;
+  --gray-50:  #071E33;
+  --gray-100: #0A2744;
+  --gray-200: rgba(0,180,216,0.15);
+  --gray-400: #A8D8EA;
+  --gray-600: #C8EDF8;
+  --gray-700: #E8F8FF;
+  --gradient-primary: linear-gradient(135deg, #0096C7, #06D6A0);
+  --gradient-accent:  linear-gradient(135deg, #00B4D8, #06D6A0);
 }
 
-/* All section-light areas become deep indigo */
+/* All section-light areas become deep ocean */
 [data-mkt-theme="mixed"] .mkt-page .mkt-section-light {
-  background: #13112E !important;
-  color: #E0E7FF !important;
+  background: var(--mkt-section-bg) !important;
+  color: var(--mkt-text) !important;
 }
 
-/* Headings: bright white on indigo background */
+/* Headings: bright white-cyan on ocean background */
 [data-mkt-theme="mixed"] .mkt-page h1,
 [data-mkt-theme="mixed"] .mkt-page h2,
 [data-mkt-theme="mixed"] .mkt-page h3,
 [data-mkt-theme="mixed"] .mkt-page h4,
 [data-mkt-theme="mixed"] .mkt-page h5,
 [data-mkt-theme="mixed"] .mkt-page h6 {
-  color: #FFFFFF !important;
+  color: var(--mkt-text-heading) !important;
 }
 
-/* Body text: light indigo-white */
+/* Body text: ocean-tinted soft white */
 [data-mkt-theme="mixed"] .mkt-page p,
 [data-mkt-theme="mixed"] .mkt-page li {
-  color: #C7D2FE !important;
+  color: var(--mkt-text-secondary) !important;
 }
 
-/* Cards: elevated indigo with violet border glow */
+/* Cards: elevated deep-ocean with cyan border glow */
 [data-mkt-theme="mixed"] .mkt-page .mkt-card,
 [data-mkt-theme="mixed"] .mkt-page [class*="card"] {
-  background: #201D52 !important;
-  border-color: rgba(139,92,246,0.28) !important;
-  box-shadow: 0 4px 20px rgba(99,102,241,0.15) !important;
+  background: var(--mkt-card-bg) !important;
+  border-color: var(--mkt-card-border) !important;
+  box-shadow: 0 4px 20px rgba(0,180,216,0.08) !important;
 }
 [data-mkt-theme="mixed"] .mkt-page .mkt-card:hover {
-  box-shadow: 0 12px 40px rgba(139,92,246,0.3) !important;
-  border-color: rgba(139,92,246,0.55) !important;
+  box-shadow: 0 12px 40px rgba(0,180,216,0.25) !important;
+  border-color: rgba(0,180,216,0.5) !important;
   transform: translateY(-4px);
 }
 
-/* White/light hardcoded backgrounds → indigo surface */
+/* White/light hardcoded backgrounds → deep ocean surface */
 [data-mkt-theme="mixed"] .mkt-page [style*="background: #fff"],
 [data-mkt-theme="mixed"] .mkt-page [style*="background: white"],
 [data-mkt-theme="mixed"] .mkt-page [style*="background: #ffffff"],
@@ -389,11 +389,15 @@
 [data-mkt-theme="mixed"] .mkt-page [style*="background:#ffffff"],
 [data-mkt-theme="mixed"] .mkt-page [style*="background:#FFFFFF"],
 [data-mkt-theme="mixed"] .mkt-page [style*="background: #F8FAFC"],
-[data-mkt-theme="mixed"] .mkt-page [style*="background: #f8fafc"] {
-  background: #201D52 !important;
+[data-mkt-theme="mixed"] .mkt-page [style*="background: #f8fafc"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background: #FFFFFF;"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background-color: #fff"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background-color: #FFFFFF"],
+[data-mkt-theme="mixed"] .mkt-page [style*="background-color: white"] {
+  background: var(--mkt-card-bg) !important;
 }
 
-/* Dark text inline → flip to light */
+/* Dark text inline → flip to ocean-white */
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #0F172A"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #0f172a"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #111827"],
@@ -402,37 +406,42 @@
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #032D60"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #374151"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #1E293B"],
-[data-mkt-theme="mixed"] .mkt-page [style*="color: #334155"] {
-  color: #E0E7FF !important;
+[data-mkt-theme="mixed"] .mkt-page [style*="color: #334155"],
+[data-mkt-theme="mixed"] .mkt-page [style*="color: #181818"],
+[data-mkt-theme="mixed"] .mkt-page [style*="color: #1B1B1B"] {
+  color: var(--mkt-text-heading) !important;
 }
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #64748B"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #64748b"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #475569"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #6B7280"],
+[data-mkt-theme="mixed"] .mkt-page [style*="color: #706E6B"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #94A3B8"],
 [data-mkt-theme="mixed"] .mkt-page [style*="color: #94a3b8"] {
-  color: #A5B4FC !important;
+  color: var(--mkt-text-secondary) !important;
 }
 
-/* Light border overrides → violet tinted */
+/* Light border overrides → ocean-cyan tinted */
 [data-mkt-theme="mixed"] .mkt-page [style*="border: 1px solid #E2E8F0"],
 [data-mkt-theme="mixed"] .mkt-page [style*="border: 1px solid #e2e8f0"],
 [data-mkt-theme="mixed"] .mkt-page [style*="border-bottom: 1px solid #e2e8f0"],
-[data-mkt-theme="mixed"] .mkt-page [style*="border-top: 1px solid #e2e8f0"] {
-  border-color: rgba(139,92,246,0.2) !important;
+[data-mkt-theme="mixed"] .mkt-page [style*="border-top: 1px solid #e2e8f0"],
+[data-mkt-theme="mixed"] .mkt-page [style*="border: 1px solid #D1D9E6"],
+[data-mkt-theme="mixed"] .mkt-page [style*="border: 1px solid #DDDBDA"] {
+  border-color: rgba(0,180,216,0.22) !important;
 }
 
-/* Inputs in indigo theme */
+/* Inputs in ocean theme */
 [data-mkt-theme="mixed"] .mkt-page input:not([type="checkbox"]):not([type="radio"]),
 [data-mkt-theme="mixed"] .mkt-page select,
 [data-mkt-theme="mixed"] .mkt-page textarea {
-  background: #1A1740 !important;
-  border-color: rgba(139,92,246,0.3) !important;
-  color: #E0E7FF !important;
+  background: var(--mkt-surface-bg) !important;
+  border-color: rgba(0,180,216,0.25) !important;
+  color: var(--mkt-text) !important;
 }
 [data-mkt-theme="mixed"] .mkt-page input::placeholder,
 [data-mkt-theme="mixed"] .mkt-page textarea::placeholder {
-  color: rgba(165,180,252,0.45) !important;
+  color: rgba(168,216,234,0.5) !important;
 }
 
 /* Light theme — nav has visible shadow on white bg */
@@ -441,6 +450,128 @@
   box-shadow: 0 1px 0 rgba(0,0,0,0.08);
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   GRADIENT TEXT — theme-aware, updates with CSS variables
+   ════════════════════════════════════════════════════════════════════════ */
+
+.mkt-gradient-text,
+.tn-gradient-text {
+  background: linear-gradient(135deg, var(--mkt-primary, #0176D3), var(--mkt-accent, #06B6D4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   MARKETING BUTTON SYSTEM — .btn, .btn-primary, .btn-outline etc.
+   Used throughout landing page and marketing pages
+   ════════════════════════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none !important;
+  border: 2px solid transparent;
+  white-space: nowrap;
+  font-family: inherit;
+  line-height: 1;
+  min-height: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-lg {
+  padding: 15px 32px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: 9px;
+  min-height: 36px;
+}
+
+.btn-full,
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Primary — uses theme primary color */
+.btn-primary {
+  background: linear-gradient(135deg, var(--mkt-primary, #0176D3), var(--mkt-primary-dark, #014486));
+  color: #fff !important;
+  border-color: transparent;
+  box-shadow: 0 4px 20px rgba(var(--mkt-primary-rgb, 1,118,211), 0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(var(--mkt-primary-rgb, 1,118,211), 0.5);
+  color: #fff !important;
+  text-decoration: none !important;
+  filter: brightness(1.08);
+}
+.btn-primary:active { transform: translateY(0); }
+
+/* Outline — for use on dark hero backgrounds */
+.btn-outline {
+  background: rgba(255,255,255,0.08);
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.4);
+  backdrop-filter: blur(8px);
+}
+.btn-outline:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.7);
+  transform: translateY(-2px);
+  color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* Secondary — semi-transparent on dark */
+.btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.25);
+  backdrop-filter: blur(8px);
+}
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.45);
+  transform: translateY(-2px);
+  color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* Ghost — on light backgrounds */
+.btn-ghost {
+  background: transparent;
+  color: var(--mkt-primary, #0176D3) !important;
+  border-color: var(--mkt-primary, #0176D3);
+}
+.btn-ghost:hover {
+  background: rgba(var(--mkt-primary-rgb, 1,118,211), 0.08);
+  transform: translateY(-1px);
+  text-decoration: none !important;
+}
+
+/* Card hover with theme-aware glow */
+.tn-card-hover:hover,
+[data-card="true"]:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 28px rgba(var(--mkt-primary-rgb, 1,118,211), 0.15) !important;
+}
 
 /* ════════════════════════════════════════════════════════════════════════
    GRADIENT OVERLAYS — readable text on photo backgrounds

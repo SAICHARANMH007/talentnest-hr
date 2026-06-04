@@ -85,7 +85,7 @@ body {
 }
 
 .tn-gradient-text {
-  background: linear-gradient(135deg, #0176D3, #00C2CB);
+  background: linear-gradient(135deg, var(--mkt-primary, #0176D3), var(--mkt-accent, #00C2CB));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -625,7 +625,7 @@ img, video, svg {
   color: #ffffff;
 }
 .tn-gradient-text {
-  background: linear-gradient(135deg, #0176D3, #00C2CB);
+  background: linear-gradient(135deg, var(--mkt-primary, #0176D3), var(--mkt-accent, #00C2CB));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -12,6 +12,7 @@ import useHeartbeat from '../hooks/useHeartbeat.js';
 import { usePlatformSocket } from '../hooks/usePlatformSocket.js';
 import OnlinePanel from '../components/shared/OnlinePanel.jsx';
 import BroadcastBanner from '../components/shared/BroadcastBanner.jsx';
+import { useMarketingTheme } from '../context/MarketingThemeContext.jsx';
 const ChatPanel = lazy(() => import('../components/shared/ChatPanel.jsx'));
 import CallManager from '../components/calling/CallManager.jsx';
 
@@ -743,6 +744,16 @@ function NotificationBell({ userRole, compact = false }) {
 function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs }) {
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const { themeId, setTheme } = useMarketingTheme();
+  const THEMES = [
+    { id: 'dark',  label: '🌙 Dark',  title: 'Dark' },
+    { id: 'light', label: '☀️ Light', title: 'Light' },
+    { id: 'mixed', label: '🌊 Ocean', title: 'Ocean' },
+  ];
+  const nextTheme = () => {
+    const idx = THEMES.findIndex(t => t.id === themeId);
+    setTheme(THEMES[(idx + 1) % THEMES.length].id);
+  };
   const sidebarText = '#F8FBFF';
   const sidebarMuted = 'rgba(248,251,255,0.78)';
   const sidebarLine = 'rgba(255,255,255,0.12)';
@@ -852,6 +863,7 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
               { icon: '👤', label: 'My Profile', action: () => { navigate('/app/profile'); setMobileOpen?.(false); setProfileOpen(false); } },
               { icon: '🔒', label: 'Change Password', action: () => { setShowChangePwd(true); setProfileOpen(false); } },
               ...(rk !== 'candidate' ? [{ icon: '📧', label: 'Email Settings', action: () => { setShowEmailSettings(true); setProfileOpen(false); } }] : []),
+              { icon: THEMES.find(t => t.id === themeId)?.label.split(' ')[0] || '🎨', label: `Theme: ${THEMES.find(t => t.id === themeId)?.title || 'Dark'}`, action: nextTheme },
               { icon: '🚪', label: 'Sign Out', action: onLogout, danger: true },
             ].map(item => (
               <button key={item.label} onClick={item.action}

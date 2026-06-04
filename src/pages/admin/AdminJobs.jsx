@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 
 function useIsMobile() {
-  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900);
   useEffect(() => {
-    const h = () => setM(window.innerWidth < 640);
+    const h = () => setM(window.innerWidth < 900);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);

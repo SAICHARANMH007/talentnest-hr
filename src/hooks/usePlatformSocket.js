@@ -10,7 +10,7 @@ import { getToken } from '../api/client.js';
  */
 export function usePlatformSocket(onStageChanged) {
   const cbRef = useRef(onStageChanged);
-  cbRef.current = onStageChanged; // always call the latest version
+  cbRef.current = onStageChanged;
 
   useEffect(() => {
     const token = getToken();
@@ -29,6 +29,37 @@ export function usePlatformSocket(onStageChanged) {
 
     return () => {
       socket.off('application:stageChanged');
+      socket.disconnect();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/**
+ * Connects to /platform and listens for one or more events.
+ * handlers: { 'event:name': callbackFn, ... }
+ */
+export function usePlatformEvents(handlers) {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    const socket = io(`${SOCKET_BASE_URL}/platform`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+    });
+
+    const events = Object.keys(handlersRef.current || {});
+    events.forEach(evt => {
+      socket.on(evt, data => handlersRef.current?.[evt]?.(data));
+    });
+
+    return () => {
+      events.forEach(evt => socket.off(evt));
       socket.disconnect();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

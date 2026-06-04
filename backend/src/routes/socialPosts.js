@@ -161,13 +161,25 @@ router.get('/reported', asyncHandler(async (req, res) => {
 
 // DELETE /api/social-posts/:id
 router.delete('/:id', asyncHandler(async (req, res) => {
-  const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId });
+  const isSuperAdmin = ['super_admin', 'superadmin'].includes(req.user.role);
+  const isAdmin      = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  const filter       = isSuperAdmin
+    ? { _id: req.params.id }
+    : { _id: req.params.id, tenantId: req.user.tenantId };
+  const post = await FeedPost.findOne(filter);
   if (!post) throw new AppError('Post not found.', 404);
-  const uid     = String(req.user._id || req.user.id);
-  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
+  const uid = String(req.user._id || req.user.id);
   if (String(post.authorId) !== uid && !isAdmin) throw new AppError('Not authorized.', 403);
   post.isDeleted = true;
   await post.save();
+
+  // Broadcast deletion to all users in the tenant so their feeds update in real time
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:deleted', { postId: String(post._id) });
+  } catch {}
+
   res.json({ success: true });
 }));
 

@@ -16,6 +16,8 @@ export default function CandidateSmartMatch({ user }) {
   const [results, setResults] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoad] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalJobs, setTotalJobs] = useState(0);
   const [toast, setToast] = useState("");
   const [expanded, setExpanded] = useState(null);   // jobId of expanded card
   const [applied, setApplied] = useState(new Set()); // track applied jobs
@@ -23,19 +25,28 @@ export default function CandidateSmartMatch({ user }) {
   const [companyInfo, setCompanyInfo] = useState({}); // companyName → org data
   const [companyReviews, setCompanyReviews] = useState({}); // companyName → reviews array
 
+  const extractJobs = (res) =>
+    Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+
   useEffect(() => {
+    let cancelled = false;
+    const BATCH = 200;
+
     Promise.allSettled([
       api.getUser(user.id),
-      api.getPublicJobs(),
+      api.getPublicJobs(`?limit=${BATCH}&page=1`),
       api.getMyApplications(),
       api.getMyOrgReviews(),
     ]).then(([profRes, jobsRes, appsRes, reviewsRes]) => {
+      if (cancelled) return;
       const p = profRes.status === 'fulfilled' ? (profRes.value?.data || profRes.value) : null;
       if (p) setProfile(p);
-      const jobArr = jobsRes.status === 'fulfilled'
-        ? (Array.isArray(jobsRes.value) ? jobsRes.value : (Array.isArray(jobsRes.value?.data) ? jobsRes.value.data : []))
-        : [];
-      setJobs(jobArr);
+
+      const firstBatch = jobsRes.status === 'fulfilled' ? extractJobs(jobsRes.value) : [];
+      const total = jobsRes.status === 'fulfilled' ? (jobsRes.value?.total || firstBatch.length) : 0;
+      setTotalJobs(total);
+      setJobs(firstBatch);
+
       if (appsRes.status === 'fulfilled') {
         const apps = appsRes.value || [];
         setApplied(new Set(apps.map(a => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '')).filter(Boolean)));
@@ -49,13 +60,35 @@ export default function CandidateSmartMatch({ user }) {
         });
         setCompanyReviews(byCompany);
       }
+
+      // Background-load remaining pages so all jobs eventually appear
+      if (total > BATCH) {
+        const totalPages = Math.ceil(total / BATCH);
+        setLoadingMore(true);
+        const pagePromises = [];
+        for (let pg = 2; pg <= totalPages; pg++) {
+          pagePromises.push(api.getPublicJobs(`?limit=${BATCH}&page=${pg}`).then(extractJobs).catch(() => []));
+        }
+        Promise.all(pagePromises).then(pages => {
+          if (cancelled) return;
+          const allExtra = pages.flat();
+          if (allExtra.length > 0) {
+            setJobs(prev => {
+              const combined = [...prev, ...allExtra];
+              return combined;
+            });
+          }
+          setLoadingMore(false);
+        });
+      }
     });
+    return () => { cancelled = true; };
   }, [user.id]);
 
   const run = (currentQuery = query, jobList = jobs, prof = profile) => {
     if (!prof || jobList.length === 0) return;
     setLoad(true);
-    // Run matching asynchronously to avoid blocking the UI thread
+    // Run matching in next tick to avoid blocking the UI thread
     setTimeout(() => {
       try {
         setResults(matchJobsToCandidate(prof, jobList, currentQuery));
@@ -115,9 +148,13 @@ export default function CandidateSmartMatch({ user }) {
             {loading ? <><Spinner /> Matching…</> : "📊 Refresh Match"}
           </button>
         </div>
-        {jobs.length > 0 && <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-          Searching across {jobs.length} open positions · Real-time smart matching based on your profile
-        </p>}
+        {jobs.length > 0 && (
+          <p style={{ color: '#64748b', fontSize: 11, marginTop: 8, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            Searching across {jobs.length}{totalJobs > jobs.length ? `/${totalJobs}` : ''} open positions · Real-time smart matching based on your profile
+            {loadingMore && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0176D3', fontWeight: 600 }}><span style={{ width: 10, height: 10, border: '2px solid #BFDBFE', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-sm-spin 0.8s linear infinite', display: 'inline-block' }} />Loading more…</span>}
+          </p>
+        )}
+        <style>{`@keyframes tn-sm-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
 
       {results.length === 0 && !loading && jobs.length > 0 && (

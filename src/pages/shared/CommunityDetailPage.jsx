@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ROLE_COLOR = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' };
@@ -79,6 +80,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const [reportDetails,setReportDetails]= useState('');
   const [reporting,    setReporting]    = useState(false);
   const [reported,     setReported]     = useState(false);
+  const [reportErr,    setReportErr]    = useState('');
   const isOwnPost = String(post.authorId) === String(userId);
   const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
@@ -98,12 +100,16 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
 
   const handleReport = async () => {
     setReporting(true);
+    setReportErr('');
     try {
       await api.reportPost(post._id, reportReason, reportDetails);
       setReported(true);
       setShowReport(false);
-    } catch (e) { alert(e?.message || 'Failed to submit report'); }
-    setReporting(false);
+    } catch (e) {
+      setReportErr(e?.message || 'Failed to submit report. Please try again.');
+    } finally {
+      setReporting(false);
+    }
   };
 
   return (
@@ -128,8 +134,9 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
             </div>
             <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} placeholder="Additional details (optional)…"
               rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box', marginBottom: 14 }} />
+            {reportErr && <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{reportErr}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowReport(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
+              <button onClick={() => { setShowReport(false); setReportErr(''); }} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', fontSize: 13, cursor: 'pointer', color: '#374151' }}>Cancel</button>
               <button onClick={handleReport} disabled={reporting} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 {reporting ? 'Reporting…' : 'Submit Report'}
               </button>
@@ -680,6 +687,13 @@ export default function CommunityDetailPage({ user }) {
     } catch {}
   };
 
+  // Real-time sync: remove posts deleted by any user/admin
+  usePlatformEvents({
+    'post:deleted': ({ postId }) => {
+      setPosts(prev => prev.filter(p => String(p._id) !== String(postId)));
+    },
+  });
+
   const handleSeed = async () => {
     setSeeding(true);
     try {
@@ -797,7 +811,13 @@ export default function CommunityDetailPage({ user }) {
       <div style={{ padding: isMobile ? '0 12px' : 0 }}>
         {tab === 'posts' && (
           <>
-            <CreateCommunityPost user={user} community={community} onCreate={loadPosts} />
+            {(isMember || ['admin','super_admin','superadmin'].includes(user?.role))
+              ? <CreateCommunityPost user={user} community={community} onCreate={loadPosts} />
+              : (
+                <div style={{ ...card, padding: '14px 16px', marginBottom: 14, borderRadius: 14, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+                  <span>Join this community to post and interact with members.</span>
+                </div>
+              )}
             {postsLoading ? (
               <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
                 <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />

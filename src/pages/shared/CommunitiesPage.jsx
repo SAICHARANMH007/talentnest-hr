@@ -23,6 +23,14 @@ const CATEGORY_LABEL = {
 function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
   const isMember = community.isMember;
   const color    = community.coverColor || CATEGORY_COLOR[community.category] || '#0176D3';
+  const [btnHover, setBtnHover] = useState(false);
+
+  const btnLabel = loading ? '…' : isMember ? (btnHover ? 'Leave' : 'Joined') : 'Join';
+  const btnStyle = isMember
+    ? btnHover
+      ? { bg: '#FEF2F2', color: '#DC2626', border: '#FCA5A5' }
+      : { bg: '#F9FAFB', color: '#374151', border: '#D1D5DB' }
+    : { bg: color, color: '#fff', border: color };
 
   return (
     <div
@@ -51,27 +59,23 @@ function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
         <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.55, flex: 1, marginBottom: 12 }}>
           {community.description || 'Join this community to connect with like-minded professionals.'}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>
-            👥 {community.memberCount || 0} member{community.memberCount !== 1 ? 's' : ''}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500, flexShrink: 0 }}>
+            👥 {community.memberCount || 0}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); isMember ? onLeave(community.slug) : onJoin(community.slug); }}
             disabled={loading}
+            onMouseEnter={() => setBtnHover(true)}
+            onMouseLeave={() => setBtnHover(false)}
             style={{
-              padding: '7px 18px', borderRadius: 8, border: `1px solid ${isMember ? '#D1D5DB' : color}`,
-              background: isMember ? '#F9FAFB' : color, color: isMember ? '#374151' : '#fff',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              if (!isMember) { e.currentTarget.style.opacity = '0.85'; }
-              else { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5'; e.currentTarget.textContent = 'Leave'; }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.opacity = '1';
-              if (isMember) { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.borderColor = '#D1D5DB'; e.currentTarget.textContent = 'Joined'; }
+              padding: '7px 14px', borderRadius: 8,
+              border: `1px solid ${btnStyle.border}`,
+              background: btnStyle.bg, color: btnStyle.color,
+              fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: 58,
             }}>
-            {isMember ? 'Joined' : 'Join'}
+            {btnLabel}
           </button>
         </div>
       </div>
@@ -159,9 +163,10 @@ export default function CommunitiesPage({ user }) {
   const [search,      setSearch]      = useState('');
   const [showCreate,  setShowCreate]  = useState(false);
   const [isMobile,    setMobile]      = useState(() => window.innerWidth < 768);
+  const [isSmallPhone, setSmallPhone] = useState(() => window.innerWidth < 500);
 
   useEffect(() => {
-    const h = () => setMobile(window.innerWidth < 768);
+    const h = () => { setMobile(window.innerWidth < 768); setSmallPhone(window.innerWidth < 500); };
     window.addEventListener('resize', h, { passive: true });
     return () => window.removeEventListener('resize', h);
   }, []);
@@ -276,7 +281,7 @@ export default function CommunitiesPage({ user }) {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+          gridTemplateColumns: isSmallPhone ? '1fr' : isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: 16,
           padding: isMobile ? '0 12px' : 0,
         }}>
