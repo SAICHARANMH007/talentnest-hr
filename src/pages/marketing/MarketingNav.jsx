@@ -211,7 +211,7 @@ export default function MarketingNav({ active = 'home' }) {
         // Scrolled: solid dark nav background  |  Top: subtle gradient so white text stays readable
         background: scrolled
           ? 'var(--mkt-nav-bg)'
-          : 'rgba(3,13,26,0.95)',
+          : 'var(--mkt-nav-unscrolled-bg)',
         backdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(180%)' : 'none',
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',

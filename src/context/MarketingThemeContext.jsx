@@ -29,7 +29,8 @@ export const THEMES = {
     navText:     '#CBD5E1',
     navActive:   '#3B82F6',
     // Hero overlay
-    heroOverlay: 'linear-gradient(160deg, rgba(5,10,20,0.95) 0%, rgba(15,23,42,0.90) 100%)',
+    heroOverlay: 'linear-gradient(160deg, rgba(5,10,20,0.96) 0%, rgba(15,23,42,0.92) 100%)',
+    navUnscrolledBg: 'rgba(5,10,20,0.95)',
     // Theme pill
     dot:         '#3B82F6',
     dotGradient: 'linear-gradient(135deg, #1D4ED8, #06B6D4)',
@@ -67,7 +68,8 @@ export const THEMES = {
     navBg:       'rgba(255,255,255,0.97)',
     navText:     '#1E293B',
     navActive:   '#0176D3',
-    heroOverlay: 'linear-gradient(160deg, rgba(3,17,38,0.96) 0%, rgba(1,36,86,0.94) 100%)',
+    heroOverlay: 'linear-gradient(160deg, rgba(0,20,70,0.95) 0%, rgba(0,50,140,0.88) 50%, rgba(0,80,180,0.82) 100%)',
+    navUnscrolledBg: 'rgba(0,18,65,0.95)',
     dot:         '#0176D3',
     dotGradient: 'linear-gradient(135deg, #0176D3, #06B6D4)',
     primaryRgb:  '1,118,211',
@@ -103,7 +105,8 @@ export const THEMES = {
     navBg:       'rgba(15,14,42,0.97)',
     navText:     '#C7D2FE',
     navActive:   '#818CF8',
-    heroOverlay: 'linear-gradient(160deg, rgba(15,14,42,0.95) 0%, rgba(30,27,75,0.90) 60%, rgba(79,70,229,0.85) 100%)',
+    heroOverlay: 'linear-gradient(160deg, rgba(10,5,40,0.96) 0%, rgba(30,20,80,0.92) 60%, rgba(70,50,200,0.86) 100%)',
+    navUnscrolledBg: 'rgba(10,5,40,0.95)',
     dot:         '#8B5CF6',
     dotGradient: 'linear-gradient(135deg, #4F46E5, #8B5CF6)',
     primaryRgb:  '99,102,241',
@@ -195,9 +198,10 @@ export function MarketingThemeProvider({ children }) {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '255,255,255';
     };
-    r.style.setProperty('--mkt-surface-bg-rgb', hexToRgb(theme.surfaceBg));
-    r.style.setProperty('--mkt-section-bg-rgb', hexToRgb(theme.sectionBg));
-    r.style.setProperty('--mkt-dark-rgb',        theme.darkRgb);
+    r.style.setProperty('--mkt-surface-bg-rgb',      hexToRgb(theme.surfaceBg));
+    r.style.setProperty('--mkt-section-bg-rgb',      hexToRgb(theme.sectionBg));
+    r.style.setProperty('--mkt-dark-rgb',             theme.darkRgb);
+    r.style.setProperty('--mkt-nav-unscrolled-bg',    theme.navUnscrolledBg || 'rgba(5,10,20,0.95)');
 
     // Set data attribute for CSS selector overrides (on html so it works before React renders too)
     document.documentElement.setAttribute('data-mkt-theme', themeId);
