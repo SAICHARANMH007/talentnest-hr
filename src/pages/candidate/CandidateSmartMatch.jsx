@@ -26,6 +26,7 @@ export default function CandidateSmartMatch({ user }) {
   const [filterCompany, setFilterCompany] = useState('all');
   const [filterIndustry, setFilterIndustry] = useState('all');
   const [filterDepartment, setFilterDepartment] = useState('all');
+  const [displayLimit, setDisplayLimit] = useState(100);
 
   const extractJobs = (res) =>
     Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
@@ -126,13 +127,18 @@ export default function CandidateSmartMatch({ user }) {
   }, [jobs]);
 
   // Apply secondary filters on top of match results
-  const displayResults = useMemo(() => {
+  const filteredResults = useMemo(() => {
     let out = results;
     if (filterCompany !== 'all') out = out.filter(r => (r.job?.companyName || r.job?.company || '') === filterCompany);
     if (filterIndustry !== 'all') out = out.filter(r => (r.job?.industry || '').toLowerCase().includes(filterIndustry.toLowerCase()));
     if (filterDepartment !== 'all') out = out.filter(r => (r.job?.department || '').toLowerCase().includes(filterDepartment.toLowerCase()));
     return out;
   }, [results, filterCompany, filterIndustry, filterDepartment]);
+
+  // Reset display limit when the filtered set changes
+  useEffect(() => { setDisplayLimit(100); }, [filteredResults]);
+
+  const displayResults = filteredResults.slice(0, displayLimit);
 
   const selStyle = { flex: '1 1 160px', padding: '9px 12px', borderRadius: 12, border: '1.5px solid var(--app-card-border, #E2E8F0)', fontSize: 13, background: 'var(--app-input-bg, #F8FAFC)', color: 'var(--app-text, #181818)', outline: 'none' };
 
@@ -170,7 +176,7 @@ export default function CandidateSmartMatch({ user }) {
         </div>
         {jobs.length > 0 && (
           <p style={{ color: 'var(--app-text-muted, #64748b)', fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-            Searching across {jobs.length} open positions · showing {displayResults.length} matches
+            Searching across {jobs.length} open positions · showing {displayResults.length}{filteredResults.length > displayLimit ? ` of ${filteredResults.length}` : ''} matches
           </p>
         )}
       </div>
@@ -189,7 +195,7 @@ export default function CandidateSmartMatch({ user }) {
         </div>
       )}
 
-      {displayResults.map((r, i) => {
+      {displayResults.map((r, i, arr) => {
         const isOpen = expanded === r.jobId;
         const isApplied = applied.has(String(r.jobId));
         const j = r.job;
@@ -376,6 +382,17 @@ export default function CandidateSmartMatch({ user }) {
           </div>
         );
       })}
+
+      {filteredResults.length > displayLimit && (
+        <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 8 }}>
+          <button
+            onClick={() => setDisplayLimit(prev => prev + 100)}
+            style={{ ...btnG, padding: '10px 28px', fontSize: 13, borderColor: 'rgba(1,118,211,0.4)', color: '#0176D3' }}
+          >
+            Load more ({filteredResults.length - displayLimit} remaining)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -227,6 +227,8 @@ export default function CandidateProfile({ user }) {
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
   const [certList, setCerts]    = useState([]);
+  const [myPosts, setMyPosts]       = useState(null);
+  const [postsLoading, setPostsLoad] = useState(false);
 
   useEffect(() => {
     api.getUser(user.id)
@@ -255,6 +257,23 @@ export default function CandidateProfile({ user }) {
       .catch(e => setToast(`Failed to load: ${e.message}`))
       .finally(() => setLoad(false));
   }, [user.id]);
+
+  useEffect(() => {
+    if (tab !== 'posts' || myPosts !== null) return;
+    setPostsLoad(true);
+    api.getUserPosts(user.id)
+      .then(res => setMyPosts(Array.isArray(res) ? res : (res?.data || res?.posts || [])))
+      .catch(() => setMyPosts([]))
+      .finally(() => setPostsLoad(false));
+  }, [tab, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const deleteMyPost = async (postId) => {
+    try {
+      await api.deletePost(postId);
+      setMyPosts(prev => (prev || []).filter(p => (p._id || p.id) !== postId));
+      setToast('✅ Post deleted');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+  };
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -315,6 +334,7 @@ export default function CandidateProfile({ user }) {
     { key: 'extras',    emoji: '🏆', label: 'Extras'     },
     { key: 'video',     emoji: '🎥', label: 'Video'      },
     { key: 'resume',    emoji: '📋', label: 'Resume'     },
+    { key: 'posts',     emoji: '💬', label: 'Posts'      },
   ];
 
   return (
@@ -631,8 +651,55 @@ export default function CandidateProfile({ user }) {
         </div>
       )}
 
-      {/* ── Sticky save footer (all tabs except resume) ── */}
-      {tab !== 'resume' && (
+      {/* ── MY POSTS ── */}
+      {tab === 'posts' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 8 }}>
+            <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 700, margin: 0, letterSpacing: 1 }}>💬 MY COMMUNITY POSTS</p>
+            <a href="/app/community" style={{ ...btnP, padding: '6px 14px', fontSize: 11, flexShrink: 0, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>+ New Post</a>
+          </div>
+          {postsLoading && (
+            <div style={{ ...card, textAlign: 'center', padding: 30, color: '#706E6B', display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <Spinner /> Loading posts...
+            </div>
+          )}
+          {!postsLoading && (myPosts || []).length === 0 && (
+            <div style={{ ...card, textAlign: 'center', padding: 30, color: '#9E9D9B' }}>
+              <p style={{ fontSize: 28, marginBottom: 8 }}>💬</p>
+              <p>You haven't posted anything yet. <a href="/app/community" style={{ color: '#0176D3', textDecoration: 'none', fontWeight: 600 }}>Go to Community</a> to share your first post.</p>
+            </div>
+          )}
+          {(myPosts || []).map(post => {
+            const postId = post._id || post.id;
+            const createdAt = post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+            return (
+              <div key={postId} style={{ ...card, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {post.type && <span style={{ fontSize: 10, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 6, padding: '2px 7px', marginBottom: 6, display: 'inline-block', textTransform: 'uppercase' }}>{post.type}</span>}
+                    {post.content && <p style={{ fontSize: 13, color: '#181818', margin: '6px 0', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>}
+                    {post.imageUrl && <img src={post.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, marginTop: 6, objectFit: 'cover' }} />}
+                    <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                      {createdAt && <span style={{ fontSize: 11, color: '#9CA3AF' }}>📅 {createdAt}</span>}
+                      {post.reactions && post.reactions.length > 0 && <span style={{ fontSize: 11, color: '#9CA3AF' }}>👍 {post.reactions.length} reaction{post.reactions.length !== 1 ? 's' : ''}</span>}
+                      {post.comments && post.comments.length > 0 && <span style={{ fontSize: 11, color: '#9CA3AF' }}>💬 {post.comments.length} comment{post.comments.length !== 1 ? 's' : ''}</span>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { if (window.confirm('Delete this post?')) deleteMyPost(postId); }}
+                    style={{ background: 'none', border: '1px solid #FECACA', color: '#BA0517', borderRadius: 8, padding: '5px 12px', fontSize: 11, cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}
+                  >
+                    🗑 Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Sticky save footer (all tabs except resume and posts) ── */}
+      {tab !== 'resume' && tab !== 'posts' && (
         <div style={{
           display: 'flex',
           gap: 10,
