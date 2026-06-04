@@ -46,26 +46,29 @@ function JobDetailModal({ job, applied, applying, onApply, onClose }) {
         position: 'fixed', inset: 0, zIndex: 10001,
         background: 'rgba(5,13,26,0.72)', backdropFilter: 'blur(6px)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        overflowY: 'auto', padding: '24px 16px',
+        overflowY: 'auto', padding: window.innerWidth < 480 ? '0' : '24px 16px',
       }}
     >
       <div style={{
         background: '#fff',
-        borderRadius: 20, maxWidth: 700, width: '100%', margin: 'auto 0',
+        borderRadius: window.innerWidth < 480 ? '20px 20px 0 0' : 20,
+        maxWidth: 700, width: '100%',
+        margin: window.innerWidth < 480 ? 'auto 0 0 0' : 'auto 0',
         overflow: 'hidden',
         boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+        minHeight: window.innerWidth < 480 ? '92vh' : 'auto',
       }}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: '20px 24px', position: 'sticky', top: 0, zIndex: 1 }}>
+        <div style={{ background: 'linear-gradient(135deg,#032D60,#0176D3)', padding: window.innerWidth < 480 ? '16px 16px' : '20px 24px', position: 'sticky', top: 0, zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, paddingRight: 16 }}>
+            <div style={{ flex: 1, paddingRight: 12, minWidth: 0 }}>
               <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Job Details</div>
-              <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>{job.title}</h2>
+              <h2 style={{ color: '#fff', fontSize: window.innerWidth < 480 ? 16 : 18, fontWeight: 800, margin: '0 0 4px', wordBreak: 'break-word' }}>{job.title}</h2>
               <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600 }}>
                 {job.company}{job.location ? ` · ${job.location}` : ''}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: 10, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700 }}>✕</button>
           </div>
           {/* Badges */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 12 }}>
@@ -93,7 +96,7 @@ function JobDetailModal({ job, applied, applying, onApply, onClose }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '22px 28px' }}>
+        <div style={{ padding: window.innerWidth < 480 ? '16px 16px' : '22px 28px' }}>
           {/* Key Info Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 24 }}>
             {job.salary && (
@@ -186,7 +189,7 @@ function JobDetailModal({ job, applied, applying, onApply, onClose }) {
           )}
 
           {/* Apply CTA */}
-          <div style={{ borderTop: '1px solid rgba(1,118,211,0.12)', paddingTop: 20, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ borderTop: '1px solid rgba(1,118,211,0.12)', paddingTop: 20, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', flexDirection: window.innerWidth < 480 ? 'column-reverse' : 'row' }}>
             <button onClick={onClose} style={{ background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 10, color: '#706E6B', fontSize: 13, fontWeight: 600, padding: '10px 20px', cursor: 'pointer' }}>
               Close
             </button>
@@ -509,42 +512,42 @@ export default function CandidateExploreJobs({ user }) {
                   </div>
 
                   {/* Right actions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0, minWidth: 0 }}>
                     {j.externalUrl ? (
                       <button
                         onClick={() => handleApply(j._id || j.id)}
                         disabled={isApplying}
                         title="We save your profile then open the company's careers page"
-                        style={{ ...btnP, fontSize: 12, padding: '7px 16px', opacity: isApplying ? 0.7 : 1, background: 'linear-gradient(135deg,#F59E0B,#d97706)', boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}
+                        style={{ ...btnP, fontSize: 12, padding: '7px 14px', opacity: isApplying ? 0.7 : 1, background: 'linear-gradient(135deg,#F59E0B,#d97706)', boxShadow: '0 4px 12px rgba(245,158,11,0.3)', whiteSpace: 'nowrap' }}
                       >
-                        {isApplying ? 'Saving…' : '🌐 Apply on Site →'}
+                        {isApplying ? 'Saving…' : '🌐 Apply on Site'}
                       </button>
                     ) : isApplied ? (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2E844A', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2E844A', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px', whiteSpace: 'nowrap' }}>
                         ✓ Applied
                       </span>
                     ) : (
                       <button
                         onClick={() => handleApply(j._id || j.id)}
                         disabled={isApplying}
-                        style={{ ...btnP, fontSize: 12, padding: '7px 16px', opacity: isApplying ? 0.7 : 1 }}
+                        style={{ ...btnP, fontSize: 12, padding: '7px 14px', opacity: isApplying ? 0.7 : 1, whiteSpace: 'nowrap' }}
                       >
                         {isApplying ? 'Applying…' : 'Quick Apply'}
                       </button>
                     )}
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         onClick={() => toggleSave(j._id || j.id)}
                         title={isSaved ? 'Remove from saved' : 'Save job'}
-                        style={{ background: isSaved ? 'rgba(1,118,211,0.15)' : 'none', border: `1px solid ${isSaved ? 'rgba(1,118,211,0.4)' : '#FAFAF9'}`, color: isSaved ? '#0176D3' : '#64748b', fontSize: 14, cursor: 'pointer', borderRadius: 8, padding: '4px 8px', transition: 'all 0.2s' }}
+                        style={{ background: isSaved ? 'rgba(1,118,211,0.15)' : '#F9FAFB', border: `1px solid ${isSaved ? 'rgba(1,118,211,0.4)' : '#E5E7EB'}`, color: isSaved ? '#0176D3' : '#64748b', fontSize: 14, cursor: 'pointer', borderRadius: 8, padding: '5px 9px', transition: 'all 0.2s', flexShrink: 0 }}
                       >
                         {isSaved ? '🔖' : '📌'}
                       </button>
                       <button
                         onClick={() => setSelectedJob(j)}
-                        style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', color: '#0176D3', fontSize: 11, cursor: 'pointer', borderRadius: 8, padding: '4px 12px', fontWeight: 600 }}
+                        style={{ background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', color: '#0176D3', fontSize: 12, cursor: 'pointer', borderRadius: 8, padding: '5px 12px', fontWeight: 700, whiteSpace: 'nowrap' }}
                       >
-                        View Details →
+                        Details
                       </button>
                     </div>
                   </div>

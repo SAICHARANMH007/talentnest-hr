@@ -313,10 +313,10 @@ export default function CandidateJobMatch({ user }) {
               </div>
 
               <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexShrink: 0 }}>
-                <button onClick={(e) => { e.stopPropagation(); toggleExpand(r.jobId); }} style={{ ...btnG, padding: "6px 14px", fontSize: 12 }}>
+                <button onClick={(e) => { e.stopPropagation(); toggleExpand(r.jobId); }} style={{ ...btnG, padding: "6px 14px", fontSize: 12, whiteSpace: 'nowrap', minWidth: 80 }}>
                   {isOpen ? '▲ Hide' : '▼ Details'}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); apply(r.jobId); }} disabled={isApplied} style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: isApplied ? 0.5 : 1 }}>
+                <button onClick={(e) => { e.stopPropagation(); apply(r.jobId); }} disabled={isApplied} style={{ ...btnP, padding: "6px 14px", fontSize: 12, opacity: isApplied ? 0.5 : 1, whiteSpace: 'nowrap' }}>
                   {isApplied ? '✓ Applied' : 'Apply Now'}
                 </button>
               </div>
