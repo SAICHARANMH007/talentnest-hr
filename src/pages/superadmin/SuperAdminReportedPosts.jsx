@@ -51,6 +51,7 @@ export default function SuperAdminReportedPosts() {
     try {
       await api.deleteReportedPost(reportId);
       setData(prev => prev.filter(g => String(g.post?._id) !== String(postId)));
+      load(); // re-fetch to ensure DB state is reflected
     } catch (e) { alert(e?.message || 'Failed to delete'); }
     setActing(a => ({ ...a, [reportId]: null }));
   };
@@ -63,6 +64,7 @@ export default function SuperAdminReportedPosts() {
         ...g,
         reports: g.reports.filter(r => String(r._id) !== String(reportId)),
       })).filter(g => g.reports.length > 0));
+      load(); // re-fetch to ensure dismissed report is gone
     } catch (e) { alert(e?.message || 'Failed to dismiss'); }
     setActing(a => ({ ...a, [reportId]: null }));
   };

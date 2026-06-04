@@ -459,14 +459,27 @@ export default function PeoplePage({ user }) {
   ];
 
   const handleContactSync = async () => {
-    const emails = syncPaste.split(/[\n,;]+/).map(e => e.trim().toLowerCase()).filter(e => e.includes('@'));
-    if (!emails.length) return;
+    const parts = syncPaste.split(/[\n,;]+/).map(p => p.trim()).filter(Boolean);
+    const contacts = parts.map(p => {
+      if (p.includes('@')) return { email: p.toLowerCase() };
+      const digits = p.replace(/\D/g, '');
+      if (digits.length >= 7) return { phone: p };
+      return null;
+    }).filter(Boolean);
+    if (!contacts.length) return;
     setSyncing(true);
     try {
-      const r = await api.syncContacts(emails.map(email => ({ email })));
+      const r = await api.syncContacts(contacts);
       setSyncResults(r);
     } catch { setSyncResults({ matched: [], unmatched: [] }); }
     finally { setSyncing(false); }
+  };
+
+  const handleConnectAll = async (matched) => {
+    const toConnect = matched.filter(p => p.connectionStatus !== 'accepted' && p.connectionStatus !== 'pending_sent');
+    for (const person of toConnect) {
+      try { await handleAction('connect', person); } catch {}
+    }
   };
 
   const uid = String(user?.id || user?._id || '');
@@ -672,15 +685,15 @@ export default function PeoplePage({ user }) {
               {/* Contact Sync section — shown in discover tab */}
               {tab === 'discover' && (
                 <div style={{ ...card, padding: '20px', borderRadius: 16, marginTop: 16, background: 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)', border: '1px solid #BAE6FD' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: syncOpen ? 16 : 0 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>📱</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0C4A6E', marginBottom: 2 }}>Find Friends on TalentNest</div>
-                      <div style={{ fontSize: 12, color: '#0369A1', lineHeight: 1.5 }}>See which of your contacts are already here. Like WhatsApp — sync your phone contacts or paste emails.</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: syncOpen ? 16 : 0, flexWrap: 'wrap' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📱</div>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#0C4A6E', marginBottom: 2 }}>Find Friends on TalentNest</div>
+                      <div style={{ fontSize: 12, color: '#0369A1', lineHeight: 1.5 }}>Sync phone contacts or paste emails/numbers to find people already here.</div>
                     </div>
                     <button onClick={() => { setSyncOpen(v => !v); setSyncResults(null); setSyncPaste(''); }}
-                      style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: syncOpen ? '#E0F2FE' : '#0284C7', color: syncOpen ? '#0369A1' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {syncOpen ? 'Close' : '📱 Sync Contacts'}
+                      style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: syncOpen ? '#E0F2FE' : '#0284C7', color: syncOpen ? '#0369A1' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {syncOpen ? '✕ Close' : '📱 Sync'}
                     </button>
                   </div>
                   {syncOpen && (
@@ -720,7 +733,7 @@ export default function PeoplePage({ user }) {
                         id="tn-sync-textarea"
                         value={syncPaste}
                         onChange={e => setSyncPaste(e.target.value)}
-                        placeholder={'Paste email addresses or phone numbers here…\ne.g. john@example.com, +919876543210, jane@company.com'}
+                        placeholder={'Paste emails or phone numbers (one per line or comma-separated)\ne.g. john@example.com\n+919876543210\njane@company.com, 9876543210'}
                         rows={3}
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #BAE6FD', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}
                       />
@@ -732,8 +745,15 @@ export default function PeoplePage({ user }) {
                         <div>
                           {syncResults.matched?.length > 0 && (
                             <>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#D1FAE5', padding: '3px 10px', borderRadius: 20 }}>✓ {syncResults.matched.length} found on TalentNest</span>
+                                {syncResults.matched.some(p => p.connectionStatus !== 'accepted' && p.connectionStatus !== 'pending_sent') && (
+                                  <button
+                                    onClick={() => handleConnectAll(syncResults.matched)}
+                                    style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                    🤝 Connect All
+                                  </button>
+                                )}
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                                 {syncResults.matched.map(person => (

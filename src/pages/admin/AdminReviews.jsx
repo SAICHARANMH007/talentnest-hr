@@ -68,6 +68,8 @@ export default function AdminReviews({ user }) {
   const [error,           setError]           = useState('');
   const [seeding,         setSeeding]         = useState(false);
   const [reportTarget,    setReportTarget]    = useState(null);
+  const [starFilter,      setStarFilter]      = useState(0);
+  const [companyFilter,   setCompanyFilter]   = useState('all');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -108,21 +110,21 @@ export default function AdminReviews({ user }) {
     finally { setSeeding(false); }
   };
 
-  const { avgRating, ratingDist, displayed } = useMemo(() => {
+  const { avgRating, ratingDist, displayed, companyOptions } = useMemo(() => {
     const all  = reviews.filter(r => r.rating);
     const avg  = all.length ? (all.reduce((s, r) => s + r.rating, 0) / all.length).toFixed(1) : null;
     const dist = [5, 4, 3, 2, 1].map(star => ({
       star,
       count: reviews.filter(r => Math.round(r.rating) === star).length,
     }));
-    const base = tab === 'reported' ? reportedReviews : reviews;
+    const base    = tab === 'reported' ? reportedReviews : reviews;
     const flagged = base.filter(r => r.isReported);
-    return {
-      avgRating:  avg,
-      ratingDist: dist,
-      displayed:  tab === 'reported' ? reportedReviews : (tab === 'flagged' ? flagged : reviews),
-    };
-  }, [reviews, reportedReviews, tab]);
+    let disp      = tab === 'reported' ? reportedReviews : (tab === 'flagged' ? flagged : reviews);
+    if (companyFilter !== 'all') disp = disp.filter(r => (r.companyName || '') === companyFilter);
+    if (starFilter !== 0)        disp = disp.filter(r => Math.round(r.rating || 0) === starFilter);
+    const companies = [...new Set(reviews.map(r => r.companyName).filter(Boolean))].sort();
+    return { avgRating: avg, ratingDist: dist, displayed: disp, companyOptions: companies };
+  }, [reviews, reportedReviews, tab, starFilter, companyFilter]);
 
   const tabStyle = (t) => ({
     padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
@@ -156,16 +158,23 @@ export default function AdminReviews({ user }) {
             <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</div>
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
+            {starFilter !== 0 && (
+              <button onClick={() => setStarFilter(0)} style={{ fontSize: 11, color: '#0176D3', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', marginBottom: 6, fontWeight: 700 }}>
+                ✕ Clear star filter
+              </button>
+            )}
             {ratingDist.map(({ star, count }) => {
               const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
+              const isActive = starFilter === star;
               return (
-                <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div key={star} onClick={() => setStarFilter(prev => prev === star ? 0 : star)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, cursor: 'pointer', borderRadius: 6, padding: '2px 4px', background: isActive ? 'rgba(245,158,11,0.1)' : 'transparent', outline: isActive ? '1.5px solid #F59E0B' : 'none' }}>
                   <span style={{ fontSize: 11, color: '#6B7280', minWidth: 14, textAlign: 'right' }}>{star}</span>
                   <span style={{ fontSize: 11, color: '#F59E0B' }}>★</span>
                   <div style={{ flex: 1, height: 7, background: '#F3F4F6', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: '#F59E0B', borderRadius: 4 }} />
+                    <div style={{ width: `${pct}%`, height: '100%', background: isActive ? '#D97706' : '#F59E0B', borderRadius: 4 }} />
                   </div>
-                  <span style={{ fontSize: 11, color: '#9CA3AF', minWidth: 24 }}>{count}</span>
+                  <span style={{ fontSize: 11, color: isActive ? '#D97706' : '#9CA3AF', minWidth: 24, fontWeight: isActive ? 700 : 400 }}>{count}</span>
                 </div>
               );
             })}
@@ -180,6 +189,28 @@ export default function AdminReviews({ user }) {
       )}
 
       {error && <p style={{ color: '#DC2626', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+      {/* Company filter — superadmin sees all orgs */}
+      {isSuperAdmin && companyOptions.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>🏢 Company:</span>
+          <select
+            value={companyFilter}
+            onChange={e => { setCompanyFilter(e.target.value); setStarFilter(0); }}
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, background: '#F9FAFB', color: '#374151', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="all">All Companies ({reviews.length} reviews)</option>
+            {companyOptions.map(c => {
+              const cnt = reviews.filter(r => (r.companyName || '') === c).length;
+              const avg = (() => { const rv = reviews.filter(r => (r.companyName || '') === c && r.rating); return rv.length ? (rv.reduce((s,r) => s+r.rating,0)/rv.length).toFixed(1) : null; })();
+              return <option key={c} value={c}>{c} ({cnt} review{cnt!==1?'s':''}{avg ? ` · ★${avg}` : ''})</option>;
+            })}
+          </select>
+          {companyFilter !== 'all' && (
+            <button onClick={() => setCompanyFilter('all')} style={{ fontSize: 11, color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>✕ Clear</button>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button style={tabStyle('all')} onClick={() => setTab('all')}>
