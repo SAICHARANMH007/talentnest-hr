@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
@@ -343,6 +344,7 @@ function PendingRequests({ pending, onAction, loading }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function PeoplePage({ user }) {
+  const navigate = useNavigate();
   const [tab,          setTab]         = useState('discover');
   const [connections,  setConnections] = useState([]);
   const [pending,      setPending]     = useState([]);
@@ -594,7 +596,7 @@ export default function PeoplePage({ user }) {
                           person={{ ...person, connectionStatus: 'accepted' }}
                           onAction={handleAction}
                           loading={actionLoading === String(person._id || person.id)}
-                          onCardClick={() => setProfilePerson(person)}
+                          onCardClick={() => navigate(`/app/profile/${String(person._id || person.id)}`)}
                         />
                       ))}
                     </div>
@@ -803,15 +805,6 @@ export default function PeoplePage({ user }) {
         @keyframes tn-spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* User profile drawer */}
-      {profilePerson && (
-        <UserProfileDrawer
-          person={profilePerson}
-          currentUserId={uid}
-          onClose={() => setProfilePerson(null)}
-          onRemove={(person) => handleAction('remove', person)}
-        />
-      )}
     </div>
   );
 }

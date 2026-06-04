@@ -216,6 +216,8 @@ export default function CandidateProfile({ user }) {
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState('');
   const [tab, setTab]         = useState('personal');
+  const [myPosts, setMyPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   const [form, setForm] = useState({
     name:'', email:'', phone:'', title:'', location:'', linkedinUrl:'', github:'', portfolio:'',
@@ -305,6 +307,27 @@ export default function CandidateProfile({ user }) {
 
   if (loading) return <div style={{ color:'#706E6B', padding:40, display:'flex', gap:10 }}><Spinner/> Loading...</div>;
 
+  // Load my posts when switching to posts tab
+  useEffect(() => {
+    if (tab !== 'posts') return;
+    const uid = profile?.userId || profile?._id || user?.id;
+    if (!uid) return;
+    setPostsLoading(true);
+    api.getUserPosts(String(uid))
+      .then(r => setMyPosts(Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : [])))
+      .catch(() => setMyPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [tab, profile, user]);
+
+  const deleteMyPost = async (postId) => {
+    if (!window.confirm('Delete this post permanently?')) return;
+    try {
+      await api.deletePost(postId);
+      setMyPosts(p => p.filter(x => String(x._id) !== String(postId)));
+      setToast('✅ Post deleted');
+    } catch { setToast('❌ Failed to delete post'); }
+  };
+
   // Tab definitions — emoji-only label on mobile, full label on desktop
   const TABS = [
     { key: 'personal',  emoji: '👤', label: 'Personal'   },
@@ -315,6 +338,7 @@ export default function CandidateProfile({ user }) {
     { key: 'extras',    emoji: '🏆', label: 'Extras'     },
     { key: 'video',     emoji: '🎥', label: 'Video'      },
     { key: 'resume',    emoji: '📋', label: 'Resume'     },
+    { key: 'posts',     emoji: '📣', label: 'My Posts'   },
   ];
 
   return (
@@ -613,6 +637,66 @@ export default function CandidateProfile({ user }) {
         />
       )}
 
+      {/* ── MY POSTS ── */}
+      {tab === 'posts' && (
+        <Section title="📣 MY COMMUNITY POSTS">
+          {postsLoading ? (
+            <div style={{ textAlign:'center', padding:'32px 0', color:'#9CA3AF' }}><Spinner /> Loading posts…</div>
+          ) : myPosts.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'40px 24px' }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>📣</div>
+              <div style={{ fontWeight:700, fontSize:15, color:'#374151', marginBottom:6 }}>No posts yet</div>
+              <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:16 }}>Share your career milestones, tips, and updates with the community.</div>
+              <button onClick={() => window.location.href='/app/community'} style={{ ...btnP, display:'inline-flex' }}>Go to Community</button>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {myPosts.map(post => (
+                <div key={post._id} style={{ background:'#F8FAFC', borderRadius:12, padding:'14px 16px', border:'1px solid #E5E7EB', position:'relative' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, gap:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:11, color:'#9CA3AF' }}>
+                        {new Date(post.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+                      </span>
+                      {post.type && post.type !== 'update' && (
+                        <span style={{ fontSize:11, fontWeight:700, background:'#EFF6FF', color:'#1D4ED8', borderRadius:20, padding:'2px 8px' }}>
+                          {post.type}
+                        </span>
+                      )}
+                      {post.communityName && (
+                        <span style={{ fontSize:11, color:'#6B7280', background:'#F3F4F6', borderRadius:20, padding:'2px 8px' }}>
+                          📌 {post.communityName}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteMyPost(post._id)}
+                      style={{ padding:'4px 10px', borderRadius:8, border:'1px solid #FCA5A5', background:'#FEF2F2', color:'#DC2626', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}
+                      title="Delete post">
+                      🗑 Delete
+                    </button>
+                  </div>
+                  <p style={{ margin:'0 0 10px', fontSize:13, color:'#374151', lineHeight:1.65, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                    {post.content}
+                  </p>
+                  {post.images?.length > 0 && (
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+                      {post.images.map((img, i) => (
+                        <img key={i} src={img} alt="" style={{ width:80, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #E5E7EB' }} />
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', gap:12, fontSize:11, color:'#9CA3AF' }}>
+                    {post.reactions?.length > 0 && <span>👍 {post.reactions.length} reaction{post.reactions.length !== 1 ? 's' : ''}</span>}
+                    {post.comments?.length > 0 && <span>💬 {post.comments.length} comment{post.comments.length !== 1 ? 's' : ''}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
       {/* ── RESUME PREVIEW ── */}
       {tab === 'resume' && (
         <div>
@@ -631,8 +715,8 @@ export default function CandidateProfile({ user }) {
         </div>
       )}
 
-      {/* ── Sticky save footer (all tabs except resume) ── */}
-      {tab !== 'resume' && (
+      {/* ── Sticky save footer (all tabs except resume and posts) ── */}
+      {tab !== 'resume' && tab !== 'posts' && (
         <div style={{
           display: 'flex',
           gap: 10,

@@ -1089,13 +1089,13 @@ export default function CommunityFeed({ user }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #F1F5F9' }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #E5E7EB' }}>
         {[
           { id: 'feed',  label: 'Feed' },
           { id: 'saved', label: `★ Saved (${bookmarks.filter(id => bookmarkData[id]).length})` },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '8px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s' }}>
+            style={{ padding: '10px 20px', border: 'none', background: tab === t.id ? 'rgba(1,118,211,0.06)' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? '#0176D3' : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s', borderRadius: '8px 8px 0 0' }}>
             {t.label}
           </button>
         ))}
@@ -1108,12 +1108,12 @@ export default function CommunityFeed({ user }) {
             {/* My Network chip */}
             <button
               onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }}
-              style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${networkOnly ? '#059669' : '#E5E7EB'}`, background: networkOnly ? '#D1FAE5' : '#F9FAFB', color: networkOnly ? '#065F46' : '#6B7280', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', display: 'flex', alignItems: 'center', gap: 4 }}>
+              style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${networkOnly ? '#059669' : '#D1D5DB'}`, background: networkOnly ? '#D1FAE5' : '#fff', color: networkOnly ? '#065F46' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               🤝 My Network {networkOnly && connections.length > 0 && <span style={{ background: '#059669', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>{connections.length}</span>}
             </button>
             {FILTERS.map(f => (
               <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); }}
-                style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${filter === f.value && !activeHash && !networkOnly ? '#0176D3' : '#E5E7EB'}`, background: filter === f.value && !activeHash && !networkOnly ? '#EFF6FF' : '#F9FAFB', color: filter === f.value && !activeHash && !networkOnly ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s' }}>
+                style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${filter === f.value && !activeHash && !networkOnly ? '#0176D3' : '#D1D5DB'}`, background: filter === f.value && !activeHash && !networkOnly ? '#EFF6FF' : '#fff', color: filter === f.value && !activeHash && !networkOnly ? '#1D4ED8' : '#374151', fontSize: 12, fontWeight: filter === f.value && !activeHash && !networkOnly ? 700 : 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 {f.label}
               </button>
             ))}

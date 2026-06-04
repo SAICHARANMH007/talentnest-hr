@@ -227,12 +227,12 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
         <div style={{ display: 'flex', gap: 2 }}>
           {REACTIONS.map(r => (
             <button key={r.type} onClick={() => onReact(post._id, r.type)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: 'none', background: myReaction?.type === r.type ? '#EFF6FF' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: myReaction?.type === r.type ? 700 : 400, color: myReaction?.type === r.type ? (r.color || '#1D4ED8') : '#6B7280', transition: 'background 0.12s' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: myReaction?.type === r.type ? `1px solid ${r.color || '#1D4ED8'}33` : '1px solid transparent', background: myReaction?.type === r.type ? '#EFF6FF' : 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, fontWeight: myReaction?.type === r.type ? 700 : 500, color: myReaction?.type === r.type ? (r.color || '#1D4ED8') : '#374151', transition: 'all 0.12s' }}>
               {r.emoji} <span style={{ display: window.innerWidth < 500 ? 'none' : 'inline' }}>{r.label}</span>
             </button>
           ))}
           <button onClick={() => setShowComments(v => !v)}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#6B7280' }}>
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
             💬 Comment
           </button>
         </div>
@@ -798,10 +798,10 @@ export default function CommunityDetailPage({ user }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #F1F5F9', marginBottom: 16, padding: isMobile ? '0 12px' : 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${bg}22`, marginBottom: 16, padding: isMobile ? '0 12px' : 0, overflowX: 'auto', scrollbarWidth: 'none', background: '#fff', borderRadius: isMobile ? 0 : '0 0 12px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '12px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? bg : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? `2px solid ${bg}` : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+            style={{ padding: '13px 20px', border: 'none', background: tab === t.id ? bg + '10' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? bg : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? `2px solid ${bg}` : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s', letterSpacing: '0.01em' }}>
             {t.label}
           </button>
         ))}

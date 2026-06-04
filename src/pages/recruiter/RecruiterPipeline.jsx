@@ -862,6 +862,9 @@ export default function RecruiterPipeline({ user }) {
   };
 
   const stageCounts = STAGES.reduce((acc, s) => { acc[s.id] = apps.filter(a => a.stage === s.id).length; return acc; }, {});
+  const BENCHMARK_STAGES = new Set(['shortlisted', 'interview_round_1', 'interview_round_2', 'offer_extended', 'selected']);
+  const benchmarkCount = apps.filter(a => BENCHMARK_STAGES.has(a.stage)).length;
+  const totalApplicants = apps.length;
   let filtered = apps;
   
   // Sort applicants by assessment score (descending) so top candidates are prioritized
@@ -1233,6 +1236,32 @@ export default function RecruiterPipeline({ user }) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+          {/* ── Talent Mirror Smart Suggestion Banner ── */}
+          {!loading && apps.length > 0 && (
+            <div style={{ marginBottom: 14, borderRadius: 14, overflow: 'hidden', border: benchmarkCount > 0 ? '1px solid rgba(1,118,211,0.3)' : '1px solid rgba(245,158,11,0.3)', background: benchmarkCount > 0 ? 'linear-gradient(135deg, rgba(15,23,42,0.96) 0%, rgba(30,58,95,0.96) 50%, rgba(1,118,211,0.15) 100%)' : 'linear-gradient(135deg, #FFFBEB, #FEF3C7)' }}>
+              <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>🔮</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {benchmarkCount > 0 ? (
+                    <>
+                      <div style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>Talent Mirror Ready — {benchmarkCount} benchmark candidate{benchmarkCount !== 1 ? 's' : ''} shortlisted/interviewed</div>
+                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 }}>AI-powered smart matching from {totalApplicants} applicants — see who fits the benchmark profile</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ color: '#92400E', fontWeight: 700, fontSize: 13 }}>Talent Mirror waiting for benchmarks</div>
+                      <div style={{ color: '#B45309', fontSize: 11, marginTop: 2 }}>Shortlist or interview at least 1 candidate to activate smart profile matching across all {totalApplicants} applicants</div>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowTalentMirror(true)}
+                  style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: benchmarkCount > 0 ? 'linear-gradient(135deg, #0176D3, #0F5BB5)' : 'rgba(245,158,11,0.2)', color: benchmarkCount > 0 ? '#fff' : '#92400E', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: benchmarkCount > 0 ? '0 2px 8px rgba(1,118,211,0.4)' : 'none', border: benchmarkCount > 0 ? 'none' : '1px solid rgba(245,158,11,0.4)' }}>
+                  {benchmarkCount > 0 ? '✨ View Smart Matches' : '🔮 Open Talent Mirror'}
+                </button>
               </div>
             </div>
           )}
