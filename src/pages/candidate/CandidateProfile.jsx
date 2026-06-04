@@ -637,7 +637,7 @@ export default function CandidateProfile({ user }) {
       {/* ── MY POSTS ── */}
       {tab === 'posts' && (
         <Section title="📣 MY COMMUNITY POSTS">
-          {postsLoading ? (
+          {postsLoading || myPosts === null ? (
             <div style={{ textAlign:'center', padding:'32px 0', color:'#9CA3AF' }}><Spinner /> Loading posts…</div>
           ) : myPosts.length === 0 ? (
             <div style={{ textAlign:'center', padding:'40px 24px' }}>
