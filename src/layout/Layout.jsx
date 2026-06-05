@@ -999,7 +999,6 @@ export default function Layout({ user, onLogout }) {
   const [trialDays, setTrialDays]        = useState(null);
   const [online, setOnline]              = useState(true);
   const { customLogoUrl }                = useLogo();
-  const { themeId: mThemeId, setThemeId: mSetThemeId } = useMarketingTheme();
 
   useEffect(() => {
     const check = () => setOnline(navigator.onLine);
@@ -1140,12 +1139,6 @@ export default function Layout({ user, onLogout }) {
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 10, minWidth: 10, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
               </span>
-              <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                {[{ id: 'light', e: '☀️' }, { id: 'dark', e: '🌙' }, { id: 'mixed', e: '🌊' }].map(th => (
-                  <button key={th.id} onClick={() => mSetThemeId(th.id)} title={th.id}
-                    style={{ width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: mThemeId === th.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)', background: mThemeId === th.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', WebkitTapHighlightColor: 'transparent' }}>{th.e}</button>
-                ))}
-              </div>
             </div>
           </div>
 
