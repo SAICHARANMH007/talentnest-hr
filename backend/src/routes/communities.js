@@ -8,6 +8,34 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
 
+// ─── PUBLIC: GET /api/communities/public/:slug — no auth, for share links ────
+// Must be defined BEFORE router.use(auth) so it doesn't require a token.
+router.get('/public/:slug', asyncHandler(async (req, res) => {
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
+  if (!community) return res.status(404).json({ success: false, error: 'Community not found.' });
+
+  // Return 3 recent posts as a preview (no full user data)
+  const posts = await FeedPost.find({ communityId: community._id, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .select('content postType authorName authorRole createdAt reactions hashtags')
+    .lean();
+
+  res.json({
+    success: true,
+    data: {
+      name:        community.name,
+      slug:        community.slug,
+      description: community.description,
+      icon:        community.icon,
+      coverColor:  community.coverColor,
+      category:    community.category,
+      memberCount: community.memberCount || 0,
+    },
+    previewPosts: posts,
+  });
+}));
+
 router.use(auth);
 
 // ─── Hashtag & keyword maps per community slug ────────────────────────────────
@@ -173,40 +201,38 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: community });
 }));
 
-// ─── GET /api/communities — list all communities for the tenant ───────────────
+// ─── GET /api/communities — list all communities (global, cross-tenant) ──────
 router.get('/', asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
   const uid      = String(req.user._id || req.user.id);
 
-  // Upsert each default by slug — adds new ones without overwriting existing data
+  // Upsert each default by slug only — one canonical community per slug, shared across all tenants
   const createdBy = req.user._id || req.user.id;
   await Promise.all(
     DEFAULTS.map(d =>
       Community.findOneAndUpdate(
-        { tenantId, slug: d.slug },
-        { $setOnInsert: { ...d, tenantId, createdBy, memberIds: [], memberCount: 0 } },
+        { slug: d.slug },
+        { $setOnInsert: { ...d, createdBy, memberIds: [], memberCount: 0 } },
         { upsert: true }
       )
     )
   );
 
-  const communities = await Community.find({ tenantId }).sort({ memberCount: -1, name: 1 }).lean();
+  const communities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
 
   const data = communities.map(c => ({
     ...c,
     isMember: c.memberIds.some(id => String(id) === uid),
-    memberIds: undefined, // don't expose full list on listing
+    memberIds: undefined,
   }));
 
   res.json({ success: true, data, total: data.length });
 }));
 
-// ─── GET /api/communities/:slug — single community detail ────────────────────
+// ─── GET /api/communities/:slug — single community detail (global) ───────────
 router.get('/:slug', asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
   const uid      = String(req.user._id || req.user.id);
 
-  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
   // Top 10 members (cross-tenant visible — any user who joined is shown)
@@ -215,10 +241,10 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     _id: { $in: memberIds }, deletedAt: null,
   }).select('name role title avatarUrl photoUrl').lean();
 
-  // Recent posts count (last 30 days)
+  // Recent posts count (last 30 days, across all tenants)
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const recentPostCount = await FeedPost.countDocuments({
-    tenantId, communityId: community._id, isDeleted: false, createdAt: { $gte: since },
+    communityId: community._id, isDeleted: false, createdAt: { $gte: since },
   });
 
   res.json({
@@ -232,13 +258,13 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   });
 }));
 
-// ─── POST /api/communities/:slug/join — join a community ────────────────────
+// ─── POST /api/communities/:slug/join — join a community (global) ───────────
 router.post('/:slug/join', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
   const userId   = req.user._id || req.user.id;
   const userName = req.user.name || 'A member';
 
-  const community = await Community.findOne({ tenantId, slug: req.params.slug });
+  const community = await Community.findOne({ slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);
 
   const alreadyMember = community.memberIds.some(id => String(id) === String(userId));
@@ -266,12 +292,11 @@ router.post('/:slug/join', asyncHandler(async (req, res) => {
   res.json({ success: true, memberCount: community.memberCount, isMember: true });
 }));
 
-// ─── POST /api/communities/:slug/leave — leave a community ──────────────────
+// ─── POST /api/communities/:slug/leave — leave a community (global) ─────────
 router.post('/:slug/leave', asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
   const userId   = String(req.user._id || req.user.id);
 
-  const community = await Community.findOne({ tenantId, slug: req.params.slug });
+  const community = await Community.findOne({ slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);
 
   const idx = community.memberIds.findIndex(id => String(id) === userId);
@@ -314,14 +339,13 @@ router.get('/:slug/feed', asyncHandler(async (req, res) => {
   res.json({ success: true, data: posts, total, page: parseInt(page), hasMore: skip + posts.length < total, community });
 }));
 
-// ─── GET /api/communities/:slug/members — paginated community members ─────────
+// ─── GET /api/communities/:slug/members — paginated community members (global) ─
 router.get('/:slug/members', asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
   const { page = 1, limit = 20 } = req.query;
   const lim  = Math.min(50, parseInt(limit));
   const skip = (Math.max(1, parseInt(page)) - 1) * lim;
 
-  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
   const memberIds = (community.memberIds || []);
@@ -338,7 +362,7 @@ router.get('/:slug/members', asyncHandler(async (req, res) => {
 // ─── GET /api/communities/:slug/jobs — relevant jobs for community ─────────
 router.get('/:slug/jobs', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
-  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
   const Job = require('../models/Job');
@@ -374,7 +398,7 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
 // ─── POST /api/communities/:slug/seed-posts — seed sample posts for community ─
 router.post('/:slug/seed-posts', asyncHandler(async (req, res) => {
   const tenantId  = req.user.tenantId;
-  const community = await Community.findOne({ tenantId, slug: req.params.slug });
+  const community = await Community.findOne({ slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);
 
   // Only seed if fewer than 3 community-specific posts exist

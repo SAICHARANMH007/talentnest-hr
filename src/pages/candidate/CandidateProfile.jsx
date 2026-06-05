@@ -644,7 +644,7 @@ export default function CandidateProfile({ user }) {
               <div style={{ fontSize:40, marginBottom:12 }}>📣</div>
               <div style={{ fontWeight:700, fontSize:15, color:'#374151', marginBottom:6 }}>No posts yet</div>
               <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:16 }}>Share your career milestones, tips, and updates with the community.</div>
-              <button onClick={() => window.location.href='/app/community'} style={{ ...btnP, display:'inline-flex' }}>Go to Community</button>
+              <button onClick={() => window.location.href='/app/communities'} style={{ ...btnP, display:'inline-flex' }}>Go to Community</button>
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>

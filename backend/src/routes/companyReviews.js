@@ -24,6 +24,21 @@ router.get('/public/:orgSlug', asyncHandler(async (req, res) => {
   res.json({ success: true, data: reviews, avgRating: avg, total: reviews.length });
 }));
 
+// GET /api/company-reviews/public-job/:jobSlug — public: reviews for a job's company
+router.get('/public-job/:jobSlug', asyncHandler(async (req, res) => {
+  const Job = require('../models/Job');
+  const job = await Job.findOne({ careerPageSlug: req.params.jobSlug, deletedAt: null }).select('tenantId company companyName').lean();
+  if (!job) return res.json({ success: true, data: [], avgRating: null, total: 0, companyName: '' });
+
+  const reviews = await CompanyReview.find({ tenantId: job.tenantId, deletedAt: null })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+
+  const avg = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+  res.json({ success: true, data: reviews, avgRating: avg, total: reviews.length, companyName: job.company || job.companyName || '' });
+}));
+
 // POST /api/company-reviews/public/:orgSlug — public: submit a review (live immediately)
 router.post('/public/:orgSlug', asyncHandler(async (req, res) => {
   const Organization = require('../models/Organization');

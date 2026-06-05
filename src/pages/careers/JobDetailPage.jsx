@@ -45,6 +45,8 @@ export default function JobDetailPage() {
   const refToken    = searchParams.get('ref') || '';
   const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
   const [showRefer, setShowRefer] = useState(false);
+  const [reviews, setReviews]     = useState([]);
+  const [reviewsAvg, setReviewsAvg] = useState(null);
 
   const handleQuickApply = async () => {
     if (!job) return;
@@ -78,6 +80,14 @@ export default function JobDetailPage() {
         if (arr.length === 0) { setError('Job not found or has been filled.'); return; }
         const j = arr[0];
         setJob(j);
+
+        // Fetch company reviews for this job (non-blocking)
+        import('../../api/config.js').then(({ API_BASE_URL }) => {
+          fetch(`${API_BASE_URL}/company-reviews/public-job/${encodeURIComponent(slug)}`)
+            .then(r => r.json())
+            .then(r => { if (r.success) { setReviews(r.data || []); setReviewsAvg(r.avgRating); } })
+            .catch(() => {});
+        }).catch(() => {});
 
         // ── Set page meta ──────────────────────────────────────────────
         document.title = `${j.title} — ${j.location || 'India'} | TalentNest HR`;
@@ -373,6 +383,56 @@ export default function JobDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* COMPANY REVIEWS SECTION */}
+      {reviews.length > 0 && (
+        <section style={{ background: '#F8FAFC', borderTop: '1px solid #E2E8F0', padding: '48px 0' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0A1628', margin: 0 }}>
+                Company Reviews
+              </h2>
+              {reviewsAvg && (
+                <div style={{ background: '#F59E0B', color: '#fff', borderRadius: 8, padding: '4px 12px', fontWeight: 800, fontSize: 14 }}>
+                  ⭐ {reviewsAvg} / 5
+                </div>
+              )}
+              <span style={{ fontSize: 13, color: '#6B7280' }}>({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              {reviews.map((r, i) => (
+                <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {[1,2,3,4,5].map(s => (
+                        <span key={s} style={{ fontSize: 14, color: s <= r.rating ? '#F59E0B' : '#E5E7EB' }}>★</span>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 12, color: '#9CA3AF' }}>{r.role || ''}</span>
+                  </div>
+                  {r.title && <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 8 }}>{r.title}</div>}
+                  {r.pros && (
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 }}>Pros</span>
+                      <p style={{ fontSize: 13, color: '#374151', margin: '2px 0 0', lineHeight: 1.5 }}>{r.pros}</p>
+                    </div>
+                  )}
+                  {r.cons && (
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase', letterSpacing: 0.5 }}>Cons</span>
+                      <p style={{ fontSize: 13, color: '#374151', margin: '2px 0 0', lineHeight: 1.5 }}>{r.cons}</p>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 10, fontSize: 11, color: '#9CA3AF' }}>
+                    {r.isAnonymous ? 'Anonymous' : (r.reviewerName || 'Employee')}
+                    {r.createdAt ? ` · ${new Date(r.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* WHY TALENTNEST SECTION */}
       <section style={{ background: '#fff', borderTop: '1px solid #E2E8F0', padding: '60px 0' }}>

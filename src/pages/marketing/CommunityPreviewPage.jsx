@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../../api/api.js';
+import { API_BASE_URL } from '../../api/config.js';
 
 export default function CommunityPreviewPage() {
   const { slug } = useParams();
   const navigate  = useNavigate();
   const [community, setCommunity] = useState(null);
+  const [posts,     setPosts]     = useState([]);
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
-    // Try to fetch community info publicly
-    api.getCommunity(slug)
-      .then(r => { setCommunity(r?.data || null); setLoading(false); })
-      .catch(() => { setCommunity(null); setLoading(false); });
+    // Public endpoint — no auth required
+    fetch(`${API_BASE_URL}/communities/public/${slug}`)
+      .then(r => r.json())
+      .then(r => {
+        if (r.success) {
+          setCommunity(r.data || null);
+          setPosts(r.previewPosts || []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [slug]);
 
   const goToLogin = () => {
-    // Store the redirect target and go to auth
     try { sessionStorage.setItem('tn_post_login_redirect', `/app/communities/${slug}`); } catch {}
     navigate(`/auth?redirect=${encodeURIComponent(`/app/communities/${slug}`)}`);
   };
@@ -24,67 +31,94 @@ export default function CommunityPreviewPage() {
   const color = community?.coverColor || '#0176D3';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
-        {/* TalentNest logo */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.03em' }}>
-            Talent<span style={{ color: '#0176D3' }}>Nest</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Professional HR Network</div>
+    <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Top bar */}
+      <div style={{ background: '#032D60', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontWeight: 900, fontSize: 20, color: '#fff', letterSpacing: '-0.03em' }}>
+          Talent<span style={{ color: '#00C2CB' }}>Nest</span>
         </div>
+        <button onClick={goToLogin} style={{ background: '#0176D3', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          Sign In
+        </button>
+      </div>
 
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 0 40px' }}>
         {loading ? (
-          <div style={{ width: 36, height: 36, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 20px' }} />
+          <div style={{ textAlign: 'center', paddingTop: 80 }}>
+            <div style={{ width: 36, height: 36, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+            <p style={{ color: '#9CA3AF', fontSize: 14 }}>Loading community…</p>
+          </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.12)', marginBottom: 24 }}>
-            {/* Community banner */}
-            <div style={{ height: 100, background: `linear-gradient(135deg, ${color} 0%, ${color}bb 100%)`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 52, opacity: 0.4 }}>{community?.icon || '💬'}</span>
+          <>
+            {/* Community header */}
+            <div style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`, height: 160, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 72, opacity: 0.3 }}>{community?.icon || '💬'}</span>
             </div>
 
-            <div style={{ padding: '24px 28px 28px' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, margin: '-44px auto 12px', border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-                {community?.icon || '💬'}
+            <div style={{ background: '#fff', padding: '0 24px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              {/* Icon + title */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginTop: -28, marginBottom: 16 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 14, background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', flexShrink: 0 }}>
+                  {community?.icon || '💬'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 900, fontSize: 22, color: '#0A1628', lineHeight: 1.2 }}>{community?.name || 'Community'}</div>
+                  <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                    👥 {community?.memberCount || 0} members · {community?.category || 'Community'}
+                  </div>
+                </div>
               </div>
 
-              {community ? (
-                <>
-                  <div style={{ fontWeight: 900, fontSize: 22, color: '#0A1628', marginBottom: 6 }}>{community.name}</div>
-                  <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12, lineHeight: 1.6 }}>
-                    {community.description || 'A professional community on TalentNest.'}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: 16, fontSize: 12, color: '#9CA3AF', marginBottom: 20 }}>
-                    <span>👥 {community.memberCount || 0} members</span>
-                    <span>🏷️ {community.category || 'General'}</span>
-                  </div>
-                  <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '12px 16px', marginBottom: 20, border: '1px solid #E5E7EB', fontSize: 13, color: '#374151' }}>
-                    🔒 Log in to TalentNest to join this community and see all posts, members, and discussions.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontWeight: 700, fontSize: 18, color: '#0A1628', marginBottom: 8 }}>Community on TalentNest</div>
-                  <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>Sign in to access this community and connect with professionals.</div>
-                </>
+              {community?.description && (
+                <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.6, margin: '0 0 20px' }}>{community.description}</p>
               )}
 
-              <button onClick={goToLogin}
-                style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', transition: 'opacity 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                {community ? `Join ${community.name} →` : 'Sign In to TalentNest →'}
+              {/* CTA */}
+              <button onClick={goToLogin} style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+                Join {community?.name || 'this community'} →
               </button>
-              <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF' }}>
+              <p style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', margin: '10px 0 0' }}>
                 Don't have an account?{' '}
                 <span onClick={() => navigate('/auth?mode=register')} style={{ color: '#0176D3', fontWeight: 600, cursor: 'pointer' }}>Create one free</span>
-              </div>
+              </p>
             </div>
-          </div>
-        )}
 
-        <div style={{ fontSize: 11, color: '#D1D5DB' }}>Powered by TalentNest · Professional HR Platform</div>
+            {/* Preview posts */}
+            {posts.length > 0 && (
+              <div style={{ background: '#fff', marginTop: 12, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div style={{ padding: '16px 24px 0', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginBottom: 12 }}>
+                    Recent posts in this community
+                  </div>
+                </div>
+                {posts.map((p, i) => (
+                  <div key={i} style={{ padding: '14px 24px', borderBottom: i < posts.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                        {(p.authorName || 'M')[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#0A1628' }}>{p.authorName || 'Member'}</div>
+                        <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5, marginTop: 4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
+                          {p.content || ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {/* Lock overlay */}
+                <div style={{ padding: '16px 24px', background: 'linear-gradient(to top, #fff 60%, transparent)', textAlign: 'center' }}>
+                  <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 16px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🔒</span>
+                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>Sign in to see all posts and join the discussion</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
       <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
