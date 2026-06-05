@@ -35,7 +35,7 @@ html {
 body {
   background: var(--tn-black);
   color: var(--tn-white);
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
   line-height: 1.5;
   overflow-x: hidden;
   min-height: 100vh;
@@ -322,7 +322,7 @@ body {
 
 html, body, #root {
   height: 100%;
-  font-family: 'Plus Jakarta Sans', 'Salesforce Sans', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans', 'Salesforce Sans', system-ui, sans-serif;
   background: var(--app-bg, var(--sf-bg, #F3F2F2));
   color: var(--app-text, var(--sf-text, #181818));
   font-size: 14px;
@@ -355,25 +355,26 @@ a:hover { text-decoration: underline; }
   color: inherit;
 }
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--app-bg, #F1F5F9); }
-::-webkit-scrollbar-thumb { background: var(--app-card-border, #CBD5E1); border-radius: 5px; border: 2px solid var(--app-bg, #F1F5F9); }
-::-webkit-scrollbar-thumb:hover { background: var(--app-text-sec, #94A3B8); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.16); border-radius: 100px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.16) transparent; }
 
-/* Salesforce focus ring */
+/* iOS-style focus ring — inner glow, not harsh outline */
 *:focus-visible {
-  outline: 2px solid var(--sf-blue);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(1, 118, 211, 0.28), 0 0 0 1.5px rgba(1, 118, 211, 0.6);
+  border-radius: 8px;
 }
 
 /* ── Smooth page transitions ──────────────────────────────────────────────── */
 @keyframes tn-fadein {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px) scale(0.993); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
 }
 .tn-page {
-  animation: tn-fadein 0.22s ease both;
+  animation: tn-fadein 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ── Skeleton loader ─────────────────────────────────────────────────────── */
@@ -388,23 +389,23 @@ a:hover { text-decoration: underline; }
   border-radius: 6px;
 }
 
-/* ── Drawer slide-in from right ──────────────────────────────────────────── */
+/* ── Drawer slide-in from right — iOS spring ─────────────────────────────── */
 @keyframes tn-slide-in-right {
   from { transform: translateX(100%); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
 }
 .tn-drawer {
-  animation: tn-slide-in-right 0.25s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: tn-slide-in-right 0.36s cubic-bezier(0.32, 0.72, 0, 1) both;
   will-change: transform;
 }
 
-/* ── Modal fade+scale in ─────────────────────────────────────────────────── */
+/* ── Modal fade+scale in — iOS spring ─────────────────────────────────────── */
 @keyframes tn-modal-in {
-  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
 .tn-modal {
-  animation: tn-modal-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: tn-modal-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   will-change: transform, opacity;
 }
 
@@ -451,30 +452,31 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 
-/* ── Button smooth transitions ───────────────────────────────────────────── */
+/* ── Button smooth transitions — iOS haptic-like press ───────────────────── */
 button, .tn-btn {
-  transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s, background 0.15s;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
-button:hover:not(:disabled) { opacity: 0.9; }
-button:active:not(:disabled) { transform: scale(0.97); }
+button:hover:not(:disabled) { opacity: 0.88; }
+button:active:not(:disabled) { transform: scale(0.95); opacity: 0.82; }
 
-/* ── Card hover lift ─────────────────────────────────────────────────────── */
+/* ── Card hover lift — iOS-style spring ─────────────────────────────────── */
 .tn-card-hover {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 .tn-card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(1,118,211,0.12);
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 12px 32px rgba(1,118,211,0.14), 0 4px 8px rgba(0,0,0,0.06);
 }
 
-/* ── Input focus glow ────────────────────────────────────────────────────── */
+/* ── Input focus glow — iOS-style ───────────────────────────────────────── */
 input, select, textarea {
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--sf-blue) !important;
-  box-shadow: 0 0 0 3px rgba(1,118,211,0.12);
+  box-shadow: 0 0 0 3.5px rgba(1, 118, 211, 0.16), 0 0 0 1px rgba(1, 118, 211, 0.5) !important;
+  outline: none;
 }
 
 select,
@@ -1225,7 +1227,7 @@ textarea:focus-visible {
     z-index: 2000;
     box-shadow: 4px 0 32px rgba(0, 0, 0, 0.4);
     transform: translateX(-100%);
-    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -2342,4 +2344,198 @@ button:not(:disabled):active {
   background: var(--app-input-bg) !important;
   color: var(--app-text) !important;
   border-color: var(--app-input-border) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   iOS-QUALITY UI LAYER
+   Platform-wide micro-interaction and polish upgrades.
+   Additive only — no layout changes, no breakage.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── iOS spring easing variables ── */
+:root {
+  --ios-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ios-ease:       cubic-bezier(0.16, 1, 0.3, 1);
+  --ios-snappy:     cubic-bezier(0.32, 0.72, 0, 1);
+  --ios-shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.05);
+  --ios-shadow-md:  0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08), 0 24px 48px rgba(0,0,0,0.04);
+  --ios-shadow-lg:  0 4px 16px rgba(0,0,0,0.08), 0 16px 40px rgba(0,0,0,0.12), 0 40px 80px rgba(0,0,0,0.06);
+}
+
+/* ── Page transition — spring fade+scale (replaces translateY-only) ── */
+.tn-page-transition {
+  animation: ios-page-in 0.32s var(--ios-ease) both;
+}
+@keyframes ios-page-in {
+  from { opacity: 0; transform: scale(0.985) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)     translateY(0); }
+}
+
+/* ── Card layered iOS depth shadow ── */
+.tn-card,
+[class*="card"] > div:not([class]):first-child {
+  box-shadow: var(--ios-shadow-sm);
+}
+
+/* ── Card hover: spring lift ── */
+.tn-card:hover {
+  transform: translateY(-3px) scale(1.006);
+  box-shadow: var(--ios-shadow-md);
+  transition: transform 0.32s var(--ios-spring), box-shadow 0.24s var(--ios-ease);
+}
+
+/* ── Badge spring pop ── */
+@keyframes ios-badge-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.tn-badge, [class*="badge"], [class*="chip"], [class*="tag"] {
+  animation: ios-badge-pop 0.3s var(--ios-spring) both;
+}
+
+/* ── Toast / notification slide up (mobile, iOS-style bottom sheet) ── */
+@keyframes ios-toast-up {
+  from { transform: translateY(120%) scale(0.94); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+.tn-toast, [class*="toast"], [class*="snackbar"] {
+  animation: ios-toast-up 0.4s var(--ios-spring) both;
+}
+
+/* ── Dropdown / select panel spring ── */
+@keyframes ios-dropdown {
+  from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+[class*="dropdown"]:not(select) > [class*="menu"],
+[class*="dropdown"]:not(select) > [class*="panel"],
+[class*="popover"],
+[class*="menu-panel"] {
+  animation: ios-dropdown 0.22s var(--ios-spring) both;
+  transform-origin: top center;
+}
+
+/* ── Sidebar nav items — iOS-style active pill ── */
+.tn-sidebar nav a.active,
+.tn-sidebar-mobile nav a.active {
+  background: linear-gradient(135deg, rgba(1,118,211,0.32), rgba(1,118,211,0.18)) !important;
+  border-color: rgba(1,118,211,0.28) !important;
+  box-shadow: 0 4px 16px rgba(1,118,211,0.22), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+}
+
+/* ── Sidebar scrollbar — invisible by default, shows on hover ── */
+.tn-sidebar nav,
+.tn-sidebar-mobile nav {
+  scrollbar-width: none;
+}
+.tn-sidebar nav::-webkit-scrollbar,
+.tn-sidebar-mobile nav::-webkit-scrollbar {
+  width: 0;
+}
+.tn-sidebar:hover nav::-webkit-scrollbar {
+  width: 3px;
+}
+.tn-sidebar:hover nav::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 100px;
+}
+
+/* ── Table row hover — spring-like bg transition ── */
+tbody tr {
+  transition: background 0.16s var(--ios-ease);
+}
+
+/* ── Link hover — smooth underline ── */
+a:not([class]) {
+  transition: color 0.16s var(--ios-ease), opacity 0.16s var(--ios-ease);
+}
+
+/* ── Image fade-in on load ── */
+img {
+  transition: opacity 0.3s var(--ios-ease);
+}
+
+/* ── Main content area — smooth background transition for theme switching ── */
+.tn-main-content {
+  transition: background 0.3s var(--ios-ease);
+}
+
+/* ── Selection color — iOS blue ── */
+::selection {
+  background: rgba(1, 118, 211, 0.22);
+  color: inherit;
+}
+
+/* ── Smooth placeholder fade ── */
+input::placeholder,
+textarea::placeholder {
+  transition: opacity 0.18s var(--ios-ease);
+}
+input:focus::placeholder,
+textarea:focus::placeholder {
+  opacity: 0.5;
+}
+
+/* ── Avatar ring pop on hover ── */
+[class*="avatar"]:hover,
+[class*="Avatar"]:hover {
+  transform: scale(1.08);
+  transition: transform 0.24s var(--ios-spring);
+}
+
+/* ── iOS-style checkbox and radio (adds smooth scaling) ── */
+input[type="checkbox"],
+input[type="radio"] {
+  transition: transform 0.18s var(--ios-spring), box-shadow 0.18s var(--ios-ease);
+  cursor: pointer;
+}
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  transform: scale(1.06);
+}
+
+/* ── Scroll momentum on iOS (native feel for overflowing containers) ── */
+[style*="overflow-y: auto"],
+[style*="overflowY: auto"],
+[style*="overflow: auto"],
+[style*="overflow-y: scroll"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Glass panel for overlays (frosted glass) ── */
+.tn-glass {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+}
+
+/* ── Secondary modal notification panel — tighter spring ── */
+@keyframes tn-notif-spring {
+  from { opacity: 0; transform: scale(0.9) translateY(-12px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.tn-notif-panel {
+  animation: tn-notif-spring 0.3s var(--ios-spring) both;
+}
+
+/* ── Skeleton shimmer — smoother wave ── */
+.tn-skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%);
+  background-size: 400% 100%;
+  animation: ios-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes ios-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Reduced motion: respect user accessibility preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

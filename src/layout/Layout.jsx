@@ -810,18 +810,20 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
             data-tour-id={n.id}
             title={n.label}
             style={({ isActive }) => ({
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12,
-              border: isActive ? activeBorder : '1px solid transparent',
-              background: isActive ? activeBg : 'transparent',
-              color: sidebarText, fontSize: 13, fontWeight: isActive ? 800 : 700,
-              cursor: 'pointer', marginBottom: 4, textAlign: 'left', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', textDecoration: 'none',
-              boxShadow: isActive ? '0 10px 24px rgba(0,0,0,0.18)' : 'none',
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 12,
+              border: isActive ? '1px solid rgba(1,118,211,0.28)' : '1px solid transparent',
+              background: isActive ? 'linear-gradient(135deg, rgba(1,118,211,0.3), rgba(1,118,211,0.16))' : 'transparent',
+              color: sidebarText, fontSize: 13, fontWeight: isActive ? 800 : 600,
+              cursor: 'pointer', marginBottom: 3, textAlign: 'left',
+              transition: 'all 0.24s cubic-bezier(0.16, 1, 0.3, 1)', textDecoration: 'none',
+              boxShadow: isActive ? '0 4px 16px rgba(1,118,211,0.22), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+              letterSpacing: '-0.01em',
             })}
             onMouseEnter={e => {
               if (!e.currentTarget.classList.contains('active')) {
                 e.currentTarget.style.background = hoverBg;
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.transform = 'translateX(6px)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                e.currentTarget.style.transform = 'translateX(4px)';
               }
             }}
             onMouseLeave={e => {
@@ -834,8 +836,8 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
           >
             {({ isActive }) => (
               <>
-                <span style={{ fontSize: 18, flexShrink: 0, opacity: isActive ? 1 : 0.92 }}>{n.icon}</span>
-                <span className="tn-nav-label" style={{ opacity: isActive ? 1 : 0.96, color: isActive ? '#FFFFFF' : sidebarMuted }}>{n.label}</span>
+                <span style={{ fontSize: 17, flexShrink: 0, opacity: isActive ? 1 : 0.88, transition: 'opacity 0.2s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)', transform: isActive ? 'scale(1.12)' : 'scale(1)' }}>{n.icon}</span>
+                <span className="tn-nav-label" style={{ opacity: isActive ? 1 : 0.9, color: isActive ? '#FFFFFF' : sidebarMuted, letterSpacing: isActive ? '-0.02em' : '-0.01em' }}>{n.label}</span>
               </>
             )}
           </NavLink>
@@ -1054,7 +1056,7 @@ export default function Layout({ user, onLogout }) {
   const sidebarProps = { nav, user, rk, onLogout, setMobileOpen, orgLogo: customLogoUrl || orgLogo, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#F3F2F2', fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#F3F2F2', fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans', system-ui, sans-serif", paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
       {showChangePwd && <ChangePasswordModal user={user} onClose={() => setShowChangePwd(false)} />}
       {showEmailSettings && <EmailSettingsModal user={user} onClose={() => setShowEmailSettings(false)} />}
       <OnlinePanel user={user} open={showOnline} onClose={() => setShowOnline(false)} onMessage={u => { setShowOnline(false); setChatRecipient(u); setShowInbox(true); }} />
@@ -1069,7 +1071,8 @@ export default function Layout({ user, onLogout }) {
         @keyframes tn-badge-pop { 0% { transform: scale(1) } 50% { transform: scale(1.4) } 100% { transform: scale(1) } }
         ::-webkit-scrollbar { width: 4px; height: 4px }
         ::-webkit-scrollbar-track { background: transparent }
-        ::-webkit-scrollbar-thumb { background: rgba(1,118,211,0.3); border-radius: 2px }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 100px }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3) }
         .tn-app-icon-btn { aspect-ratio: 1 / 1; line-height: 1; place-items: center; overflow: hidden; }
         .tn-app-icon-btn svg { flex: 0 0 auto; }
       `}</style>
