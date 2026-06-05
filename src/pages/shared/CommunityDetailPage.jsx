@@ -439,7 +439,12 @@ function JobsTab({ jobs, loading }) {
 
 // ── Members Tab ───────────────────────────────────────────────────────────────
 function MembersTab({ members, loading, total }) {
-  if (loading) return <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>Loading members…</div>;
+  if (loading) return (
+    <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
+      <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />
+      Loading members…
+    </div>
+  );
   if (!members.length) return (
     <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
@@ -450,17 +455,28 @@ function MembersTab({ members, loading, total }) {
 
   return (
     <div>
-      {total > members.length && (
-        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10 }}>{total} total members · showing {members.length}</div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+      <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 14, fontWeight: 600 }}>
+        {total} member{total !== 1 ? 's' : ''}{total > members.length ? ` · showing first ${members.length}` : ''}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {members.map(m => (
-          <div key={String(m._id)} style={{ ...card, padding: '14px 12px', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6 }}>
-            <Avatar name={m.name} src={m.avatarUrl || m.photoUrl} size={44} role={m.role} />
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.name || 'Member'}</div>
-            <RoleBadge role={m.role} />
-            {m.title && <div style={{ fontSize: 11, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{m.title}</div>}
-            {m.location && <div style={{ fontSize: 10, color: '#9CA3AF' }}>📍 {m.location}</div>}
+          <div key={String(m._id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, background: '#fff', border: '1px solid #F1F5F9', transition: 'box-shadow 0.15s', cursor: 'default' }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+            <Avatar name={m.name} src={m.avatarUrl || m.photoUrl} size={46} role={m.role} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name || 'Member'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <RoleBadge role={m.role} />
+                {m.title && <span style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{m.title}</span>}
+              </div>
+              {(m.department || m.location) && (
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3, display: 'flex', gap: 10 }}>
+                  {m.department && <span>🏢 {m.department}</span>}
+                  {m.location && <span>📍 {m.location}</span>}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -748,32 +764,36 @@ export default function CommunityDetailPage({ user }) {
           <div style={{ position: 'absolute', top: 20, right: 20, fontSize: 52, opacity: 0.25 }}>{community.icon}</div>
         </div>
         <div style={{ background: '#fff', padding: isMobile ? '0 16px 16px' : '0 24px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -28, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -28 }}>
+            {/* Community icon */}
+            <div style={{ width: 60, height: 60, borderRadius: 16, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', flexShrink: 0 }}>
               {community.icon}
             </div>
-            <button
-              onClick={() => {
-                const shareUrl = `${window.location.origin}/c/${community.slug}`;
-                navigator.clipboard?.writeText(shareUrl).then(() => {
-                  const btn = document.getElementById('tn-share-btn');
-                  if (btn) { btn.textContent = '✓ Link Copied!'; setTimeout(() => { if (btn) btn.textContent = '🔗 Share'; }, 2000); }
-                }).catch(() => {
-                  if (navigator.share) {
-                    navigator.share({ title: community.name, text: community.description, url: shareUrl }).catch(() => {});
-                  }
-                });
-              }}
-              id="tn-share-btn"
-              style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>
-              🔗 Share
-            </button>
-            <button
-              onClick={isMember ? handleLeave : handleJoin}
-              disabled={joining}
-              style={{ padding: '9px 22px', borderRadius: 10, border: `2px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#F9FAFB' : bg, color: isMember ? '#6B7280' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>
-              {joining ? '…' : isMember ? '✓ Joined' : '+ Join Community'}
-            </button>
+            {/* Action buttons — grouped right */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 4 }}>
+              <button
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/c/${community.slug}`;
+                  navigator.clipboard?.writeText(shareUrl).then(() => {
+                    const btn = document.getElementById('tn-share-btn');
+                    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { if (btn) btn.textContent = '🔗 Share'; }, 2000); }
+                  }).catch(() => {
+                    if (navigator.share) {
+                      navigator.share({ title: community.name, text: community.description, url: shareUrl }).catch(() => {});
+                    }
+                  });
+                }}
+                id="tn-share-btn"
+                style={{ padding: '8px 16px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                🔗 Share
+              </button>
+              <button
+                onClick={isMember ? handleLeave : handleJoin}
+                disabled={joining}
+                style={{ padding: '8px 20px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
+                {joining ? '…' : isMember ? '✓ Joined' : '+ Join'}
+              </button>
+            </div>
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 4 }}>{community.name}</div>

@@ -2582,8 +2582,640 @@ PATCH {{base}}/api/applications/{{appId}}
 </body></html>`;
 }
 
+// ─── 10. PRODUCT INTELLIGENCE PLAYBOOK ───────────────────────────────────────
+function buildProductIntelligencePlaybook() {
+  const now = new Date();
+  const today = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const todayShort = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  return `<!DOCTYPE html><html lang="en"><head><title>Product Intelligence Playbook — TalentNest HR</title>${BASE_STYLES}
+  <style>
+    .route-row{display:grid;grid-template-columns:90px 1fr 1fr;gap:0;padding:8px 14px;border-bottom:1px solid #f0f4f8;font-size:12px;align-items:start}
+    .route-row:last-child{border-bottom:none}
+    .method{font-family:'Courier New',monospace;font-weight:800;font-size:11px;padding:2px 6px;border-radius:4px;display:inline-block}
+    .get{background:#dcfce7;color:#15803d}.post{background:#dbeafe;color:#1d4ed8}.patch{background:#fef3c7;color:#92400e}.delete{background:#fee2e2;color:#991b1b}.put{background:#ede9fe;color:#6d28d9}
+    .model-chip{display:inline-block;background:#f0f4f8;border:1px solid #e2e8f0;border-radius:6px;padding:3px 8px;font-size:11px;color:#475569;font-family:'Courier New',monospace;margin:2px}
+    .feature-row{display:flex;align-items:flex-start;gap:12;padding:10px 0;border-bottom:1px solid #f0f4f8}
+    .feature-row:last-child{border-bottom:none}
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:16px 0}
+    .stat-box{background:linear-gradient(135deg,#f8faff,#f0f4ff);border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center}
+    .stat-num{font-size:28px;font-weight:900;color:#0176D3;line-height:1}
+    .stat-label{font-size:11px;color:#64748b;margin-top:4px;font-weight:600}
+    .role-card{background:#f8faff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px}
+    .role-header{display:flex;align-items:center;gap:10;margin-bottom:10px}
+    .role-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+    h4.sub{font-size:13px;font-weight:700;color:#1e293b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f4f8}
+  </style>
+  </head><body>
+${heroHtml('🧠','PRODUCT INTELLIGENCE','Product Intelligence Playbook','Complete codebase audit — 58 backend routes, 54 database models, 6 user roles, 30+ core features. Every claim is sourced from actual code.','1.0',today,'Super Admin · Codebase Audit')}
+
+<div class="container">
+
+  <div class="toc">
+    <h2>📑 TABLE OF CONTENTS</h2>
+    <ol>
+      <li><a href="#platform-id">Platform Identity</a></li>
+      <li><a href="#exec-summary">Executive Summary</a></li>
+      <li><a href="#tech-stack">Tech Stack</a></li>
+      <li><a href="#user-roles">User Roles (6)</a></li>
+      <li><a href="#feature-inventory">Feature Inventory (30+)</a></li>
+      <li><a href="#backend-routes">Backend Routes (58)</a></li>
+      <li><a href="#db-models">Database Models (54)</a></li>
+      <li><a href="#india-first">India-First Features</a></li>
+      <li><a href="#deployment">Deployment Architecture</a></li>
+      <li><a href="#revenue">Revenue Model</a></li>
+      <li><a href="#security">Security Posture</a></li>
+      <li><a href="#realtime">Real-Time Architecture</a></li>
+      <li><a href="#known-patterns">Code Patterns</a></li>
+      <li><a href="#current-state">Current Platform State</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. PLATFORM IDENTITY -->
+  <div class="section" id="platform-id">
+    <h2><span class="icon" style="background:#0176D318">🏢</span>Platform Identity</h2>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🏷️</div><h4>Product Name</h4><p>TalentNest HR</p></div>
+      <div class="card"><div class="card-icon">🎯</div><h4>Category</h4><p>B2B SaaS — HR Tech / ATS / HRMS</p></div>
+      <div class="card"><div class="card-icon">🌏</div><h4>Primary Market</h4><p>India (Razorpay, GST, WhatsApp, Aadhaar/PAN BGV)</p></div>
+      <div class="card"><div class="card-icon">🏗️</div><h4>Architecture</h4><p>Multi-tenant SaaS — every record has tenantId</p></div>
+      <div class="card"><div class="card-icon">🚀</div><h4>Frontend URL</h4><p>talentnesthr.com (Vercel)</p></div>
+      <div class="card"><div class="card-icon">⚙️</div><h4>Backend URL</h4><p>api.talentnesthr.com (Render)</p></div>
+      <div class="card"><div class="card-icon">📅</div><h4>Audit Date</h4><p>${today}</p></div>
+      <div class="card"><div class="card-icon">🤖</div><h4>AI in Platform</h4><p>None — no AI features currently implemented</p></div>
+    </div>
+  </div>
+
+  <!-- 2. EXECUTIVE SUMMARY -->
+  <div class="section" id="exec-summary">
+    <h2><span class="icon" style="background:#10b98118">📊</span>Executive Summary</h2>
+    <p>TalentNest HR is a full-stack, multi-tenant HR SaaS platform targeting Indian SMBs and enterprises. It covers the complete hiring lifecycle from job posting to onboarding, plus social/community features and employer branding tools.</p>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num">58</div><div class="stat-label">Backend Routes</div></div>
+      <div class="stat-box"><div class="stat-num">54</div><div class="stat-label">DB Models</div></div>
+      <div class="stat-box"><div class="stat-num">6</div><div class="stat-label">User Roles</div></div>
+      <div class="stat-box"><div class="stat-num">30+</div><div class="stat-label">Core Features</div></div>
+      <div class="stat-box"><div class="stat-num">2</div><div class="stat-label">Real-time Channels</div></div>
+      <div class="stat-box"><div class="stat-num">3</div><div class="stat-label">Storage Providers</div></div>
+      <div class="stat-box"><div class="stat-num">1</div><div class="stat-label">Payment Gateway</div></div>
+      <div class="stat-box"><div class="stat-num">∞</div><div class="stat-label">Tenants Supported</div></div>
+    </div>
+    <div class="alert alert-blue">
+      <span>📌</span>
+      <div><strong>Multi-Tenancy Model:</strong> Every MongoDB document carries a <code>tenantId</code> field. All authenticated API routes extract <code>req.tenantId</code> from JWT claims via the <code>tenantGuard</code> middleware. Exception: Communities are cross-tenant (global, one canonical record per slug).</div>
+    </div>
+  </div>
+
+  <!-- 3. TECH STACK -->
+  <div class="section" id="tech-stack">
+    <h2><span class="icon" style="background:#8b5cf618">⚙️</span>Tech Stack</h2>
+    <h3>Frontend</h3>
+    <table>
+      <tr><th>Technology</th><th>Version</th><th>Role</th></tr>
+      <tr><td><code>React</code></td><td>18.2.0</td><td>UI framework</td></tr>
+      <tr><td><code>Vite</code></td><td>Latest</td><td>Build tool + dev server</td></tr>
+      <tr><td><code>React Router DOM</code></td><td>6.22.0</td><td>Client-side routing (SPA)</td></tr>
+      <tr><td><code>Socket.io-client</code></td><td>4.8.3</td><td>Real-time notifications, presence, feed</td></tr>
+      <tr><td><code>Leaflet</code></td><td>1.9.4</td><td>Maps (candidate location)</td></tr>
+      <tr><td><code>PDF.js</code></td><td>5.5.207</td><td>In-browser resume preview</td></tr>
+      <tr><td><code>JSZip</code></td><td>3.10.1</td><td>Bulk export (ZIP downloads)</td></tr>
+      <tr><td><code>XLSX</code></td><td>0.18.5</td><td>Excel import/export</td></tr>
+    </table>
+    <h3>Backend</h3>
+    <table>
+      <tr><th>Technology</th><th>Version</th><th>Role</th></tr>
+      <tr><td><code>Node.js + Express</code></td><td>4.21.0</td><td>HTTP API server</td></tr>
+      <tr><td><code>Mongoose</code></td><td>8.6.0</td><td>MongoDB ODM</td></tr>
+      <tr><td><code>Socket.io</code></td><td>4.8.3</td><td>WebSocket server (notifications, presence, video signaling)</td></tr>
+      <tr><td><code>JSON Web Token</code></td><td>9.0.2</td><td>Auth (access + refresh tokens)</td></tr>
+      <tr><td><code>bcryptjs</code></td><td>2.4.3</td><td>Password hashing</td></tr>
+      <tr><td><code>Cloudinary</code></td><td>2.9.0</td><td>Image/file storage (avatars, documents, feed images)</td></tr>
+      <tr><td><code>Multer</code></td><td>1.4.5-lts</td><td>File upload middleware</td></tr>
+      <tr><td><code>Nodemailer</code></td><td>8.0.4</td><td>Transactional email</td></tr>
+      <tr><td><code>Razorpay</code></td><td>2.9.6</td><td>Indian payment gateway (billing)</td></tr>
+      <tr><td><code>web-push</code></td><td>3.6.7</td><td>Browser push notifications (VAPID)</td></tr>
+      <tr><td><code>PDFKit</code></td><td>0.18.0</td><td>Server-side PDF generation (offer letters, reports)</td></tr>
+      <tr><td><code>mammoth</code></td><td>1.7.0</td><td>DOCX → HTML (resume parsing)</td></tr>
+      <tr><td><code>pdf-parse</code></td><td>1.1.1</td><td>PDF text extraction (resume parsing)</td></tr>
+      <tr><td><code>node-cron</code></td><td>3.0.3</td><td>Scheduled jobs (alerts, sequences, cleanup)</td></tr>
+      <tr><td><code>Helmet</code></td><td>8.1.0</td><td>HTTP security headers</td></tr>
+      <tr><td><code>express-rate-limit</code></td><td>8.3.1</td><td>Rate limiting (auth endpoints)</td></tr>
+      <tr><td><code>Winston</code></td><td>3.11.0</td><td>Structured logging with daily rotation</td></tr>
+      <tr><td><code>Swagger UI</code></td><td>5.0.1</td><td>API documentation at /api/docs</td></tr>
+      <tr><td><code>Google Auth Library</code></td><td>10.6.2</td><td>Google OAuth login</td></tr>
+    </table>
+    <h3>Infrastructure</h3>
+    <table>
+      <tr><th>Layer</th><th>Provider</th><th>Details</th></tr>
+      <tr><td>Frontend Hosting</td><td>Vercel</td><td>Static SPA with edge CDN, automatic deploys from git</td></tr>
+      <tr><td>Backend Hosting</td><td>Render</td><td>Node.js service, env vars, persistent disk not used</td></tr>
+      <tr><td>Database</td><td>MongoDB Atlas</td><td>Shared cluster, all collections multi-tenant via tenantId</td></tr>
+      <tr><td>File Storage</td><td>Cloudinary</td><td>Images, resumes, documents, feed media</td></tr>
+      <tr><td>Email</td><td>SMTP (Nodemailer)</td><td>Transactional email for invites, alerts, sequences</td></tr>
+      <tr><td>Push Notifications</td><td>Web Push (VAPID)</td><td>Browser push via <code>web-push</code> + PushSubscription model</td></tr>
+      <tr><td>Payments</td><td>Razorpay</td><td>India-first — orders, subscriptions, webhooks</td></tr>
+    </table>
+  </div>
+
+  <!-- 4. USER ROLES -->
+  <div class="section" id="user-roles">
+    <h2><span class="icon" style="background:#10b98118">👥</span>User Roles (6 Types)</h2>
+    <p>Source: <code>backend/src/models/User.js</code> → <code>enum: ['super_admin','admin','recruiter','hiring_manager','client','candidate']</code></p>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">👑</span><div><strong style="font-size:14px;color:#DC2626">super_admin</strong> <span class="badge badge-red">Platform Owner</span></div></div>
+      <ul class="check">
+        <li>Full access to all tenants, all data, all features</li>
+        <li>Organization management (create, suspend, delete orgs)</li>
+        <li>Platform-wide analytics, billing oversight, audit logs</li>
+        <li>Company review moderation (report, unreport, delete)</li>
+        <li>NPS dashboard across all orgs</li>
+        <li>Playbooks, seed data, debug tools</li>
+        <li>Can view reported feed posts across platform</li>
+        <li>Access to <code>/app/playbooks</code> and all admin routes</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">🏢</span><div><strong style="font-size:14px;color:#0176D3">admin</strong> <span class="badge badge-blue">HR Admin</span></div></div>
+      <ul class="check">
+        <li>Full control within their own tenant (org)</li>
+        <li>Manage jobs, candidates, applications, pipeline</li>
+        <li>Invite recruiters, hiring managers, clients</li>
+        <li>Configure org customizations, email templates, webhooks</li>
+        <li>Access billing, NPS, preboarding, BGV, offer letters</li>
+        <li>View audit logs for their org</li>
+        <li>Manage job distribution and career page</li>
+        <li>Company reviews (report flagging)</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">🎯</span><div><strong style="font-size:14px;color:#7C3AED">recruiter</strong> <span class="badge badge-purple">Recruiter</span></div></div>
+      <ul class="check">
+        <li>Create and manage jobs (within their tenant)</li>
+        <li>Source, screen, and move candidates through pipeline</li>
+        <li>Schedule interviews, manage assessments</li>
+        <li>Send offer letters, BGV requests</li>
+        <li>Access talent pool, saved searches</li>
+        <li>WhatsApp messaging to candidates</li>
+        <li>Video interview rooms</li>
+        <li>Pipeline smart matching (TalentMirror)</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">👔</span><div><strong style="font-size:14px;color:#D97706">hiring_manager</strong> <span class="badge badge-amber">Hiring Manager</span></div></div>
+      <ul class="check">
+        <li>View jobs and applications relevant to their department</li>
+        <li>Provide feedback on candidates</li>
+        <li>Participate in interview panels</li>
+        <li>Limited pipeline actions (cannot delete jobs)</li>
+        <li>Access to their team's headcount plans</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">🤝</span><div><strong style="font-size:14px;color:#059669">client</strong> <span class="badge badge-green">Client / Vendor</span></div></div>
+      <ul class="check">
+        <li>External client with limited read access</li>
+        <li>View shared job requisitions and candidate shortlists</li>
+        <li>Managed via the Clients module</li>
+        <li>Cannot access internal HR data</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">🙋</span><div><strong style="font-size:14px;color:#0176D3">candidate</strong> <span class="badge badge-blue">Candidate</span></div></div>
+      <ul class="check">
+        <li>Profile, resume upload, skills, experience</li>
+        <li>Browse and apply to jobs from career page</li>
+        <li>Track application status in real-time</li>
+        <li>Join communities, post on feed, connect with professionals</li>
+        <li>Receive and sign offer letters online</li>
+        <li>Complete background verification requests</li>
+        <li>Join video interview rooms</li>
+        <li>NPS surveys, company reviews</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 5. FEATURE INVENTORY -->
+  <div class="section" id="feature-inventory">
+    <h2><span class="icon" style="background:#f59e0b18">🗂️</span>Feature Inventory (30+ Features)</h2>
+    <table>
+      <tr><th>#</th><th>Feature</th><th>Route File(s)</th><th>Status</th></tr>
+      <tr><td>1</td><td><strong>Authentication</strong> — JWT access/refresh tokens, Google OAuth, OTP, device sessions</td><td><code>auth.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>2</td><td><strong>Job Management</strong> — create, edit, publish, archive; career page slugs; salary, skills, location</td><td><code>jobs.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>3</td><td><strong>Application Pipeline</strong> — kanban stages, bulk move, smart match score, status history</td><td><code>applications.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>4</td><td><strong>Candidate Management</strong> — profile, resume parse, skill extraction, BGV, documents</td><td><code>candidates.js</code>, <code>candidateDocs.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>5</td><td><strong>Resume Parsing</strong> — PDF/DOCX → structured data (name, skills, experience) server-side</td><td><code>parseResume.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>6</td><td><strong>Interview Scheduling</strong> — calendar links, invite emails, candidate confirmations</td><td><code>schedule.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>7</td><td><strong>Video Interviews</strong> — WebRTC peer-to-peer rooms via Socket.io signaling</td><td><code>videoRooms.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>8</td><td><strong>Assessments</strong> — create question banks, assign to candidates, auto-score</td><td><code>assessments.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>9</td><td><strong>Offer Letters</strong> — PDF generation (PDFKit), digital signing, expiry tracking</td><td><code>offers.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>10</td><td><strong>Background Verification (BGV)</strong> — Aadhaar, PAN, education, employment doc upload</td><td><code>bgv.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>11</td><td><strong>Pre-Boarding</strong> — document checklist, task assignments before Day 1</td><td><code>preboarding.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>12</td><td><strong>Email Sequences</strong> — drip campaigns, automated candidate nurture</td><td><code>emailSequences.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>13</td><td><strong>Social Feed</strong> — posts, reactions, comments, hashtags, image upload (Cloudinary)</td><td><code>feed.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>14</td><td><strong>Communities</strong> — global cross-tenant groups, join/leave, feed per community</td><td><code>communities.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>15</td><td><strong>Connections / Networking</strong> — send/accept requests, mutual connections</td><td><code>connections.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>16</td><td><strong>Direct Messaging</strong> — 1:1 chat via Socket.io real-time</td><td><code>messages.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>17</td><td><strong>WhatsApp Messaging</strong> — send messages to candidates via WhatsApp API</td><td><code>whatsapp.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>18</td><td><strong>Notifications</strong> — in-app + browser push (VAPID) + real-time via Socket.io</td><td><code>notifications.js</code>, <code>push.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>19</td><td><strong>Company Reviews</strong> — public rating/review system, admin moderation, reporting</td><td><code>companyReviews.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>20</td><td><strong>NPS (Net Promoter Score)</strong> — candidate surveys, scoring, org-level dashboard</td><td><code>nps.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>21</td><td><strong>Talent Pool</strong> — save candidates for future roles, tag, search</td><td><code>talentPool.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>22</td><td><strong>Saved Searches</strong> — save candidate filter queries with alert triggers</td><td><code>savedSearches.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>23</td><td><strong>Job Alerts</strong> — candidate-subscribed email alerts for new matching jobs</td><td><code>jobAlerts.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>24</td><td><strong>Billing (Razorpay)</strong> — plans, orders, payment records, subscription management</td><td><code>billing.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>25</td><td><strong>Audit Logs</strong> — immutable record of all admin/recruiter actions per tenant</td><td><code>audit.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>26</td><td><strong>Custom Fields</strong> — admin-defined extra fields on jobs/candidates</td><td><code>customFields.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>27</td><td><strong>Pipeline Templates</strong> — reusable hiring stage configurations</td><td><code>pipelineTemplates.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>28</td><td><strong>Interview Kits</strong> — structured interview scorecards, question banks</td><td><code>interviewKits.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>29</td><td><strong>Rejection Templates</strong> — reusable rejection email templates</td><td><code>rejectionTemplates.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>30</td><td><strong>Onboarding Templates</strong> — pre-boarding task/document checklist templates</td><td><code>onboardingTemplates.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>31</td><td><strong>Headcount Planning</strong> — org-level hiring forecasts, department budgets</td><td><code>headcountPlans.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>32</td><td><strong>Job Distribution</strong> — post jobs to multiple boards from one place</td><td><code>distribution.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>33</td><td><strong>Referrals</strong> — employee referral program (internal + platform-wide)</td><td><code>referrals.js</code>, <code>platformReferrals.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>34</td><td><strong>Social Posts (Employer Brand)</strong> — org-branded social media posts</td><td><code>socialPosts.js</code>, <code>social.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>35</td><td><strong>Calls</strong> — call records, call logging for candidate interactions</td><td><code>calls.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>36</td><td><strong>Blogs / Content</strong> — employer brand blog posts</td><td><code>blogs.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>37</td><td><strong>Webhooks</strong> — outbound HTTP webhooks on application events</td><td><code>webhooks.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>38</td><td><strong>Org Customizations</strong> — logo, brand colors, email branding, career page</td><td><code>customizations.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>39</td><td><strong>Interest Tracking</strong> — candidate swipes/interests on job cards</td><td><code>interest.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>40</td><td><strong>Invites</strong> — magic-link org invitations for team members</td><td><code>invites.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+    </table>
+  </div>
+
+  <!-- 6. BACKEND ROUTES -->
+  <div class="section" id="backend-routes">
+    <h2><span class="icon" style="background:#0176D318">🔀</span>Backend Routes Directory (58 Files)</h2>
+    <p>All routes are mounted at <code>/api/&lt;resource&gt;</code> in <code>backend/src/server.js</code>. Most routes require <code>authenticate</code> + <code>tenantGuard</code> middleware.</p>
+
+    <h4 class="sub">Authentication & Users</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/register</code></span><span>Register new org + admin user</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/login</code></span><span>Email+password login → JWT</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/google</code></span><span>Google OAuth login</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/refresh</code></span><span>Refresh access token</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/logout</code></span><span>Revoke refresh token</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/otp/send</code></span><span>Send OTP for phone verification</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/auth/otp/verify</code></span><span>Verify OTP code</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/users</code></span><span>List org users (admin)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/users/me</code></span><span>Current user profile</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/users/:id</code></span><span>Update user profile/role</span></div>
+    </div>
+
+    <h4 class="sub">Jobs & Applications</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/jobs</code></span><span>List jobs (paginated, filterable)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/jobs</code></span><span>Create job</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/jobs/:id</code></span><span>Update job</span></div>
+      <div class="route-row"><span class="method delete">DELETE</span><span><code>/api/jobs/:id</code></span><span>Soft-delete job</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/jobs/public/:slug</code></span><span>Public job detail (career page, no auth)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/applications</code></span><span>List applications (with filters)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/applications</code></span><span>Create application (candidate applies)</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/applications/:id/stage</code></span><span>Move to pipeline stage</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/applications/bulk-stage</code></span><span>Bulk move multiple applications</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/applications/:id/smart-match</code></span><span>Pipeline smart match scoring</span></div>
+    </div>
+
+    <h4 class="sub">Candidates</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/candidates</code></span><span>Search/filter candidates (recruiter)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/candidates/:id</code></span><span>Candidate profile detail</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/candidates/:id</code></span><span>Update candidate profile</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/parse-resume</code></span><span>Upload + parse PDF/DOCX resume → JSON</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/candidate-docs</code></span><span>Upload candidate document</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/bgv/:candidateId</code></span><span>BGV document status</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/bgv</code></span><span>Submit BGV document</span></div>
+    </div>
+
+    <h4 class="sub">Interviews, Assessments, Offers</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/schedule</code></span><span>Create interview slot + invite email</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/video-rooms</code></span><span>List video rooms</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/video-rooms</code></span><span>Create video room (WebRTC)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/assessments</code></span><span>List assessments</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/assessments</code></span><span>Create assessment</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/assessments/:id/submit</code></span><span>Submit assessment answers</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/offers</code></span><span>List offer letters</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/offers</code></span><span>Generate offer letter PDF</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/offers/:id/sign</code></span><span>Candidate digital sign</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/interview-kits</code></span><span>List interview scorecards</span></div>
+    </div>
+
+    <h4 class="sub">Social, Community, Messaging</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/feed</code></span><span>Personalised social feed</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/feed</code></span><span>Create post (text + images)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/feed/:id/react</code></span><span>React to post (like/celebrate/…)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/feed/:id/comment</code></span><span>Comment on post</span></div>
+      <div class="route-row"><span class="method delete">DELETE</span><span><code>/api/feed/:id</code></span><span>Delete post</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/communities</code></span><span>List all communities (global, cross-tenant)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/communities/public/:slug</code></span><span>Public community preview (no auth)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/communities/:slug/join</code></span><span>Join community</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/communities/:slug/leave</code></span><span>Leave community</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/messages/:userId</code></span><span>Get DM thread with user</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/messages</code></span><span>Send direct message</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/connections</code></span><span>List connections + pending requests</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/connections/request</code></span><span>Send connection request</span></div>
+    </div>
+
+    <h4 class="sub">Company Reviews, NPS</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/company-reviews/public/:orgSlug</code></span><span>Public org reviews (no auth)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/company-reviews/public-job/:jobSlug</code></span><span>Reviews by job slug (no auth)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/company-reviews/public/:orgSlug</code></span><span>Submit review publicly</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/company-reviews/my-org</code></span><span>Authenticated org reviews</span></div>
+      <div class="route-row"><span class="method delete">DELETE</span><span><code>/api/company-reviews/:id</code></span><span>Soft-delete review (admin/super_admin)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/nps/responses</code></span><span>NPS responses (admin)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/nps/submit</code></span><span>Submit NPS score (candidate)</span></div>
+    </div>
+
+    <h4 class="sub">Org, Billing, Admin, Platform</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/orgs</code></span><span>List all orgs (super_admin)</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/orgs</code></span><span>Create org (super_admin)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/billing/plans</code></span><span>List billing plans</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/billing/order</code></span><span>Create Razorpay order</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/billing/verify</code></span><span>Verify Razorpay payment signature</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/audit</code></span><span>Audit log (admin own org / super_admin all)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/dashboard</code></span><span>Dashboard stats (jobs, apps, candidates count)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/platform</code></span><span>Platform-wide stats (super_admin)</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/notifications</code></span><span>List user notifications (paginated)</span></div>
+      <div class="route-row"><span class="method patch">PATCH</span><span><code>/api/notifications/read-all</code></span><span>Mark all notifications read</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/invites/send</code></span><span>Send magic-link team invite</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/invites/accept</code></span><span>Accept invite via token (public)</span></div>
+    </div>
+
+    <h4 class="sub">Pipeline Templates, Custom Fields, Webhooks</h4>
+    <div style="background:#f8faff;border-radius:10px;border:1px solid #e2e8f0">
+      <div class="route-row" style="font-weight:700;background:#f0f4f8;border-radius:10px 10px 0 0"><span>Method</span><span>Path</span><span>Description</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/pipeline-templates</code></span><span>List pipeline stage templates</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/pipeline-templates</code></span><span>Create pipeline template</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/custom-fields</code></span><span>List custom field definitions</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/custom-fields</code></span><span>Define custom field</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/webhooks</code></span><span>List configured webhooks</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/webhooks</code></span><span>Register webhook endpoint</span></div>
+      <div class="route-row"><span class="method post">POST</span><span><code>/api/whatsapp/send</code></span><span>Send WhatsApp message to candidate</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/talent-pool</code></span><span>List saved talent pool entries</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/headcount-plans</code></span><span>List headcount plans</span></div>
+      <div class="route-row"><span class="method get">GET</span><span><code>/api/referrals</code></span><span>List employee referrals</span></div>
+    </div>
+  </div>
+
+  <!-- 7. DATABASE MODELS -->
+  <div class="section" id="db-models">
+    <h2><span class="icon" style="background:#ef444418">🗄️</span>Database Models (54 Collections)</h2>
+    <p>All documents in MongoDB Atlas. Every model that has user data includes a <code>tenantId</code> field (except cross-tenant models like Community).</p>
+    <h3>Core HR Models</h3>
+    <div>
+      <span class="model-chip">Application</span>
+      <span class="model-chip">Candidate</span>
+      <span class="model-chip">Job</span>
+      <span class="model-chip">User</span>
+      <span class="model-chip">Organization</span>
+      <span class="model-chip">Tenant</span>
+      <span class="model-chip">OfferLetter</span>
+      <span class="model-chip">PreBoarding</span>
+      <span class="model-chip">OnboardingTemplate</span>
+      <span class="model-chip">HeadcountPlan</span>
+      <span class="model-chip">PipelineTemplate</span>
+      <span class="model-chip">RejectionTemplate</span>
+      <span class="model-chip">InterviewKit</span>
+      <span class="model-chip">Assessment</span>
+      <span class="model-chip">AssessmentSubmission</span>
+      <span class="model-chip">SchedulingLink</span>
+    </div>
+    <h3>Candidate Enrichment</h3>
+    <div>
+      <span class="model-chip">CandidateDocument</span>
+      <span class="model-chip">BgvDocument</span>
+      <span class="model-chip">ImportedCandidate</span>
+      <span class="model-chip">CandidateRequest</span>
+      <span class="model-chip">CandidateNPS</span>
+      <span class="model-chip">TalentPool</span>
+      <span class="model-chip">SavedSearch</span>
+      <span class="model-chip">JobAlert</span>
+    </div>
+    <h3>Social & Community</h3>
+    <div>
+      <span class="model-chip">FeedPost</span>
+      <span class="model-chip">Community</span>
+      <span class="model-chip">Connection</span>
+      <span class="model-chip">DirectMessage</span>
+      <span class="model-chip">PostReport</span>
+      <span class="model-chip">CompanyReview</span>
+      <span class="model-chip">Blog</span>
+    </div>
+    <h3>Notifications & Communication</h3>
+    <div>
+      <span class="model-chip">Notification</span>
+      <span class="model-chip">PushSubscription</span>
+      <span class="model-chip">EmailLog</span>
+      <span class="model-chip">EmailSequence</span>
+      <span class="model-chip">WhatsAppLog</span>
+      <span class="model-chip">WhatsAppSession</span>
+      <span class="model-chip">Otp</span>
+      <span class="model-chip">Invite</span>
+    </div>
+    <h3>Billing & Auth</h3>
+    <div>
+      <span class="model-chip">PaymentRecord</span>
+      <span class="model-chip">RefreshToken</span>
+      <span class="model-chip">UserSession</span>
+      <span class="model-chip">AuditLog</span>
+    </div>
+    <h3>Platform Tools</h3>
+    <div>
+      <span class="model-chip">Webhook</span>
+      <span class="model-chip">WorkflowRule</span>
+      <span class="model-chip">CustomFieldDefinition</span>
+      <span class="model-chip">CustomFieldValue</span>
+      <span class="model-chip">OrgCustomizations</span>
+      <span class="model-chip">JobDistribution</span>
+      <span class="model-chip">Referral</span>
+      <span class="model-chip">PlatformReferral</span>
+      <span class="model-chip">Lead</span>
+      <span class="model-chip">Client</span>
+      <span class="model-chip">CallRecord</span>
+      <span class="model-chip">VideoRoom</span>
+    </div>
+  </div>
+
+  <!-- 8. INDIA-FIRST -->
+  <div class="section" id="india-first">
+    <h2><span class="icon" style="background:#f59e0b18">🇮🇳</span>India-First Features</h2>
+    <table>
+      <tr><th>Feature</th><th>Implementation</th><th>Route/Model</th></tr>
+      <tr><td><strong>Razorpay Payments</strong></td><td>Indian payment gateway; orders + signature verification + payment records</td><td><code>billing.js</code> / <code>PaymentRecord</code></td></tr>
+      <tr><td><strong>GST Compliance</strong></td><td>GST fields on billing records and org profile</td><td><code>Organization</code> model</td></tr>
+      <tr><td><strong>WhatsApp Messaging</strong></td><td>Direct candidate outreach via WhatsApp API</td><td><code>whatsapp.js</code> / <code>WhatsAppLog</code></td></tr>
+      <tr><td><strong>Aadhaar/PAN BGV</strong></td><td>Document types in BGV module include Aadhaar, PAN, Voter ID</td><td><code>bgv.js</code> / <code>BgvDocument</code></td></tr>
+      <tr><td><strong>OTP Verification</strong></td><td>Phone-based OTP for login and identity verification</td><td><code>auth.js</code> / <code>Otp</code></td></tr>
+      <tr><td><strong>INR Currency</strong></td><td>Salary displayed in ₹ LPA; CTC range in lakhs</td><td><code>Job</code> model fields <code>salaryMin/Max</code></td></tr>
+      <tr><td><strong>Indian Locale</strong></td><td>All dates formatted with <code>en-IN</code> locale throughout UI</td><td>Frontend everywhere</td></tr>
+    </table>
+  </div>
+
+  <!-- 9. DEPLOYMENT -->
+  <div class="section" id="deployment">
+    <h2><span class="icon" style="background:#06b6d418">🚀</span>Deployment Architecture</h2>
+    <div class="alert alert-blue"><span>🌐</span><div><strong>Frontend:</strong> Vercel — React 18 + Vite SPA. Static build deployed to Vercel edge CDN. <code>vite.config.js</code> rewrites all routes to <code>index.html</code> for React Router. <code>vercel.json</code> configures SPA fallback.</div></div>
+    <div class="alert alert-green"><span>⚙️</span><div><strong>Backend:</strong> Render — Node.js + Express service. Environment variables managed in Render dashboard. <code>PORT</code>, <code>MONGODB_URI</code>, <code>JWT_SECRET</code>, <code>CLOUDINARY_*</code>, <code>RAZORPAY_*</code>, <code>SMTP_*</code>, <code>VAPID_*</code> keys configured.</div></div>
+    <div class="alert alert-amber"><span>🗄️</span><div><strong>Database:</strong> MongoDB Atlas shared cluster. Connection via Mongoose. All collections use <code>tenantId</code> compound indexes for query performance.</div></div>
+    <h3>Environment Variables (Backend)</h3>
+    <table>
+      <tr><th>Variable</th><th>Purpose</th></tr>
+      <tr><td><code>MONGODB_URI</code></td><td>MongoDB Atlas connection string</td></tr>
+      <tr><td><code>JWT_SECRET</code></td><td>Access token signing secret</td></tr>
+      <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td>Refresh token signing secret</td></tr>
+      <tr><td><code>CLOUDINARY_CLOUD_NAME</code></td><td>Cloudinary account name</td></tr>
+      <tr><td><code>CLOUDINARY_API_KEY</code></td><td>Cloudinary API key</td></tr>
+      <tr><td><code>CLOUDINARY_API_SECRET</code></td><td>Cloudinary API secret</td></tr>
+      <tr><td><code>RAZORPAY_KEY_ID</code></td><td>Razorpay public key</td></tr>
+      <tr><td><code>RAZORPAY_KEY_SECRET</code></td><td>Razorpay secret (server-side only)</td></tr>
+      <tr><td><code>SMTP_HOST / SMTP_PORT</code></td><td>Email provider config</td></tr>
+      <tr><td><code>SMTP_USER / SMTP_PASS</code></td><td>Email credentials</td></tr>
+      <tr><td><code>VAPID_PUBLIC_KEY</code></td><td>Web push public key</td></tr>
+      <tr><td><code>VAPID_PRIVATE_KEY</code></td><td>Web push private key</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>Google OAuth app client ID</td></tr>
+    </table>
+  </div>
+
+  <!-- 10. REVENUE -->
+  <div class="section" id="revenue">
+    <h2><span class="icon" style="background:#10b98118">💰</span>Revenue Model</h2>
+    <div class="cards">
+      <div class="card"><div class="card-icon">📋</div><h4>SaaS Subscription</h4><p>Per-org monthly/annual plans via Razorpay. Billing module tracks plan, payment records.</p></div>
+      <div class="card"><div class="card-icon">📈</div><h4>Tier-Based Pricing</h4><p>Plans differentiated by job slots, users, features (BGV, video, assessments).</p></div>
+      <div class="card"><div class="card-icon">🤝</div><h4>Platform Referrals</h4><p>Referral commission tracking via PlatformReferral model.</p></div>
+      <div class="card"><div class="card-icon">🏢</div><h4>Enterprise Custom</h4><p>Custom contracts for large orgs, white-label potential.</p></div>
+    </div>
+  </div>
+
+  <!-- 11. SECURITY -->
+  <div class="section" id="security">
+    <h2><span class="icon" style="background:#ef444418">🔒</span>Security Posture</h2>
+    <ul class="check">
+      <li><strong>Authentication:</strong> JWT access tokens (short TTL) + refresh tokens (HttpOnly cookies), bcrypt password hashing</li>
+      <li><strong>Authorization:</strong> <code>authenticate</code> middleware verifies JWT on every protected route; <code>tenantGuard</code> injects and scopes by tenantId; <code>allowRoles()</code> RBAC middleware per route</li>
+      <li><strong>HTTP Security:</strong> Helmet.js sets CSP, HSTS, X-Frame-Options, etc.</li>
+      <li><strong>Rate Limiting:</strong> express-rate-limit on auth endpoints</li>
+      <li><strong>Input Validation:</strong> Server-side validation on all POST/PATCH endpoints with AppError + asyncHandler</li>
+      <li><strong>CORS:</strong> Configured with explicit origin whitelist</li>
+      <li><strong>Audit Trail:</strong> AuditLog model captures all admin/recruiter actions with userId, tenantId, timestamp</li>
+      <li><strong>Soft Deletes:</strong> All critical models use <code>deletedAt: null</code> pattern — no hard deletes</li>
+      <li><strong>Logging:</strong> Winston structured logs with daily rotation (production-grade)</li>
+    </ul>
+  </div>
+
+  <!-- 12. REAL-TIME -->
+  <div class="section" id="realtime">
+    <h2><span class="icon" style="background:#06b6d418">⚡</span>Real-Time Architecture</h2>
+    <table>
+      <tr><th>Channel</th><th>Technology</th><th>Use Case</th></tr>
+      <tr><td>In-app Notifications</td><td>Socket.io</td><td>New application, stage change, message, offer sent</td></tr>
+      <tr><td>Presence Indicators</td><td>Socket.io</td><td>Online/offline status for users (<code>presence.js</code>)</td></tr>
+      <tr><td>Direct Messages</td><td>Socket.io</td><td>Real-time chat between users</td></tr>
+      <tr><td>Feed Events</td><td>Socket.io</td><td>New post, reaction, comment broadcast</td></tr>
+      <tr><td>Video Interviews</td><td>Socket.io (WebRTC signaling)</td><td>SDP offer/answer + ICE candidate relay for peer-to-peer video</td></tr>
+      <tr><td>Push Notifications</td><td>Web Push (VAPID)</td><td>Background/offline browser notifications via Service Worker</td></tr>
+    </table>
+  </div>
+
+  <!-- 13. CODE PATTERNS -->
+  <div class="section" id="known-patterns">
+    <h2><span class="icon" style="background:#8b5cf618">📐</span>Code Patterns</h2>
+    <h3>Backend Patterns</h3>
+    <ul class="check">
+      <li><strong>asyncHandler wrapper:</strong> All route handlers wrapped in <code>asyncHandler()</code> to forward errors to Express error middleware</li>
+      <li><strong>AppError class:</strong> Standardised HTTP error with <code>statusCode</code> and <code>message</code></li>
+      <li><strong>tenantId scoping:</strong> <code>req.tenantId</code> injected by <code>tenantGuard</code> — never trust client-supplied tenantId</li>
+      <li><strong>Soft deletes:</strong> <code>deletedAt: null</code> filter on all queries; never hard-delete records</li>
+      <li><strong>Lean queries:</strong> <code>.lean()</code> on all read-only queries for performance (plain JS objects)</li>
+      <li><strong>Compound indexes:</strong> Every model has <code>{ tenantId, _id }</code> and relevant field indexes</li>
+    </ul>
+    <h3>Frontend Patterns</h3>
+    <ul class="check">
+      <li><strong>api.js service layer:</strong> All API calls through <code>src/api/api.js</code> which wraps fetch with auth headers and 401 handling</li>
+      <li><strong>Inline styles:</strong> All components use React inline styles (no CSS-in-JS library, no Tailwind) for full theme control</li>
+      <li><strong>Theme CSS overrides:</strong> <code>src/index.css</code> contains hex + RGB selector pairs for Chrome compatibility across dark/ocean/custom themes</li>
+      <li><strong>Role-gated rendering:</strong> All nav items, buttons, and pages check <code>user.role</code> before rendering</li>
+      <li><strong>usePlatformSocket hook:</strong> Centralised Socket.io event listener hook for real-time updates</li>
+      <li><strong>Toast notifications:</strong> Global <code>Toast</code> component used for user feedback across all pages</li>
+    </ul>
+    <h3>Multi-Tenancy Pattern</h3>
+    <pre><span class="c">// Every model document:</span>
+{ tenantId: ObjectId, ...fields, deletedAt: null }
+
+<span class="c">// Every authenticated route query:</span>
+<span class="k">const</span> tenantId = req.tenantId; <span class="c">// injected by tenantGuard</span>
+<span class="k">const</span> items = <span class="k">await</span> Model.<span class="fn">find</span>({ tenantId, deletedAt: <span class="k">null</span> });
+
+<span class="c">// Exception — Communities (global, cross-tenant):</span>
+<span class="k">const</span> community = <span class="k">await</span> Community.<span class="fn">findOne</span>({ slug }); <span class="c">// no tenantId</span></pre>
+  </div>
+
+  <!-- 14. CURRENT STATE -->
+  <div class="section" id="current-state">
+    <h2><span class="icon" style="background:#10b98118">✅</span>Current Platform State (${today})</h2>
+    <div class="alert alert-green"><span>✅</span><div><strong>Production:</strong> Platform is live at talentnesthr.com. Registered users exist across multiple tenants.</div></div>
+    <div class="alert alert-blue"><span>🔵</span><div><strong>No AI Features:</strong> The platform does not currently include any AI or ML features. No plan to add AI at this time.</div></div>
+
+    <h3>What is 100% Working</h3>
+    <ul class="check">
+      <li>Full JWT authentication (login, register, refresh, Google OAuth)</li>
+      <li>Job posting and management</li>
+      <li>Application pipeline (kanban, bulk move, stage history)</li>
+      <li>Candidate profiles, resume upload and parsing</li>
+      <li>Interview scheduling and video rooms (WebRTC)</li>
+      <li>Offer letter generation (PDF) and digital signing</li>
+      <li>Assessments and BGV documents</li>
+      <li>Social feed with reactions, comments, image uploads</li>
+      <li>Communities (global cross-tenant, join/leave, feed, share link)</li>
+      <li>Direct messaging and connections</li>
+      <li>Company reviews (public, moderated)</li>
+      <li>NPS surveys</li>
+      <li>In-app and push notifications</li>
+      <li>WhatsApp messaging</li>
+      <li>Billing via Razorpay</li>
+      <li>Audit logs</li>
+      <li>Org customizations and career page</li>
+      <li>Email sequences</li>
+      <li>Multi-theme support (light/dark/ocean/custom) across all pages</li>
+    </ul>
+
+    <h3>Architecture Notes</h3>
+    <table>
+      <tr><th>Concern</th><th>Current Approach</th></tr>
+      <tr><td>Data isolation</td><td>tenantId on every query — tenants cannot see each other's data</td></tr>
+      <tr><td>Communities</td><td>Global (cross-tenant) — one community per slug, all users can join</td></tr>
+      <tr><td>File uploads</td><td>Cloudinary (images, resumes, documents) — no local disk usage</td></tr>
+      <tr><td>Scheduled tasks</td><td>node-cron in backend process (single instance)</td></tr>
+      <tr><td>API docs</td><td>Swagger UI available at /api/docs</td></tr>
+      <tr><td>Error tracking</td><td>Winston logs only — no Sentry or similar (yet)</td></tr>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+</div>
+
+<footer>Generated by <strong>TalentNest HR</strong> Super Admin · Product Intelligence Playbook · ${todayShort} · Confidential &amp; Internal · Based entirely on actual codebase — no speculation</footer>
+</body></html>`;
+}
+
 // ─── Playbook registry ─────────────────────────────────────────────────────────
 const PRESET_PLAYBOOKS = [
+  { id: 'product-intel', icon: '🧠', title: 'Product Intelligence', desc: 'Full codebase audit — 58 routes, 54 models, 6 user roles, 40 features. Every claim verified from actual code.', color: '#7C3AED', badge: 'AUDIT COMPLETE', fn: buildProductIntelligencePlaybook },
   { id: 'developer-v4', icon: '🗺️', title: 'Developer Playbook v4',  desc: 'Complete platform reference: all flows, schemas, API, architecture — Developer + Tester combined', color: '#0a1628', badge: 'v4.0 COMPLETE', fn: buildDeveloperPlaybookV4 },
   { id: 'developer',    icon: '⚙️', title: 'Developer Playbook',    desc: 'Live changelog + tech stack, setup, nav architecture, mobile CSS, deployment', color: '#0176D3', badge: 'v3.0 LIVE',  fn: buildDeveloperPlaybook },
   { id: 'all-users',   icon: '👥', title: 'All Users Playbook',    desc: 'Role-by-role guide for every user of the platform',  color: '#10b981', badge: 'ONBOARDING', fn: buildAllUsersPlaybook },

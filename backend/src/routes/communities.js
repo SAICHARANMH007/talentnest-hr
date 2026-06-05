@@ -316,18 +316,17 @@ router.get('/:slug/feed', asyncHandler(async (req, res) => {
   const lim  = Math.min(50, parseInt(limit));
   const skip = (Math.max(1, parseInt(page)) - 1) * lim;
 
-  const community = await Community.findOne({ tenantId, slug: req.params.slug }).lean();
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
   const hashtags = getCommunityHashtags(community);
 
-  // Show posts explicitly tagged to this community OR posts with matching hashtags
+  // Show posts explicitly tagged to this community (cross-tenant) OR tenant-specific posts with matching hashtags
   const filter = {
-    tenantId,
     isDeleted: false,
     $or: [
       { communityId: community._id },
-      { hashtags: { $in: hashtags } },
+      { tenantId, hashtags: { $in: hashtags } },
     ],
   };
 
