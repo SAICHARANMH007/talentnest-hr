@@ -835,7 +835,11 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
 // GET /api/applications/talent-pool — all parked apps for tenant (must be before /:id)
 router.get('/talent-pool', ...guard, asyncHandler(async (req, res) => {
-  const apps = await Application.find({ tenantId: req.user.tenantId, status: 'parked', deletedAt: null })
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const poolFilter = isSuperAdmin
+    ? { status: 'parked', deletedAt: null }
+    : { tenantId: req.user.tenantId, status: 'parked', deletedAt: null };
+  const apps = await Application.find(poolFilter)
     .populate('candidateId', 'name email phone title skills location')
     .populate('jobId', 'title company companyName')
     .lean();
@@ -855,16 +859,16 @@ router.get('/pipeline-smart-match/:jobId',
     const threshold = parseInt(req.query.threshold) || 60;
     const maxResults = parseInt(req.query.limit) || 50;
 
-    const job = await Job.findOne({ _id: jobId, tenantId: req.tenantId }).lean();
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const jobQuery = isSuperAdmin ? { _id: jobId } : { _id: jobId, tenantId: req.tenantId };
+    const job = await Job.findOne(jobQuery).lean();
     if (!job) throw new AppError('Job not found', 404);
 
     const CANDIDATE_POP = 'name title skills experience location parsedProfile workHistory educationList summary avatarUrl photoUrl resumeUrl';
-    const apps = await Application.find({
-      jobId,
-      tenantId: req.tenantId,
-      status: { $nin: ['withdrawn'] },
-      deletedAt: null,
-    })
+    const appsQuery = isSuperAdmin
+      ? { jobId, status: { $nin: ['withdrawn'] }, deletedAt: null }
+      : { jobId, tenantId: req.tenantId, status: { $nin: ['withdrawn'] }, deletedAt: null };
+    const apps = await Application.find(appsQuery)
       .populate('candidateId', CANDIDATE_POP)
       .lean();
 

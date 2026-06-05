@@ -211,7 +211,11 @@ router.get('/mine', authMiddleware, asyncHandler(async (req, res) => {
 
 // ── GET /api/offers/application/:appId — get or auto-create offer ──────────
 router.get('/application/:appId', ...guard, asyncHandler(async (req, res) => {
-  const app = await Application.findOne({ _id: req.params.appId, tenantId: req.user.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const appQuery = isSuperAdmin
+    ? { _id: req.params.appId, deletedAt: null }
+    : { _id: req.params.appId, tenantId: req.user.tenantId, deletedAt: null };
+  const app = await Application.findOne(appQuery);
   if (!app) throw new AppError('Application not found.', 404);
 
   let offer = await OfferLetter.findOne({ applicationId: req.params.appId });
@@ -252,6 +256,8 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
         throw new AppError('Offer not found.', 404);
       }
     }
+  } else if (req.user.role === 'super_admin') {
+    offer = await OfferLetter.findById(req.params.id).lean();
   } else {
     offer = await OfferLetter.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
   }
@@ -267,7 +273,12 @@ router.patch('/:id', ...guard,
     const offer = await OfferLetter.findById(req.params.id);
     if (!offer) throw new AppError('Offer not found.', 404);
 
-    const app = await Application.findOne({ _id: offer.applicationId, tenantId: req.user.tenantId });
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const app = await Application.findOne(
+      isSuperAdmin
+        ? { _id: offer.applicationId }
+        : { _id: offer.applicationId, tenantId: req.user.tenantId }
+    );
     if (!app) throw new AppError('Access denied.', 403);
 
     if (offer.status === 'signed') throw new AppError('Cannot edit a signed offer letter.', 400);
@@ -298,7 +309,12 @@ router.post('/:id/send', ...guard,
     const offer = await OfferLetter.findById(req.params.id);
     if (!offer) throw new AppError('Offer not found.', 404);
 
-    const app = await Application.findOne({ _id: offer.applicationId, tenantId: req.user.tenantId });
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const app = await Application.findOne(
+      isSuperAdmin
+        ? { _id: offer.applicationId }
+        : { _id: offer.applicationId, tenantId: req.user.tenantId }
+    );
     if (!app) throw new AppError('Access denied.', 403);
 
     if (offer.status === 'signed') throw new AppError('Offer already signed.', 400);
