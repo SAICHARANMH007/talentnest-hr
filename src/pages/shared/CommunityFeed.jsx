@@ -923,6 +923,16 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
+  // Silent background refresh every 60s — catches any events missed by the socket
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+        loadPosts(1, filter);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [filter, tab, isFiltered, loadPosts]);
+
   // When "Saved" tab opens, fetch any bookmark IDs that have no stored data
   useEffect(() => {
     if (tab !== 'saved' || bookmarks.length === 0) return;
@@ -1126,6 +1136,33 @@ export default function CommunityFeed({ user }) {
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
   const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
+  // Pull-to-refresh (mobile only)
+  const pullStartY  = useRef(0);
+  const [pullDist,  setPullDist]  = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const PULL_THRESHOLD = 64;
+
+  const handleTouchStart = (e) => {
+    if (!isMobile || window.scrollY > 0) return;
+    pullStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e) => {
+    if (!isMobile || window.scrollY > 0 || pullStartY.current === 0) return;
+    const dist = Math.max(0, Math.min(120, e.touches[0].clientY - pullStartY.current));
+    if (dist > 8) setPullDist(dist);
+  };
+  const handleTouchEnd = async () => {
+    if (pullDist >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      setPullDist(0);
+      await loadPosts(1, filter);
+      setRefreshing(false);
+    } else {
+      setPullDist(0);
+    }
+    pullStartY.current = 0;
+  };
+
   const sharedPostProps = {
     userId: uid,
     userRole: user?.role,
@@ -1144,7 +1181,18 @@ export default function CommunityFeed({ user }) {
   };
 
   return (
-    <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}>
+    <div
+      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {isMobile && (pullDist > 0 || refreshing) && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: refreshing ? 48 : pullDist * 0.6, overflow: 'hidden', transition: refreshing ? 'none' : 'height 0.1s', marginTop: -8, marginBottom: 4 }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: refreshing || pullDist >= PULL_THRESHOLD ? 'tn-spin 0.7s linear infinite' : 'none', transform: refreshing ? 'none' : `rotate(${pullDist * 2.8}deg)`, opacity: Math.min(1, pullDist / PULL_THRESHOLD) }} />
+        </div>
+      )}
       {/* Header */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
