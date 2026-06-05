@@ -96,7 +96,8 @@ router.get('/', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
-    const filter = { tenantId: req.user.tenantId, deletedAt: null };
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const filter = isSuperAdmin ? { deletedAt: null } : { tenantId: req.user.tenantId, deletedAt: null };
     if (req.query.search?.trim()) {
       const s = escRe(req.query.search.trim());
       filter.$or = [
@@ -288,8 +289,12 @@ router.patch('/:id', ...guard,
 router.delete('/:id', ...guard,
   allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const delFilter = isSuperAdmin
+      ? { _id: req.params.id, deletedAt: null }
+      : { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null };
     const candidate = await Candidate.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+      delFilter,
       { $set: { deletedAt: new Date() } },
       { new: true }
     );

@@ -1064,7 +1064,11 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
 
 // GET /api/applications/:id — single application
 router.get('/:id', ...guard, asyncHandler(async (req, res) => {
-  const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null })
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const appFilter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null };
+  const app = await Application.findOne(appFilter)
     .populate('jobId')
     .populate('candidateId')
     .lean();
