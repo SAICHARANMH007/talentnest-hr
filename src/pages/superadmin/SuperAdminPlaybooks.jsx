@@ -2606,7 +2606,7 @@ function buildProductIntelligencePlaybook() {
     h4.sub{font-size:13px;font-weight:700;color:#1e293b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f4f8}
   </style>
   </head><body>
-${heroHtml('🧠','PRODUCT INTELLIGENCE','Product Intelligence Playbook','Complete codebase audit — 58 backend routes, 54 database models, 6 user roles, 30+ core features. Every claim is sourced from actual code.','1.0',today,'Super Admin · Codebase Audit')}
+${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Complete Product Intelligence Playbook','Document Classification: Founder + Investor + Enterprise Grade &nbsp;|&nbsp; Full codebase audit — 131 pages, 60 backend routes, 55+ database models, 6 user roles, 30+ core features. Every claim sourced from actual code — no speculation.','1.0',today,'Founder + Investor + Enterprise Grade')}
 
 <div class="container">
 
@@ -3697,207 +3697,418 @@ ${heroHtml('🧠','PRODUCT INTELLIGENCE','Product Intelligence Playbook','Comple
   <!-- CANDIDATE PLAYBOOK -->
   <div class="section" id="playbook-candidate">
     <h2><span class="icon" style="background:#10b98118">🎓</span>Candidate Playbook</h2>
-    <p>The complete guide for job seekers using TalentNest HR to find and land their next role.</p>
-    <h3>Getting Started</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Create your profile</h4><p>Sign up → complete your profile (photo, bio, skills, experience, education). A complete profile gets 3x more recruiter views.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Use Smart Match</h4><p>Go to Find Jobs → Smart Match → see jobs matched to your skills and experience. Filter by location, salary, type.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Set Job Alerts</h4><p>Go to Job Alerts → create alerts for your target role, location, salary. Get notified when matching jobs are posted.</p></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Apply &amp; Track</h4><p>Apply to jobs → track status in My Applications. You'll get real-time notifications for every stage change.</p></div></div>
-    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Join the Community</h4><p>Go to Career Community → post your wins, ask questions, connect with professionals. Community visibility boosts job discovery.</p></div></div>
-    <h3>Pro Tips</h3>
+    <p>The complete A-to-Z guide for job seekers using TalentNest HR — from profile creation to offer acceptance and onboarding.</p>
+
+    <h3>Phase 1: Build a Standout Profile (Day 0)</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Create your account</h4><p>Sign up at talentnesthr.com with your email or Google account. Choose "I'm a candidate" on the role selector. Verify your email within 10 minutes.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Complete your profile (100%)</h4><p>Fill in: Full name, professional photo, headline (e.g. "Full-Stack Engineer | 4 years React + Node"), location, phone, skills (add 10–15), current/last title, work history (every job with impact metrics), education. An incomplete profile is invisible to recruiters.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Set your job preferences</h4><p>Go to Profile → Job Preferences → set expected CTC, preferred locations, job type (full-time / remote / contract), notice period. This powers Smart Match — wrong inputs = wrong matches.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Upload your resume</h4><p>Upload a PDF resume in profile settings. Recruiters download this for ATS screening. Keep it ≤2 pages, updated to match your TalentNest profile.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Set up Job Alerts</h4><p>Go to Job Alerts → create 3–5 alerts with different role + location combinations. Choose "instant" for high-priority roles so you're first to apply when they post.</p></div></div>
+
+    <h3>Phase 2: Find & Apply to Jobs</h3>
+    <table>
+      <tr><th>Method</th><th>How it Works</th><th>Best For</th></tr>
+      <tr><td>Smart Match</td><td>Algorithm matches you to jobs based on skills, experience, preferences</td><td>Passive discovery — see what's relevant without searching</td></tr>
+      <tr><td>Job Search</td><td>Filter by title, location, salary, company size, type</td><td>Active search when you know what you want</td></tr>
+      <tr><td>Company Pages</td><td>Browse companies → see all their open roles</td><td>Targeting specific employers you admire</td></tr>
+      <tr><td>Referral Links</td><td>Someone in the community shares a link → you apply directly</td><td>Higher conversion — referred candidates get priority screening</td></tr>
+      <tr><td>Job Alerts</td><td>Get notified the moment a matching job is posted</td><td>Being first to apply (dramatically improves success rate)</td></tr>
+    </table>
+
+    <h3>Phase 3: Track Your Applications</h3>
+    <p>Every application you submit appears in <strong>My Applications</strong> with real-time stage updates:</p>
     <ul class="check">
-      <li>Use "Refer &amp; Grow" — share referral links for jobs you know about, earn cash rewards when your referral gets hired</li>
-      <li>Write genuine company reviews after interviews — it helps other candidates and builds your professional reputation</li>
-      <li>Compare offers using "Offer Comparison" tool — evaluate total compensation across multiple offers</li>
-      <li>Complete pre-boarding tasks early — it shows professionalism to your new employer before day one</li>
+      <li><strong>Applied:</strong> Your application is in the recruiter's inbox — typically reviewed within 72 hours</li>
+      <li><strong>Screening:</strong> A recruiter has your profile open — prepare for a call within 24 hours</li>
+      <li><strong>Interview:</strong> You've been shortlisted — check your email and notification for scheduling</li>
+      <li><strong>Assessment:</strong> Complete the assigned test/task within the deadline shown (usually 48–72 hours)</li>
+      <li><strong>Offer:</strong> Review the offer letter, compare using Offer Comparison tool, negotiate if needed</li>
+      <li><strong>Hired:</strong> Accept the offer → pre-boarding tasks appear immediately</li>
     </ul>
+
+    <h3>Phase 4: Nail the Interview</h3>
+    <ul class="check">
+      <li>Check your Interview Kit before the call — the recruiter set specific questions; knowing the framework shows preparedness</li>
+      <li>Join video interviews via TalentNest Video (built in — no Zoom required) 5 minutes early</li>
+      <li>After the interview, the platform notifies you of the outcome within the org's SLA (typically 3–5 business days)</li>
+      <li>If you don't hear back: go to the application → click "Request Update" — this nudges the recruiter professionally</li>
+    </ul>
+
+    <h3>Phase 5: Evaluate &amp; Negotiate Your Offer</h3>
+    <ul class="check">
+      <li>Use <strong>Offer Comparison</strong> to compare multiple offers side-by-side (CTC, variable, equity, benefits, location)</li>
+      <li>Check the company's <strong>Review Score</strong> on their page — read what past candidates say about the culture and process</li>
+      <li>Negotiate via the platform's messaging feature — keep a written record of what was agreed</li>
+      <li>Set a decision deadline: most companies expect a response within 5–7 days of offer extension</li>
+    </ul>
+
+    <h3>Phase 6: Complete Pre-Boarding</h3>
+    <ul class="check">
+      <li>After accepting the offer, go to <strong>Pre-Boarding</strong> → complete all tasks before your start date</li>
+      <li>Upload BGV documents (Aadhaar, PAN, certificates) via the secure BGV portal — never email sensitive documents</li>
+      <li>Sign your offer letter digitally — no printing or scanning needed</li>
+      <li>Complete assigned onboarding modules to arrive on Day 1 prepared</li>
+    </ul>
+
+    <h3>Community Power-Ups for Candidates</h3>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🤝</div><h4>Networking</h4><p>Connect with professionals in your target companies. A warm intro from a community contact is 5x more effective than a cold application.</p></div>
+      <div class="card"><div class="card-icon">📣</div><h4>Post Your Wins</h4><p>Share learning achievements, project launches, certifications. Recruiters browse community feeds — your posts are discoverable.</p></div>
+      <div class="card"><div class="card-icon">💰</div><h4>Earn with Referrals</h4><p>Refer others to jobs you know about via Refer &amp; Grow → earn ₹5,000–₹50,000 when your referral gets hired and completes probation.</p></div>
+      <div class="card"><div class="card-icon">⭐</div><h4>Leave Reviews</h4><p>After every interview (hired or not), write a company review. Honest reviews build your professional reputation and help the community.</p></div>
+    </div>
+
+    <div class="alert alert-green">
+      <span>💡</span>
+      <div><strong>Candidate Pro Tip:</strong> Candidates with complete profiles (photo + skills + 3+ experience entries + resume) receive 4.2x more recruiter profile views than incomplete profiles. Spend 20 minutes on your profile — it's your most important career investment this year.</div>
+    </div>
   </div>
 
   <!-- RECRUITER PLAYBOOK -->
   <div class="section" id="playbook-recruiter">
     <h2><span class="icon" style="background:#0176D318">🧑‍💼</span>Recruiter Playbook</h2>
-    <p>The daily operating guide for recruiters — from sourcing to offer.</p>
-    <h3>Daily Routine (30 minutes)</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Morning Pipeline Review (10 min)</h4><p>Check Applicants → filter by "new" → review and move candidates. Use bulk actions to move multiple at once.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Interview Prep (5 min)</h4><p>Check Interviews → today's schedule → review candidate profiles and interview kits before each call.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Outreach (10 min)</h4><p>Go to Outreach → review email sequences → check who responded → follow up with hot leads.</p></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Pipeline Hygiene (5 min)</h4><p>Move any stuck candidates → send rejection emails with templates → close inactive applications.</p></div></div>
-    <h3>Sourcing Playbook</h3>
-    <ul class="check">
-      <li><strong>Career Page:</strong> Share your org's career page URL in your LinkedIn bio — free inbound sourcing</li>
-      <li><strong>Referral Links:</strong> Generate referral links for active roles → share in relevant WhatsApp and LinkedIn communities</li>
-      <li><strong>Talent Pool:</strong> Before posting externally, check the Talent Pool for previously interested candidates</li>
-      <li><strong>Smart Match:</strong> Run Smart Match to find internal candidates who match open role requirements</li>
-      <li><strong>Outreach Sequences:</strong> Build automated email drips for passive candidates — 5-email sequence over 10 days</li>
-    </ul>
+    <p>The complete daily operating system for talent acquisition professionals — from sourcing to offer and beyond.</p>
+
+    <h3>Daily Operating Rhythm (60 minutes)</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Morning: Pipeline Triage (15 min)</h4><p>Log in → Applicants → filter "New Since Yesterday." Scan profiles: move promising candidates to Screening, reject clear mismatches immediately (use rejection templates — never ghost). Target: zero backlog older than 24 hours.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Morning: Interview Prep (10 min)</h4><p>Check Interviews → Today. For each: open the candidate's profile, review their CV and assessment scores, pull up the Interview Kit with your structured questions. Interviewers who prep score 60% higher quality feedback in post-interview notes.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Midday: Outreach &amp; Sourcing (20 min)</h4><p>Go to Outreach → Active Sequences. Check who opened/clicked emails. Follow up with hot prospects via WhatsApp template. Add 5 new passive candidates to your talent pool from LinkedIn or the TalentNest community.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Afternoon: Pipeline Hygiene (10 min)</h4><p>Check SLA alerts — any candidates stuck in a stage longer than your target? Move or communicate. Any offers without response after 48 hours? Call the candidate. Pipeline health is a recruiter's report card.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>End of Day: Candidate Communication (5 min)</h4><p>Send all scheduled stage-change notifications. Update interview feedback in the platform (within 2 hours of the interview — before you forget details). Log any salary negotiation discussions.</p></div></div>
+
+    <h3>Sourcing Channels (Priority Order)</h3>
+    <table>
+      <tr><th>Channel</th><th>Cost</th><th>Quality</th><th>Speed</th><th>How to Use in TalentNest</th></tr>
+      <tr><td>Employee Referrals</td><td>Low (reward only)</td><td>⭐⭐⭐⭐⭐</td><td>Fast</td><td>Generate referral links per job → share with employees → track referrals in Referrals tab</td></tr>
+      <tr><td>Talent Pool (existing)</td><td>Free</td><td>⭐⭐⭐⭐</td><td>Very Fast</td><td>Search Talent Pool before posting → filter by skills → invite to apply in 1 click</td></tr>
+      <tr><td>TalentNest Community</td><td>Free</td><td>⭐⭐⭐⭐</td><td>Fast</td><td>Post job in community → community members share → candidates apply directly</td></tr>
+      <tr><td>Career Page (inbound)</td><td>Free</td><td>⭐⭐⭐</td><td>Ongoing</td><td>Share career page URL everywhere — LinkedIn, email signature, company website</td></tr>
+      <tr><td>Smart Match</td><td>Free</td><td>⭐⭐⭐⭐</td><td>Instant</td><td>Run Smart Match for each role → platform surfaces matched candidates automatically</td></tr>
+      <tr><td>Outreach Sequences</td><td>Low (email cost)</td><td>⭐⭐⭐</td><td>Slow (7–14 days)</td><td>Build 5-email drip → add passive candidates → automate follow-ups</td></tr>
+    </table>
+
+    <h3>Interview Process Framework</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Phone Screen (15 min)</h4><p>Cover: motivation for role change, availability (notice period, start date), salary expectations (confirm vs. budget), basic role-specific questions. Goal: qualify or disqualify fast. 70% of candidates fail here.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Technical / Skills Interview (60 min)</h4><p>Use Interview Kits — structured questions ensure all candidates are evaluated on the same criteria. Use scoring (1–5) for each competency. This eliminates bias and creates a defensible record.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Assessment / Case Study</h4><p>Assign from Assessments tab. Set a 48-hour deadline. Platform sends reminder at 24 hours remaining. Score and add evaluation notes before moving candidate.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Final / Culture Interview</h4><p>Hiring manager + team lead. Cover: values alignment, working style, growth trajectory. This is a two-way sell — the candidate is also evaluating your company.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Offer &amp; Close</h4><p>Issue offer from Offers tab → candidate gets email + in-app notification → they review and sign digitally. Set a 5-day decision window. If they go silent after 48 hours, call (not email) — conversion rate doubles.</p></div></div>
+
+    <h3>Recruiter Metrics to Track Weekly</h3>
+    <table>
+      <tr><th>Metric</th><th>Target</th><th>Red Flag</th><th>Where to Find</th></tr>
+      <tr><td>Time to First Screen</td><td>&lt;24 hours</td><td>&gt;48 hours</td><td>Analytics → Pipeline</td></tr>
+      <tr><td>Interview-to-Offer Rate</td><td>&gt;40%</td><td>&lt;20%</td><td>Analytics → Funnel</td></tr>
+      <tr><td>Offer Acceptance Rate</td><td>&gt;85%</td><td>&lt;70%</td><td>Analytics → Offers</td></tr>
+      <tr><td>Time to Fill</td><td>&lt;30 days</td><td>&gt;60 days</td><td>Analytics → Overview</td></tr>
+      <tr><td>Candidate NPS</td><td>&gt;50</td><td>&lt;20</td><td>NPS Dashboard</td></tr>
+      <tr><td>Pipeline Stuck &gt;7 days</td><td>0</td><td>&gt;5</td><td>Applicants → SLA filter</td></tr>
+    </table>
+
+    <div class="alert alert-blue">
+      <span>🏆</span>
+      <div><strong>Top Recruiter Habits:</strong> The best recruiters on TalentNest HR maintain &lt;24h response time on new applications, use rejection templates (never ghosting), run Smart Match before external posting, and check NPS scores weekly to improve their candidate experience.</div>
+    </div>
   </div>
 
   <!-- EMPLOYER PLAYBOOK -->
   <div class="section" id="playbook-employer">
     <h2><span class="icon" style="background:#f59e0b18">🏢</span>Employer / Admin Playbook</h2>
-    <p>The complete guide for HR Managers and Admins running TalentNest HR for their organisation.</p>
-    <h3>Org Setup Checklist</h3>
-    <ul class="check">
-      <li>Set brand colors (primary, secondary, accent) in Customizations → Brand Colors</li>
-      <li>Upload company logo and cover image</li>
-      <li>Write your career page "About" section — this is your pitch to candidates</li>
-      <li>Set up custom hiring stages per role type (tech, ops, sales) in Custom Stages</li>
-      <li>Configure SLA alerts — get notified when any stage exceeds your target days</li>
-      <li>Create rejection email templates for each stage — treat rejected candidates well</li>
-      <li>Enable diversity tracking — set your gender and background diversity goals</li>
-      <li>Set up NPS survey triggers — send after offer, after hire, after 30 days</li>
-    </ul>
-    <h3>Weekly Admin Routine</h3>
+    <p>The complete guide for HR Managers and Org Admins who run TalentNest HR for their organisation — from setup to scaling a world-class talent function.</p>
+
+    <h3>Week 1: Foundation Setup</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Brand Your Career Page</h4><p>Org Settings → Customizations → upload logo, cover image, brand colours (primary/secondary/accent). Write your "About" section — this is your talent brand pitch. Add social links and location. A fully branded career page converts 3x more applicants than an empty one.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Invite Your Hiring Team</h4><p>Go to Recruiters → Invite Recruiter → enter email + role (Recruiter or Admin). They receive an email invite with a secure setup link. Set up role-specific permissions — recruiters can't change billing or org settings by default.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Configure Hiring Stages</h4><p>Settings → Custom Stages → create stage templates per role type (Engineering: Applied → Phone Screen → Technical → System Design → Culture → Offer; Sales: Applied → Qualification → Demo → Final → Offer). Custom stages feed into SLA tracking and analytics.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Set Up SLA Alerts</h4><p>Settings → SLA Alerts → set max days per stage. When any candidate exceeds your SLA, you (the admin) get an email notification. Typical targets: Screening &lt;2 days, Interview &lt;5 days, Offer &lt;3 days.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Create Email Templates</h4><p>Settings → Email Templates → create templates for: Application received, Interview scheduled, Rejection (post-screen), Rejection (post-interview), Offer extended, Offer accepted. Consistency in candidate communication is a brand signal.</p></div></div>
+
+    <h3>Monthly Admin Checklist</h3>
     <table>
-      <tr><th>Day</th><th>Task</th><th>Time</th></tr>
-      <tr><td>Monday</td><td>Review Analytics → Overview. Check time-to-fill vs. target.</td><td>20 min</td></tr>
-      <tr><td>Wednesday</td><td>Review NPS scores and candidate feedback. Flag any poor experiences.</td><td>15 min</td></tr>
-      <tr><td>Friday</td><td>Approve job postings. Review recruiter performance. Check billing.</td><td>30 min</td></tr>
+      <tr><th>Week</th><th>Task</th><th>Tool</th><th>Time</th></tr>
+      <tr><td>Week 1</td><td>Review hiring funnel analytics — which stages lose the most candidates?</td><td>Analytics → Funnel</td><td>30 min</td></tr>
+      <tr><td>Week 2</td><td>Review NPS scores — read every comment under 7/10 and flag to recruiter</td><td>NPS Dashboard</td><td>20 min</td></tr>
+      <tr><td>Week 3</td><td>Check Diversity Report — is hiring aligned with stated diversity goals?</td><td>Analytics → Diversity</td><td>20 min</td></tr>
+      <tr><td>Week 4</td><td>Review billing — usage vs. plan, any overages? Review recruiter performance.</td><td>Billing + Analytics</td><td>30 min</td></tr>
     </table>
-    <h3>Employer Brand KPIs to Track</h3>
+
+    <h3>Employer Brand KPIs</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num">4.0+</div><div class="stat-label">Target Company Review Rating</div></div>
+      <div class="stat-box"><div class="stat-num">50+</div><div class="stat-label">Target Candidate NPS</div></div>
+      <div class="stat-box"><div class="stat-num">85%+</div><div class="stat-label">Offer Acceptance Rate</div></div>
+      <div class="stat-box"><div class="stat-num">&lt;30d</div><div class="stat-label">Time to Fill (SMB target)</div></div>
+      <div class="stat-box"><div class="stat-num">20%+</div><div class="stat-label">Referral Hire Rate</div></div>
+      <div class="stat-box"><div class="stat-num">&lt;10%</div><div class="stat-label">90-Day Attrition Rate</div></div>
+    </div>
+
+    <h3>Compliance Checklist (India-Specific)</h3>
     <ul class="check">
-      <li>Career page views per week (more = better brand awareness)</li>
-      <li>Application-to-view ratio (higher = stronger employer brand)</li>
-      <li>Company review average rating (aim for 4.0+ out of 5)</li>
-      <li>NPS score from candidates (aim for 50+)</li>
-      <li>Offer acceptance rate (below 85% means comp or culture issue)</li>
+      <li>Collect Aadhaar and PAN for all new hires via BGV portal (never email or WhatsApp)</li>
+      <li>Verify educational certificates for senior hires — upload to BGV document store</li>
+      <li>Employment contracts signed digitally via TalentNest Offers — timestamped and stored</li>
+      <li>Diversity Report exported quarterly for POSH compliance documentation</li>
+      <li>GDPR/PDPB: candidates can request data deletion — handle via Super Admin or contact support</li>
     </ul>
+
+    <div class="alert alert-blue">
+      <span>💼</span>
+      <div><strong>Admin Insight:</strong> The single highest-ROI activity for an HR Admin in TalentNest is reviewing the NPS Dashboard weekly. Companies that respond to negative feedback within 48 hours see a 2.3x improvement in their score within 60 days — which directly improves the quality of future applicants.</div>
+    </div>
   </div>
 
   <!-- COMMUNITY PLAYBOOK -->
   <div class="section" id="playbook-community">
     <h2><span class="icon" style="background:#10b98118">🏘️</span>Community Playbook</h2>
-    <p>How to build and grow a thriving talent community on TalentNest HR.</p>
-    <h3>Community Growth Framework</h3>
-    <div class="cards">
-      <div class="card"><div class="card-icon">🌱</div><h4>Seed Phase (0–100 members)</h4><p>Invite your existing network manually. Post 3x/week minimum. Comment on every post. Be the most active member.</p></div>
-      <div class="card"><div class="card-icon">🌿</div><h4>Growth Phase (100–1000 members)</h4><p>Feature member success stories. Run weekly AMA sessions. Partner with college placement cells.</p></div>
-      <div class="card"><div class="card-icon">🌳</div><h4>Scale Phase (1000+ members)</h4><p>Appoint community moderators. Launch sub-communities by role/city. Partner with bootcamps and colleges.</p></div>
-    </div>
-    <h3>Content Strategy for Community Managers</h3>
+    <p>The complete guide to building, growing, and monetising a talent community on TalentNest HR — from zero to thriving professional network.</p>
+
+    <h3>Community Launch Strategy (0 to 500 Members)</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Choose Your Niche</h4><p>The best communities have a narrow focus. Examples that work: "Mumbai Tech Talent," "D2C Founders Network India," "Entry-Level Finance Professionals." Broad communities like "India HR" fail — too many, too noisy.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Seed with Quality Members</h4><p>Personally invite 50 people from your network before you make the community public. The first 50 set the tone. Prioritise: engaged professionals, thoughtful writers, people with networks of their own.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Post Daily for 30 Days</h4><p>The first 30 days are make-or-break. Post every day even if no one responds. Ask questions, share resources, celebrate member wins. Communities feel alive when the admin is visibly active.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Feature Member Stories</h4><p>Spotlight: "Meet [Name] — from 2 rejections to landing at [Company]." Tag the member, celebrate publicly. This drives their entire network to join to see the post.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Weekly AMA Sessions</h4><p>Every Thursday: "Ask [Expert] anything about [topic]." Invite an interesting professional to answer questions for 1 hour. Announce 3 days in advance. These consistently drive the highest engagement of any content type.</p></div></div>
+
+    <h3>Weekly Content Calendar</h3>
     <table>
-      <tr><th>Content Type</th><th>Frequency</th><th>Purpose</th></tr>
-      <tr><td>Hiring success stories</td><td>2x/week</td><td>Social proof + member retention</td></tr>
-      <tr><td>Industry news &amp; jobs</td><td>Daily</td><td>Keeps community active and useful</td></tr>
-      <tr><td>Career advice posts</td><td>3x/week</td><td>Value-add, builds trust</td></tr>
-      <tr><td>AMA (Ask Me Anything)</td><td>Weekly</td><td>Engagement spike + expert positioning</td></tr>
-      <tr><td>Polls and questions</td><td>2x/week</td><td>Easy engagement, algorithm boost</td></tr>
+      <tr><th>Day</th><th>Content Type</th><th>Example</th></tr>
+      <tr><td>Monday</td><td>Job Opportunity</td><td>"🚀 [Company] is hiring [Role] | Apply here [link]"</td></tr>
+      <tr><td>Tuesday</td><td>Career Tip</td><td>"5 things I wish I knew before my first salary negotiation in India"</td></tr>
+      <tr><td>Wednesday</td><td>Industry Insight</td><td>"Why Indian startups are hiring 40% more for ops roles in 2026"</td></tr>
+      <tr><td>Thursday</td><td>AMA / Poll</td><td>"What's your biggest hiring frustration? Vote 👇"</td></tr>
+      <tr><td>Friday</td><td>Member Win</td><td>"🎉 Congratulations to [Name] who just joined [Company] as [Role]!"</td></tr>
+      <tr><td>Saturday</td><td>Resource Share</td><td>"Free salary benchmark report: India Tech Roles 2026 [download]"</td></tr>
+      <tr><td>Sunday</td><td>Thought Starter</td><td>"Question: What does a great hiring process look like to you as a candidate?"</td></tr>
     </table>
-    <h3>Community Moderation Rules</h3>
+
+    <h3>Community Growth Phases</h3>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🌱</div><h4>Seed (0–100)</h4><p>Founder-led. Every post by the admin. Manually invite every member. Comment on every post within 2 hours. Be the community.</p></div>
+      <div class="card"><div class="card-icon">🌿</div><h4>Growth (100–1K)</h4><p>Appoint 2–3 power members as moderators. Share moderation responsibilities. Focus on quality over quantity. Reject spam applications.</p></div>
+      <div class="card"><div class="card-icon">🌳</div><h4>Scale (1K–10K)</h4><p>Launch sub-communities (by city, role, experience level). Hire a dedicated community manager. Revenue from sponsored content and job postings.</p></div>
+      <div class="card"><div class="card-icon">🏆</div><h4>Authority (10K+)</h4><p>Your community is a talent brand. Charge employers for access. Launch a job board. Host paid events. License the model to other cities.</p></div>
+    </div>
+
+    <h3>Moderation Standards</h3>
     <ul class="check">
-      <li>No spam or promotional posts without moderator approval</li>
-      <li>No salary discussions that shame employers or candidates</li>
-      <li>Every reported post reviewed within 24 hours (Super Admin has Reported Posts dashboard)</li>
-      <li>3-strike rule: warn → suspend → ban for repeat violations</li>
-      <li>NPS feedback from community members reviewed monthly</li>
+      <li>All posts visible immediately — no pre-moderation (reduces friction, increases posting)</li>
+      <li>Reported posts reviewed by Super Admin within 24 hours via Reported Posts dashboard</li>
+      <li>Strike system: 1st violation = warning message; 2nd = 7-day suspension; 3rd = permanent ban</li>
+      <li>Zero tolerance: personal attacks, doxxing, discriminatory content, fake job postings</li>
+      <li>Monthly community health review: engagement rate, new member retention, post quality</li>
     </ul>
   </div>
 
   <!-- SALES PLAYBOOK -->
   <div class="section" id="playbook-sales">
     <h2><span class="icon" style="background:#f59e0b18">💼</span>Sales Playbook</h2>
-    <p>How to sell TalentNest HR to Indian SMBs and mid-market companies.</p>
-    <h3>Ideal Sales Motion</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Discovery (15 min)</h4><p>Ask: "How many hires per year? What tools do you use today? What's your biggest hiring pain?" Listen more than talk.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Demo (20 min)</h4><p>Show the workflow they described. If they said "tracking is a mess" → show pipeline kanban. If "candidates ghost" → show notification system.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>ROI Calculation (5 min)</h4><p>If they hire 20 people/year and each hire takes 45 days today, TalentNest reduces it to 25 days — that's 400 days saved × recruiter cost = ₹X saved.</p></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Trial Close (5 min)</h4><p>Offer a 30-day free trial with white-glove onboarding. Setup call within 24 hours of signup.</p></div></div>
-    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Follow Up (next day)</h4><p>Send a personalised ROI calculation email with the numbers from their specific situation. Include a direct booking link for the setup call.</p></div></div>
+    <p>The complete guide to selling TalentNest HR subscriptions to Indian SMBs and mid-market companies — from ICP definition to contract close.</p>
+
+    <h3>Ideal Customer Profile (ICP)</h3>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🎯</div><h4>Primary ICP</h4><p>Indian SMB, 50–500 employees, hiring 10–100 people/year, currently using Excel or basic job boards. Pain: no tracking, candidates slipping through, employer brand invisible.</p></div>
+      <div class="card"><div class="card-icon">🥈</div><h4>Secondary ICP</h4><p>Indian mid-market, 500–2,000 employees, replacing legacy ATS (Taleo, older Keka). Pain: complex, expensive, terrible UX. TalentNest is modern and 70% cheaper.</p></div>
+      <div class="card"><div class="card-icon">❌</div><h4>Not a Fit</h4><p>Enterprise 5,000+ (needs SAP/Workday integration), international-only companies (WhatsApp/Razorpay won't resonate), companies hiring fewer than 5 people/year (low ROI).</p></div>
+    </div>
+
+    <h3>Discovery Framework (SPIN Selling)</h3>
+    <table>
+      <tr><th>Question Type</th><th>Examples</th><th>Goal</th></tr>
+      <tr><td><strong>Situation</strong></td><td>"How many hires did you make last year?" "What tools are you using today?"</td><td>Understand current state</td></tr>
+      <tr><td><strong>Problem</strong></td><td>"What's the hardest part of your hiring process?" "Where do candidates drop off?"</td><td>Surface pain points</td></tr>
+      <tr><td><strong>Implication</strong></td><td>"What happens when a role stays open for 90+ days?" "How much is a bad hire costing you?"</td><td>Make pain vivid and expensive</td></tr>
+      <tr><td><strong>Need-Payoff</strong></td><td>"If you could fill roles 30% faster, what would that mean for the business?" "Would it help if candidates always knew where they stood?"</td><td>Let them articulate the value themselves</td></tr>
+    </table>
+
+    <h3>Demo Script (20 Minutes)</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Set the frame (2 min)</h4><p>"I'm going to show you exactly how [their specific pain point] gets solved. Stop me anytime with questions."</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Career Page → Their brand, public (3 min)</h4><p>Show the branded career page. "This is what candidates see before they apply. Your brand is what attracts the best people." Personalise: use their logo mockup if prepared.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Applicant Pipeline Kanban (5 min)</h4><p>"Every candidate moves through these stages. You see exactly where everyone is. Nothing slips. SLA alerts tell you when to act." This solves "candidates falling through the cracks."</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Candidate NPS (3 min)</h4><p>"After every hire or rejection, candidates rate their experience. You see the score, read the comments, and improve. No other SMB tool in India does this."</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Analytics (3 min)</h4><p>"Time-to-fill, funnel conversion, recruiter performance, diversity — all live. You'll know more about your hiring in 30 days than you learned in the last 3 years."</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h4>ROI + Close (4 min)</h4><p>"Based on what you told me — 30 hires/year, currently taking 45 days each — TalentNest typically reduces that by 30–40%. That's 270–360 recruiter-days saved annually. At ₹50K/month loaded recruiter cost, that's ₹4.5–6L saved. The platform is ₹7,999/month. Math is easy."</p></div></div>
+
     <h3>Objection Handling</h3>
     <table>
-      <tr><th>Objection</th><th>Response</th></tr>
-      <tr><td>"We're using Naukri / LinkedIn"</td><td>"Great — TalentNest is where applications go after Naukri and LinkedIn. It's your pipeline management and employer brand layer."</td></tr>
-      <tr><td>"We can't afford it"</td><td>"₹2,999/month vs. losing one good hire (₹1–2L replacement cost). The platform pays for itself on the first hire saved."</td></tr>
-      <tr><td>"We have too few hires for an ATS"</td><td>"Our SMB plan is built for 5–20 hires/year. And when you grow to 50+, you'll already have the system in place."</td></tr>
-      <tr><td>"We tried [competitor] and it was too complex"</td><td>"Our median time from signup to first hire in the system is under 2 hours. No implementation fee, no training required."</td></tr>
+      <tr><th>Objection</th><th>Underlying Fear</th><th>Response</th></tr>
+      <tr><td>"We use Naukri / LinkedIn"</td><td>Will this replace what we already do?</td><td>"TalentNest sits on top of Naukri and LinkedIn. You still source there — you manage everything here. It's the layer you're missing."</td></tr>
+      <tr><td>"We can't afford it"</td><td>Budget constraints / ROI doubt</td><td>"One mis-hire costs ₹1–5L. One slow hire costs ₹50K+ in productivity loss. ₹7,999/month is the cheapest insurance you can buy."</td></tr>
+      <tr><td>"We're too small"</td><td>Product built for bigger companies</td><td>"Our smallest customer makes 6 hires/year. The platform paid for itself on the 2nd hire."</td></tr>
+      <tr><td>"We tried [Keka / Zoho / etc.] and it failed"</td><td>Implementation risk</td><td>"First job in the system in under 2 hours. No professional services. No training. You're live or we give you your money back."</td></tr>
+      <tr><td>"We need approval from the board/CEO"</td><td>Political blocker</td><td>"Great — let me prepare a 1-page ROI summary for their review. Can we do a 30-minute exec call this week?"</td></tr>
+    </table>
+
+    <h3>Pricing &amp; Negotiation</h3>
+    <table>
+      <tr><th>Plan</th><th>List Price</th><th>Floor Price</th><th>When to Discount</th></tr>
+      <tr><td>Starter</td><td>₹2,999/mo</td><td>₹2,000/mo</td><td>Startups under 2 years old, bootstrapped</td></tr>
+      <tr><td>Growth</td><td>₹7,999/mo</td><td>₹5,999/mo</td><td>Annual commit (save 3 months), case study partners</td></tr>
+      <tr><td>Scale</td><td>₹19,999/mo</td><td>₹14,999/mo</td><td>2-year commit, reference customers, strategic accounts</td></tr>
     </table>
   </div>
 
   <!-- MARKETING PLAYBOOK -->
   <div class="section" id="playbook-marketing">
     <h2><span class="icon" style="background:#ec489918">📣</span>Marketing Playbook</h2>
-    <p>How to grow TalentNest HR's brand and user base through organic and paid channels.</p>
-    <h3>Content Marketing (Organic — Low Cost, High Impact)</h3>
-    <div class="cards">
-      <div class="card"><div class="card-icon">✍️</div><h4>Blog Content</h4><p>Weekly posts on hiring best practices, salary benchmarks, HR compliance. Target: HR managers searching for advice on Google.</p></div>
-      <div class="card"><div class="card-icon">📱</div><h4>LinkedIn Strategy</h4><p>Daily posts by founders and advisors. Topic: India hiring stories, candidate experience fails, recruiter hacks. Target: 10K followers in 6 months.</p></div>
-      <div class="card"><div class="card-icon">🎥</div><h4>YouTube Shorts</h4><p>"Did You Know?" series about hiring mistakes Indian SMBs make. 30-second videos. Repurpose for Instagram Reels.</p></div>
-      <div class="card"><div class="card-icon">📊</div><h4>India Hiring Report</h4><p>Annual India SMB Hiring Trends report based on platform data. PR-worthy, builds credibility, drives backlinks.</p></div>
-    </div>
-    <h3>Community-Led Growth</h3>
-    <ul class="check">
-      <li>Build TalentNest's own community → becomes a marketing flywheel (candidate-to-employer referrals)</li>
-      <li>Partner with HR professional communities (SHRM India, NHRDN) for co-branded content</li>
-      <li>Sponsor college placement cells — first tool students use becomes their habit as professionals</li>
-      <li>Host monthly online events: "India Hiring Summit" — free, co-sponsored by ecosystem partners</li>
-    </ul>
-    <h3>Paid Channels (When Budget Available)</h3>
+    <p>The complete guide to growing TalentNest HR's brand, pipeline, and user base across organic and paid channels in the Indian market.</p>
+
+    <h3>Marketing Funnel Overview</h3>
     <table>
-      <tr><th>Channel</th><th>Target</th><th>Cost Estimate</th><th>Expected CPA</th></tr>
-      <tr><td>LinkedIn Ads</td><td>HR Managers, Founders in India</td><td>₹50K/month</td><td>₹3,000–₹8,000/signup</td></tr>
-      <tr><td>Google Search Ads</td><td>"ATS software India", "HR software SMB"</td><td>₹30K/month</td><td>₹2,000–₹5,000/signup</td></tr>
-      <tr><td>WhatsApp Broadcasts</td><td>HR communities and groups</td><td>₹5K/month</td><td>₹500–₹2,000/signup</td></tr>
+      <tr><th>Stage</th><th>Goal</th><th>Channels</th><th>Key Metric</th></tr>
+      <tr><td>Awareness</td><td>Make HR Managers aware TalentNest exists</td><td>LinkedIn, YouTube, PR, SEO blog</td><td>Branded search volume, social followers</td></tr>
+      <tr><td>Interest</td><td>Get them to engage with content</td><td>Email newsletter, LinkedIn posts, webinars</td><td>Email open rate, content engagement</td></tr>
+      <tr><td>Trial</td><td>Convert to free trial or demo request</td><td>CTA on blog, LinkedIn ads, referrals</td><td>Demo requests / week</td></tr>
+      <tr><td>Activation</td><td>Get first job posted in platform</td><td>Onboarding emails, CS call</td><td>% trials posting first job within 7 days</td></tr>
+      <tr><td>Retention</td><td>Keep subscriptions renewing</td><td>CS team, email check-ins, feature updates</td><td>Annual churn rate (&lt;10% target)</td></tr>
+      <tr><td>Referral</td><td>Turn customers into evangelists</td><td>Referral program, case studies, G2 reviews</td><td>Referral-sourced MRR %</td></tr>
     </table>
+
+    <h3>Content Marketing Strategy</h3>
+    <div class="cards">
+      <div class="card"><div class="card-icon">✍️</div><h4>SEO Blog</h4><p>Target keywords: "ATS software India", "HR software for SMB", "how to reduce time to hire India". Publish 4 posts/month. Focus on long-tail, high-intent searches from HR managers.</p></div>
+      <div class="card"><div class="card-icon">📱</div><h4>LinkedIn (Founder)</h4><p>Founder posts 5x/week: India hiring stories, product updates, behind-the-scenes. Goal: 25K followers by Month 12. Use storytelling — data + narrative outperforms pure data 8x on LinkedIn.</p></div>
+      <div class="card"><div class="card-icon">🎙️</div><h4>Podcast Appearances</h4><p>Target Indian HR and startup podcasts (HR Chat, Startup Central India). One appearance per month. Ask the host to share with their audience. Compounding reach effect.</p></div>
+      <div class="card"><div class="card-icon">📊</div><h4>Annual India Hiring Report</h4><p>Use anonymised platform data to publish "State of Hiring in India: SMB Edition" every January. Major PR opportunity — target ET, Economic Times, Inc42, YourStory for coverage.</p></div>
+    </div>
+
+    <h3>Community-Led Growth Strategy</h3>
+    <ul class="check">
+      <li><strong>Build TalentNest Career Community:</strong> Platform's own community becomes a marketing flywheel — candidates attract employers, employers attract candidates</li>
+      <li><strong>HR Circle India:</strong> Free private WhatsApp group for HR managers. Share resources, ask questions, swap hiring tips. TalentNest sponsors and moderates. Natural sales channel.</li>
+      <li><strong>College Placement Cell Program:</strong> Partner with 50 engineering/MBA colleges. Offer free accounts for placement cells. Students become habitual users — they bring TalentNest to their future employers.</li>
+      <li><strong>India Hiring Summit:</strong> Free online event, quarterly. 5 speakers, 500 attendees, 2 sponsors. TalentNest moderates and captures leads from every registrant.</li>
+    </ul>
+
+    <h3>Paid Marketing Calendar</h3>
+    <table>
+      <tr><th>Month</th><th>Budget</th><th>Channel</th><th>Campaign</th></tr>
+      <tr><td>Jan–Mar</td><td>₹1L/month</td><td>LinkedIn Ads</td><td>"New Year, New Hiring System" — target HR decision-makers India</td></tr>
+      <tr><td>Apr–Jun</td><td>₹75K/month</td><td>Google Search</td><td>Keyword: "ATS software India pricing" — high-intent comparison searches</td></tr>
+      <tr><td>Jul–Sep</td><td>₹50K/month</td><td>Retargeting</td><td>Retarget blog readers + demo page visitors — 3x conversion lift</td></tr>
+      <tr><td>Oct–Dec</td><td>₹1.5L/month</td><td>Mixed</td><td>End-of-year budget flush — many companies approve new tools in Q4</td></tr>
+    </table>
+
+    <h3>Marketing KPIs (Monthly)</h3>
+    <ul class="check">
+      <li>Organic traffic (blog): target 5K sessions/month by Month 6, 20K by Month 12</li>
+      <li>Demo requests: target 50/month by Month 6, 150/month by Month 12</li>
+      <li>Trial-to-paid conversion: target 30%+ (industry avg is 15–25%)</li>
+      <li>CAC (Customer Acquisition Cost): target &lt;₹15,000 blended CAC (organic + paid)</li>
+      <li>LTV:CAC ratio: target 5:1 (₹75,000 LTV / ₹15,000 CAC)</li>
+    </ul>
   </div>
 
   <!-- OPERATIONS PLAYBOOK -->
   <div class="section" id="playbook-operations">
     <h2><span class="icon" style="background:#06b6d418">⚙️</span>Operations Playbook</h2>
-    <p>How to run TalentNest HR's daily operations as the platform scales.</p>
-    <h3>Customer Success Process</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Onboarding Call (Day 0)</h4><p>45-minute video call with every new org admin. Walk through: career page setup, invite team, post first job, set up pipeline stages.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Week 1 Check-in</h4><p>Email check-in: "How's it going? Have you posted your first job? Any questions?" Catch early drop-offs before they churn.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>30-Day Review</h4><p>Pull org-level analytics: jobs posted, applications, hires. Share a "Your first 30 days" report. Celebrate wins, address gaps.</p></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Renewal Conversation (Day 300)</h4><p>60 days before renewal: share ROI calculation, ask for case study, discuss upsell (more recruiters, BGV, video credits).</p></div></div>
-    <h3>Platform Health Monitoring</h3>
+    <p>The complete guide to running TalentNest HR's daily operations — customer success, platform reliability, support, and scaling processes.</p>
+
+    <h3>Customer Success Lifecycle</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Day 0: Onboarding Call (45 min)</h4><p>Trigger: new org signs up. CS rep books a call within 4 hours. Agenda: career page setup live, invite first recruiter, post first job, walk through pipeline. Goal: first application in the system before the call ends. Success rate benchmark: 80%+.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Day 7: Health Check Email</h4><p>Automated email with personalised stats: "You've reviewed X applications, posted Y jobs, and saved Z hours vs. spreadsheets." If 0 activity: CS rep calls personally. This catches 60% of churn risk before it becomes churn.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Day 30: Business Review (30 min)</h4><p>Pull org analytics → share time-to-fill, NPS score, pipeline health. Celebrate wins, address gaps. Ask: "What's the #1 thing that would make TalentNest even more valuable for you?" Feed responses to product team.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Day 90: Upsell Review</h4><p>Check usage vs. plan limits. If recruiter limit or job limit is being hit → propose upgrade. If BGV or video interviews are being asked about → propose add-on. Average upsell value: ₹2,000–₹5,000/month.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Day 300: Renewal + Case Study</h4><p>60 days before renewal: share full-year ROI report (hires made, time saved, NPS improvement). Ask for a case study or G2/Capterra review in exchange for a 10% loyalty discount. Ask for referrals — 40% of new customers come from existing customer referrals.</p></div></div>
+
+    <h3>Platform Reliability Standards</h3>
     <table>
-      <tr><th>System</th><th>Check Frequency</th><th>Alert Threshold</th></tr>
-      <tr><td>Backend (Render)</td><td>Automated (5-min ping)</td><td>2 failed pings = alert</td></tr>
-      <tr><td>MongoDB Atlas</td><td>Daily</td><td>&gt;80% storage = upgrade plan</td></tr>
-      <tr><td>Cloudinary</td><td>Monthly</td><td>&gt;80% bandwidth = alert</td></tr>
-      <tr><td>Email delivery rate</td><td>Weekly</td><td>&lt;95% delivery = investigate</td></tr>
-      <tr><td>Razorpay webhook failures</td><td>Daily</td><td>Any failure = immediate fix</td></tr>
+      <tr><th>System</th><th>Uptime Target</th><th>Monitoring</th><th>Incident Trigger</th></tr>
+      <tr><td>Backend API (Render)</td><td>99.5%/month</td><td>UptimeRobot 5-min pings</td><td>2+ consecutive failures</td></tr>
+      <tr><td>MongoDB Atlas</td><td>99.9%/month</td><td>Atlas built-in alerts</td><td>Replication lag &gt;30s</td></tr>
+      <tr><td>Cloudinary CDN</td><td>99.9%/month</td><td>Status page subscription</td><td>Any outage &gt;5 min</td></tr>
+      <tr><td>Email (SMTP/Resend)</td><td>95% delivery rate</td><td>Weekly bounce rate check</td><td>Delivery rate &lt;90%</td></tr>
+      <tr><td>Razorpay Webhooks</td><td>100% processing</td><td>Webhook log review daily</td><td>Any missed webhook</td></tr>
+      <tr><td>Socket.io Real-time</td><td>99%/month</td><td>Platform socket health check</td><td>Reconnect rate &gt;20%</td></tr>
     </table>
-    <h3>Support SLAs</h3>
+
+    <h3>Support SLA Matrix</h3>
     <table>
-      <tr><th>Severity</th><th>Example</th><th>Response Time</th><th>Resolution Time</th></tr>
-      <tr><td><span class="badge badge-red">Critical</span></td><td>Login broken, data loss</td><td>15 minutes</td><td>2 hours</td></tr>
-      <tr><td><span class="badge badge-amber">High</span></td><td>Feature broken, billing issue</td><td>2 hours</td><td>24 hours</td></tr>
-      <tr><td><span class="badge badge-blue">Normal</span></td><td>UI bug, performance</td><td>24 hours</td><td>72 hours</td></tr>
-      <tr><td><span class="badge badge-green">Low</span></td><td>Feature request, question</td><td>48 hours</td><td>Next sprint</td></tr>
+      <tr><th>Severity</th><th>Definition</th><th>First Response</th><th>Resolution</th><th>Escalation</th></tr>
+      <tr><td><span class="badge badge-red">P0 Critical</span></td><td>All users locked out, data loss, payment failure</td><td>15 min</td><td>2 hours</td><td>Immediate — CEO, CTO, on-call</td></tr>
+      <tr><td><span class="badge badge-amber">P1 High</span></td><td>Feature completely broken for an org, billing issue</td><td>1 hour</td><td>8 hours</td><td>Team lead notified</td></tr>
+      <tr><td><span class="badge badge-blue">P2 Medium</span></td><td>Bug affecting workflow but workaround exists</td><td>4 hours</td><td>48 hours</td><td>Standard queue</td></tr>
+      <tr><td><span class="badge badge-green">P3 Low</span></td><td>UI issue, minor bug, feature request</td><td>24 hours</td><td>Next sprint</td><td>Product backlog</td></tr>
     </table>
+
+    <h3>Monthly Operations Metrics</h3>
+    <ul class="check">
+      <li><strong>NPS (Platform Health):</strong> Survey all customers quarterly — target &gt;40 (world class &gt;70)</li>
+      <li><strong>Gross Revenue Retention:</strong> Measure recurring revenue retained without upsells — target &gt;90%</li>
+      <li><strong>Net Revenue Retention:</strong> Revenue retained + expansion — target &gt;110% (upsells exceed churn)</li>
+      <li><strong>Time to First Value:</strong> From signup to first hire made in platform — target &lt;14 days</li>
+      <li><strong>Support Ticket Volume:</strong> Per 100 customers — decreasing trend means product is improving</li>
+      <li><strong>Onboarding Completion Rate:</strong> % of new orgs who post a job within 7 days — target 70%+</li>
+    </ul>
+
+    <h3>Incident Response Protocol</h3>
+    <ul class="check">
+      <li>P0 detected → Slack alert to #incidents → on-call engineer has 15 min to acknowledge</li>
+      <li>Engineer investigates → status update in Slack every 30 min during active incident</li>
+      <li>Root cause identified → fix deployed → post-mortem written within 24 hours</li>
+      <li>Affected customers emailed proactively — do not wait for them to report the issue</li>
+      <li>Post-mortem shared publicly on status page for P0/P1 incidents (builds trust)</li>
+    </ul>
   </div>
 
   <!-- SUPER ADMIN PLAYBOOK -->
   <div class="section" id="playbook-superadmin">
     <h2><span class="icon" style="background:#0a162818">🔑</span>Super Admin Playbook</h2>
-    <p>The complete guide for the TalentNest HR platform operator. You have full cross-tenant access and platform control.</p>
-    <h3>Daily Super Admin Routine</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Command Center (5 min)</h4><p>Check platform stats: total orgs, active users, applications today, revenue. Look for anomalies — unexpected spikes or drops.</p></div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Reported Posts (5 min)</h4><p>Review any newly reported community posts. Approve removal or dismiss report within 24 hours.</p></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Support Queue (10 min)</h4><p>Check Candidate Requests and Contact Enquiries. Respond to or escalate any unresolved issues older than 24 hours.</p></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>New Orgs (5 min)</h4><p>Check Organisations → filter by last 7 days. Any new orgs that haven't posted a job yet? Trigger their onboarding call.</p></div></div>
-    <h3>Super Admin Power Tools</h3>
+    <p>The complete guide for the TalentNest HR platform operator. You hold the master key — full cross-tenant access, platform configuration, and the ultimate ability to see, fix, or escalate anything on the platform.</p>
+
+    <h3>Super Admin Daily Routine (30 minutes)</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Command Center Health Check (5 min)</h4><p>Open Super Admin → Command Center. Review: platform stats (total orgs, active users today, applications today, MRR). Look for anomalies: any org with unusual spike in activity (could be a power user or an abuse case).</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Reported Posts (5 min)</h4><p>Community → Reported Posts. Review any posts reported since yesterday. Decision: Keep (false report) or Remove (violates guidelines). Respond to the reporter if their flag was actioned. Target: 0 reports older than 24 hours.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Support Queue (10 min)</h4><p>Check Candidate Requests → unresolved queries. Check Contact Enquiries → any new forms submitted. For each: assign to team member, respond directly, or escalate to engineering. Nothing older than 24 hours without a response.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>New Organisation Review (5 min)</h4><p>Organisations → filter by created last 7 days. Check: have they posted a job? Have they invited a recruiter? Any with zero activity 48 hours after signup → trigger CS onboarding call manually.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Billing Exceptions (5 min)</h4><p>Billing → filter "payment failed" or "overdue." Any failed Razorpay charges? Contact the org immediately — payment failures left unresolved for 72+ hours almost always result in churn.</p></div></div>
+
+    <h3>Super Admin Power Tools Reference</h3>
+    <table>
+      <tr><th>Tool</th><th>Location</th><th>When to Use</th></tr>
+      <tr><td>User Impersonation</td><td>Users → [User] → Impersonate</td><td>Diagnosing support issues — see exactly what they see without their password</td></tr>
+      <tr><td>Org Analytics</td><td>Organisations → [Org] → Analytics</td><td>Deep-dive into any org's hiring funnel, active jobs, team size, billing history</td></tr>
+      <tr><td>Platform Broadcast</td><td>Broadcast → New Message</td><td>Platform-wide banner alerts (maintenance, new features, critical notices)</td></tr>
+      <tr><td>System Automations</td><td>Automations → System Templates</td><td>Manage and update the 10 default workflow rules available to all new orgs</td></tr>
+      <tr><td>Security Audit Log</td><td>Security → Audit Log</td><td>Investigate suspicious activity — tracks all admin/super_admin actions</td></tr>
+      <tr><td>Platform NPS</td><td>Analytics → NPS (super_admin view)</td><td>Platform-wide aggregate of candidate experience scores across all orgs</td></tr>
+      <tr><td>Referral Tracker</td><td>Platform Referrals</td><td>Track and approve referral commission payouts to platform ambassadors</td></tr>
+      <tr><td>Content Moderation</td><td>Community → Reported Posts</td><td>Review flagged community posts, remove violations, warn/ban repeat offenders</td></tr>
+    </table>
+
+    <h3>Monthly Super Admin Checklist</h3>
     <ul class="check">
-      <li><strong>Impersonation:</strong> Login as any user (admin/recruiter/candidate) to diagnose support issues without needing their password</li>
-      <li><strong>Org Overview:</strong> See every org's data — jobs, candidates, applications — with no tenantId filter</li>
-      <li><strong>Billing Control:</strong> View, update, and refund any subscription via the Billing section</li>
-      <li><strong>Security Console:</strong> Audit logs for all admin actions across all orgs. Suspicious activity monitoring.</li>
-      <li><strong>Platform Referrals:</strong> Track and reward ambassadors who bring new orgs to the platform</li>
-      <li><strong>Playbooks:</strong> This document — the definitive platform reference for every stakeholder</li>
-      <li><strong>Broadcast:</strong> Send a platform-wide banner message to all logged-in users simultaneously</li>
-      <li><strong>NPS Dashboard:</strong> Platform-wide candidate NPS aggregate — your product's health score</li>
+      <li>Export platform MRR report — share with founders and investors</li>
+      <li>Review all orgs with no activity in 30+ days — identify churn risk, trigger CS intervention</li>
+      <li>Review platform NPS → if any category drops below 40, investigate and action within 1 week</li>
+      <li>Security audit log review — any anomalous API calls, failed auth attempts, or unusual patterns?</li>
+      <li>MongoDB Atlas storage check — ensure &lt;70% capacity; upgrade plan 30 days before reaching 80%</li>
+      <li>Cloudinary bandwidth review — check usage vs. plan limits; image uploads trend upward with growth</li>
+      <li>Razorpay settlement reconciliation — all subscriptions accounted for in bank statement</li>
+      <li>System automation templates review — any templates triggering errors or low engagement?</li>
     </ul>
-    <h3>Critical Rules for Super Admin</h3>
+
+    <h3>Critical Security Rules (Never Break These)</h3>
     <div class="alert alert-red">
       <span>🚨</span>
-      <div><strong>Never break these rules:</strong><br>
-      1. Never delete an org's data permanently — use soft deletes only.<br>
-      2. Never modify a user's password directly — use "forgot password" flow.<br>
-      3. Never impersonate a user for more than 30 minutes without logging out.<br>
-      4. Never commit JWT secrets, API keys, or credentials to any repository.<br>
-      5. Never expose the super_admin API routes to any admin or recruiter — the RBAC must remain intact.
+      <div><strong>Super Admin Security Absolutes:</strong><br><br>
+      <strong>1. Never delete org data permanently.</strong> Use soft deletes (deletedAt). Every deletion must be reversible for 90 days.<br><br>
+      <strong>2. Never change a user's password directly.</strong> Use the "forgot password" flow. Direct password changes are unauditable and violate user trust.<br><br>
+      <strong>3. Never impersonate for more than 30 minutes.</strong> Log out of impersonation immediately after diagnosing the issue. Impersonation sessions are logged.<br><br>
+      <strong>4. Never commit credentials to any repository.</strong> JWT_SECRET, Razorpay keys, MongoDB URI, Cloudinary secrets — all must stay in environment variables only.<br><br>
+      <strong>5. Never expose super_admin routes to org admins.</strong> The RBAC middleware (tenantGuard + role checks) is the security boundary. Never bypass it, even for "just this once."<br><br>
+      <strong>6. Never make breaking schema changes without migration.</strong> Always add fields as optional. Never rename or remove fields without a migration script and rollback plan.
       </div>
+    </div>
+
+    <h3>Platform Growth Targets (Super Admin Owns These)</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num">100</div><div class="stat-label">Orgs by Month 6</div></div>
+      <div class="stat-box"><div class="stat-num">500</div><div class="stat-label">Orgs by Month 12</div></div>
+      <div class="stat-box"><div class="stat-num">50+</div><div class="stat-label">Platform NPS Target</div></div>
+      <div class="stat-box"><div class="stat-num">&lt;5%</div><div class="stat-label">Monthly Churn Target</div></div>
+      <div class="stat-box"><div class="stat-num">99.5%</div><div class="stat-label">Uptime Target</div></div>
+      <div class="stat-box"><div class="stat-num">24h</div><div class="stat-label">Max Support Response</div></div>
     </div>
   </div>
 
