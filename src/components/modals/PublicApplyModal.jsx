@@ -10,10 +10,10 @@ import { getCompanyCareerUrl } from '../../utils/url.js';
 
 /* ── Mobile-optimised field components (local to this modal) ── */
 function MField({ label, value, onChange, onBlur, type = 'text', placeholder, highlight, suffix }) {
-  const base = { width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: '#0A1628', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const base = { width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: '#111827', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
   return (
-    <div>
-      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{label}</label>
+    <div style={{ background: '#fff' }}>
+      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 6 }}>{label}</label>
       <div style={{ position: 'relative' }}>
         <input type={type} value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} style={base} />
         {suffix && <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>{suffix}</div>}
@@ -23,10 +23,10 @@ function MField({ label, value, onChange, onBlur, type = 'text', placeholder, hi
 }
 function MSelect({ label, value, onChange, options = [], highlight }) {
   return (
-    <div>
-      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>{label}</label>
+    <div style={{ background: '#fff' }}>
+      <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 6 }}>{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        style={{ width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: value ? '#0A1628' : '#94A3B8', outline: 'none', boxSizing: 'border-box', appearance: 'none', WebkitAppearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%2364748B' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 40 }}>
+        style={{ width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${highlight ? '#059669' : '#CBD5E1'}`, fontSize: 16, background: highlight ? '#F0FDF4' : '#fff', color: value ? '#111827' : '#94A3B8', outline: 'none', boxSizing: 'border-box', appearance: 'none', WebkitAppearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%2364748B' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 40 }}>
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
     </div>
@@ -454,12 +454,12 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
       )}
 
       {/* ── FORM FIELDS ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, background: '#fff', color: '#111827' }}>
 
         {/* Section: Contact */}
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 3, height: 14, background: '#0176D3', borderRadius: 2, flexShrink: 0 }} />
-          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Contact</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Contact</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <MField label="Email Address *" value={form.email} type="email" placeholder="jane@example.com"
@@ -500,10 +500,10 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
           <MSelect label="Department *" value={form.department} onChange={v => sf('department', v)}
             options={[['', '— Select department —'], ...DEPARTMENTS.map(d => [d, d])]} />
           <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Cover Letter <span style={{ color: '#94A3B8', fontWeight: 500 }}>(optional)</span></label>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Cover Letter <span style={{ color: '#6B7280', fontWeight: 500 }}>(optional)</span></label>
             <textarea value={form.coverLetter} onChange={e => sf('coverLetter', e.target.value)} rows={3}
               placeholder="Brief note about why you're a great fit…"
-              style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#111827', outline: 'none', fontFamily: 'inherit' }} />
           </div>
         </div>
         {/* Section: Account */}
@@ -518,7 +518,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
               <input type="checkbox" checked={createAccount} onChange={e => setCreateAccount(e.target.checked)} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', margin: 0, cursor: 'pointer' }} />
             </span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0A1628' }}>Create a free account</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>Create a free account</div>
               <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>Track your application live after submitting</div>
             </div>
           </label>
@@ -526,7 +526,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Password */}
               <div>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Create Password *</label>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Create Password *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -550,7 +550,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
               </div>
               {/* Confirm Password */}
               <div>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 6 }}>Confirm Password *</label>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Confirm Password *</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -597,7 +597,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {questions.map((q, i) => (
                 <div key={i}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0A1628', marginBottom: 8 }}>{q.question}{q.required && <span style={{ color: '#EF4444' }}> *</span>}</label>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 8 }}>{q.question}{q.required && <span style={{ color: '#EF4444' }}> *</span>}</label>
                   {q.type === 'yesno' ? (
                     <div style={{ display: 'flex', gap: 12 }}>
                       {['Yes', 'No'].map(opt => (
@@ -618,7 +618,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
                     </div>
                   ) : (
                     <textarea value={answers[i] || ''} onChange={e => setAnswers(p => ({ ...p, [i]: e.target.value }))} rows={3}
-                      style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#0A1628', outline: 'none', fontFamily: 'inherit' }} />
+                      style={{ width: '100%', padding: '14px', borderRadius: 10, border: '1.5px solid #CBD5E1', fontSize: 15, lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#111827', outline: 'none', fontFamily: 'inherit' }} />
                   )}
                 </div>
               ))}
