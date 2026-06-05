@@ -883,6 +883,7 @@ export default function CommunityFeed({ user }) {
   const [bookmarks,    setBookmarks]    = useState(loadBookmarks);
   const [bookmarkData, setBookmarkData] = useState(loadBookmarkData);
   // Connections
+  const [newQueue,     setNewQueue]     = useState([]); // posts arriving via socket while user scrolls
   const [connections,  setConnections]  = useState([]);
   const [pendingIds,   setPendingIds]   = useState(new Set());
   const [seeding,      setSeeding]      = useState(false);
@@ -1051,11 +1052,21 @@ export default function CommunityFeed({ user }) {
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
   const uid     = user?.id || user?._id;
 
-  // Real-time sync: remove deleted posts from feed for all users
+  // Real-time sync
   usePlatformEvents({
+    'post:created': (post) => {
+      // Skip own posts — already added immediately via handleCreatePost optimistic update
+      if (String(post.authorId) === String(uid)) return;
+      setNewQueue(prev => {
+        // Avoid duplicates
+        if (prev.some(p => String(p._id) === String(post._id))) return prev;
+        return [post, ...prev];
+      });
+    },
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
       setPosts(prev => prev.filter(p => String(p._id) !== strId));
+      setNewQueue(prev => prev.filter(p => String(p._id) !== strId));
       setBookmarks(prev => {
         if (!prev.includes(strId)) return prev;
         const next = prev.filter(id => id !== strId);
@@ -1191,6 +1202,22 @@ export default function CommunityFeed({ user }) {
             <>
               <SearchBar value={search} onChange={setSearch} />
               <CreatePost user={user} onCreate={handleCreate} />
+
+              {/* ── Real-time: new posts banner ── */}
+              {newQueue.length > 0 && !isFiltered && (
+                <button
+                  onClick={() => {
+                    setPosts(prev => {
+                      const existingIds = new Set(prev.map(p => String(p._id)));
+                      const fresh = newQueue.filter(p => !existingIds.has(String(p._id)));
+                      return [...fresh, ...prev];
+                    });
+                    setNewQueue([]);
+                  }}
+                  style={{ width: '100%', marginBottom: 12, padding: '11px 16px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#0176D3,#0369a1)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: '0 4px 16px rgba(1,118,211,0.3)', animation: 'ios-page-in 0.28s var(--ios-ease) both' }}>
+                  ↑ {newQueue.length} new post{newQueue.length > 1 ? 's' : ''} — tap to load
+                </button>
+              )}
 
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>

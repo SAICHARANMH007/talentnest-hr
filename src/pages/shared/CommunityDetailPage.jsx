@@ -650,6 +650,7 @@ export default function CommunityDetailPage({ user }) {
   const [joining,   setJoining]   = useState(false);
   const [seeding,   setSeeding]   = useState(false);
   const [seedMsg,   setSeedMsg]   = useState('');
+  const [newQueue,  setNewQueue]  = useState([]); // real-time incoming posts
   const [isMobile,  setMobile]    = useState(() => window.innerWidth < 768);
   const uid = String(user?.id || user?._id || '');
 
@@ -742,10 +743,24 @@ export default function CommunityDetailPage({ user }) {
     } catch {}
   };
 
-  // Real-time sync: remove posts deleted by any user/admin
+  // Real-time sync
   usePlatformEvents({
+    'post:created': (post) => {
+      if (String(post.authorId) === uid) return; // author already sees it
+      // Only queue if the post belongs to this community
+      const matchesCommunity = community
+        ? String(post.communityId) === String(community._id) || post.communitySlug === slug
+        : post.communitySlug === slug;
+      if (!matchesCommunity) return;
+      setNewQueue(prev => {
+        if (prev.some(p => String(p._id) === String(post._id))) return prev;
+        return [post, ...prev];
+      });
+    },
     'post:deleted': ({ postId }) => {
-      setPosts(prev => prev.filter(p => String(p._id) !== String(postId)));
+      const strId = String(postId);
+      setPosts(prev => prev.filter(p => String(p._id) !== strId));
+      setNewQueue(prev => prev.filter(p => String(p._id) !== strId));
     },
   });
 
@@ -877,6 +892,22 @@ export default function CommunityDetailPage({ user }) {
                   <span>Join this community to post and interact with members.</span>
                 </div>
               )}
+            {/* ── Real-time: new posts banner ── */}
+            {newQueue.length > 0 && !postsLoading && (
+              <button
+                onClick={() => {
+                  setPosts(prev => {
+                    const existingIds = new Set(prev.map(p => String(p._id)));
+                    const fresh = newQueue.filter(p => !existingIds.has(String(p._id)));
+                    return [...fresh, ...prev];
+                  });
+                  setNewQueue([]);
+                }}
+                style={{ width: '100%', marginBottom: 12, padding: '11px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,${bg},${bg}cc)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: `0 4px 16px ${bg}44`, animation: 'ios-page-in 0.28s var(--ios-ease) both' }}>
+                ↑ {newQueue.length} new post{newQueue.length > 1 ? 's' : ''} — tap to load
+              </button>
+            )}
+
             {postsLoading ? (
               <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
                 <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />

@@ -123,6 +123,13 @@ router.post('/', asyncHandler(async (req, res) => {
     })();
   }
 
+  // Broadcast new post to all users in the tenant so feeds update in real time
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:created', post.toObject());
+  } catch {}
+
   res.status(201).json({ success: true, data: post });
 }));
 
