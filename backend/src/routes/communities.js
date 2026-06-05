@@ -518,4 +518,24 @@ router.post('/:slug/seed-posts', asyncHandler(async (req, res) => {
   res.json({ success: true, message: `${created.length} posts created for ${name} using real platform users.`, count: created.length });
 }));
 
+// ─── PATCH /api/communities/:slug — super_admin: edit community details ───────
+router.patch('/:slug', asyncHandler(async (req, res) => {
+  if (req.user.role !== 'super_admin') throw new AppError('Only super admins can edit communities.', 403);
+
+  const allowed = ['name', 'description', 'icon', 'coverColor', 'category', 'isGlobal'];
+  const updates = {};
+  allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+
+  if (Object.keys(updates).length === 0) throw new AppError('No valid fields to update.', 400);
+
+  const community = await Community.findOneAndUpdate(
+    { slug: req.params.slug },
+    { $set: updates },
+    { new: true },
+  ).lean();
+
+  if (!community) throw new AppError('Community not found.', 404);
+  res.json({ success: true, data: community });
+}));
+
 module.exports = router;
