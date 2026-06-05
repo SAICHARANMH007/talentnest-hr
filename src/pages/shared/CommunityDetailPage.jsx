@@ -81,6 +81,8 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const [reporting,    setReporting]    = useState(false);
   const [reported,     setReported]     = useState(false);
   const [reportErr,    setReportErr]    = useState('');
+  const [replyingTo,   setReplyingTo]   = useState(null); // { userName }
+  const commentInputRef = useRef(null);
   const isOwnPost = String(post.authorId) === String(userId);
   const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
@@ -88,12 +90,26 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const totalComments  = post.comments?.length  || 0;
   const typeStyle = POST_TYPE_STYLE[post.postType];
 
+  const handleReply = (c) => {
+    const mention = `@${c.userName} `;
+    setComment(mention);
+    setReplyingTo({ userName: c.userName });
+    setShowComments(true);
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+        commentInputRef.current.selectionStart = commentInputRef.current.selectionEnd = mention.length;
+      }
+    }, 50);
+  };
+
   const handleSubmitComment = async () => {
     if (!comment.trim()) return;
     setSubmitting(true);
     try {
       await api.addComment(post._id, comment.trim());
       setComment('');
+      setReplyingTo(null);
     } catch {}
     setSubmitting(false);
   };
@@ -241,23 +257,46 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
           <div style={{ marginTop: 12 }}>
             {post.comments?.map(c => (
               <div key={String(c._id)} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <Avatar name={c.userName} size={28} role="candidate" />
-                <div style={{ flex: 1, background: '#F8FAFC', borderRadius: 10, padding: '8px 12px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 3 }}>{c.userName || 'Member'}</div>
-                  <div style={{ fontSize: 13, color: '#374151' }}>{c.content}</div>
+                <Avatar name={c.userName} size={28} role={c.userRole || 'candidate'} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 3 }}>{c.userName || 'Member'}</div>
+                    <div style={{ fontSize: 13, color: '#374151' }}>
+                      {c.content.startsWith('@') ? (
+                        <>
+                          <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
+                          {' '}{c.content.slice(c.content.indexOf(' ') + 1)}
+                        </>
+                      ) : c.content}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 3, paddingLeft: 4 }}>
+                    <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
+                    <button onClick={() => handleReply(c)}
+                      style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>Reply</button>
+                  </div>
                 </div>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Avatar name="Me" size={28} role="candidate" />
-              <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-                <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Write a comment…"
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }}}
-                  style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
-                <button onClick={handleSubmitComment} disabled={submitting || !comment.trim()}
-                  style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: comment.trim() ? 1 : 0.5 }}>
-                  {submitting ? '…' : 'Post'}
-                </button>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {replyingTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
+                    <span>Replying to <strong style={{ color: '#0176D3' }}>@{replyingTo.userName}</strong></span>
+                    <button onClick={() => { setReplyingTo(null); setComment(''); }} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>✕ cancel</button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input ref={commentInputRef} value={comment} onChange={e => setComment(e.target.value)}
+                    placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }}}
+                    style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
+                  <button onClick={handleSubmitComment} disabled={submitting || !comment.trim()}
+                    style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: comment.trim() ? 1 : 0.5 }}>
+                    {submitting ? '…' : 'Post'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -612,6 +651,11 @@ export default function CommunityDetailPage({ user }) {
   const [seeding,   setSeeding]   = useState(false);
   const [seedMsg,   setSeedMsg]   = useState('');
   const [isMobile,  setMobile]    = useState(() => window.innerWidth < 768);
+  const [editOpen,  setEditOpen]  = useState(false);
+  const [editForm,  setEditForm]  = useState({});
+  const [editSaving,setEditSaving]= useState(false);
+  const [editErr,   setEditErr]   = useState('');
+  const isSuperAdmin = ['super_admin', 'superadmin'].includes(user?.role);
   const uid = String(user?.id || user?._id || '');
 
   useEffect(() => {
@@ -634,7 +678,7 @@ export default function CommunityDetailPage({ user }) {
   const loadPosts = useCallback(async () => {
     setPostsLoading(true);
     try {
-      const r = await api.getCommunityFeed(slug);
+      const r = await api.getCommunityFeed(slug, { limit: 200 });
       setPosts(r?.data || []);
     } catch {}
     setPostsLoading(false);
@@ -652,7 +696,7 @@ export default function CommunityDetailPage({ user }) {
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
     try {
-      const r = await api.getCommunityMembers(slug);
+      const r = await api.getCommunityMembers(slug, { limit: 200 });
       setMembers(r?.data || []);
       setTotalMembers(r?.total || 0);
     } catch {}
@@ -688,6 +732,32 @@ export default function CommunityDetailPage({ user }) {
     setJoining(false);
   };
 
+  const openEdit = () => {
+    setEditForm({
+      name       : community.name || '',
+      description: community.description || '',
+      icon       : community.icon || '💬',
+      coverColor : community.coverColor || '#0176D3',
+      category   : community.category || 'other',
+    });
+    setEditErr('');
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.name?.trim()) { setEditErr('Name is required.'); return; }
+    setEditSaving(true);
+    setEditErr('');
+    try {
+      const r = await api.updateCommunity(slug, editForm);
+      if (r?.data) setCommunity(prev => ({ ...prev, ...r.data }));
+      setEditOpen(false);
+    } catch (e) {
+      setEditErr(e?.message || 'Failed to save changes.');
+    }
+    setEditSaving(false);
+  };
+
   const handleReact = async (postId, type) => {
     try {
       const r = await api.reactToPost(postId, type);
@@ -703,10 +773,51 @@ export default function CommunityDetailPage({ user }) {
     } catch {}
   };
 
-  // Real-time sync: remove posts deleted by any user/admin
+  // Real-time sync — all events wire up here
   usePlatformEvents({
+    'post:created': (post) => {
+      if (String(post.authorId) === uid) return; // author already sees it immediately
+      const matchesCommunity = community
+        ? String(post.communityId) === String(community._id) || post.communitySlug === slug
+        : post.communitySlug === slug;
+      if (!matchesCommunity) return;
+      setPosts(prev => {
+        if (prev.some(p => String(p._id) === String(post._id))) return prev;
+        return [post, ...prev]; // instant prepend — no tap needed
+      });
+    },
+    'post:reacted': ({ postId, reactions }) => {
+      setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, reactions } : p));
+    },
+    'post:commented': ({ postId, comment }) => {
+      setPosts(prev => prev.map(p => {
+        if (String(p._id) !== String(postId)) return p;
+        if (String(comment.userId) === uid) return p;
+        if ((p.comments || []).some(c => String(c._id) === String(comment._id))) return p;
+        return { ...p, comments: [...(p.comments || []), comment] };
+      }));
+    },
     'post:deleted': ({ postId }) => {
       setPosts(prev => prev.filter(p => String(p._id) !== String(postId)));
+    },
+    'community:memberJoined': ({ slug: eventSlug, member, memberCount }) => {
+      if (eventSlug !== slug) return;
+      // Update member count on the community card header
+      setCommunity(prev => prev ? { ...prev, memberCount } : prev);
+      // Add to members list if not already there
+      if (member) {
+        setMembers(prev => {
+          if (prev.some(m => String(m._id) === String(member._id))) return prev;
+          return [member, ...prev];
+        });
+        setTotalMembers(memberCount);
+      }
+    },
+    'community:memberLeft': ({ slug: eventSlug, userId: leftId, memberCount }) => {
+      if (eventSlug !== slug) return;
+      setCommunity(prev => prev ? { ...prev, memberCount } : prev);
+      setMembers(prev => prev.filter(m => String(m._id) !== String(leftId)));
+      setTotalMembers(memberCount);
     },
   });
 
@@ -752,6 +863,47 @@ export default function CommunityDetailPage({ user }) {
     <div style={{ maxWidth: 860, margin: '0 auto', padding: isMobile ? '0 0 40px' : '20px 0 40px' }}>
       <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* Super Admin: Edit Community Modal */}
+      {editOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={e => { if (e.target === e.currentTarget) setEditOpen(false); }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 28, maxWidth: 480, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#0A1628', marginBottom: 20 }}>✏️ Edit Community</div>
+            {[
+              { key: 'name',        label: 'Name',        type: 'text',  placeholder: 'Community name' },
+              { key: 'description', label: 'Description', type: 'textarea', placeholder: 'What is this community about?' },
+              { key: 'icon',        label: 'Icon (emoji)',type: 'text',  placeholder: '💬' },
+              { key: 'coverColor',  label: 'Cover Color (hex)', type: 'text', placeholder: '#0176D3' },
+            ].map(f => (
+              <div key={f.key} style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 5 }}>{f.label}</label>
+                {f.type === 'textarea'
+                  ? <textarea rows={3} value={editForm[f.key] || ''} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                  : <input type="text" value={editForm[f.key] || ''} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, boxSizing: 'border-box' }} />
+                }
+              </div>
+            ))}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 5 }}>Category</label>
+              <select value={editForm.category || 'other'} onChange={e => setEditForm(p => ({ ...p, category: e.target.value }))}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, boxSizing: 'border-box', background: '#fff' }}>
+                {['tech', 'hr', 'business', 'design', 'other'].map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              </select>
+            </div>
+            {editErr && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 12 }}>{editErr}</div>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditOpen(false)} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleEditSave} disabled={editSaving}
+                style={{ padding: '9px 22px', borderRadius: 10, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 13, cursor: editSaving ? 'not-allowed' : 'pointer', opacity: editSaving ? 0.7 : 1 }}>
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Back */}
       <button onClick={() => navigate(-1)}
         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 12, padding: isMobile ? '0 12px' : 0 }}>
@@ -760,17 +912,33 @@ export default function CommunityDetailPage({ user }) {
 
       {/* Hero banner */}
       <div style={{ borderRadius: isMobile ? 0 : 16, overflow: 'hidden', marginBottom: 0, boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
-        <div style={{ height: 130, background: `linear-gradient(135deg, ${bg} 0%, ${bg}bb 100%)`, position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 20, right: 20, fontSize: 52, opacity: 0.25 }}>{community.icon}</div>
+        {/* Banner with icon absolutely positioned at bottom-left */}
+        <div style={{ height: 120, background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 100%)`, position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 48, opacity: 0.18 }}>{community.icon}</div>
+          {/* Icon box — absolute bottom-left so it's always visible against the banner */}
+          <div style={{
+            position: 'absolute', bottom: -26, left: isMobile ? 16 : 24,
+            width: 56, height: 56, borderRadius: 14,
+            background: '#fff', border: `3px solid #fff`,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, flexShrink: 0, zIndex: 2,
+          }}>
+            {community.icon}
+          </div>
         </div>
+
+        {/* White content below banner */}
         <div style={{ background: '#fff', padding: isMobile ? '0 16px 16px' : '0 24px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -28 }}>
-            {/* Community icon */}
-            <div style={{ width: 60, height: 60, borderRadius: 16, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', flexShrink: 0 }}>
-              {community.icon}
-            </div>
-            {/* Action buttons — grouped right */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 4 }}>
+          {/* Row: reserve space for icon on left, action buttons on right */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 8, paddingBottom: 4, minHeight: 36 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {isSuperAdmin && (
+                <button onClick={openEdit}
+                  style={{ padding: '7px 14px', borderRadius: 20, border: '1.5px solid #7C3AED', background: '#F5F3FF', color: '#7C3AED', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ✏️ Edit
+                </button>
+              )}
               <button
                 onClick={() => {
                   const shareUrl = `${window.location.origin}/c/${community.slug}`;
@@ -784,36 +952,31 @@ export default function CommunityDetailPage({ user }) {
                   });
                 }}
                 id="tn-share-btn"
-                style={{ padding: '8px 16px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                style={{ padding: '7px 14px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 🔗 Share
               </button>
               <button
                 onClick={isMember ? handleLeave : handleJoin}
                 disabled={joining}
-                style={{ padding: '8px 20px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
+                style={{ padding: '7px 18px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
                 {joining ? '…' : isMember ? '✓ Joined' : '+ Join'}
               </button>
             </div>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 4 }}>{community.name}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>{community.memberCount || 0} members · {community.category}</div>
+
+          {/* Community name + meta — left margin to clear the icon */}
+          <div style={{ marginTop: 6, paddingLeft: isMobile ? 70 : 78, minHeight: 20, position: 'relative' }}>
+            <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 2 }}>{community.name}</div>
+            <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 0 }}>{community.memberCount || 0} members · {community.category}</div>
+          </div>
+          {/* Description + guidelines button — full width below icon */}
+          <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>{community.description}</div>
             <button onClick={() => setTab('about')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 10, padding: '4px 12px', borderRadius: 20, background: bg + '15', border: `1px solid ${bg}33`, color: bg, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
               📜 View Guidelines
             </button>
           </div>
-          {/* Seed posts button (small, for generating content) */}
-          {!postsLoading && posts.length < 3 && (
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={handleSeed} disabled={seeding}
-                style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer' }}>
-                {seeding ? '…' : '✨ Generate sample posts'}
-              </button>
-              {seedMsg && <span style={{ fontSize: 11, color: '#059669' }}>{seedMsg}</span>}
-            </div>
-          )}
         </div>
       </div>
 
@@ -847,8 +1010,7 @@ export default function CommunityDetailPage({ user }) {
               <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>✍️</div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No posts yet</div>
-                <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>Be the first to share something with this community!</div>
-                <button onClick={handleSeed} disabled={seeding} style={btnP}>{seeding ? '…' : '✨ Generate sample posts'}</button>
+                <div style={{ fontSize: 13, color: '#9CA3AF' }}>Be the first to share something with this community!</div>
               </div>
             ) : (
               posts.map(post => (

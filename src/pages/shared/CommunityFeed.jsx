@@ -289,20 +289,40 @@ function BookmarkButton({ post, bookmarks, onToggle }) {
 
 // ── Comment Section ────────────────────────────────────────────────────────────
 function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus }) {
-  const [text,       setText]       = useState('');
-  const [expanded,   setExpanded]   = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [text,        setText]        = useState('');
+  const [expanded,    setExpanded]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [replyingTo,  setReplyingTo]  = useState(null); // { userName }
   const inputRef = useRef(null);
   const comments = post.comments || [];
   const visible  = expanded ? comments : comments.slice(-3);
 
   useEffect(() => { if (autoFocus) inputRef.current?.focus(); }, [autoFocus]);
 
+  const handleReply = (c) => {
+    const mention = `@${c.userName} `;
+    setText(mention);
+    setReplyingTo({ userName: c.userName });
+    inputRef.current?.focus();
+    // place cursor at end
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.selectionStart = inputRef.current.selectionEnd = mention.length;
+      }
+    }, 0);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setText('');
+  };
+
   const submit = async () => {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     await onAddComment(post._id, text.trim());
     setText('');
+    setReplyingTo(null);
     setSubmitting(false);
   };
 
@@ -324,10 +344,22 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#0A1628' }}>{c.userName || 'Member'}</span>
                   <RoleBadge role={c.userRole} />
                 </div>
-                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>{c.content}</div>
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>
+                  {/* Highlight @mention prefix in blue */}
+                  {c.content.startsWith('@') ? (
+                    <>
+                      <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
+                      {' '}{c.content.slice(c.content.indexOf(' ') + 1)}
+                    </>
+                  ) : c.content}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
+                <button onClick={() => handleReply(c)}
+                  style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                  Reply
+                </button>
                 {String(c.userId) === String(userId) && (
                   <button onClick={() => onDeleteComment(post._id, String(c._id))}
                     style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
@@ -341,19 +373,27 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <Avatar name={''} size={32} role={''} />
-        <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-          <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder="Write a comment…"
-            style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
-            onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
-            onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
-          {text.trim() && (
-            <button onClick={submit} disabled={submitting}
-              style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              {submitting ? '…' : '→'}
-            </button>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {replyingTo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280', paddingLeft: 4 }}>
+              <span>Replying to <strong style={{ color: '#0176D3' }}>@{replyingTo.userName}</strong></span>
+              <button onClick={cancelReply} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>✕ cancel</button>
+            </div>
           )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+              placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
+              style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
+              onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
+              onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
+            {text.trim() && (
+              <button onClick={submit} disabled={submitting}
+                style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {submitting ? '…' : '→'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -882,6 +922,16 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
+  // Silent background refresh every 60s — catches any events missed by the socket
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+        loadPosts(1, filter);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [filter, tab, isFiltered, loadPosts]);
+
   // When "Saved" tab opens, fetch any bookmark IDs that have no stored data
   useEffect(() => {
     if (tab !== 'saved' || bookmarks.length === 0) return;
@@ -1011,8 +1061,28 @@ export default function CommunityFeed({ user }) {
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
   const uid     = user?.id || user?._id;
 
-  // Real-time sync: remove deleted posts from feed for all users
+  // Real-time sync
   usePlatformEvents({
+    'post:created': (post) => {
+      if (String(post.authorId) === String(uid)) return;
+      setPosts(prev => {
+        if (prev.some(p => String(p._id) === String(post._id))) return prev;
+        return [post, ...prev]; // instant — appears at top immediately
+      });
+    },
+    'post:reacted': ({ postId, reactions }) => {
+      setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, reactions } : p));
+    },
+    'post:commented': ({ postId, comment }) => {
+      setPosts(prev => prev.map(p => {
+        if (String(p._id) !== String(postId)) return p;
+        // Skip if it's the current user's own comment (already added optimistically)
+        if (String(comment.userId) === String(uid)) return p;
+        // Skip duplicates
+        if ((p.comments || []).some(c => String(c._id) === String(comment._id))) return p;
+        return { ...p, comments: [...(p.comments || []), comment] };
+      }));
+    },
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
       setPosts(prev => prev.filter(p => String(p._id) !== strId));
@@ -1064,6 +1134,33 @@ export default function CommunityFeed({ user }) {
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
   const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
+  // Pull-to-refresh (mobile only)
+  const pullStartY  = useRef(0);
+  const [pullDist,  setPullDist]  = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const PULL_THRESHOLD = 64;
+
+  const handleTouchStart = (e) => {
+    if (!isMobile || window.scrollY > 0) return;
+    pullStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e) => {
+    if (!isMobile || window.scrollY > 0 || pullStartY.current === 0) return;
+    const dist = Math.max(0, Math.min(120, e.touches[0].clientY - pullStartY.current));
+    if (dist > 8) setPullDist(dist);
+  };
+  const handleTouchEnd = async () => {
+    if (pullDist >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      setPullDist(0);
+      await loadPosts(1, filter);
+      setRefreshing(false);
+    } else {
+      setPullDist(0);
+    }
+    pullStartY.current = 0;
+  };
+
   const sharedPostProps = {
     userId: uid,
     userRole: user?.role,
@@ -1082,16 +1179,25 @@ export default function CommunityFeed({ user }) {
   };
 
   return (
-    <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}>
+    <div
+      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {isMobile && (pullDist > 0 || refreshing) && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: refreshing ? 48 : pullDist * 0.6, overflow: 'hidden', transition: refreshing ? 'none' : 'height 0.1s', marginTop: -8, marginBottom: 4 }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: refreshing || pullDist >= PULL_THRESHOLD ? 'tn-spin 0.7s linear infinite' : 'none', transform: refreshing ? 'none' : `rotate(${pullDist * 2.8}deg)`, opacity: Math.min(1, pullDist / PULL_THRESHOLD) }} />
+        </div>
+      )}
       {/* Header */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Career Community</h1>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Share wins, hiring updates, career tips, and resources with your professional network</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
-        </div>
+        <div />
       </div>
 
       {/* Tabs */}
@@ -1175,11 +1281,6 @@ export default function CommunityFeed({ user }) {
                   </div>
                   {networkOnly && connections.length === 0 && (
                     <a href="/app/people" style={{ ...btnP, textDecoration: 'none', display: 'inline-block' }}>Find People to Connect</a>
-                  )}
-                  {!isFiltered && !networkOnly && (
-                    <button onClick={handleSeed} disabled={seeding} style={btnP}>
-                      {seeding ? 'Creating…' : '🌱 Load sample posts'}
-                    </button>
                   )}
                 </div>
               ) : (

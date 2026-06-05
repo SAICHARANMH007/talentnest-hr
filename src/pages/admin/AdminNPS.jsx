@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/api.js';
 import { card, btnG } from '../../constants/styles.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 const scoreColor = (s) => {
   if (s === null || s === undefined) return '#9CA3AF';
@@ -62,6 +63,11 @@ export default function AdminNPS() {
   };
 
   useEffect(() => { load('', ''); }, []);
+
+  // Live update when any candidate submits an NPS survey
+  usePlatformEvents({
+    'nps:submitted': () => { load('', ''); },
+  });
 
   const inp = { padding: '7px 10px', borderRadius: 7, border: '1px solid #D1D5DB', fontSize: 12, background: '#fff' };
 

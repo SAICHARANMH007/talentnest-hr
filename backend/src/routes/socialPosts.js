@@ -123,6 +123,13 @@ router.post('/', asyncHandler(async (req, res) => {
     })();
   }
 
+  // Broadcast new post to all users in the tenant so feeds update in real time
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:created', post.toObject());
+  } catch {}
+
   res.status(201).json({ success: true, data: post });
 }));
 
@@ -197,6 +204,14 @@ router.post('/:id/react', asyncHandler(async (req, res) => {
     post.reactions.push({ userId: uid, type });
   }
   await post.save();
+
+  // Broadcast updated reactions to all users in the tenant
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:reacted', { postId: String(post._id), reactions: post.reactions });
+  } catch {}
+
   res.json({ success: true, reactions: post.reactions });
 }));
 
@@ -217,7 +232,16 @@ router.post('/:id/comment', asyncHandler(async (req, res) => {
     createdAt : new Date(),
   });
   await post.save();
-  res.json({ success: true, comment: post.comments[post.comments.length - 1] });
+  const newComment = post.comments[post.comments.length - 1];
+
+  // Broadcast new comment to all users in the tenant
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:commented', { postId: String(post._id), comment: newComment });
+  } catch {}
+
+  res.json({ success: true, comment: newComment });
 }));
 
 // DELETE /api/social-posts/:postId/comment/:commentId
@@ -396,14 +420,28 @@ router.post('/seed', asyncHandler(async (req, res) => {
 // POST /api/social-posts/upload-image
 router.post('/upload-image', upload.single('image'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('No image provided.', 400);
-  const result = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'talentnest/feed', resource_type: 'image', transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }] },
-      (err, r) => err ? reject(err) : resolve(r)
-    );
-    stream.end(req.file.buffer);
-  });
-  res.json({ success: true, url: result.secure_url });
+
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error('[upload-image] Cloudinary env vars missing');
+    throw new AppError('Image upload not configured on server.', 503);
+  }
+
+  cloudinary.config({ cloud_name: CLOUDINARY_CLOUD_NAME, api_key: CLOUDINARY_API_KEY, api_secret: CLOUDINARY_API_SECRET });
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'talentnest/feed', resource_type: 'image', transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }] },
+        (err, r) => err ? reject(err) : resolve(r)
+      );
+      stream.end(req.file.buffer);
+    });
+    res.json({ success: true, url: result.secure_url });
+  } catch (err) {
+    console.error('[upload-image] Cloudinary upload failed:', err.message || err);
+    throw new AppError(`Image upload failed: ${err.message || 'Cloudinary error'}`, 502);
+  }
 }));
 
 module.exports = router;

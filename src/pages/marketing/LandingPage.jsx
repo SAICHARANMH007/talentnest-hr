@@ -378,7 +378,7 @@ export default function LandingPage() {
                             {job.urgency}
                           </span>
                         )}
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Apply →</span>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: 700, background: 'rgba(1,118,211,0.35)', border: '1px solid rgba(1,118,211,0.5)', borderRadius: 6, padding: '3px 8px' }}>Apply →</span>
                       </div>
                     </div>
                     {isActive && job.skills?.length > 0 && (

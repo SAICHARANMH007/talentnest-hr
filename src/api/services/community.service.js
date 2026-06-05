@@ -34,4 +34,10 @@ export const communityService = {
   async seedCommunityPosts(slug) {
     return req('POST', `/communities/${slug}/seed-posts`, {});
   },
+  async updateCommunity(slug, data) {
+    return req('PATCH', `/communities/${slug}`, data);
+  },
+  async mergeDuplicateCommunities() {
+    return req('POST', '/communities/merge-duplicates');
+  },
 };

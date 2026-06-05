@@ -79,35 +79,58 @@ router.post('/survey/:token', asyncHandler(async (req, res) => {
   const s = parseInt(score, 10);
   if (isNaN(s) || s < 1 || s > 10) return res.status(400).json({ message: 'Score must be 1–10.' });
 
-  await CandidateNPS.findByIdAndUpdate(nps._id, {
+  const updated = await CandidateNPS.findByIdAndUpdate(nps._id, {
     $set: {
       score,
       wouldRecommend: wouldRecommend !== undefined ? !!wouldRecommend : undefined,
       feedbackText  : feedbackText || '',
       respondedAt   : new Date(),
     },
-  });
+  }, { new: true });
+
+  // Broadcast to admin dashboards in real time
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), nps.tenantId, 'nps:submitted', {
+      score: parseInt(score, 10),
+      outcome: nps.applicationOutcome || '',
+      feedbackText: feedbackText || '',
+      respondedAt: new Date(),
+    });
+  } catch {}
+
   res.json({ success: true });
 }));
 
-// POST /api/nps/seed — admin: create 20 demo NPS responses
+// POST /api/nps/seed — admin: seed NPS responses using real candidates & jobs
 router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
-  const isSuperAdmin = req.user.role === 'super_admin';
-  // super_admin has no tenantId — use a fixed demo marker so the count check is stable
-  const tenantId = isSuperAdmin ? 'superadmin-demo' : req.user.tenantId;
-  const existing = await CandidateNPS.countDocuments({ tenantId });
-  if (existing >= 10) return res.json({ success: true, message: 'Seed data already exists.', count: existing });
+  const tenantId = req.user.tenantId;
+  if (!tenantId) return res.json({ success: false, message: 'Not available for super_admin.' });
 
-  const mongoose = require('mongoose');
-  const OUTCOMES = ['hired', 'rejected', 'hired', 'hired', 'rejected', 'hired', 'rejected', 'hired', 'hired', 'rejected'];
-  const SCORES   = [9, 10, 8, 7, 5, 10, 6, 9, 10, 4, 8, 9, 10, 7, 5, 9, 10, 8, 3, 9];
+  const existing = await CandidateNPS.countDocuments({ tenantId });
+  if (existing >= 10) return res.json({ success: true, message: 'NPS data already exists.', count: existing });
+
+  const mongoose  = require('mongoose');
+  const crypto    = require('crypto');
+  const Candidate = require('../models/Candidate');
+  const Job       = require('../models/Job');
+  const Application = require('../models/Application');
+
+  // Pull real candidates, jobs, and applications from the tenant
+  const [candidates, jobs, applications] = await Promise.all([
+    Candidate.find({ tenantId, deletedAt: null }).select('name email').limit(20).lean(),
+    Job.find({ tenantId, deletedAt: null }).select('title company companyName').limit(10).lean(),
+    Application.find({ tenantId }).select('candidateId jobId stage').limit(20).lean(),
+  ]);
+
   const FEEDBACK = [
     'The entire process was smooth and professional. I felt respected throughout.',
     'Interview scheduling was seamless and the team was very responsive.',
     'Great experience! The hiring team was transparent about every step.',
     'Decent process but feedback took longer than expected after the final round.',
     'The rejection was handled professionally with constructive feedback. Appreciated.',
-    'Amazing team! They were prompt, professional, and genuinely interested in me.',
+    'Amazing team — prompt, professional, and genuinely interested in candidates.',
     'Process was okay but communication could be improved between rounds.',
     'One of the best interview experiences I have had. Highly recommend applying here.',
     'The recruiter was extremely helpful and kept me updated throughout.',
@@ -118,30 +141,39 @@ router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
     'Communication was timely and the process was efficient.',
     'Rejected but received useful feedback. Rare and appreciated.',
     'Smooth process from application to offer. Highly satisfied.',
-    'Outstanding recruiter support. Always available for questions.',
+    'Outstanding recruiter support — always available for questions.',
     'Interview was well-structured with clear expectations set upfront.',
     'The timeline was longer than expected but eventually worth it.',
     'Best hiring experience in my career so far. Truly candidate-first.',
   ];
+  const SCORES          = [9, 10, 8, 7, 5, 10, 6, 9, 10, 4, 8, 9, 10, 7, 5, 9, 10, 8, 3, 9];
+  const OUTCOMES        = ['hired', 'rejected', 'hired', 'hired', 'rejected', 'hired', 'rejected', 'hired', 'hired', 'rejected'];
   const WOULD_RECOMMEND = [true, true, true, true, false, true, false, true, true, false, true, true, true, true, true, true, true, true, false, true];
+  const COUNT = Math.min(20, Math.max(10, 20 - existing));
 
   const now = Date.now();
-  const records = SCORES.map((score, i) => ({
-    tenantId,
-    applicationId: new mongoose.Types.ObjectId(),
-    candidateId  : new mongoose.Types.ObjectId(),
-    jobId        : new mongoose.Types.ObjectId(),
-    score,
-    wouldRecommend    : WOULD_RECOMMEND[i],
-    feedbackText      : FEEDBACK[i] || '',
-    applicationOutcome: OUTCOMES[i % OUTCOMES.length],
-    surveyToken       : require('crypto').randomBytes(24).toString('hex'),
-    emailSentAt       : new Date(now - (SCORES.length - i) * 2 * 24 * 3600000),
-    respondedAt       : new Date(now - (SCORES.length - i) * 2 * 24 * 3600000 + 3600000),
-  }));
+  const records = [];
+  for (let i = 0; i < COUNT; i++) {
+    const app       = applications[i % Math.max(1, applications.length)];
+    const candidate = candidates[i % Math.max(1, candidates.length)];
+    const job       = jobs[i % Math.max(1, jobs.length)];
+    records.push({
+      tenantId,
+      applicationId: app?._id || new mongoose.Types.ObjectId(),
+      candidateId  : app?.candidateId || candidate?._id || new mongoose.Types.ObjectId(),
+      jobId        : app?.jobId || job?._id || new mongoose.Types.ObjectId(),
+      score        : SCORES[i % SCORES.length],
+      wouldRecommend    : WOULD_RECOMMEND[i % WOULD_RECOMMEND.length],
+      feedbackText      : FEEDBACK[i % FEEDBACK.length],
+      applicationOutcome: OUTCOMES[i % OUTCOMES.length],
+      surveyToken       : crypto.randomBytes(24).toString('hex'),
+      emailSentAt       : new Date(now - (COUNT - i) * 2 * 24 * 3600000),
+      respondedAt       : new Date(now - (COUNT - i) * 2 * 24 * 3600000 + 3600000),
+    });
+  }
 
   await CandidateNPS.insertMany(records);
-  res.json({ success: true, message: `Seeded ${records.length} demo NPS responses.`, count: records.length });
+  res.json({ success: true, message: `${records.length} NPS responses seeded using real platform data.`, count: records.length });
 }));
 
 // GET /api/nps/stats — admin: NPS dashboard data
@@ -171,7 +203,7 @@ router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
       ...(startDate || endDate ? { respondedAt: { ...dateFilter } } : {}) })
       .select('feedbackText applicationOutcome respondedAt score')
       .sort({ respondedAt: -1 })
-      .limit(20)
+      .limit(200)
       .lean(),
   ]);
 

@@ -318,6 +318,117 @@ router.delete('/workflow-rules/system/:id', ...saGuard, asyncHandler(async (req,
   res.json({ success: true, message: 'System template and all org copies deleted.' });
 }));
 
+// POST /api/admin/workflow-rules/seed-system — seed 10 platform-level automation templates
+router.post('/workflow-rules/seed-system', ...saGuard, asyncHandler(async (req, res) => {
+  const TEMPLATES = [
+    {
+      systemKey: 'welcome_on_apply',
+      name: 'Welcome Candidate on Application',
+      description: 'Automatically send a warm welcome email when a candidate applies for any job.',
+      category: 'Communication',
+      trigger: { event: 'candidate_applied', conditions: [] },
+      actions: [{ type: 'send_email', config: { subject: 'Application Received — {{job_title}}', body: 'Hi {{candidate_name}}, thank you for applying to {{job_title}} at {{company_name}}. We have received your application and will review it shortly.' }, delayMinutes: 0 }],
+    },
+    {
+      systemKey: 'notify_recruiter_new_application',
+      name: 'Notify Recruiter on New Application',
+      description: 'Alert the assigned recruiter immediately when a candidate applies.',
+      category: 'Pipeline',
+      trigger: { event: 'candidate_applied', conditions: [] },
+      actions: [{ type: 'notify_recruiter', config: { message: 'New application received for {{job_title}} from {{candidate_name}}.' }, delayMinutes: 0 }],
+    },
+    {
+      systemKey: 'interview_scheduled_confirmation',
+      name: 'Interview Confirmation to Candidate',
+      description: 'Send confirmation email to candidate when an interview is scheduled.',
+      category: 'Communication',
+      trigger: { event: 'interview_scheduled', conditions: [] },
+      actions: [{ type: 'send_email', config: { subject: 'Interview Confirmed — {{job_title}}', body: 'Hi {{candidate_name}}, your interview for {{job_title}} has been confirmed. We look forward to meeting you!' }, delayMinutes: 0 }],
+    },
+    {
+      systemKey: 'candidate_hired_onboarding',
+      name: 'Trigger Onboarding on Hire',
+      description: 'Automatically notify admin and send a congratulations email when a candidate is marked hired.',
+      category: 'Onboarding',
+      trigger: { event: 'candidate_hired', conditions: [] },
+      actions: [
+        { type: 'send_email', config: { subject: 'Welcome to the team, {{candidate_name}}!', body: 'Congratulations on joining {{company_name}}! Your onboarding details will be shared shortly.' }, delayMinutes: 0 },
+        { type: 'notify_admin', config: { message: '{{candidate_name}} has been hired for {{job_title}}. Please initiate onboarding.' }, delayMinutes: 0 },
+      ],
+    },
+    {
+      systemKey: 'candidate_rejected_feedback',
+      name: 'Rejection with Feedback',
+      description: 'Send a professional rejection email with feedback when a candidate is rejected.',
+      category: 'Communication',
+      trigger: { event: 'candidate_rejected', conditions: [] },
+      actions: [{ type: 'send_email', config: { subject: 'Update on your application for {{job_title}}', body: 'Hi {{candidate_name}}, thank you for your interest in {{job_title}}. After careful consideration, we have decided to move forward with other candidates. We appreciate the time you invested and encourage you to apply for future openings.' }, delayMinutes: 30 }],
+    },
+    {
+      systemKey: 'offer_followup_unsigned',
+      name: 'Follow Up on Unsigned Offer',
+      description: 'Remind the candidate to sign their offer letter if it has not been signed within 48 hours.',
+      category: 'Offer',
+      trigger: { event: 'offer_not_signed', conditions: [] },
+      actions: [
+        { type: 'send_email', config: { subject: 'Action Required — Your Offer Letter', body: 'Hi {{candidate_name}}, we noticed your offer letter for {{job_title}} is still pending signature. Please sign it at your earliest convenience or contact us if you have any questions.' }, delayMinutes: 0 },
+        { type: 'notify_recruiter', config: { message: 'Offer for {{candidate_name}} ({{job_title}}) has not been signed. Please follow up.' }, delayMinutes: 0 },
+      ],
+    },
+    {
+      systemKey: 'assessment_completed_notify',
+      name: 'Notify on Assessment Completion',
+      description: 'Alert recruiter when a candidate completes their assessment.',
+      category: 'Assessment',
+      trigger: { event: 'assessment_completed', conditions: [] },
+      actions: [{ type: 'notify_recruiter', config: { message: '{{candidate_name}} has completed the assessment for {{job_title}}. Review their results in the pipeline.' }, delayMinutes: 0 }],
+    },
+    {
+      systemKey: 'stuck_candidate_alert',
+      name: 'Alert on Stuck Candidate',
+      description: 'Notify recruiter when a candidate has been in the same stage for too long without progress.',
+      category: 'Pipeline',
+      trigger: { event: 'candidate_stuck', conditions: [] },
+      actions: [
+        { type: 'notify_recruiter', config: { message: '{{candidate_name}} has been in {{stage_name}} for over 7 days. Please take action.' }, delayMinutes: 0 },
+        { type: 'create_task', config: { title: 'Review stuck candidate', description: '{{candidate_name}} needs attention in {{stage_name}} stage.' }, delayMinutes: 0 },
+      ],
+    },
+    {
+      systemKey: 'job_published_announcement',
+      name: 'Internal Announcement on Job Publish',
+      description: 'Notify the admin team when a new job is published so they can promote it.',
+      category: 'Pipeline',
+      trigger: { event: 'job_published', conditions: [] },
+      actions: [{ type: 'notify_admin', config: { message: 'New job published: {{job_title}}. Share it externally to attract candidates.' }, delayMinutes: 0 }],
+    },
+    {
+      systemKey: 'offer_accepted_congrats',
+      name: 'Celebrate Offer Acceptance',
+      description: 'Send a celebratory email and notify admin when an offer is accepted.',
+      category: 'Offer',
+      trigger: { event: 'offer_accepted', conditions: [] },
+      actions: [
+        { type: 'send_email', config: { subject: '🎉 Offer Accepted — {{job_title}}', body: 'Hi {{candidate_name}}, we are thrilled you have accepted the offer! Welcome to {{company_name}}. Our team will be in touch soon with your next steps.' }, delayMinutes: 0 },
+        { type: 'notify_admin', config: { message: '{{candidate_name}} accepted the offer for {{job_title}}. Trigger onboarding.' }, delayMinutes: 0 },
+      ],
+    },
+  ];
+
+  const created = [];
+  const skipped = [];
+  const createdBy = req.user._id;
+
+  for (const tmpl of TEMPLATES) {
+    const exists = await WorkflowRule.findOne({ isSystem: true, systemKey: tmpl.systemKey });
+    if (exists) { skipped.push(tmpl.systemKey); continue; }
+    await WorkflowRule.create({ tenantId: null, isSystem: true, isSystemCopy: false, isActive: true, createdBy, ...tmpl });
+    created.push(tmpl.systemKey);
+  }
+
+  res.json({ success: true, created: created.length, skipped: skipped.length, message: `${created.length} templates created, ${skipped.length} already existed.` });
+}));
+
 // ── Org activation / deactivation of system automations ────────────────────────
 
 // POST /api/admin/workflow-rules/activate/:systemKey — create org copy from template
