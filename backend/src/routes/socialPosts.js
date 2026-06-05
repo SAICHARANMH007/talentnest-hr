@@ -204,6 +204,14 @@ router.post('/:id/react', asyncHandler(async (req, res) => {
     post.reactions.push({ userId: uid, type });
   }
   await post.save();
+
+  // Broadcast updated reactions to all users in the tenant
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:reacted', { postId: String(post._id), reactions: post.reactions });
+  } catch {}
+
   res.json({ success: true, reactions: post.reactions });
 }));
 
@@ -224,7 +232,16 @@ router.post('/:id/comment', asyncHandler(async (req, res) => {
     createdAt : new Date(),
   });
   await post.save();
-  res.json({ success: true, comment: post.comments[post.comments.length - 1] });
+  const newComment = post.comments[post.comments.length - 1];
+
+  // Broadcast new comment to all users in the tenant
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:commented', { postId: String(post._id), comment: newComment });
+  } catch {}
+
+  res.json({ success: true, comment: newComment });
 }));
 
 // DELETE /api/social-posts/:postId/comment/:commentId

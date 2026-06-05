@@ -647,10 +647,13 @@ export default function CommunityDetailPage({ user }) {
   const [postsLoading, setPostsLoading] = useState(false);
   const [jobsLoading,  setJobsLoading]  = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [joining,   setJoining]   = useState(false);
-  const [seeding,   setSeeding]   = useState(false);
-  const [seedMsg,   setSeedMsg]   = useState('');
-  const [newQueue,  setNewQueue]  = useState([]); // real-time incoming posts
+  const [joining,      setJoining]      = useState(false);
+  const [seeding,      setSeeding]      = useState(false);
+  const [seedMsg,      setSeedMsg]      = useState('');
+  const [newQueue,     setNewQueue]     = useState([]); // real-time incoming posts
+  const [postPage,     setPostPage]     = useState(1);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [isMobile,  setMobile]    = useState(() => window.innerWidth < 768);
   const uid = String(user?.id || user?._id || '');
 
@@ -671,13 +674,18 @@ export default function CommunityDetailPage({ user }) {
     setLoading(false);
   }, [slug]);
 
-  const loadPosts = useCallback(async () => {
-    setPostsLoading(true);
+  const loadPosts = useCallback(async (p = 1, append = false) => {
+    if (append) setLoadingMorePosts(true);
+    else setPostsLoading(true);
     try {
-      const r = await api.getCommunityFeed(slug);
-      setPosts(r?.data || []);
+      const r = await api.getCommunityFeed(slug, { page: p, limit: 15 });
+      const items = r?.data || [];
+      setPosts(prev => append ? [...prev, ...items] : items);
+      setHasMorePosts(r?.hasMore ?? false);
+      setPostPage(p);
     } catch {}
-    setPostsLoading(false);
+    if (append) setLoadingMorePosts(false);
+    else setPostsLoading(false);
   }, [slug]);
 
   const loadJobs = useCallback(async () => {
@@ -746,8 +754,7 @@ export default function CommunityDetailPage({ user }) {
   // Real-time sync
   usePlatformEvents({
     'post:created': (post) => {
-      if (String(post.authorId) === uid) return; // author already sees it
-      // Only queue if the post belongs to this community
+      if (String(post.authorId) === uid) return;
       const matchesCommunity = community
         ? String(post.communityId) === String(community._id) || post.communitySlug === slug
         : post.communitySlug === slug;
@@ -756,6 +763,17 @@ export default function CommunityDetailPage({ user }) {
         if (prev.some(p => String(p._id) === String(post._id))) return prev;
         return [post, ...prev];
       });
+    },
+    'post:reacted': ({ postId, reactions }) => {
+      setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, reactions } : p));
+    },
+    'post:commented': ({ postId, comment }) => {
+      setPosts(prev => prev.map(p => {
+        if (String(p._id) !== String(postId)) return p;
+        if (String(comment.userId) === uid) return p;
+        if ((p.comments || []).some(c => String(c._id) === String(comment._id))) return p;
+        return { ...p, comments: [...(p.comments || []), comment] };
+      }));
     },
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
@@ -921,16 +939,26 @@ export default function CommunityDetailPage({ user }) {
                 <button onClick={handleSeed} disabled={seeding} style={btnP}>{seeding ? '…' : '✨ Generate sample posts'}</button>
               </div>
             ) : (
-              posts.map(post => (
-                <CommunityPostCard
-                  key={post._id}
-                  post={post}
-                  userId={uid}
-                  userRole={user?.role}
-                  onReact={handleReact}
-                  onDelete={handleDelete}
-                />
-              ))
+              <>
+                {posts.map(post => (
+                  <CommunityPostCard
+                    key={post._id}
+                    post={post}
+                    userId={uid}
+                    userRole={user?.role}
+                    onReact={handleReact}
+                    onDelete={handleDelete}
+                  />
+                ))}
+                {hasMorePosts && (
+                  <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
+                    <button onClick={() => loadPosts(postPage + 1, true)} disabled={loadingMorePosts}
+                      style={{ padding: '10px 28px', borderRadius: 12, border: `1.5px solid ${bg}33`, background: bg + '10', color: bg, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                      {loadingMorePosts ? 'Loading…' : 'Load more posts'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

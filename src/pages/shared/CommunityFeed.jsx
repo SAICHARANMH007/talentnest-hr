@@ -1055,13 +1055,24 @@ export default function CommunityFeed({ user }) {
   // Real-time sync
   usePlatformEvents({
     'post:created': (post) => {
-      // Skip own posts — already added immediately via handleCreatePost optimistic update
       if (String(post.authorId) === String(uid)) return;
       setNewQueue(prev => {
-        // Avoid duplicates
         if (prev.some(p => String(p._id) === String(post._id))) return prev;
         return [post, ...prev];
       });
+    },
+    'post:reacted': ({ postId, reactions }) => {
+      setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, reactions } : p));
+    },
+    'post:commented': ({ postId, comment }) => {
+      setPosts(prev => prev.map(p => {
+        if (String(p._id) !== String(postId)) return p;
+        // Skip if it's the current user's own comment (already added optimistically)
+        if (String(comment.userId) === String(uid)) return p;
+        // Skip duplicates
+        if ((p.comments || []).some(c => String(c._id) === String(comment._id))) return p;
+        return { ...p, comments: [...(p.comments || []), comment] };
+      }));
     },
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
