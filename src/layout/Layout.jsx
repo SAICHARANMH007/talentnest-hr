@@ -59,31 +59,6 @@ function AppIcon({ name, size = 18, color = 'currentColor' }) {
   return null;
 }
 
-// ── Theme Toggle Buttons ───────────────────────────────────────────────────────
-function ThemeToggle() {
-  const { themeId, setThemeId } = useMarketingTheme();
-  const themes = [
-    { id: 'light', emoji: '☀️', title: 'Light' },
-    { id: 'dark',  emoji: '🌙', title: 'Dark'  },
-    { id: 'mixed', emoji: '🌊', title: 'Ocean' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {themes.map(t => (
-        <button key={t.id} onClick={() => setThemeId(t.id)} title={`${t.title} theme`} aria-label={`${t.title} theme`}
-          style={{
-            width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            border: themeId === t.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)',
-            background: themeId === t.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
-            transition: 'all 0.15s',
-            WebkitTapHighlightColor: 'transparent',
-          }}>{t.emoji}</button>
-      ))}
-    </div>
-  );
-}
-
 // ── Page Loader (Skeletal) ───────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -872,7 +847,12 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
         {/* Theme switcher — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', flex: 1 }}>THEME</span>
-          <ThemeToggle />
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[{ id: 'light', e: '☀️', t: 'Light' }, { id: 'dark', e: '🌙', t: 'Dark' }, { id: 'mixed', e: '🌊', t: 'Ocean' }].map(th => (
+              <button key={th.id} onClick={() => setThemeId(th.id)} title={`${th.t} theme`} aria-label={`${th.t} theme`}
+                style={{ width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: themeId === th.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)', background: themeId === th.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent' }}>{th.e}</button>
+            ))}
+          </div>
         </div>
         {/* Profile row — click to expand menu inline */}
         <button onClick={() => setProfileOpen(p => !p)} data-profile-menu="true"
@@ -1019,6 +999,7 @@ export default function Layout({ user, onLogout }) {
   const [trialDays, setTrialDays]        = useState(null);
   const [online, setOnline]              = useState(true);
   const { customLogoUrl }                = useLogo();
+  const { themeId: mThemeId, setThemeId: mSetThemeId } = useMarketingTheme();
 
   useEffect(() => {
     const check = () => setOnline(navigator.onLine);
@@ -1159,7 +1140,12 @@ export default function Layout({ user, onLogout }) {
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 10, minWidth: 10, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
               </span>
-              <ThemeToggle />
+              <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                {[{ id: 'light', e: '☀️' }, { id: 'dark', e: '🌙' }, { id: 'mixed', e: '🌊' }].map(th => (
+                  <button key={th.id} onClick={() => mSetThemeId(th.id)} title={th.id}
+                    style={{ width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: mThemeId === th.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)', background: mThemeId === th.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', WebkitTapHighlightColor: 'transparent' }}>{th.e}</button>
+                ))}
+              </div>
             </div>
           </div>
 
