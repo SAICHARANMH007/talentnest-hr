@@ -375,8 +375,7 @@ router.<span class="fn">get</span>(<span class="s">'/protected'</span>, auth, <s
     <h3>Vercel (Frontend)</h3>
     <table>
       <tr><th>Env Var</th><th>Value</th></tr>
-      <tr><td><code>VITE_API_URL</code></td><td>https://your-backend.railway.app/api</td></tr>
-      <tr><td><code>VITE_GEMINI_API_KEY</code></td><td>Gemini API key from Google AI Studio</td></tr>
+      <tr><td><code>VITE_API_URL</code></td><td>https://your-backend.onrender.com/api</td></tr>
     </table>
     <div class="alert alert-amber">⚠️ <code>VITE_API_URL</code> is baked in at build time. Redeploy after changing it.</div>
   </div>
@@ -1236,10 +1235,11 @@ ${heroHtml('🏗️','ARCHITECTURE PLAYBOOK','Architecture Playbook','System des
     <table>
       <tr><th>Component</th><th>Platform</th><th>Config</th></tr>
       <tr><td>Frontend</td><td>Vercel</td><td>Auto-deploy from main branch, VITE_API_URL env var baked at build time</td></tr>
-      <tr><td>Backend API</td><td>Railway</td><td>Port 8080, auto-restart, health check at /health</td></tr>
-      <tr><td>Database</td><td>MongoDB Atlas</td><td>M0 free tier or paid cluster, encrypted at rest</td></tr>
-      <tr><td>Email</td><td>Resend</td><td>Transactional, from hr@talentnesthr.com</td></tr>
-      <tr><td>AI</td><td>Google AI Studio</td><td>gemini-2.0-flash, API key in VITE_GEMINI_API_KEY</td></tr>
+      <tr><td>Backend API</td><td>Render</td><td>Node.js service, auto-restart, health check at /health</td></tr>
+      <tr><td>Database</td><td>MongoDB Atlas</td><td>Cloud cluster, encrypted at rest, tenantId-scoped collections</td></tr>
+      <tr><td>Email</td><td>Nodemailer (SMTP)</td><td>Transactional email — invites, alerts, offer letters</td></tr>
+      <tr><td>Payments</td><td>Razorpay</td><td>India-first payment gateway — plans, orders, webhooks</td></tr>
+      <tr><td>File Storage</td><td>Cloudinary</td><td>Images, resumes, documents — served via CDN</td></tr>
       <tr><td>Domain</td><td>talentnesthr.com</td><td>DNS points to Vercel, subdomains as needed</td></tr>
     </table>
   </div>
@@ -1424,7 +1424,7 @@ ${heroHtml('📖','USER PLAYBOOK','User Playbook','Step-by-step guide for every 
     <ul class="check">
       <li>Check Dashboard for new applications and upcoming interviews</li>
       <li>Review Pipeline → move candidates through stages</li>
-      <li>Add new candidates via "Add Candidate" (AI parses resumes automatically)</li>
+      <li>Add new candidates via "Add Candidate" — upload PDF/DOCX resume for automatic text extraction</li>
       <li>Send outreach invites to matched candidates</li>
       <li>Review assessment submissions for your jobs</li>
     </ul>
@@ -1537,7 +1537,7 @@ ${heroHtml('🔍','SYSTEM AUDIT REPORT','TalentNest HR — Full System Audit','M
       <tr><td><code>invites.js</code></td><td>POST, GET /mine, GET /:token, PATCH /respond, POST /resend</td><td><span class="badge badge-green">✓ OK</span></td><td>Bulk invite by job — used by InviteModal in AdminUsers.</td></tr>
       <tr><td><code>email.js</code></td><td>POST /send, GET /logs, POST /resend/:id, POST /test</td><td><span class="badge badge-green">✓ OK</span></td><td>Uses Resend API. Falls back to console.log in dev.</td></tr>
       <tr><td><code>notifications.js</code></td><td>GET, PATCH /:id/read, PATCH /read-all</td><td><span class="badge badge-green">✓ OK</span></td><td>Polled by notification bell in Layout.jsx.</td></tr>
-      <tr><td><code>parseResume.js</code></td><td>POST /parse-resume, POST /parse-jd</td><td><span class="badge badge-green">✓ OK</span></td><td>Gemini AI powered. Requires VITE_GEMINI_API_KEY.</td></tr>
+      <tr><td><code>parseResume.js</code></td><td>POST /parse-resume</td><td><span class="badge badge-green">✓ OK</span></td><td>Server-side text extraction from PDF/DOCX using pdf-parse + mammoth. No AI required.</td></tr>
       <tr><td><code>billing.js</code></td><td>GET /usage, GET /plans, POST /upgrade</td><td><span class="badge badge-green">✓ OK</span></td><td>Plan logic tied to org.plan field.</td></tr>
       <tr><td><code>stats.js</code></td><td>GET /stats/public, GET /stats/platform</td><td><span class="badge badge-green">✓ OK</span></td><td>Public stats used on marketing homepage.</td></tr>
       <tr><td><code>leads.js</code></td><td>POST /leads, GET /leads</td><td><span class="badge badge-green">✓ OK</span></td><td>Contact form submissions stored here.</td></tr>
@@ -1752,23 +1752,23 @@ ${heroHtml('🗺️','DEVELOPER PLAYBOOK v4.0','Developer Playbook v4','Complete
     <div><strong style="color:#1d4ed8">Frontend — Vercel</strong><br>React 18 + Vite · React Router DOM v6 · No Redux (useState/Context) · Pure SVG charts · Tailwind-free (custom CSS)</div>
   </div>
   <div class="arch-layer" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac">
-    <span style="font-size:24px">🚂</span>
-    <div><strong style="color:#15803d">Backend — Railway (port 8080)</strong><br>Node.js 20 + Express 4 · Mongoose ODM · JWT Auth · bcryptjs · Resend Email API · Google Gemini AI</div>
+    <span style="font-size:24px">⚙️</span>
+    <div><strong style="color:#15803d">Backend — Render</strong><br>Node.js + Express 4 · Mongoose ODM · JWT Auth · bcryptjs · Nodemailer (SMTP) · Socket.io · Razorpay</div>
   </div>
   <div class="arch-layer" style="background:linear-gradient(135deg,#fdf4ff,#fae8ff);border:1px solid #d8b4fe">
     <span style="font-size:24px">🍃</span>
-    <div><strong style="color:#7e22ce">Database — MongoDB Atlas</strong><br>Cloud-hosted MongoDB · Mongoose schemas · Multi-tenant (orgId scoping) · JSON file DB fallback (local dev, no MONGODB_URI)</div>
+    <div><strong style="color:#7e22ce">Database — MongoDB Atlas</strong><br>Cloud-hosted MongoDB · Mongoose schemas · Multi-tenant (tenantId scoping) · All collections indexed by tenantId</div>
   </div>
-  <div class="arch-layer" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d">
-    <span style="font-size:24px">🤖</span>
-    <div><strong style="color:#92400e">AI — Google Gemini API</strong><br>gemini-2.0-flash model · Resume parsing · Job description enhancement · Candidate matching</div>
+  <div class="arch-layer" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fdba74">
+    <span style="font-size:24px">☁️</span>
+    <div><strong style="color:#c2410c">Storage — Cloudinary</strong><br>Avatars · Resumes · Documents · Feed images · Served via CDN · Multer middleware for uploads</div>
   </div>
   <h3>Platform Architecture Diagram</h3>
   <div class="flow-wrap">
     <div style="display:flex;flex-direction:column;gap:0;align-items:center">
       <div class="fbox fbox-blue" style="width:300px;margin-bottom:0">🌐 Browser / User (React SPA on Vercel)</div>
       <div class="farrow-down">↕ HTTPS REST API (JSON)</div>
-      <div class="fbox fbox-green" style="width:300px">🚂 Railway — Express Server :8080<br><small style="font-weight:400">CORS · JWT Auth · Rate Limit · Logging</small></div>
+      <div class="fbox fbox-green" style="width:300px">⚙️ Render — Express Server<br><small style="font-weight:400">CORS · JWT Auth · Rate Limit · Logging</small></div>
       <div style="display:flex;gap:32px;align-items:flex-start;margin-top:0">
         <div style="display:flex;flex-direction:column;align-items:center">
           <div class="farrow-down">↕</div>
@@ -1780,7 +1780,7 @@ ${heroHtml('🗺️','DEVELOPER PLAYBOOK v4.0','Developer Playbook v4','Complete
         </div>
         <div style="display:flex;flex-direction:column;align-items:center">
           <div class="farrow-down">↕</div>
-          <div class="fbox fbox-teal" style="min-width:160px">🤖 Gemini AI<br><small style="font-weight:400">gemini-2.0-flash</small></div>
+          <div class="fbox fbox-teal" style="min-width:160px">☁️ Cloudinary<br><small style="font-weight:400">images &amp; files</small></div>
         </div>
       </div>
     </div>
@@ -1819,16 +1819,21 @@ ${heroHtml('🗺️','DEVELOPER PLAYBOOK v4.0','Developer Playbook v4','Complete
   <div class="env-row" style="border-bottom:2px solid #e2e8f0;font-weight:700;color:#374151"><span>Variable</span><span>Description / Example</span><span>Required?</span></div>
   <div class="env-row"><span class="env-key">MONGODB_URI</span><span class="env-val">mongodb+srv://user:pass@cluster.mongodb.net/talentnest</span><span class="env-req">REQUIRED</span></div>
   <div class="env-row"><span class="env-key">JWT_SECRET</span><span class="env-val">long random string (min 32 chars)</span><span class="env-req">REQUIRED</span></div>
-  <div class="env-row"><span class="env-key">RESEND_API_KEY</span><span class="env-val">re_xxxxxxxxxx (from resend.com)</span><span class="env-opt">optional</span></div>
-  <div class="env-row"><span class="env-key">GEMINI_API_KEY</span><span class="env-val">AIza... (from Google AI Studio)</span><span class="env-opt">optional</span></div>
-  <div class="env-row"><span class="env-key">FRONTEND_URL</span><span class="env-val">https://yourapp.vercel.app (CORS origin)</span><span class="env-req">REQUIRED</span></div>
-  <div class="env-row"><span class="env-key">PORT</span><span class="env-val">8080 (Railway sets automatically)</span><span class="env-opt">optional</span></div>
-  <div class="env-row"><span class="env-key">NODE_ENV</span><span class="env-val">production (set in nixpacks.toml)</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">SMTP_HOST</span><span class="env-val">smtp.gmail.com or your SMTP provider</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">SMTP_PORT</span><span class="env-val">587</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">SMTP_USER</span><span class="env-val">your-email@gmail.com</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">SMTP_PASS</span><span class="env-val">app-specific password</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">CLOUDINARY_CLOUD_NAME</span><span class="env-val">your-cloudinary-name</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">CLOUDINARY_API_KEY</span><span class="env-val">cloudinary api key</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">CLOUDINARY_API_SECRET</span><span class="env-val">cloudinary api secret</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">RAZORPAY_KEY_ID</span><span class="env-val">rzp_live_... or rzp_test_...</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">RAZORPAY_KEY_SECRET</span><span class="env-val">razorpay secret key</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">FRONTEND_URL</span><span class="env-val">https://talentnesthr.com (CORS origin)</span><span class="env-req">REQUIRED</span></div>
+  <div class="env-row"><span class="env-key">PORT</span><span class="env-val">3000 (Render default)</span><span class="env-opt">optional</span></div>
+  <div class="env-row"><span class="env-key">NODE_ENV</span><span class="env-val">production</span><span class="env-opt">optional</span></div>
   <div class="env-row"><span class="env-key">GOOGLE_CLIENT_ID</span><span class="env-val">xxx.apps.googleusercontent.com</span><span class="env-opt">optional</span></div>
-  <div class="env-row"><span class="env-key">ADMIN_EMAIL</span><span class="env-val">admin@talentnesthr.com (seed email)</span><span class="env-opt">optional</span></div>
-  <div class="env-row"><span class="env-key">ADMIN_PASSWORD</span><span class="env-val">TalentNest@2024 (seed password)</span><span class="env-opt">optional</span></div>
   <h3>Frontend (.env in root)</h3>
-  <div class="env-row"><span class="env-key">VITE_API_URL</span><span class="env-val">https://your-backend.railway.app/api</span><span class="env-req">REQUIRED</span></div>
+  <div class="env-row"><span class="env-key">VITE_API_URL</span><span class="env-val">https://your-backend.onrender.com/api</span><span class="env-req">REQUIRED</span></div>
   <div class="env-row"><span class="env-key">VITE_GOOGLE_CLIENT_ID</span><span class="env-val">xxx.apps.googleusercontent.com</span><span class="env-opt">optional</span></div>
 </div>
 
@@ -2462,7 +2467,6 @@ cd backend && npm install  <span class="c"># backend deps</span></pre></div></di
     <tr><td><span class="badge badge-green">GET</span></td><td>/:id</td><td>any</td><td>Job detail</td></tr>
     <tr><td><span class="badge badge-amber">PATCH</span></td><td>/:id</td><td>recruiter+</td><td>Update job</td></tr>
     <tr><td><span class="badge badge-red">DELETE</span></td><td>/:id</td><td>admin+</td><td>Delete job</td></tr>
-    <tr><td><span class="badge badge-blue">POST</span></td><td>/:id/enhance</td><td>recruiter+</td><td>AI-enhance job description</td></tr>
   </table>
 
   <h3>Application Routes (/api/applications)</h3>
@@ -2475,7 +2479,7 @@ cd backend && npm install  <span class="c"># backend deps</span></pre></div></di
     <tr><td><span class="badge badge-amber">PATCH</span></td><td>/:id</td><td>recruiter+</td><td>Update stage / notes</td></tr>
     <tr><td><span class="badge badge-amber">PATCH</span></td><td>/:id/withdraw</td><td>candidate (own)</td><td>Withdraw application</td></tr>
     <tr><td><span class="badge badge-blue">POST</span></td><td>/:id/schedule-interview</td><td>recruiter+</td><td>Push to interviews[]</td></tr>
-    <tr><td><span class="badge badge-blue">POST</span></td><td>/:id/parse-resume</td><td>recruiter+</td><td>AI resume parsing</td></tr>
+    <tr><td><span class="badge badge-blue">POST</span></td><td>/:id/parse-resume</td><td>recruiter+</td><td>Parse uploaded resume PDF/DOCX — text extraction via pdf-parse + mammoth</td></tr>
   </table>
 
   <h3>Platform Routes (/api/platform)</h3>
@@ -3500,36 +3504,6 @@ ${heroHtml(form.icon,'CUSTOM PLAYBOOK',form.title, form.desc || 'Custom playbook
         )}
       </div>
 
-      {/* ─── PITCH DECKS SECTION ─── */}
-      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', borderTop: '4px solid #F59E0B', marginTop: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0A1628', margin: 0 }}>📊 Platform Presentation Decks</h2>
-            <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>Download individual, high-resolution pitch decks and sales materials for every stakeholder.</p>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-          {[
-            { id: 'investor',  title: 'Investor Pitch Deck',  icon: '📈', color: '#0176D3', desc: 'Full vision, scalability, and market metrics for investors.' },
-            { id: 'recruiter', title: 'Recruiter Playbook',   icon: '🎯', color: '#10B981', desc: 'The ultimate guide for recruiter efficiency and smart matching.' },
-            { id: 'candidate', title: 'Candidate Roadmap',    icon: '🚀', color: '#7C3AED', desc: 'A user manual for candidates to maximize their success.' },
-            { id: 'technical', title: 'AI Technical Paper',   icon: '🛡️', color: '#BA0517', desc: 'Technical details on our bot-masking & AI security layer.' },
-          ].map(deck => (
-            <div key={deck.id} style={{ padding: 20, background: '#F8FAFC', borderRadius: 14, border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = deck.color}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#E2E8F0'}>
-              <div style={{ fontSize: 24, marginBottom: 12, width: 44, height: 44, background: '#fff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>{deck.icon}</div>
-              <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1E293B', marginBottom: 6 }}>{deck.title}</h3>
-              <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.5, marginBottom: 16, flex: 1 }}>{deck.desc}</p>
-              <button onClick={() => alert(`Initiating high-res PDF download for ${deck.title}...`)} 
-                style={{ width: '100%', padding: '10px', background: deck.color, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                ⬇️ Download PDF
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
