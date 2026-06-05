@@ -2552,6 +2552,7 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
   const Candidate   = require('../models/Candidate');
   const Application = require('../models/Application');
 
+  const isSuperAdmin = req.user.role === 'super_admin';
   const tid = req.user.tenantId;
   const { startDate, endDate } = req.query;
 
@@ -2559,14 +2560,15 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
   const dateMatch = {};
   if (startDate) dateMatch.$gte = new Date(startDate);
   if (endDate)   dateMatch.$lte = new Date(endDate);
-  const appFilter = { tenantId: tid, deletedAt: null };
+  // super_admin sees platform-wide data (no tenantId filter)
+  const appFilter = isSuperAdmin ? { deletedAt: null } : { tenantId: tid, deletedAt: null };
   if (Object.keys(dateMatch).length) appFilter.createdAt = dateMatch;
 
   // Gender breakdown from applications → candidates
   const [genderRows, stageByGender, hiresByGender] = await Promise.all([
     // Overall gender breakdown of all candidates in pool
     Candidate.aggregate([
-      { $match: { tenantId: tid, deletedAt: null } },
+      { $match: isSuperAdmin ? { deletedAt: null } : { tenantId: tid, deletedAt: null } },
       { $group: { _id: { $ifNull: ['$gender', 'not_disclosed'] }, count: { $sum: 1 } } },
     ]),
     // Applications by gender and current stage
@@ -2643,9 +2645,13 @@ router.get('/diversity', authenticate, allowRoles('admin', 'super_admin'), async
 // ── POST /api/stats/diversity/seed — assign random gender to candidates without one ──
 router.post('/diversity/seed', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const Candidate = require('../models/Candidate');
+  const isSuperAdmin = req.user.role === 'super_admin';
   const tid = req.user.tenantId;
 
-  const candidates = await Candidate.find({ tenantId: tid, deletedAt: null, gender: { $in: [null, ''] } }).select('_id').lean();
+  const candFilter = isSuperAdmin
+    ? { deletedAt: null, gender: { $in: [null, ''] } }
+    : { tenantId: tid, deletedAt: null, gender: { $in: [null, ''] } };
+  const candidates = await Candidate.find(candFilter).select('_id').lean();
   if (!candidates.length) return res.json({ success: true, message: 'All candidates already have gender set.', updated: 0 });
 
   // Realistic distribution: ~50% male, ~38% female, ~7% prefer_not_to_say, ~5% non-binary

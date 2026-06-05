@@ -3217,9 +3217,104 @@ ${heroHtml('🧠','PRODUCT INTELLIGENCE','Product Intelligence Playbook','Comple
 </body></html>`;
 }
 
+// ─── Full Bible (combines all 10 playbooks into one master document) ───────────
+function buildFullBiblePlaybook() {
+  const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const BOOKS = [
+    { id: 'product-intel', icon: '🧠', title: 'Product Intelligence',  color: '#7C3AED', fn: buildProductIntelligencePlaybook  },
+    { id: 'developer-v4',  icon: '🗺️', title: 'Developer Playbook v4', color: '#0a1628', fn: buildDeveloperPlaybookV4           },
+    { id: 'developer',     icon: '⚙️', title: 'Developer Playbook',    color: '#0176D3', fn: buildDeveloperPlaybook             },
+    { id: 'all-users',     icon: '👥', title: 'All Users Playbook',    color: '#10b981', fn: buildAllUsersPlaybook              },
+    { id: 'sales',         icon: '💼', title: 'Sales Playbook',        color: '#f59e0b', fn: buildSalesPlaybook                 },
+    { id: 'tester',        icon: '🧪', title: 'Tester Playbook',       color: '#8b5cf6', fn: buildTesterPlaybook                },
+    { id: 'architecture',  icon: '🏗️', title: 'Architecture Playbook', color: '#ef4444', fn: buildArchitecturePlaybook          },
+    { id: 'platform',      icon: '🌐', title: 'Platform Playbook',     color: '#06b6d4', fn: buildPlatformPlaybook              },
+    { id: 'user',          icon: '📖', title: 'User Playbook',         color: '#ec4899', fn: buildUserPlaybook                  },
+    { id: 'audit',         icon: '🔍', title: 'System Audit Report',   color: '#7c3aed', fn: buildAuditReportPlaybook           },
+  ];
+
+  // Extract body content: strip <head>…<body> wrapper, duplicate BASE_STYLES block, and individual footer
+  const extractBody = (html) => {
+    const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    let body = m ? m[1] : html;
+    // Remove the duplicate <meta>+<style> block that heroHtml() injects into the body
+    body = body.replace(/<meta charset[^>]*>[\s\S]*?<\/style>/i, '');
+    // Remove individual footer
+    body = body.replace(/<footer>[\s\S]*?<\/footer>/i, '');
+    return body.trim();
+  };
+
+  const tocItems = BOOKS.map((b, i) =>
+    `<li><a href="#bible-${b.id}">${b.icon} ${b.title}</a></li>`
+  ).join('\n      ');
+
+  const sectionBlocks = BOOKS.map((b, i) => `
+<div id="bible-${b.id}" style="margin-top:48px">
+  <div style="height:5px;background:${b.color};border-radius:3px 3px 0 0;margin-bottom:0"></div>
+  <div style="background:${b.color}12;border-left:5px solid ${b.color};padding:16px 24px;margin-bottom:0;border-radius:0 0 0 0">
+    <div style="font-size:10px;font-weight:800;color:${b.color};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Section ${i + 1} of ${BOOKS.length}</div>
+    <div style="font-size:20px;font-weight:900;color:#0a1628">${b.icon} ${b.title}</div>
+  </div>
+  ${extractBody(b.fn())}
+  <div style="text-align:center;margin:32px 0 0"><a href="#bible-toc" style="font-size:12px;color:#94a3b8;text-decoration:none;font-weight:600">↑ Back to Table of Contents</a></div>
+</div>`).join('\n');
+
+  return `<!DOCTYPE html><html lang="en"><head>
+<title>TalentNest HR — Complete Platform Bible</title>
+${BASE_STYLES}
+<style>
+  .bible-nav{position:sticky;top:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);z-index:200;padding:8px 24px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,0.12);border-bottom:3px solid #0176D3;flex-wrap:wrap}
+  .bible-nav strong{font-size:12px;font-weight:900;color:#0a1628;margin-right:4px;white-space:nowrap}
+  .bible-nav a{font-size:11px;color:#475569;text-decoration:none;font-weight:600;padding:3px 8px;border-radius:5px;white-space:nowrap}
+  .bible-nav a:hover{background:#eff6ff;color:#0176D3}
+  @media print{.bible-nav{display:none}}
+</style>
+</head><body>
+
+<div class="hero" style="background:linear-gradient(135deg,#0a1628 0%,#1a2e4a 35%,#0176D3 75%,#00C2CB 100%)">
+  <div style="position:relative;z-index:1">
+    <div class="hero-badge">📚 COMPLETE PLATFORM BIBLE — ALL ${BOOKS.length} PLAYBOOKS</div>
+    <h1>TalentNest HR</h1>
+    <p>The definitive platform reference. Every playbook combined into a single document — product intelligence, architecture, developer guides, sales, testing, user guides, audit reports and more.</p>
+    <div class="hero-meta">
+      <span>📅 ${today}</span>
+      <span>📚 ${BOOKS.length} Playbooks</span>
+      <span>🏢 TalentNest HR</span>
+      <span>🔒 Confidential &amp; Internal</span>
+    </div>
+  </div>
+</div>
+
+<nav class="bible-nav">
+  <strong>📚 Bible:</strong>
+  ${BOOKS.map(b => `<a href="#bible-${b.id}">${b.icon} ${b.title}</a>`).join('')}
+</nav>
+
+<div class="container">
+
+  <div id="bible-toc" class="toc" style="border-left:5px solid #0176D3;padding:28px 32px;margin-bottom:32px">
+    <h2>📑 TABLE OF CONTENTS — ${BOOKS.length} Playbooks</h2>
+    <ol style="padding-left:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 24px">
+      ${tocItems}
+    </ol>
+  </div>
+
+  ${sectionBlocks}
+
+</div>
+
+<footer>
+  <strong>TalentNest HR — Complete Platform Bible</strong><br>
+  All ${BOOKS.length} official playbooks compiled · Generated ${today} · Confidential &amp; Internal · Super Admin Only
+</footer>
+</body></html>`;
+}
+
 // ─── Playbook registry ─────────────────────────────────────────────────────────
 const PRESET_PLAYBOOKS = [
-  { id: 'product-intel', icon: '🧠', title: 'Product Intelligence', desc: 'Full codebase audit — 58 routes, 54 models, 6 user roles, 40 features. Every claim verified from actual code.', color: '#7C3AED', badge: 'AUDIT COMPLETE', fn: buildProductIntelligencePlaybook },
+  { id: 'full-bible',   icon: '📚', title: 'Complete Platform Bible', desc: 'All 10 official playbooks merged into one massive document — every section, every table, every detail.', color: '#0a1628', badge: 'FULL BIBLE', fn: buildFullBiblePlaybook },
+  { id: 'product-intel', icon: '🧠', title: 'Product Intelligence',  desc: 'Full codebase audit — 58 routes, 54 models, 6 user roles, 40 features. Every claim verified from actual code.', color: '#7C3AED', badge: 'AUDIT COMPLETE', fn: buildProductIntelligencePlaybook },
   { id: 'developer-v4', icon: '🗺️', title: 'Developer Playbook v4',  desc: 'Complete platform reference: all flows, schemas, API, architecture — Developer + Tester combined', color: '#0a1628', badge: 'v4.0 COMPLETE', fn: buildDeveloperPlaybookV4 },
   { id: 'developer',    icon: '⚙️', title: 'Developer Playbook',    desc: 'Live changelog + tech stack, setup, nav architecture, mobile CSS, deployment', color: '#0176D3', badge: 'v3.0 LIVE',  fn: buildDeveloperPlaybook },
   { id: 'all-users',   icon: '👥', title: 'All Users Playbook',    desc: 'Role-by-role guide for every user of the platform',  color: '#10b981', badge: 'ONBOARDING', fn: buildAllUsersPlaybook },
@@ -3245,7 +3340,28 @@ export default function SuperAdminPlaybooks() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_CUSTOM);
   const [preview, setPreview] = useState(null);
+  const [zipping, setZipping] = useState(false);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleDownloadAll = async () => {
+    setZipping(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const folder = zip.folder('TalentNest-Bible');
+      PRESET_PLAYBOOKS.forEach(pb => { folder.file(`${pb.id}-playbook.html`, pb.fn()); });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'TalentNest-Bible.zip';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      setToast('✅ Downloaded TalentNest-Bible.zip');
+    } catch (e) {
+      setToast('❌ ZIP download failed — try downloading individually');
+    }
+    setZipping(false);
+  };
 
   const download = (filename, html) => {
     const blob = new Blob([html], { type: 'text/html' });

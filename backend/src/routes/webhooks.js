@@ -14,8 +14,9 @@ const guard  = [authMiddleware, tenantGuard];
 
 // GET /api/webhooks — list webhooks for org
 router.get('/', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const hooks = await Webhook.find({ tenantId: req.tenantId, deletedAt: null })
-    .sort({ createdAt: -1 }).lean();
+  const isSuperAdmin = req.user?.role === 'super_admin';
+  const filter = isSuperAdmin ? { deletedAt: null } : { tenantId: req.tenantId, deletedAt: null };
+  const hooks = await Webhook.find(filter).sort({ createdAt: -1 }).lean();
   res.json({ success: true, data: hooks, supportedEvents: SUPPORTED_EVENTS });
 }));
 

@@ -14,7 +14,12 @@ const guard = [authMiddleware, tenantGuard];
 
 // GET /api/headcount-plans — populate linked jobs + live hired counts
 router.get('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const plans = await HeadcountPlan.find({ tenantId: req.user.tenantId, deletedAt: null })
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { deletedAt: null }
+    : { tenantId: req.user.tenantId, deletedAt: null };
+
+  const plans = await HeadcountPlan.find(planFilter)
     .sort({ createdAt: -1 })
     .populate('entries.jobId', 'title status _id')
     .lean();
@@ -52,14 +57,22 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(asyn
 
 // GET /api/headcount-plans/:id
 router.get('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const plan = await HeadcountPlan.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null };
+  const plan = await HeadcountPlan.findOne(planFilter).lean();
   if (!plan) throw new AppError('Plan not found.', 404);
   res.json({ success: true, data: plan });
 }));
 
 // PATCH /api/headcount-plans/:id
 router.patch('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const plan = await HeadcountPlan.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null };
+  const plan = await HeadcountPlan.findOne(planFilter);
   if (!plan) throw new AppError('Plan not found.', 404);
   const { name, year, quarter, entries, status } = req.body;
   if (name    !== undefined) plan.name    = name;
@@ -73,7 +86,11 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(
 
 // DELETE /api/headcount-plans/:id
 router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const plan = await HeadcountPlan.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null };
+  const plan = await HeadcountPlan.findOne(planFilter);
   if (!plan) throw new AppError('Plan not found.', 404);
   plan.deletedAt = new Date();
   await plan.save();
@@ -82,7 +99,11 @@ router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
 
 // PATCH /api/headcount-plans/:planId/entries/:entryId/link — link or unlink a job
 router.patch('/:planId/entries/:entryId/link', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const plan = await HeadcountPlan.findOne({ _id: req.params.planId, tenantId: req.user.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { _id: req.params.planId, deletedAt: null }
+    : { _id: req.params.planId, tenantId: req.user.tenantId, deletedAt: null };
+  const plan = await HeadcountPlan.findOne(planFilter);
   if (!plan) throw new AppError('Plan not found.', 404);
   const entry = plan.entries.id(req.params.entryId);
   if (!entry) throw new AppError('Entry not found.', 404);
@@ -93,7 +114,11 @@ router.patch('/:planId/entries/:entryId/link', ...guard, allowRoles('admin', 'su
 
 // POST /api/headcount-plans/:planId/entries/:entryId/create-job — create job from entry
 router.post('/:planId/entries/:entryId/create-job', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const plan = await HeadcountPlan.findOne({ _id: req.params.planId, tenantId: req.user.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const planFilter = isSuperAdmin
+    ? { _id: req.params.planId, deletedAt: null }
+    : { _id: req.params.planId, tenantId: req.user.tenantId, deletedAt: null };
+  const plan = await HeadcountPlan.findOne(planFilter);
   if (!plan) throw new AppError('Plan not found.', 404);
   const entry = plan.entries.id(req.params.entryId);
   if (!entry) throw new AppError('Entry not found.', 404);

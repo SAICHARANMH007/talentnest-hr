@@ -127,8 +127,10 @@ router.post('/track', asyncHandler(async (req, res) => {
 
 // PATCH /api/referrals/:id/mark-hired — admin/super_admin marks referral as hired
 router.patch('/:id/mark-hired', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const refFilter = isSuperAdmin ? { _id: req.params.id } : { _id: req.params.id, tenantId: req.user.tenantId };
   const ref = await Referral.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId },
+    refFilter,
     { $set: { status: 'hired' } }, { new: true }
   );
   if (!ref) throw new AppError('Referral not found.', 404);
@@ -146,8 +148,10 @@ router.patch('/:id/mark-hired', ...guard, allowRoles('admin', 'super_admin'), as
 
 // PATCH /api/referrals/:id/pay-reward — admin/super_admin marks reward as paid
 router.patch('/:id/pay-reward', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const refFilter = isSuperAdmin ? { _id: req.params.id } : { _id: req.params.id, tenantId: req.user.tenantId };
   const ref = await Referral.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId },
+    refFilter,
     { $set: { rewardPaid: true, rewardPaidAt: new Date() } }, { new: true }
   );
   if (!ref) throw new AppError('Referral not found.', 404);
@@ -160,8 +164,12 @@ router.patch('/jobs/:jobId/reward', ...guard, allowRoles('admin', 'super_admin')
   const update = {};
   if (rewardAmount !== undefined) update.referralReward = rewardAmount === null ? null : Number(rewardAmount);
   if (referralEnabled !== undefined) update.referralEnabled = Boolean(referralEnabled);
+  const isSuperAdmin = req.user.role === 'super_admin';
+  const jobFilter = isSuperAdmin
+    ? { _id: req.params.jobId, deletedAt: null }
+    : { _id: req.params.jobId, tenantId: req.user.tenantId, deletedAt: null };
   const job = await Job.findOneAndUpdate(
-    { _id: req.params.jobId, tenantId: req.user.tenantId, deletedAt: null },
+    jobFilter,
     { $set: update },
     { new: true }
   ).select('title referralReward referralEnabled').lean();
