@@ -166,6 +166,50 @@ const DEFAULTS = [
   { name: 'Women in Tech',           slug: 'women-in-tech',      icon: '👩', category: 'other',    coverColor: '#EC4899', description: 'Supporting and celebrating women in technology, engineering, and product roles.' },
 ];
 
+// ─── POST /api/communities/merge-duplicates — super_admin: merge duplicate slugs ─
+router.post('/merge-duplicates', asyncHandler(async (req, res) => {
+  if (req.user.role !== 'super_admin') throw new AppError('Only super admins can merge communities.', 403);
+
+  const all = await Community.find({}).sort({ createdAt: 1 }).lean();
+
+  // Group by slug
+  const bySlug = {};
+  all.forEach(c => {
+    if (!bySlug[c.slug]) bySlug[c.slug] = [];
+    bySlug[c.slug].push(c);
+  });
+
+  let mergedGroups = 0;
+  let deletedDocs  = 0;
+
+  for (const docs of Object.values(bySlug)) {
+    if (docs.length <= 1) continue;
+
+    // Keep the first (oldest by createdAt), merge memberIds from all
+    const keeper     = docs[0];
+    const rest       = docs.slice(1);
+    const allMembers = [...new Set(docs.flatMap(d => d.memberIds.map(id => String(id))))];
+
+    await Community.findByIdAndUpdate(keeper._id, {
+      $set: { memberIds: allMembers, memberCount: allMembers.length },
+    });
+
+    // Re-assign feed posts from duplicate documents to keeper
+    const dupIds = rest.map(d => d._id);
+    await FeedPost.updateMany(
+      { communityId: { $in: dupIds } },
+      { $set: { communityId: keeper._id, communitySlug: keeper.slug } },
+    );
+
+    await Community.deleteMany({ _id: { $in: dupIds } });
+
+    mergedGroups++;
+    deletedDocs += rest.length;
+  }
+
+  res.json({ success: true, message: `Merged ${mergedGroups} duplicate slug group(s), deleted ${deletedDocs} duplicate document(s).`, mergedGroups, deletedDocs });
+}));
+
 // ─── POST /api/communities — create a new community (admin/recruiter/superadmin) ──
 router.post('/', asyncHandler(async (req, res) => {
   const role = req.user.role;

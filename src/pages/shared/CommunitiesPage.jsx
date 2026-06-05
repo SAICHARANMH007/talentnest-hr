@@ -154,6 +154,8 @@ function CreateCommunityModal({ onClose, onCreate }) {
   );
 }
 
+const isSuperAdmin = (role) => ['super_admin', 'superadmin'].includes(role);
+
 export default function CommunitiesPage({ user }) {
   const navigate     = useNavigate();
   const [communities, setCommunities] = useState([]);
@@ -164,6 +166,8 @@ export default function CommunitiesPage({ user }) {
   const [showCreate,  setShowCreate]  = useState(false);
   const [isMobile,    setMobile]      = useState(() => window.innerWidth < 768);
   const [isSmallPhone, setSmallPhone] = useState(() => window.innerWidth < 500);
+  const [merging,     setMerging]     = useState(false);
+  const [mergeMsg,    setMergeMsg]    = useState('');
 
   useEffect(() => {
     const h = () => { setMobile(window.innerWidth < 768); setSmallPhone(window.innerWidth < 500); };
@@ -222,6 +226,17 @@ export default function CommunitiesPage({ user }) {
 
   const myCount = communities.filter(c => c.isMember).length;
 
+  const handleMergeDuplicates = async () => {
+    setMerging(true); setMergeMsg('');
+    try {
+      const r = await api.mergeDuplicateCommunities();
+      setMergeMsg(r?.message || 'Done.');
+      await load();
+    } catch (e) {
+      setMergeMsg(e?.message || 'Merge failed.');
+    } finally { setMerging(false); }
+  };
+
   return (
     <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
@@ -233,10 +248,23 @@ export default function CommunitiesPage({ user }) {
             {myCount > 0 && <span style={{ color: '#0176D3', fontWeight: 600 }}> · {myCount} joined</span>}
           </p>
         </div>
-        {canCreate(user?.role) && (
-          <button onClick={() => setShowCreate(true)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: '#0176D3', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            + Create Community
-          </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {isSuperAdmin(user?.role) && (
+            <button onClick={handleMergeDuplicates} disabled={merging}
+              style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: merging ? 'not-allowed' : 'pointer', flexShrink: 0, whiteSpace: 'nowrap', opacity: merging ? 0.7 : 1 }}>
+              {merging ? '⏳ Merging…' : '🔧 Fix Duplicates'}
+            </button>
+          )}
+          {canCreate(user?.role) && (
+            <button onClick={() => setShowCreate(true)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: '#0176D3', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              + Create Community
+            </button>
+          )}
+        </div>
+        {mergeMsg && (
+          <div style={{ width: '100%', background: mergeMsg.includes('failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${mergeMsg.includes('failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, color: mergeMsg.includes('failed') ? '#DC2626' : '#166534', marginTop: 4 }}>
+            {mergeMsg}
+          </div>
         )}
       </div>
 

@@ -81,10 +81,38 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
             <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 4, padding: '3px 8px' }}>
               {ROLE_LABEL[person.role] || person.role || 'Member'}
             </span>
-            {person.title && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 8 }}>{person.title}</div>}
-            {person.department && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>🏢 {person.department}</div>}
-            {person.location && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
+            {person.title && <div style={{ fontSize: 13, color: '#374151', fontWeight: 600, marginTop: 8 }}>{person.title}</div>}
+            {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>🏢 {person.department}</div>}
+            {person.location && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>📍 {person.location}</div>}
+            {person.experience > 0 && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>⏱ {person.experience} yr{person.experience !== 1 ? 's' : ''} experience</div>}
           </div>
+
+          {/* About / Bio */}
+          {person.summary && (
+            <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px', marginBottom: 16, border: '1px solid #E5E7EB' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
+              <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{person.summary}</div>
+            </div>
+          )}
+
+          {/* Skills */}
+          {Array.isArray(person.skills) && person.skills.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Skills</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {person.skills.slice(0, 12).map((skill, i) => (
+                  <span key={i} style={{ fontSize: 12, fontWeight: 600, color: bg, background: bg + '12', borderRadius: 20, padding: '4px 10px', border: `1px solid ${bg}22` }}>
+                    {skill}
+                  </span>
+                ))}
+                {person.skills.length > 12 && (
+                  <span style={{ fontSize: 12, color: '#9CA3AF', borderRadius: 20, padding: '4px 10px', border: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                    +{person.skills.length - 12} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Privacy-masked contact info */}
           <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px', marginBottom: 16, border: '1px solid #E5E7EB' }}>
@@ -261,6 +289,17 @@ function PersonCard({ person, onAction, loading, onCardClick }) {
           </div>
           {person.title && <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.title}</div>}
           {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>📍 {person.location}</div>}
+          {!person.location && !person.title && person.summary && (
+            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.summary}</div>
+          )}
+          {Array.isArray(person.skills) && person.skills.length > 0 && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+              {person.skills.slice(0, 3).map((s, i) => (
+                <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 12, padding: '2px 7px', border: '1px solid #E5E7EB' }}>{s}</span>
+              ))}
+              {person.skills.length > 3 && <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 4px' }}>+{person.skills.length - 3}</span>}
+            </div>
+          )}
         </div>
         <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           <ConnectionButton person={person} onAction={onAction} loading={loading} />
@@ -295,8 +334,21 @@ function PersonGridCard({ person, onAction, loading }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
         <RoleBadge role={person.role} />
-        {person.title && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 5 }}>{person.title}</div>}
+        {person.title && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 5, fontWeight: 500 }}>{person.title}</div>}
         {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
+        {!person.title && !person.location && person.summary && (
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {person.summary}
+          </div>
+        )}
+        {Array.isArray(person.skills) && person.skills.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {person.skills.slice(0, 2).map((s, i) => (
+              <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 12, padding: '2px 7px', border: '1px solid #E5E7EB' }}>{s}</span>
+            ))}
+            {person.skills.length > 2 && <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 4px' }}>+{person.skills.length - 2}</span>}
+          </div>
+        )}
         {person.mutualConnections > 0 && (
           <div style={{ fontSize: 11, color: '#059669', marginTop: 4, fontWeight: 600 }}>
             🤝 {person.mutualConnections} mutual connection{person.mutualConnections !== 1 ? 's' : ''}

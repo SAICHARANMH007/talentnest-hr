@@ -37,4 +37,7 @@ export const communityService = {
   async updateCommunity(slug, data) {
     return req('PATCH', `/communities/${slug}`, data);
   },
+  async mergeDuplicateCommunities() {
+    return req('POST', '/communities/merge-duplicates');
+  },
 };
