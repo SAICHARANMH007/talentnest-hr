@@ -295,6 +295,20 @@ router.post('/:slug/join', asyncHandler(async (req, res) => {
         read    : false,
       }).catch(() => {});
     }
+
+    // Broadcast member join to all users watching this community
+    try {
+      const u = req.user;
+      const socketRegistry = require('../socket');
+      const { emitToTenant } = require('../socket/platformSocket');
+      const memberSnap = { _id: String(userId), name: u.name || '', role: u.role || '', title: u.title || '', avatarUrl: u.avatarUrl || '' };
+      emitToTenant(socketRegistry.getIO(), tenantId, 'community:memberJoined', {
+        slug: req.params.slug,
+        communityId: String(community._id),
+        member: memberSnap,
+        memberCount: community.memberCount,
+      });
+    } catch {}
   }
 
   res.json({ success: true, memberCount: community.memberCount, isMember: true });
@@ -312,6 +326,18 @@ router.post('/:slug/leave', asyncHandler(async (req, res) => {
     community.memberIds.splice(idx, 1);
     community.memberCount = community.memberIds.length;
     await community.save();
+
+    // Broadcast member leave
+    try {
+      const socketRegistry = require('../socket');
+      const { emitToTenant } = require('../socket/platformSocket');
+      emitToTenant(socketRegistry.getIO(), req.user.tenantId, 'community:memberLeft', {
+        slug: req.params.slug,
+        communityId: String(community._id),
+        userId,
+        memberCount: community.memberCount,
+      });
+    } catch {}
   }
 
   res.json({ success: true, memberCount: community.memberCount, isMember: false });
@@ -320,8 +346,8 @@ router.post('/:slug/leave', asyncHandler(async (req, res) => {
 // ─── GET /api/communities/:slug/feed — smart-filtered posts for community ────
 router.get('/:slug/feed', asyncHandler(async (req, res) => {
   const tenantId = req.user.tenantId;
-  const { page = 1, limit = 20 } = req.query;
-  const lim  = Math.min(50, parseInt(limit));
+  const { page = 1, limit = 200 } = req.query;
+  const lim  = Math.min(200, parseInt(limit));
   const skip = (Math.max(1, parseInt(page)) - 1) * lim;
 
   const community = await Community.findOne({ slug: req.params.slug }).lean();
@@ -348,8 +374,8 @@ router.get('/:slug/feed', asyncHandler(async (req, res) => {
 
 // ─── GET /api/communities/:slug/members — paginated community members (global) ─
 router.get('/:slug/members', asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
-  const lim  = Math.min(50, parseInt(limit));
+  const { page = 1, limit = 200 } = req.query;
+  const lim  = Math.min(200, parseInt(limit));
   const skip = (Math.max(1, parseInt(page)) - 1) * lim;
 
   const community = await Community.findOne({ slug: req.params.slug }).lean();
@@ -402,75 +428,94 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
   res.json({ success: true, data: jobs });
 }));
 
-// ─── POST /api/communities/:slug/seed-posts — seed sample posts for community ─
+// ─── POST /api/communities/:slug/seed-posts — seed posts using real platform users ─
 router.post('/:slug/seed-posts', asyncHandler(async (req, res) => {
   const tenantId  = req.user.tenantId;
   const community = await Community.findOne({ slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);
 
-  // Only seed if fewer than 3 community-specific posts exist
   const existing = await FeedPost.countDocuments({ tenantId, communityId: community._id, isDeleted: false });
-  if (existing >= 3) return res.json({ success: true, message: 'Posts already seeded.', count: existing });
+  if (existing >= 10) return res.json({ success: true, message: 'Posts already seeded.', count: existing });
 
-  const users = await User.find({ tenantId, deletedAt: null }).select('name role title avatarUrl').limit(6).lean();
-  if (!users.length) return res.json({ success: false, message: 'No users found.' });
+  // Use real platform users — pull as many as exist
+  const users = await User.find({ tenantId, deletedAt: null }).select('name role title avatarUrl department location').limit(20).lean();
+  if (!users.length) return res.json({ success: false, message: 'No users found in this organization.' });
 
-  // Build community-specific seed posts
-  const hashtags = (getCommunityHashtags(community).slice(0, 3)).join(' ');
+  const tags = getCommunityHashtags(community).slice(0, 3).join(' ');
   const name = community.name;
-  const POSTS = [
-    {
-      content: `Welcome to ${name}! 🎉 This is your space to share insights, ask questions, and connect with professionals in this space. Drop an introduction below!\n\n${hashtags} #Community`,
-      postType: 'announcement',
-    },
-    {
-      content: `What's the one skill or tool in ${name} that changed how you work? Share below — this community learns best when we share real experience! 💡\n\n${hashtags} #CareerAdvice`,
-      postType: 'question',
-    },
-    {
-      content: `Pro tip for anyone in ${name}: the best way to grow is to teach what you know. Start small — a post, a thread, a comment. Knowledge compounds. 🚀\n\n${hashtags} #ProTip #Learning`,
-      postType: 'tip',
-    },
-    {
-      content: `Excited to see this ${name} community growing! The conversations here are exactly what professionals in this field need. Let's build something great together. 🤝\n\n${hashtags} #Networking`,
-      postType: 'update',
-    },
-    {
-      content: `Resource alert 📎: Looking for great resources related to ${name}? Drop your top links, books, or courses in the comments. Let's build a community resource list!\n\n${hashtags} #FreeResource #Learning`,
-      postType: 'resource',
-    },
+
+  const TEMPLATES = [
+    { t: 'announcement', c: `Welcome to the ${name} community! 🎉 This is your space to share insights, ask questions, and grow together. Start by introducing yourself below — what brings you here and what are you working on?\n\n${tags} #WelcomePost` },
+    { t: 'question',     c: `Quick question for the ${name} community: What's one skill that completely changed how you work in this space? Drop your answer below — I'll compile the top answers into a resource post. 💡\n\n${tags} #CareerGrowth` },
+    { t: 'tip',          c: `Pro tip 🔥: When you're stuck in ${name}, the fastest way to get unstuck is to write down what you know vs. what you don't know. That clarity alone often reveals the next step.\n\n${tags} #ProductivityHack` },
+    { t: 'update',       c: `Loving the quality of conversations in this ${name} community. The collective experience here is genuinely impressive. Keep sharing — it's making a difference for a lot of people. 🙌\n\n${tags} #CommunityUpdate` },
+    { t: 'resource',     c: `Resource drop 📎: If you're in ${name}, here are 3 things that have helped me most:\n1️⃣ Building systems before you need them\n2️⃣ Documenting every win, big and small\n3️⃣ Finding a peer group who challenges you\n\n${tags} #FreeResource` },
+    { t: 'achievement',  c: `Milestone worth sharing 🏆: Just crossed a major goal in my ${name} journey this quarter. The key? Consistency over intensity. Small daily actions compound into big results. What's your recent win? Share below!\n\n${tags} #CareerWin` },
+    { t: 'hiring',       c: `We're actively building our team and looking for people passionate about ${name}. If you or someone you know wants to work in a high-ownership, fast-learning environment — DM me or tag them below! 🚀\n\n${tags} #Hiring #NowHiring` },
+    { t: 'question',     c: `Community poll time! 📊 In ${name}, which is harder:\nA) Finding the right strategy\nB) Executing consistently\nC) Measuring what matters\n\nComment your pick and why. Curious to see where people are stuck most.\n\n${tags} #Discussion` },
+    { t: 'tip',          c: `If you're new to ${name}, here's what I wish someone told me earlier:\n• Done is better than perfect\n• Your network is your net worth\n• Document everything — your future self will thank you\n\nSave this for when you need a reminder. 📌\n\n${tags} #BeginnerTips` },
+    { t: 'update',       c: `Something I've noticed in high-performing ${name} professionals: they spend as much time reflecting on their work as doing it. 10 minutes of honest reflection after any project is worth more than hours of grinding forward blindly. 🔍\n\n${tags} #Mindset #Growth` },
   ];
 
   const REACTION_TYPES = ['like', 'celebrate', 'support', 'insightful'];
+  const COMMENT_POOL = [
+    'This is exactly what I needed to hear today, thank you!',
+    'Great perspective — completely agree with this.',
+    'Saving this post. So relevant to where I am right now.',
+    'This community keeps delivering. 🔥',
+    'Question: how long did it take you to see results with this approach?',
+    'Shared this with my team — they found it really helpful.',
+    'Underrated take. More people need to hear this.',
+    'Been thinking about this exact thing. Thanks for putting it into words.',
+  ];
+
   const created = [];
-  for (let i = 0; i < Math.min(5, POSTS.length); i++) {
+  const toCreate = TEMPLATES.slice(0, Math.min(10, TEMPLATES.length));
+
+  for (let i = 0; i < toCreate.length; i++) {
     const author = users[i % users.length];
-    const hoursAgo = (i + 1) * 6;
-    const createdAt = new Date(Date.now() - hoursAgo * 3600000);
+    const createdAt = new Date(Date.now() - (i + 1) * 4 * 3600000); // 4h apart
     const post = await FeedPost.create({
       tenantId,
       authorId    : author._id,
-      authorName  : author.name || 'TalentNest Member',
-      authorRole  : author.role || 'candidate',
+      authorName  : author.name  || 'TalentNest Member',
+      authorRole  : author.role  || 'candidate',
       authorAvatar: author.avatarUrl || '',
       authorTitle : author.title || roleTitle(author.role),
-      content     : POSTS[i].content,
-      postType    : POSTS[i].postType,
-      hashtags    : extractHashtags(POSTS[i].content),
+      content     : toCreate[i].c,
+      postType    : toCreate[i].t,
+      hashtags    : extractHashtags(toCreate[i].c),
       communityId  : community._id,
       communitySlug: community.slug,
       createdAt,
       updatedAt   : createdAt,
     });
-    // Add a couple of reactions
-    for (const reactor of users.filter(u => String(u._id) !== String(author._id)).slice(0, 2)) {
-      post.reactions.push({ userId: reactor._id, type: REACTION_TYPES[i % REACTION_TYPES.length] });
-    }
+
+    // Reactions from other real users (up to 4)
+    const reactors = users.filter(u => String(u._id) !== String(author._id)).slice(0, 4);
+    reactors.forEach((r, ri) => post.reactions.push({ userId: r._id, type: REACTION_TYPES[(i + ri) % 4] }));
+
+    // 1-2 comments from other real users
+    const commenters = users.filter(u => String(u._id) !== String(author._id)).slice(1, 3);
+    commenters.forEach((c, ci) => {
+      if (Math.random() > 0.35) {
+        post.comments.push({
+          userId    : c._id,
+          userName  : c.name || 'Member',
+          userAvatar: c.avatarUrl || '',
+          userRole  : c.role || '',
+          userTitle : c.title || '',
+          content   : COMMENT_POOL[(i + ci) % COMMENT_POOL.length],
+          createdAt : new Date(createdAt.getTime() + (ci + 1) * 30 * 60000),
+        });
+      }
+    });
+
     await post.save();
     created.push(post._id);
   }
 
-  res.json({ success: true, message: `${created.length} posts seeded for ${name}.`, count: created.length });
+  res.json({ success: true, message: `${created.length} posts created for ${name} using real platform users.`, count: created.length });
 }));
 
 module.exports = router;

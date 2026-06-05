@@ -647,13 +647,9 @@ export default function CommunityDetailPage({ user }) {
   const [postsLoading, setPostsLoading] = useState(false);
   const [jobsLoading,  setJobsLoading]  = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [joining,      setJoining]      = useState(false);
-  const [seeding,      setSeeding]      = useState(false);
-  const [seedMsg,      setSeedMsg]      = useState('');
-  const [newQueue,     setNewQueue]     = useState([]); // real-time incoming posts
-  const [postPage,     setPostPage]     = useState(1);
-  const [hasMorePosts, setHasMorePosts] = useState(false);
-  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [joining,   setJoining]   = useState(false);
+  const [seeding,   setSeeding]   = useState(false);
+  const [seedMsg,   setSeedMsg]   = useState('');
   const [isMobile,  setMobile]    = useState(() => window.innerWidth < 768);
   const uid = String(user?.id || user?._id || '');
 
@@ -674,18 +670,13 @@ export default function CommunityDetailPage({ user }) {
     setLoading(false);
   }, [slug]);
 
-  const loadPosts = useCallback(async (p = 1, append = false) => {
-    if (append) setLoadingMorePosts(true);
-    else setPostsLoading(true);
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true);
     try {
-      const r = await api.getCommunityFeed(slug, { page: p, limit: 15 });
-      const items = r?.data || [];
-      setPosts(prev => append ? [...prev, ...items] : items);
-      setHasMorePosts(r?.hasMore ?? false);
-      setPostPage(p);
+      const r = await api.getCommunityFeed(slug, { limit: 200 });
+      setPosts(r?.data || []);
     } catch {}
-    if (append) setLoadingMorePosts(false);
-    else setPostsLoading(false);
+    setPostsLoading(false);
   }, [slug]);
 
   const loadJobs = useCallback(async () => {
@@ -700,7 +691,7 @@ export default function CommunityDetailPage({ user }) {
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
     try {
-      const r = await api.getCommunityMembers(slug);
+      const r = await api.getCommunityMembers(slug, { limit: 200 });
       setMembers(r?.data || []);
       setTotalMembers(r?.total || 0);
     } catch {}
@@ -751,17 +742,17 @@ export default function CommunityDetailPage({ user }) {
     } catch {}
   };
 
-  // Real-time sync
+  // Real-time sync — all events wire up here
   usePlatformEvents({
     'post:created': (post) => {
-      if (String(post.authorId) === uid) return;
+      if (String(post.authorId) === uid) return; // author already sees it immediately
       const matchesCommunity = community
         ? String(post.communityId) === String(community._id) || post.communitySlug === slug
         : post.communitySlug === slug;
       if (!matchesCommunity) return;
-      setNewQueue(prev => {
+      setPosts(prev => {
         if (prev.some(p => String(p._id) === String(post._id))) return prev;
-        return [post, ...prev];
+        return [post, ...prev]; // instant prepend — no tap needed
       });
     },
     'post:reacted': ({ postId, reactions }) => {
@@ -776,9 +767,26 @@ export default function CommunityDetailPage({ user }) {
       }));
     },
     'post:deleted': ({ postId }) => {
-      const strId = String(postId);
-      setPosts(prev => prev.filter(p => String(p._id) !== strId));
-      setNewQueue(prev => prev.filter(p => String(p._id) !== strId));
+      setPosts(prev => prev.filter(p => String(p._id) !== String(postId)));
+    },
+    'community:memberJoined': ({ slug: eventSlug, member, memberCount }) => {
+      if (eventSlug !== slug) return;
+      // Update member count on the community card header
+      setCommunity(prev => prev ? { ...prev, memberCount } : prev);
+      // Add to members list if not already there
+      if (member) {
+        setMembers(prev => {
+          if (prev.some(m => String(m._id) === String(member._id))) return prev;
+          return [member, ...prev];
+        });
+        setTotalMembers(memberCount);
+      }
+    },
+    'community:memberLeft': ({ slug: eventSlug, userId: leftId, memberCount }) => {
+      if (eventSlug !== slug) return;
+      setCommunity(prev => prev ? { ...prev, memberCount } : prev);
+      setMembers(prev => prev.filter(m => String(m._id) !== String(leftId)));
+      setTotalMembers(memberCount);
     },
   });
 
@@ -876,16 +884,6 @@ export default function CommunityDetailPage({ user }) {
               📜 View Guidelines
             </button>
           </div>
-          {/* Seed posts button (small, for generating content) */}
-          {!postsLoading && posts.length < 3 && (
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={handleSeed} disabled={seeding}
-                style={{ fontSize: 11, padding: '4px 12px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer' }}>
-                {seeding ? '…' : '✨ Generate sample posts'}
-              </button>
-              {seedMsg && <span style={{ fontSize: 11, color: '#059669' }}>{seedMsg}</span>}
-            </div>
-          )}
         </div>
       </div>
 
@@ -910,22 +908,6 @@ export default function CommunityDetailPage({ user }) {
                   <span>Join this community to post and interact with members.</span>
                 </div>
               )}
-            {/* ── Real-time: new posts banner ── */}
-            {newQueue.length > 0 && !postsLoading && (
-              <button
-                onClick={() => {
-                  setPosts(prev => {
-                    const existingIds = new Set(prev.map(p => String(p._id)));
-                    const fresh = newQueue.filter(p => !existingIds.has(String(p._id)));
-                    return [...fresh, ...prev];
-                  });
-                  setNewQueue([]);
-                }}
-                style={{ width: '100%', marginBottom: 12, padding: '11px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,${bg},${bg}cc)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: `0 4px 16px ${bg}44`, animation: 'ios-page-in 0.28s var(--ios-ease) both' }}>
-                ↑ {newQueue.length} new post{newQueue.length > 1 ? 's' : ''} — tap to load
-              </button>
-            )}
-
             {postsLoading ? (
               <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
                 <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />
@@ -935,30 +917,19 @@ export default function CommunityDetailPage({ user }) {
               <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>✍️</div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No posts yet</div>
-                <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>Be the first to share something with this community!</div>
-                <button onClick={handleSeed} disabled={seeding} style={btnP}>{seeding ? '…' : '✨ Generate sample posts'}</button>
+                <div style={{ fontSize: 13, color: '#9CA3AF' }}>Be the first to share something with this community!</div>
               </div>
             ) : (
-              <>
-                {posts.map(post => (
-                  <CommunityPostCard
-                    key={post._id}
-                    post={post}
-                    userId={uid}
-                    userRole={user?.role}
-                    onReact={handleReact}
-                    onDelete={handleDelete}
-                  />
-                ))}
-                {hasMorePosts && (
-                  <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
-                    <button onClick={() => loadPosts(postPage + 1, true)} disabled={loadingMorePosts}
-                      style={{ padding: '10px 28px', borderRadius: 12, border: `1.5px solid ${bg}33`, background: bg + '10', color: bg, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                      {loadingMorePosts ? 'Loading…' : 'Load more posts'}
-                    </button>
-                  </div>
-                )}
-              </>
+              posts.map(post => (
+                <CommunityPostCard
+                  key={post._id}
+                  post={post}
+                  userId={uid}
+                  userRole={user?.role}
+                  onReact={handleReact}
+                  onDelete={handleDelete}
+                />
+              ))
             )}
           </>
         )}

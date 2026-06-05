@@ -883,7 +883,6 @@ export default function CommunityFeed({ user }) {
   const [bookmarks,    setBookmarks]    = useState(loadBookmarks);
   const [bookmarkData, setBookmarkData] = useState(loadBookmarkData);
   // Connections
-  const [newQueue,     setNewQueue]     = useState([]); // posts arriving via socket while user scrolls
   const [connections,  setConnections]  = useState([]);
   const [pendingIds,   setPendingIds]   = useState(new Set());
   const [seeding,      setSeeding]      = useState(false);
@@ -1066,9 +1065,9 @@ export default function CommunityFeed({ user }) {
   usePlatformEvents({
     'post:created': (post) => {
       if (String(post.authorId) === String(uid)) return;
-      setNewQueue(prev => {
+      setPosts(prev => {
         if (prev.some(p => String(p._id) === String(post._id))) return prev;
-        return [post, ...prev];
+        return [post, ...prev]; // instant — appears at top immediately
       });
     },
     'post:reacted': ({ postId, reactions }) => {
@@ -1087,7 +1086,6 @@ export default function CommunityFeed({ user }) {
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
       setPosts(prev => prev.filter(p => String(p._id) !== strId));
-      setNewQueue(prev => prev.filter(p => String(p._id) !== strId));
       setBookmarks(prev => {
         if (!prev.includes(strId)) return prev;
         const next = prev.filter(id => id !== strId);
@@ -1199,9 +1197,7 @@ export default function CommunityFeed({ user }) {
           <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Career Community</h1>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Share wins, hiring updates, career tips, and resources with your professional network</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {seedMsg && <span style={{ fontSize: 12, color: '#059669', background: '#D1FAE5', padding: '4px 10px', borderRadius: 8 }}>{seedMsg}</span>}
-        </div>
+        <div />
       </div>
 
       {/* Tabs */}
@@ -1262,22 +1258,6 @@ export default function CommunityFeed({ user }) {
               <SearchBar value={search} onChange={setSearch} />
               <CreatePost user={user} onCreate={handleCreate} />
 
-              {/* ── Real-time: new posts banner ── */}
-              {newQueue.length > 0 && !isFiltered && (
-                <button
-                  onClick={() => {
-                    setPosts(prev => {
-                      const existingIds = new Set(prev.map(p => String(p._id)));
-                      const fresh = newQueue.filter(p => !existingIds.has(String(p._id)));
-                      return [...fresh, ...prev];
-                    });
-                    setNewQueue([]);
-                  }}
-                  style={{ width: '100%', marginBottom: 12, padding: '11px 16px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#0176D3,#0369a1)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: '0 4px 16px rgba(1,118,211,0.3)', animation: 'ios-page-in 0.28s var(--ios-ease) both' }}>
-                  ↑ {newQueue.length} new post{newQueue.length > 1 ? 's' : ''} — tap to load
-                </button>
-              )}
-
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
                   <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
@@ -1301,11 +1281,6 @@ export default function CommunityFeed({ user }) {
                   </div>
                   {networkOnly && connections.length === 0 && (
                     <a href="/app/people" style={{ ...btnP, textDecoration: 'none', display: 'inline-block' }}>Find People to Connect</a>
-                  )}
-                  {!isFiltered && !networkOnly && (
-                    <button onClick={handleSeed} disabled={seeding} style={btnP}>
-                      {seeding ? 'Creating…' : '🌱 Load sample posts'}
-                    </button>
                   )}
                 </div>
               ) : (
