@@ -289,20 +289,40 @@ function BookmarkButton({ post, bookmarks, onToggle }) {
 
 // ── Comment Section ────────────────────────────────────────────────────────────
 function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus }) {
-  const [text,       setText]       = useState('');
-  const [expanded,   setExpanded]   = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [text,        setText]        = useState('');
+  const [expanded,    setExpanded]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [replyingTo,  setReplyingTo]  = useState(null); // { userName }
   const inputRef = useRef(null);
   const comments = post.comments || [];
   const visible  = expanded ? comments : comments.slice(-3);
 
   useEffect(() => { if (autoFocus) inputRef.current?.focus(); }, [autoFocus]);
 
+  const handleReply = (c) => {
+    const mention = `@${c.userName} `;
+    setText(mention);
+    setReplyingTo({ userName: c.userName });
+    inputRef.current?.focus();
+    // place cursor at end
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.selectionStart = inputRef.current.selectionEnd = mention.length;
+      }
+    }, 0);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setText('');
+  };
+
   const submit = async () => {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     await onAddComment(post._id, text.trim());
     setText('');
+    setReplyingTo(null);
     setSubmitting(false);
   };
 
@@ -324,10 +344,22 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#0A1628' }}>{c.userName || 'Member'}</span>
                   <RoleBadge role={c.userRole} />
                 </div>
-                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>{c.content}</div>
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>
+                  {/* Highlight @mention prefix in blue */}
+                  {c.content.startsWith('@') ? (
+                    <>
+                      <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
+                      {' '}{c.content.slice(c.content.indexOf(' ') + 1)}
+                    </>
+                  ) : c.content}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 3, paddingLeft: 4, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
+                <button onClick={() => handleReply(c)}
+                  style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                  Reply
+                </button>
                 {String(c.userId) === String(userId) && (
                   <button onClick={() => onDeleteComment(post._id, String(c._id))}
                     style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>
@@ -341,19 +373,27 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <Avatar name={''} size={32} role={''} />
-        <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-          <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder="Write a comment…"
-            style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
-            onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
-            onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
-          {text.trim() && (
-            <button onClick={submit} disabled={submitting}
-              style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              {submitting ? '…' : '→'}
-            </button>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {replyingTo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280', paddingLeft: 4 }}>
+              <span>Replying to <strong style={{ color: '#0176D3' }}>@{replyingTo.userName}</strong></span>
+              <button onClick={cancelReply} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>✕ cancel</button>
+            </div>
           )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+              placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
+              style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
+              onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
+              onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
+            {text.trim() && (
+              <button onClick={submit} disabled={submitting}
+                style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {submitting ? '…' : '→'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

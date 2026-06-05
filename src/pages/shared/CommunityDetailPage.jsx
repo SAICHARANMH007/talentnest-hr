@@ -81,6 +81,8 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const [reporting,    setReporting]    = useState(false);
   const [reported,     setReported]     = useState(false);
   const [reportErr,    setReportErr]    = useState('');
+  const [replyingTo,   setReplyingTo]   = useState(null); // { userName }
+  const commentInputRef = useRef(null);
   const isOwnPost = String(post.authorId) === String(userId);
   const isAdmin   = ['admin', 'super_admin', 'superadmin'].includes(userRole);
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
@@ -88,12 +90,26 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const totalComments  = post.comments?.length  || 0;
   const typeStyle = POST_TYPE_STYLE[post.postType];
 
+  const handleReply = (c) => {
+    const mention = `@${c.userName} `;
+    setComment(mention);
+    setReplyingTo({ userName: c.userName });
+    setShowComments(true);
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+        commentInputRef.current.selectionStart = commentInputRef.current.selectionEnd = mention.length;
+      }
+    }, 50);
+  };
+
   const handleSubmitComment = async () => {
     if (!comment.trim()) return;
     setSubmitting(true);
     try {
       await api.addComment(post._id, comment.trim());
       setComment('');
+      setReplyingTo(null);
     } catch {}
     setSubmitting(false);
   };
@@ -241,23 +257,46 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
           <div style={{ marginTop: 12 }}>
             {post.comments?.map(c => (
               <div key={String(c._id)} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <Avatar name={c.userName} size={28} role="candidate" />
-                <div style={{ flex: 1, background: '#F8FAFC', borderRadius: 10, padding: '8px 12px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 3 }}>{c.userName || 'Member'}</div>
-                  <div style={{ fontSize: 13, color: '#374151' }}>{c.content}</div>
+                <Avatar name={c.userName} size={28} role={c.userRole || 'candidate'} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 3 }}>{c.userName || 'Member'}</div>
+                    <div style={{ fontSize: 13, color: '#374151' }}>
+                      {c.content.startsWith('@') ? (
+                        <>
+                          <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
+                          {' '}{c.content.slice(c.content.indexOf(' ') + 1)}
+                        </>
+                      ) : c.content}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 3, paddingLeft: 4 }}>
+                    <span style={{ fontSize: 11, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</span>
+                    <button onClick={() => handleReply(c)}
+                      style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 600 }}>Reply</button>
+                  </div>
                 </div>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Avatar name="Me" size={28} role="candidate" />
-              <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-                <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Write a comment…"
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }}}
-                  style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
-                <button onClick={handleSubmitComment} disabled={submitting || !comment.trim()}
-                  style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: comment.trim() ? 1 : 0.5 }}>
-                  {submitting ? '…' : 'Post'}
-                </button>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {replyingTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
+                    <span>Replying to <strong style={{ color: '#0176D3' }}>@{replyingTo.userName}</strong></span>
+                    <button onClick={() => { setReplyingTo(null); setComment(''); }} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>✕ cancel</button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input ref={commentInputRef} value={comment} onChange={e => setComment(e.target.value)}
+                    placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }}}
+                    style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
+                  <button onClick={handleSubmitComment} disabled={submitting || !comment.trim()}
+                    style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: comment.trim() ? 1 : 0.5 }}>
+                    {submitting ? '…' : 'Post'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -764,13 +803,13 @@ export default function CommunityDetailPage({ user }) {
           <div style={{ position: 'absolute', top: 20, right: 20, fontSize: 52, opacity: 0.25 }}>{community.icon}</div>
         </div>
         <div style={{ background: '#fff', padding: isMobile ? '0 16px 16px' : '0 24px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: -28, flexWrap: 'wrap', gap: 8 }}>
             {/* Community icon */}
             <div style={{ width: 60, height: 60, borderRadius: 16, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, border: '3px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', flexShrink: 0 }}>
               {community.icon}
             </div>
-            {/* Action buttons — grouped right */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 4 }}>
+            {/* Action buttons — grouped right, wraps below icon on very small screens */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 32, flexShrink: 0 }}>
               <button
                 onClick={() => {
                   const shareUrl = `${window.location.origin}/c/${community.slug}`;
@@ -784,13 +823,13 @@ export default function CommunityDetailPage({ user }) {
                   });
                 }}
                 id="tn-share-btn"
-                style={{ padding: '8px 16px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                style={{ padding: isMobile ? '7px 12px' : '8px 16px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: isMobile ? 12 : 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 🔗 Share
               </button>
               <button
                 onClick={isMember ? handleLeave : handleJoin}
                 disabled={joining}
-                style={{ padding: '8px 20px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
+                style={{ padding: isMobile ? '7px 14px' : '8px 20px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: isMobile ? 12 : 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
                 {joining ? '…' : isMember ? '✓ Joined' : '+ Join'}
               </button>
             </div>

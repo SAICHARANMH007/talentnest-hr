@@ -558,7 +558,7 @@ export default function PeoplePage({ user }) {
         <div style={{ padding: isMobile ? '0 12px' : 0, marginBottom: 16 }}>
           <div style={{ background: 'linear-gradient(135deg, #064E3B 0%, #065F46 40%, #047857 100%)', borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 4px 20px rgba(6,78,59,0.25)' }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>📱</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
               <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, marginBottom: 2 }}>Find people you know on TalentNest</div>
               <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Sync phone contacts — see who's here and invite those who aren't, just like WhatsApp</div>
             </div>

@@ -217,9 +217,17 @@ router.get('/', asyncHandler(async (req, res) => {
     )
   );
 
-  const communities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
+  const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
 
-  const data = communities.map(c => ({
+  // Deduplicate by slug — DB may have stale duplicates from before upsert logic was added
+  const seenSlugs = new Set();
+  const unique = allCommunities.filter(c => {
+    if (seenSlugs.has(c.slug)) return false;
+    seenSlugs.add(c.slug);
+    return true;
+  });
+
+  const data = unique.map(c => ({
     ...c,
     isMember: c.memberIds.some(id => String(id) === uid),
     memberIds: undefined,
