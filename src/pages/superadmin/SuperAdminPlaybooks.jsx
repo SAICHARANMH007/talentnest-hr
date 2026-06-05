@@ -3233,12 +3233,14 @@ const EMPTY_CUSTOM = { title: '', desc: '', icon: '📄', content: '' };
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SuperAdminPlaybooks() {
   const [toast, setToast] = useState('');
+  const [bibleOpen, setBibleOpen] = useState(true);
+  const [zipping, setZipping] = useState(false);
   const [customPlaybooks, setCustomPlaybooks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('tn_custom_playbooks') || '[]'); } catch { return []; }
   });
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_CUSTOM);
-  const [preview, setPreview] = useState(null); // { title, html }
+  const [preview, setPreview] = useState(null);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const download = (filename, html) => {
@@ -3257,6 +3259,28 @@ export default function SuperAdminPlaybooks() {
 
   const handlePreview = (pb) => {
     setPreview({ title: pb.title, html: pb.fn() });
+  };
+
+  const handleDownloadAll = async () => {
+    setZipping(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const folder = zip.folder('TalentNest-Bible');
+      PRESET_PLAYBOOKS.forEach(pb => {
+        folder.file(`${pb.id}-playbook.html`, pb.fn());
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'TalentNest-Bible.zip';
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      setToast(`✅ Downloaded TalentNest Bible — all ${PRESET_PLAYBOOKS.length} playbooks`);
+    } catch (e) {
+      setToast('❌ Download failed: ' + e.message);
+    }
+    setZipping(false);
   };
 
   const saveCustom = () => {
@@ -3304,53 +3328,81 @@ ${heroHtml(form.icon,'CUSTOM PLAYBOOK',form.title, form.desc || 'Custom playbook
       )}
 
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 24 }}>
         <h1 style={{ color: '#181818', fontSize: 24, fontWeight: 800, margin: 0 }}>📚 Playbooks</h1>
-        <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>Download, preview, or create internal documentation playbooks for your team</p>
+        <p style={{ color: '#706E6B', fontSize: 13, marginTop: 4 }}>All official TalentNest documentation, playbooks, and guides in one place</p>
       </div>
 
-      {/* Preset Playbooks */}
-      <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #E2E8F0', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <h2 style={{ color: '#0A1628', fontSize: 16, fontWeight: 800, margin: 0 }}>Official Playbooks</h2>
-            <p style={{ color: '#64748B', fontSize: 12, margin: '3px 0 0' }}>7 pre-built playbooks covering every aspect of the TalentNest HR platform</p>
+      {/* ── TalentNest Bible Folder ── */}
+      <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.10)', border: '1px solid #1e3a5f', marginBottom: 24 }}>
+        {/* Folder tab header */}
+        <div
+          onClick={() => setBibleOpen(v => !v)}
+          style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0176D3 100%)', padding: '20px 28px', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ fontSize: 32, lineHeight: 1 }}>{bibleOpen ? '📂' : '📁'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', letterSpacing: '-0.01em' }}>TalentNest Bible</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+              {PRESET_PLAYBOOKS.length} official playbooks · All platform documentation · Click to {bibleOpen ? 'collapse' : 'expand'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={e => { e.stopPropagation(); handleDownloadAll(); }}
+              disabled={zipping}
+              style={{ padding: '8px 18px', borderRadius: 20, border: '1.5px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              {zipping ? '⏳ Zipping…' : '⬇️ Download All'}
+            </button>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 18, fontWeight: 300 }}>{bibleOpen ? '▾' : '▸'}</span>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {PRESET_PLAYBOOKS.map(pb => (
-            <div key={pb.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden', background: '#FAFAFA', transition: 'box-shadow 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-            >
-              {/* Color bar */}
-              <div style={{ height: 5, background: pb.color }} />
-              <div style={{ padding: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${pb.color}18`, border: `1px solid ${pb.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{pb.icon}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-                      <h3 style={{ color: '#0A1628', fontWeight: 700, fontSize: 14, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pb.title}</h3>
-                      <span style={{ background: `${pb.color}18`, color: pb.color, border: `1px solid ${pb.color}30`, borderRadius: 20, padding: '1px 7px', fontSize: 9, fontWeight: 800, letterSpacing: '0.5px', flexShrink: 0 }}>{pb.badge}</span>
+        {/* Folder contents */}
+        {bibleOpen && (
+          <div style={{ background: '#F8FAFC', padding: '20px 24px 24px' }}>
+            {/* File count row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid #E2E8F0' }}>
+              <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>📄 {PRESET_PLAYBOOKS.length} files</span>
+              <span style={{ color: '#E2E8F0' }}>·</span>
+              <span style={{ fontSize: 12, color: '#9CA3AF' }}>HTML format · Preview or download individually</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 14 }}>
+              {PRESET_PLAYBOOKS.map((pb, idx) => (
+                <div key={pb.id}
+                  style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden', transition: 'box-shadow 0.2s, border-color 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 4px 20px ${pb.color}22`; e.currentTarget.style.borderColor = pb.color + '66'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#E2E8F0'; }}>
+                  {/* Color bar */}
+                  <div style={{ height: 4, background: pb.color }} />
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                      {/* File icon */}
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${pb.color}14`, border: `1px solid ${pb.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{pb.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pb.title}</span>
+                          <span style={{ background: `${pb.color}18`, color: pb.color, borderRadius: 20, padding: '1px 6px', fontSize: 9, fontWeight: 800, letterSpacing: '0.5px', flexShrink: 0 }}>{pb.badge}</span>
+                        </div>
+                        <p style={{ color: '#6B7280', fontSize: 11, margin: 0, lineHeight: 1.5 }}>{pb.desc}</p>
+                      </div>
                     </div>
-                    <p style={{ color: '#64748B', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{pb.desc}</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handlePreview(pb)}
+                        style={{ flex: 1, background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#3E3E3C', fontWeight: 600, fontSize: 12, padding: '7px 0', cursor: 'pointer' }}>
+                        👁 Preview
+                      </button>
+                      <button onClick={() => handleDownload(pb)}
+                        style={{ flex: 1, background: pb.color, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '7px 0', cursor: 'pointer' }}>
+                        ⬇️ Download
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => handlePreview(pb)}
-                    style={{ flex: 1, background: '#F3F2F2', border: '1px solid #DDDBDA', borderRadius: 8, color: '#3E3E3C', fontWeight: 600, fontSize: 12, padding: '8px', cursor: 'pointer' }}>
-                    👁 Preview
-                  </button>
-                  <button onClick={() => handleDownload(pb)}
-                    style={{ flex: 1, background: pb.color, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px', cursor: 'pointer' }}>
-                    ⬇️ Download
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Custom Playbooks */}
