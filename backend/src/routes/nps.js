@@ -92,7 +92,9 @@ router.post('/survey/:token', asyncHandler(async (req, res) => {
 
 // POST /api/nps/seed — admin: create 20 demo NPS responses
 router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
+  const isSuperAdmin = req.user.role === 'super_admin';
+  // super_admin has no tenantId — use a fixed demo marker so the count check is stable
+  const tenantId = isSuperAdmin ? 'superadmin-demo' : req.user.tenantId;
   const existing = await CandidateNPS.countDocuments({ tenantId });
   if (existing >= 10) return res.json({ success: true, message: 'Seed data already exists.', count: existing });
 
@@ -144,6 +146,7 @@ router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
 
 // GET /api/nps/stats — admin: NPS dashboard data
 router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) => {
+  const isSuperAdmin = req.user.role === 'super_admin';
   const tenantId = req.user.tenantId;
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -153,16 +156,18 @@ router.get('/stats', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
   if (startDate) dateFilter.$gte = new Date(startDate);
   if (endDate)   dateFilter.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
 
-  const baseQuery = { tenantId, respondedAt: { $exists: true }, score: { $exists: true } };
+  // super_admin sees platform-wide aggregate (no tenantId filter)
+  const tenantFilter = isSuperAdmin ? {} : { tenantId };
+  const baseQuery = { ...tenantFilter, respondedAt: { $exists: true }, score: { $exists: true } };
   if (startDate || endDate) baseQuery.respondedAt = { ...baseQuery.respondedAt, ...dateFilter };
 
   const [allSent, responses, recentFeedback] = await Promise.all([
-    CandidateNPS.countDocuments({ tenantId }),
+    CandidateNPS.countDocuments(tenantFilter),
     CandidateNPS.find(baseQuery)
       .select('score wouldRecommend feedbackText applicationOutcome respondedAt')
       .sort({ respondedAt: -1 })
       .lean(),
-    CandidateNPS.find({ tenantId, feedbackText: { $exists: true, $ne: '' }, respondedAt: { $exists: true },
+    CandidateNPS.find({ ...tenantFilter, feedbackText: { $exists: true, $ne: '' }, respondedAt: { $exists: true },
       ...(startDate || endDate ? { respondedAt: { ...dateFilter } } : {}) })
       .select('feedbackText applicationOutcome respondedAt score')
       .sort({ respondedAt: -1 })
