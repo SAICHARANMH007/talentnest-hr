@@ -59,6 +59,31 @@ function AppIcon({ name, size = 18, color = 'currentColor' }) {
   return null;
 }
 
+// ── Theme Toggle Buttons ───────────────────────────────────────────────────────
+function ThemeToggle() {
+  const { themeId, setThemeId } = useMarketingTheme();
+  const themes = [
+    { id: 'light', emoji: '☀️', title: 'Light' },
+    { id: 'dark',  emoji: '🌙', title: 'Dark'  },
+    { id: 'mixed', emoji: '🌊', title: 'Ocean' },
+  ];
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {themes.map(t => (
+        <button key={t.id} onClick={() => setThemeId(t.id)} title={`${t.title} theme`} aria-label={`${t.title} theme`}
+          style={{
+            width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            border: themeId === t.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)',
+            background: themeId === t.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+            transition: 'all 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+          }}>{t.emoji}</button>
+      ))}
+    </div>
+  );
+}
+
 // ── Page Loader (Skeletal) ───────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -844,6 +869,11 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
 
       {/* Footer */}
       <div style={{ borderTop: `1px solid ${sidebarLine}`, padding: '14px 16px', flexShrink: 0 }}>
+        {/* Theme switcher — always visible */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', flex: 1 }}>THEME</span>
+          <ThemeToggle />
+        </div>
         {/* Profile row — click to expand menu inline */}
         <button onClick={() => setProfileOpen(p => !p)} data-profile-menu="true"
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, background: profileOpen ? hoverBg : 'rgba(255,255,255,0.04)', border: `1px solid ${profileOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 12, padding: '10px 10px', cursor: 'pointer', marginBottom: 4 }}>
@@ -1129,6 +1159,7 @@ export default function Layout({ user, onLogout }) {
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 10, minWidth: 10, fontSize: 10, color: online ? '#10B981' : '#BA0517', fontWeight: 600 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#10B981' : '#BA0517', display: 'inline-block' }} />
               </span>
+              <ThemeToggle />
             </div>
           </div>
 
