@@ -3340,28 +3340,7 @@ export default function SuperAdminPlaybooks() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_CUSTOM);
   const [preview, setPreview] = useState(null);
-  const [zipping, setZipping] = useState(false);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  const handleDownloadAll = async () => {
-    setZipping(true);
-    try {
-      const JSZip = (await import('jszip')).default;
-      const zip = new JSZip();
-      const folder = zip.folder('TalentNest-Bible');
-      PRESET_PLAYBOOKS.forEach(pb => { folder.file(`${pb.id}-playbook.html`, pb.fn()); });
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'TalentNest-Bible.zip';
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-      setToast('✅ Downloaded TalentNest-Bible.zip');
-    } catch (e) {
-      setToast('❌ ZIP download failed — try downloading individually');
-    }
-    setZipping(false);
-  };
 
   const download = (filename, html) => {
     const blob = new Blob([html], { type: 'text/html' });
