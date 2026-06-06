@@ -5,14 +5,20 @@ self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
-// Activate: delete ALL old caches (nothing to keep), claim all clients.
-// The browser's native HTTP cache (Cache-Control: immutable for assets,
-// no explicit cache for HTML) handles caching correctly without SW help.
+// Activate: delete ALL old caches, claim all clients, then force-reload every
+// open tab so they pick up the new deployment immediately instead of continuing
+// to run with whatever the old SW had served them.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clientList) => {
+        for (const client of clientList) {
+          client.navigate(client.url);
+        }
+      })
   );
 });
 
