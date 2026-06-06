@@ -1,24 +1,19 @@
-const CACHE_NAME = 'talentnest-v5';
+const CACHE_NAME = 'talentnest-v6';
 
 // Install: skip waiting so the new SW activates immediately.
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
-// Activate: delete ALL old caches, claim all clients, then force-reload every
-// open tab so they pick up the new deployment immediately instead of continuing
-// to run with whatever the old SW had served them.
+// Activate: clear all caches and claim clients.
+// client.navigate() removed — forcing open tabs to reload triggers App.jsx's
+// ErrorBoundary reload loop during Vercel CDN propagation, causing persistent
+// white screen on every deployment.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-      .then((clientList) => {
-        for (const client of clientList) {
-          client.navigate(client.url);
-        }
-      })
   );
 });
 
