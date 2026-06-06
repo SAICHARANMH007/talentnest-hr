@@ -1,4 +1,4 @@
-const CACHE_NAME = 'talentnest-v4';
+const CACHE_NAME = 'talentnest-v5';
 const OFFLINE_ASSETS = [
   '/offline.html',
   '/logo.svg',
