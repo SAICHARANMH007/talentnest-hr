@@ -491,6 +491,25 @@ optgroup {
   }
 }
 
+/* ── Autofill: keep text readable; prevent browser-imposed colors from making
+      text invisible on dark-bg (login) or light-bg (apply modal) inputs.
+      transition trick holds the background long enough it's never seen. ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+/* Login page — dark inputs need white autofill text explicitly */
+.tn-auth-dark input:-webkit-autofill,
+.tn-auth-dark input:-webkit-autofill:hover,
+.tn-auth-dark input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #0D1B2D inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* ── Box sizing reset ── */
 *, *::before, *::after {
   box-sizing: border-box;

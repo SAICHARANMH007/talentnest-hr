@@ -46,6 +46,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
           borderRadius: isMobile ? 0 : 24,
           boxShadow: isMobile ? 'none' : '0 32px 64px rgba(0,0,0,0.35)',
           background: '#fff',
+          color: '#111827',
           margin: isMobile ? '0' : 'auto',
         }}
       >

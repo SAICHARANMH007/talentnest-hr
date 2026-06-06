@@ -354,6 +354,12 @@ export default function CareersPage() {
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: '100dvh', background: '#F7F8FC', overflowX: 'hidden' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .career-job-cta { width: 100% !important; align-items: stretch !important; }
+          .career-job-cta button, .career-job-cta a { width: 100% !important; justify-content: center !important; }
+        }
+      `}</style>
       <Toast msg={toast} onClose={() => setToast('')} />
       <MarketingNav active="careers" />
 
@@ -642,10 +648,18 @@ export default function CareersPage() {
                             return `Posted on ${new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
                           })()} · {j.applicantsCount || 0} applicants
                         </div>
+
+                        {/* Requirements — inside info col so they appear before CTA on mobile */}
+                        {isOpen && j.requirements && (
+                          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
+                            <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* CTA */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4, flexShrink: 0 }}>
+                      <div className="career-job-cta" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', paddingTop: 4, flexShrink: 0 }}>
                         <button onClick={() => { const jj = { ...j, id: j._id || j.id }; setApplying(jj); setViewingJob(jj); }} className="tn-btn tn-btn-primary" style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '10px 20px' }}>
                           {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
                         </button>
@@ -667,16 +681,6 @@ export default function CareersPage() {
                       </div>
                     </div>
                     </div>
-
-                    {/* Expanded details */}
-                    {isOpen && j.requirements && (
-                      <div style={{ padding: '0 28px 20px', borderTop: '1px solid #F1F5F9' }}>
-                        <div style={{ marginTop: 16 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
-                          <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
-                        </div>
-                      </div>
-                    )}
 
                     {/* ── Share bar ── */}
                     <JobShareBar job={j} />

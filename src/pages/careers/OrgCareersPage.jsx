@@ -157,6 +157,12 @@ export default function OrgCareersPage() {
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", minHeight: embed ? 'auto' : '100dvh', background: '#F7F8FC' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .org-career-cta { width: 100% !important; align-items: stretch !important; }
+          .org-career-cta button { width: 100% !important; justify-content: center !important; }
+        }
+      `}</style>
       {applying && <PublicApplyModal job={applying} orgName={org?.name} refToken={refToken} onClose={() => setApplying(null)} />}
       {referJob && <ReferEarnModal job={referJob} onClose={() => setReferJob(null)} />}
 
@@ -410,9 +416,21 @@ export default function OrgCareersPage() {
                             ))}
                           </div>
                         )}
+                        {/* Description & requirements — inside info col so they appear before CTA on mobile */}
+                        {isOpen && (j.description || j.requirements) && (
+                          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
+                            {j.description && <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: '0 0 10px', whiteSpace: 'pre-wrap' }}>{j.description}</p>}
+                            {j.requirements && (
+                              <div style={{ marginTop: j.description ? 8 : 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
+                                <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {/* CTA */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+                      <div className="org-career-cta" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
                         <button onClick={e => { e.stopPropagation(); setApplying(j); }}
                           style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           {getCompanyCareerUrl(j.externalUrl) ? '🌐 Apply on Company Site →' : 'Apply Now →'}
@@ -432,18 +450,6 @@ export default function OrgCareersPage() {
                       </div>
                     </div>
                   </div>
-                  {/* Expanded description */}
-                  {isOpen && (j.description || j.requirements) && (
-                    <div style={{ padding: '0 22px 18px', borderTop: '1px solid #F1F5F9' }}>
-                      {j.description && <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: '14px 0 0', whiteSpace: 'pre-wrap' }}>{j.description}</p>}
-                      {j.requirements && (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#0176D3', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>Requirements</div>
-                          <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{j.requirements}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })}

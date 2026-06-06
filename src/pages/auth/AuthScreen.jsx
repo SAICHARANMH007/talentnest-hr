@@ -708,7 +708,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   );
 
   return (
-    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
+    <div className="tn-auth-dark" style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
         {/* Header */}
@@ -1259,7 +1259,7 @@ function EmployerForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   );
 
   return (
-    <div style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
+    <div className="tn-auth-dark" style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
       <Toast msg={toast} onClose={() => setToast('')} />
       <div style={CARD}>
 
