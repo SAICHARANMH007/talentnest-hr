@@ -328,6 +328,7 @@ function CreateCommunityPost({ user, community, onCreate }) {
     setUploadError('');
     const uploaded = [];
     let failed = 0;
+    let lastErr = '';
     for (const file of files.slice(0, remaining)) {
       try {
         const fd = new FormData();
@@ -335,10 +336,10 @@ function CreateCommunityPost({ user, community, onCreate }) {
         const r = await api.uploadFeedImage(fd);
         if (r?.url) uploaded.push(r.url);
         else failed++;
-      } catch { failed++; }
+      } catch (err) { failed++; lastErr = err?.message || ''; }
     }
     if (uploaded.length) setImages(prev => [...prev, ...uploaded]);
-    if (failed > 0) setUploadError(`${failed} photo${failed > 1 ? 's' : ''} failed to upload. Check your connection.`);
+    if (failed > 0) setUploadError(lastErr || `${failed} photo${failed > 1 ? 's' : ''} failed to upload. Check your connection.`);
     setUploading(false);
     e.target.value = '';
   };

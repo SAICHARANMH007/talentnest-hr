@@ -1260,7 +1260,7 @@ export default function RecruiterPipeline({ user }) {
                 </div>
                 <button
                   onClick={() => setShowTalentMirror(true)}
-                  style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: benchmarkCount > 0 ? 'linear-gradient(135deg, #0176D3, #0F5BB5)' : 'rgba(245,158,11,0.2)', color: benchmarkCount > 0 ? '#fff' : '#92400E', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: benchmarkCount > 0 ? '0 2px 8px rgba(1,118,211,0.4)' : 'none', border: benchmarkCount > 0 ? 'none' : '1px solid rgba(245,158,11,0.4)' }}>
+                  style={{ padding: '8px 16px', borderRadius: 10, background: benchmarkCount > 0 ? 'linear-gradient(135deg, #0176D3, #0F5BB5)' : 'rgba(245,158,11,0.2)', color: benchmarkCount > 0 ? '#fff' : '#92400E', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: benchmarkCount > 0 ? '0 2px 8px rgba(1,118,211,0.4)' : 'none', border: benchmarkCount > 0 ? 'none' : '1px solid rgba(245,158,11,0.4)' }}>
                   {benchmarkCount > 0 ? '✨ View Smart Matches' : '🔮 Open Talent Mirror'}
                 </button>
               </div>

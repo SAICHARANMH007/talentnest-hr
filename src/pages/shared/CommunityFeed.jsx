@@ -604,6 +604,7 @@ function CreatePost({ user, onCreate }) {
     setUploadErr('');
     const uploaded = [];
     let failed = 0;
+    let lastErr = '';
     for (const file of files.slice(0, 4 - images.length)) {
       try {
         const formData = new FormData();
@@ -611,10 +612,10 @@ function CreatePost({ user, onCreate }) {
         const r = await api.uploadFeedImage(formData);
         if (r?.url) uploaded.push(r.url);
         else failed++;
-      } catch (err) { failed++; }
+      } catch (err) { failed++; lastErr = err?.message || ''; }
     }
     setImages(prev => [...prev, ...uploaded].slice(0, 4));
-    if (failed > 0) setUploadErr(`${failed} photo${failed > 1 ? 's' : ''} failed to upload. Please try again.`);
+    if (failed > 0) setUploadErr(lastErr || `${failed} photo${failed > 1 ? 's' : ''} failed to upload. Please try again.`);
     setUploading(false);
     e.target.value = '';
   };
@@ -640,7 +641,6 @@ function CreatePost({ user, onCreate }) {
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
-            onFocus={() => setExpanded(true)}
             placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}…`}
             rows={expanded ? 4 : 2}
             maxLength={3000}

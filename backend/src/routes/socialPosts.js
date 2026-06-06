@@ -418,7 +418,20 @@ router.post('/seed', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/social-posts/upload-image
-router.post('/upload-image', upload.single('image'), asyncHandler(async (req, res) => {
+// Multer error handler must come before asyncHandler so file-too-large returns proper JSON
+function handleUpload(req, res, next) {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Image is too large. Maximum size is 10 MB.'
+        : err.message || 'File upload error.';
+      return res.status(400).json({ success: false, error: msg });
+    }
+    next();
+  });
+}
+
+router.post('/upload-image', handleUpload, asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('No image provided.', 400);
 
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;

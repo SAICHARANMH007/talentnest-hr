@@ -291,7 +291,7 @@ export default function CommunitiesPage({ user }) {
 
       {/* Grid */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9CA3AF', padding: isMobile ? '0 12px' : 0 }}>
+        <div style={{ textAlign: 'center', color: '#9CA3AF', padding: isMobile ? '0 12px' : '60px 24px' }}>
           <div style={{ width: 36, height: 36, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
           Loading communities…
         </div>

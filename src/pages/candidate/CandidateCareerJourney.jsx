@@ -85,7 +85,7 @@ function ApplicationCard({ app, index }) {
 
       {/* Card */}
       <div style={{
-        flex:1, background:'#fff', borderRadius:12,
+        flex:1, borderRadius:12,
         border: `1.5px solid ${isHired ? '#6EE7B7' : isOffer ? '#A7F3D0' : '#E2E8F0'}`,
         padding:'12px 16px', marginBottom:20,
         boxShadow: isHired ? '0 4px 16px rgba(5,150,105,0.12)' : '0 1px 4px rgba(0,0,0,0.04)',
