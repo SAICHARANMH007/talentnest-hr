@@ -469,6 +469,7 @@ router.post('/set-password/:inviteToken', asyncHandler(async (req, res) => {
   user.resetPasswordExpires = null;
   user.mustChangePassword = false;
   user.isActive = true;
+  user.inviteStatus = 'accepted';
   await user.save();
 
   const result = await authService.issueTokens(res, user, req);
@@ -496,6 +497,7 @@ router.post('/set-password', asyncHandler(async (req, res) => {
   user.resetPasswordExpires = null;
   user.mustChangePassword = false;
   user.isActive = true;
+  user.inviteStatus = 'accepted';
   await user.save();
 
   const result = await authService.issueTokens(res, user, req);

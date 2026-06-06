@@ -9,7 +9,7 @@ const Candidate    = require('../models/Candidate');
 const Application  = require('../models/Application');
 const Job          = require('../models/Job');
 const Notification = require('../models/Notification');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, clearUserAuthCache } = require('../middleware/auth');
 const { allowRoles } = require('../middleware/rbac');
 const { getPagination, paginatedResponse } = require('../middleware/paginate');
 const { v, runValidations } = require('../middleware/validate');
@@ -360,6 +360,7 @@ router.delete('/:id', authenticate, allowRoles('admin','super_admin'), asyncHand
   }
 
   await userService.softDelete(req.params.id);
+  clearUserAuthCache(req.params.id);
   logger.audit('User archived', req.user._id, req.user.orgId, { deletedUserId: req.params.id });
   res.json({ success: true, message: 'User moved to archive successfully.' });
 }));
@@ -414,11 +415,14 @@ router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter
   }
 
   const updated = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true }).select('-password');
-  
+
   // Sync changes to Candidate collection if this user is a candidate
   if (updated && updated.role === 'candidate' && updated.email) {
     await syncProfile(updated.email, update, updated.tenantId);
   }
+
+  // Evict the auth middleware user cache so role/isActive changes take effect immediately
+  clearUserAuthCache(req.params.id);
 
   logger.audit('User updated', req.user._id, req.user.orgId, { targetUserId: req.params.id, updates: Object.keys(update) });
   res.json({ success: true, data: userService.normalize(updated) });

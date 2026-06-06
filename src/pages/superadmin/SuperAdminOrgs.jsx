@@ -109,7 +109,7 @@ function OrgDetailView({ org, onClose, onRefresh, onInvite, onOpenListing }) {
       await api.createUser({ name: userForm.name, email: userForm.email, phone: userForm.phone, role: userForm.role, tenantId: orgId, domain: org.domain });
       setToast(`✅ Invitation email sent to ${userForm.email}`);
       setShowCreateUser(false);
-      setUserForm({ name: '', email: '', role: 'recruiter' });
+      setUserForm({ name: '', email: '', phone: '', role: 'recruiter' });
       loadOrgUsers();
     } catch (e) { setToast(`❌ ${e.message}`); }
     setCreatingUser(false);
