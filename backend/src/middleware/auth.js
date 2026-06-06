@@ -68,4 +68,9 @@ const authMiddleware = async (req, res, next) => {
 // Backward-compatible alias used by existing routes
 const authenticate = authMiddleware;
 
-module.exports = { authMiddleware, authenticate, signToken, JWT_SECRET };
+/** Evict a single user from the auth user cache (call after role/isActive changes). */
+function clearUserAuthCache(userId) {
+  if (userId) userCache.delete(String(userId));
+}
+
+module.exports = { authMiddleware, authenticate, signToken, JWT_SECRET, clearUserAuthCache };
