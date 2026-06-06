@@ -604,7 +604,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     if (!form.email?.trim()) errs.email = 'Email address is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Enter a valid email address';
     if (effectiveRole === 'admin' && !form.domain?.trim()) errs.domain = 'Company domain is required for admin accounts';
-    if (!form.phone?.trim()) errs.phone = 'Phone number is required';
+    if ((effectiveRole === 'candidate') && !form.phone?.trim()) errs.phone = 'Phone number is required';
     if (isSuperAdmin && !form.tenantId) errs.tenantId = 'Please select an organisation';
     return errs;
   };
