@@ -311,22 +311,6 @@
         observer.observe(root, { childList: true });
         setTimeout(hide, 5000);
       })();
-      // ── Diagnostic error overlay (temporary — remove after white-screen bug is found) ──
-      (function() {
-        function showBanner(bg, prefix, msg) {
-          var d = document.createElement('div');
-          d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:'+bg+';color:#fff;padding:14px 16px;z-index:2147483647;font:13px/1.4 monospace;word-break:break-all;max-height:40vh;overflow-y:auto;';
-          d.textContent = prefix + ': ' + msg;
-          document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(d); });
-        }
-        window.addEventListener('error', function(e) {
-          showBanner('#b91c1c', 'JS ERROR', (e.message||'unknown') + ' @ ' + (e.filename||'?') + ':' + e.lineno);
-        });
-        window.addEventListener('unhandledrejection', function(e) {
-          var msg = e.reason && e.reason.message ? e.reason.message : String(e.reason);
-          showBanner('#92400e', 'PROMISE REJECTED', msg);
-        });
-      })();
     </script>
   </body>
 </html>

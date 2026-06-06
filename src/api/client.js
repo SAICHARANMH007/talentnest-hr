@@ -19,6 +19,7 @@ export function tokenIsValid(token) {
 }
 
 let _accessToken = null;
+let _401firing = false; // declared before clearToken to avoid TDZ when bundled with adm-misc
 export const setToken  = (t) => {
   _accessToken = t;
   clearCache(); // prevent stale data between users/impersonation
@@ -47,7 +48,6 @@ export const getToken  = () => _accessToken;
 // Global 401 handler — modules can subscribe to force-logout
 // _401firing prevents multiple parallel failed requests from each triggering logout
 let _on401     = null;
-let _401firing = false;
 export function set401Handler(fn) { _on401 = fn; }
 
 // In-flight deduplication: parallel GET calls to the same URL share one fetch
