@@ -846,6 +846,16 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
 
       {/* Footer */}
       <div style={{ borderTop: `1px solid ${sidebarLine}`, padding: '14px 16px', flexShrink: 0 }}>
+        {/* Theme switcher — always visible */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', flex: 1 }}>THEME</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[{ id: 'light', e: '☀️', t: 'Light' }, { id: 'dark', e: '🌙', t: 'Dark' }, { id: 'mixed', e: '🌊', t: 'Ocean' }].map(th => (
+              <button key={th.id} onClick={() => setThemeId(th.id)} title={`${th.t} theme`} aria-label={`${th.t} theme`}
+                style={{ width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: themeId === th.id ? '2px solid rgba(255,255,255,0.7)' : '1px solid rgba(255,255,255,0.18)', background: themeId === th.id ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent' }}>{th.e}</button>
+            ))}
+          </div>
+        </div>
         {/* Profile row — click to expand menu inline */}
         <button onClick={() => setProfileOpen(p => !p)} data-profile-menu="true"
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, background: profileOpen ? hoverBg : 'rgba(255,255,255,0.04)', border: `1px solid ${profileOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 12, padding: '10px 10px', cursor: 'pointer', marginBottom: 4 }}>

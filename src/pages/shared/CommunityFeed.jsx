@@ -922,6 +922,8 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
   useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
 
+  const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
+
   // Silent background refresh every 60s — catches any events missed by the socket
   useEffect(() => {
     const id = setInterval(() => {
@@ -1132,7 +1134,6 @@ export default function CommunityFeed({ user }) {
 
   const myPosts     = useMemo(() => posts.filter(p => String(p.authorId) === String(uid)), [posts, uid]);
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
-  const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
   // Pull-to-refresh (mobile only)
   const pullStartY  = useRef(0);

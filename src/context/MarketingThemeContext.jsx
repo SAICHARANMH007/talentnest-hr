@@ -171,11 +171,9 @@ export function MarketingThemeProvider({ children }) {
     try {
       const saved = localStorage.getItem('tn_mkt_theme');
       if (saved && THEMES[saved]) return saved;
-      // First visit: respect OS preference
-      const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-      return prefersDark ? 'dark' : 'mixed';
+      return 'light';
     } catch (e) {
-      return 'mixed';
+      return 'light';
     }
   });
   const theme = THEMES[themeId] || THEMES.mixed;
