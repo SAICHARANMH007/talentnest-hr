@@ -623,9 +623,9 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
         : (user?.orgId || user?.tenantId || sessionUser?.orgId || sessionUser?.tenantId);
 
       if (effectiveRole === 'admin') {
-        await api.inviteAdmin({ name: form.name.trim(), email: form.email.trim(), orgId, useTemporaryPassword: useTempPwd });
+        await api.inviteAdmin({ name: form.name.trim(), email: form.email.trim(), phone: form.phone?.trim() || '', orgId, useTemporaryPassword: useTempPwd });
       } else if (effectiveRole === 'recruiter') {
-        await api.inviteRecruiter({ name: form.name.trim(), email: form.email.trim(), orgId, useTemporaryPassword: useTempPwd });
+        await api.inviteRecruiter({ name: form.name.trim(), email: form.email.trim(), phone: form.phone?.trim() || '', orgId, useTemporaryPassword: useTempPwd });
       } else {
         // Candidate: pass tenantId explicitly so backend can scope it
         await api.createUser({
@@ -1306,12 +1306,14 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
               />
             )}
 
-            {/* Extra fields for candidates */}
-            {(form.role === 'candidate' || filterRole === 'candidate') && (
+            {/* Phone — always visible; Job Title inline only for candidates */}
+            {(form.role === 'candidate' || filterRole === 'candidate') ? (
               <div style={{ display: 'flex', gap: 10 }}>
                 <Field label="Phone *" value={form.phone || ''} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" type="tel" style={{ flex: 1 }} error={formErrors.phone} />
                 <Field label="Job Title" value={form.jobTitle || ''} onChange={v => sf('jobTitle', v)} placeholder="e.g. Java Developer" style={{ flex: 1 }} />
               </div>
+            ) : (
+              <Field label="Phone" value={form.phone || ''} onChange={v => sf('phone', v)} placeholder="+91 98765 43210" type="tel" error={formErrors.phone} />
             )}
 
             {/* Invite method toggle — only for admin/recruiter */}
