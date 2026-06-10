@@ -1107,6 +1107,139 @@ router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHand
   res.json({ success: true, data, incompleteProfiles });
 }));
 
+/* GET /api/dashboard/college-groups/:name/candidates — super admin drill-down:
+   list every candidate grouped under a given college/school name (matched the
+   same way as the college-groups aggregation above — by College/School Name
+   field, falling back to education history). */
+router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const name = String(req.params.name || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new AppError('College name is required.', 400);
+
+  const candidates = await Candidate.find({ deletedAt: null })
+    .select('name email phone college educationList isFresher currentCompany title experience location')
+    .lean();
+
+  const fallback = await getEducationFallbackMap(candidates);
+  const key = name.toLowerCase();
+  const currentYear = new Date().getFullYear();
+
+  const matches = candidates.filter(c => {
+    let education = parseJsonArray(c.educationList);
+    let collegeName = String(c.college || '').trim().replace(/\s+/g, ' ');
+
+    const fb = !collegeName && c.email ? fallback.get(c.email.toLowerCase().trim()) : null;
+    if (fb) {
+      if (!collegeName && fb.college) collegeName = String(fb.college).trim().replace(/\s+/g, ' ');
+      if (!education.length) education = parseJsonArray(fb.educationList);
+    }
+
+    if (!collegeName) {
+      const latest = getLatestEducation(education);
+      if (latest?.institution) collegeName = String(latest.institution).trim().replace(/\s+/g, ' ');
+    }
+
+    return collegeName.toLowerCase() === key;
+  }).map(c => {
+    const education = parseJsonArray(c.educationList);
+    const latest = getLatestEducation(education);
+    const passingYear = parseInt(latest?.year, 10);
+    const isCurrentStudent = Number.isFinite(passingYear) ? passingYear >= currentYear : !!c.isFresher;
+    return {
+      id: String(c._id),
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      isFresher: !!c.isFresher,
+      isCurrentStudent,
+      title: c.title || '',
+      currentCompany: c.currentCompany || '',
+      experience: c.experience || 0,
+      location: c.location || '',
+      degree: latest?.degree || '',
+      year: latest?.year || '',
+    };
+  });
+
+  res.json({ success: true, data: matches, total: matches.length });
+}));
+
+/* GET /api/dashboard/company-directory?q=...
+   Public, unauthenticated directory of known company names — used to power
+   autocomplete for "Current Company" / "Company / Employer" fields so that
+   "Acme Corp" / "acme corp " / " ACME CORP" etc. all resolve to one canonical
+   entry. New names typed by candidates are simply stored on their profile and
+   become part of this directory automatically. */
+router.get('/company-directory', asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const companyNames = await Candidate.distinct('currentCompany', { currentCompany: { $exists: true, $ne: '' } });
+
+  const byKey = new Map();
+  const normalize = (name) => String(name || '').trim().replace(/\s+/g, ' ');
+  companyNames.forEach(name => {
+    const cleaned = normalize(name);
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, cleaned);
+  });
+
+  let results = [...byKey.values()];
+  if (q) results = results.filter(name => name.toLowerCase().includes(q));
+  results.sort((a, b) => a.localeCompare(b));
+
+  res.json({ success: true, data: results.slice(0, 20) });
+}));
+
+/* GET /api/dashboard/company-groups — super admin view of all "company groups".
+   Every candidate with a "Current Company" set is grouped by that company
+   (case/whitespace-insensitive) so the platform admin can see which companies
+   exist on the platform and how many candidates are currently there. */
+router.get('/company-groups', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const candidates = await Candidate.find({ deletedAt: null, currentCompany: { $exists: true, $ne: '' } })
+    .select('currentCompany isFresher').lean();
+
+  const groups = new Map();
+  for (const c of candidates) {
+    const name = String(c.currentCompany || '').trim().replace(/\s+/g, ' ');
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!groups.has(key)) {
+      groups.set(key, { name, totalEmployees: 0 });
+    }
+    groups.get(key).totalEmployees++;
+  }
+
+  const data = [...groups.values()].sort((a, b) => b.totalEmployees - a.totalEmployees);
+
+  res.json({ success: true, data });
+}));
+
+/* GET /api/dashboard/company-groups/:name/candidates — super admin drill-down:
+   list every candidate whose "Current Company" matches the given name. */
+router.get('/company-groups/:name/candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const name = String(req.params.name || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new AppError('Company name is required.', 400);
+
+  const regex = new RegExp('^' + escapeRegex(name) + '$', 'i');
+  const candidates = await Candidate.find({ deletedAt: null, currentCompany: regex })
+    .select('name email phone college title experience location currentCTC expectedCTC')
+    .lean();
+
+  const data = candidates.map(c => ({
+    id: String(c._id),
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    college: c.college || '',
+    title: c.title || '',
+    experience: c.experience || 0,
+    location: c.location || '',
+    currentCTC: c.currentCTC || '',
+    expectedCTC: c.expectedCTC || '',
+  }));
+
+  res.json({ success: true, data, total: data.length });
+}));
+
 
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────
 

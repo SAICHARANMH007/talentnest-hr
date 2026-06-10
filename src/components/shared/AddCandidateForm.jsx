@@ -6,6 +6,7 @@ import Badge from '../ui/Badge.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import UploadZone from '../ui/UploadZone.jsx';
 import ResumeCard from './ResumeCard.jsx';
+import CompanyAutocomplete from './CompanyAutocomplete.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES } from '../../constants/picklists.js';
@@ -363,7 +364,19 @@ export default function AddCandidateForm({ addedBy, onSuccess }) {
           </ConfidenceWrapper>
 
           <ConfidenceWrapper confValue={conf.currentCompany}>
-            <Field label="Current Company" value={form.currentCompany} onChange={v => sf('currentCompany', v)} placeholder="Acme Corp" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', minWidth: 0 }}>
+              <CompanyAutocomplete
+                value={form.currentCompany}
+                onChange={v => sf('currentCompany', v)}
+                label="Current Company"
+                labelStyle={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 0 }}
+                inputStyle={{ width: '100%', minHeight: 46, padding: '11px 14px', background: '#fff', border: '1.5px solid #D6D9DE', borderRadius: 10, color: '#181818', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                itemStyle={{ color: '#181818' }}
+                itemHoverBg="rgba(1,118,211,0.08)"
+                placeholder="Acme Corp"
+              />
+            </div>
           </ConfidenceWrapper>
 
           <ConfidenceWrapper confValue={conf.education}>

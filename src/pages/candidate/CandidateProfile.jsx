@@ -6,6 +6,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
+import CompanyAutocomplete from '../../components/shared/CompanyAutocomplete.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
@@ -40,7 +41,17 @@ function WorkEntry({ entry, onChange, onDelete }) {
     <div style={{ border: '1px solid rgba(1,118,211,0.15)', borderRadius: 10, padding: 14, marginBottom: 12, background: 'rgba(1,118,211,0.03)' }}>
       <div className="form-grid-2">
         <Field label="Job Title *" value={entry.title || ''} onChange={v => sf('title', v)} placeholder="Senior Software Engineer"/>
-        <Field label="Company / Employer *" value={entry.company || ''} onChange={v => sf('company', v)} placeholder="Acme Corp"/>
+        <CompanyAutocomplete
+          value={entry.company || ''}
+          onChange={v => sf('company', v)}
+          label="Company / Employer *"
+          labelStyle={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}
+          inputStyle={{ width: '100%', minHeight: 46, padding: '11px 14px', background: '#fff', border: '1.5px solid #D6D9DE', borderRadius: 10, color: '#181818', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+          dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+          itemStyle={{ color: '#181818' }}
+          itemHoverBg="rgba(1,118,211,0.08)"
+          placeholder="Acme Corp"
+        />
         <Field label="Location" value={entry.location || ''} onChange={v => sf('location', v)} placeholder="Hyderabad, India"/>
         <div>
           <label style={{ color: '#0176D3', fontSize: 11, display: 'block', marginBottom: 6 }}>Employment Type</label>
@@ -451,7 +462,17 @@ export default function CandidateProfile({ user }) {
                 <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
               )}
               {!form.isFresher && (
-                <Field label="Current Company" value={form.currentCompany} onChange={v=>sf('currentCompany',v)} placeholder="Acme Corp"/>
+                <CompanyAutocomplete
+                  value={form.currentCompany}
+                  onChange={v => sf('currentCompany', v)}
+                  label="CURRENT COMPANY"
+                  labelStyle={{ fontSize: 11, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}
+                  inputStyle={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
+                  dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                  itemStyle={{ color: '#181818' }}
+                  itemHoverBg="rgba(1,118,211,0.08)"
+                  placeholder="Acme Corp"
+                />
               )}
               {!form.isFresher && (
               <div>

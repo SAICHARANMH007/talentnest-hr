@@ -12,11 +12,67 @@ const STAT_S = {
   padding: 20, display: 'flex', flexDirection: 'column', gap: 6,
 };
 
+function CandidateDrawer({ collegeName, onClose }) {
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!collegeName) return;
+    setLoading(true);
+    api.getCollegeGroupCandidates(collegeName)
+      .then(r => setCandidates(r?.data || []))
+      .catch(e => setError(e.message || 'Failed to load candidates'))
+      .finally(() => setLoading(false));
+  }, [collegeName]);
+
+  if (!collegeName) return null;
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', width: 'min(520px, 100%)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 24px rgba(0,0,0,0.15)' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#706E6B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>College</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#181818' }}>{collegeName}</div>
+          </div>
+          <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 16, cursor: 'pointer', color: '#374151' }}>✕</button>
+        </div>
+        <div style={{ padding: '12px 24px 24px' }}>
+          {loading ? (
+            <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10, justifyContent: 'center' }}><Spinner /> Loading...</div>
+          ) : error ? (
+            <div style={{ color: '#BA0517', padding: '12px 0' }}>{error}</div>
+          ) : candidates.length === 0 ? (
+            <div style={{ color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>No candidates found.</div>
+          ) : candidates.map(c => (
+            <div key={c.id} style={{ padding: '12px 0', borderBottom: '1px solid #F1F5F9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{c.name || c.email}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: c.isCurrentStudent ? 'rgba(1,118,211,0.1)' : 'rgba(22,163,74,0.1)', color: c.isCurrentStudent ? '#0176D3' : '#16A34A' }}>
+                  {c.isCurrentStudent ? 'Current Student' : 'Alumni'}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: '#706E6B', marginTop: 2 }}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
+              <div style={{ fontSize: 12, color: '#706E6B', marginTop: 2 }}>
+                {c.degree && <span>{c.degree}{c.year ? ` (${c.year})` : ''}</span>}
+                {c.currentCompany && <span> · {c.title ? `${c.title} @ ` : ''}{c.currentCompany}</span>}
+                {c.location && <span> · {c.location}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminCollegeGroups() {
   const [data, setData] = useState([]);
   const [incomplete, setIncomplete] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     api.getCollegeGroups()
@@ -37,7 +93,7 @@ export default function SuperAdminCollegeGroups() {
     <div>
       <PageHeader
         title="🏫 College Groups"
-        subtitle="Every candidate is automatically grouped into a college community based on the College/School Name (or education history) on their profile."
+        subtitle="Every candidate is automatically grouped into a college community based on the College/School Name (or education history) on their profile. Click a row to see the candidates."
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -88,8 +144,10 @@ export default function SuperAdminCollegeGroups() {
               </thead>
               <tbody>
                 {data.map(g => (
-                  <tr key={g.name}>
-                    <td style={TD}><div style={{ fontWeight: 700 }}>{g.name}</div></td>
+                  <tr key={g.name} onClick={() => setSelected(g.name)} style={{ cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                    <td style={TD}><div style={{ fontWeight: 700, color: '#0176D3' }}>{g.name}</div></td>
                     <td style={TD}>{g.totalStudents}</td>
                     <td style={TD}>{g.currentStudents}</td>
                     <td style={TD}>{g.alumni}</td>
@@ -116,6 +174,8 @@ export default function SuperAdminCollegeGroups() {
           </div>
         )}
       </div>
+
+      <CandidateDrawer collegeName={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

@@ -87,6 +87,7 @@ const SuperAdminBlogs     = lazy(() => import('./pages/superadmin/SuperAdminBlog
 const SuperAdminBgvTracker = lazy(() => import('./pages/superadmin/SuperAdminBgvTracker.jsx'));
 const SuperAdminPlatformReferrals = lazy(() => import('./pages/superadmin/SuperAdminPlatformReferrals.jsx'));
 const SuperAdminCollegeGroups = lazy(() => import('./pages/superadmin/SuperAdminCollegeGroups.jsx'));
+const SuperAdminCompanyGroups = lazy(() => import('./pages/superadmin/SuperAdminCompanyGroups.jsx'));
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
@@ -746,6 +747,7 @@ export default function App() {
             <Route path="referrals" element={<AdminReferrals user={user} />} />
             <Route path="platform-referrals" element={<SuperAdminPlatformReferrals />} />
             <Route path="college-groups" element={<Suspense fallback={<PageLoader />}><SuperAdminCollegeGroups /></Suspense>} />
+            <Route path="company-groups" element={<Suspense fallback={<PageLoader />}><SuperAdminCompanyGroups /></Suspense>} />
           </>
         )}
 

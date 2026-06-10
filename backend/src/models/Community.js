@@ -14,6 +14,10 @@ const communitySchema = new Schema({
   // type='college' tenant). Students/alumni whose User.college matches this
   // (case/whitespace-insensitive) are automatically members — no join required.
   collegeName : { type: String, trim: true, default: '' },
+  // Set for auto-generated company communities (matches a candidate's
+  // Current Company / employer name). Users whose currentCompany matches
+  // this (case/whitespace-insensitive) are automatically members.
+  companyName : { type: String, trim: true, default: '' },
   memberIds   : [{ type: Types.ObjectId, ref: 'User' }],
   memberCount : { type: Number, default: 0 },
   isGlobal    : { type: Boolean, default: false }, // visible to all tenants
