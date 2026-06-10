@@ -752,13 +752,13 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
               </div>
               {/* Fresher toggle */}
-              <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 14, border: `1.5px solid ${isFresher ? '#10B981' : 'rgba(255,255,255,0.12)'}`, background: isFresher ? 'rgba(16,185,129,0.12)' : '#0D1B2D', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 14, border: `1.5px solid ${isFresher ? '#10B981' : 'rgba(255,255,255,0.12)'}`, background: isFresher ? 'rgba(16,185,129,0.12)' : '#0D1B2D', cursor: 'pointer', wordBreak: 'normal', overflowWrap: 'normal' }}>
                 <input type="checkbox" checked={isFresher} onChange={e => {
                   const checked = e.target.checked;
                   setIsFresher(checked);
                   if (checked) setExperience('0');
                 }} style={{ width: 18, height: 18, minWidth: 18, flexShrink: 0, accentColor: '#10B981' }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>I'm a fresher (no work experience yet)</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: '#FFFFFF', wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
               </label>
               {/* Professional details — auto stacks to single column on mobile */}
               {!isFresher && (

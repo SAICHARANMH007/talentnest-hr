@@ -421,12 +421,12 @@ export default function CandidateProfile({ user }) {
 
           <Section title="💼 CURRENT ROLE">
             <div className="form-grid-2">
-              <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 8, gridColumn: '1 / -1', padding: '8px 10px', borderRadius: 8, border: `1px solid ${form.isFresher ? '#10B981' : '#D1D5DB'}`, background: form.isFresher ? 'rgba(16,185,129,0.08)' : '#fff', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 8, gridColumn: '1 / -1', padding: '8px 10px', borderRadius: 8, border: `1px solid ${form.isFresher ? '#10B981' : '#D1D5DB'}`, background: form.isFresher ? 'rgba(16,185,129,0.08)' : '#fff', cursor: 'pointer', wordBreak: 'normal', overflowWrap: 'normal' }}>
                 <input type="checkbox" checked={form.isFresher} onChange={e => {
                   const checked = e.target.checked;
                   setForm(p => ({ ...p, isFresher: checked, experience: checked ? '0' : p.experience }));
                 }} style={{ width: 16, height: 16, minWidth: 16, flexShrink: 0, accentColor: '#10B981' }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#374151' }}>I'm a fresher (no work experience yet)</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#374151', wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
               </label>
               {!form.isFresher && (
                 <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
