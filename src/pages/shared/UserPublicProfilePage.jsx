@@ -287,7 +287,13 @@ export default function UserPublicProfilePage({ user: currentUser }) {
               <div key={p._id} style={{ background: 'var(--app-card-bg, #fff)', borderRadius: 16, border: '1px solid var(--app-card-border, #E5E7EB)', padding: '16px 18px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 11, color: 'var(--app-text-muted, #9CA3AF)', marginBottom: 8 }}>{timeAgo(p.createdAt)}</div>
                 <div style={{ fontSize: 14, color: 'var(--app-text, #181818)', lineHeight: 1.7 }}>{p.content}</div>
-                {p.imageUrl && <img src={p.imageUrl} alt="" style={{ marginTop: 10, width: '100%', borderRadius: 10, maxHeight: 300, objectFit: 'cover' }} />}
+                {p.images?.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: p.images.length === 1 ? '1fr' : '1fr 1fr', gap: 4, marginTop: 10, borderRadius: 10, overflow: 'hidden' }}>
+                    {p.images.slice(0, 4).map((img, i) => (
+                      <img key={i} src={img} alt="" style={{ width: '100%', height: p.images.length === 1 ? 280 : 140, objectFit: 'cover' }} />
+                    ))}
+                  </div>
+                )}
                 {p.reactions?.length > 0 && (
                   <div style={{ marginTop: 10, fontSize: 12, color: 'var(--app-text-muted, #9CA3AF)' }}>
                     {p.reactions.length} reaction{p.reactions.length !== 1 ? 's' : ''} · {p.comments?.length || 0} comment{(p.comments?.length || 0) !== 1 ? 's' : ''}
