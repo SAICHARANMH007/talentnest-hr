@@ -58,6 +58,7 @@ const CollegeOverview = lazy(() => import('./pages/college/CollegeOverview.jsx')
 const CollegeStudents = lazy(() => import('./pages/college/CollegeStudents.jsx'));
 const CollegePlacements = lazy(() => import('./pages/college/CollegePlacements.jsx'));
 const CollegeAddCandidates = lazy(() => import('./pages/college/CollegeAddCandidates.jsx'));
+const CollegeDrives = lazy(() => import('./pages/college/CollegeDrives.jsx'));
 const AdminInsights      = lazy(() => import('./pages/admin/AdminInsights.jsx'));
 const AdminInterviewKits = lazy(() => import('./pages/admin/AdminInterviewKits.jsx'));
 const AdminWebhooks      = lazy(() => import('./pages/admin/AdminWebhooks.jsx'));
@@ -646,6 +647,7 @@ export default function App() {
             <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : isCollege ? <Suspense fallback={<PageLoader />}><CollegeStudents user={user} /></Suspense> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="applicants" element={isCollege ? <Suspense fallback={<PageLoader />}><CollegePlacements user={user} /></Suspense> : <ApplicantsRecordsPage user={user} />} />
             {isCollege && <Route path="add-candidates" element={<Suspense fallback={<PageLoader />}><CollegeAddCandidates user={user} /></Suspense>} />}
+            {isCollege && <Route path="drives" element={<Suspense fallback={<PageLoader />}><CollegeDrives user={user} /></Suspense>} />}
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="talent-match" element={<RecruiterTalentMatch user={user} />} />
