@@ -408,6 +408,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [availability, setAvailability] = useState('');
   const [industry, setIndustry]       = useState('');
   const [department, setDepartment]   = useState('');
+  const [isFresher, setIsFresher]     = useState(false);
   const [agreed, setAgreed]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [toast, setToast]       = useState('');
@@ -547,7 +548,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           return;
         }
       } else {
-        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: experience ? Number(experience) : undefined, availability, industry: industry || undefined, department: department || undefined });
+        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: isFresher ? 0 : (experience ? Number(experience) : undefined), isFresher, availability, industry: industry || undefined, department: department || undefined });
       }
       onAuth(d.user, d.token);
       navigate('/app');
@@ -750,7 +751,17 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER *</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" onFocus={e => { e.target.style.borderColor = '#0176D3'; e.target.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }} onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }} />
               </div>
+              {/* Fresher toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 14, border: `1.5px solid ${isFresher ? '#10B981' : 'rgba(255,255,255,0.12)'}`, background: isFresher ? 'rgba(16,185,129,0.12)' : '#0D1B2D', cursor: 'pointer' }}>
+                <input type="checkbox" checked={isFresher} onChange={e => {
+                  const checked = e.target.checked;
+                  setIsFresher(checked);
+                  if (checked) setExperience('0');
+                }} style={{ width: 18, height: 18, accentColor: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>I'm a fresher (no work experience yet)</span>
+              </label>
               {/* Professional details — auto stacks to single column on mobile */}
+              {!isFresher && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 <div>
                   <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>CURRENT TITLE</label>
@@ -761,7 +772,9 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                   <input value={currentCompany} onChange={e => setCompany(e.target.value)} placeholder="e.g. Infosys" style={INP} />
                 </div>
               </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {!isFresher && (
                 <div>
                   <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>EXPERIENCE (YRS)</label>
                   <select value={experience} onChange={e => setExperience(e.target.value)} style={{ ...INP, cursor: 'pointer', color: experience ? '#FFFFFF' : '#9CA3AF' }}>
@@ -771,6 +784,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                     ))}
                   </select>
                 </div>
+                )}
                 <div>
                   <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>AVAILABILITY</label>
                   <select value={availability} onChange={e => setAvailability(e.target.value)} style={{ ...INP, cursor: 'pointer', color: availability ? '#FFFFFF' : '#9CA3AF' }}>
