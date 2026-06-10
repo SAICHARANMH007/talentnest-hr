@@ -816,6 +816,7 @@ app.use('/api/feed',         require('./src/routes/feed'));
 app.use('/api/communities',  require('./src/routes/communities'));
 app.use('/api/social-posts', require('./src/routes/socialPosts'));
 app.use('/api/connections',  require('./src/routes/connections'));
+app.use('/api/info-requests', require('./src/routes/infoRequests'));
 app.use('/api/distribution', require('./src/routes/distribution'));
 // Sitemap + robots at root level
 app.get('/sitemap.xml', (req, res) => res.redirect('/api/feed/sitemap.xml'));

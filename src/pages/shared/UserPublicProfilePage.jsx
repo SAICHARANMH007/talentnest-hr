@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
+import PersonalInfoModal from '../../components/modals/PersonalInfoModal.jsx';
 
 const ROLE_COLOR = {
   admin:       '#0176D3',
@@ -70,7 +71,10 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   const [compose, setCompose] = useState(false);
   const [sending, setSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
-  const [reqSent, setReqSent] = useState(false);
+  const [infoStatus, setInfoStatus] = useState(null);
+  const [infoContact, setInfoContact] = useState(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -85,6 +89,14 @@ export default function UserPublicProfilePage({ user: currentUser }) {
       .then(r => setPosts(Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : []))
       .catch(() => setPosts([]))
       .finally(() => setPostsLoading(false));
+
+    api.getInfoRequestStatus(userId)
+      .then(r => {
+        const data = r?.data || r;
+        setInfoStatus(data?.status || null);
+        if (data?.contact) setInfoContact(data.contact);
+      })
+      .catch(() => {});
   }, [userId]);
 
   const sendMsg = async () => {
@@ -98,10 +110,15 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   };
 
   const requestContact = async () => {
-    setReqSent(true);
+    if (requesting) return;
+    setRequesting(true);
     try {
-      await api.sendMessage({ toUserId: userId, message: `Hi ${person?.name?.split(' ')[0] || 'there'}, I'd like to connect and exchange contact details on TalentNest.` });
-    } catch {}
+      await api.requestInfo(userId);
+      setInfoStatus('pending');
+    } catch (e) {
+      setInfoStatus(prev => prev || 'pending');
+    }
+    setRequesting(false);
   };
 
   if (loading) return (
@@ -218,9 +235,13 @@ export default function UserPublicProfilePage({ user: currentUser }) {
                 {person.email && <div style={{ fontSize: 12, color: 'var(--app-text-sec, #706E6B)' }}>✉️ {maskEmail(person.email)}</div>}
               </div>
               {!isSelf && (
-                !reqSent
-                  ? <button onClick={requestContact} style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${bg}`, background: `${bg}11`, color: bg, fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Request Contact</button>
-                  : <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>✓ Request sent</span>
+                infoStatus === 'accepted'
+                  ? <button onClick={() => setShowInfoModal(true)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>🔓 View Contact Info</button>
+                  : infoStatus === 'pending'
+                    ? <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>✓ Request sent</span>
+                    : <button onClick={requestContact} disabled={requesting} style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${bg}`, background: `${bg}11`, color: bg, fontSize: 11, fontWeight: 700, cursor: requesting ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: requesting ? 0.6 : 1 }}>
+                        {requesting ? 'Requesting…' : 'Request Contact'}
+                      </button>
               )}
             </div>
           </div>
@@ -277,6 +298,14 @@ export default function UserPublicProfilePage({ user: currentUser }) {
           </div>
         )}
       </div>
+
+      {showInfoModal && (
+        <PersonalInfoModal
+          person={person}
+          contact={infoContact || { email: person.email, phone: person.phone }}
+          onClose={() => setShowInfoModal(false)}
+        />
+      )}
     </div>
   );
 }

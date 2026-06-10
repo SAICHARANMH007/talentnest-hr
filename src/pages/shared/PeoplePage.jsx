@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import PersonalInfoModal from '../../components/modals/PersonalInfoModal.jsx';
 
 // ── User Profile Drawer ────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -34,7 +35,10 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
   const [msgText, setMsgText]     = useState('');
   const [sending, setSending]     = useState(false);
   const [msgSent, setMsgSent]     = useState(false);
-  const [reqSent, setReqSent]     = useState(false);
+  const [infoStatus, setInfoStatus] = useState(null);
+  const [infoContact, setInfoContact] = useState(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const bg = ROLE_COLOR[person.role] || '#0176D3';
   const uid = String(person._id || person.id);
 
@@ -44,6 +48,14 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
       .then(r => setPosts(Array.isArray(r?.data) ? r.data.slice(0, 5) : []))
       .catch(() => setPosts([]))
       .finally(() => setLoading(false));
+
+    api.getInfoRequestStatus(uid)
+      .then(r => {
+        const data = r?.data || r;
+        setInfoStatus(data?.status || null);
+        if (data?.contact) setInfoContact(data.contact);
+      })
+      .catch(() => {});
   }, [uid]);
 
   const sendMsg = async () => {
@@ -57,10 +69,15 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
   };
 
   const requestContact = async () => {
-    setReqSent(true);
+    if (requesting) return;
+    setRequesting(true);
     try {
-      await api.sendMessage({ toUserId: uid, message: `Hi ${person.name?.split(' ')[0] || 'there'}, I'd like to connect and exchange contact details on TalentNest.` });
-    } catch {}
+      await api.requestInfo(uid);
+      setInfoStatus('pending');
+    } catch (e) {
+      setInfoStatus(prev => prev || 'pending');
+    }
+    setRequesting(false);
   };
 
   return (
@@ -123,13 +140,18 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
                 {person.email && <div style={{ fontSize: 12, color: '#6B7280' }}>✉️ {maskEmail(person.email)}</div>}
                 {!person.phone && !person.email && <div style={{ fontSize: 12, color: '#9CA3AF' }}>Contact details private</div>}
               </div>
-              {!reqSent ? (
-                <button onClick={requestContact}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                  Request Info
+              {infoStatus === 'accepted' ? (
+                <button onClick={() => setShowInfoModal(true)}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  🔓 View Contact Info
                 </button>
-              ) : (
+              ) : infoStatus === 'pending' ? (
                 <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>✓ Request sent</span>
+              ) : (
+                <button onClick={requestContact} disabled={requesting}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 11, fontWeight: 700, cursor: requesting ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: requesting ? 0.6 : 1 }}>
+                  {requesting ? 'Requesting…' : 'Request Info'}
+                </button>
               )}
             </div>
           </div>
@@ -192,6 +214,14 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
           )}
         </div>
       </div>
+
+      {showInfoModal && (
+        <PersonalInfoModal
+          person={person}
+          contact={infoContact || { email: person.email, phone: person.phone }}
+          onClose={() => setShowInfoModal(false)}
+        />
+      )}
     </>
   );
 }
@@ -415,6 +445,8 @@ export default function PeoplePage({ user }) {
   const [syncResults,  setSyncResults] = useState(null);
   const [syncing,      setSyncing]     = useState(false);
   const [invitedSet,   setInvitedSet]  = useState(new Set());
+  const [infoRequests, setInfoRequests] = useState([]);
+  const [infoActionLoading, setInfoActionLoading] = useState(null);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -427,11 +459,12 @@ export default function PeoplePage({ user }) {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [conRes, penRes, sugRes, sentRes] = await Promise.all([
+      const [conRes, penRes, sugRes, sentRes, infoReqRes] = await Promise.all([
         api.getConnections().catch(() => ({ data: [] })),
         api.getPendingRequests().catch(() => ({ data: [] })),
         api.getConnectionSuggestions().catch(() => ({ data: [] })),
         api.getSentRequests().catch(() => ({ data: [] })),
+        api.getIncomingInfoRequests().catch(() => ({ data: [] })),
       ]);
       setConnections(conRes?.data || []);
       // Backend returns [{ requestId, from: {...user} }] — flatten to user object with requestId
@@ -442,6 +475,7 @@ export default function PeoplePage({ user }) {
       })));
       setSuggestions(sugRes?.data || []);
       setSent(sentRes?.data || []);
+      setInfoRequests(infoReqRes?.data || []);
     } catch (e) {
       setError('Failed to load people data.');
     } finally {
@@ -505,11 +539,25 @@ export default function PeoplePage({ user }) {
     }
   };
 
+  const handleInfoRequestAction = async (action, requestId) => {
+    setInfoActionLoading(requestId);
+    try {
+      if (action === 'accept') await api.acceptInfoRequest(requestId);
+      else await api.declineInfoRequest(requestId);
+      setInfoRequests(prev => prev.filter(r => String(r.requestId) !== String(requestId)));
+    } catch (e) {
+      setError(e?.message || 'Action failed. Please try again.');
+    } finally {
+      setInfoActionLoading(null);
+    }
+  };
+
   const tabs = [
     { id: 'discover',    label: 'Discover' },
     { id: 'connections', label: `Network (${connections.length})` },
     { id: 'pending',     label: `Requests (${pending.length})` },
     { id: 'sent',        label: `Sent (${sent.length})` },
+    { id: 'infoRequests', label: `Info Requests (${infoRequests.length})` },
   ];
 
   const runSync = async (contacts) => {
@@ -872,6 +920,55 @@ export default function PeoplePage({ user }) {
                               onMouseLeave={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; }}>
                               Withdraw
                             </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Info Requests tab */}
+              {tab === 'infoRequests' && (
+                <>
+                  {infoRequests.length === 0 ? (
+                    <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+                      <div style={{ fontSize: 48, marginBottom: 12 }}>🔒</div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 6 }}>No info requests</div>
+                      <div style={{ fontSize: 13, color: '#9CA3AF' }}>When someone asks to view your contact details, it will appear here.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {infoRequests.map(item => {
+                        const person = item.from || {};
+                        const pId = String(person._id || person.id || '');
+                        return (
+                          <div key={String(item.requestId)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
+                            <div style={{ flex: 1, minWidth: 160 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{person.name || 'Member'}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                                <RoleBadge role={person.role} />
+                                {person.title && <span style={{ fontSize: 12, color: '#6B7280' }}>{person.title}</span>}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                                Wants to view your contact details
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button
+                                onClick={() => handleInfoRequestAction('accept', item.requestId)}
+                                disabled={infoActionLoading === item.requestId}
+                                style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleInfoRequestAction('decline', item.requestId)}
+                                disabled={infoActionLoading === item.requestId}
+                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                                Decline
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
