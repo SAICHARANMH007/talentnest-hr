@@ -184,11 +184,15 @@ export default function CompanyReviewsPage({ user }) {
       const revData = reviewRes.status === 'fulfilled' ? reviewRes.value : null;
       setAllReviews(revData?.data || []);
 
-      // Extract unique company names from jobs for autocomplete
+      // Extract unique company names from jobs for autocomplete (case-insensitive dedup)
       if (jobsRes.status === 'fulfilled') {
         const jobs = Array.isArray(jobsRes.value) ? jobsRes.value : (Array.isArray(jobsRes.value?.data) ? jobsRes.value.data : []);
-        const names = [...new Set(jobs.map(j => j.companyName || j.company).filter(Boolean))].sort();
-        setCompanies(names);
+        const byLower = new Map();
+        jobs.map(j => j.companyName || j.company).filter(Boolean).forEach(name => {
+          const key = name.trim().toLowerCase();
+          if (!byLower.has(key)) byLower.set(key, name.trim());
+        });
+        setCompanies([...byLower.values()].sort((a, b) => a.localeCompare(b)));
       }
     } catch {}
     setLoading(false);
