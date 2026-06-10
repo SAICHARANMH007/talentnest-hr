@@ -658,7 +658,12 @@ router.get('/:id/full-timeline', ...guard, asyncHandler(async (req, res) => {
   const candidate = await Candidate.findOne({ _id: candId, deletedAt: null }).select('name email phone tags source createdAt').lean();
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
-  const applications = await Application.find({ candidateId: candId, tenantId, deletedAt: null })
+  // Super admins can see the full cross-tenant history; other roles only see
+  // applications belonging to their own tenant (matches GET /:id behaviour above).
+  const appFilter = { candidateId: candId, deletedAt: null };
+  if (req.user.role !== 'super_admin') appFilter.tenantId = tenantId;
+
+  const applications = await Application.find(appFilter)
     .populate('jobId', 'title department location')
     .lean();
 
