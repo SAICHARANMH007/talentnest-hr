@@ -54,6 +54,9 @@ const RecruiterMyPerformance = lazy(() => import('./pages/recruiter/RecruiterMyP
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
 const AdminJobs = lazy(() => import('./pages/admin/AdminJobs.jsx'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics.jsx'));
+const CollegeOverview = lazy(() => import('./pages/college/CollegeOverview.jsx'));
+const CollegeStudents = lazy(() => import('./pages/college/CollegeStudents.jsx'));
+const CollegePlacements = lazy(() => import('./pages/college/CollegePlacements.jsx'));
 const AdminInsights      = lazy(() => import('./pages/admin/AdminInsights.jsx'));
 const AdminInterviewKits = lazy(() => import('./pages/admin/AdminInterviewKits.jsx'));
 const AdminWebhooks      = lazy(() => import('./pages/admin/AdminWebhooks.jsx'));
@@ -522,6 +525,7 @@ export default function App() {
   };
 
   const rk = user ? (user.role === 'super_admin' ? 'superadmin' : user.role) : null;
+  const isCollege = user?.tenantType === 'college';
 
   const authRedirect = user ? <Navigate to="/app" replace /> : <Suspense fallback={<PageLoader />}><AuthScreen onAuth={auth} /></Suspense>;
 
@@ -637,8 +641,8 @@ export default function App() {
             {rk === 'recruiter' && <Route path="dashboard" element={<RecruiterDashboard user={user} />} />}
             <Route path="jobs" element={rk === 'recruiter' ? <RecruiterJobs user={user} /> : <AdminJobs user={user} />} />
             <Route path="jobs/create" element={<CreateJobPage user={user} onBack={() => window.history.back()} onSuccess={() => window.history.back()} />} />
-            <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} user={user} />} />
-            <Route path="applicants" element={<ApplicantsRecordsPage user={user} />} />
+            <Route path="candidates" element={rk === 'recruiter' ? <RecruiterCandidates user={user} /> : isCollege ? <Suspense fallback={<PageLoader />}><CollegeStudents user={user} /></Suspense> : <AdminUsers filterRole="candidate" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="applicants" element={isCollege ? <Suspense fallback={<PageLoader />}><CollegePlacements user={user} /></Suspense> : <ApplicantsRecordsPage user={user} />} />
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
             <Route path="talent-match" element={<RecruiterTalentMatch user={user} />} />
@@ -686,7 +690,7 @@ export default function App() {
         {(rk === 'admin' || rk === 'superadmin') && (
           <>
             <Route path="modal-guide" element={<PlatformModalsGuide user={user} />} />
-            <Route path="analytics" element={<AdminAnalytics user={user} onNavigate={(p) => navigate(`/app/${p}`)} />} />
+            <Route path="analytics" element={isCollege ? <Suspense fallback={<PageLoader />}><CollegeOverview user={user} /></Suspense> : <AdminAnalytics user={user} onNavigate={(p) => navigate(`/app/${p}`)} />} />
             <Route path="insights" element={<AdminInsights user={user} />} />
             <Route path="jobs/:jobId/distribution" element={<Suspense fallback={<PageLoader />}><JobDistribution user={user} /></Suspense>} />
             <Route path="dashboard" element={<Navigate to="/app/analytics" replace />} />

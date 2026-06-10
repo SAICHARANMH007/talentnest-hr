@@ -451,6 +451,144 @@ router.get('/college-directory', asyncHandler(async (req, res) => {
   res.json({ success: true, data: results.slice(0, 20) });
 }));
 
+// ── College / Campus Portal ─────────────────────────────────────────────────
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Builds a case/whitespace-insensitive exact-match regex for the calling
+ * college admin's tenant name, used to find students/applications that
+ * entered this college as their "College / School Name". Returns null if
+ * the caller is not a College/Campus tenant admin. */
+async function getCollegeFilter(req) {
+  if (req.user.tenantType !== 'college') return null;
+  const tenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+  if (!tenant?.name) return null;
+  const normalized = tenant.name.trim().replace(/\s+/g, ' ');
+  return { name: normalized, regex: new RegExp('^' + escapeRegex(normalized) + '$', 'i') };
+}
+
+/* GET /api/dashboard/college/overview — placement officer dashboard summary */
+router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const candFilter = { college: college.regex, deletedAt: null };
+  const candidateIds = await Candidate.find(candFilter).distinct('_id');
+  const [totalStudents, totalApplications, totalPlacements] = await Promise.all([
+    candidateIds.length,
+    Application.countDocuments({ candidateId: { $in: candidateIds }, deletedAt: null }),
+    Application.countDocuments({ candidateId: { $in: candidateIds }, currentStage: 'Hired', deletedAt: null }),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      collegeName: college.name,
+      totalStudents,
+      totalApplications,
+      totalPlacements,
+      placementRate: totalStudents > 0 ? Math.round((totalPlacements / totalStudents) * 1000) / 10 : 0,
+    },
+  });
+}));
+
+/* GET /api/dashboard/college/students — students who registered with this college name */
+router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { q = '' } = req.query;
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+
+  const filter = { college: college.regex, deletedAt: null };
+  if (q.trim()) {
+    const esc = escapeRegex(q.trim());
+    filter.$or = [
+      { name: new RegExp(esc, 'i') },
+      { email: new RegExp(esc, 'i') },
+      { phone: new RegExp(esc, 'i') },
+    ];
+  }
+
+  const [students, total] = await Promise.all([
+    Candidate.find(filter)
+      .select('name email phone title experience isFresher skills createdAt')
+      .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Candidate.countDocuments(filter),
+  ]);
+
+  const ids = students.map(s => s._id);
+  const appCounts = await Application.aggregate([
+    { $match: { candidateId: { $in: ids }, deletedAt: null } },
+    { $group: { _id: '$candidateId', count: { $sum: 1 }, hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } } } },
+  ]);
+  const countMap = new Map(appCounts.map(a => [String(a._id), a]));
+
+  const data = students.map(s => ({
+    id: String(s._id),
+    name: s.name || '',
+    email: s.email || '',
+    phone: s.phone || '',
+    title: s.title || '',
+    experience: s.experience ?? null,
+    isFresher: !!s.isFresher,
+    skills: s.skills || [],
+    applications: countMap.get(String(s._id))?.count || 0,
+    placed: (countMap.get(String(s._id))?.hired || 0) > 0,
+    joinedAt: s.createdAt,
+  }));
+
+  res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
+}));
+
+/* GET /api/dashboard/college/placements — application/placement records for this college's students */
+router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { q = '', stage = '' } = req.query;
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+
+  const candFilter = { college: college.regex, deletedAt: null };
+  if (q.trim()) {
+    const esc = escapeRegex(q.trim());
+    candFilter.$or = [{ name: new RegExp(esc, 'i') }, { email: new RegExp(esc, 'i') }];
+  }
+  const candidates = await Candidate.find(candFilter).select('name email').lean();
+  const candMap = new Map(candidates.map(c => [String(c._id), c]));
+  const ids = candidates.map(c => c._id);
+
+  const appFilter = { candidateId: { $in: ids }, deletedAt: null };
+  if (stage) appFilter.currentStage = stage;
+
+  const [apps, total] = await Promise.all([
+    Application.find(appFilter)
+      .populate({ path: 'jobId', select: 'title companyName' })
+      .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Application.countDocuments(appFilter),
+  ]);
+
+  const data = apps.map(a => {
+    const cand = candMap.get(String(a.candidateId)) || {};
+    return {
+      id: String(a._id),
+      studentName: cand.name || '',
+      studentEmail: cand.email || '',
+      jobTitle: a.jobId?.title || '',
+      company: a.jobId?.companyName || '',
+      stage: a.currentStage || '',
+      status: a.status || '',
+      appliedAt: a.createdAt,
+    };
+  });
+
+  res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
+}));
+
+
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────
 
 /* GET /api/dashboard/stats */
