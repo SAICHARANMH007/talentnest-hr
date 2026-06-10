@@ -74,6 +74,14 @@ router.get('/user/:userId', asyncHandler(async (req, res) => {
   res.json({ success: true, data: posts });
 }));
 
+// GET /api/social-posts/saved/list — posts saved (bookmarked) by the current user
+router.get('/saved/list', asyncHandler(async (req, res) => {
+  const uid = req.user._id || req.user.id;
+  const posts = await FeedPost.find({ tenantId: req.user.tenantId, isDeleted: false, savedBy: uid })
+    .sort({ createdAt: -1 }).lean();
+  res.json({ success: true, data: posts });
+}));
+
 const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'];
 
 // POST /api/social-posts
@@ -188,6 +196,24 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   } catch {}
 
   res.json({ success: true });
+}));
+
+// POST /api/social-posts/:id/save — toggle save/bookmark for the current user
+router.post('/:id/save', asyncHandler(async (req, res) => {
+  const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId, isDeleted: false });
+  if (!post) throw new AppError('Post not found.', 404);
+  const uid = String(req.user._id || req.user.id);
+  const existing = post.savedBy.findIndex(id => String(id) === uid);
+  let saved;
+  if (existing >= 0) {
+    post.savedBy.splice(existing, 1);
+    saved = false;
+  } else {
+    post.savedBy.push(uid);
+    saved = true;
+  }
+  await post.save();
+  res.json({ success: true, saved, savedBy: post.savedBy });
 }));
 
 // POST /api/social-posts/:id/react

@@ -29,6 +29,7 @@ const feedPostSchema = new Schema({
   hashtags    : [{ type: String }],
   reactions   : [reactionSchema],
   comments    : [commentSchema],
+  savedBy     : [{ type: Types.ObjectId, ref: 'User' }],
   postType    : {
     type   : String,
     enum   : ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'],

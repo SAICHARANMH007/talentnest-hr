@@ -275,8 +275,8 @@ function ShareButton({ postId }) {
   );
 }
 
-function BookmarkButton({ post, bookmarks, onToggle }) {
-  const saved = bookmarks.includes(post._id);
+function BookmarkButton({ post, userId, onToggle }) {
+  const saved = (post.savedBy || []).some(id => String(id) === String(userId));
   return (
     <button onClick={() => onToggle(post._id, post)} title={saved ? 'Remove bookmark' : 'Save post'}
       style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: saved ? '#F59E0B' : '#D1D5DB', transition: 'color 0.15s' }}
@@ -410,7 +410,7 @@ const FEED_REPORT_REASONS = [
   { value: 'other',          label: '📋 Other' },
 ];
 
-function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, bookmarks, onToggleBookmark, onHashtagClick, isMobile }) {
+function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
   const [showReport,    setShowReport]    = useState(false);
@@ -449,7 +449,7 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
           onConnect={onConnect}
         />
       )}
-      <BookmarkButton post={post} bookmarks={bookmarks} onToggle={onToggleBookmark} />
+      <BookmarkButton post={post} userId={userId} onToggle={onToggleBookmark} />
       {/* ⋯ menu for delete + report */}
       <div style={{ position: 'relative' }}>
         <button onClick={() => setShowMenu(v => !v)}
@@ -846,9 +846,16 @@ function SearchBar({ value, onChange }) {
   );
 }
 
-function SavedPostsView({ bookmarks, bookmarkData, ...props }) {
-  const saved = bookmarks.map(id => bookmarkData[id]).filter(Boolean);
-  if (!saved.length) {
+function SavedPostsView({ savedPosts, loadingSaved, ...props }) {
+  if (loadingSaved) {
+    return (
+      <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+        Loading saved posts…
+      </div>
+    );
+  }
+  if (!savedPosts.length) {
     return (
       <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>★</div>
@@ -857,16 +864,10 @@ function SavedPostsView({ bookmarks, bookmarkData, ...props }) {
       </div>
     );
   }
-  return <>{saved.map(post => <PostCard key={post._id} post={post} {...props} bookmarks={bookmarks} />)}</>;
+  return <>{savedPosts.map(post => <PostCard key={post._id} post={post} {...props} />)}</>;
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-const BOOKMARK_KEY = 'tn_feed_bookmarks';
-const BOOKMARK_DATA_KEY = 'tn_feed_bookmark_data';
-function loadBookmarks() { try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'); } catch { return []; } }
-function loadBookmarkData() { try { return JSON.parse(localStorage.getItem(BOOKMARK_DATA_KEY) || '{}'); } catch { return {}; } }
-function saveBookmarks(ids) { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ids)); }
-function saveBookmarkData(data) { try { localStorage.setItem(BOOKMARK_DATA_KEY, JSON.stringify(data)); } catch {} }
 
 export default function CommunityFeed({ user }) {
   const navigate = useNavigate();
@@ -880,8 +881,9 @@ export default function CommunityFeed({ user }) {
   const [search,       setSearch]       = useState('');
   const [activeHash,   setActiveHash]   = useState(null);
   const [tab,          setTab]          = useState('feed');
-  const [bookmarks,    setBookmarks]    = useState(loadBookmarks);
-  const [bookmarkData, setBookmarkData] = useState(loadBookmarkData);
+  const [savedPosts,   setSavedPosts]   = useState([]);
+  const [savedCount,   setSavedCount]   = useState(0);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   // Connections
   const [connections,  setConnections]  = useState([]);
   const [pendingIds,   setPendingIds]   = useState(new Set());
@@ -934,47 +936,24 @@ export default function CommunityFeed({ user }) {
     return () => clearInterval(id);
   }, [filter, tab, isFiltered, loadPosts]);
 
-  // When "Saved" tab opens, fetch any bookmark IDs that have no stored data
-  useEffect(() => {
-    if (tab !== 'saved' || bookmarks.length === 0) return;
-    const missing = bookmarks.filter(id => !bookmarkData[id]);
-    if (missing.length === 0) return;
-
-    // First check if any are in the already-loaded feed posts
-    const inFeed = posts.filter(p => missing.includes(String(p._id)));
-    let nextData = { ...bookmarkData };
-    inFeed.forEach(p => { nextData[String(p._id)] = p; });
-    const stillMissing = missing.filter(id => !nextData[id]);
-
-    // For the rest, fetch from the public endpoint
-    Promise.allSettled(stillMissing.map(id => api.getPublicPost(id)))
-      .then(results => {
-        const orphaned = [];
-        results.forEach((r, i) => {
-          if (r.status === 'fulfilled' && r.value && r.value._id) {
-            nextData[String(r.value._id)] = r.value;
-          } else {
-            // Post deleted or inaccessible — remove from bookmarks
-            orphaned.push(stillMissing[i]);
-          }
-        });
-        if (orphaned.length > 0) {
-          setBookmarks(prev => {
-            const next = prev.filter(id => !orphaned.includes(id));
-            saveBookmarks(next);
-            return next;
-          });
-        }
-        setBookmarkData(nextData);
-        saveBookmarkData(nextData);
-      });
-
-    // Apply the in-feed finds immediately without waiting for API
-    if (inFeed.length > 0) {
-      setBookmarkData(nextData);
-      saveBookmarkData(nextData);
+  // Load the current user's saved posts from the server
+  const loadSavedPosts = useCallback(async () => {
+    setLoadingSaved(true);
+    try {
+      const r = await api.getSavedPosts();
+      const items = r?.data || [];
+      setSavedPosts(items);
+      setSavedCount(items.length);
+    } catch {
+      setSavedPosts([]);
+    } finally {
+      setLoadingSaved(false);
     }
-  }, [tab, bookmarks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch saved count on mount, and refresh full list whenever the "Saved" tab opens
+  useEffect(() => { loadSavedPosts(); }, [loadSavedPosts]);
+  useEffect(() => { if (tab === 'saved') loadSavedPosts(); }, [tab, loadSavedPosts]);
 
   const handleCreate = async (data) => {
     await api.createPost(data);
@@ -985,19 +964,12 @@ export default function CommunityFeed({ user }) {
     if (!window.confirm('Delete this post?')) return;
     await api.deletePost(postId);
     setPosts(prev => prev.filter(p => p._id !== postId));
-    // Also clean from saved bookmarks
+    // Also clean from saved posts
     const strId = String(postId);
-    setBookmarks(prev => {
-      if (!prev.includes(strId)) return prev;
-      const next = prev.filter(id => id !== strId);
-      saveBookmarks(next);
-      return next;
-    });
-    setBookmarkData(prev => {
-      if (!prev[strId]) return prev;
-      const next = { ...prev };
-      delete next[strId];
-      saveBookmarkData(next);
+    setSavedPosts(prev => {
+      if (!prev.some(p => String(p._id) === strId)) return prev;
+      const next = prev.filter(p => String(p._id) !== strId);
+      setSavedCount(next.length);
       return next;
     });
   };
@@ -1017,18 +989,26 @@ export default function CommunityFeed({ user }) {
     setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: (p.comments || []).filter(c => String(c._id) !== commentId) } : p));
   };
 
-  const handleToggleBookmark = (postId, post) => {
-    if (bookmarks.includes(postId)) {
-      const next = bookmarks.filter(id => id !== postId);
-      const nextData = { ...bookmarkData };
-      delete nextData[postId];
-      setBookmarks(next); saveBookmarks(next);
-      setBookmarkData(nextData); saveBookmarkData(nextData);
+  const handleToggleBookmark = async (postId) => {
+    const r = await api.toggleSavePost(postId);
+    if (!r) return;
+    const myUid = String(uid);
+    const updateSavedBy = (p) => {
+      if (String(p._id) !== String(postId)) return p;
+      const savedBy = r.saved
+        ? [...(p.savedBy || []).filter(id => String(id) !== myUid), myUid]
+        : (p.savedBy || []).filter(id => String(id) !== myUid);
+      return { ...p, savedBy };
+    };
+    setPosts(prev => prev.map(updateSavedBy));
+    if (r.saved) {
+      loadSavedPosts();
     } else {
-      const next = [...bookmarks, postId];
-      const nextData = { ...bookmarkData, [postId]: post };
-      setBookmarks(next); saveBookmarks(next);
-      setBookmarkData(nextData); saveBookmarkData(nextData);
+      setSavedPosts(prev => {
+        const next = prev.filter(p => String(p._id) !== String(postId));
+        setSavedCount(next.length);
+        return next;
+      });
     }
   };
 
@@ -1088,17 +1068,10 @@ export default function CommunityFeed({ user }) {
     'post:deleted': ({ postId }) => {
       const strId = String(postId);
       setPosts(prev => prev.filter(p => String(p._id) !== strId));
-      setBookmarks(prev => {
-        if (!prev.includes(strId)) return prev;
-        const next = prev.filter(id => id !== strId);
-        saveBookmarks(next);
-        return next;
-      });
-      setBookmarkData(prev => {
-        if (!prev[strId]) return prev;
-        const next = { ...prev };
-        delete next[strId];
-        saveBookmarkData(next);
+      setSavedPosts(prev => {
+        if (!prev.some(p => String(p._id) === strId)) return prev;
+        const next = prev.filter(p => String(p._id) !== strId);
+        setSavedCount(next.length);
         return next;
       });
     },
@@ -1172,8 +1145,6 @@ export default function CommunityFeed({ user }) {
     onDeleteComment: handleDeleteComment,
     onDelete: handleDelete,
     onConnect: handleConnect,
-    bookmarks,
-    bookmarkData,
     onToggleBookmark: handleToggleBookmark,
     onHashtagClick: handleHashtagClick,
     isMobile,
@@ -1205,7 +1176,7 @@ export default function CommunityFeed({ user }) {
       <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #E5E7EB' }}>
         {[
           { id: 'feed',  label: 'Feed' },
-          { id: 'saved', label: `★ Saved (${bookmarks.filter(id => bookmarkData[id]).length})` },
+          { id: 'saved', label: `★ Saved (${savedCount})` },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ padding: '10px 20px', border: 'none', background: tab === t.id ? 'rgba(1,118,211,0.06)' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? '#0176D3' : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s', borderRadius: '8px 8px 0 0' }}>
@@ -1247,7 +1218,7 @@ export default function CommunityFeed({ user }) {
         {!isMobile && tab === 'feed' && (
           <div style={{ position: 'sticky', top: 16 }}>
             <ProfileSidebar user={user} connectionCount={connections.length} />
-            <QuickStats myPosts={myPosts.length} myReactions={myReactions} bookmarkCount={bookmarks.length} />
+            <QuickStats myPosts={myPosts.length} myReactions={myReactions} bookmarkCount={savedCount} />
           </div>
         )}
         {!isMobile && tab === 'saved' && <div />}
@@ -1302,7 +1273,7 @@ export default function CommunityFeed({ user }) {
             </>
           )}
 
-          {tab === 'saved' && <SavedPostsView {...sharedPostProps} />}
+          {tab === 'saved' && <SavedPostsView savedPosts={savedPosts} loadingSaved={loadingSaved} {...sharedPostProps} />}
         </div>
 
         {/* Right sidebar */}

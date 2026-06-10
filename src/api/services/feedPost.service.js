@@ -21,6 +21,12 @@ export const feedPostService = {
   async reactToPost(id, type) {
     return req('POST', `/social-posts/${id}/react`, { type });
   },
+  async toggleSavePost(id) {
+    return req('POST', `/social-posts/${id}/save`, {});
+  },
+  async getSavedPosts() {
+    return req('GET', '/social-posts/saved/list');
+  },
   async addComment(id, content) {
     return req('POST', `/social-posts/${id}/comment`, { content });
   },
