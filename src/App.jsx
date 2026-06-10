@@ -82,6 +82,7 @@ const SuperAdminAuditLogs = lazy(() => import('./pages/superadmin/SuperAdminAudi
 const SuperAdminBlogs     = lazy(() => import('./pages/superadmin/SuperAdminBlogs.jsx'));
 const SuperAdminBgvTracker = lazy(() => import('./pages/superadmin/SuperAdminBgvTracker.jsx'));
 const SuperAdminPlatformReferrals = lazy(() => import('./pages/superadmin/SuperAdminPlatformReferrals.jsx'));
+const SuperAdminCollegeGroups = lazy(() => import('./pages/superadmin/SuperAdminCollegeGroups.jsx'));
 const SuperAdminCustomizations = lazy(() => import('./pages/superadmin/SuperAdminCustomizations.jsx'));
 const SuperAdminCandidates = lazy(() => import('./pages/superadmin/SuperAdminCandidates.jsx'));
 const SuperAdminUnregisteredCandidates = lazy(() => import('./pages/superadmin/SuperAdminUnregisteredCandidates.jsx'));
@@ -736,6 +737,7 @@ export default function App() {
             <Route path="bgv-tracker" element={<SuperAdminBgvTracker />} />
             <Route path="referrals" element={<AdminReferrals user={user} />} />
             <Route path="platform-referrals" element={<SuperAdminPlatformReferrals />} />
+            <Route path="college-groups" element={<Suspense fallback={<PageLoader />}><SuperAdminCollegeGroups /></Suspense>} />
           </>
         )}
 

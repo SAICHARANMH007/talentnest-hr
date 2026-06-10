@@ -1,6 +1,7 @@
 'use strict';
 const express     = require('express');
 const Organization = require('../models/Organization');
+const Tenant      = require('../models/Tenant');
 const User        = require('../models/User');
 const { authenticate: auth } = require('../middleware/auth');
 const { allowRoles } = require('../middleware/rbac');
@@ -49,7 +50,8 @@ router.get('/', auth, async (req, res) => {
       // tenantId from JWT is the canonical org reference
       const orgId = req.user.tenantId || req.user.orgId;
       if (!orgId) return res.json([]);
-      const org = await Organization.findById(orgId);
+      // College/Campus admins are backed by a Tenant document, not an Organization
+      const org = await Organization.findById(orgId) || await Tenant.findById(orgId);
       return res.json(org ? [normalize(org)] : []);
     }
     return res.status(403).json({ error: 'Access denied' });
@@ -156,7 +158,8 @@ router.get('/:orgId/logo/image', async (req, res) => {
 // GET /api/orgs/logo — get current org's logo
 router.get('/logo', auth, async (req, res) => {
   try {
-    const org = await Organization.findById(req.user.orgId).select('logoUrl name').lean();
+    const org = await Organization.findById(req.user.orgId).select('logoUrl name').lean()
+      || await Tenant.findById(req.user.orgId).select('logoUrl name').lean();
     res.json({ success: true, logoUrl: org?.logoUrl || null, orgName: org?.name || 'TalentNest HR' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -166,7 +169,8 @@ router.get('/my-org', auth, async (req, res) => {
   try {
     const orgId = req.user.orgId || req.user.tenantId;
     if (!orgId) return res.status(404).json({ error: 'No organization linked to user session.' });
-    const org = await Organization.findById(orgId).select('name slug logoUrl brandColor industry').lean();
+    const org = await Organization.findById(orgId).select('name slug logoUrl brandColor industry').lean()
+      || await Tenant.findById(orgId).select('name slug logoUrl industry').lean();
     if (!org) return res.status(404).json({ error: 'Organization not found.' });
     res.json(normalize(org));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }
@@ -178,7 +182,8 @@ router.post('/logo/upload', auth, allowRoles('admin', 'super_admin'), async (req
     const { logoUrl } = req.body; // base64 data URL sent from frontend
     if (!logoUrl) return res.status(400).json({ success: false, error: 'logoUrl required' });
     if (logoUrl.length > 3 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Logo too large (max 2MB)' });
-    await Organization.findByIdAndUpdate(req.user.orgId, { logoUrl, logoUpdatedAt: new Date() });
+    const updated = await Organization.findByIdAndUpdate(req.user.orgId, { logoUrl, logoUpdatedAt: new Date() });
+    if (!updated) await Tenant.findByIdAndUpdate(req.user.orgId, { logoUrl, logoUpdatedAt: new Date() });
     res.json({ success: true, logoUrl });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -186,7 +191,8 @@ router.post('/logo/upload', auth, allowRoles('admin', 'super_admin'), async (req
 // DELETE /api/orgs/logo — reset to default logo (admin/super_admin)
 router.delete('/logo', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
   try {
-    await Organization.findByIdAndUpdate(req.user.orgId, { logoUrl: null });
+    const updated = await Organization.findByIdAndUpdate(req.user.orgId, { logoUrl: null });
+    if (!updated) await Tenant.findByIdAndUpdate(req.user.orgId, { logoUrl: null });
     res.json({ success: true, message: 'Logo reset to default' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -231,7 +237,8 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied.' });
     if (!['admin','super_admin'].includes(req.user.role))
       return res.status(403).json({ error: 'Access denied.' });
-    const org = await Org.findById(req.params.id);
+    // College/Campus admins are backed by a Tenant document, not an Organization
+    const org = await Org.findById(req.params.id) || await Tenant.findById(req.params.id);
     if (!org) return res.status(404).json({ error: 'Organisation not found.' });
     res.json(normalize(org));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }
@@ -248,6 +255,12 @@ router.patch('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
+    // College/Campus admins are backed by a Tenant document, not an Organization
+    let existing = await Org.findById(req.params.id);
+    const Model = existing ? Org : Tenant;
+    if (!existing) existing = await Tenant.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Organisation not found.' });
+
     // Admins cannot change plan or status — only super_admin can change billing/permissions
     const allowed = req.user.role === 'super_admin'
       ? ['name','domain','logoUrl','industry','size','status','settings','plan','trialEndsAt','isStaffingAgency']
@@ -263,7 +276,7 @@ router.patch('/:id', auth, async (req, res) => {
       }
       if (updates.domain) {
         const domainRegex = { $regex: `^${updates.domain.replace(/\./g, '\\.')}$`, $options: 'i' };
-        const conflict = await Org.findOne({ domain: domainRegex, _id: { $ne: req.params.id } }).lean();
+        const conflict = await Model.findOne({ domain: domainRegex, _id: { $ne: req.params.id } }).lean();
         if (conflict) return res.status(409).json({ error: `Domain "${updates.domain}" is already registered to "${conflict.name}".` });
       }
     }
@@ -271,14 +284,11 @@ router.patch('/:id', auth, async (req, res) => {
 
     // Deep-merge settings so partial updates (e.g. featureFlags only) don't wipe other settings fields
     if (updates.settings) {
-      const existing = await Org.findById(req.params.id);
-      if (existing) {
-        const existingData = existing.toJSON ? existing.toJSON() : existing;
-        updates.settings = { ...(existingData.settings || {}), ...updates.settings };
-      }
+      const existingData = existing.toJSON ? existing.toJSON() : existing;
+      updates.settings = { ...(existingData.settings || {}), ...updates.settings };
     }
 
-    const org = await Org.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+    const org = await Model.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
     if (!org) return res.status(404).json({ error: 'Organisation not found.' });
 
     // ── Sync Name to Associated Users ──────────────────────────────────────────

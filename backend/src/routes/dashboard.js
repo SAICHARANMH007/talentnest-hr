@@ -456,6 +456,31 @@ function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Parses a JSON-array string field (educationList/certifications), tolerating
+ * legacy/invalid values by returning an empty array. */
+function parseJsonArray(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Returns the education entry with the highest "year" (most recent), or null. */
+function getLatestEducation(education) {
+  let latest = null;
+  (education || []).forEach(e => {
+    const y = parseInt(e?.year, 10);
+    if (!latest || (Number.isFinite(y) && y > (parseInt(latest?.year, 10) || -Infinity))) {
+      latest = e;
+    }
+  });
+  return latest;
+}
+
 /** Builds a case/whitespace-insensitive exact-match regex for the calling
  * college admin's tenant name, used to find students/applications that
  * entered this college as their "College / School Name". Returns null if
@@ -518,28 +543,10 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
 
   const currentYear = new Date().getFullYear();
 
-  function parseJsonArray(raw) {
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw;
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-
   let mapped = allStudents.map(s => {
     const education = parseJsonArray(s.educationList);
     const certifications = parseJsonArray(s.certifications);
-
-    let latestEducation = null;
-    education.forEach(e => {
-      const y = parseInt(e?.year, 10);
-      if (!latestEducation || (Number.isFinite(y) && y > (parseInt(latestEducation?.year, 10) || -Infinity))) {
-        latestEducation = e;
-      }
-    });
+    const latestEducation = getLatestEducation(education);
 
     const passingYear = parseInt(latestEducation?.year, 10);
     const studentType = Number.isFinite(passingYear)
@@ -648,6 +655,70 @@ router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandle
   });
 
   res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
+}));
+
+/* GET /api/dashboard/college-groups — super admin view of all "college groups".
+   Every candidate is grouped by their College/School Name (or, if that's blank,
+   by the institution from their latest education entry) so the platform admin
+   can see which colleges/communities exist, how many students/alumni each has,
+   and whether a Campus Portal (placement officer) account exists for them. */
+router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const currentYear = new Date().getFullYear();
+
+  const [candidates, tenants] = await Promise.all([
+    Candidate.find({ deletedAt: null }).select('college educationList isFresher').lean(),
+    Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
+  ]);
+
+  const tenantKeys = new Set(
+    tenants.map(t => String(t.name || '').trim().replace(/\s+/g, ' ').toLowerCase())
+  );
+
+  const groups = new Map();
+  let incompleteProfiles = 0;
+
+  for (const c of candidates) {
+    const education = parseJsonArray(c.educationList);
+    let collegeName = String(c.college || '').trim().replace(/\s+/g, ' ');
+    let derivedFromEducation = false;
+
+    if (!collegeName) {
+      const latest = getLatestEducation(education);
+      if (latest?.institution) {
+        collegeName = String(latest.institution).trim().replace(/\s+/g, ' ');
+        derivedFromEducation = true;
+      }
+    }
+
+    if (!collegeName) {
+      incompleteProfiles++;
+      continue;
+    }
+
+    const key = collegeName.toLowerCase();
+    if (!groups.has(key)) {
+      groups.set(key, {
+        name: collegeName,
+        totalStudents: 0,
+        currentStudents: 0,
+        alumni: 0,
+        derivedFromEducationOnly: 0,
+        hasPlacementOfficer: tenantKeys.has(key),
+      });
+    }
+    const g = groups.get(key);
+    g.totalStudents++;
+    if (derivedFromEducation) g.derivedFromEducationOnly++;
+
+    const latest = getLatestEducation(education);
+    const passingYear = parseInt(latest?.year, 10);
+    const isCurrentStudent = Number.isFinite(passingYear) ? passingYear >= currentYear : !!c.isFresher;
+    if (isCurrentStudent) g.currentStudents++; else g.alumni++;
+  }
+
+  const data = [...groups.values()].sort((a, b) => b.totalStudents - a.totalStudents);
+
+  res.json({ success: true, data, incompleteProfiles });
 }));
 
 

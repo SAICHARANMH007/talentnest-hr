@@ -205,6 +205,35 @@ router.get('/count', authenticate, allowRoles('admin','super_admin','recruiter')
 router.get('/me', authenticate, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id || req.user.id).select('-password').lean();
   if (!user) throw new AppError('User not found.', 404);
+
+  // Nudge candidates who haven't shared their college/education details yet —
+  // without these, their college's placement officer and recruiters can't
+  // see which institution they studied at.
+  if (user.role === 'candidate' && !user.college) {
+    const candidate = await Candidate.findOne({ email: user.email }).select('college educationList').lean();
+    let hasEducation = false;
+    if (candidate?.educationList) {
+      try {
+        const edu = JSON.parse(candidate.educationList);
+        hasEducation = Array.isArray(edu) && edu.some(e => e?.institution);
+      } catch { /* ignore malformed legacy data */ }
+    }
+    if (!candidate?.college && !hasEducation) {
+      const exists = await Notification.findOne({ userId: user._id, 'metadata.kind': 'profile_college_missing' }).select('_id').lean();
+      if (!exists) {
+        await Notification.create({
+          userId: user._id,
+          tenantId: user.tenantId,
+          type: 'system',
+          title: 'Add your college & education details',
+          message: 'Add your College/School name and education history to your profile so your placement office and recruiters can see your qualifications.',
+          link: '/app/profile',
+          metadata: { kind: 'profile_college_missing' },
+        });
+      }
+    }
+  }
+
   res.json({ success: true, data: userService.normalize(user) });
 }));
 

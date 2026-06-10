@@ -83,6 +83,7 @@ const tenantSchema = new mongoose.Schema({
       ],
     },
     emailTemplate: { type: String },
+    emailSettings: { type: mongoose.Schema.Types.Mixed }, // mirrors Organization.settings.emailSettings (branding/email config)
     brandColors  : {
       primary  : { type: String, default: '#0176D3' },
       secondary: { type: String },

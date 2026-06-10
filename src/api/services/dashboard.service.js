@@ -19,6 +19,7 @@ export const dashboardService = {
   async getCollegeOverview()            { return req('GET', '/dashboard/college/overview'); },
   async getCollegeStudents(params = {}) { return req('GET', `/dashboard/college/students${qs(params)}`); },
   async getCollegePlacements(params = {}) { return req('GET', `/dashboard/college/placements${qs(params)}`); },
+  async getCollegeGroups()               { return req('GET', '/dashboard/college-groups'); },
   async getDashboardStats(platform)     { return req('GET', `/dashboard/stats${platform ? '?platform=true' : ''}`); },
   async getPipelineHealth()             { return req('GET', '/dashboard/pipeline-health'); },
   async getRecruiterLeaderboard()       { return req('GET', '/dashboard/recruiter-leaderboard'); },
