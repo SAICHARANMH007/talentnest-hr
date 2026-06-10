@@ -14,10 +14,7 @@ const TARGET_FIELDS = [
   { key: 'name',           label: 'Full Name',                required: true },
   { key: 'email',          label: 'Email Address',            required: true },
   { key: 'phone',          label: 'Phone Number' },
-  { key: 'title',          label: 'Current Role / Designation' },
-  { key: 'currentCompany', label: 'Current Company' },
   { key: 'location',       label: 'Location' },
-  { key: 'experience',     label: 'Years of Experience' },
   { key: 'skills',         label: 'Skills (comma-separated)' },
   { key: 'institution',    label: 'College / Institution' },
   { key: 'degree',         label: 'Degree (e.g. B.Tech)' },
@@ -25,6 +22,11 @@ const TARGET_FIELDS = [
   { key: 'year',           label: 'Passing Year' },
   { key: 'grade',          label: 'CGPA / Percentage' },
   { key: 'certifications', label: 'Certifications' },
+  // Only relevant for alumni who are already working — hidden on the manual
+  // "Add a Candidate" form when "Mark as fresher" is checked.
+  { key: 'title',          label: 'Current Role / Designation', alumniOnly: true },
+  { key: 'currentCompany', label: 'Current Company',            alumniOnly: true },
+  { key: 'experience',     label: 'Years of Experience',        alumniOnly: true },
 ];
 
 const NONE = '__none__';
@@ -254,8 +256,13 @@ export default function CollegeAddCandidates({ user }) {
               <p style={{ margin: '0 0 16px', fontSize: 13, color: '#706E6B' }}>
                 Fill in what you know — only Full Name and Email Address are required. These are the same fields used during bulk import.
               </p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: '#181818' }}>
+                <input type="checkbox" checked={manualForm.isFresher} onChange={e => setManualForm(m => ({ ...m, isFresher: e.target.checked }))} />
+                Mark as fresher (no prior work experience)
+              </label>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-                {TARGET_FIELDS.map(f => (
+                {TARGET_FIELDS.filter(f => !f.alumniOnly || !manualForm.isFresher).map(f => (
                   <div key={f.key}>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#181818', marginBottom: 6 }}>
                       {f.label}{f.required ? ' *' : ''}
@@ -269,11 +276,6 @@ export default function CollegeAddCandidates({ user }) {
                   </div>
                 ))}
               </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18, fontSize: 13, color: '#181818' }}>
-                <input type="checkbox" checked={manualForm.isFresher} onChange={e => setManualForm(m => ({ ...m, isFresher: e.target.checked }))} />
-                Mark as fresher (no prior work experience)
-              </label>
 
               {!manualRequiredFilled && (
                 <div style={{ marginTop: 12, color: '#BA0517', fontSize: 12 }}>Please enter Full Name and Email Address.</div>

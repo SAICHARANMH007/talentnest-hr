@@ -125,6 +125,21 @@ function collegeSlug(name) {
   return String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+/** Matches users belonging to a college community even if they haven't filled
+ * in the standalone "College/School Name" field — many existing accounts only
+ * have it recorded inside their educationList JSON. */
+function collegeMemberFilter(name) {
+  const normalized = name.trim().replace(/\s+/g, ' ');
+  const exact = { $regex: '^' + escapeRegex(normalized) + '$', $options: 'i' };
+  return {
+    deletedAt: null,
+    $or: [
+      { college: exact },
+      { college: { $in: [null, ''] }, educationList: { $regex: escapeRegex(normalized), $options: 'i' } },
+    ],
+  };
+}
+
 /** Ensures every active 'college' Tenant has a matching auto-membership Community.
  * Students/alumni whose User.college matches the tenant's name are automatically
  * members of this community — no explicit join needed. */
@@ -341,10 +356,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const collegeCounts = {};
   if (collegeCommunities.length) {
     await Promise.all(collegeCommunities.map(async (c) => {
-      collegeCounts[c.slug] = await User.countDocuments({
-        college: { $regex: '^' + escapeRegex(c.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' },
-        deletedAt: null,
-      });
+      collegeCounts[c.slug] = await User.countDocuments(collegeMemberFilter(c.collegeName));
     }));
   }
 
@@ -378,10 +390,10 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   if (community.collegeName) {
     // College communities: every student/alumnus whose College/School Name matches
     // is automatically a member, regardless of memberIds.
-    const collegeRegex = { $regex: '^' + escapeRegex(community.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' };
+    const memberFilter = collegeMemberFilter(community.collegeName);
     const [collegeMembers, collegeCount] = await Promise.all([
-      User.find({ college: collegeRegex, deletedAt: null }).select('name role title avatarUrl photoUrl college').sort({ createdAt: -1 }).limit(10).lean(),
-      User.countDocuments({ college: collegeRegex, deletedAt: null }),
+      User.find(memberFilter).select('name role title avatarUrl photoUrl college').sort({ createdAt: -1 }).limit(10).lean(),
+      User.countDocuments(memberFilter),
     ]);
     members = collegeMembers;
     memberCount = Math.max(memberCount, collegeCount);
