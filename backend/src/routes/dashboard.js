@@ -241,13 +241,33 @@ async function buildApplicationFilters(req) {
   }
 
   // Exact ID or Email tracking for unified candidate pipeline
-  const { candidateId, email } = req.query;
+  const { candidateId, email, experienceLevel } = req.query;
   if (email) {
     const matchedCands = await Candidate.find({ email: email.toLowerCase().trim(), deletedAt: null }).select('_id').lean();
     const cIds = matchedCands.map(c => c._id);
     filter.candidateId = { $in: cIds };
   } else if (candidateId) {
     filter.candidateId = candidateId;
+  }
+
+  // Fresher / Experienced filter — based on Candidate.isFresher and Candidate.experience
+  if (experienceLevel === 'fresher' || experienceLevel === 'experienced') {
+    const candFilter = { ...tenantFilter(req), deletedAt: null };
+    if (experienceLevel === 'fresher') {
+      candFilter.$or = [{ isFresher: true }, { experience: { $in: [0, null] } }];
+    } else {
+      candFilter.isFresher = { $ne: true };
+      candFilter.experience = { $gt: 0 };
+    }
+    const matched = await Candidate.find(candFilter).select('_id').lean();
+    const expIds = matched.map(c => c._id);
+    if (filter.candidateId) {
+      const existing = filter.candidateId.$in || [filter.candidateId];
+      const existingSet = new Set(existing.map(String));
+      filter.candidateId = { $in: expIds.filter(id => existingSet.has(String(id))) };
+    } else {
+      filter.candidateId = { $in: expIds };
+    }
   }
 
   return filter;

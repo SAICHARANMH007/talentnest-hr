@@ -165,7 +165,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       }
 
       // 2. Create user
-      const { title, currentCompany, experience, availability, industry, department } = req.body;
+      const { title, currentCompany, experience, isFresher, availability, industry, department } = req.body;
       const [user] = await User.create([{
         tenantId: tenant._id,
         name: name.trim(),
@@ -180,6 +180,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         ...(title          ? { title: title.trim() }                : {}),
         ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
         ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+        ...(isFresher      ? { isFresher: true }                     : {}),
         ...(availability   ? { availability }                        : {}),
         ...(industry       ? { industry }                            : {}),
         ...(department     ? { department }                          : {}),
@@ -201,6 +202,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             ...(title          ? { title: title?.trim() }                     : {}),
             ...(currentCompany ? { currentCompany: currentCompany?.trim() }   : {}),
             ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+            ...(isFresher      ? { isFresher: true }                          : {}),
             ...(availability   ? { availability }                              : {}),
             ...(industry       ? { industry }                                  : {}),
             ...(department     ? { department }                                : {}),

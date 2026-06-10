@@ -256,7 +256,7 @@ router.post('/quick', authMiddleware, asyncHandler(async (req, res) => {
 // POST /api/applications/public — guest apply from career page
 router.post('/public', asyncHandler(async (req, res) => {
   const { jobId, name, email: candidateEmail, phone, coverLetter, screeningAnswers,
-          title, currentCompany, experience, availability, industry, department,
+          title, currentCompany, experience, isFresher, availability, industry, department,
           geoLat, geoLng, geoAccuracy, geoCity, geoCountry, geoDeclined,
           refToken } = req.body;
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
@@ -279,6 +279,7 @@ router.post('/public', asyncHandler(async (req, res) => {
       ...(title          ? { title: title.trim() }               : {}),
       ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
       ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
+      ...(isFresher      ? { isFresher: true }                     : {}),
       ...(availability   ? { availability }                        : {}),
       ...(industry       ? { industry }                            : {}),
       ...(department     ? { department }                          : {}),
@@ -290,6 +291,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     if (!candidate.title && title?.trim())               updates.title          = title.trim();
     if (!candidate.currentCompany && currentCompany?.trim()) updates.currentCompany = currentCompany.trim();
     if ((candidate.experience == null) && experience !== '' && experience !== undefined) updates.experience = Number(experience);
+    if (isFresher && !candidate.isFresher)               updates.isFresher      = true;
     if (!candidate.availability && availability)         updates.availability   = availability;
     if (industry)                                          updates.industry       = industry;
     if (department)                                        updates.department     = department;

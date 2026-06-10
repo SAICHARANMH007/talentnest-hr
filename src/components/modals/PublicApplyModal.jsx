@@ -95,6 +95,7 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
 
   const questions = job.screeningQuestions || [];
   const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: prefill.industry || '', department: prefill.department || '', coverLetter: '' });
+  const [isFresher, setIsFresher] = useState(prefill.experience === '0');
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -225,9 +226,11 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
     if (!form.phone?.trim()) { setError('Mobile number is required to apply.'); return; }
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length < 7) { setError('Please enter a valid mobile number.'); return; }
-    if (!form.title?.trim())          { setError('Current title is required.'); return; }
-    if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
-    if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
+    if (!isFresher) {
+      if (!form.title?.trim())          { setError('Current title is required.'); return; }
+      if (!form.currentCompany?.trim()) { setError('Current company is required.'); return; }
+      if (!form.experience && form.experience !== 0) { setError('Please select your experience.'); return; }
+    }
     if (!form.availability)           { setError('Please select your availability.'); return; }
     if (!form.industry)               { setError('Please select your industry.'); return; }
     if (!form.department)             { setError('Please select your department.'); return; }
@@ -266,7 +269,12 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
     setSubmitting(true);
     setError('');
     try {
-      const payload = { ...form, screeningAnswers, ...(refToken ? { refToken } : {}) };
+      const payload = {
+        ...form,
+        ...(isFresher ? { title: form.title || 'Fresher', currentCompany: form.currentCompany || '', experience: '0', isFresher: true } : {}),
+        screeningAnswers,
+        ...(refToken ? { refToken } : {}),
+      };
       if (finalGeo) {
         payload.geoLat      = finalGeo.lat;
         payload.geoLng      = finalGeo.lng;
@@ -520,13 +528,29 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
           <span style={{ fontSize: 11, fontWeight: 800, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Professional</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-          <MField label="Current Title *" value={form.title} placeholder="e.g. Software Developer" t={t}
-            onChange={v => handlePrefillFieldChange('title', v)} highlight={isHighlighted('title')} />
-          <MField label="Current Company *" value={form.currentCompany} placeholder="e.g. TCS" t={t}
-            onChange={v => handlePrefillFieldChange('currentCompany', v)} highlight={isHighlighted('currentCompany')} />
-          <MSelect label="Years of Experience *" value={form.experience} t={t}
-            onChange={v => handlePrefillFieldChange('experience', v)} highlight={isHighlighted('experience')}
-            options={[['', 'Select experience…'], ...['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => [y, `${y} year${y === '1' ? '' : 's'}`])]} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isFresher ? t.highlightBorder : t.border}`, background: isFresher ? t.highlightBg : t.surfaceBg, cursor: 'pointer' }}>
+            <input type="checkbox" checked={isFresher} onChange={e => {
+              const checked = e.target.checked;
+              setIsFresher(checked);
+              if (checked) sf('experience', '0');
+            }} style={{ width: 18, height: 18, accentColor: '#059669', flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>I'm a fresher (no work experience yet)</span>
+          </label>
+          {!isFresher && (
+            <>
+              <MField label="Current Title *" value={form.title} placeholder="e.g. Software Developer" t={t}
+                onChange={v => handlePrefillFieldChange('title', v)} highlight={isHighlighted('title')} />
+              <MField label="Current Company *" value={form.currentCompany} placeholder="e.g. TCS" t={t}
+                onChange={v => handlePrefillFieldChange('currentCompany', v)} highlight={isHighlighted('currentCompany')} />
+              <MSelect label="Years of Experience *" value={form.experience} t={t}
+                onChange={v => handlePrefillFieldChange('experience', v)} highlight={isHighlighted('experience')}
+                options={[['', 'Select experience…'], ...['0','1','2','3','4','5','6','7','8','9','10','12','15','20'].map(y => [y, `${y} year${y === '1' ? '' : 's'}`])]} />
+            </>
+          )}
+          {isFresher && (
+            <MField label="Currently Studying / Recently Graduated From (optional)" value={form.title} placeholder="e.g. B.Tech, XYZ University" t={t}
+              onChange={v => handlePrefillFieldChange('title', v)} highlight={isHighlighted('title')} />
+          )}
           <MSelect label="Notice Period / Availability *" value={form.availability} t={t}
             onChange={v => handlePrefillFieldChange('availability', v)} highlight={isHighlighted('availability')}
             options={[['', 'Select availability…'], ...['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => [a, a])]} />

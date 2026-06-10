@@ -26,6 +26,12 @@ const DB_STAGES = [
 
 const SOURCE_OPTIONS = SHARED_SOURCE_OPTIONS;
 
+const EXPERIENCE_LEVEL_OPTIONS = [
+  { value: '', label: 'All experience' },
+  { value: 'fresher', label: 'Fresher' },
+  { value: 'experienced', label: 'Experienced' },
+];
+
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'active', label: 'Active' },
@@ -190,6 +196,7 @@ export default function ApplicantsRecordsPage({ user }) {
     minScore: params.get('minScore') || '',
     startDate: params.get('startDate') || '',
     endDate: params.get('endDate') || '',
+    experienceLevel: params.get('experienceLevel') || '',
   });
   const [rows, setRows]         = useState([]);
   const [recruiters, setRecruiters] = useState([]);
@@ -271,7 +278,7 @@ export default function ApplicantsRecordsPage({ user }) {
   };
 
   const clearFilters = () => {
-    setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '' });
+    setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '', experienceLevel: '' });
     setPage(1);
   };
 
@@ -422,7 +429,7 @@ export default function ApplicantsRecordsPage({ user }) {
           <Field label="Match Score >=" type="number" min="0" max="100" value={filters.minScore} onChange={v => updateFilter('minScore', v)} placeholder="Any" />
           <button onClick={clearFilters} style={{ ...btnG, minHeight: 46 }}>Clear</button>
         </div>
-        <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 12, alignItems: 'end', marginTop: 12 }}>
+        <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(140px, 1fr))', gap: 12, alignItems: 'end', marginTop: 12 }}>
           {canManage && (
             <Field
               label="Recruiter"
@@ -439,6 +446,7 @@ export default function ApplicantsRecordsPage({ user }) {
           />
           <Field label="From" type="date" value={filters.startDate} onChange={v => updateFilter('startDate', v)} />
           <Field label="To" type="date" value={filters.endDate} onChange={v => updateFilter('endDate', v)} />
+          <Field label="Experience" value={filters.experienceLevel} onChange={v => updateFilter('experienceLevel', v)} options={EXPERIENCE_LEVEL_OPTIONS} />
         </div>
       </div>
 

@@ -20,6 +20,7 @@ const candidateSchema = new mongoose.Schema({
   summary        : { type: String },                 // professional summary / bio
   skills         : { type: [String], default: [] },  // always an array
   experience     : { type: Number, min: 0, max: 60 }, // total experience in years
+  isFresher      : { type: Boolean, default: false }, // true if candidate has no prior work experience
   location       : { type: String, trim: true },
   linkedinUrl    : { type: String, trim: true },
   resumeUrl      : { type: String },

@@ -62,6 +62,7 @@ const userSchema = new mongoose.Schema({
   location    : { type: String, trim: true },
   summary     : { type: String },
   experience  : { type: Number, min: 0, max: 60 },
+  isFresher   : { type: Boolean, default: false },
   skills      : [{ type: String, lowercase: true, trim: true }],
   resumeUrl   : { type: String },
   linkedinUrl : { type: String },
