@@ -13,6 +13,7 @@ const candidateSchema = new mongoose.Schema({
   phone: { type: String, trim: true },
   industry: { type: String, trim: true },
   department: { type: String, trim: true },
+  college: { type: String, trim: true, default: '' },
 
 
   // ── Core profile ────────────────────────────────────────────────────────────

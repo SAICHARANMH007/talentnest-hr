@@ -5,6 +5,7 @@ import Field from '../../components/ui/Field.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import ResumeCard from '../../components/shared/ResumeCard.jsx';
+import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
@@ -222,7 +223,7 @@ export default function CandidateProfile({ user }) {
   const [form, setForm] = useState({
     name:'', email:'', phone:'', title:'', location:'', linkedinUrl:'', github:'', portfolio:'',
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
-    experience:'', isFresher:false, currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
+    experience:'', isFresher:false, college:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
     source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'',
   });
@@ -241,7 +242,7 @@ export default function CandidateProfile({ user }) {
           summary: d.summary||'', skills: Array.isArray(d.skills) ? d.skills.join(', ') : (d.skills||''),
           languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages||''),
           industry: d.industry||'', department: d.department||'', experience: d.experience != null ? String(d.experience) : '',
-          isFresher: !!d.isFresher,
+          isFresher: !!d.isFresher, college: d.college||'',
           currentCompany: d.currentCompany||'', culture: d.culture||'',
           projects: d.projects||'', achievements: d.achievements||'', volunteering: d.volunteering||'',
           relevantExperience: d.relevantExperience||'', preferredLocation: d.preferredLocation||'',
@@ -428,6 +429,14 @@ export default function CandidateProfile({ user }) {
                 }} style={{ width: 16, height: 16, minWidth: 16, flexShrink: 0, accentColor: '#10B981' }} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#374151', wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
               </label>
+              <CollegeAutocomplete
+                value={form.college}
+                onChange={v => sf('college', v)}
+                label="COLLEGE / SCHOOL NAME"
+                labelStyle={{ fontSize: 11, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}
+                inputStyle={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, background: '#fff', boxSizing: 'border-box' }}
+                placeholder="e.g. ABC Institute of Technology"
+              />
               {!form.isFresher && (
                 <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
               )}

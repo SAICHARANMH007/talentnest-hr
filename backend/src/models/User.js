@@ -20,6 +20,9 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
 
+  // Mirrors Tenant.type so the UI can tailor navigation (e.g. 'college' admins get a Campus Portal nav)
+  tenantType: { type: String, trim: true, default: '' },
+
   isActive          : { type: Boolean, default: true },
   mustChangePassword: { type: Boolean, default: false },
 
@@ -63,6 +66,7 @@ const userSchema = new mongoose.Schema({
   summary     : { type: String },
   experience  : { type: Number, min: 0, max: 60 },
   isFresher   : { type: Boolean, default: false },
+  college     : { type: String, trim: true, default: '' },
   skills      : [{ type: String, lowercase: true, trim: true }],
   resumeUrl   : { type: String },
   linkedinUrl : { type: String },

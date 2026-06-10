@@ -15,6 +15,7 @@ function qs(params = {}) {
 export const dashboardService = {
   // ── Existing dashboard endpoints ─────────────────────────────────────────
   async getColleges()                   { return req('GET', '/dashboard/colleges'); },
+  async getCollegeDirectory(q = '')     { return req('GET', `/dashboard/college-directory${qs({ q: q || undefined })}`); },
   async getDashboardStats(platform)     { return req('GET', `/dashboard/stats${platform ? '?platform=true' : ''}`); },
   async getPipelineHealth()             { return req('GET', '/dashboard/pipeline-health'); },
   async getRecruiterLeaderboard()       { return req('GET', '/dashboard/recruiter-leaderboard'); },

@@ -19,6 +19,7 @@ const email          = require('../utils/email');
 const logger         = require('../middleware/logger');
 const crypto         = require('crypto');
 const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
+const { resolveCollegeName } = require('../utils/collegeDirectory');
 
 const guard = [authMiddleware, tenantGuard];
 
@@ -262,6 +263,8 @@ router.post('/public', asyncHandler(async (req, res) => {
   if (!jobId || !name || !candidateEmail) throw new AppError('jobId, name, and email are required.', 400);
   if (!phone?.trim()) throw new AppError('Mobile number is required.', 400);
 
+  const college = await resolveCollegeName(req.body.college);
+
   const job = await Job.findOne({ _id: jobId, status: 'active', deletedAt: null }).lean();
   if (!job) throw new AppError('Job not found.', 404);
 
@@ -280,6 +283,7 @@ router.post('/public', asyncHandler(async (req, res) => {
       ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
       ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
       ...(isFresher      ? { isFresher: true }                     : {}),
+      ...(college        ? { college }                             : {}),
       ...(availability   ? { availability }                        : {}),
       ...(industry       ? { industry }                            : {}),
       ...(department     ? { department }                          : {}),
@@ -292,6 +296,7 @@ router.post('/public', asyncHandler(async (req, res) => {
     if (!candidate.currentCompany && currentCompany?.trim()) updates.currentCompany = currentCompany.trim();
     if ((candidate.experience == null) && experience !== '' && experience !== undefined) updates.experience = Number(experience);
     if (isFresher && !candidate.isFresher)               updates.isFresher      = true;
+    if (!candidate.college && college)                   updates.college        = college;
     if (!candidate.availability && availability)         updates.availability   = availability;
     if (industry)                                          updates.industry       = industry;
     if (department)                                        updates.department     = department;

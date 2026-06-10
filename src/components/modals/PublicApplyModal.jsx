@@ -8,6 +8,7 @@ import { requestGeolocation } from '../../utils/geolocation.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 import { getCompanyCareerUrl } from '../../utils/url.js';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import CollegeAutocomplete from '../shared/CollegeAutocomplete.jsx';
 
 /* ── Theme tokens for this modal — adapts fields/cards/text to light, dark & ocean themes ── */
 function applyModalTokens(themeId, theme) {
@@ -87,14 +88,14 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
       const u = sessionStorage.getItem('tn_user');
       if (u) {
         const p = JSON.parse(u);
-        return { name: p.name || '', email: p.email || '', phone: p.phone || '', title: p.title || '', currentCompany: p.currentCompany || '', experience: p.experience != null ? String(p.experience) : '', availability: p.availability || '', industry: p.industry || '', department: p.department || '' };
+        return { name: p.name || '', email: p.email || '', phone: p.phone || '', title: p.title || '', currentCompany: p.currentCompany || '', experience: p.experience != null ? String(p.experience) : '', availability: p.availability || '', industry: p.industry || '', department: p.department || '', college: p.college || '' };
       }
     } catch {}
     return { name: '', email: '' };
   })();
 
   const questions = job.screeningQuestions || [];
-  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: prefill.industry || '', department: prefill.department || '', coverLetter: '' });
+  const [form, setForm] = useState({ name: prefill.name, email: prefill.email, phone: prefill.phone || '', title: prefill.title || '', currentCompany: prefill.currentCompany || '', experience: prefill.experience || '', availability: prefill.availability || '', industry: prefill.industry || '', department: prefill.department || '', college: prefill.college || '', coverLetter: '' });
   const [isFresher, setIsFresher] = useState(prefill.experience === '0');
   const [answers, setAnswers] = useState(() => Object.fromEntries(questions.map((_, i) => [i, ''])));
   const [submitting, setSubmitting] = useState(false);
@@ -551,6 +552,14 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
             <MField label="Currently Studying / Recently Graduated From (optional)" value={form.title} placeholder="e.g. B.Tech, XYZ University" t={t}
               onChange={v => handlePrefillFieldChange('title', v)} highlight={isHighlighted('title')} />
           )}
+          <CollegeAutocomplete
+            value={form.college}
+            onChange={v => sf('college', v)}
+            label="College / School Name"
+            labelStyle={{ display: 'block', fontSize: 14, fontWeight: 700, color: t.textHeading, marginBottom: 6 }}
+            inputStyle={{ width: '100%', padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${t.border}`, fontSize: 16, background: t.surfaceBg, color: t.text, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            placeholder="e.g. ABC Institute of Technology"
+          />
           <MSelect label="Notice Period / Availability *" value={form.availability} t={t}
             onChange={v => handlePrefillFieldChange('availability', v)} highlight={isHighlighted('availability')}
             options={[['', 'Select availability…'], ...['immediate','15 days','30 days','45 days','60 days','90 days'].map(a => [a, a])]} />

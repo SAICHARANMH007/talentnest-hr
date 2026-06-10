@@ -21,6 +21,7 @@ const { phoneSearchRegex } = require('../utils/phoneSearch');
 const checkPlanLimits     = require('../middleware/checkPlanLimits');
 const userService = require('../services/user.service');
 const { syncProfile } = require('../utils/syncProfile');
+const { resolveCollegeName } = require('../utils/collegeDirectory');
 const logger       = require('../middleware/logger');
 const bcrypt       = require('bcryptjs');
 const crypto       = require('crypto');
@@ -211,6 +212,9 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
 router.patch('/me', authenticate, asyncHandler(async (req, res) => {
   const forbidden = ['password','role','orgId','email'];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
+  if (typeof update.college === 'string') {
+    update.college = await resolveCollegeName(update.college);
+  }
   if (typeof update.phone === 'string') {
     update.phone = update.phone.replace(/\s+/g, '');
     // Never wipe an existing phone with empty string

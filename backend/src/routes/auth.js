@@ -15,6 +15,7 @@ const { sendEmailWithRetry } = require('../utils/email');
 const asyncHandler = require('../utils/asyncHandler');
 const authService = require('../services/auth.service');
 const AppError = require('../utils/AppError');
+const { resolveCollegeName } = require('../utils/collegeDirectory');
 const logger = require('../middleware/logger');
 const { clearCacheForUser } = require('../middleware/cache');
 const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
@@ -167,6 +168,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
 
       // 2. Create user
       const { title, currentCompany, experience, isFresher, availability, industry, department } = req.body;
+      const college = await resolveCollegeName(req.body.college, session);
       const [user] = await User.create([{
         tenantId: tenant._id,
         name: name.trim(),
@@ -174,6 +176,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         passwordHash: bcrypt.hashSync(password, 12),
         phone: req.body.phone || undefined,
         role,
+        tenantType: tenant.type || '',
         isActive: true,
         orgName: req.body.orgName || req.body.organisation || tenant.name || 'TalentNest HR',
         organisation: req.body.organisation || req.body.orgName || tenant.name || 'TalentNest HR',
@@ -182,6 +185,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
         ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
         ...(isFresher      ? { isFresher: true }                     : {}),
+        ...(college        ? { college }                             : {}),
         ...(availability   ? { availability }                        : {}),
         ...(industry       ? { industry }                            : {}),
         ...(department     ? { department }                          : {}),
@@ -204,6 +208,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             ...(currentCompany ? { currentCompany: currentCompany?.trim() }   : {}),
             ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
             ...(isFresher      ? { isFresher: true }                          : {}),
+            ...(college        ? { college }                                   : {}),
             ...(availability   ? { availability }                              : {}),
             ...(industry       ? { industry }                                  : {}),
             ...(department     ? { department }                                : {}),
@@ -275,6 +280,12 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
     const org = await Organization.findById(user.tenantId).lean() || await Tenant.findById(user.tenantId).lean();
     if (!org) throw new AppError('Organisation not found. Please contact support.', 403);
     authService.checkOrgAccess(org);
+
+    // Backfill tenantType for accounts created before this field existed
+    if (org.type && user.tenantType !== org.type) {
+      user.tenantType = org.type;
+      await User.findByIdAndUpdate(user._id, { $set: { tenantType: org.type } });
+    }
   }
 
   // Reset failed attempts

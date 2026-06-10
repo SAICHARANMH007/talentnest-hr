@@ -33,7 +33,7 @@ const JOB_APPLICANT_POPULATE = {
 const CANDIDATE_APPLICANT_POPULATE = {
   path: 'candidateId',
   select: [
-    'name email phone title currentCompany location preferredLocation skills experience isFresher relevantExperience',
+    'name email phone title currentCompany location preferredLocation skills experience isFresher college relevantExperience',
     'currentCTC expectedCTC availability noticePeriodDays candidateStatus certifications linkedinUrl resumeUrl videoResumeUrl',
     'source tenantId assignedRecruiterId parsedProfile.totalExperienceYears additionalDetails client ta clientSpoc userId createdAt updatedAt',
   ].join(' '),
@@ -314,6 +314,7 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     phone: candidate?.phone || user?.phone || '',
     title: candidate?.title || user?.title || user?.jobRole || '',
     currentCompany: candidate?.currentCompany || user?.currentCompany || '',
+    college: candidate?.college || user?.college || '',
     location: candidate?.location || user?.location || '',
     preferredLocation: candidate?.preferredLocation || user?.preferredLocation || '',
     skills: csv(candidate?.skills?.length ? candidate.skills : user?.skills),
@@ -414,6 +415,40 @@ router.get('/colleges', authenticate, asyncHandler(async (req, res) => {
   const colleges = await Tenant.find({ type: 'college', deletedAt: null })
     .select('name').sort({ name: 1 }).lean();
   res.json({ success: true, data: colleges.map(c => ({ id: String(c._id), name: c.name })) });
+}));
+
+/* GET /api/dashboard/college-directory?q=...
+   Public, unauthenticated directory of known college/school names — used to
+   power autocomplete during candidate registration/profile editing so that
+   "SelfCrops" / "selfcrops " / " SELFCROPS" etc. all resolve to one canonical
+   entry. Merges registered College/Campus tenants with names students have
+   already typed into their profile. New names typed by students are simply
+   stored on their profile (see auth.js / profile routes) and become part of
+   this directory automatically. */
+router.get('/college-directory', asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const [tenantNames, candidateNames] = await Promise.all([
+    Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
+    Candidate.distinct('college', { college: { $exists: true, $ne: '' } }),
+  ]);
+
+  const byKey = new Map();
+  const normalize = (name) => String(name || '').trim().replace(/\s+/g, ' ');
+  const addName = (name) => {
+    const cleaned = normalize(name);
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, cleaned);
+  };
+
+  tenantNames.forEach(t => addName(t.name));
+  candidateNames.forEach(addName);
+
+  let results = [...byKey.values()];
+  if (q) results = results.filter(name => name.toLowerCase().includes(q));
+  results.sort((a, b) => a.localeCompare(b));
+
+  res.json({ success: true, data: results.slice(0, 20) });
 }));
 
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────

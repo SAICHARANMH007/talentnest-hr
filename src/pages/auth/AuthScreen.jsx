@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
+import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -438,6 +439,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [availability, setAvailability] = useState('');
   const [industry, setIndustry]       = useState('');
   const [department, setDepartment]   = useState('');
+  const [college, setCollege]         = useState('');
   const [isFresher, setIsFresher]     = useState(false);
   const [agreed, setAgreed]     = useState(false);
   const [loading, setLoading]   = useState(false);
@@ -578,7 +580,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           return;
         }
       } else {
-        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: isFresher ? 0 : (experience ? Number(experience) : undefined), isFresher, availability, industry: industry || undefined, department: department || undefined });
+        d = await api.register({ name, email, password: pw, role: 'candidate', phone, title, currentCompany, experience: isFresher ? 0 : (experience ? Number(experience) : undefined), isFresher, availability, industry: industry || undefined, department: department || undefined, college: college.trim() || undefined });
       }
       onAuth(d.user, d.token);
       navigate('/app');
@@ -790,6 +792,7 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
                 }} style={{ width: 18, height: 18, minWidth: 18, flexShrink: 0, accentColor: '#10B981' }} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: '#FFFFFF', wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
               </label>
+              <CollegeAutocomplete value={college} onChange={setCollege} inputStyle={INP} />
               {/* Professional details — auto stacks to single column on mobile */}
               {!isFresher && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
