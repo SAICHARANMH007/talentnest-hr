@@ -3,6 +3,7 @@ const express      = require('express');
 const router       = express.Router();
 const Community    = require('../models/Community');
 const User         = require('../models/User');
+const Tenant       = require('../models/Tenant');
 const FeedPost     = require('../models/FeedPost');
 const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
@@ -109,6 +110,55 @@ function roleTitle(role) {
 function extractHashtags(text) {
   const m = (text || '').match(/#[a-zA-Z0-9_]+/g);
   return m ? [...new Set(m.map(h => h.toLowerCase()))] : [];
+}
+
+// ─── College auto-community helpers ──────────────────────────────────────────
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeCollegeName(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function collegeSlug(name) {
+  return String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/** Ensures every active 'college' Tenant has a matching auto-membership Community.
+ * Students/alumni whose User.college matches the tenant's name are automatically
+ * members of this community — no explicit join needed. */
+async function ensureCollegeCommunities(createdBy) {
+  const colleges = await Tenant.find({ type: 'college', deletedAt: null }).select('name').lean();
+  await Promise.all(colleges.map(async (t) => {
+    const name = String(t.name || '').trim().replace(/\s+/g, ' ');
+    if (!name) return;
+    const exists = await Community.findOne({ collegeName: { $regex: '^' + escapeRegex(name) + '$', $options: 'i' } }).select('_id').lean();
+    if (exists) return;
+
+    const baseSlug = collegeSlug(name);
+    let slug = baseSlug;
+    let attempt = 0;
+    while (await Community.exists({ slug })) {
+      attempt++;
+      slug = `${baseSlug}-${attempt}`;
+    }
+
+    await Community.create({
+      tenantId: t._id,
+      name: `${name} Community`,
+      slug,
+      collegeName: name,
+      description: `Official community for ${name} students and alumni — placement updates, opportunities, and discussions.`,
+      icon: '🎓',
+      category: 'other',
+      coverColor: '#0176D3',
+      isGlobal: true,
+      memberIds: [],
+      memberCount: 0,
+      createdBy,
+    }).catch(() => {}); // ignore races (unique slug index)
+  }));
 }
 
 // ─── Default community definitions ───────────────────────────────────────────
@@ -261,6 +311,9 @@ router.get('/', asyncHandler(async (req, res) => {
     )
   );
 
+  // Auto-create one community per College/Campus tenant (e.g. "Sree Vidyanikethan Community")
+  await ensureCollegeCommunities(createdBy);
+
   const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
 
   // Deduplicate by slug — DB may have stale duplicates from before upsert logic was added
@@ -271,11 +324,32 @@ router.get('/', asyncHandler(async (req, res) => {
     return true;
   });
 
-  const data = unique.map(c => ({
-    ...c,
-    isMember: c.memberIds.some(id => String(id) === uid),
-    memberIds: undefined,
-  }));
+  // Students/alumni whose college matches a community's collegeName are automatically
+  // members — no explicit join required. Determine if the requesting user qualifies.
+  const userCollege = normalizeCollegeName(req.user.college);
+
+  // Live headcount for each college community = students whose college matches,
+  // regardless of whether they're in memberIds.
+  const collegeCommunities = unique.filter(c => c.collegeName);
+  const collegeCounts = {};
+  if (collegeCommunities.length) {
+    await Promise.all(collegeCommunities.map(async (c) => {
+      collegeCounts[c.slug] = await User.countDocuments({
+        college: { $regex: '^' + escapeRegex(c.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' },
+        deletedAt: null,
+      });
+    }));
+  }
+
+  const data = unique.map(c => {
+    const isCollegeMember = !!c.collegeName && userCollege && normalizeCollegeName(c.collegeName) === userCollege;
+    return {
+      ...c,
+      isMember: c.memberIds.some(id => String(id) === uid) || isCollegeMember,
+      memberCount: c.collegeName ? Math.max(c.memberCount || 0, collegeCounts[c.slug] || 0) : c.memberCount,
+      memberIds: undefined,
+    };
+  });
 
   res.json({ success: true, data, total: data.length });
 }));
@@ -287,11 +361,25 @@ router.get('/:slug', asyncHandler(async (req, res) => {
   const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
-  // Top 10 members (cross-tenant visible — any user who joined is shown)
-  const memberIds = (community.memberIds || []).slice(0, 10);
-  const members   = await User.find({
-    _id: { $in: memberIds }, deletedAt: null,
-  }).select('name role title avatarUrl photoUrl').lean();
+  let members;
+  let memberCount = community.memberCount || 0;
+  if (community.collegeName) {
+    // College communities: every student/alumnus whose College/School Name matches
+    // is automatically a member, regardless of memberIds.
+    const collegeRegex = { $regex: '^' + escapeRegex(community.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' };
+    const [collegeMembers, collegeCount] = await Promise.all([
+      User.find({ college: collegeRegex, deletedAt: null }).select('name role title avatarUrl photoUrl college').sort({ createdAt: -1 }).limit(10).lean(),
+      User.countDocuments({ college: collegeRegex, deletedAt: null }),
+    ]);
+    members = collegeMembers;
+    memberCount = Math.max(memberCount, collegeCount);
+  } else {
+    // Top 10 members (cross-tenant visible — any user who joined is shown)
+    const memberIds = (community.memberIds || []).slice(0, 10);
+    members = await User.find({
+      _id: { $in: memberIds }, deletedAt: null,
+    }).select('name role title avatarUrl photoUrl').lean();
+  }
 
   // Recent posts count (last 30 days, across all tenants)
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -299,11 +387,15 @@ router.get('/:slug', asyncHandler(async (req, res) => {
     communityId: community._id, isDeleted: false, createdAt: { $gte: since },
   });
 
+  const userCollege = normalizeCollegeName(req.user.college);
+  const isCollegeMember = !!community.collegeName && userCollege && normalizeCollegeName(community.collegeName) === userCollege;
+
   res.json({
     success: true,
     data: {
       ...community,
-      isMember: (community.memberIds || []).some(id => String(id) === uid),
+      isMember: (community.memberIds || []).some(id => String(id) === uid) || isCollegeMember,
+      memberCount,
       topMembers: members,
       recentPostCount,
     },
@@ -424,6 +516,19 @@ router.get('/:slug/members', asyncHandler(async (req, res) => {
 
   const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
+
+  if (community.collegeName) {
+    // College communities: membership is automatic — every student/alumnus
+    // whose College/School Name matches this community is listed.
+    const collegeRegex = { $regex: '^' + escapeRegex(community.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' };
+    const filter = { college: collegeRegex, deletedAt: null };
+    const [members, total] = await Promise.all([
+      User.find(filter).select('name role title avatarUrl photoUrl location department college')
+        .sort({ createdAt: -1 }).skip(skip).limit(lim).lean(),
+      User.countDocuments(filter),
+    ]);
+    return res.json({ success: true, data: members, total, hasMore: skip + members.length < total });
+  }
 
   const memberIds = (community.memberIds || []);
   const paginated = memberIds.slice(skip, skip + lim);

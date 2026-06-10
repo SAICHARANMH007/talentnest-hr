@@ -657,6 +657,74 @@ router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandle
   res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
 }));
 
+/* POST /api/dashboard/college/students/import — bulk-create real Candidate records
+   for this college from a spreadsheet, after the placement officer has manually
+   mapped spreadsheet columns to candidate fields on the frontend. Each row in
+   `req.body.candidates` is already a mapped object, e.g.
+   { name, email, phone, title, currentCompany, location, skills, experience,
+     isFresher, educationList: [{institution,degree,field,year,grade}], certifications }
+   The college's own name is always used as `college` so the new candidates are
+   immediately visible in this placement officer's portal and college community. */
+router.post('/college/students/import', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const rows = Array.isArray(req.body.candidates) ? req.body.candidates : [];
+  if (!rows.length) throw new AppError('No candidate rows provided.', 400);
+  if (rows.length > 1000) throw new AppError('A maximum of 1000 candidates can be imported at once.', 400);
+
+  const emails = rows.map(r => String(r.email || '').toLowerCase().trim()).filter(Boolean);
+  const existing = await Candidate.find({ email: { $in: emails }, deletedAt: null }).select('email').lean();
+  const existingEmails = new Set(existing.map(c => c.email));
+
+  let created = 0;
+  let skipped = 0;
+  const errors = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const name  = String(row.name || '').trim();
+    const email = String(row.email || '').toLowerCase().trim();
+
+    if (!name || !email) {
+      skipped++;
+      errors.push({ row: i + 1, reason: 'Missing name or email.' });
+      continue;
+    }
+    if (existingEmails.has(email)) {
+      skipped++;
+      errors.push({ row: i + 1, reason: `Candidate with email ${email} already exists.` });
+      continue;
+    }
+
+    const educationList = Array.isArray(row.educationList) && row.educationList.length
+      ? JSON.stringify(row.educationList.filter(e => e && (e.institution || e.degree || e.year)))
+      : undefined;
+
+    await Candidate.create({
+      tenantId: req.user.tenantId,
+      name,
+      email,
+      phone: row.phone ? String(row.phone).trim() : undefined,
+      college: college.name,
+      title: row.title ? String(row.title).trim() : undefined,
+      skills: Array.isArray(row.skills) ? row.skills.filter(Boolean) : (row.skills ? String(row.skills).split(',').map(s => s.trim()).filter(Boolean) : []),
+      experience: row.experience !== undefined && row.experience !== '' ? Number(row.experience) || 0 : undefined,
+      isFresher: row.isFresher !== undefined ? !!row.isFresher : true,
+      location: row.location ? String(row.location).trim() : undefined,
+      currentCompany: row.currentCompany ? String(row.currentCompany).trim() : undefined,
+      certifications: row.certifications ? String(row.certifications).trim() : undefined,
+      ...(educationList ? { educationList } : {}),
+      source: 'bulk_import',
+      addedBy: req.user._id || req.user.id,
+    });
+    existingEmails.add(email);
+    created++;
+  }
+
+  res.json({ success: true, created, skipped, errors });
+}));
+
 /* GET /api/dashboard/college-groups — super admin view of all "college groups".
    Every candidate is grouped by their College/School Name (or, if that's blank,
    by the institution from their latest education entry) so the platform admin

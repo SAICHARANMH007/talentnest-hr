@@ -9,6 +9,7 @@ const User = require('../models/User');
 const Candidate = require('../models/Candidate');
 const Tenant = require('../models/Tenant');
 const Organization = require('../models/Organization');
+const Community = require('../models/Community');
 const RefreshToken = require('../models/RefreshToken');
 const { authMiddleware, authenticate } = require('../middleware/auth');
 const { sendEmailWithRetry } = require('../utils/email');
@@ -164,6 +165,32 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             subscriptionStatus: 'active',
             subscriptionExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           }], { session });
+
+        // Auto-create a college community so students/alumni who list this college
+        // automatically appear in its group — no explicit join required.
+        if (tenant.type === 'college') {
+          const collegeNameNorm = tenant.name.trim().replace(/\s+/g, ' ');
+          const baseSlug = slugify(collegeNameNorm);
+          let commSlug = baseSlug;
+          let attempt = 0;
+          while (await Community.exists({ slug: commSlug }).session(session)) {
+            attempt++;
+            commSlug = `${baseSlug}-${attempt}`;
+          }
+          await Community.create([{
+            tenantId: tenant._id,
+            name: `${collegeNameNorm} Community`,
+            slug: commSlug,
+            collegeName: collegeNameNorm,
+            description: `Official community for ${collegeNameNorm} students and alumni — placement updates, opportunities, and discussions.`,
+            icon: '🎓',
+            category: 'other',
+            coverColor: '#0176D3',
+            isGlobal: true,
+            memberIds: [],
+            memberCount: 0,
+          }], { session });
+        }
       }
 
       // 2. Create user

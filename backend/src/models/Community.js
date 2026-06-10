@@ -10,6 +10,10 @@ const communitySchema = new Schema({
   icon        : { type: String, default: '💬' },
   coverColor  : { type: String, default: '#0176D3' },
   category    : { type: String, enum: ['tech', 'hr', 'business', 'design', 'other'], default: 'other' },
+  // Set for auto-generated college/campus communities (matches Tenant.name of a
+  // type='college' tenant). Students/alumni whose User.college matches this
+  // (case/whitespace-insensitive) are automatically members — no join required.
+  collegeName : { type: String, trim: true, default: '' },
   memberIds   : [{ type: Types.ObjectId, ref: 'User' }],
   memberCount : { type: Number, default: 0 },
   isGlobal    : { type: Boolean, default: false }, // visible to all tenants
