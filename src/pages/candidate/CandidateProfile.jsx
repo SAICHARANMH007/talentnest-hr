@@ -222,7 +222,7 @@ export default function CandidateProfile({ user }) {
   const [form, setForm] = useState({
     name:'', email:'', phone:'', title:'', location:'', linkedinUrl:'', github:'', portfolio:'',
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
-    experience:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
+    experience:'', isFresher:false, currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
     source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'',
   });
@@ -241,6 +241,7 @@ export default function CandidateProfile({ user }) {
           summary: d.summary||'', skills: Array.isArray(d.skills) ? d.skills.join(', ') : (d.skills||''),
           languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages||''),
           industry: d.industry||'', department: d.department||'', experience: d.experience != null ? String(d.experience) : '',
+          isFresher: !!d.isFresher,
           currentCompany: d.currentCompany||'', culture: d.culture||'',
           projects: d.projects||'', achievements: d.achievements||'', volunteering: d.volunteering||'',
           relevantExperience: d.relevantExperience||'', preferredLocation: d.preferredLocation||'',
@@ -292,7 +293,7 @@ export default function CandidateProfile({ user }) {
         ...form,
         phone: (form.phone || '').replace(/\s+/g, ''),
         skills, languages,
-        experience: parseInt(form.experience) || 0,
+        experience: form.isFresher ? 0 : (parseInt(form.experience) || 0),
         workHistory: JSON.stringify(workHistory),
         educationList: JSON.stringify(eduList),
         certifications: JSON.stringify(certList),
@@ -420,8 +421,20 @@ export default function CandidateProfile({ user }) {
 
           <Section title="💼 CURRENT ROLE">
             <div className="form-grid-2">
-              <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
-              <Field label="Current Company" value={form.currentCompany} onChange={v=>sf('currentCompany',v)} placeholder="Acme Corp"/>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: '1 / -1', padding: '8px 10px', borderRadius: 8, border: `1px solid ${form.isFresher ? '#10B981' : '#D1D5DB'}`, background: form.isFresher ? 'rgba(16,185,129,0.08)' : '#fff', cursor: 'pointer', width: 'fit-content' }}>
+                <input type="checkbox" checked={form.isFresher} onChange={e => {
+                  const checked = e.target.checked;
+                  setForm(p => ({ ...p, isFresher: checked, experience: checked ? '0' : p.experience }));
+                }} style={{ width: 16, height: 16, accentColor: '#10B981' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>I'm a fresher (no work experience yet)</span>
+              </label>
+              {!form.isFresher && (
+                <Field label="Job Title / Designation" value={form.title} onChange={v=>sf('title',v)} placeholder="Senior Software Engineer"/>
+              )}
+              {!form.isFresher && (
+                <Field label="Current Company" value={form.currentCompany} onChange={v=>sf('currentCompany',v)} placeholder="Acme Corp"/>
+              )}
+              {!form.isFresher && (
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>TOTAL EXPERIENCE</label>
                 <select value={form.experience} onChange={e=>sf('experience',e.target.value)} style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #D1D5DB', fontSize:13, background:'#fff' }}>
@@ -430,6 +443,7 @@ export default function CandidateProfile({ user }) {
                   {[1,2,3,4,5,6,7,8,9,10,12,15,18,20,25,30].map(y => <option key={y} value={String(y)}>{y} year{y>1?'s':''}</option>)}
                 </select>
               </div>
+              )}
               <Field label="Relevant Experience" value={form.relevantExperience} onChange={v=>sf('relevantExperience',v)} placeholder="4 years Java / 3 years AWS"/>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:'#706E6B', display:'block', marginBottom:4 }}>INDUSTRY *</label>

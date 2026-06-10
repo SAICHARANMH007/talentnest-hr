@@ -32,7 +32,7 @@ const JOB_APPLICANT_POPULATE = {
 const CANDIDATE_APPLICANT_POPULATE = {
   path: 'candidateId',
   select: [
-    'name email phone title currentCompany location preferredLocation skills experience relevantExperience',
+    'name email phone title currentCompany location preferredLocation skills experience isFresher relevantExperience',
     'currentCTC expectedCTC availability noticePeriodDays candidateStatus certifications linkedinUrl resumeUrl videoResumeUrl',
     'source tenantId assignedRecruiterId parsedProfile.totalExperienceYears additionalDetails client ta clientSpoc userId createdAt updatedAt',
   ].join(' '),
@@ -311,6 +311,7 @@ function profileRow({ candidate = {}, user = {}, app = null, job = null, orgName
     preferredLocation: candidate?.preferredLocation || user?.preferredLocation || '',
     skills: csv(candidate?.skills?.length ? candidate.skills : user?.skills),
     experience: candidate?.experience ?? user?.experience ?? parsed.totalExperienceYears ?? '',
+    isFresher: candidate?.isFresher ?? user?.isFresher ?? false,
     relevantExperience: candidate?.relevantExperience || user?.relevantExperience || '',
     currentCTC: candidate?.currentCTC || user?.currentCTC || '',
     expectedCTC: candidate?.expectedCTC || user?.expectedCTC || '',

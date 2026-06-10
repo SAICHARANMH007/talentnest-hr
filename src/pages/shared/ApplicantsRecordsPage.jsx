@@ -552,7 +552,7 @@ export default function ApplicantsRecordsPage({ user }) {
                       {/* Profile — experience + skills + CTC */}
                       <td style={{ padding: '11px 12px' }}>
                         <div style={{ fontSize: 12, color: '#374151' }}>
-                          {r.experience != null && r.experience !== '' ? `${r.experience} yr${Number(r.experience) === 1 ? '' : 's'} exp` : '—'}
+                          {r.isFresher ? 'Fresher' : (r.experience != null && r.experience !== '' ? `${r.experience} yr${Number(r.experience) === 1 ? '' : 's'} exp` : '—')}
                           {r.availability ? ` · ${r.availability}` : ''}
                         </div>
                         {(r.currentCTC || r.expectedCTC) && (
@@ -705,7 +705,7 @@ export default function ApplicantsRecordsPage({ user }) {
                     {[
                       { label: 'Email', value: r.email },
                       { label: 'Phone', value: r.phone },
-                      { label: 'Experience', value: r.experience != null ? `${r.experience} yrs` : null },
+                      { label: 'Experience', value: r.isFresher ? 'Fresher' : (r.experience != null ? `${r.experience} yrs` : null) },
                       { label: 'Availability', value: r.availability },
                       { label: 'Current CTC', value: r.currentCTC },
                       { label: 'Expected CTC', value: r.expectedCTC },
