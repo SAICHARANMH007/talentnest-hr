@@ -17,13 +17,14 @@ async function syncProfile(email, updates, tenantId) {
 
   // Fields that represent the professional identity and HR status
   const SYNCABLE_FIELDS = [
-    'name', 'phone', 'location', 'title', 'summary', 'skills', 
+    'name', 'phone', 'location', 'title', 'summary', 'skills',
     'experience', 'isFresher', 'college', 'linkedinUrl', 'resumeUrl', 'videoResumeUrl',
     'currentCompany', 'currentCTC', 'expectedCTC', 'relevantExperience',
-    'preferredLocation', 'availability', 'noticePeriodDays', 
-    'candidateStatus', 'certifications', 'client', 'ta', 
+    'preferredLocation', 'availability', 'noticePeriodDays',
+    'candidateStatus', 'certifications', 'client', 'ta',
     'clientSpoc', 'additionalDetails', 'orgName', 'organisation',
-    'assignedRecruiterId', 'industry', 'department'
+    'assignedRecruiterId', 'industry', 'department',
+    'educationList', 'workHistory'
   ];
 
   const payload = {};

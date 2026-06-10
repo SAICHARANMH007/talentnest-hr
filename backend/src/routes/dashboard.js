@@ -481,6 +481,22 @@ function getLatestEducation(education) {
   return latest;
 }
 
+/** Some older candidate records have an empty Candidate.educationList even
+ * though the person filled in their education on their User profile (a past
+ * sync gap). This builds a map of email -> educationList JSON string, falling
+ * back to the User collection wherever the candidate's own value is empty. */
+async function getEducationFallbackMap(candidates) {
+  const emails = candidates
+    .filter(c => !parseJsonArray(c.educationList).length && c.email)
+    .map(c => c.email.toLowerCase().trim());
+  if (!emails.length) return new Map();
+
+  const users = await User.find({ email: { $in: emails }, educationList: { $exists: true, $ne: '' } })
+    .select('email educationList college').lean();
+
+  return new Map(users.map(u => [u.email.toLowerCase().trim(), u]));
+}
+
 /** Builds a case/whitespace-insensitive exact-match regex for the calling
  * college admin's tenant name, used to find students/applications that
  * entered this college as their "College / School Name". Returns null if
@@ -499,23 +515,276 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
   const candFilter = { college: college.regex, deletedAt: null };
-  const candidateIds = await Candidate.find(candFilter).distinct('_id');
-  const [totalStudents, totalApplications, totalPlacements] = await Promise.all([
-    candidateIds.length,
+  const currentYear = new Date().getFullYear();
+
+  const students = await Candidate.find(candFilter)
+    .select('name email educationList isFresher createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const eduFallback = await getEducationFallbackMap(students);
+  const candidateIds = students.map(s => s._id);
+
+  const [totalApplications, totalPlacements, upcomingInterviews] = await Promise.all([
     Application.countDocuments({ candidateId: { $in: candidateIds }, deletedAt: null }),
     Application.countDocuments({ candidateId: { $in: candidateIds }, currentStage: 'Hired', deletedAt: null }),
+    Application.countDocuments({
+      candidateId: { $in: candidateIds }, deletedAt: null,
+      'interviewRounds.scheduledAt': { $gte: new Date() },
+    }),
   ]);
+
+  // ── Department & batch (passing year) breakdown ──────────────────────────
+  const deptCounts  = new Map();
+  const yearCounts  = new Map();
+  let currentCount  = 0;
+  let alumniCount   = 0;
+
+  students.forEach(s => {
+    let education = parseJsonArray(s.educationList);
+    if (!education.length && s.email) {
+      const fb = eduFallback.get(s.email.toLowerCase().trim());
+      if (fb) education = parseJsonArray(fb.educationList);
+    }
+    const latest = getLatestEducation(education);
+    const dept = (latest?.degree || latest?.field || 'Unspecified').trim() || 'Unspecified';
+    deptCounts.set(dept, (deptCounts.get(dept) || 0) + 1);
+
+    const year = parseInt(latest?.year, 10);
+    if (Number.isFinite(year)) {
+      yearCounts.set(year, (yearCounts.get(year) || 0) + 1);
+      if (year >= currentYear) currentCount++; else alumniCount++;
+    } else if (s.isFresher) {
+      currentCount++;
+    } else {
+      alumniCount++;
+    }
+  });
+
+  const departmentBreakdown = [...deptCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const yearBreakdown = [...yearCounts.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => a.year - b.year);
+
+  // ── Recent placements (last 5 hires) with company & role ─────────────────
+  const recentPlacementsRaw = await Application.aggregate([
+    { $match: { candidateId: { $in: candidateIds }, currentStage: 'Hired', deletedAt: null } },
+    { $sort: { updatedAt: -1 } },
+    { $limit: 5 },
+    { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
+    { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
+    { $lookup: { from: 'candidates', localField: 'candidateId', foreignField: '_id', as: 'candidate' } },
+    { $unwind: { path: '$candidate', preserveNullAndEmptyArrays: true } },
+    { $project: {
+        studentName: '$candidate.name',
+        jobTitle: '$job.title',
+        company: { $ifNull: ['$job.companyName', '$job.company'] },
+        placedAt: '$updatedAt',
+    } },
+  ]);
+
+  // ── Top hiring companies (all-time, this college's students) ─────────────
+  const allPlacements = await Application.aggregate([
+    { $match: { candidateId: { $in: candidateIds }, currentStage: 'Hired', deletedAt: null } },
+    { $lookup: { from: 'jobs', localField: 'jobId', foreignField: '_id', as: 'job' } },
+    { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
+    { $project: { company: { $ifNull: ['$job.companyName', '$job.company'] } } },
+  ]);
+  const companyCounts = new Map();
+  allPlacements.forEach(p => {
+    const c = (p.company || '').trim();
+    if (!c) return;
+    companyCounts.set(c, (companyCounts.get(c) || 0) + 1);
+  });
+  const topCompanies = [...companyCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const recentStudents = students.slice(0, 5).map(s => ({
+    name: s.name || '',
+    email: s.email || '',
+    joinedAt: s.createdAt,
+  }));
 
   res.json({
     success: true,
     data: {
       collegeName: college.name,
-      totalStudents,
+      totalStudents: students.length,
+      currentStudents: currentCount,
+      alumniCount,
       totalApplications,
       totalPlacements,
-      placementRate: totalStudents > 0 ? Math.round((totalPlacements / totalStudents) * 1000) / 10 : 0,
+      upcomingInterviews,
+      placementRate: students.length > 0 ? Math.round((totalPlacements / students.length) * 1000) / 10 : 0,
+      departmentBreakdown,
+      yearBreakdown,
+      topCompanies,
+      recentPlacements: recentPlacementsRaw.map(p => ({
+        studentName: p.studentName || '',
+        jobTitle: p.jobTitle || '',
+        company: p.company || '',
+        placedAt: p.placedAt,
+      })),
+      recentStudents,
     },
   });
+}));
+
+/* POST /api/dashboard/college/announcements — broadcast a notification to every
+   student/alumnus registered under this college. Used by the placement officer
+   to share drive updates, deadlines, and important notices in real time. */
+router.post('/college/announcements', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const title   = String(req.body.title || '').trim();
+  const message = String(req.body.message || '').trim();
+  const link    = req.body.link ? String(req.body.link).trim() : '/app/feed';
+  if (!title || !message) throw new AppError('Title and message are required.', 400);
+
+  const Notification = require('../models/Notification');
+
+  const students = await User.find({ college: college.regex, deletedAt: null }).select('_id tenantId').lean();
+  if (!students.length) {
+    return res.json({ success: true, recipients: 0, message: 'No registered students found for this college yet.' });
+  }
+
+  await Notification.insertMany(students.map(s => ({
+    userId: s._id,
+    tenantId: s.tenantId,
+    type: 'system',
+    title,
+    message,
+    link,
+    metadata: { kind: 'college_announcement', collegeName: college.name },
+  })));
+
+  res.json({ success: true, recipients: students.length });
+}));
+
+/* GET /api/dashboard/college/students/export — download full student roster as Excel */
+router.get('/college/students/export', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const students = await Candidate.find({ college: college.regex, deletedAt: null })
+    .select('name email phone title experience isFresher skills currentCompany location educationList createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const eduFallback = await getEducationFallbackMap(students);
+  const currentYear = new Date().getFullYear();
+  const rows = students.map(s => {
+    let education = parseJsonArray(s.educationList);
+    if (!education.length && s.email) {
+      const fb = eduFallback.get(s.email.toLowerCase().trim());
+      if (fb) education = parseJsonArray(fb.educationList);
+    }
+    const latest = getLatestEducation(education);
+    const passingYear = parseInt(latest?.year, 10);
+    const studentType = Number.isFinite(passingYear)
+      ? (passingYear >= currentYear ? 'Student' : 'Alumni')
+      : (s.isFresher ? 'Student' : 'Alumni');
+
+    return {
+      name: s.name || '',
+      email: s.email || '',
+      phone: s.phone || '',
+      type: studentType,
+      degree: latest?.degree || '',
+      institution: latest?.institution || '',
+      year: latest?.year || '',
+      grade: latest?.grade || '',
+      skills: (s.skills || []).join(', '),
+      currentCompany: s.currentCompany || '',
+      location: s.location || '',
+      joinedAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '',
+    };
+  });
+
+  const buffer = exportToExcel('Students', [
+    { header: 'Name', key: 'name', width: 24 },
+    { header: 'Email', key: 'email', width: 28 },
+    { header: 'Phone', key: 'phone', width: 16 },
+    { header: 'Type', key: 'type', width: 10 },
+    { header: 'Degree', key: 'degree', width: 16 },
+    { header: 'Institution', key: 'institution', width: 28 },
+    { header: 'Passing Year', key: 'year', width: 12 },
+    { header: 'CGPA / Grade', key: 'grade', width: 12 },
+    { header: 'Skills', key: 'skills', width: 32 },
+    { header: 'Current Company', key: 'currentCompany', width: 22 },
+    { header: 'Location', key: 'location', width: 18 },
+    { header: 'Joined Platform', key: 'joinedAt', width: 14 },
+  ], rows);
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${college.name.replace(/[^a-z0-9]+/gi, '_')}_students.xlsx"`);
+  res.send(buffer);
+}));
+
+/* GET /api/dashboard/college/drives — active job openings on the platform that
+   this college's placement officer can promote to their students. */
+router.get('/college/drives', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const jobs = await Job.find({ status: 'active', isPublic: true, deletedAt: null })
+    .select('title companyName company location jobType experience skills salaryMin salaryMax salaryCurrency createdAt')
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+  const data = jobs.map(j => ({
+    id: String(j._id),
+    title: j.title || '',
+    company: j.companyName || j.company || '',
+    location: j.location || '',
+    jobType: j.jobType || '',
+    experience: j.experience || '',
+    skills: j.skills || [],
+    salaryMin: j.salaryMin ?? null,
+    salaryMax: j.salaryMax ?? null,
+    salaryCurrency: j.salaryCurrency || 'INR',
+    postedAt: j.createdAt,
+  }));
+
+  res.json({ success: true, data });
+}));
+
+/* POST /api/dashboard/college/drives/:jobId/notify — notify all students of this
+   college about a specific job opening. */
+router.post('/college/drives/:jobId/notify', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const job = await Job.findOne({ _id: req.params.jobId, status: 'active', isPublic: true, deletedAt: null })
+    .select('title companyName company').lean();
+  if (!job) throw new AppError('Job opening not found or no longer active.', 404);
+
+  const Notification = require('../models/Notification');
+  const students = await User.find({ college: college.regex, deletedAt: null }).select('_id tenantId').lean();
+  if (!students.length) {
+    return res.json({ success: true, recipients: 0, message: 'No registered students found for this college yet.' });
+  }
+
+  const company = job.companyName || job.company || 'A company';
+  await Notification.insertMany(students.map(s => ({
+    userId: s._id,
+    tenantId: s.tenantId,
+    type: 'system',
+    title: `New opportunity: ${job.title}`,
+    message: `${company} is hiring for "${job.title}". Your placement office shared this opportunity — check it out and apply!`,
+    link: `/app/smart-match`,
+    metadata: { kind: 'college_drive_notify', jobId: String(job._id) },
+  })));
+
+  res.json({ success: true, recipients: students.length });
 }));
 
 /* GET /api/dashboard/college/students — students who registered with this college name */
@@ -734,7 +1003,7 @@ router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHand
   const currentYear = new Date().getFullYear();
 
   const [candidates, tenants] = await Promise.all([
-    Candidate.find({ deletedAt: null }).select('college educationList isFresher').lean(),
+    Candidate.find({ deletedAt: null }).select('email college educationList isFresher').lean(),
     Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
   ]);
 
@@ -742,13 +1011,21 @@ router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHand
     tenants.map(t => String(t.name || '').trim().replace(/\s+/g, ' ').toLowerCase())
   );
 
+  const fallback = await getEducationFallbackMap(candidates);
+
   const groups = new Map();
   let incompleteProfiles = 0;
 
   for (const c of candidates) {
-    const education = parseJsonArray(c.educationList);
+    let education = parseJsonArray(c.educationList);
     let collegeName = String(c.college || '').trim().replace(/\s+/g, ' ');
     let derivedFromEducation = false;
+
+    const fb = !collegeName && c.email ? fallback.get(c.email.toLowerCase().trim()) : null;
+    if (fb) {
+      if (!collegeName && fb.college) collegeName = String(fb.college).trim().replace(/\s+/g, ' ');
+      if (!education.length) education = parseJsonArray(fb.educationList);
+    }
 
     if (!collegeName) {
       const latest = getLatestEducation(education);

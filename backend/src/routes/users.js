@@ -241,8 +241,25 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
 router.patch('/me', authenticate, asyncHandler(async (req, res) => {
   const forbidden = ['password','role','orgId','email'];
   const update = Object.fromEntries(Object.entries(req.body).filter(([k]) => !forbidden.includes(k)));
-  if (typeof update.college === 'string') {
+  if (typeof update.college === 'string' && update.college.trim()) {
     update.college = await resolveCollegeName(update.college);
+  } else if (typeof update.educationList === 'string') {
+    // If the user hasn't set a College/School Name yet, derive one from their
+    // most recent education entry so they're grouped into the right college community.
+    const me = await User.findById(req.user._id || req.user.id).select('college').lean();
+    if (!me?.college) {
+      try {
+        const edu = JSON.parse(update.educationList);
+        let latest = null;
+        (Array.isArray(edu) ? edu : []).forEach(e => {
+          const y = parseInt(e?.year, 10);
+          if (!latest || (Number.isFinite(y) && y > (parseInt(latest?.year, 10) || -Infinity))) latest = e;
+        });
+        if (latest?.institution) {
+          update.college = await resolveCollegeName(String(latest.institution).trim());
+        }
+      } catch {}
+    }
   }
   if (typeof update.phone === 'string') {
     update.phone = update.phone.replace(/\s+/g, '');

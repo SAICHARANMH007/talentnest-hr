@@ -328,6 +328,7 @@ router.post('/upload-resume', ...guard,
           cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
           api_key   : process.env.CLOUDINARY_API_KEY,
           api_secret: process.env.CLOUDINARY_API_SECRET,
+          signature_algorithm: 'sha256',
         });
         const uploadResult = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
@@ -439,7 +440,7 @@ router.post('/upload-my-resume', authMiddleware, tenantGuard, upload.single('res
   let resumeUrl = '';
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
     const cloudinary = require('cloudinary').v2;
-    cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+    cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET, signature_algorithm: 'sha256' });
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         { resource_type: 'raw', folder: 'talentnest/resumes', format: 'pdf', public_id: `resume_${req.user._id || req.user.id}` },

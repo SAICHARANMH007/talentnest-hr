@@ -122,6 +122,7 @@ function extractCompanyName(url) {
 }
 
 export default function OrgSettings({ user }) {
+  const isCollege = user?.tenantType === 'college';
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -159,6 +160,11 @@ export default function OrgSettings({ user }) {
   const [brandForm, setBrandForm] = useState({ tagline: '', about: '', culture: '', mission: '', website: '', linkedIn: '', twitter: '', instagram: '', bannerImageUrl: '', perks: [], testimonials: [], techStack: [], accentColor: '#0176D3' });
   const [savingBrand, setSavingBrand] = useState(false);
 
+  // College Profile (departments + about)
+  const [departments, setDepartments] = useState([]);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [savingDept, setSavingDept] = useState(false);
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
@@ -186,10 +192,11 @@ export default function OrgSettings({ user }) {
         const tr = await api.getPipelineTemplates();
         if (tr?.data) setTemplates(tr.data);
       } catch {}
-      // Load employer brand
+      // Load employer brand / college profile
       try {
         const cr = await api.getCustomizations();
         if (cr?.data?.employerBrand) setBrandForm(prev => ({ ...prev, ...cr.data.employerBrand }));
+        if (cr?.data?.departments) setDepartments(cr.data.departments);
       } catch {}
       // Load team members for org chart (admins + recruiters in this org)
       try {
@@ -251,10 +258,30 @@ export default function OrgSettings({ user }) {
     setSavingBrand(true);
     try {
       await api.updateCustomizationsSingleton({ employerBrand: brandForm });
-      setSuccess('Employer brand saved!');
+      setSuccess(isCollege ? 'College profile saved!' : 'Employer brand saved!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (e) { setError(e.message); }
     setSavingBrand(false);
+  };
+
+  const addDepartment = async () => {
+    const name = newDeptName.trim();
+    if (!name) return;
+    setSavingDept(true);
+    try {
+      const r = await api.addCustomizationItem('departments', { name });
+      setDepartments(prev => [...prev, r?.data || { name }]);
+      setNewDeptName('');
+    } catch (e) { setError(e.message); }
+    setSavingDept(false);
+  };
+
+  const removeDepartment = async (id) => {
+    if (!id) return;
+    try {
+      await api.deleteCustomizationItem('departments', id);
+      setDepartments(prev => prev.filter(d => d._id !== id));
+    } catch (e) { setError(e.message); }
   };
 
   const addStage = () => {
@@ -419,7 +446,7 @@ export default function OrgSettings({ user }) {
           </FormRow>
         </div>
 
-        <div style={glass}>
+        {!isCollege && <div style={glass}>
           <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Pipeline Stages</h3>
           <p style={{ color: '#9E9D9B', fontSize: 12, marginBottom: 16 }}>Customise the hiring stages for your organisation. Order matters. Use arrows to reorder.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -439,10 +466,10 @@ export default function OrgSettings({ user }) {
             <Field style={{ flex: 1 }} value={newStage} onChange={setNewStage} placeholder="Add custom stage…" />
             <button onClick={addStage} style={{ background: 'rgba(1,118,211,0.2)', border: '1px solid rgba(1,118,211,0.4)', borderRadius: 10, color: '#0176D3', fontWeight: 700, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>+ Add</button>
           </div>
-        </div>
+        </div>}
 
         {/* Pipeline Templates */}
-        <div style={glass}>
+        {!isCollege && <div style={glass}>
           <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>📋 Pipeline Templates</h3>
           <p style={{ color: '#9E9D9B', fontSize: 12, marginBottom: 16 }}>Apply a preset or your saved templates to instantly update the pipeline stages above.</p>
 
@@ -486,7 +513,7 @@ export default function OrgSettings({ user }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Email Settings — fully editable + live preview */}
         <div style={glass}>
@@ -618,7 +645,7 @@ export default function OrgSettings({ user }) {
         </button>
 
         {/* ── EMPLOYER BRAND SECTION ──────────────────────────────────────── */}
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: '24px 28px', marginTop: 8 }}>
+        {!isCollege && <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: '24px 28px', marginTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111827' }}>🏢 Employer Brand Page</h3>
@@ -670,11 +697,82 @@ export default function OrgSettings({ user }) {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
+
+        {/* ── COLLEGE PROFILE SECTION ─────────────────────────────────────── */}
+        {isCollege && <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: '24px 28px', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111827' }}>🎓 College Profile</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Tell students and recruiters about your college — shown across the platform.</p>
+            </div>
+            <button onClick={saveBrand} disabled={savingBrand} style={{ background: '#7C3AED', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, padding: '9px 20px', cursor: 'pointer', opacity: savingBrand ? 0.7 : 1 }}>
+              {savingBrand ? 'Saving…' : 'Save Profile'}
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            <div>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Tagline</label>
+              <input value={brandForm.tagline} onChange={e => setBrandForm(p => ({ ...p, tagline: e.target.value }))} placeholder="Shaping tomorrow's leaders" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Accent Color</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="color" value={brandForm.accentColor} onChange={e => setBrandForm(p => ({ ...p, accentColor: e.target.value }))} style={{ width: 40, height: 34, borderRadius: 8, border: '1px solid #E2E8F0', cursor: 'pointer', padding: 2 }} />
+                <input value={brandForm.accentColor} onChange={e => setBrandForm(p => ({ ...p, accentColor: e.target.value }))} style={{ flex: 1, padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+              </div>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>About the College</label>
+              <textarea value={brandForm.about} onChange={e => setBrandForm(p => ({ ...p, about: e.target.value }))} rows={3} placeholder="Brief description of your college, history, accreditation…" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical' }} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Campus Life & Culture</label>
+              <textarea value={brandForm.culture} onChange={e => setBrandForm(p => ({ ...p, culture: e.target.value }))} rows={2} placeholder="Clubs, events, hostel life, placements support…" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', resize: 'vertical' }} />
+            </div>
+            <div><label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Website</label><input value={brandForm.website} onChange={e => setBrandForm(p => ({ ...p, website: e.target.value }))} placeholder="https://yourcollege.edu" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} /></div>
+            <div><label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>LinkedIn</label><input value={brandForm.linkedIn} onChange={e => setBrandForm(p => ({ ...p, linkedIn: e.target.value }))} placeholder="https://linkedin.com/school/..." style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} /></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Banner Image URL (optional)</label>
+              <input value={brandForm.bannerImageUrl} onChange={e => setBrandForm(p => ({ ...p, bannerImageUrl: e.target.value }))} placeholder="https://cdn.yoursite.com/campus-banner.jpg" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+            </div>
+          </div>
+
+          {/* Departments */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <label style={{ color: '#374151', fontSize: 12, fontWeight: 700 }}>Departments / Branches</label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input
+                value={newDeptName}
+                onChange={e => setNewDeptName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addDepartment(); }}
+                placeholder="e.g. Computer Science & Engineering"
+                style={{ flex: 1, padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none' }}
+              />
+              <button onClick={addDepartment} disabled={savingDept || !newDeptName.trim()} style={{ background: '#0176D3', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, padding: '9px 18px', cursor: 'pointer', opacity: (savingDept || !newDeptName.trim()) ? 0.6 : 1 }}>
+                {savingDept ? 'Adding…' : '+ Add'}
+              </button>
+            </div>
+            {departments.length === 0 ? (
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>No departments added yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {departments.map(d => (
+                  <div key={d._id || d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 8px 6px 14px', fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                    {d.name}
+                    <button onClick={() => removeDepartment(d._id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>}
       </div>
 
       {/* ── JOB WIDGET EMBED ────────────────────────────────────────────── */}
-      {org?.slug && (() => {
+      {!isCollege && org?.slug && (() => {
         const SITE = (typeof window !== 'undefined' ? window.location.origin : 'https://www.talentnesthr.com');
         const careerUrl = `${SITE}/careers/${org.slug}`;
         const iframeSnippet = `<iframe\n  src="${careerUrl}?embed=1"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="${org.name || 'Open Positions'} — Careers"\n  style="border:none;border-radius:12px;"\n  allow="geolocation"\n></iframe>`;

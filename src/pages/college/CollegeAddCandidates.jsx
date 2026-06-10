@@ -29,6 +29,8 @@ const TARGET_FIELDS = [
 
 const NONE = '__none__';
 
+const EMPTY_MANUAL = TARGET_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {});
+
 export default function CollegeAddCandidates({ user }) {
   const [step, setStep] = useState(1); // 1: upload, 2: map & preview, 3: result
   const [fileName, setFileName] = useState('');
@@ -40,6 +42,11 @@ export default function CollegeAddCandidates({ user }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const fileRef = useRef();
+
+  // Manual single-candidate add
+  const [showManual, setShowManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ ...EMPTY_MANUAL, isFresher: true });
+  const [savingManual, setSavingManual] = useState(false);
 
   const handleFileUpload = (e) => {
     const f = e.target.files?.[0];
@@ -129,6 +136,45 @@ export default function CollegeAddCandidates({ user }) {
     });
   };
 
+  const buildManualCandidate = () => {
+    const candidate = {
+      name: manualForm.name.trim(),
+      email: manualForm.email.trim(),
+      phone: manualForm.phone.trim(),
+      title: manualForm.title.trim(),
+      currentCompany: manualForm.currentCompany.trim(),
+      location: manualForm.location.trim(),
+      experience: manualForm.experience.trim(),
+      skills: manualForm.skills.trim(),
+      certifications: manualForm.certifications.trim(),
+      isFresher: manualForm.isFresher,
+    };
+
+    const { institution, degree, fieldOfStudy, year, grade } = manualForm;
+    if (institution || degree || fieldOfStudy || year || grade) {
+      candidate.educationList = [{ institution: institution.trim(), degree: degree.trim(), field: fieldOfStudy.trim(), year: year.trim(), grade: grade.trim() }];
+    }
+
+    return candidate;
+  };
+
+  const manualRequiredFilled = manualForm.name.trim() && manualForm.email.trim();
+
+  const handleManualSubmit = async () => {
+    setSavingManual(true);
+    setError('');
+    try {
+      const res = await api.importCollegeStudents([buildManualCandidate()]);
+      setResult(res);
+      setShowManual(false);
+      setManualForm({ ...EMPTY_MANUAL, isFresher: true });
+      setStep(3);
+    } catch (err) {
+      setError(err.message || 'Could not add candidate. Please try again.');
+    }
+    setSavingManual(false);
+  };
+
   const previewCandidates = step >= 2 ? buildCandidates().slice(0, 5) : [];
   const requiredMapped = TARGET_FIELDS.filter(f => f.required).every(f => mapping[f.key] && mapping[f.key] !== NONE);
 
@@ -154,6 +200,8 @@ export default function CollegeAddCandidates({ user }) {
     setMapping({});
     setResult(null);
     setError('');
+    setShowManual(false);
+    setManualForm({ ...EMPTY_MANUAL, isFresher: true });
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -170,17 +218,79 @@ export default function CollegeAddCandidates({ user }) {
 
       {/* ── STEP 1: Upload ── */}
       {step === 1 && (
-        <div style={card}>
-          <div
-            onClick={() => fileRef.current?.click()}
-            style={{ border: '2px dashed #CBD5E1', borderRadius: 16, padding: '60px 40px', textAlign: 'center', cursor: 'pointer', background: '#F8FAFC' }}
-          >
-            <input type="file" ref={fileRef} style={{ display: 'none' }} accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
-            <h3 style={{ margin: '0 0 8px', color: '#1E293B' }}>{fileName || 'Click to upload an Excel or CSV file'}</h3>
-            <p style={{ color: '#64748B', fontSize: 13 }}>Any columns, any order — you'll map them to candidate fields next.</p>
+        <>
+          <div style={card}>
+            <div
+              onClick={() => fileRef.current?.click()}
+              style={{ border: '2px dashed #CBD5E1', borderRadius: 16, padding: '60px 40px', textAlign: 'center', cursor: 'pointer', background: '#F8FAFC' }}
+            >
+              <input type="file" ref={fileRef} style={{ display: 'none' }} accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
+              <h3 style={{ margin: '0 0 8px', color: '#1E293B' }}>{fileName || 'Click to upload an Excel or CSV file'}</h3>
+              <p style={{ color: '#64748B', fontSize: 13 }}>Any columns, any order — you'll map them to candidate fields next.</p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+              <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+              <span style={{ color: '#94A3B8', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>or</span>
+              <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button style={btnG} onClick={() => setShowManual(s => !s)}>
+                {showManual ? '✕ Cancel' : '➕ Add One Candidate Manually'}
+              </button>
+              {!showManual && (
+                <p style={{ color: '#94A3B8', fontSize: 12, marginTop: 10 }}>
+                  Add a single student or alumnus by hand using the same fields as a bulk upload.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+
+          {showManual && (
+            <div style={{ ...card, marginTop: 16 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#181818' }}>Add a Candidate</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#706E6B' }}>
+                Fill in what you know — only Full Name and Email Address are required. These are the same fields used during bulk import.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {TARGET_FIELDS.map(f => (
+                  <div key={f.key}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#181818', marginBottom: 6 }}>
+                      {f.label}{f.required ? ' *' : ''}
+                    </label>
+                    <input
+                      style={{ ...select, padding: '8px 10px' }}
+                      value={manualForm[f.key]}
+                      onChange={e => setManualForm(m => ({ ...m, [f.key]: e.target.value }))}
+                      placeholder={f.label}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18, fontSize: 13, color: '#181818' }}>
+                <input type="checkbox" checked={manualForm.isFresher} onChange={e => setManualForm(m => ({ ...m, isFresher: e.target.checked }))} />
+                Mark as fresher (no prior work experience)
+              </label>
+
+              {!manualRequiredFilled && (
+                <div style={{ marginTop: 12, color: '#BA0517', fontSize: 12 }}>Please enter Full Name and Email Address.</div>
+              )}
+
+              <div style={{ marginTop: 16 }}>
+                <button
+                  style={{ ...btnP, opacity: (!manualRequiredFilled || savingManual) ? 0.6 : 1 }}
+                  disabled={!manualRequiredFilled || savingManual}
+                  onClick={handleManualSubmit}
+                >
+                  {savingManual ? '⏳ Adding...' : '✅ Add Candidate'}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── STEP 2: Map & Preview ── */}

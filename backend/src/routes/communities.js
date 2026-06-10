@@ -326,7 +326,14 @@ router.get('/', asyncHandler(async (req, res) => {
 
   // Students/alumni whose college matches a community's collegeName are automatically
   // members — no explicit join required. Determine if the requesting user qualifies.
-  const userCollege = normalizeCollegeName(req.user.college);
+  // College admins/placement officers don't fill in a "college" field on their own
+  // profile, so fall back to their tenant's name to find/highlight their college's
+  // own community.
+  let userCollege = normalizeCollegeName(req.user.college);
+  if (!userCollege && req.user.tenantType === 'college' && req.user.tenantId) {
+    const myTenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+    if (myTenant?.name) userCollege = normalizeCollegeName(myTenant.name);
+  }
 
   // Live headcount for each college community = students whose college matches,
   // regardless of whether they're in memberIds.
@@ -346,10 +353,15 @@ router.get('/', asyncHandler(async (req, res) => {
     return {
       ...c,
       isMember: c.memberIds.some(id => String(id) === uid) || isCollegeMember,
+      isOwnCollege: isCollegeMember,
       memberCount: c.collegeName ? Math.max(c.memberCount || 0, collegeCounts[c.slug] || 0) : c.memberCount,
       memberIds: undefined,
     };
   });
+
+  // Surface the user's own college community at the top of the list so it
+  // isn't buried among the dozens of default communities.
+  data.sort((a, b) => (b.isOwnCollege - a.isOwnCollege));
 
   res.json({ success: true, data, total: data.length });
 }));

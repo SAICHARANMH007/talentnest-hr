@@ -31,7 +31,9 @@ function CommunityCard({ community, userCollege, onJoin, onLeave, loading, onNav
 
   // Auto-membership communities (e.g. "<College> Community") can't be left —
   // every student/alumnus whose college matches is automatically a member.
-  const isAutoMember = !!community.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(userCollege);
+  // `isOwnCollege` is computed server-side (also covers college admins, who
+  // don't have a `college` field of their own but match via their tenant).
+  const isAutoMember = community.isOwnCollege || (!!community.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(userCollege));
 
   const btnLabel = loading ? '…' : isMember ? (btnHover ? 'Leave' : 'Joined') : 'Join';
   const btnStyle = isMember
