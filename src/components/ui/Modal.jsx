@@ -2,8 +2,14 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { glassCard, Z } from '../../constants/styles.js';
 
-export default function Modal({ title, onClose, children, wide, width, footer, headerExtra }) {
+export default function Modal({ title, onClose, children, wide, width, footer, headerExtra, surface }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const cardBg     = surface?.cardBg   || '#fff';
+  const textColor  = surface?.text     || '#111827';
+  const headingColor = surface?.heading || '#0A1628';
+  const borderColor  = surface?.border  || '#E2E8F0';
+  const closeBg      = surface?.closeBg   || '#F1F5F9';
+  const closeText    = surface?.closeText || '#374151';
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -45,8 +51,8 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
           overflow: 'hidden',
           borderRadius: isMobile ? 0 : 24,
           boxShadow: isMobile ? 'none' : '0 32px 64px rgba(0,0,0,0.35)',
-          background: '#fff',
-          color: '#111827',
+          background: cardBg,
+          color: textColor,
           margin: isMobile ? '0' : 'auto',
         }}
       >
@@ -61,14 +67,14 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
             padding: isMobile
               ? 'calc(env(safe-area-inset-top,0px) + 16px) 16px 16px'
               : '20px 28px',
-            borderBottom: '1.5px solid #E2E8F0',
+            borderBottom: `1.5px solid ${borderColor}`,
             flexShrink: 0,
-            background: '#fff',
+            background: cardBg,
           }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{
-              color: '#0A1628',
+              color: headingColor,
               fontWeight: 800,
               fontSize: isMobile ? 15 : 18,
               margin: 0,
@@ -86,9 +92,9 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
               onClick={onClose}
               aria-label="Close"
               style={{
-                background: '#F1F5F9',
+                background: closeBg,
                 border: 'none',
-                color: '#374151',
+                color: closeText,
                 fontSize: 18,
                 cursor: 'pointer',
                 minHeight: 40,
@@ -115,7 +121,7 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
             minHeight: 0,
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            background: '#fff',
+            background: cardBg,
           }}
         >
           {children}
@@ -133,8 +139,8 @@ export default function Modal({ title, onClose, children, wide, width, footer, h
               paddingBottom: isMobile
                 ? 'calc(12px + env(safe-area-inset-bottom,0px))'
                 : '16px',
-              borderTop: '1.5px solid #E2E8F0',
-              background: '#fff',
+              borderTop: `1.5px solid ${borderColor}`,
+              background: cardBg,
               display: 'flex',
               gap: 10,
               alignItems: 'center',
