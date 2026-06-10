@@ -6,15 +6,7 @@
  * NOTE: pdfkit and cloudinary are listed in backend/package.json.
  */
 const PDFDocument = require('pdfkit');
-const cloudinary  = require('cloudinary').v2;
-
-// Configure Cloudinary from env vars (never hardcoded)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key   : process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  signature_algorithm: 'sha256',
-});
+const { uploadBuffer } = require('./cloudinaryUpload');
 
 const { GST_PERCENTAGE, BASE_STATE } = require('../config/financials');
 
@@ -53,12 +45,8 @@ async function generateInvoice(tenant, payment) {
   });
 
   // ── 4. Upload to Cloudinary ───────────────────────────────────────────────────
-  const uploadResult = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'invoices', public_id: invoiceNumber, resource_type: 'raw', format: 'pdf' },
-      (err, result) => err ? reject(err) : resolve(result)
-    );
-    stream.end(pdfBuffer);
+  const uploadResult = await uploadBuffer(pdfBuffer, {
+    folder: 'invoices', public_id: invoiceNumber, resource_type: 'raw', format: 'pdf',
   });
 
   return {

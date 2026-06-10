@@ -8,7 +8,7 @@
 const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const multer   = require('multer');
-const cloudinary = require('cloudinary').v2;
+const { uploadBuffer } = require('../utils/cloudinaryUpload');
 const CandidateDocument = require('../models/CandidateDocument');
 const Candidate  = require('../models/Candidate');
 const { authMiddleware } = require('../middleware/auth');
@@ -18,13 +18,6 @@ const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const { sendEmailWithRetry } = require('../utils/email');
 const logger = require('../middleware/logger');
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key   : process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  signature_algorithm: 'sha256',
-});
 
 const DOCUMENT_LABELS = {
   aadhaar           : 'Aadhaar Card',
@@ -60,13 +53,7 @@ router.post('/', ...guard, upload.single('document'), asyncHandler(async (req, r
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
   // Upload to Cloudinary
-  const uploadResult = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'candidate-documents', resource_type: 'auto' },
-      (err, result) => err ? reject(err) : resolve(result)
-    );
-    stream.end(req.file.buffer);
-  });
+  const uploadResult = await uploadBuffer(req.file.buffer, { folder: 'candidate-documents', resource_type: 'auto' });
 
   const doc = await CandidateDocument.create({
     tenantId    : req.user.tenantId,

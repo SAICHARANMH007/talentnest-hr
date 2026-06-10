@@ -862,14 +862,7 @@ router.post('/redistribute', ...guard, allowRoles('admin', 'super_admin'), async
 // ── POST /api/jobs/:id/video-jd — upload a video job description to Cloudinary
 router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const multer     = require('multer');
-  const cloudinary = require('cloudinary').v2;
-
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key:    process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    signature_algorithm: 'sha256',
-  });
+  const { uploadBuffer } = require('../utils/cloudinaryUpload');
 
   const job = await Job.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
   if (!job) throw new AppError('Job not found.', 404);
@@ -886,13 +879,7 @@ router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recru
 
   if (!req.file) throw new AppError('Video file required.', 400);
 
-  const uploadResult = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { resource_type: 'video', folder: 'job-videos', transformation: [{ quality: 'auto' }] },
-      (err, result) => err ? reject(err) : resolve(result)
-    );
-    stream.end(req.file.buffer);
-  });
+  const uploadResult = await uploadBuffer(req.file.buffer, { resource_type: 'video', folder: 'job-videos', transformation: [{ quality: 'auto' }] });
 
   job.videoJdUrl = uploadResult.secure_url;
   await job.save();

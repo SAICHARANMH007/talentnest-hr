@@ -8,14 +8,7 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
 const multer       = require('multer');
-const cloudinary   = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key   : process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  signature_algorithm: 'sha256',
-});
+const { uploadBuffer } = require('../utils/cloudinaryUpload');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -517,15 +510,11 @@ router.post('/upload-image', handleUpload, asyncHandler(async (req, res) => {
     throw new AppError('Image upload not configured on server.', 503);
   }
 
-  cloudinary.config({ cloud_name: CLOUDINARY_CLOUD_NAME, api_key: CLOUDINARY_API_KEY, api_secret: CLOUDINARY_API_SECRET, signature_algorithm: 'sha256' });
-
   try {
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: 'talentnest/feed', resource_type: 'image', transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }] },
-        (err, r) => err ? reject(err) : resolve(r)
-      );
-      stream.end(req.file.buffer);
+    const result = await uploadBuffer(req.file.buffer, {
+      folder: 'talentnest/feed',
+      resource_type: 'image',
+      transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
     });
     res.json({ success: true, url: result.secure_url });
   } catch (err) {

@@ -323,20 +323,8 @@ router.post('/upload-resume', ...guard,
     let uploadedResumeUrl = req.body.resumeUrl || '';
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
       try {
-        const cloudinary = require('cloudinary').v2;
-        cloudinary.config({
-          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-          api_key   : process.env.CLOUDINARY_API_KEY,
-          api_secret: process.env.CLOUDINARY_API_SECRET,
-          signature_algorithm: 'sha256',
-        });
-        const uploadResult = await new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { resource_type: 'raw', folder: 'talentnest/resumes', format: 'pdf' },
-            (err, result) => err ? reject(err) : resolve(result)
-          );
-          stream.end(req.file.buffer);
-        });
+        const { uploadBuffer } = require('../utils/cloudinaryUpload');
+        const uploadResult = await uploadBuffer(req.file.buffer, { resource_type: 'raw', folder: 'talentnest/resumes', format: 'pdf' });
         uploadedResumeUrl = uploadResult.secure_url;
       } catch (e) {
         console.error('Cloudinary resume upload failed (non-fatal):', e.message);
@@ -439,15 +427,8 @@ router.post('/upload-my-resume', authMiddleware, tenantGuard, upload.single('res
 
   let resumeUrl = '';
   if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-    const cloudinary = require('cloudinary').v2;
-    cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET, signature_algorithm: 'sha256' });
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { resource_type: 'raw', folder: 'talentnest/resumes', format: 'pdf', public_id: `resume_${req.user._id || req.user.id}` },
-        (err, r) => err ? reject(err) : resolve(r)
-      );
-      stream.end(req.file.buffer);
-    });
+    const { uploadBuffer } = require('../utils/cloudinaryUpload');
+    const result = await uploadBuffer(req.file.buffer, { resource_type: 'raw', folder: 'talentnest/resumes', format: 'pdf', public_id: `resume_${req.user._id || req.user.id}` });
     resumeUrl = result.secure_url;
   } else {
     throw new AppError('Resume storage is not configured. Please contact support.', 503);

@@ -6,20 +6,13 @@
 const express    = require('express');
 const router     = express.Router({ mergeParams: true });
 const multer     = require('multer');
-const cloudinary = require('cloudinary').v2;
+const { uploadBuffer } = require('../utils/cloudinaryUpload');
 const Candidate  = require('../models/Candidate');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard }    = require('../middleware/tenantGuard');
 const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const logger = require('../middleware/logger');
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key   : process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  signature_algorithm: 'sha256',
-});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -40,13 +33,7 @@ router.post('/', ...guard, upload.single('video'), asyncHandler(async (req, res)
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
   // Upload to Cloudinary video folder
-  const uploadResult = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'candidate-videos', resource_type: 'video' },
-      (err, result) => err ? reject(err) : resolve(result)
-    );
-    stream.end(req.file.buffer);
-  });
+  const uploadResult = await uploadBuffer(req.file.buffer, { folder: 'candidate-videos', resource_type: 'video' });
 
   candidate.videoResumeUrl = uploadResult.secure_url;
   await candidate.save();
