@@ -98,6 +98,12 @@ const applicationSchema = new mongoose.Schema({
   // Recruiter notes (private, auto-saved from pipeline card)
   recruiterNotes: { type: String, default: '' },
 
+  // College placement-officer notes (private to the candidate's college,
+  // separate from the hiring tenant's recruiterNotes — lets placement
+  // officers track their own follow-ups without touching the employer's pipeline)
+  collegePlacementNotes: { type: String, default: '' },
+
+
   // Pipeline tags
   tags: [{ type: String }],
 

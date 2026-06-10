@@ -6,11 +6,21 @@ import { api } from '../../api/api.js';
 
 const STAT_S = {
   background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12,
-  padding: 20, display: 'flex', flexDirection: 'column', gap: 6,
+  padding: 20, display: 'flex', flexDirection: 'column', gap: 6, position: 'relative', overflow: 'hidden',
 };
 
 const STAT_LABEL = { fontSize: 12, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', letterSpacing: '0.04em' };
 const STAT_VALUE = { fontSize: 32, fontWeight: 800, color: '#181818' };
+
+const STATS = [
+  { key: 'totalStudents',     label: 'Total Students',     icon: '🎓', color: '#0176D3' },
+  { key: 'currentStudents',   label: 'Current Students',   icon: '📚', color: '#16A34A' },
+  { key: 'alumniCount',       label: 'Alumni',              icon: '🧑‍🎓', color: '#7C3AED' },
+  { key: 'totalApplications', label: 'Total Applications',  icon: '📝', color: '#0891B2' },
+  { key: 'totalPlacements',   label: 'Placements',          icon: '💼', color: '#D97706' },
+  { key: 'placementRate',     label: 'Placement Rate',      icon: '📈', color: '#16A34A', suffix: '%' },
+  { key: 'upcomingInterviews',label: 'Upcoming Interviews', icon: '🗓️', color: '#DB2777' },
+];
 
 const inputS = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' };
 const btnP = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '10px 24px', cursor: 'pointer', fontSize: 13 };
@@ -58,34 +68,13 @@ export default function CollegeOverview({ user }) {
         subtitle="Track your students, their job applications, and placement outcomes across the TalentNest platform."
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Total Students</span>
-          <span style={STAT_VALUE}>{data?.totalStudents ?? 0}</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Current Students</span>
-          <span style={STAT_VALUE}>{data?.currentStudents ?? 0}</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Alumni</span>
-          <span style={STAT_VALUE}>{data?.alumniCount ?? 0}</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Total Applications</span>
-          <span style={STAT_VALUE}>{data?.totalApplications ?? 0}</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Placements</span>
-          <span style={STAT_VALUE}>{data?.totalPlacements ?? 0}</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Placement Rate</span>
-          <span style={STAT_VALUE}>{data?.placementRate ?? 0}%</span>
-        </div>
-        <div style={STAT_S}>
-          <span style={STAT_LABEL}>Upcoming Interviews</span>
-          <span style={STAT_VALUE}>{data?.upcomingInterviews ?? 0}</span>
-        </div>
+        {STATS.map(s => (
+          <div key={s.key} style={STAT_S}>
+            <div style={{ position: 'absolute', top: -10, right: -10, fontSize: 56, opacity: 0.08 }}>{s.icon}</div>
+            <span style={STAT_LABEL}>{s.icon} {s.label}</span>
+            <span style={{ ...STAT_VALUE, color: s.color }}>{data?.[s.key] ?? 0}{s.suffix || ''}</span>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
@@ -119,6 +108,25 @@ export default function CollegeOverview({ user }) {
                 </div>
                 <div style={{ height: 8, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${(y.count / maxYear) * 100}%`, background: '#16A34A', borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Placement rate by batch */}
+        <div style={card}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#181818' }}>Placement Rate by Batch</h3>
+          {(data?.placementRateByBatch || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No batch data yet.</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(data?.placementRateByBatch || []).map(b => (
+              <div key={b.year}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#181818', marginBottom: 4 }}>
+                  <span>{b.year}</span>
+                  <span style={{ fontWeight: 700 }}>{b.placed}/{b.total} placed · {b.rate}%</span>
+                </div>
+                <div style={{ height: 8, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${b.rate}%`, background: '#D97706', borderRadius: 4 }} />
                 </div>
               </div>
             ))}

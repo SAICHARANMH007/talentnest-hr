@@ -19,6 +19,7 @@ export const dashboardService = {
   async getCollegeOverview()            { return req('GET', '/dashboard/college/overview'); },
   async getCollegeStudents(params = {}) { return req('GET', `/dashboard/college/students${qs(params)}`); },
   async getCollegePlacements(params = {}) { return req('GET', `/dashboard/college/placements${qs(params)}`); },
+  async updateCollegePlacementNotes(id, notes) { return req('PATCH', `/dashboard/college/placements/${id}/notes`, { notes }); },
   async getCollegeGroups()               { return req('GET', '/dashboard/college-groups'); },
   async importCollegeStudents(candidates) { return req('POST', '/dashboard/college/students/import', { candidates }); },
   async sendCollegeAnnouncement(title, message, link) { return req('POST', '/dashboard/college/announcements', { title, message, link }); },

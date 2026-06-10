@@ -18,6 +18,70 @@ const STAGE_COLORS = {
   Rejected: '#BA0517',
 };
 
+function StageBadge({ stage }) {
+  const color = STAGE_COLORS[stage] || '#706E6B';
+  return (
+    <span style={{
+      display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+      color, background: `${color}1A`, border: `1px solid ${color}33`,
+    }}>
+      {stage || '—'}
+    </span>
+  );
+}
+
+function NotesCell({ record, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(record.collegeNotes || '');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const save = async () => {
+    setSaving(true); setErr('');
+    try {
+      await api.updateCollegePlacementNotes(record.id, value.trim());
+      onSaved(record.id, value.trim());
+      setEditing(false);
+    } catch (e) {
+      setErr(e.message || 'Failed to save note');
+    }
+    setSaving(false);
+  };
+
+  if (!editing) {
+    return (
+      <div onClick={() => setEditing(true)} style={{ cursor: 'pointer', minHeight: 20 }}>
+        {record.collegeNotes
+          ? <span style={{ color: '#181818' }}>{record.collegeNotes}</span>
+          : <span style={{ color: '#C4C2C0', fontStyle: 'italic' }}>+ Add note</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minWidth: 200 }}>
+      <textarea
+        autoFocus
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        rows={2}
+        maxLength={1000}
+        placeholder="Private follow-up note (visible only to your college)..."
+        style={{ ...inp, width: '100%', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
+      />
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <button style={{ ...btnP, padding: '4px 12px', fontSize: 12 }} disabled={saving} onClick={save}>
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        <button style={{ ...btnG, padding: '4px 12px', fontSize: 12 }} onClick={() => { setValue(record.collegeNotes || ''); setEditing(false); setErr(''); }}>
+          Cancel
+        </button>
+      </div>
+      {err && <div style={{ color: '#BA0517', fontSize: 11, marginTop: 4 }}>{err}</div>}
+    </div>
+  );
+}
+
 export default function CollegePlacements() {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -48,12 +112,40 @@ export default function CollegePlacements() {
     setSearch(q.trim());
   }
 
+  function onNoteSaved(id, notes) {
+    setData(prev => prev.map(r => r.id === id ? { ...r, collegeNotes: notes } : r));
+  }
+
+  // Quick stage summary chips
+  const stageCounts = STAGES.reduce((acc, s) => {
+    acc[s] = data.filter(r => r.stage === s).length;
+    return acc;
+  }, {});
+
   return (
     <div>
       <PageHeader
         title="📇 Placement Records"
-        subtitle="Track your students' job applications and placement outcomes across companies hiring on TalentNest."
+        subtitle="Track your students' job applications and placement outcomes across companies hiring on TalentNest. Add private follow-up notes for your own reference."
       />
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        {STAGES.map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => { setStage(stage === s ? '' : s); setPage(1); }}
+            style={{
+              border: `1px solid ${stage === s ? STAGE_COLORS[s] : '#E2E8F0'}`,
+              background: stage === s ? `${STAGE_COLORS[s]}1A` : '#fff',
+              color: stage === s ? STAGE_COLORS[s] : '#706E6B',
+              borderRadius: 999, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            {s} {stageCounts[s] ? `· ${stageCounts[s]}` : ''}
+          </button>
+        ))}
+      </div>
 
       <form onSubmit={onSearchSubmit} style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <input
@@ -62,14 +154,6 @@ export default function CollegePlacements() {
           placeholder="Search by student name or email..."
           style={{ ...inp, maxWidth: 300 }}
         />
-        <select
-          value={stage}
-          onChange={e => { setStage(e.target.value); setPage(1); }}
-          style={{ ...inp, maxWidth: 180 }}
-        >
-          <option value="">All Stages</option>
-          {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
         <button type="submit" style={btnP}>Search</button>
         {(search || stage) && (
           <button type="button" style={btnG} onClick={() => { setQ(''); setSearch(''); setStage(''); setPage(1); }}>Clear</button>
@@ -95,6 +179,7 @@ export default function CollegePlacements() {
                   <th style={TH}>Company</th>
                   <th style={TH}>Stage</th>
                   <th style={TH}>Applied</th>
+                  <th style={TH}>Your Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,9 +192,12 @@ export default function CollegePlacements() {
                     <td style={TD}>{a.jobTitle || '—'}</td>
                     <td style={TD}>{a.company || '—'}</td>
                     <td style={TD}>
-                      <span style={{ color: STAGE_COLORS[a.stage] || '#706E6B', fontWeight: 700 }}>{a.stage || '—'}</span>
+                      <StageBadge stage={a.stage} />
                     </td>
                     <td style={TD}>{a.appliedAt ? new Date(a.appliedAt).toLocaleDateString() : '—'}</td>
+                    <td style={{ ...TD, fontSize: 12 }}>
+                      <NotesCell record={a} onSaved={onNoteSaved} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

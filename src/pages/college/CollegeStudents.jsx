@@ -102,6 +102,27 @@ function ProfileModal({ student, onClose }) {
   );
 }
 
+// Builds a CSV file from the given student rows and triggers a browser download.
+function downloadStudentsCSV(rows) {
+  const headers = ['Name', 'Email', 'Phone', 'Type', 'Degree', 'Institution', 'Passing Year', 'Grade', 'Skills', 'Status'];
+  const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach(s => {
+    lines.push([
+      s.name, s.email, s.phone, s.studentType === 'alumni' ? 'Alumni' : 'Student',
+      s.latestEducation?.degree || '', s.latestEducation?.institution || '', s.latestEducation?.year || '',
+      s.latestEducation?.grade || '', (s.skills || []).join('; '), s.placed ? 'Placed' : 'In Progress',
+    ].map(escape).join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `students-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function CollegeStudents() {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -113,9 +134,11 @@ export default function CollegeStudents() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [checked, setChecked] = useState(() => new Set());
 
   useEffect(() => {
     setLoading(true);
+    setChecked(new Set());
     api.getCollegeStudents({ q: search, type, page })
       .then(r => {
         const body = r?.data !== undefined ? r : { data: r };
@@ -131,6 +154,23 @@ export default function CollegeStudents() {
     e.preventDefault();
     setPage(1);
     setSearch(q.trim());
+  }
+
+  function toggleChecked(id) {
+    setChecked(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setChecked(prev => prev.size === data.length ? new Set() : new Set(data.map(s => s.id)));
+  }
+
+  function exportSelected() {
+    const rows = data.filter(s => checked.has(s.id));
+    downloadStudentsCSV(rows.length ? rows : data);
   }
 
   return (
@@ -160,6 +200,9 @@ export default function CollegeStudents() {
         {(search || type) && (
           <button type="button" style={btnG} onClick={() => { setQ(''); setSearch(''); setType(''); setPage(1); }}>Clear</button>
         )}
+        <button type="button" style={{ ...btnG, marginLeft: 'auto' }} onClick={exportSelected} disabled={data.length === 0}>
+          ⬇ Export {checked.size > 0 ? `Selected (${checked.size})` : 'All (this page)'} CSV
+        </button>
       </form>
 
       {error && <div style={{ color: '#BA0517', padding: '12px 0' }}>{error}</div>}
@@ -176,6 +219,9 @@ export default function CollegeStudents() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
+                  <th style={{ ...TH, width: 36 }}>
+                    <input type="checkbox" checked={data.length > 0 && checked.size === data.length} onChange={toggleAll} />
+                  </th>
                   <th style={TH}>Name</th>
                   <th style={TH}>Type</th>
                   <th style={TH}>Education</th>
@@ -189,6 +235,9 @@ export default function CollegeStudents() {
               <tbody>
                 {data.map(s => (
                   <tr key={s.id} onClick={() => setSelected(s)} style={{ cursor: 'pointer' }}>
+                    <td style={TD} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={checked.has(s.id)} onChange={() => toggleChecked(s.id)} />
+                    </td>
                     <td style={TD}>
                       <div style={{ fontWeight: 700 }}>{s.name || '—'}</div>
                       <div style={{ color: '#706E6B', fontSize: 12 }}>{s.email || ''}</div>

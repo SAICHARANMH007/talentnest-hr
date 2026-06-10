@@ -537,6 +537,7 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
   // ── Department & batch (passing year) breakdown ──────────────────────────
   const deptCounts  = new Map();
   const yearCounts  = new Map();
+  const yearByCandidate = new Map();
   let currentCount  = 0;
   let alumniCount   = 0;
 
@@ -553,6 +554,7 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
     const year = parseInt(latest?.year, 10);
     if (Number.isFinite(year)) {
       yearCounts.set(year, (yearCounts.get(year) || 0) + 1);
+      yearByCandidate.set(String(s._id), year);
       if (year >= currentYear) currentCount++; else alumniCount++;
     } else if (s.isFresher) {
       currentCount++;
@@ -569,6 +571,22 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
   const yearBreakdown = [...yearCounts.entries()]
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year - b.year);
+
+  // ── Placement rate by batch (% of each year's students who got Hired) ────
+  const hiredCandidateIds = new Set(
+    (await Application.find({ candidateId: { $in: candidateIds }, currentStage: 'Hired', deletedAt: null })
+      .distinct('candidateId')).map(String)
+  );
+  const placedByYear = new Map();
+  yearByCandidate.forEach((year, candId) => {
+    if (hiredCandidateIds.has(candId)) placedByYear.set(year, (placedByYear.get(year) || 0) + 1);
+  });
+  const placementRateByBatch = yearBreakdown.map(({ year, count }) => ({
+    year,
+    total: count,
+    placed: placedByYear.get(year) || 0,
+    rate: count > 0 ? Math.round(((placedByYear.get(year) || 0) / count) * 1000) / 10 : 0,
+  }));
 
   // ── Recent placements (last 5 hires) with company & role ─────────────────
   const recentPlacementsRaw = await Application.aggregate([
@@ -624,6 +642,7 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
       placementRate: students.length > 0 ? Math.round((totalPlacements / students.length) * 1000) / 10 : 0,
       departmentBreakdown,
       yearBreakdown,
+      placementRateByBatch,
       topCompanies,
       recentPlacements: recentPlacementsRaw.map(p => ({
         studentName: p.studentName || '',
@@ -920,10 +939,32 @@ router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandle
       stage: a.currentStage || '',
       status: a.status || '',
       appliedAt: a.createdAt,
+      collegeNotes: a.collegePlacementNotes || '',
     };
   });
 
   res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
+}));
+
+/* PATCH /api/dashboard/college/placements/:id/notes — placement officer's private
+   follow-up notes on one of their students' applications. Scoped to applications
+   belonging to candidates registered under this college; never touches the
+   employer's own pipeline (currentStage, recruiterNotes, etc.). */
+router.patch('/college/placements/:id/notes', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { notes } = req.body;
+  const app = await Application.findOne({ _id: req.params.id, deletedAt: null });
+  if (!app) throw new AppError('Placement record not found.', 404);
+
+  const candidate = await Candidate.findOne({ _id: app.candidateId, college: college.regex, deletedAt: null }).select('_id').lean();
+  if (!candidate) throw new AppError('Placement record not found.', 404);
+
+  app.collegePlacementNotes = String(notes || '').slice(0, 1000);
+  await app.save();
+
+  res.json({ success: true, data: { id: String(app._id), collegeNotes: app.collegePlacementNotes } });
 }));
 
 /* POST /api/dashboard/college/students/import — bulk-create real Candidate records
