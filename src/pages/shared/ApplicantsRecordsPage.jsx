@@ -794,6 +794,8 @@ export default function ApplicantsRecordsPage({ user }) {
             jobTitle={historyJob.jobTitle}
             currentRecruiterName={historyJob.recruiterName || (['recruiter'].includes(user?.role) ? user?.name : undefined)}
             currentRecruiterId={historyJob.recruiterId || (['recruiter'].includes(user?.role) ? user?.id || user?._id : undefined)}
+            isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
+            onRecruiterChanged={load}
           />
         </Modal>
       )}

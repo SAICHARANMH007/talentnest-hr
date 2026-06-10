@@ -419,6 +419,34 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0176D3' }}>{app.job?.title || app.jobTitle || 'Active Application'}</h4>
                             <Badge label={SM[currentStage]?.label || currentStage} color={SM[currentStage]?.color} />
                           </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <select
+                              value={currentStage}
+                              disabled={changingStage}
+                              onChange={async (e) => {
+                                const newStage = e.target.value;
+                                const appId = String(app.id || app._id);
+                                setChangingStage(true);
+                                try {
+                                  await api.updateStage(appId, newStage);
+                                  const fresh = await api.getApplication(appId).catch(() => null);
+                                  const freshHistory = fresh?.stageHistory || fresh?.data?.stageHistory;
+                                  setApp(prev => prev ? { ...prev, stage: newStage, stageHistory: freshHistory || prev.stageHistory } : prev);
+                                  setAllFetchedApps(prev => prev.map(x =>
+                                    String(x.id || x._id) === appId
+                                      ? { ...x, stage: newStage, stageHistory: freshHistory || x.stageHistory }
+                                      : x
+                                  ));
+                                  setCurrentStage(newStage);
+                                  setToast(`✅ Stage updated`);
+                                  if (newStage === 'selected') setHiredModal({ appId, candidateName: form.name, jobTitle: app.job?.title || app.jobTitle });
+                                } catch (err) { setToast(`❌ ${err.message}`); }
+                                setChangingStage(false);
+                              }}
+                              style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: `1.5px solid #DDDBDA`, fontSize: 11, fontWeight: 700 }}>
+                              {STAGES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                            </select>
+                          </div>
                           <CandidateActivityTimeline app={app} recruiterHistory={jobHistories[String(app.jobId || app.job?._id || app.job?.id || '')] || []} />
                         </div>
                       )}
