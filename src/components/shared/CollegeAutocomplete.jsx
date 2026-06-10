@@ -7,7 +7,7 @@ import { api } from '../../api/api.js';
  * tenants with names other students have already entered. Typing a brand-new
  * name is accepted as-is and becomes part of the directory once saved.
  */
-export default function CollegeAutocomplete({ value, onChange, inputStyle, labelStyle, label = 'COLLEGE / SCHOOL NAME', placeholder = 'e.g. ABC Institute of Technology' }) {
+export default function CollegeAutocomplete({ value, onChange, inputStyle, labelStyle, label = 'COLLEGE / SCHOOL NAME', placeholder = 'e.g. ABC Institute of Technology', dropdownStyle, itemStyle, itemHoverBg }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef(null);
@@ -37,13 +37,13 @@ export default function CollegeAutocomplete({ value, onChange, inputStyle, label
         autoComplete="off"
       />
       {open && filtered.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0D1B2D', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, maxHeight: 200, overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0D1B2D', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, maxHeight: 200, overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 24px rgba(0,0,0,0.35)', ...dropdownStyle }}>
           {filtered.map(name => (
             <div
               key={name}
               onMouseDown={() => { onChange(name); setOpen(false); }}
-              style={{ padding: '8px 12px', fontSize: 13, color: '#FFFFFF', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+              style={{ padding: '8px 12px', fontSize: 13, color: '#FFFFFF', cursor: 'pointer', ...itemStyle }}
+              onMouseEnter={e => { e.currentTarget.style.background = itemHoverBg || 'rgba(255,255,255,0.08)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               {name}

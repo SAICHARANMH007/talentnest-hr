@@ -72,7 +72,17 @@ function EduEntry({ entry, onChange, onDelete }) {
     <div style={{ border: '1px solid rgba(1,118,211,0.15)', borderRadius: 10, padding: 14, marginBottom: 12, background: 'rgba(1,118,211,0.03)' }}>
       <div className="form-grid-2">
         <Field label="Degree / Qualification *" value={entry.degree || ''} onChange={v => sf('degree', v)} placeholder="B.Tech Computer Science"/>
-        <Field label="Institution *" value={entry.institution || ''} onChange={v => sf('institution', v)} placeholder="JNTU Hyderabad"/>
+        <CollegeAutocomplete
+          value={entry.institution || ''}
+          onChange={v => sf('institution', v)}
+          label="Institution *"
+          labelStyle={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}
+          inputStyle={{ width: '100%', minHeight: 46, padding: '11px 14px', background: '#fff', border: '1.5px solid #D6D9DE', borderRadius: 10, color: '#181818', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+          dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+          itemStyle={{ color: '#181818' }}
+          itemHoverBg="rgba(1,118,211,0.08)"
+          placeholder="JNTU Hyderabad"
+        />
         <Field label="University / Board" value={entry.university || ''} onChange={v => sf('university', v)} placeholder="JNTU"/>
         <Field label="Location" value={entry.location || ''} onChange={v => sf('location', v)} placeholder="Hyderabad"/>
         <Field label="Year of Passing" value={entry.year || ''} onChange={v => sf('year', v)} placeholder="2019"/>
