@@ -724,16 +724,17 @@ function CreatePost({ user, onCreate }) {
   const textareaRef = useRef(null);
 
   const POST_TYPES = [
-    { value: 'update',        label: '💬 Update' },
-    { value: 'tip',           label: '💡 Pro Tip' },
-    { value: 'question',      label: '❓ Ask Community' },
-    { value: 'achievement',   label: '🏆 Achievement' },
-    { value: 'hiring',        label: '💼 Hiring' },
-    { value: 'feedback',      label: '⭐ Feedback' },
-    { value: 'resource',      label: '📎 Resource' },
-    { value: 'milestone',     label: '🎯 Milestone' },
-    { value: 'announcement',  label: '📢 Announce' },
+    { value: 'update',        label: '💬 Update',        color: '#0176D3' },
+    { value: 'tip',           label: '💡 Pro Tip',        color: '#D97706' },
+    { value: 'question',      label: '❓ Ask Community',  color: '#7C3AED' },
+    { value: 'achievement',   label: '🏆 Achievement',    color: '#B45309' },
+    { value: 'hiring',        label: '💼 Hiring',         color: '#059669' },
+    { value: 'feedback',      label: '⭐ Feedback',       color: '#DB2777' },
+    { value: 'resource',      label: '📎 Resource',       color: '#0891B2' },
+    { value: 'milestone',     label: '🎯 Milestone',      color: '#DC2626' },
+    { value: 'announcement',  label: '📢 Announce',       color: '#1D4ED8' },
   ];
+  const activeType = POST_TYPES.find(t => t.value === postType) || POST_TYPES[0];
 
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -794,79 +795,96 @@ function CreatePost({ user, onCreate }) {
   const charLeft = 3000 - text.length;
 
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
-        <div style={{ flex: 1, position: 'relative' }}>
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextChange}
-            placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}… (use @ to mention someone)`}
-            rows={expanded ? 4 : 2}
-            maxLength={3000}
-            style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; setExpanded(true); }}
-            onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
-          />
-          <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
-          {expanded && (
-            <div style={{ marginTop: 10 }}>
-              {/* Post type chips */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                {POST_TYPES.map(t => (
-                  <button key={t.value} onClick={() => setPostType(t.value)}
-                    style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: `1px solid ${postType === t.value ? '#0176D3' : '#E5E7EB'}`, background: postType === t.value ? '#EFF6FF' : '#F9FAFB', color: postType === t.value ? '#1D4ED8' : '#6B7280', cursor: 'pointer', fontWeight: 600, transition: 'all 0.12s' }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Image previews */}
-              {images.length > 0 && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {images.map((img, i) => (
-                    <div key={i} style={{ position: 'relative' }}>
-                      <img src={img} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #E5E7EB' }} />
-                      <button onClick={() => removeImage(i)}
-                        style={{ position: 'absolute', top: -6, right: -6, background: '#EF4444', border: 'none', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0 }}>
-                        ×
+    <div style={{ ...card, padding: 0, marginBottom: 12, borderRadius: 16, border: `1px solid ${expanded ? activeType.color + '33' : '#F1F5F9'}`, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+      {/* Accent header bar — only shown while composing */}
+      {expanded && (
+        <div style={{ background: `linear-gradient(135deg, ${activeType.color} 0%, ${activeType.color}cc 100%)`, padding: '10px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '0.02em' }}>✨ Create a Post</span>
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.18)', borderRadius: 20, padding: '2px 10px' }}>{activeType.label}</span>
+        </div>
+      )}
+      <div style={{ padding: '16px 18px' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
+          <div style={{ flex: 1, position: 'relative' }}>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTextChange}
+              placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}… (use @ to mention someone)`}
+              rows={expanded ? 4 : 2}
+              maxLength={3000}
+              style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
+              onFocus={e => { e.currentTarget.style.border = `1px solid ${activeType.color}`; e.currentTarget.style.boxShadow = `0 0 0 3px ${activeType.color}1a`; setExpanded(true); }}
+              onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
+            />
+            <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
+            {expanded && (
+              <div style={{ marginTop: 12 }}>
+                {/* Post type chips */}
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Post type</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {POST_TYPES.map(t => (
+                      <button key={t.value} onClick={() => setPostType(t.value)}
+                        style={{ fontSize: 11, padding: '5px 13px', borderRadius: 20, border: `1px solid ${postType === t.value ? t.color : '#E5E7EB'}`, background: postType === t.value ? `${t.color}15` : '#F9FAFB', color: postType === t.value ? t.color : '#6B7280', cursor: 'pointer', fontWeight: 700, transition: 'all 0.12s' }}>
+                        {t.label}
                       </button>
-                    </div>
-                  ))}
-                  {uploading && (
-                    <div style={{ width: 80, height: 80, borderRadius: 10, border: '1px dashed #D1D5DB', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB' }}>
-                      <div style={{ width: 20, height: 20, border: '2px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              )}
 
-              {/* Toolbar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button
-                    onClick={() => { setUploadErr(''); fileRef.current?.click(); }}
-                    disabled={images.length >= 4 || uploading}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 600, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1 }}>
-                    📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
-                  {uploadErr && <span style={{ fontSize: 11, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '3px 8px' }}>⚠️ {uploadErr}</span>}
-                  <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
-                    {charLeft < 500 ? `${charLeft} left` : ''}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setExpanded(false); setText(''); setImages([]); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
-                  <button onClick={submit} disabled={!text.trim() || submitting}
-                    style={{ ...btnP, fontSize: 13, padding: '7px 18px', opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
-                    {submitting ? 'Posting…' : 'Post'}
-                  </button>
+                {/* Image previews */}
+                {images.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(images.length, 4)}, 1fr)`, gap: 8, marginBottom: 12 }}>
+                    {images.map((img, i) => (
+                      <div key={i} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', aspectRatio: '1 / 1' }}>
+                        <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <button onClick={() => removeImage(i)}
+                          style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, backdropFilter: 'blur(2px)' }}>
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {uploading && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px dashed #D1D5DB', background: '#F9FAFB' }}>
+                    <div style={{ width: 16, height: 16, border: '2px solid #E5E7EB', borderTopColor: activeType.color, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Uploading photo…</span>
+                  </div>
+                )}
+                {uploadErr && (
+                  <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>
+                    ⚠️ {uploadErr}
+                  </div>
+                )}
+
+                {/* Toolbar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <button
+                      onClick={() => { setUploadErr(''); fileRef.current?.click(); }}
+                      disabled={images.length >= 4 || uploading}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1 }}>
+                      📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
+                    </button>
+                    <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
+                    <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
+                      {charLeft < 500 ? `${charLeft} left` : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setExpanded(false); setText(''); setImages([]); setUploadErr(''); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
+                    <button onClick={submit} disabled={!text.trim() || submitting}
+                      style={{ ...btnP, background: activeType.color, fontSize: 13, padding: '7px 20px', opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
+                      {submitting ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
