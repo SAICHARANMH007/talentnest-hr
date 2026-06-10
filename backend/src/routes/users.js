@@ -17,6 +17,7 @@ const { sendEmailWithRetry, templates } = require('../utils/email');
 const Organization = require('../models/Organization');
 const asyncHandler        = require('../utils/asyncHandler');
 const AppError            = require('../utils/AppError');
+const { phoneSearchRegex } = require('../utils/phoneSearch');
 const checkPlanLimits     = require('../middleware/checkPlanLimits');
 const userService = require('../services/user.service');
 const { syncProfile } = require('../utils/syncProfile');
@@ -715,10 +716,12 @@ router.post('/check-duplicate', authenticate, allowRoles('admin','super_admin','
     if (byEmail) matches.push({ ...byEmail, id: byEmail._id?.toString(), matchType: 'email' });
   }
   if (phone) {
-    const clean = phone.replace(/\D/g, '');
-    const byPhone = await User.findOne({ tenantId, phone: { $regex: clean.slice(-8) } }).select('name email phone _id').lean();
-    if (byPhone && !matches.find(m => String(m._id) === String(byPhone._id))) {
-      matches.push({ ...byPhone, id: byPhone._id?.toString(), matchType: 'phone' });
+    const phoneRe = phoneSearchRegex(phone);
+    if (phoneRe) {
+      const byPhone = await User.findOne({ tenantId, phone: phoneRe }).select('name email phone _id').lean();
+      if (byPhone && !matches.find(m => String(m._id) === String(byPhone._id))) {
+        matches.push({ ...byPhone, id: byPhone._id?.toString(), matchType: 'phone' });
+      }
     }
   }
   if (name && !matches.length) {

@@ -16,6 +16,7 @@ const AppError       = require('../utils/AppError');
 const logger         = require('../middleware/logger');
 const { parseResume: parseResumeUtil } = require('../utils/resumeParser');
 const { syncProfile } = require('../utils/syncProfile');
+const { phoneSearchRegex } = require('../utils/phoneSearch');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -100,9 +101,12 @@ router.get('/', ...guard,
     const filter = isSuperAdmin ? { deletedAt: null } : { tenantId: req.user.tenantId, deletedAt: null };
     if (req.query.search?.trim()) {
       const s = escRe(req.query.search.trim());
+      const phoneRe = phoneSearchRegex(req.query.search.trim());
       filter.$or = [
         { name:  { $regex: s, $options: 'i' } },
         { email: { $regex: s, $options: 'i' } },
+        { phone: { $regex: s, $options: 'i' } },
+        ...(phoneRe ? [{ phone: phoneRe }] : []),
       ];
     }
     if (req.query.source) filter.source = req.query.source;

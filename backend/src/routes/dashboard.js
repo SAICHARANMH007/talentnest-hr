@@ -14,6 +14,7 @@ const { allowRoles }  = require('../middleware/rbac');
 const asyncHandler    = require('../utils/asyncHandler');
 const AppError        = require('../utils/AppError');
 const { exportToExcel } = require('../utils/exportToExcel');
+const { phoneSearchRegex } = require('../utils/phoneSearch');
 const PaymentRecord   = require('../models/PaymentRecord');
 const { cacheRoute }  = require('../middleware/cache');
 
@@ -1027,12 +1028,14 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
 
   if (search) {
     const searchRe = { $regex: search, $options: 'i' };
+    const phoneRe = phoneSearchRegex(search);
     pipeline.unshift({
       $match: {
         $or: [
           { name: searchRe },
           { email: searchRe },
           { phone: searchRe },
+          ...(phoneRe ? [{ phone: phoneRe }] : []),
           { title: searchRe }
         ]
       }
@@ -1090,13 +1093,15 @@ async function buildSearchFilter(req, filter) {
   const search = String(req.query.search || '').trim().toLowerCase();
   if (!search) return filter;
   const searchRe = { $regex: search, $options: 'i' };
+  const phoneRe = phoneSearchRegex(search);
   const candFilter = { ...tenantFilter(req), deletedAt: null };
-  candFilter.$or = [{ name: searchRe }, { email: searchRe }, { phone: searchRe }];
+  candFilter.$or = [{ name: searchRe }, { email: searchRe }, { phone: searchRe }, ...(phoneRe ? [{ phone: phoneRe }] : [])];
   const matchingCandidates = await Candidate.find(candFilter).select('_id').lean();
   filter.$or = [
     { candidateId: { $in: matchingCandidates.map(c => c._id) } },
     { candidateName: searchRe }, { candidateEmail: searchRe },
     { candidatePhone: searchRe }, { email: searchRe },
+    ...(phoneRe ? [{ candidatePhone: phoneRe }] : []),
   ];
   return filter;
 }
@@ -2223,11 +2228,13 @@ router.get('/unregistered-candidates', authenticate, allowRoles('super_admin'), 
   // 2. Find all unique emails in Candidate collection that are NOT registered
   const matchStage = { deletedAt: null, $or: [{ userId: null }, { userId: { $exists: false } }] };
   if (search) {
+    const phoneRe = phoneSearchRegex(search);
     matchStage.$and = [
       { $or: [
         { name:  { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
+        ...(phoneRe ? [{ phone: phoneRe }] : []),
         { title: { $regex: search, $options: 'i' } },
       ]},
     ];
