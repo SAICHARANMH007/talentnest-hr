@@ -325,6 +325,40 @@ export default function CandidateExploreJobs({ user }) {
 
   const [urgencyFilter, setUrgencyFilter] = useState('');
   const [locFilter, setLocFilter] = useState('');
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
+
+  useEffect(() => {
+    api.getSavedSearches('jobs').then(setSavedSearches).catch(() => {});
+  }, []);
+
+  const applyFilters = (filters = {}) => {
+    setSearch(filters.search || '');
+    setTypeFilter(filters.typeFilter || '');
+    setUrgencyFilter(filters.urgencyFilter || '');
+    setLocFilter(filters.locFilter || '');
+  };
+
+  const saveCurrentSearch = async () => {
+    const name = window.prompt('Name this search (e.g. "Remote React jobs")');
+    if (!name || !name.trim()) return;
+    try {
+      const saved = await api.saveSearch(name.trim(), 'jobs', { search, typeFilter, urgencyFilter, locFilter });
+      setSavedSearches(prev => [saved, ...prev]);
+      setToast('✅ Search saved');
+    } catch (e) {
+      setToast(`❌ ${e.message || 'Could not save search'}`);
+    }
+  };
+
+  const removeSavedSearch = async (id) => {
+    try {
+      await api.deleteSavedSearch(id);
+      setSavedSearches(prev => prev.filter(s => String(s._id || s.id) !== String(id)));
+    } catch (e) {
+      setToast(`❌ ${e.message || 'Could not delete search'}`);
+    }
+  };
 
   const urgencyColor = { High: '#BA0517', Medium: '#F59E0B', Low: '#2E844A' };
   const typeColor = { 'Full-Time': '#014486', 'Part-Time': '#0176D3', 'Contract': '#F59E0B', 'Remote': '#10b981', 'Internship': '#8b5cf6' };
@@ -430,6 +464,49 @@ export default function CandidateExploreJobs({ user }) {
             >
               ✕ Clear
             </button>
+          )}
+          {(search || typeFilter || urgencyFilter || locFilter) && (
+            <button
+              type="button"
+              onClick={saveCurrentSearch}
+              style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: '#0176D3', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              💾 Save Search
+            </button>
+          )}
+          {savedSearches.length > 0 && (
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setShowSavedSearches(s => !s)}
+                style={{ padding: '10px 14px', background: '#F3F2F2', border: '1px solid rgba(1,118,211,0.25)', borderRadius: 12, color: '#706E6B', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                📁 Saved Searches ({savedSearches.length})
+              </button>
+              {showSavedSearches && (
+                <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 240, zIndex: 20, overflow: 'hidden' }}>
+                  {savedSearches.map(s => (
+                    <div key={s._id || s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderBottom: '1px solid #F1F5F9' }}>
+                      <button
+                        type="button"
+                        onClick={() => { applyFilters(s.filters || {}); setShowSavedSearches(false); }}
+                        style={{ background: 'none', border: 'none', color: '#181818', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', flex: 1 }}
+                      >
+                        {s.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeSavedSearch(s._id || s.id)}
+                        title="Delete saved search"
+                        style={{ background: 'none', border: 'none', color: '#BA0517', fontSize: 13, cursor: 'pointer', padding: 2 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </form>

@@ -1,6 +1,7 @@
 import React from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import ReferralHub from '../../components/candidate/ReferralHub.jsx';
+import MyJobReferrals from '../../components/candidate/MyJobReferrals.jsx';
 
 export default function CandidateReferEarn({ user }) {
   return (
@@ -10,6 +11,7 @@ export default function CandidateReferEarn({ user }) {
         subtitle="Invite friends to TalentNest HR, earn coins, and unlock exclusive profile badges"
       />
       <ReferralHub user={user} />
+      <MyJobReferrals />
     </div>
   );
 }

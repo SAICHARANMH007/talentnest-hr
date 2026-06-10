@@ -2366,26 +2366,41 @@ router.get('/ai-matched-jobs', authenticate, allowRoles('candidate'), asyncHandl
   res.json({ success: true, data: scored.slice(0, limit) });
 }));
 
-/* GET /api/dashboard/candidate-upcoming-interviews */
+/* GET /api/dashboard/candidate-upcoming-interviews — all of this candidate's
+   scheduled interviews (past and upcoming), for the Interview Calendar page. */
 router.get('/candidate-upcoming-interviews', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const now = new Date(), weekEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
   const Candidate = require('../models/Candidate');
   const cDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
   const cIds = cDocs.map(c => c._id);
   const apps = await Application.find({
     candidateId: { $in: cIds },
-    'interviewRounds.scheduledAt': { $gte: now, $lte: weekEnd },
-  }).populate('jobId', 'title').lean();
+    'interviewRounds.0': { $exists: true },
+  }).populate('jobId', 'title companyName company').lean();
 
-  const list = [];
+  const all = [];
   apps.forEach(app => {
-    (app.interviewRounds || []).forEach(iv => {
-      if (iv.scheduledAt && new Date(iv.scheduledAt) >= now && new Date(iv.scheduledAt) <= weekEnd) {
-        list.push({ jobTitle: app.jobId?.title, scheduledAt: iv.scheduledAt, format: iv.format, videoLink: iv.videoLink });
-      }
+    (app.interviewRounds || []).forEach((iv, idx) => {
+      if (!iv.scheduledAt) return;
+      all.push({
+        applicationId : String(app._id),
+        jobTitle      : app.jobId?.title || '',
+        company       : app.jobId?.companyName || app.jobId?.company || '',
+        round         : idx + 1,
+        scheduledAt   : iv.scheduledAt,
+        format        : iv.format || '',
+        videoLink     : iv.videoLink || '',
+        location      : iv.location || '',
+        interviewerName: iv.interviewerName || '',
+      });
     });
   });
-  res.json({ success: true, data: { upcoming: list, count: list.length } });
+  all.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+  const upcoming = all.filter(iv => new Date(iv.scheduledAt) >= now);
+  const past     = all.filter(iv => new Date(iv.scheduledAt) < now).reverse();
+
+  res.json({ success: true, data: { upcoming, past, count: upcoming.length } });
 }));
 
 // ════════════════════════════════════════════════════════════════════════════

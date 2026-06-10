@@ -8,12 +8,45 @@ const router       = express.Router();
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
 
-// GET /api/notifications — get my notifications (paginated)
+// Notification category groupings for user preferences — controls which
+// notification types appear in a user's inbox.
+const NOTIFICATION_CATEGORIES = {
+  applicationUpdates: { label: 'Application Updates',    types: ['application', 'stage_change', 'offer', 'assessment_reviewed'] },
+  interviews:         { label: 'Interview Reminders',    types: ['interview'] },
+  jobRecommendations: { label: 'Job Recommendations',    types: ['talent_match', 'job_assignment'] },
+  announcements:      { label: 'Announcements & Updates', types: ['system', 'college', 'mention', 'invite_interested', 'invite'] },
+};
+
+// GET /api/notifications/preferences — which notification categories the user wants to see
+router.get('/preferences', auth, asyncHandler(async (req, res) => {
+  const muted = req.user.settings?.mutedNotificationCategories || [];
+  res.json({
+    categories: Object.entries(NOTIFICATION_CATEGORIES).map(([key, c]) => ({ key, label: c.label, enabled: !muted.includes(key) })),
+  });
+}));
+
+// PATCH /api/notifications/preferences — update muted categories
+router.patch('/preferences', auth, asyncHandler(async (req, res) => {
+  const { muted } = req.body;
+  const validKeys = Object.keys(NOTIFICATION_CATEGORIES);
+  const cleaned = Array.isArray(muted) ? muted.filter(k => validKeys.includes(k)) : [];
+  await User.findByIdAndUpdate(req.user.id, { $set: { 'settings.mutedNotificationCategories': cleaned } });
+  res.json({
+    categories: Object.entries(NOTIFICATION_CATEGORIES).map(([key, c]) => ({ key, label: c.label, enabled: !cleaned.includes(key) })),
+  });
+}));
+
+// GET /api/notifications — get my notifications (paginated), respecting category preferences
 router.get('/', auth, asyncHandler(async (req, res) => {
   const userId = req.user._id || req.user.id;
   const limit  = 100; // return latest 100 notifications — enough for any inbox UI
 
-  const all = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(limit).lean();
+  const muted = req.user.settings?.mutedNotificationCategories || [];
+  const mutedTypes = muted.flatMap(key => NOTIFICATION_CATEGORIES[key]?.types || []);
+  const filter = { userId };
+  if (mutedTypes.length) filter.type = { $nin: mutedTypes };
+
+  const all = await Notification.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
 
   const result = all.map(n => ({ ...n, id: n._id.toString(), body: n.body || n.message }));
 

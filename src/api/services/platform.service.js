@@ -32,6 +32,8 @@ export const platformService = {
   async markRead(id)                     { return req('PATCH', `/notifications/${id}/read`, {}); },
   async clearAllNotifications()          { return req('DELETE', '/notifications'); },
   async generatePlatformNotifications()  { return req('POST',  '/notifications/platform-summary', {}); },
+  async getNotificationPreferences()     { return req('GET', '/notifications/preferences'); },
+  async updateNotificationPreferences(muted) { return req('PATCH', '/notifications/preferences', { muted }); },
 
   
   // Contact Leads

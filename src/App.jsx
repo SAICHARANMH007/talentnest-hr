@@ -36,6 +36,8 @@ const OrgCareersPage = lazy(() => import('./pages/careers/OrgCareersPage.jsx'));
 
 const CandidateDashboard = lazy(() => import('./pages/candidate/CandidateDashboard.jsx'));
 const CandidateApplications = lazy(() => import('./pages/candidate/CandidateApplications.jsx'));
+const CandidateInterviews = lazy(() => import('./pages/candidate/CandidateInterviews.jsx'));
+const CandidateNotificationSettings = lazy(() => import('./pages/candidate/CandidateNotificationSettings.jsx'));
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
 const CandidateSmartMatch = lazy(() => import('./pages/candidate/CandidateSmartMatch.jsx'));
@@ -612,6 +614,7 @@ export default function App() {
         <Route path="settings/password" element={<ChangePasswordPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/email" element={<EmailSettingsPage user={user} onBack={() => window.history.back()} />} />
         <Route path="settings/security" element={<SecuritySettingsPage user={user} onBack={() => window.history.back()} />} />
+        <Route path="settings/notifications" element={<Suspense fallback={<PageLoader />}><CandidateNotificationSettings /></Suspense>} />
         <Route path="add-candidate" element={<Suspense fallback={<PageLoader />}><AddCandidateForm addedBy={user} onSuccess={() => { window.dispatchEvent(new CustomEvent('tn_nav', { detail: 'candidates' })); }} /></Suspense>} />
         {/* Resume full-page view — accessible by all logged-in roles */}
         <Route path="resume/:candidateId" element={<Suspense fallback={<PageLoader />}><ResumeViewPage user={user} /></Suspense>} />
@@ -624,6 +627,7 @@ export default function App() {
             <Route path="refer-earn" element={<CandidateReferEarn user={user} />} />
             <Route path="career-journey" element={<CandidateCareerJourney user={user} />} />
             <Route path="applications" element={<CandidateApplications user={user} />} />
+            <Route path="interviews" element={<Suspense fallback={<PageLoader />}><CandidateInterviews user={user} /></Suspense>} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
