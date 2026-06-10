@@ -498,7 +498,7 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const { q = '' } = req.query;
+  const { q = '', type = '' } = req.query;
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
@@ -512,35 +512,97 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
     ];
   }
 
-  const [students, total] = await Promise.all([
-    Candidate.find(filter)
-      .select('name email phone title experience isFresher skills createdAt')
-      .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-    Candidate.countDocuments(filter),
-  ]);
+  const allStudents = await Candidate.find(filter)
+    .select('name email phone title experience isFresher skills createdAt currentCompany location educationList certifications projects achievements')
+    .sort({ createdAt: -1 }).lean();
 
-  const ids = students.map(s => s._id);
+  const currentYear = new Date().getFullYear();
+
+  function parseJsonArray(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  let mapped = allStudents.map(s => {
+    const education = parseJsonArray(s.educationList);
+    const certifications = parseJsonArray(s.certifications);
+
+    let latestEducation = null;
+    education.forEach(e => {
+      const y = parseInt(e?.year, 10);
+      if (!latestEducation || (Number.isFinite(y) && y > (parseInt(latestEducation?.year, 10) || -Infinity))) {
+        latestEducation = e;
+      }
+    });
+
+    const passingYear = parseInt(latestEducation?.year, 10);
+    const studentType = Number.isFinite(passingYear)
+      ? (passingYear >= currentYear ? 'student' : 'alumni')
+      : (s.isFresher ? 'student' : 'alumni');
+
+    return {
+      id: String(s._id),
+      name: s.name || '',
+      email: s.email || '',
+      phone: s.phone || '',
+      title: s.title || '',
+      experience: s.experience ?? null,
+      isFresher: !!s.isFresher,
+      currentCompany: s.currentCompany || '',
+      location: s.location || '',
+      skills: s.skills || [],
+      education,
+      latestEducation: latestEducation ? {
+        degree: latestEducation.degree || '',
+        institution: latestEducation.institution || '',
+        university: latestEducation.university || '',
+        year: latestEducation.year || '',
+        grade: latestEducation.grade || '',
+      } : null,
+      certifications: certifications.map(c => ({
+        name: c?.name || '',
+        issuer: c?.issuer || '',
+        year: c?.year || '',
+        url: c?.url || '',
+      })),
+      projects: s.projects || '',
+      achievements: s.achievements || '',
+      studentType,
+      joinedAt: s.createdAt,
+      _idObj: s._id,
+    };
+  });
+
+  if (type === 'student' || type === 'alumni') {
+    mapped = mapped.filter(s => s.studentType === type);
+  }
+
+  const totalFiltered = mapped.length;
+  const pageItems = mapped.slice((page - 1) * limit, (page - 1) * limit + limit);
+
+  const ids = pageItems.map(s => s._idObj);
   const appCounts = await Application.aggregate([
     { $match: { candidateId: { $in: ids }, deletedAt: null } },
     { $group: { _id: '$candidateId', count: { $sum: 1 }, hired: { $sum: { $cond: [{ $eq: ['$currentStage', 'Hired'] }, 1, 0] } } } },
   ]);
   const countMap = new Map(appCounts.map(a => [String(a._id), a]));
 
-  const data = students.map(s => ({
-    id: String(s._id),
-    name: s.name || '',
-    email: s.email || '',
-    phone: s.phone || '',
-    title: s.title || '',
-    experience: s.experience ?? null,
-    isFresher: !!s.isFresher,
-    skills: s.skills || [],
-    applications: countMap.get(String(s._id))?.count || 0,
-    placed: (countMap.get(String(s._id))?.hired || 0) > 0,
-    joinedAt: s.createdAt,
-  }));
+  const data = pageItems.map(s => {
+    const { _idObj, ...rest } = s;
+    return {
+      ...rest,
+      applications: countMap.get(String(_idObj))?.count || 0,
+      placed: (countMap.get(String(_idObj))?.hired || 0) > 0,
+    };
+  });
 
-  res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1 });
+  res.json({ success: true, data, total: totalFiltered, page, pages: Math.ceil(totalFiltered / limit) || 1 });
 }));
 
 /* GET /api/dashboard/college/placements — application/placement records for this college's students */
