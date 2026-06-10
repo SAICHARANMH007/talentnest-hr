@@ -658,6 +658,10 @@ export default function CommunityDetailPage({ user }) {
   const [editErr,   setEditErr]   = useState('');
   const isSuperAdmin = ['super_admin', 'superadmin'].includes(user?.role);
   const uid = String(user?.id || user?._id || '');
+  // Auto-membership communities (e.g. "<College> Community") can't be left —
+  // every student/alumnus whose college matches is automatically a member.
+  const normalizeCollege = (name) => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const isAutoMember = !!community?.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(user?.college);
 
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 768);
@@ -956,12 +960,18 @@ export default function CommunityDetailPage({ user }) {
                 style={{ padding: '7px 14px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 🔗 Share
               </button>
-              <button
-                onClick={isMember ? handleLeave : handleJoin}
-                disabled={joining}
-                style={{ padding: '7px 18px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
-                {joining ? '…' : isMember ? '✓ Joined' : '+ Join'}
-              </button>
+              {isAutoMember ? (
+                <span style={{ padding: '7px 18px', borderRadius: 20, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  🎓 Your College
+                </span>
+              ) : (
+                <button
+                  onClick={isMember ? handleLeave : handleJoin}
+                  disabled={joining}
+                  style={{ padding: '7px 18px', borderRadius: 20, border: `1.5px solid ${isMember ? '#E5E7EB' : bg}`, background: isMember ? '#fff' : bg, color: isMember ? '#374151' : '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, boxShadow: isMember ? '0 1px 4px rgba(0,0,0,0.06)' : `0 2px 8px ${bg}44` }}>
+                  {joining ? '…' : isMember ? '✓ Joined' : '+ Join'}
+                </button>
+              )}
             </div>
           </div>
 

@@ -20,10 +20,18 @@ const CATEGORY_LABEL = {
   other   : 'Other',
 };
 
-function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
+function normalizeCollege(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function CommunityCard({ community, userCollege, onJoin, onLeave, loading, onNavigate }) {
   const isMember = community.isMember;
   const color    = community.coverColor || CATEGORY_COLOR[community.category] || '#0176D3';
   const [btnHover, setBtnHover] = useState(false);
+
+  // Auto-membership communities (e.g. "<College> Community") can't be left —
+  // every student/alumnus whose college matches is automatically a member.
+  const isAutoMember = !!community.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(userCollege);
 
   const btnLabel = loading ? '…' : isMember ? (btnHover ? 'Leave' : 'Joined') : 'Join';
   const btnStyle = isMember
@@ -63,20 +71,26 @@ function CommunityCard({ community, onJoin, onLeave, loading, onNavigate }) {
           <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500, flexShrink: 0 }}>
             👥 {community.memberCount || 0}
           </span>
-          <button
-            onClick={(e) => { e.stopPropagation(); isMember ? onLeave(community.slug) : onJoin(community.slug); }}
-            disabled={loading}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
-            style={{
-              padding: '7px 14px', borderRadius: 8,
-              border: `1px solid ${btnStyle.border}`,
-              background: btnStyle.bg, color: btnStyle.color,
-              fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: 58,
-            }}>
-            {btnLabel}
-          </button>
+          {isAutoMember ? (
+            <span style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              🎓 Your College
+            </span>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); isMember ? onLeave(community.slug) : onJoin(community.slug); }}
+              disabled={loading}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+              style={{
+                padding: '7px 14px', borderRadius: 8,
+                border: `1px solid ${btnStyle.border}`,
+                background: btnStyle.bg, color: btnStyle.color,
+                fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: 58,
+              }}>
+              {btnLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -317,6 +331,7 @@ export default function CommunitiesPage({ user }) {
             <CommunityCard
               key={c.slug}
               community={c}
+              userCollege={user?.college}
               onJoin={handleJoin}
               onLeave={handleLeave}
               loading={actionSlug === c.slug}
