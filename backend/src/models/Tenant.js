@@ -14,7 +14,7 @@ const tenantSchema = new mongoose.Schema({
 
   // Hierarchy (The "Parent-Child" / "Vendor-Client" logic)
   parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
-  type: { type: String, enum: ['org', 'tenant', 'vendor', 'client'], default: 'tenant' },
+  type: { type: String, enum: ['org', 'tenant', 'vendor', 'client', 'college'], default: 'tenant' },
 
   // Business Logic
   isRecruitmentAgency: { type: Boolean, default: false },

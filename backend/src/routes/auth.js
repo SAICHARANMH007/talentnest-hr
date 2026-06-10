@@ -158,6 +158,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             name: companyName.trim(),
             slug: slugify(companyName) + '-' + crypto.randomBytes(3).toString('hex'),
             domain: cleanDomain(domain) || authService.emailDomain(email),
+            type: req.body.tenantType === 'college' ? 'college' : 'tenant',
             plan: 'trial',
             subscriptionStatus: 'active',
             subscriptionExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),

@@ -353,12 +353,42 @@ function EntryScreen({ onSelect, navigate }) {
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
             Post jobs, manage your talent pipeline, and build high-performance teams.
           </p>
-          <div className="action-btn" style={{ 
-            width: '100%', background: 'linear-gradient(135deg, #00C2CB, #0891B2)', 
-            borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700, 
-            transition: 'all 0.3s' 
+          <div className="action-btn" style={{
+            width: '100%', background: 'linear-gradient(135deg, #00C2CB, #0891B2)',
+            borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700,
+            transition: 'all 0.3s'
           }}>
             Find Talent →
+          </div>
+        </button>
+
+        {/* College / Campus Card */}
+        <button
+          onClick={() => onSelect('college')}
+          className="entry-card"
+          style={{
+            borderRadius: 32, padding: '54px 32px', width: '320px',
+            cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center'
+          }}
+        >
+          <div className="icon-box" style={{
+            width: 88, height: 88, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)',
+            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+            boxShadow: '0 12px 24px rgba(124, 58, 237, 0.3)',
+            '--accent-rgb': '124, 58, 237'
+          }}>🎓</div>
+          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>College / Campus</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+            Manage placements, track recruitment drives, and connect students with employers.
+          </p>
+          <div className="action-btn" style={{
+            width: '100%', background: 'linear-gradient(135deg, #7C3AED, #4C1D95)',
+            borderRadius: 16, padding: '14px 0', color: '#fff', fontSize: 15, fontWeight: 700,
+            transition: 'all 0.3s'
+          }}>
+            Campus Portal →
           </div>
         </button>
       </div>
@@ -1543,6 +1573,140 @@ function RecruiterRegisterForm({ orgInfo, companyUrl, onAuth, navigate, onBack }
   );
 }
 
+// ── College / Campus Auth Form ─────────────────────────────────────────────────
+function CollegeForm({ onAuth, onBack, onForgot, navigate, prefill }) {
+  const [mode, setMode]       = useState(prefill?.mode === 'register' ? 'register' : 'login');
+  const [email, setEmail]     = useState(prefill?.email || '');
+  const [pw, setPw]           = useState('');
+  const [name, setName]       = useState('');
+  const [collegeName, setCollegeName] = useState('');
+  const [phone, setPhone]     = useState('');
+  const [showPw, setShowPw]   = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [pending2FA, setPending2FA] = useState(null);
+
+  const submit = async () => {
+    setError('');
+    if (!email || !pw) { setError('Email and password are required.'); return; }
+    setLoading(true);
+    try {
+      if (mode === 'login') {
+        const d = await api.login(email, pw);
+        if (d.mustChangePassword) {
+          navigate(`/set-password?token=${d.changePasswordToken}&email=${encodeURIComponent(d.email)}&mode=change`);
+          return;
+        }
+        if (d.requires2FA) { setPending2FA({ email: d.email }); setLoading(false); return; }
+        if (d.user.role === 'candidate') {
+          setError('This is a Job Seeker account. Please use Job Seeker login instead.');
+          setLoading(false); return;
+        }
+        onAuth(d.user, d.token);
+        navigate('/app');
+      } else {
+        if (!name.trim())        { setError('Your name is required.'); setLoading(false); return; }
+        if (!collegeName.trim()) { setError('College / Institution name is required.'); setLoading(false); return; }
+        if (pw.length < 8)       { setError('Password must be at least 8 characters.'); setLoading(false); return; }
+        const d = await api.register({ name, email, password: pw, role: 'admin', companyName: collegeName, phone, tenantType: 'college' });
+        onAuth(d.user, d.token);
+        navigate('/app');
+      }
+    } catch (e) {
+      setError(e.message || 'Something went wrong');
+    }
+    setLoading(false);
+  };
+
+  if (pending2FA) return (
+    <div style={BG}>
+      <div style={CARD}>
+        <OtpScreen email={pending2FA.email} onVerified={(u, t) => { onAuth(u, t); navigate('/app'); }} onBack={() => setPending2FA(null)} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="tn-auth-dark" style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
+      <div style={CARD}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+            <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20 }}>
+              <Logo size="lg" variant="full" theme="dark" />
+            </div>
+          </div>
+          <div style={{ height: 1, width: '100%', background: 'rgba(255,255,255,0.06)', marginBottom: 24 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 10, color: 'rgba(255,255,255,0.6)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>College / Campus</h2>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '2px 0 0' }}>
+                {mode === 'login' ? 'Sign in to your campus placement portal' : 'Register your college on TalentNest HR'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ background: 'rgba(186,5,23,0.07)', border: '1px solid rgba(186,5,23,0.25)', borderRadius: 10, padding: '10px 14px', color: '#FF7676', fontSize: 13, marginBottom: 14 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {mode === 'register' && (
+            <>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>COLLEGE / INSTITUTION NAME *</label>
+                <input value={collegeName} onChange={e => setCollegeName(e.target.value)} placeholder="e.g. ABC Institute of Technology" style={INP} autoComplete="organization" />
+              </div>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>YOUR NAME *</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Placement Officer name" style={INP} autoComplete="name" />
+              </div>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER</label>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" />
+              </div>
+            </>
+          )}
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="placement@college.edu" style={INP} autoComplete="email" />
+          </div>
+          <div>
+            <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
+            <div style={{ position: 'relative' }}>
+              <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 48 }} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} onKeyDown={e => e.key === 'Enter' && submit()} />
+              <button type="button" onClick={() => setShowPw(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <EyeIcon visible={showPw} />
+              </button>
+            </div>
+            {mode === 'register' && <PasswordStrength pw={pw} />}
+          </div>
+
+          {mode === 'login' && (
+            <div style={{ textAlign: 'right' }}>
+              <span onClick={onForgot} style={{ color: '#0176D3', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Forgot password?</span>
+            </div>
+          )}
+
+          <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, marginTop: 6 }}>
+            {loading ? <><Spinner /> {mode === 'login' ? 'Signing in…' : 'Creating account…'}</> : (mode === 'login' ? '🔐 Sign In' : '🎓 Register College')}
+          </button>
+
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '8px 0 0' }}>
+            {mode === 'login' ? "Don't have a college account yet? " : 'Already registered? '}
+            <span onClick={() => { setError(''); setMode(mode === 'login' ? 'register' : 'login'); }} style={{ color: '#0176D3', cursor: 'pointer', fontWeight: 700 }}>
+              {mode === 'login' ? 'Register your college' : 'Sign in'}
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function AuthScreen({ onAuth }) {
   const navigate = useNavigate();
@@ -1572,7 +1736,7 @@ export default function AuthScreen({ onAuth }) {
 
   const handleSelect = (type, pf = null) => {
     setPrefill(pf);
-    const next = type === 'candidate' ? 'candidate' : 'employer';
+    const next = type === 'candidate' ? 'candidate' : type === 'college' ? 'college' : 'employer';
     setLastAuthScreen(next);
     setScreen(next);
   };
@@ -1586,5 +1750,6 @@ export default function AuthScreen({ onAuth }) {
   if (screen === 'reset')  return <ResetPasswordForm token={resetParams.token} email={resetParams.email} onBack={() => setScreen('candidate')} />;
   if (screen === 'candidate') return <CandidateForm onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('candidate')} navigate={navigate} prefill={prefill} />;
   if (screen === 'employer')  return <EmployerForm  onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('employer')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'college')   return <CollegeForm   onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('college')} navigate={navigate} prefill={prefill} />;
   return <EntryScreen onSelect={handleSelect} navigate={navigate} />;
 }

@@ -480,7 +480,7 @@ export default function App() {
     );
   }
 
-  const ROLE_DEFAULT = { super_admin: 'analytics', admin: 'analytics', recruiter: 'dashboard', candidate: 'dashboard', client: 'dashboard', hiring_manager: 'dashboard' };
+  const ROLE_DEFAULT = { super_admin: 'analytics', admin: 'analytics', recruiter: 'dashboard', candidate: 'dashboard', client: 'dashboard', hiring_manager: 'dashboard', placement_officer: 'dashboard' };
 
   const auth = (u, token) => {
     const uJson = JSON.stringify(u);

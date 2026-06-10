@@ -197,8 +197,10 @@ export default function ApplicantsRecordsPage({ user }) {
     startDate: params.get('startDate') || '',
     endDate: params.get('endDate') || '',
     experienceLevel: params.get('experienceLevel') || '',
+    collegeId: params.get('collegeId') || '',
   });
   const [rows, setRows]         = useState([]);
+  const [colleges, setColleges] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
   const [jobs, setJobs]         = useState([]);
   const [total, setTotal]       = useState(0);
@@ -221,13 +223,15 @@ export default function ApplicantsRecordsPage({ user }) {
     Promise.all([
       canManage ? api.getUsers({ role: 'recruiter', limit: 10000000 }).catch(() => []) : Promise.resolve([]),
       api.getJobs({ limit: 10000000 }).catch(() => []),
-    ]).then(([recruiterRes, jobRes]) => {
+      user?.role === 'super_admin' ? api.getColleges().catch(() => []) : Promise.resolve([]),
+    ]).then(([recruiterRes, jobRes, collegeRes]) => {
       if (!alive) return;
       setRecruiters(toArray(recruiterRes));
       setJobs(toArray(jobRes));
+      setColleges(toArray(collegeRes));
     });
     return () => { alive = false; };
-  }, [canManage]);
+  }, [canManage, user?.role]);
 
   const recruitersById = useMemo(() => {
     const map = new Map();
@@ -278,7 +282,7 @@ export default function ApplicantsRecordsPage({ user }) {
   };
 
   const clearFilters = () => {
-    setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '', experienceLevel: '' });
+    setFilters({ search: '', stage: '', source: '', status: '', recruiterId: '', jobId: '', minScore: '', startDate: '', endDate: '', experienceLevel: '', collegeId: '' });
     setPage(1);
   };
 
@@ -447,6 +451,14 @@ export default function ApplicantsRecordsPage({ user }) {
           <Field label="From" type="date" value={filters.startDate} onChange={v => updateFilter('startDate', v)} />
           <Field label="To" type="date" value={filters.endDate} onChange={v => updateFilter('endDate', v)} />
           <Field label="Experience" value={filters.experienceLevel} onChange={v => updateFilter('experienceLevel', v)} options={EXPERIENCE_LEVEL_OPTIONS} />
+          {user?.role === 'super_admin' && colleges.length > 0 && (
+            <Field
+              label="College"
+              value={filters.collegeId}
+              onChange={v => updateFilter('collegeId', v)}
+              options={[{ value: '', label: 'All colleges' }, ...colleges.map(c => ({ value: c.id, label: c.name }))]}
+            />
+          )}
         </div>
       </div>
 

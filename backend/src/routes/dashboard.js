@@ -241,6 +241,12 @@ async function buildApplicationFilters(req) {
     }
   }
 
+  // College filter — lets super admins view recruitment data scoped to a single college tenant
+  const { collegeId } = req.query;
+  if (collegeId && req.user.role === 'super_admin' && mongoose.Types.ObjectId.isValid(collegeId)) {
+    filter.tenantId = new mongoose.Types.ObjectId(collegeId);
+  }
+
   // Exact ID or Email tracking for unified candidate pipeline
   const { candidateId, email, experienceLevel } = req.query;
   if (email) {
@@ -399,6 +405,15 @@ router.get('/public', asyncHandler(async (_req, res) => {
   };
   publicCacheAt = Date.now();
   res.json(publicCache);
+}));
+
+/* GET /api/dashboard/colleges
+   Returns all college tenants — used to populate "Select College" filters
+   for recruiters/admins viewing campus recruitment data. */
+router.get('/colleges', authenticate, asyncHandler(async (req, res) => {
+  const colleges = await Tenant.find({ type: 'college', deletedAt: null })
+    .select('name').sort({ name: 1 }).lean();
+  res.json({ success: true, data: colleges.map(c => ({ id: String(c._id), name: c.name })) });
 }));
 
 // ── Admin/SuperAdmin Stats ───────────────────────────────────────────────────
@@ -942,6 +957,9 @@ router.get('/candidate-records', authenticate, allowRoles('admin', 'super_admin'
   }
 
   const baseMatch = { ...tf, deletedAt: null };
+  if (req.query.collegeId && req.user.role === 'super_admin' && mongoose.Types.ObjectId.isValid(req.query.collegeId)) {
+    baseMatch.tenantId = new mongoose.Types.ObjectId(req.query.collegeId);
+  }
   if (appliedCandidateIds) baseMatch._id = { $in: appliedCandidateIds };
   if (registeredOnly) {
     // Match candidates that are linked to a platform User — either via userId field
