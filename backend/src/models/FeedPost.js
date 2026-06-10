@@ -9,6 +9,7 @@ const commentSchema = new Schema({
   userRole  : { type: String, default: '' },
   userTitle : { type: String, default: '' },
   content   : { type: String, required: true, maxlength: 1000 },
+  mentions  : [{ type: Types.ObjectId, ref: 'User' }],
   createdAt : { type: Date, default: Date.now },
 });
 
@@ -27,6 +28,7 @@ const feedPostSchema = new Schema({
   content     : { type: String, required: true, maxlength: 3000 },
   images      : [{ type: String }],
   hashtags    : [{ type: String }],
+  mentions    : [{ type: Types.ObjectId, ref: 'User' }],
   reactions   : [reactionSchema],
   comments    : [commentSchema],
   savedBy     : [{ type: Types.ObjectId, ref: 'User' }],

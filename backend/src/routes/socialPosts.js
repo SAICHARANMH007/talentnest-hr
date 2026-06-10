@@ -51,6 +51,38 @@ function roleTitle(role) {
   return { admin: 'HR Administrator', recruiter: 'Talent Acquisition Specialist', candidate: 'Job Seeker', super_admin: 'Platform Admin', superadmin: 'Platform Admin' }[role] || 'TalentNest Member';
 }
 
+// Validate & dedupe a list of mentioned userIds, excluding the author themselves
+function sanitizeMentions(mentions, selfId) {
+  if (!Array.isArray(mentions)) return [];
+  const self = String(selfId);
+  const seen = new Set();
+  return mentions.filter(id => {
+    const s = String(id || '');
+    if (!/^[a-f0-9]{24}$/i.test(s) || s === self || seen.has(s)) return false;
+    seen.add(s);
+    return true;
+  });
+}
+
+// Notify mentioned users (non-blocking)
+function notifyMentions(mentionIds, { tenantId, fromUser, link, snippet }) {
+  if (!mentionIds.length) return;
+  (async () => {
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.insertMany(mentionIds.map(userId => ({
+        userId,
+        tenantId,
+        type   : 'mention',
+        title  : 'You were mentioned',
+        message: `${fromUser || 'Someone'} mentioned you: "${snippet}"`,
+        link,
+        read   : false,
+      })));
+    } catch {}
+  })();
+}
+
 // GET /api/social-posts?page=1&limit=20&type=update
 router.get('/', asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, type } = req.query;
@@ -86,10 +118,11 @@ const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 
 
 // POST /api/social-posts
 router.post('/', asyncHandler(async (req, res) => {
-  const { content, images, postType, communityId, communitySlug } = req.body;
+  const { content, images, postType, communityId, communitySlug, mentions } = req.body;
   if (!content?.trim()) throw new AppError('Post content is required.', 400);
   const safeType = VALID_POST_TYPES.includes(postType) ? postType : 'update';
   const u = req.user;
+  const mentionIds = sanitizeMentions(mentions, u._id || u.id);
   const post = await FeedPost.create({
     tenantId    : u.tenantId,
     authorId    : u._id || u.id,
@@ -100,8 +133,16 @@ router.post('/', asyncHandler(async (req, res) => {
     content     : content.trim(),
     images      : Array.isArray(images) ? images.slice(0, 4) : [],
     hashtags    : extractHashtags(content),
+    mentions    : mentionIds,
     postType    : safeType,
     ...(communityId ? { communityId, communitySlug: communitySlug || '' } : {}),
+  });
+
+  notifyMentions(mentionIds, {
+    tenantId: u.tenantId,
+    fromUser: u.name,
+    link    : `/app/feed?post=${post._id}`,
+    snippet : content.trim().slice(0, 80) + (content.length > 80 ? '…' : ''),
   });
 
   // If posted in a community, notify other members (up to 20, non-blocking)
@@ -243,11 +284,12 @@ router.post('/:id/react', asyncHandler(async (req, res) => {
 
 // POST /api/social-posts/:id/comment
 router.post('/:id/comment', asyncHandler(async (req, res) => {
-  const { content } = req.body;
+  const { content, mentions } = req.body;
   if (!content?.trim()) throw new AppError('Comment content is required.', 400);
   const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId, isDeleted: false });
   if (!post) throw new AppError('Post not found.', 404);
   const u = req.user;
+  const mentionIds = sanitizeMentions(mentions, u._id || u.id);
   post.comments.push({
     userId    : u._id || u.id,
     userName  : u.name   || '',
@@ -255,10 +297,18 @@ router.post('/:id/comment', asyncHandler(async (req, res) => {
     userRole  : u.role   || '',
     userTitle : u.title  || roleTitle(u.role),
     content   : content.trim(),
+    mentions  : mentionIds,
     createdAt : new Date(),
   });
   await post.save();
   const newComment = post.comments[post.comments.length - 1];
+
+  notifyMentions(mentionIds, {
+    tenantId: u.tenantId,
+    fromUser: u.name,
+    link    : `/app/feed?post=${post._id}`,
+    snippet : content.trim().slice(0, 80) + (content.length > 80 ? '…' : ''),
+  });
 
   // Broadcast new comment to all users in the tenant
   try {

@@ -27,8 +27,8 @@ export const feedPostService = {
   async getSavedPosts() {
     return req('GET', '/social-posts/saved/list');
   },
-  async addComment(id, content) {
-    return req('POST', `/social-posts/${id}/comment`, { content });
+  async addComment(id, content, mentions = []) {
+    return req('POST', `/social-posts/${id}/comment`, { content, mentions });
   },
   async deleteComment(postId, commentId) {
     return req('DELETE', `/social-posts/${postId}/comment/${commentId}`);

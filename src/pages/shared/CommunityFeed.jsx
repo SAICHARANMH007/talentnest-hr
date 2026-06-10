@@ -94,6 +94,109 @@ function ContentWithHashtags({ text, onHashtagClick }) {
   );
 }
 
+// ── Mention helpers ─────────────────────────────────────────────────────────────
+const MENTION_RE = /@\[([^\]]+)\]\(([a-f0-9]{24})\)/g;
+const MENTION_TEST_RE = /@\[[^\]]+\]\([a-f0-9]{24}\)/;
+
+// Renders post/comment text, highlighting both #hashtags and @[Name](userId) mentions
+function RichContent({ text, onHashtagClick }) {
+  const navigate = useNavigate();
+  const nodes = [];
+  let lastIndex = 0;
+  let m;
+  const re = new RegExp(MENTION_RE);
+  while ((m = re.exec(text))) {
+    if (m.index > lastIndex) nodes.push({ type: 'text', value: text.slice(lastIndex, m.index) });
+    nodes.push({ type: 'mention', name: m[1], id: m[2] });
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) nodes.push({ type: 'text', value: text.slice(lastIndex) });
+
+  return (
+    <span>
+      {nodes.map((n, i) => n.type === 'mention'
+        ? <span key={i} onClick={() => navigate(`/app/profile/${n.id}`)}
+            style={{ color: '#0176D3', fontWeight: 700, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+            @{n.name}
+          </span>
+        : <ContentWithHashtags key={i} text={n.value} onHashtagClick={onHashtagClick} />
+      )}
+    </span>
+  );
+}
+
+// Dropdown of user suggestions for @mention autocomplete
+function MentionDropdown({ suggestions, searching, onSelect }) {
+  if (suggestions == null) return null;
+  return (
+    <div style={{ position: 'absolute', zIndex: 50, top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 220, overflowY: 'auto' }}>
+      {searching ? (
+        <div style={{ padding: '10px 12px', fontSize: 12, color: '#9CA3AF' }}>Searching…</div>
+      ) : suggestions.length === 0 ? (
+        <div style={{ padding: '10px 12px', fontSize: 12, color: '#9CA3AF' }}>No matches</div>
+      ) : suggestions.map(u => (
+        <div key={String(u._id || u.id)}
+          onMouseDown={e => { e.preventDefault(); onSelect(u); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+          <Avatar name={u.name} src={u.avatarUrl || u.photoUrl} size={28} role={u.role} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+            <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ROLE_LABEL[u.role] || u.role || 'Member'}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Detects an active "@query" being typed right before the cursor
+function detectMentionQuery(text, cursorPos) {
+  const upToCursor = text.slice(0, cursorPos);
+  const m = upToCursor.match(/(?:^|\s)@([a-zA-Z0-9_.]{0,30})$/);
+  if (!m) return null;
+  return { query: m[1], start: cursorPos - m[1].length - 1 };
+}
+
+// Hook: tracks an active @mention query and fetches matching users (debounced)
+function useMentionAutocomplete() {
+  const [active, setActive] = useState(null); // { query, start }
+  const [suggestions, setSuggestions] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (!active || active.query.length < 2) { setSuggestions(null); setSearching(false); return; }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const r = await api.searchPeople(active.query);
+        setSuggestions((r?.data || []).slice(0, 6));
+      } catch { setSuggestions([]); }
+      setSearching(false);
+    }, 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [active]);
+
+  const detect = (text, cursorPos) => setActive(detectMentionQuery(text, cursorPos));
+  const close = () => { setActive(null); setSuggestions(null); };
+
+  return { active, suggestions, searching, detect, close };
+}
+
+// Inserts `@[Name](userId) ` at the active mention position, returns new text + cursor pos
+function applyMention(text, active, user) {
+  const { start, query } = active;
+  const end = start + 1 + query.length;
+  const id = String(user._id || user.id);
+  const insertion = `@[${user.name}](${id}) `;
+  return { text: text.slice(0, start) + insertion + text.slice(end), cursor: start + insertion.length, mention: { userId: id, name: user.name } };
+}
+
 // ── Inline connect button (shown on stranger posts) ────────────────────────────
 function InlineConnectButton({ authorId, authorName, pendingIds, onConnect }) {
   const isPending = pendingIds.has(String(authorId));
@@ -293,6 +396,8 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
   const [expanded,    setExpanded]    = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [replyingTo,  setReplyingTo]  = useState(null); // { userName }
+  const [mentions,    setMentions]    = useState([]); // [{ userId, name }]
+  const mentionAc = useMentionAutocomplete();
   const inputRef = useRef(null);
   const comments = post.comments || [];
   const visible  = expanded ? comments : comments.slice(-3);
@@ -300,9 +405,10 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
   useEffect(() => { if (autoFocus) inputRef.current?.focus(); }, [autoFocus]);
 
   const handleReply = (c) => {
-    const mention = `@${c.userName} `;
+    const mention = `@[${c.userName}](${c.userId}) `;
     setText(mention);
     setReplyingTo({ userName: c.userName });
+    setMentions([{ userId: String(c.userId), name: c.userName }]);
     inputRef.current?.focus();
     // place cursor at end
     setTimeout(() => {
@@ -315,14 +421,39 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
   const cancelReply = () => {
     setReplyingTo(null);
     setText('');
+    setMentions([]);
+  };
+
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    mentionAc.detect(val, e.target.selectionStart);
+  };
+
+  const selectMention = (u) => {
+    const result = applyMention(text, mentionAc.active, u);
+    setText(result.text);
+    setMentions(prev => prev.some(m => m.userId === result.mention.userId) ? prev : [...prev, result.mention]);
+    mentionAc.close();
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.selectionStart = inputRef.current.selectionEnd = result.cursor;
+      }
+    });
   };
 
   const submit = async () => {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
-    await onAddComment(post._id, text.trim());
+    const activeMentionIds = mentions
+      .filter(m => text.includes(`@[${m.name}](${m.userId})`))
+      .map(m => m.userId);
+    await onAddComment(post._id, text.trim(), activeMentionIds);
     setText('');
     setReplyingTo(null);
+    setMentions([]);
+    mentionAc.close();
     setSubmitting(false);
   };
 
@@ -344,9 +475,11 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#0A1628' }}>{c.userName || 'Member'}</span>
                   <RoleBadge role={c.userRole} />
                 </div>
-                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>
-                  {/* Highlight @mention prefix in blue */}
-                  {c.content.startsWith('@') ? (
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {MENTION_TEST_RE.test(c.content) ? (
+                    <RichContent text={c.content} />
+                  ) : c.content.startsWith('@') ? (
+                    /* Legacy plain-text @mention prefix */
                     <>
                       <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
                       {' '}{c.content.slice(c.content.indexOf(' ') + 1)}
@@ -380,10 +513,10 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
               <button onClick={cancelReply} style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', padding: 0 }}>✕ cancel</button>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+          <div style={{ display: 'flex', gap: 6, position: 'relative' }}>
+            <input ref={inputRef} value={text} onChange={handleTextChange}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-              placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
+              placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment… (use @ to mention someone)'}
               style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', transition: 'border 0.15s' }}
               onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
               onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
@@ -393,6 +526,7 @@ function CommentSection({ post, userId, onAddComment, onDeleteComment, autoFocus
                 {submitting ? '…' : '→'}
               </button>
             )}
+            <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
           </div>
         </div>
       </div>
@@ -548,7 +682,7 @@ function PostCard({ post, userId, userRole, connectionIds, pendingIds, onReact, 
 
       {/* Content */}
       <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 2 }}>
-        <ContentWithHashtags text={post.content} onHashtagClick={onHashtagClick} />
+        <RichContent text={post.content} onHashtagClick={onHashtagClick} />
       </div>
 
       <ImageGrid images={post.images} />
@@ -583,7 +717,10 @@ function CreatePost({ user, onCreate }) {
   const [images,     setImages]     = useState([]);
   const [uploading,  setUploading]  = useState(false);
   const [uploadErr,  setUploadErr]  = useState('');
+  const [mentions,   setMentions]   = useState([]); // [{ userId, name }]
+  const mentionAc = useMentionAutocomplete();
   const fileRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const POST_TYPES = [
     { value: 'update',        label: '💬 Update' },
@@ -622,12 +759,34 @@ function CreatePost({ user, onCreate }) {
 
   const removeImage = (idx) => setImages(p => p.filter((_, i) => i !== idx));
 
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    mentionAc.detect(val, e.target.selectionStart);
+  };
+
+  const selectMention = (u) => {
+    const result = applyMention(text, mentionAc.active, u);
+    setText(result.text);
+    setMentions(prev => prev.some(m => m.userId === result.mention.userId) ? prev : [...prev, result.mention]);
+    mentionAc.close();
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = result.cursor;
+      }
+    });
+  };
+
   const submit = async () => {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await onCreate({ content: text.trim(), postType, images });
-      setText(''); setPostType('update'); setExpanded(false); setImages([]);
+      const activeMentionIds = mentions
+        .filter(m => text.includes(`@[${m.name}](${m.userId})`))
+        .map(m => m.userId);
+      await onCreate({ content: text.trim(), postType, images, mentions: activeMentionIds });
+      setText(''); setPostType('update'); setExpanded(false); setImages([]); setMentions([]); mentionAc.close();
     } finally { setSubmitting(false); }
   };
 
@@ -637,17 +796,19 @@ function CreatePost({ user, onCreate }) {
     <div style={{ ...card, padding: '16px 18px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
           <textarea
+            ref={textareaRef}
             value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}…`}
+            onChange={handleTextChange}
+            placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}… (use @ to mention someone)`}
             rows={expanded ? 4 : 2}
             maxLength={3000}
             style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
             onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; setExpanded(true); }}
             onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
           />
+          <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
           {expanded && (
             <div style={{ marginTop: 10 }}>
               {/* Post type chips */}
@@ -979,8 +1140,8 @@ export default function CommunityFeed({ user }) {
     if (r?.reactions) setPosts(prev => prev.map(p => p._id === postId ? { ...p, reactions: r.reactions } : p));
   };
 
-  const handleAddComment = async (postId, content) => {
-    const r = await api.addComment(postId, content);
+  const handleAddComment = async (postId, content, mentions) => {
+    const r = await api.addComment(postId, content, mentions);
     if (r?.comment) setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: [...(p.comments || []), r.comment] } : p));
   };
 
