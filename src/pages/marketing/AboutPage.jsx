@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { TeamGrowthIllustration } from '../../components/marketing/Illustrations.jsx';
+import { TeamGrowthIllustration, ValuesHeartIllustration, GrowthRocketIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const VALUES = [
   { icon: '🎯', title: 'Quality Over Volume', desc: 'We send 3 perfect candidates, not 30 average ones. Every submission is intentional, vetted, and worth your time.' },
@@ -104,6 +104,7 @@ export default function AboutPage() {
                 </p>
               </div>
               <Link to="/contact" className="btn btn-primary">Get in Touch →</Link>
+              <GrowthRocketIllustration style={{ width: '100%', maxWidth: 220, height: 'auto', display: 'block', marginTop: 32 }} />
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
               <div style={{ borderRadius:20, overflow:'hidden', height:220, position:'relative', boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
@@ -130,6 +131,7 @@ export default function AboutPage() {
             <span className="section-tag">💎 Our Values</span>
             <h2 className="section-title" style={{ color: 'var(--mkt-text-heading)' }}>What We Stand For, <span>Every Single Hire</span></h2>
           </div>
+          <ValuesHeartIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-3" style={{ alignItems:'stretch' }}>
             {(Array.isArray(VALUES) ? VALUES : []).map((v, i) => (
               <div key={v.title} className="mkt-card"

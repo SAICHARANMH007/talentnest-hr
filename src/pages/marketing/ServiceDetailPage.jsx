@@ -3,6 +3,7 @@ import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { HandshakeDealIllustration, VideoInterviewIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── Service Data ─────────────────────────────────────────────────────────────
 const SERVICES = {
@@ -470,6 +471,7 @@ function ServicePage({ data }) {
                 View Talent Pool
               </Link>
             </div>
+            <HandshakeDealIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '40px auto 0' }} />
           </div>
         </div>
       </section>
@@ -534,6 +536,7 @@ function ServicePage({ data }) {
             <h2 className="section-title">A Structured <span>Approach to Success</span></h2>
             <p className="section-subtitle">We’ve refined our delivery model to ensure consistency, speed, and absolute quality at every stage.</p>
           </div>
+          <VideoInterviewIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-4" style={{ gap:24, alignItems:'stretch' }}>
             {process.map((s, idx) => (
               <div key={s.step} className="mkt-reveal-delayed" style={{ 
@@ -595,6 +598,7 @@ function ServicePage({ data }) {
             <h2 className="section-title">Built-In <span>Risk Protection</span></h2>
             <p className="section-subtitle">We stand behind every placement with industry-leading guarantees that put your interests first.</p>
           </div>
+          <VerifiedShieldIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-2" style={{ gap:24, alignItems:'stretch' }}>
             {guarantees.map(g => (
               <div key={g.title} className="mkt-reveal-delayed" style={{ background:'var(--mkt-card-bg)', borderRadius:20, padding:32, border:'1px solid var(--mkt-card-border)', display:'flex', gap:24, boxShadow:'var(--shadow-md)', alignItems:'flex-start' }}>
