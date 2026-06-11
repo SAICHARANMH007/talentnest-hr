@@ -219,25 +219,29 @@ function dedupeCandidatesByEmail(list) {
   return out;
 }
 
-// Cache for getCollegeNameCounts() — it scans the full Candidate collection
+// Cache for getResolvedCandidates() — it scans the full Candidate collection
 // plus a User fallback lookup, so results are reused for a few minutes.
-let collegeNameCountsCache = null;
-let collegeNameCountsCacheAt = 0;
-const COLLEGE_COUNTS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+let resolvedCandidatesCache = null;
+let resolvedCandidatesCacheAt = 0;
+const RESOLVED_CANDIDATES_CACHE_MS = 5 * 60 * 1000; // 5 minutes
 
-/** Resolves each candidate's effective college name the same way
- * dashboard.js's college-groups report does — own College/School Name,
- * falling back to the linked User's college/educationList, falling back to
- * the latest institution in education history — and returns a
- * Map<lowercaseName, { name, count }>. This is what lets every college shown
- * in the College Groups admin page also get an auto-created community here. */
-async function getCollegeNameCounts() {
+/** De-duplicates candidates by email (same as dashboard.js's college/company
+ * groups reports) and resolves each one's effective college name — own
+ * College/School Name, falling back to the linked User's college/
+ * educationList, falling back to the latest institution in education
+ * history — and effective (canonical) company name. This single resolved
+ * list is the source of truth for college/company communities, so the
+ * Communities page shows exactly the same candidates (no duplicates) as the
+ * College Groups / Company Groups admin pages. */
+async function getResolvedCandidates() {
   const now = Date.now();
-  if (collegeNameCountsCache && now - collegeNameCountsCacheAt < COLLEGE_COUNTS_CACHE_MS) {
-    return collegeNameCountsCache;
+  if (resolvedCandidatesCache && now - resolvedCandidatesCacheAt < RESOLVED_CANDIDATES_CACHE_MS) {
+    return resolvedCandidatesCache;
   }
 
-  const rawCandidates = await Candidate.find({ deletedAt: null }).select('email college educationList').lean();
+  const rawCandidates = await Candidate.find({ deletedAt: null })
+    .select('name email avatarUrl photoUrl location department college currentCompany educationList userId createdAt')
+    .lean();
   const candidates = dedupeCandidatesByEmail(rawCandidates);
 
   const fallbackEmails = candidates
@@ -249,8 +253,7 @@ async function getCollegeNameCounts() {
         .map(u => [u.email.toLowerCase().trim(), u]))
     : new Map();
 
-  const counts = new Map();
-  for (const c of candidates) {
+  const resolved = candidates.map(c => {
     let education = parseJsonArray(c.educationList);
     let collegeName = String(c.college || '').trim().replace(/\s+/g, ' ');
 
@@ -265,17 +268,84 @@ async function getCollegeNameCounts() {
       if (latest?.institution) collegeName = String(latest.institution).trim().replace(/\s+/g, ' ');
     }
 
-    if (!collegeName || collegeName.length < 3) continue;
+    return {
+      candidate: c,
+      collegeName: collegeName.length >= 3 ? collegeName : '',
+      companyName: normalizeCompanyName(c.currentCompany) || '',
+    };
+  });
 
+  resolvedCandidatesCache = resolved;
+  resolvedCandidatesCacheAt = now;
+  return resolved;
+}
+
+/** Returns a Map<lowercaseName, { name, count }> of every college discovered
+ * across candidate profiles (resolved the same way as the College Groups
+ * report) — used to auto-create college communities and to show correct
+ * member counts for them. */
+async function getCollegeNameCounts() {
+  const resolved = await getResolvedCandidates();
+  const counts = new Map();
+  for (const { collegeName } of resolved) {
+    if (!collegeName) continue;
     const key = collegeName.toLowerCase();
     const entry = counts.get(key) || { name: collegeName, count: 0 };
     entry.count++;
     counts.set(key, entry);
   }
-
-  collegeNameCountsCache = counts;
-  collegeNameCountsCacheAt = now;
   return counts;
+}
+
+/** Returns a Map<lowercaseName, { name, count }> of every company discovered
+ * across candidate profiles (canonicalized the same way as the Company
+ * Groups report) — used to show correct member counts for company
+ * communities. */
+async function getCompanyNameCounts() {
+  const resolved = await getResolvedCandidates();
+  const counts = new Map();
+  for (const { companyName } of resolved) {
+    if (!companyName) continue;
+    const key = companyName.toLowerCase();
+    const entry = counts.get(key) || { name: companyName, count: 0 };
+    entry.count++;
+    counts.set(key, entry);
+  }
+  return counts;
+}
+
+/** Returns the deduped Candidate documents belonging to a college/company
+ * community, sorted newest-first — the exact same set of people counted in
+ * the College Groups / Company Groups admin reports, so a community's
+ * member list/count never diverges from (or duplicates) those reports. */
+async function getCommunityCandidates(community) {
+  const resolved = await getResolvedCandidates();
+  let matching;
+  if (community.collegeName) {
+    const key = community.collegeName.toLowerCase();
+    matching = resolved.filter(r => r.collegeName.toLowerCase() === key).map(r => r.candidate);
+  } else if (community.companyName) {
+    const key = community.companyName.toLowerCase();
+    matching = resolved.filter(r => r.companyName.toLowerCase() === key).map(r => r.candidate);
+  } else {
+    matching = [];
+  }
+  return [...matching].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+/** Maps deduped Candidate documents to member objects for display, using the
+ * linked User's profile (avatar/role/title) where one exists and is active,
+ * else falling back to the Candidate's own info. */
+async function hydrateCandidateMembers(candidates) {
+  const userIds = candidates.filter(c => c.userId).map(c => c.userId);
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds }, deletedAt: null })
+        .select('name role title avatarUrl photoUrl college currentCompany location department').lean()
+    : [];
+  const usersById = new Map(users.map(u => [String(u._id), u]));
+  return candidates.map(c => (c.userId && usersById.has(String(c.userId)))
+    ? usersById.get(String(c.userId))
+    : candidateToMember(c));
 }
 
 /** Ensures every active 'college' Tenant has a matching auto-membership Community.
@@ -696,26 +766,18 @@ router.get('/', asyncHandler(async (req, res) => {
   // Most candidates (bulk-imported students, resume uploads) have no User
   // login account, so College/Company communities computed from User counts
   // alone show "0 members" even when Company Groups shows real headcounts.
-  // Two aggregate queries (not one per community) give us real population
-  // counts from the Candidate collection, keyed by normalized college/company
-  // name, to fold into the member counts below.
+  // Resolved candidate counts (deduped by email, same resolution as the
+  // College Groups / Company Groups admin reports), keyed by normalized
+  // college/company name, to fold into the member counts below.
   const candidateCollegeCounts = new Map();
   const candidateCompanyCounts = new Map();
   try {
-    const [collegeNameCounts, companyAgg] = await Promise.all([
+    const [collegeNameCounts, companyNameCounts] = await Promise.all([
       getCollegeNameCounts(),
-      Candidate.aggregate([
-        { $match: { deletedAt: null, currentCompany: { $exists: true, $ne: '' } } },
-        { $group: { _id: '$currentCompany', count: { $sum: 1 } } },
-      ]),
+      getCompanyNameCounts(),
     ]);
     collegeNameCounts.forEach((v, key) => candidateCollegeCounts.set(key, v.count));
-    companyAgg.forEach(r => {
-      const norm = normalizeCompanyName(r._id);
-      if (!norm) return;
-      const key = norm.toLowerCase();
-      candidateCompanyCounts.set(key, (candidateCompanyCounts.get(key) || 0) + r.count);
-    });
+    companyNameCounts.forEach((v, key) => candidateCompanyCounts.set(key, v.count));
   } catch {}
 
   const data = unique.map(c => {
@@ -749,47 +811,13 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 
   let members;
   let memberCount = community.memberCount || 0;
-  if (community.collegeName) {
-    // College communities: every student/alumnus whose College/School Name matches
-    // is automatically a member, regardless of memberIds. Also include candidates
-    // (resumes/profiles) with no User login account but a matching college.
-    const memberFilter = collegeMemberFilter(community.collegeName);
-    const collegeRegex = { $regex: '^' + escapeRegex(community.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' };
-    const candidateFilter = { deletedAt: null, college: collegeRegex, userId: null };
-    const [collegeMembers, collegeCount, candidateMembersRaw, candidateCountAgg] = await Promise.all([
-      User.find(memberFilter).select('name role title avatarUrl photoUrl college').sort({ createdAt: -1 }).limit(10).lean(),
-      User.countDocuments(memberFilter),
-      Candidate.find(candidateFilter).select('name email avatarUrl photoUrl location').sort({ createdAt: -1 }).limit(20).lean(),
-      Candidate.aggregate([
-        { $match: candidateFilter },
-        { $group: { _id: { $ifNull: [{ $toLower: '$email' }, '$_id'] } } },
-        { $count: 'count' },
-      ]),
-    ]);
-    const candidateMembers = dedupeCandidatesByEmail(candidateMembersRaw);
-    const candidateCount = candidateCountAgg[0]?.count || 0;
-    members = [...collegeMembers, ...candidateMembers.map(candidateToMember)].slice(0, 10);
-    memberCount = Math.max(memberCount, collegeCount, candidateCount);
-  } else if (community.companyName) {
-    // Company communities: every user whose Current Company matches is
-    // automatically a member, regardless of memberIds. Also include candidates
-    // (resumes/profiles) with no User login account but a matching employer.
-    const memberFilter = companyMemberFilter(community.companyName);
-    const candidateFilter = { deletedAt: null, currentCompany: companyNameRegex(community.companyName), userId: null };
-    const [companyMembers, companyCount, candidateMembersRaw, candidateCountAgg] = await Promise.all([
-      User.find(memberFilter).select('name role title avatarUrl photoUrl currentCompany').sort({ createdAt: -1 }).limit(10).lean(),
-      User.countDocuments(memberFilter),
-      Candidate.find(candidateFilter).select('name email avatarUrl photoUrl location').sort({ createdAt: -1 }).limit(20).lean(),
-      Candidate.aggregate([
-        { $match: candidateFilter },
-        { $group: { _id: { $ifNull: [{ $toLower: '$email' }, '$_id'] } } },
-        { $count: 'count' },
-      ]),
-    ]);
-    const candidateMembers = dedupeCandidatesByEmail(candidateMembersRaw);
-    const candidateCount = candidateCountAgg[0]?.count || 0;
-    members = [...companyMembers, ...candidateMembers.map(candidateToMember)].slice(0, 10);
-    memberCount = Math.max(memberCount, companyCount, candidateCount);
+  if (community.collegeName || community.companyName) {
+    // College/Company communities: membership is the same deduped candidate
+    // set shown in the College Groups / Company Groups admin reports — no
+    // duplicates, and counts always match those reports.
+    const matching = await getCommunityCandidates(community);
+    members = await hydrateCandidateMembers(matching.slice(0, 10));
+    memberCount = Math.max(memberCount, matching.length);
   } else {
     // Top 10 members (cross-tenant visible — any user who joined is shown)
     const memberIds = (community.memberIds || []).slice(0, 10);
@@ -936,44 +964,13 @@ router.get('/:slug/members', asyncHandler(async (req, res) => {
   const community = await Community.findOne({ slug: req.params.slug }).lean();
   if (!community) throw new AppError('Community not found.', 404);
 
-  if (community.collegeName) {
-    // College communities: membership is automatic — every student/alumnus
-    // whose College/School Name matches this community is listed, including
-    // candidates (resumes/profiles) with no User login account. Candidates
-    // linked to an already-listed User (userId set) and duplicate Candidate
-    // documents for the same email are excluded/deduped to avoid showing the
-    // same person more than once.
-    const collegeRegex = { $regex: '^' + escapeRegex(community.collegeName.trim().replace(/\s+/g, ' ')) + '$', $options: 'i' };
-    const userFilter = { college: collegeRegex, deletedAt: null };
-    const candidateFilter = { college: collegeRegex, deletedAt: null, userId: null };
-    const [users, candidatesRaw] = await Promise.all([
-      User.find(userFilter).select('name role title avatarUrl photoUrl location department college').sort({ createdAt: -1 }).lean(),
-      Candidate.find(candidateFilter).select('name email avatarUrl photoUrl location').sort({ createdAt: -1 }).limit(2000).lean(),
-    ]);
-    const candidates = dedupeCandidatesByEmail(candidatesRaw);
-    const combined = [...users, ...candidates.map(candidateToMember)];
-    const total = combined.length;
-    const members = combined.slice(skip, skip + lim);
-    return res.json({ success: true, data: members, total, hasMore: skip + members.length < total });
-  }
-
-  if (community.companyName) {
-    // Company communities: membership is automatic — every user whose Current
-    // Company matches this community is listed, including candidates
-    // (resumes/profiles) with no User login account. Candidates linked to an
-    // already-listed User (userId set) and duplicate Candidate documents for
-    // the same email are excluded/deduped to avoid showing the same person
-    // more than once.
-    const userFilter = companyMemberFilter(community.companyName);
-    const candidateFilter = { deletedAt: null, currentCompany: companyNameRegex(community.companyName), userId: null };
-    const [users, candidatesRaw] = await Promise.all([
-      User.find(userFilter).select('name role title avatarUrl photoUrl location department currentCompany').sort({ createdAt: -1 }).lean(),
-      Candidate.find(candidateFilter).select('name email avatarUrl photoUrl location').sort({ createdAt: -1 }).limit(2000).lean(),
-    ]);
-    const candidates = dedupeCandidatesByEmail(candidatesRaw);
-    const combined = [...users, ...candidates.map(candidateToMember)];
-    const total = combined.length;
-    const members = combined.slice(skip, skip + lim);
+  if (community.collegeName || community.companyName) {
+    // College/Company communities: membership is the same deduped candidate
+    // set shown in the College Groups / Company Groups admin reports — no
+    // duplicates, and counts always match those reports.
+    const matching = await getCommunityCandidates(community);
+    const total = matching.length;
+    const members = await hydrateCandidateMembers(matching.slice(skip, skip + lim));
     return res.json({ success: true, data: members, total, hasMore: skip + members.length < total });
   }
 

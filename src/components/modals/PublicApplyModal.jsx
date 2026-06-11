@@ -529,13 +529,13 @@ export default function PublicApplyModal({ job, orgName, refToken, onClose }) {
           <span style={{ fontSize: 11, fontWeight: 800, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Professional</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-          <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isFresher ? t.highlightBorder : t.border}`, background: isFresher ? t.highlightBg : t.surfaceBg, cursor: 'pointer', wordBreak: 'normal', overflowWrap: 'normal' }}>
+          <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isFresher ? t.highlightBorder : t.border}`, background: isFresher ? t.highlightBg : t.surfaceBg, cursor: 'pointer' }}>
             <input type="checkbox" checked={isFresher} onChange={e => {
               const checked = e.target.checked;
               setIsFresher(checked);
               if (checked) sf('experience', '0');
             }} style={{ width: 18, height: 18, minWidth: 18, flexShrink: 0, accentColor: '#059669' }} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: t.text, wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
+            <span style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, maxWidth: '100%', fontSize: 14, fontWeight: 700, color: t.text, whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'normal' }}>I'm a fresher (no work experience yet)</span>
           </label>
           {!isFresher && (
             <>
