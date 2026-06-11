@@ -283,8 +283,12 @@ export default function LandingPage() {
               <span style={{ fontSize: 'clamp(20px, 3.2vw, 44px)', color: 'rgba(255,255,255,0.55)', fontWeight: 700, letterSpacing: '-0.02em' }}>Jobs Across Every Industry in India.</span>
             </h1>
 
-            <p style={{ fontSize: '1.15rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, maxWidth: 520, marginBottom: 40, marginTop: 20, fontWeight: 500 }}>
+            <p style={{ fontSize: '1.15rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, maxWidth: 520, marginBottom: 16, marginTop: 20, fontWeight: 500 }}>
               Browse thousands of jobs in IT, Finance, Marketing, HR, Operations, and more. Employers — post a role, track every applicant, and close hires faster with India's smartest hiring platform.
+            </p>
+
+            <p style={{ fontSize: '0.95rem', color: 'var(--mkt-accent)', lineHeight: 1.7, maxWidth: 540, marginBottom: 40, fontWeight: 700, fontStyle: 'italic' }}>
+              Our mission: build the world's largest verified talent identity network — where every candidate has a trusted professional identity, and every employer can hire with confidence.
             </p>
 
             <div className="mkt-reveal-delayed" style={{ marginBottom: 36 }}>
