@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { IdentityCardIllustration, PayrollCardIllustration, OnboardingChecklistIllustration } from '../../components/marketing/Illustrations.jsx';
+import { IdentityCardIllustration, PayrollCardIllustration, FaceRecognitionIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const FEATURES = [
   { icon: '🎯', title: 'Advanced Facial Recognition', desc: 'Secure, contactless attendance marking with 99.9% accuracy. Identifies employees in under 0.5 seconds, even with masks or lighting changes.' },
@@ -122,7 +122,7 @@ export default function HRMSPage() {
             <h2 className="section-title" style={{ color: 'var(--mkt-text-heading)' }}>Everything Faceify <span>Can Do</span></h2>
             <p className="section-subtitle" style={{ color: 'var(--mkt-text-muted)' }}>A complete HR management suite built on facial recognition — far beyond just attendance.</p>
           </div>
-          <OnboardingChecklistIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
+          <FaceRecognitionIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-3" style={{ alignItems: 'stretch' }}>
             {(Array.isArray(FEATURES) ? FEATURES : []).map((f, i) => {
               const FEAT_GRADIENTS = ['#0176D3,#00C2CB','#8B5CF6,#7C3AED','#10B981,#059669','#F5A623,#F59E0B','#EF4444,#DC2626','#0176D3,#014486'];

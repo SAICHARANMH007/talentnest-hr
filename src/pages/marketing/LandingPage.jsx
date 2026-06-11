@@ -56,7 +56,7 @@ const SERVICES = [
   { slug: 'non-it-staffing',    icon: '🏢', title: 'Non-IT Staffing',         desc: 'Finance, HR, operations, and executive roles across every business function.', accent: '#10B981' },
   { slug: 'permanent-staffing', icon: '🎯', title: 'Permanent Staffing',      desc: 'Direct hire with a 90-day replacement guarantee. Culture fit is non-negotiable.', accent: '#0369A1' },
   { slug: 'c2h',                icon: '🔄', title: 'Contract to Hire',        desc: 'Evaluate candidates on the job before making a permanent commitment.', accent: '#F59E0B' },
-  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',           desc: 'Complete HR management: attendance tracking, workforce analytics, and seamless employee management in one dashboard.', accent: '#7C3AED' },
+  { slug: 'hrms-platform',      icon: '⚙️', title: 'ATS & Recruitment Platform', desc: 'Resume parsing, smart candidate matching, digital offer letters, and real-time hiring analytics — live in 24 hours.', accent: '#7C3AED' },
 ];
 
 const HOW_IT_WORKS = [
@@ -87,7 +87,7 @@ const TRUST_BADGES = [
   'Executive Search',
   'Contract to Hire',
   'Permanent Staffing',
-  'HRMS Platform',
+  'ATS & Recruitment Platform',
 ];
 
 const VALUE_PILLARS = [

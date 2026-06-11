@@ -18,6 +18,7 @@ const PRODUCT_LINKS = [
   { to: '/products/hireboard',  label: 'HireBoard — For Recruiters' },
   { to: '/products/peopledesk', label: 'PeopleDesk — For HR Admins' },
   { to: '/products/jobtrack',   label: 'JobTrack — For Job Seekers' },
+  { to: '/products/campushub',  label: 'CampusHub — For Placement Officers' },
   { to: '/products',            label: 'Explore All Products →' },
 ];
 
@@ -28,7 +29,7 @@ const SERVICE_LINKS = [
   { to: '/services/c2h', label: 'Contract to Hire (C2H)' },
   { to: '/services/c2c', label: 'Corp to Corp (C2C)' },
   { to: '/services/permanent-staffing', label: 'Permanent Staffing' },
-  { to: '/services/hrms-platform', label: 'HRMS Platform' },
+  { to: '/services/hrms-platform', label: 'ATS & Recruitment Platform' },
 ];
 
 const CONTACT_ITEMS = [

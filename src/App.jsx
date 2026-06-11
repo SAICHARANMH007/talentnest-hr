@@ -27,6 +27,7 @@ const ProductsPage       = lazy(() => import('./pages/marketing/ProductsPage.jsx
 const ProductHireBoard   = lazy(() => import('./pages/marketing/ProductHireBoard.jsx'));
 const ProductPeopleDesk  = lazy(() => import('./pages/marketing/ProductPeopleDesk.jsx'));
 const ProductJobTrack    = lazy(() => import('./pages/marketing/ProductJobTrack.jsx'));
+const ProductCampusHub   = lazy(() => import('./pages/marketing/ProductCampusHub.jsx'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage.jsx'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage.jsx'));
 const InviteResponsePage = lazy(() => import('./pages/public/InviteResponsePage.jsx'));
@@ -556,6 +557,7 @@ export default function App() {
       <Route path="/products/people-os"   element={<Navigate to="/products/peopledesk" replace />} />
       <Route path="/products/jobtrack"    element={<Suspense fallback={<PageLoader />}><ProductJobTrack /></Suspense>} />
       <Route path="/products/career-os"   element={<Navigate to="/products/jobtrack" replace />} />
+      <Route path="/products/campushub"   element={<Suspense fallback={<PageLoader />}><ProductCampusHub /></Suspense>} />
       <Route path="/blog" element={<Suspense fallback={<PageLoader />}><BlogPage /></Suspense>} />
       <Route path="/blog/:slug" element={<Suspense fallback={<PageLoader />}><BlogPostPage /></Suspense>} />
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />

@@ -3,7 +3,7 @@ import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { HandshakeDealIllustration, VideoInterviewIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
+import { HandshakeDealIllustration, ProcessFlowIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── Service Data ─────────────────────────────────────────────────────────────
 const SERVICES = {
@@ -299,9 +299,9 @@ const SERVICES = {
 
   'hrms-platform': {
     icon: '⚙️',
-    title: 'HRMS Platform',
-    tagline: 'Your Entire HR Operation — One Intelligent Platform',
-    heroDesc: 'Stop managing hiring in spreadsheets and email threads. Our HRMS platform powered by Faceify automates your entire hiring pipeline from job posting to offer letter — built for companies that want to hire smarter, faster, and better.',
+    title: 'ATS & Recruitment Platform',
+    tagline: 'Your Entire Hiring Pipeline — One Intelligent Platform',
+    heroDesc: "Stop managing hiring in spreadsheets and email threads. TalentNest's ATS automates your entire hiring pipeline from job posting to offer letter — built for companies that want to hire smarter, faster, and better.",
     accent: '#0176D3',
     gradient: 'linear-gradient(135deg, #0c1445 0%, #032D60 55%, #0176D3 100%)',
     coverImg: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1400&auto=format&fit=crop&q=70',
@@ -536,7 +536,7 @@ function ServicePage({ data }) {
             <h2 className="section-title">A Structured <span>Approach to Success</span></h2>
             <p className="section-subtitle">We’ve refined our delivery model to ensure consistency, speed, and absolute quality at every stage.</p>
           </div>
-          <VideoInterviewIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
+          <ProcessFlowIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-4" style={{ gap:24, alignItems:'stretch' }}>
             {process.map((s, idx) => (
               <div key={s.step} className="mkt-reveal-delayed" style={{ 

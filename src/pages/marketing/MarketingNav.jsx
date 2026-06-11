@@ -12,13 +12,14 @@ const SERVICE_ITEMS = [
   { slug: 'c2h',                icon: '🔄', title: 'Contract to Hire',       desc: 'Try before you commit — flexible hiring' },
   { slug: 'c2c',                icon: '🤝', title: 'Corp to Corp (C2C)',     desc: 'B2B contractor placements' },
   { slug: 'permanent-staffing', icon: '🎯', title: 'Permanent Staffing',     desc: 'Full-time hires with replacement guarantee' },
-  { slug: 'hrms-platform',      icon: '⚙️', title: 'HRMS Platform',          desc: 'Faceify Smart attendance & workforce mgmt' },
+  { slug: 'hrms-platform',      icon: '⚙️', title: 'ATS & Recruitment Platform', desc: 'Resume parsing, matching, offers & analytics' },
 ];
 
 const PRODUCT_ITEMS = [
   { to: '/products/hireboard',  hash: '', icon: '🎯', title: 'HireBoard',  desc: 'Recruitment pipeline for talent teams' },
   { to: '/products/peopledesk', hash: '', icon: '🏢', title: 'PeopleDesk', desc: 'HR control for admins & org managers' },
   { to: '/products/jobtrack',   hash: '', icon: '🚀', title: 'JobTrack',   desc: 'Apply, track & sign offers — candidates' },
+  { to: '/products/campushub',  hash: '', icon: '🎓', title: 'CampusHub',  desc: 'Run placements for your campus' },
   { to: '/careers',             hash: '', icon: '📋', title: 'Job Board',  desc: 'Browse jobs from all companies' },
   { to: '/hrms',                hash: '', icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce management' },
 ];

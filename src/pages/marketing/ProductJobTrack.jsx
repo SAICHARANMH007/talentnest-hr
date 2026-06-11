@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { SearchTalentIllustration, ChatSupportIllustration, AnalyticsChartIllustration, IdentityCardIllustration, GrowthRocketIllustration } from '../../components/marketing/Illustrations.jsx';
+import { SearchTalentIllustration, RecruiterChatIllustration, ApplicationTrackerIllustration, OfferSignatureIllustration, CareerToolsIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#7c3aed';
@@ -59,10 +59,10 @@ const SECTIONS = [
 ];
 
 const SECTION_ILLUSTRATIONS = {
-  '💬 Stay Connected With Recruiters': ChatSupportIllustration,
-  '📋 Track Every Application': AnalyticsChartIllustration,
-  '📜 Offers, Onboarding & Profile': IdentityCardIllustration,
-  '🛠️ Candidate Career Tools': GrowthRocketIllustration,
+  '💬 Stay Connected With Recruiters': RecruiterChatIllustration,
+  '📋 Track Every Application': ApplicationTrackerIllustration,
+  '📜 Offers, Onboarding & Profile': OfferSignatureIllustration,
+  '🛠️ Candidate Career Tools': CareerToolsIllustration,
 };
 
 export default function ProductJobTrack() {

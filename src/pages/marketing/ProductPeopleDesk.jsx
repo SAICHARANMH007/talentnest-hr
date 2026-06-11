@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { AnalyticsChartIllustration, OnboardingChecklistIllustration, PayrollCardIllustration, GlobalNetworkIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
+import { AnalyticsChartIllustration, OnboardingChecklistIllustration, TeamAutomationIllustration, MultiTenantIllustration, ComplianceBadgeIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#059669';
@@ -60,9 +60,9 @@ const SECTIONS = [
 
 const SECTION_ILLUSTRATIONS = {
   '📜 Hiring & Onboarding': OnboardingChecklistIllustration,
-  '⚙️ Team, Org & Automation': PayrollCardIllustration,
-  '🌐 Multi-tenant & Enterprise Scale': GlobalNetworkIllustration,
-  '💼 Jobs & Recruitment Control': VerifiedShieldIllustration,
+  '⚙️ Team, Org & Automation': TeamAutomationIllustration,
+  '🌐 Multi-tenant & Enterprise Scale': MultiTenantIllustration,
+  '💼 Jobs & Recruitment Control': ComplianceBadgeIllustration,
 };
 
 export default function ProductPeopleDesk() {

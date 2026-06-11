@@ -295,7 +295,8 @@ export default function ContactPage() {
                       <option>Non-IT Staffing</option>
                       <option>Contract to Hire (C2H)</option>
                       <option>Corp to Corp (C2C)</option>
-                      <option>HRMS Platform</option>
+                      <option>ATS & Recruitment Platform</option>
+                      <option>Facial Recognition HRMS (Faceify)</option>
                     </select>
                   </div>
 

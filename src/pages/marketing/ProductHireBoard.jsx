@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { PipelineBoardIllustration, VideoInterviewIllustration, AnalyticsChartIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
+import { PipelineBoardIllustration, VideoInterviewIllustration, JobAnalyticsIllustration, EnterpriseControlIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#0176D3';
@@ -64,8 +64,8 @@ const SECTIONS = [
 
 const SECTION_ILLUSTRATIONS = {
   '📅 Interviews & Offers': VideoInterviewIllustration,
-  '📊 Jobs, Assessments & Analytics': AnalyticsChartIllustration,
-  '🛡️ Compliance & Enterprise Controls': VerifiedShieldIllustration,
+  '📊 Jobs, Assessments & Analytics': JobAnalyticsIllustration,
+  '🛡️ Compliance & Enterprise Controls': EnterpriseControlIllustration,
 };
 
 export default function ProductHireBoard() {

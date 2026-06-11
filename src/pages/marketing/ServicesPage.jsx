@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { ServiceSolutionsIllustration, SearchTalentIllustration, GlobalNetworkIllustration } from '../../components/marketing/Illustrations.jsx';
+import { ServiceSolutionsIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const SERVICES = [
   {
@@ -81,14 +81,14 @@ const SERVICES = [
   {
     slug: 'hrms-platform',
     icon: '⚙️',
-    title: 'HRMS Platform',
+    title: 'ATS & Recruitment Platform',
     badge: 'Smart Platform',
     badgeColor: '#0176D3',
     accent: '#0176D3',
     color: 'rgba(1,118,211,0.06)',
     coverImg: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=600&auto=format&fit=crop&q=80',
-    desc: 'Faceify by RNIT: a smart facial recognition HRMS for contactless attendance, access control, and real-time HR analytics. TalentNest HR is an authorised reseller.',
-    bullets: ['Smart Facial Recognition Attendance', 'Access Control Integration', 'Real-Time HR Dashboard', 'On-Site Setup & Support'],
+    desc: "TalentNest's own applicant tracking system — resume parsing, smart candidate matching, digital offer letters, and real-time hiring analytics, live in 24 hours.",
+    bullets: ['Resume Parsing & Smart Matching', 'Digital Offer Letters & E-Sign', 'Real-Time Hiring Analytics', '24-Hour Go-Live, No Setup Fees'],
   },
 ];
 

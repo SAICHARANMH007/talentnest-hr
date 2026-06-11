@@ -533,6 +533,40 @@ export function ServiceSolutionsIllustration({ style }) {
   );
 }
 
+export function CampusHubIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Placement officer dashboard publishing a drive to the college community feed">
+      <ellipse cx="180" cy="245" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* dashboard panel */}
+      <rect x="20" y="40" width="170" height="170" rx="14" fill="#032D60" />
+      <rect x="36" y="56" width="60" height="14" rx="7" fill="#F59E0B" />
+      <rect x="36" y="84" width="138" height="34" rx="8" fill="#0176D3" opacity="0.25" stroke="#0176D3" strokeWidth="1.5" />
+      <rect x="48" y="94" width="80" height="8" rx="4" fill="#FFFFFF" opacity="0.8" />
+      <rect x="48" y="106" width="50" height="6" rx="3" fill="#FFFFFF" opacity="0.4" />
+      <rect x="36" y="128" width="138" height="34" rx="8" fill="#00C2CB" opacity="0.15" stroke="#00C2CB" strokeWidth="1.5" />
+      <rect x="48" y="138" width="90" height="8" rx="4" fill="#FFFFFF" opacity="0.7" />
+      <rect x="48" y="150" width="60" height="6" rx="3" fill="#FFFFFF" opacity="0.35" />
+      <rect x="36" y="172" width="60" height="22" rx="8" fill="#F59E0B" />
+      <path d="M52 183l24-9 24 9-24 9z" fill="#FFFFFF" opacity="0.9" />
+      {/* arrow to community feed */}
+      <path d="M196 110h36" stroke="#94A3B8" strokeWidth="3" strokeDasharray="3 6" strokeLinecap="round" />
+      <path d="M222 100l14 10-14 10z" fill="#94A3B8" />
+      {/* community feed card */}
+      <rect x="240" y="50" width="100" height="160" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <circle cx="262" cy="74" r="12" fill="#0176D3" />
+      <rect x="280" y="68" width="48" height="7" rx="3.5" fill="#032D60" opacity="0.7" />
+      <rect x="280" y="80" width="34" height="6" rx="3" fill="#94A3B8" opacity="0.6" />
+      <rect x="252" y="100" width="76" height="36" rx="8" fill="#0176D3" opacity="0.1" />
+      <path d="M270 112l16-6 16 6-16 6z" fill="#F59E0B" />
+      <rect x="252" y="148" width="76" height="7" rx="3.5" fill="#94A3B8" opacity="0.4" />
+      <rect x="252" y="162" width="56" height="7" rx="3.5" fill="#94A3B8" opacity="0.4" />
+      <circle cx="262" cy="188" r="10" fill="#10B981" />
+      <path d="M257 188l3 3 6-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="280" y="184" width="42" height="7" rx="3.5" fill="#94A3B8" opacity="0.5" />
+    </svg>
+  );
+}
+
 export function ConnectIllustration({ style }) {
   return (
     <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Multiple channels — email, phone and location — connecting to the TalentNest team">
@@ -552,6 +586,263 @@ export function ConnectIllustration({ style }) {
       {/* center bubble */}
       <circle cx="160" cy="135" r="44" fill="#0176D3" />
       <path d="M142 127h36M142 141h24" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ProcessFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Step-by-step process flow with connected milestone markers">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#0176D3', n: '1' },
+        { x: 127, y: 96, c: '#00C2CB', n: '2' },
+        { x: 233, y: 96, c: '#F59E0B', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <rect x="116" y="42" width="90" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="116" y="54" width="60" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function ComplianceBadgeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Job approval workflow with permission badges and access control">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#0176D3" opacity="0.08" />
+      <rect x="40" y="30" width="240" height="180" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="60" y="50" width="120" height="14" rx="7" fill="#032D60" />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x="60" y={84 + i * 38} width="200" height="28" rx="8" fill={i === 1 ? '#0176D3' : '#F1F5F9'} opacity={i === 1 ? 0.12 : 1} />
+          <circle cx="76" cy={98 + i * 38} r="9" fill={i === 0 ? '#10B981' : i === 1 ? '#F59E0B' : '#94A3B8'} />
+          <rect x="94" y={93 + i * 38} width="100" height="10" rx="5" fill="#94A3B8" opacity="0.6" />
+          <rect x="216" y={91 + i * 38} width="36" height="14" rx="7" fill={i === 0 ? '#10B981' : i === 1 ? '#F59E0B' : '#CBD5E1'} opacity="0.25" />
+        </g>
+      ))}
+      {/* lock badge */}
+      <circle cx="270" cy="40" r="26" fill="#0176D3" />
+      <rect x="258" y="38" width="24" height="18" rx="3" fill="#fff" />
+      <path d="M262 38v-4a8 8 0 0116 0v4" stroke="#fff" strokeWidth="3" fill="none" />
+    </svg>
+  );
+}
+
+export function ApplicationTrackerIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Candidate application status tracker with stage progress">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <rect x="20" y="20" width="320" height="200" rx="16" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="44" y="44" width="140" height="14" rx="7" fill="#032D60" />
+      <rect x="44" y="68" width="90" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      {['Applied', 'Interview', 'Offer', 'Hired'].map((label, i) => (
+        <g key={label}>
+          <circle cx={64 + i * 80} cy="130" r="16" fill={i < 3 ? '#10B981' : '#0176D3'} />
+          {i < 3
+            ? <path d={`M${57 + i * 80} 130l4 4 8-9`} stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            : <circle cx={64 + i * 80} cy="130" r="6" fill="#fff" />}
+          {i < 3 && <rect x={80 + i * 80} y="126" width="44" height="8" rx="4" fill="#10B981" opacity="0.35" />}
+          <text x={64 + i * 80} y="166" textAnchor="middle" fontSize="11" fontWeight="700" fill="#032D60" fontFamily="sans-serif">{label}</text>
+        </g>
+      ))}
+      <rect x="44" y="190" width="272" height="10" rx="5" fill="#F1F5F9" />
+      <rect x="44" y="190" width="200" height="10" rx="5" fill="#00C2CB" />
+    </svg>
+  );
+}
+
+export function JobAnalyticsIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Job postings with assessment scores and performance metrics">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <rect x="20" y="20" width="160" height="200" rx="14" fill="#032D60" />
+      <rect x="40" y="40" width="100" height="12" rx="6" fill="#FFFFFF" opacity="0.85" />
+      <rect x="40" y="62" width="70" height="8" rx="4" fill="#00C2CB" opacity="0.6" />
+      {[0, 1, 2].map((i) => (
+        <rect key={i} x="40" y={92 + i * 38} width="120" height="28" rx="8" fill="#FFFFFF" opacity="0.06" />
+      ))}
+      {[0, 1, 2].map((i) => (
+        <rect key={i} x="50" y={101 + i * 38} width={70 - i * 14} height="10" rx="5" fill="#0176D3" opacity="0.7" />
+      ))}
+      {/* assessment score donut */}
+      <circle cx="270" cy="90" r="50" fill="none" stroke="#F1F5F9" strokeWidth="14" />
+      <circle cx="270" cy="90" r="50" fill="none" stroke="#10B981" strokeWidth="14" strokeDasharray="220 314" strokeLinecap="round" transform="rotate(-90 270 90)" />
+      <text x="270" y="98" textAnchor="middle" fontSize="26" fontWeight="900" fill="#032D60" fontFamily="sans-serif">82%</text>
+      <rect x="220" y="170" width="100" height="14" rx="7" fill="#94A3B8" opacity="0.3" />
+      <rect x="220" y="192" width="70" height="10" rx="5" fill="#94A3B8" opacity="0.3" />
+    </svg>
+  );
+}
+
+export function FaceRecognitionIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Facial recognition attendance scan with check-in confirmation">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#059669" opacity="0.08" />
+      <rect x="80" y="20" width="160" height="180" rx="16" fill="#032D60" />
+      {/* scan corners */}
+      <path d="M104 50v-10a6 6 0 016-6h10M216 34h10a6 6 0 016 6v10M232 156v10a6 6 0 01-6 6h-10M104 172v-10" stroke="#10B981" strokeWidth="4" strokeLinecap="round" fill="none" />
+      {/* face */}
+      <circle cx="160" cy="100" r="34" fill="#00C2CB" opacity="0.25" />
+      <circle cx="160" cy="92" r="18" fill="#FFFFFF" opacity="0.9" />
+      <path d="M132 140c0-18 13-28 28-28s28 10 28 28" fill="#FFFFFF" opacity="0.9" />
+      {/* scan line */}
+      <rect x="92" y="108" width="136" height="3" fill="#10B981" opacity="0.8" />
+      <rect x="104" y="166" width="112" height="14" rx="7" fill="#FFFFFF" opacity="0.08" />
+      {/* check badge */}
+      <circle cx="240" cy="190" r="28" fill="#10B981" />
+      <path d="M228 190l8 8 16-18" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+export function TeamAutomationIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Org chart with team members connected to automated workflow triggers">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#059669" opacity="0.08" />
+      {/* org chart connectors */}
+      <path d="M160 64v30M160 94H80v26M160 94h80v26" stroke="#94A3B8" strokeWidth="3" fill="none" />
+      {/* top node */}
+      <rect x="116" y="28" width="88" height="36" rx="10" fill="#032D60" />
+      <circle cx="138" cy="46" r="10" fill="#00C2CB" />
+      <rect x="156" y="40" width="36" height="12" rx="6" fill="#FFFFFF" opacity="0.6" />
+      {/* child nodes */}
+      <rect x="36" y="120" width="88" height="36" rx="10" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <circle cx="58" cy="138" r="10" fill="#0176D3" />
+      <rect x="76" y="132" width="36" height="12" rx="6" fill="#94A3B8" opacity="0.4" />
+      <rect x="196" y="120" width="88" height="36" rx="10" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <circle cx="218" cy="138" r="10" fill="#F59E0B" />
+      <rect x="236" y="132" width="36" height="12" rx="6" fill="#94A3B8" opacity="0.4" />
+      {/* automation gear */}
+      <g transform="translate(160 200)">
+        <circle r="22" fill="#10B981" />
+        <path d="M-10 0a10 10 0 0120 0 10 10 0 01-20 0z" fill="none" stroke="#fff" strokeWidth="3" />
+        {[0, 60, 120, 180, 240, 300].map((deg) => (
+          <rect key={deg} x="-2" y="-18" width="4" height="6" rx="2" fill="#fff" transform={`rotate(${deg})`} />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+export function MultiTenantIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Multiple organization workspaces stacked behind a shared enterprise dashboard">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#059669" opacity="0.08" />
+      {/* stacked org cards behind */}
+      <rect x="60" y="40" width="200" height="130" rx="14" fill="#E6F4FF" transform="rotate(-4 160 105)" />
+      <rect x="56" y="48" width="200" height="130" rx="14" fill="#E8FBF6" transform="rotate(3 156 113)" />
+      {/* front dashboard */}
+      <rect x="48" y="56" width="224" height="150" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="68" y="76" width="100" height="12" rx="6" fill="#032D60" />
+      <rect x="68" y="98" width="64" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={68 + i * 64} y="124" width="52" height="56" rx="8" fill="#0176D3" opacity={0.08 + i * 0.06} />
+          <circle cx={94 + i * 64} cy="146" r="10" fill="#10B981" />
+          <rect x={78 + i * 64} y="162" width="32" height="6" rx="3" fill="#94A3B8" opacity="0.5" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export function RecruiterChatIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Candidate chat conversation thread with a recruiter">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#7c3aed" opacity="0.08" />
+      <rect x="40" y="24" width="240" height="180" rx="16" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      {/* recruiter bubble */}
+      <rect x="60" y="48" width="160" height="40" rx="14" fill="#F1F5F9" />
+      <circle cx="78" cy="68" r="12" fill="#0176D3" />
+      <rect x="98" y="58" width="100" height="8" rx="4" fill="#94A3B8" opacity="0.6" />
+      <rect x="98" y="72" width="70" height="8" rx="4" fill="#94A3B8" opacity="0.4" />
+      {/* candidate bubble */}
+      <rect x="100" y="104" width="160" height="40" rx="14" fill="#7c3aed" opacity="0.12" />
+      <rect x="120" y="114" width="90" height="8" rx="4" fill="#7c3aed" opacity="0.7" />
+      <rect x="120" y="128" width="120" height="8" rx="4" fill="#7c3aed" opacity="0.4" />
+      <circle cx="246" cy="124" r="12" fill="#7c3aed" />
+      {/* recruiter bubble 2 */}
+      <rect x="60" y="156" width="120" height="30" rx="14" fill="#F1F5F9" />
+      <circle cx="78" cy="171" r="10" fill="#0176D3" />
+      <rect x="96" y="166" width="70" height="10" rx="5" fill="#94A3B8" opacity="0.6" />
+      {/* call icon */}
+      <circle cx="280" cy="190" r="22" fill="#10B981" />
+      <path d="M271 181c4-3 7-1 9 2l2 4c1 2 0 4-2 5l-2 1c2 5 5 8 10 10l1-2c1-2 3-3 5-2l4 2c3 2 5 5 2 9-4 5-12 4-19-2-6-6-11-15-10-22z" fill="#fff" />
+    </svg>
+  );
+}
+
+export function CareerToolsIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Candidate profile builder with skill tags and resume tools">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#7c3aed" opacity="0.08" />
+      <rect x="60" y="20" width="200" height="200" rx="16" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <circle cx="120" cy="64" r="26" fill="#7c3aed" opacity="0.15" />
+      <circle cx="120" cy="56" r="12" fill="#7c3aed" />
+      <path d="M98 86c0-12 10-18 22-18s22 6 22 18" fill="#7c3aed" opacity="0.5" />
+      <rect x="160" y="48" width="80" height="10" rx="5" fill="#032D60" />
+      <rect x="160" y="64" width="56" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      {/* skill tags */}
+      {['React', 'SQL', 'Figma'].map((s, i) => (
+        <g key={s}>
+          <rect x={78 + i * 58} y="110" width="52" height="26" rx="13" fill={['#0176D3', '#00C2CB', '#F59E0B'][i]} opacity="0.15" />
+          <text x={104 + i * 58} y="127" textAnchor="middle" fontSize="11" fontWeight="700" fill={['#0176D3', '#00C2CB', '#F59E0B'][i]} fontFamily="sans-serif">{s}</text>
+        </g>
+      ))}
+      <rect x="78" y="156" width="164" height="10" rx="5" fill="#94A3B8" opacity="0.3" />
+      <rect x="78" y="174" width="120" height="10" rx="5" fill="#94A3B8" opacity="0.3" />
+      <rect x="78" y="192" width="80" height="14" rx="7" fill="#10B981" opacity="0.2" />
+      <text x="118" y="203" textAnchor="middle" fontSize="11" fontWeight="800" fill="#10B981" fontFamily="sans-serif">Profile 92%</text>
+    </svg>
+  );
+}
+
+export function EnterpriseControlIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Enterprise admin control panel with security toggles and audit log">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#0176D3" opacity="0.08" />
+      <rect x="50" y="24" width="220" height="190" rx="14" fill="#032D60" />
+      <rect x="70" y="44" width="110" height="14" rx="7" fill="#FFFFFF" opacity="0.85" />
+      {/* toggle rows */}
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x="70" y={78 + i * 38} width="180" height="26" rx="13" fill="#FFFFFF" opacity="0.06" />
+          <rect x="84" y={87 + i * 38} width="90" height="8" rx="4" fill="#FFFFFF" opacity="0.5" />
+          <rect x="206" y={84 + i * 38} width="32" height="14" rx="7" fill={i === 1 ? '#94A3B8' : '#10B981'} opacity={i === 1 ? 0.4 : 0.9} />
+          <circle cx={i === 1 ? 213 : 230} cy={91 + i * 38} r="5" fill="#fff" />
+        </g>
+      ))}
+      {/* audit log badge */}
+      <circle cx="270" cy="40" r="24" fill="#00C2CB" />
+      <path d="M260 40h20M270 30v20" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function OfferSignatureIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Digital offer letter document being signed with e-signature">
+      <ellipse cx="160" cy="225" rx="120" ry="13" fill="#7c3aed" opacity="0.08" />
+      <rect x="70" y="20" width="180" height="200" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="94" y="44" width="100" height="14" rx="7" fill="#032D60" />
+      <rect x="94" y="68" width="132" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      <rect x="94" y="84" width="110" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      <rect x="94" y="100" width="120" height="8" rx="4" fill="#94A3B8" opacity="0.5" />
+      {/* signature line */}
+      <path d="M94 156c10-14 20 14 30 0s20 14 30 0 20 14 30 0 20 14 30 0" stroke="#7c3aed" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <rect x="94" y="172" width="80" height="8" rx="4" fill="#94A3B8" opacity="0.4" />
+      {/* approved stamp */}
+      <g transform="rotate(-18 230 190)">
+        <rect x="195" y="172" width="70" height="36" rx="8" fill="none" stroke="#10B981" strokeWidth="3" />
+        <text x="230" y="195" textAnchor="middle" fontSize="13" fontWeight="900" fill="#10B981" fontFamily="sans-serif">SIGNED</text>
+      </g>
     </svg>
   );
 }
