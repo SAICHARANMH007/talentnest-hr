@@ -556,25 +556,26 @@ router.get('/', asyncHandler(async (req, res) => {
     if (myTenant?.name) userCollege = normalizeCollegeName(myTenant.name);
   }
 
-  // Live headcount for each college community = students whose college matches,
-  // regardless of whether they're in memberIds.
-  const collegeCommunities = unique.filter(c => c.collegeName);
-  const collegeCounts = {};
-  if (collegeCommunities.length) {
-    await Promise.all(collegeCommunities.map(async (c) => {
-      collegeCounts[c.slug] = await User.countDocuments(collegeMemberFilter(c.collegeName));
-    }));
-  }
-
-  // Same idea for company communities, keyed off the user's "Current Company".
+  // Live headcount for college/company communities = users whose college/company
+  // matches, regardless of whether they're in memberIds. Computing this for every
+  // college/company community on every request (N regex-based countDocuments
+  // queries) doesn't scale as more colleges/companies are auto-discovered, so we
+  // only compute it for the requesting user's own college/company — enough to
+  // power the "auto-added to your college/company community" experience — and
+  // fall back to the stored memberCount for everything else.
   const userCompany = normalizeCompanyName(req.user.currentCompany);
-  const companyCommunities = unique.filter(c => c.companyName);
+  const collegeCounts = {};
   const companyCounts = {};
-  if (companyCommunities.length) {
-    await Promise.all(companyCommunities.map(async (c) => {
-      companyCounts[c.slug] = await User.countDocuments(companyMemberFilter(c.companyName));
-    }));
-  }
+  try {
+    const ownCollege = userCollege && unique.find(c => c.collegeName && normalizeCollegeName(c.collegeName) === userCollege);
+    if (ownCollege) {
+      collegeCounts[ownCollege.slug] = await User.countDocuments(collegeMemberFilter(ownCollege.collegeName));
+    }
+    const ownCompany = userCompany && unique.find(c => c.companyName && normalizeCompanyName(c.companyName) === userCompany);
+    if (ownCompany) {
+      companyCounts[ownCompany.slug] = await User.countDocuments(companyMemberFilter(ownCompany.companyName));
+    }
+  } catch {}
 
   const data = unique.map(c => {
     const isCollegeMember = !!c.collegeName && userCollege && normalizeCollegeName(c.collegeName) === userCollege;
