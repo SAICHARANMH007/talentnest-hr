@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { TeamGrowthIllustration, PayrollCardIllustration, OnboardingChecklistIllustration } from '../../components/marketing/Illustrations.jsx';
+import { IdentityCardIllustration, PayrollCardIllustration, OnboardingChecklistIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const FEATURES = [
   { icon: '🎯', title: 'Advanced Facial Recognition', desc: 'Secure, contactless attendance marking with 99.9% accuracy. Identifies employees in under 0.5 seconds, even with masks or lighting changes.' },
@@ -70,7 +70,7 @@ export default function HRMSPage() {
             <Link to="/contact" className="btn btn-primary btn-lg">Request a Demo →</Link>
             <Link to="/contact" className="btn btn-secondary btn-lg">Get Pricing</Link>
           </div>
-          <TeamGrowthIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
+          <IdentityCardIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
         </div>
       </section>
 

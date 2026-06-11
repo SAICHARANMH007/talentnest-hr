@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { CareerJourneyIllustration, PipelineBoardIllustration, OnboardingChecklistIllustration, GrowthRocketIllustration, PayrollCardIllustration, SearchTalentIllustration } from '../../components/marketing/Illustrations.jsx';
+import { TrustGraphIllustration, PipelineBoardIllustration, OnboardingChecklistIllustration, GrowthRocketIllustration, PayrollCardIllustration, SearchTalentIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 
@@ -100,7 +100,7 @@ export default function ProductsPage() {
           <p className="mkt-reveal" style={{ fontSize:'clamp(15px,1.6vw,18px)', color:'rgba(255,255,255,0.62)', margin:'0 0 12px', lineHeight:1.75, maxWidth:560, marginLeft:'auto', marginRight:'auto' }}>
             TalentNest HR is one platform with three distinct products — each designed for the person using it, with features built around exactly what they need to do.
           </p>
-          <CareerJourneyIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
+          <TrustGraphIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
         </div>
       </section>
 

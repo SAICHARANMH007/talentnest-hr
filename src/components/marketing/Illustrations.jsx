@@ -502,3 +502,56 @@ export function TrustGraphIllustration({ style }) {
     </svg>
   );
 }
+
+export function ServiceSolutionsIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Central hub connecting multiple staffing and HR service categories">
+      <ellipse cx="180" cy="245" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* central hub */}
+      <rect x="140" y="98" width="80" height="64" rx="14" fill="#032D60" />
+      <rect x="156" y="90" width="48" height="16" rx="6" fill="#0176D3" />
+      <rect x="156" y="122" width="48" height="8" rx="4" fill="#00C2CB" />
+      <rect x="156" y="138" width="32" height="8" rx="4" fill="#FFFFFF" opacity="0.4" />
+      {/* connectors */}
+      <path d="M180 98V60M180 162v40M140 130H70M220 130h70" stroke="#94A3B8" strokeWidth="2.5" strokeDasharray="4 6" opacity="0.6" />
+      {/* IT staffing */}
+      <circle cx="180" cy="36" r="26" fill="#0176D3" />
+      <path d="M168 36h24M180 24v24" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+      {/* cybersecurity */}
+      <circle cx="60" cy="130" r="26" fill="#00C2CB" />
+      <path d="M60 114l16 6v14c0 10-7 17-16 20-9-3-16-10-16-20v-14z" fill="#fff" />
+      {/* non-IT staffing */}
+      <circle cx="300" cy="130" r="26" fill="#F59E0B" />
+      <circle cx="300" cy="122" r="7" fill="#fff" />
+      <path d="M288 144c0-8 5-14 12-14s12 6 12 14" stroke="#fff" strokeWidth="3" fill="none" strokeLinecap="round" />
+      {/* HRMS */}
+      <circle cx="180" cy="226" r="26" fill="#10B981" />
+      <rect x="168" y="216" width="24" height="20" rx="3" fill="#fff" opacity="0.9" />
+      <circle cx="180" cy="222" r="3" fill="#10B981" />
+      <path d="M174 232c0-4 3-6 6-6s6 2 6 6" stroke="#10B981" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ConnectIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Multiple channels — email, phone and location — connecting to the TalentNest team">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* connectors */}
+      <path d="M112 70L142 100M208 80L182 102M178 162L162 164M198 178L224 160" stroke="#94A3B8" strokeWidth="2" strokeDasharray="3 6" opacity="0.6" />
+      {/* envelope */}
+      <rect x="30" y="40" width="80" height="56" rx="8" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" />
+      <path d="M30 46l40 32 40-32" stroke="#0176D3" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {/* location pin */}
+      <path d="M252 70a26 26 0 1 0-52 0c0 18 26 40 26 40s26-22 26-40z" fill="#F59E0B" />
+      <circle cx="226" cy="70" r="10" fill="#FFFFFF" />
+      {/* phone */}
+      <rect x="226" y="150" width="50" height="80" rx="10" fill="#032D60" />
+      <rect x="234" y="160" width="34" height="52" rx="3" fill="#00C2CB" opacity="0.3" />
+      <circle cx="251" cy="218" r="4" fill="#FFFFFF" opacity="0.6" />
+      {/* center bubble */}
+      <circle cx="160" cy="135" r="44" fill="#0176D3" />
+      <path d="M142 127h36M142 141h24" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}

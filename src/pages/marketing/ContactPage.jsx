@@ -4,7 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { api } from '../../api/api.js';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { ChatSupportIllustration, HandshakeDealIllustration } from '../../components/marketing/Illustrations.jsx';
+import { ChatSupportIllustration, ConnectIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const CONTACT_ITEMS = [
   { icon: '📍', label: 'Address', value: 'Ganesh Nagar, Ameenpur, Hyderabad, Telangana 500049, India' },
@@ -221,7 +221,7 @@ export default function ContactPage() {
                   👤 Facebook Page
                 </a>
               </div>
-              <HandshakeDealIllustration style={{ width: '100%', maxWidth: 220, height: 'auto', display: 'block', margin: '32px auto 0' }} />
+              <ConnectIllustration style={{ width: '100%', maxWidth: 220, height: 'auto', display: 'block', margin: '32px auto 0' }} />
             </div>
 
             {/* RIGHT — form card (theme-aware) */}

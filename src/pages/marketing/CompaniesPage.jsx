@@ -4,7 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { API_BASE_URL } from '../../api/config.js';
-import { RecruiterIllustration, GlobalNetworkIllustration, AnalyticsChartIllustration } from '../../components/marketing/Illustrations.jsx';
+import { RecruiterIllustration, GlobalNetworkIllustration, TalentMatchIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const INDUSTRY_ICONS = { 
   Technology: '💻', 
@@ -297,7 +297,7 @@ export default function CompaniesPage() {
       <section style={{ background: 'var(--mkt-darker)', padding: '120px 0', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(3,118,211,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
         <div className="container mkt-reveal" style={{ position: 'relative' }}>
-          <AnalyticsChartIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
+          <TalentMatchIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <h2 style={{ color: '#fff', fontSize: 'clamp(2.2rem, 6vw, 3.5rem)', fontWeight: 900, marginBottom: 24, letterSpacing: '-0.02em' }}>Scale Your Engineering Team</h2>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.25rem', marginBottom: 56, maxWidth: 600, margin: '0 auto 56px', lineHeight: 1.8 }}>
             Partner with us to source, vet, and hire the top 1% of technical talent worldwide.
