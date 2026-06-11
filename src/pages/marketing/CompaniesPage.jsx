@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { API_BASE_URL } from '../../api/config.js';
+import { RecruiterIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const INDUSTRY_ICONS = { 
   Technology: '💻', 
@@ -98,6 +99,8 @@ export default function CompaniesPage() {
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem', maxWidth: 640, margin: '0 auto 48px', lineHeight: 1.7 }}>
             We partner with innovative startups and Fortune 500 giants to solve their most complex technical and executive hiring challenges.
           </p>
+
+          <RecruiterIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', margin: '0 auto 40px', display: 'block' }} />
 
           {/* Search Box */}
           <div style={{ maxWidth: 700, margin: '0 auto', position: 'relative' }}>

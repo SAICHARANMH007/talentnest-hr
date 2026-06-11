@@ -6,6 +6,7 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
+import { CollegePlacementIllustration, TalentMatchIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── shared tiny helpers ────────────────────────────────────────────────────
 const G  = 'linear-gradient(135deg,#0176D3 0%,#00C2CB 100%)';
@@ -461,6 +462,10 @@ export default function LandingPage() {
             One platform for<br /><span style={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>all your hiring needs.</span>
           </SectionHeading>
 
+          <div className="mkt-reveal" style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+            <TalentMatchIllustration style={{ width: '100%', maxWidth: 320, height: 'auto' }} />
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 22, marginTop: 52 }}>
             {VALUE_PILLARS.map((pillar, idx) => (
               <div key={pillar.title} className={`mkt-reveal ${idx === 1 ? 'mkt-reveal-delayed' : ''}`} style={{ 
@@ -532,6 +537,48 @@ export default function LandingPage() {
           onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
             Explore All Products →
           </Link>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          COLLEGE PLACEMENT PORTAL
+      ══════════════════════════════════════════════════════════════ */}
+      <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0', borderTop: '1px solid var(--mkt-card-border)' }}>
+        <div className="tn-container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48, alignItems: 'center' }}>
+            <div className="mkt-reveal">
+              <div className="mkt-glass" style={{ borderRadius: 28, padding: '24px 16px', background: 'linear-gradient(135deg, rgba(1,118,211,0.06), rgba(0,194,203,0.06))', border: '1px solid var(--mkt-card-border)' }}>
+                <CollegePlacementIllustration style={{ width: '100%', height: 'auto', maxHeight: 320 }} />
+              </div>
+            </div>
+            <div className="mkt-reveal-delayed">
+              <SectionLabel>For Colleges &amp; Placement Cells</SectionLabel>
+              <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 900, color: 'var(--mkt-text-heading)', margin: '0 0 24px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+                A dedicated <span className="mkt-gradient-text">College Placement Portal.</span>
+              </h2>
+              <p style={{ fontSize: 16, color: 'var(--mkt-text-muted)', lineHeight: 1.8, marginBottom: 32, fontWeight: 500 }}>
+                Replace spreadsheets and WhatsApp groups with a single dashboard for your placement cell — every student, every drive, every placement, and exactly which skills your students are missing for the jobs companies are posting.
+              </p>
+              <div style={{ display: 'grid', gap: 20 }}>
+                {[
+                  { t: 'Drive & Opportunity Management', d: 'Run on-campus, virtual, and off-campus placement drives with eligibility filters by branch, CGPA, and passing year.' },
+                  { t: 'Student-wise Placement Tracking', d: 'See registrations, shortlists, and final placements for every student in real time — no manual follow-ups.' },
+                  { t: 'Skill-Gap Insights', d: 'One-click drill-downs from KPIs to student lists, showing exactly which skills students need for the roles being posted.' },
+                ].map(item => (
+                  <div key={item.t} style={{ display: 'flex', gap: 16 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--mkt-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0 }}>✓</div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--mkt-text-heading)', marginBottom: 4 }}>{item.t}</div>
+                      <div style={{ fontSize: 13, color: 'var(--mkt-text-muted)', lineHeight: 1.5 }}>{item.d}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 32 }}>
+                <Link to="/contact" className="btn btn-primary btn-lg" style={{ borderRadius: 14 }}>Bring TalentNest to Your Campus →</Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

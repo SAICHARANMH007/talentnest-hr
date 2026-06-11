@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { TeamGrowthIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const VALUES = [
   { icon: '🎯', title: 'Quality Over Volume', desc: 'We send 3 perfect candidates, not 30 average ones. Every submission is intentional, vetted, and worth your time.' },
@@ -65,6 +66,7 @@ export default function AboutPage() {
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1.25rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.6 }}>
             Redefining recruitment through integrity, transparency, and deep domain expertise since 2024.
           </p>
+          <TeamGrowthIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
         </div>
       </section>
 
