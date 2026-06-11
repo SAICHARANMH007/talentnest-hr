@@ -15,13 +15,102 @@ const COMPANY_NAME_BLOCKLIST = new Set([
 const LEGAL_SUFFIX_RE = /[\s,\-]+(private\s+limited|pvt\.?\s*ltd\.?|public\s+limited|limited|ltd\.?|inc\.?|llc|llp|corporation|corp\.?)\.?$/i;
 
 // Known abbreviations/variants that should collapse onto one canonical name.
+// Keys are matched AFTER legal-suffix stripping & lowercasing, so e.g.
+// "Cognizant Technology Solutions Pvt Ltd" -> "Cognizant Technology Solutions"
+// -> "Cognizant".
 const COMPANY_ALIASES = {
+  // Tata Consultancy Services
   'tcs': 'Tata Consultancy Services',
   'tata consultancy services': 'Tata Consultancy Services',
+  // HCL Technologies
   'hcl tech': 'HCL Technologies',
   'hcltech': 'HCL Technologies',
   'hcl technologies': 'HCL Technologies',
   'hcl': 'HCL Technologies',
+  // Infosys
+  'infosys': 'Infosys',
+  'infosys technologies': 'Infosys',
+  'infosys bpo': 'Infosys',
+  // Wipro
+  'wipro': 'Wipro',
+  'wipro technologies': 'Wipro',
+  'wipro ltd': 'Wipro',
+  // Cognizant
+  'cognizant': 'Cognizant',
+  'cognizant technology solutions': 'Cognizant',
+  'cts': 'Cognizant',
+  // Accenture
+  'accenture': 'Accenture',
+  'accenture solutions': 'Accenture',
+  'accenture services': 'Accenture',
+  // IBM
+  'ibm': 'IBM',
+  'ibm india': 'IBM',
+  'international business machines': 'IBM',
+  // Capgemini
+  'capgemini': 'Capgemini',
+  'capgemini india': 'Capgemini',
+  'capgemini technology services': 'Capgemini',
+  // Tech Mahindra
+  'tech mahindra': 'Tech Mahindra',
+  'techm': 'Tech Mahindra',
+  // Mphasis
+  'mphasis': 'Mphasis',
+  // Hexaware
+  'hexaware': 'Hexaware Technologies',
+  'hexaware technologies': 'Hexaware Technologies',
+  // Mindtree / LTIMindtree
+  'mindtree': 'Mindtree',
+  'l&t infotech': 'LTIMindtree',
+  'lti': 'LTIMindtree',
+  'ltimindtree': 'LTIMindtree',
+  'larsen & toubro infotech': 'LTIMindtree',
+  'larsen and toubro infotech': 'LTIMindtree',
+  // Persistent Systems
+  'persistent': 'Persistent Systems',
+  'persistent systems': 'Persistent Systems',
+  // Genpact
+  'genpact': 'Genpact',
+  // WNS
+  'wns': 'WNS Global Services',
+  'wns global services': 'WNS Global Services',
+  // Amazon
+  'amazon': 'Amazon',
+  'amazon.com': 'Amazon',
+  'amazon development centre': 'Amazon',
+  'amazon development center': 'Amazon',
+  'amzn': 'Amazon',
+  // Microsoft
+  'microsoft': 'Microsoft',
+  'microsoft india': 'Microsoft',
+  'msft': 'Microsoft',
+  // Google
+  'google': 'Google',
+  'google india': 'Google',
+  // Meta / Facebook
+  'meta': 'Meta',
+  'facebook': 'Meta',
+  // Apple
+  'apple': 'Apple',
+  'apple india': 'Apple',
+  // Big 4
+  'deloitte': 'Deloitte',
+  'deloitte india': 'Deloitte',
+  'deloitte consulting': 'Deloitte',
+  'deloitte usi': 'Deloitte',
+  'ey': 'EY',
+  'ernst & young': 'EY',
+  'ernst and young': 'EY',
+  'pwc': 'PwC',
+  'pricewaterhousecoopers': 'PwC',
+  'kpmg': 'KPMG',
+  // Banking
+  'jpmorgan': 'JPMorgan Chase',
+  'jp morgan': 'JPMorgan Chase',
+  'jpmorgan chase': 'JPMorgan Chase',
+  'j.p. morgan': 'JPMorgan Chase',
+  'goldman sachs': 'Goldman Sachs',
+  'goldman sachs group': 'Goldman Sachs',
 };
 
 /** Normalizes a free-text "Current Company" value into a canonical display
@@ -42,6 +131,16 @@ function normalizeCompanyName(raw) {
   if (key.length < 2 || COMPANY_NAME_BLOCKLIST.has(key)) return null;
 
   if (COMPANY_ALIASES[key]) return COMPANY_ALIASES[key];
+
+  // Many MNCs are entered as "<Company> India" / "<Company> (India)" — strip
+  // the trailing region qualifier and re-check aliases, so e.g. "Cognizant
+  // Technology Solutions India Pvt Ltd" still collapses to "Cognizant".
+  const withoutIndia = name.replace(/[\s,\-]+\(?india\)?$/i, '').trim();
+  if (withoutIndia && withoutIndia.length >= 2) {
+    const indiaKey = withoutIndia.toLowerCase();
+    if (COMPANY_ALIASES[indiaKey]) return COMPANY_ALIASES[indiaKey];
+  }
+
   return name;
 }
 
