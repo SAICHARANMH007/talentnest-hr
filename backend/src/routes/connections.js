@@ -342,16 +342,27 @@ router.post('/sync-contacts', asyncHandler(async (req, res) => {
 
   const emails = contacts.map(c => c.email?.toLowerCase().trim()).filter(Boolean);
   const phones = contacts.map(c => c.phone?.replace(/\D/g,'').slice(-10)).filter(Boolean);
+  const phoneSet = new Set(phones);
 
-  const matchedUsers = await User.find({
+  // Stored User.phone values aren't normalized (may include "+91", spaces, dashes,
+  // etc.), so an exact $in match against the digits-only input often misses real
+  // matches. Fetch candidates by email exactly, plus all users with a phone on
+  // file, then compare normalized (last-10-digit) phone numbers in JS.
+  const candidates = await User.find({
     tenantId,
     deletedAt: null,
     _id: { $ne: toObjId(uid) },
     $or: [
       ...(emails.length ? [{ email: { $in: emails } }] : []),
-      ...(phones.length ? [{ phone: { $in: phones } }] : []),
+      ...(phones.length ? [{ phone: { $exists: true, $ne: '' } }] : []),
     ],
   }).select(USER_PUBLIC_FIELDS + ' email phone').lean();
+
+  const matchedUsers = candidates.filter(u => {
+    const email = u.email?.toLowerCase();
+    const phoneNorm = u.phone?.replace(/\D/g,'').slice(-10);
+    return (email && emails.includes(email)) || (phoneNorm && phoneSet.has(phoneNorm));
+  });
 
   // Get existing connections for status
   const matchedIds = matchedUsers.map(u => u._id);
