@@ -144,4 +144,7 @@ export const dashboardService = {
   async getTimeToFill(params = {}) {
     return req('GET', `/dashboard/time-to-fill${qs(params)}`);
   },
+  async getCompanyCollegeDrives() {
+    return req('GET', '/dashboard/company/college-drives');
+  },
 };

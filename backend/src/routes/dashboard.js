@@ -20,7 +20,7 @@ const PlacementDrive  = require('../models/PlacementDrive');
 const TrainingResource = require('../models/TrainingResource');
 const Assessment      = require('../models/Assessment');
 const { cacheRoute }  = require('../middleware/cache');
-const { normalizeCompanyName } = require('../utils/companyNames');
+const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
 const { getCoursesForSkill } = require('../utils/skillCourses');
 
@@ -1102,6 +1102,49 @@ router.delete('/college/placement-drives/:id', authenticate, allowRoles('admin',
   );
   if (!drive) throw new AppError('Placement drive not found.', 404);
   res.json({ success: true });
+}));
+
+/* GET /api/dashboard/company/college-drives — for company/recruiter admins:
+   placement drives across colleges that this company is conducting. */
+router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruiter'), asyncHandler(async (req, res) => {
+  if (req.user.tenantType === 'college') throw new AppError('This view is only available for company accounts.', 403);
+
+  const tenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+  const companyName = normalizeCompanyName(tenant?.name) || tenant?.name || '';
+  if (!companyName) return res.json({ success: true, data: [] });
+
+  const variants = companyNameVariants(companyName);
+  const pattern = '^(' + variants.map(escapeRegex).join('|') + ')$';
+  const companyRx = new RegExp(pattern, 'i');
+
+  const drives = await PlacementDrive.find({
+    companyName: companyRx,
+    deletedAt: null,
+    status: { $ne: 'cancelled' },
+  })
+    .select('title collegeName description mode location driveDate registrationDeadline opportunityType examProvider status registrations')
+    .sort({ driveDate: -1 })
+    .limit(100)
+    .lean();
+
+  const data = drives.map(d => ({
+    id: String(d._id),
+    title: d.title,
+    collegeName: d.collegeName,
+    description: d.description,
+    mode: d.mode,
+    location: d.location,
+    driveDate: d.driveDate,
+    registrationDeadline: d.registrationDeadline,
+    opportunityType: d.opportunityType,
+    examProvider: d.examProvider,
+    status: d.status,
+    registeredCount: (d.registrations || []).length,
+    shortlistedCount: (d.registrations || []).filter(r => r.status === 'shortlisted').length,
+    selectedCount: (d.registrations || []).filter(r => r.status === 'selected').length,
+  }));
+
+  res.json({ success: true, data });
 }));
 
 /* GET /api/dashboard/college/assessments — list this college tenant's
