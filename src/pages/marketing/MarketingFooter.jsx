@@ -7,6 +7,7 @@ const QUICK_LINKS = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About Us' },
   { to: '/services', label: 'Services' },
+  { to: '/companies', label: 'Our Clients' },
   { to: '/careers', label: 'Careers' },
   { to: '/hrms', label: 'HRMS Platform' },
   { to: '/blog', label: 'Blog' },
