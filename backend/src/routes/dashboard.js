@@ -17,6 +17,8 @@ const { exportToExcel } = require('../utils/exportToExcel');
 const { phoneSearchRegex } = require('../utils/phoneSearch');
 const PaymentRecord   = require('../models/PaymentRecord');
 const PlacementDrive  = require('../models/PlacementDrive');
+const TrainingResource = require('../models/TrainingResource');
+const Assessment      = require('../models/Assessment');
 const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
@@ -834,7 +836,8 @@ async function findEligibleCandidates(college, eligibility = {}) {
     .select('name email phone skills educationList isFresher currentCompany')
     .lean();
 
-  const { minCGPA, branches = [], passingYears = [], skills = [] } = eligibility || {};
+  const { minCGPA, degrees = [], branches = [], passingYears = [], skills = [] } = eligibility || {};
+  const degreesLc = degrees.map(d => String(d).toLowerCase().trim()).filter(Boolean);
   const branchesLc = branches.map(b => String(b).toLowerCase().trim()).filter(Boolean);
   const skillsLc = skills.map(s => String(s).toLowerCase().trim()).filter(Boolean);
 
@@ -842,6 +845,10 @@ async function findEligibleCandidates(college, eligibility = {}) {
     const education = parseJsonArray(s.educationList);
     const latest = getLatestEducation(education);
 
+    if (degreesLc.length) {
+      const degree = String(latest?.degree || '').toLowerCase();
+      if (!degreesLc.some(d => degree.includes(d))) return false;
+    }
     if (branchesLc.length) {
       const branch = String(latest?.degree || latest?.field || '').toLowerCase();
       if (!branchesLc.some(b => branch.includes(b))) return false;
@@ -885,6 +892,10 @@ router.get('/college/placement-drives', authenticate, allowRoles('admin', 'place
       location: d.location || '',
       driveDate: d.driveDate,
       registrationDeadline: d.registrationDeadline,
+      opportunityType: d.opportunityType || 'placement',
+      examProvider: d.examProvider || '',
+      registrationLink: d.registrationLink || '',
+      assessmentId: d.assessmentId ? String(d.assessmentId) : null,
       eligibility: d.eligibility || {},
       status: d.status,
       totalEligible: (d.registrations || []).length,
@@ -904,18 +915,25 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const { title, companyName, jobId, description, mode, location, driveDate, registrationDeadline, eligibility } = req.body;
+  const { title, companyName, jobId, description, mode, location, driveDate, registrationDeadline, eligibility, opportunityType, examProvider, registrationLink, assessmentId } = req.body;
   if (!title || !String(title).trim()) throw new AppError('Drive title is required.', 400);
   if (!driveDate) throw new AppError('Drive date is required.', 400);
 
   const cleanEligibility = {
     minCGPA: eligibility?.minCGPA != null && eligibility.minCGPA !== '' ? Number(eligibility.minCGPA) : null,
+    degrees: Array.isArray(eligibility?.degrees) ? eligibility.degrees.map(String).map(s => s.trim()).filter(Boolean) : [],
     branches: Array.isArray(eligibility?.branches) ? eligibility.branches.map(String).map(s => s.trim()).filter(Boolean) : [],
     passingYears: Array.isArray(eligibility?.passingYears) ? eligibility.passingYears.map(Number).filter(Number.isFinite) : [],
     skills: Array.isArray(eligibility?.skills) ? eligibility.skills.map(String).map(s => s.trim()).filter(Boolean) : [],
   };
 
   const eligible = await findEligibleCandidates(college, cleanEligibility);
+
+  let cleanAssessmentId = null;
+  if (assessmentId) {
+    const assessment = await Assessment.findOne({ _id: assessmentId, tenantId: req.user.tenantId }).select('_id').lean();
+    if (assessment) cleanAssessmentId = assessment._id;
+  }
 
   const drive = await PlacementDrive.create({
     tenantId: req.user.tenantId,
@@ -928,6 +946,10 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
     location: location ? String(location).trim().slice(0, 200) : '',
     driveDate: new Date(driveDate),
     registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+    opportunityType: ['placement', 'internship', 'exam'].includes(opportunityType) ? opportunityType : 'placement',
+    examProvider: examProvider ? String(examProvider).trim().slice(0, 100) : '',
+    registrationLink: registrationLink ? String(registrationLink).trim().slice(0, 500) : '',
+    assessmentId: cleanAssessmentId,
     eligibility: cleanEligibility,
     status: 'upcoming',
     registrations: eligible.map(c => ({ candidateId: c._id, status: 'registered' })),
@@ -998,6 +1020,10 @@ router.get('/college/placement-drives/:id', authenticate, allowRoles('admin', 'p
       location: drive.location || '',
       driveDate: drive.driveDate,
       registrationDeadline: drive.registrationDeadline,
+      opportunityType: drive.opportunityType || 'placement',
+      examProvider: drive.examProvider || '',
+      registrationLink: drive.registrationLink || '',
+      assessmentId: drive.assessmentId ? String(drive.assessmentId) : null,
       eligibility: drive.eligibility || {},
       status: drive.status,
       registrations,
@@ -1010,7 +1036,7 @@ router.patch('/college/placement-drives/:id', authenticate, allowRoles('admin', 
   const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
   if (!drive) throw new AppError('Placement drive not found.', 404);
 
-  const { title, companyName, description, mode, location, driveDate, registrationDeadline, status } = req.body;
+  const { title, companyName, description, mode, location, driveDate, registrationDeadline, status, opportunityType, examProvider, registrationLink, assessmentId, eligibility } = req.body;
   if (title !== undefined) drive.title = String(title).trim().slice(0, 200);
   if (companyName !== undefined) drive.companyName = String(companyName).trim().slice(0, 150);
   if (description !== undefined) drive.description = String(description).trim().slice(0, 2000);
@@ -1019,6 +1045,26 @@ router.patch('/college/placement-drives/:id', authenticate, allowRoles('admin', 
   if (driveDate !== undefined) drive.driveDate = new Date(driveDate);
   if (registrationDeadline !== undefined) drive.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
   if (status !== undefined && ['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) drive.status = status;
+  if (opportunityType !== undefined && ['placement', 'internship', 'exam'].includes(opportunityType)) drive.opportunityType = opportunityType;
+  if (examProvider !== undefined) drive.examProvider = String(examProvider).trim().slice(0, 100);
+  if (registrationLink !== undefined) drive.registrationLink = String(registrationLink).trim().slice(0, 500);
+  if (assessmentId !== undefined) {
+    if (!assessmentId) {
+      drive.assessmentId = null;
+    } else {
+      const assessment = await Assessment.findOne({ _id: assessmentId, tenantId: req.user.tenantId }).select('_id').lean();
+      drive.assessmentId = assessment ? assessment._id : drive.assessmentId;
+    }
+  }
+  if (eligibility !== undefined) {
+    drive.eligibility = {
+      minCGPA: eligibility?.minCGPA != null && eligibility.minCGPA !== '' ? Number(eligibility.minCGPA) : null,
+      degrees: Array.isArray(eligibility?.degrees) ? eligibility.degrees.map(String).map(s => s.trim()).filter(Boolean) : [],
+      branches: Array.isArray(eligibility?.branches) ? eligibility.branches.map(String).map(s => s.trim()).filter(Boolean) : [],
+      passingYears: Array.isArray(eligibility?.passingYears) ? eligibility.passingYears.map(Number).filter(Number.isFinite) : [],
+      skills: Array.isArray(eligibility?.skills) ? eligibility.skills.map(String).map(s => s.trim()).filter(Boolean) : [],
+    };
+  }
 
   await drive.save();
   res.json({ success: true, data: { id: String(drive._id) } });
@@ -1056,6 +1102,162 @@ router.delete('/college/placement-drives/:id', authenticate, allowRoles('admin',
   );
   if (!drive) throw new AppError('Placement drive not found.', 404);
   res.json({ success: true });
+}));
+
+/* GET /api/dashboard/college/assessments — list this college tenant's
+   assessments for linking to an exam-type opportunity. */
+router.get('/college/assessments', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const assessments = await Assessment.find({ tenantId: req.user.tenantId, isActive: true }).select('_id title').sort({ createdAt: -1 }).lean();
+  res.json({ success: true, data: assessments.map(a => ({ id: String(a._id), title: a.title })) });
+}));
+
+/* GET /api/dashboard/college/training-resources — list aptitude/placement
+   prep resources curated for this college. */
+router.get('/college/training-resources', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const resources = await TrainingResource.find({ tenantId: req.user.tenantId, deletedAt: null }).sort({ createdAt: -1 }).lean();
+  res.json({ success: true, data: resources.map(r => ({
+    id: String(r._id), title: r.title, url: r.url, description: r.description || '', category: r.category, createdAt: r.createdAt,
+  })) });
+}));
+
+/* POST /api/dashboard/college/training-resources — add a new training resource. */
+router.post('/college/training-resources', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { title, url, description, category } = req.body;
+  if (!title || !String(title).trim()) throw new AppError('Resource title is required.', 400);
+  if (!url || !String(url).trim()) throw new AppError('Resource URL is required.', 400);
+
+  const resource = await TrainingResource.create({
+    tenantId: req.user.tenantId,
+    collegeName: college.name,
+    title: String(title).trim().slice(0, 200),
+    url: String(url).trim().slice(0, 500),
+    description: description ? String(description).trim().slice(0, 1000) : '',
+    category: ['Aptitude', 'Coding', 'Verbal', 'Reasoning', 'Interview', 'Other'].includes(category) ? category : 'Other',
+    createdBy: req.user._id || req.user.id,
+  });
+
+  res.json({ success: true, data: { id: String(resource._id) } });
+}));
+
+/* DELETE /api/dashboard/college/training-resources/:id */
+router.delete('/college/training-resources/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const resource = await TrainingResource.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    { $set: { deletedAt: new Date() } }
+  );
+  if (!resource) throw new AppError('Resource not found.', 404);
+  res.json({ success: true });
+}));
+
+/* GET /api/dashboard/candidate/opportunities — placement/internship/exam
+   opportunities posted by the candidate's college, with eligibility +
+   registration status for the current candidate. */
+router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).lean();
+  const collegeName = (candidate?.college || req.user.college || '').trim();
+  if (!collegeName) return res.json({ success: true, data: [] });
+
+  const collegeRegex = new RegExp('^' + escapeRegex(collegeName) + '$', 'i');
+  const drives = await PlacementDrive.find({ collegeName: collegeRegex, deletedAt: null, status: { $ne: 'cancelled' } })
+    .sort({ driveDate: -1 }).lean();
+
+  const education = parseJsonArray(candidate?.educationList);
+  const latest = getLatestEducation(education);
+  const candidateDegree = String(latest?.degree || '').toLowerCase();
+  const candidateBranch = String(latest?.degree || latest?.field || '').toLowerCase();
+  const candidateYear = parseInt(latest?.year, 10);
+  const candidateGrade = parseFloat(latest?.grade);
+  const candidateSkills = (candidate?.skills || []).map(s => String(s).toLowerCase());
+
+  const data = drives.map(d => {
+    const elig = d.eligibility || {};
+    let isEligible = true;
+    if (Array.isArray(elig.degrees) && elig.degrees.length) {
+      isEligible = isEligible && elig.degrees.some(deg => candidateDegree.includes(String(deg).toLowerCase()));
+    }
+    if (Array.isArray(elig.branches) && elig.branches.length) {
+      isEligible = isEligible && elig.branches.some(b => candidateBranch.includes(String(b).toLowerCase()));
+    }
+    if (Array.isArray(elig.passingYears) && elig.passingYears.length) {
+      isEligible = isEligible && Number.isFinite(candidateYear) && elig.passingYears.includes(candidateYear);
+    }
+    if (elig.minCGPA != null) {
+      isEligible = isEligible && Number.isFinite(candidateGrade) && candidateGrade >= Number(elig.minCGPA);
+    }
+    if (Array.isArray(elig.skills) && elig.skills.length) {
+      isEligible = isEligible && elig.skills.some(s => candidateSkills.includes(String(s).toLowerCase()));
+    }
+
+    const myRegistration = candidate ? (d.registrations || []).find(r => String(r.candidateId) === String(candidate._id)) : null;
+
+    return {
+      id: String(d._id),
+      title: d.title,
+      companyName: d.companyName || '',
+      description: d.description || '',
+      mode: d.mode,
+      location: d.location || '',
+      driveDate: d.driveDate,
+      registrationDeadline: d.registrationDeadline,
+      opportunityType: d.opportunityType || 'placement',
+      examProvider: d.examProvider || '',
+      registrationLink: d.registrationLink || '',
+      assessmentId: d.assessmentId ? String(d.assessmentId) : null,
+      eligibility: elig,
+      status: d.status,
+      isEligible,
+      myStatus: myRegistration?.status || null,
+    };
+  });
+
+  res.json({ success: true, data });
+}));
+
+/* POST /api/dashboard/candidate/opportunities/:id/register — candidate
+   self-registers interest in a placement/internship/exam opportunity. */
+router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null });
+  if (!candidate) throw new AppError('Candidate profile not found.', 404);
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, deletedAt: null });
+  if (!drive) throw new AppError('Opportunity not found.', 404);
+
+  const collegeName = (candidate.college || '').trim().toLowerCase();
+  if (!collegeName || (drive.collegeName || '').trim().toLowerCase() !== collegeName) {
+    throw new AppError('This opportunity is not available for your college.', 403);
+  }
+
+  const existing = drive.registrations.find(r => String(r.candidateId) === String(candidate._id));
+  if (existing) {
+    return res.json({ success: true, data: { status: existing.status }, message: 'Already registered.' });
+  }
+
+  drive.registrations.push({ candidateId: candidate._id, status: 'registered' });
+  await drive.save();
+
+  res.json({ success: true, data: { status: 'registered' } });
+}));
+
+/* GET /api/dashboard/candidate/training-resources — resources curated by the
+   candidate's college placement cell. */
+router.get('/candidate/training-resources', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).select('college').lean();
+  const collegeName = (candidate?.college || req.user.college || '').trim();
+  if (!collegeName) return res.json({ success: true, data: [] });
+
+  const tenant = await Tenant.findOne({ name: new RegExp('^' + escapeRegex(collegeName) + '$', 'i'), type: 'college' }).select('_id').lean();
+  if (!tenant) return res.json({ success: true, data: [] });
+
+  const resources = await TrainingResource.find({ tenantId: tenant._id, deletedAt: null }).sort({ createdAt: -1 }).lean();
+  res.json({ success: true, data: resources.map(r => ({
+    id: String(r._id), title: r.title, url: r.url, description: r.description || '', category: r.category,
+  })) });
 }));
 
 /* GET /api/dashboard/college/students — students who registered with this college name */

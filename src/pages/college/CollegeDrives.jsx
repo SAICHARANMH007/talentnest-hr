@@ -74,8 +74,15 @@ const STATUS_COLORS = {
   cancelled: { bg: 'rgba(186,5,23,0.08)', color: '#BA0517' },
 };
 
+const OPPORTUNITY_TYPE_LABELS = {
+  placement: '🎯 Placement Drive',
+  internship: '💼 Internship',
+  exam: '📝 Exam / Test',
+};
+
 function PlacementDriveCard({ drive, onOpen, onDelete }) {
   const sc = STATUS_COLORS[drive.status] || STATUS_COLORS.upcoming;
+  const typeLabel = OPPORTUNITY_TYPE_LABELS[drive.opportunityType] || OPPORTUNITY_TYPE_LABELS.placement;
   return (
     <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }} onClick={() => onOpen(drive)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -84,6 +91,13 @@ function PlacementDriveCard({ drive, onOpen, onDelete }) {
           <div style={{ fontSize: 13, color: '#706E6B', marginTop: 2 }}>{drive.companyName || 'In-house drive'}</div>
         </div>
         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: sc.bg, color: sc.color, textTransform: 'capitalize' }}>{drive.status}</span>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 999, padding: '2px 10px' }}>{typeLabel}</span>
+        {drive.opportunityType === 'exam' && drive.examProvider && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 999, padding: '2px 10px' }}>{drive.examProvider}</span>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#706E6B' }}>
@@ -106,16 +120,30 @@ function PlacementDriveCard({ drive, onOpen, onDelete }) {
   );
 }
 
+const OPPORTUNITY_TYPES = [
+  { value: 'placement', label: '🎯 Placement Drive' },
+  { value: 'internship', label: '💼 Internship' },
+  { value: 'exam', label: '📝 Exam / Test' },
+];
+
+const EXAM_PROVIDERS = ['TCS NQT', 'AMCAT', 'CoCubes', 'HackerRank', 'HackerEarth', 'eLitmus', 'Other'];
+
 function CreateDriveModal({ onClose, onCreated }) {
   const [form, setForm] = useState({
     title: '', companyName: '', description: '', mode: 'On-Campus', location: '',
     driveDate: '', registrationDeadline: '',
-    minCGPA: '', branches: '', passingYears: '', skills: '',
+    minCGPA: '', degrees: '', branches: '', passingYears: '', skills: '',
+    opportunityType: 'placement', examProvider: 'TCS NQT', registrationLink: '', assessmentId: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [assessments, setAssessments] = useState([]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  useEffect(() => {
+    api.getCollegeAssessments().then(r => setAssessments(r?.data || [])).catch(() => {});
+  }, []);
 
   const submit = async () => {
     if (!form.title.trim() || !form.driveDate) { setError('Drive title and date are required.'); return; }
@@ -124,6 +152,7 @@ function CreateDriveModal({ onClose, onCreated }) {
     try {
       const eligibility = {
         minCGPA: form.minCGPA ? Number(form.minCGPA) : null,
+        degrees: form.degrees.split(',').map(s => s.trim()).filter(Boolean),
         branches: form.branches.split(',').map(s => s.trim()).filter(Boolean),
         passingYears: form.passingYears.split(',').map(s => Number(s.trim())).filter(Number.isFinite),
         skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
@@ -136,6 +165,10 @@ function CreateDriveModal({ onClose, onCreated }) {
         location: form.location.trim(),
         driveDate: form.driveDate,
         registrationDeadline: form.registrationDeadline || null,
+        opportunityType: form.opportunityType,
+        examProvider: form.opportunityType === 'exam' ? form.examProvider : '',
+        registrationLink: form.opportunityType === 'exam' ? form.registrationLink.trim() : '',
+        assessmentId: form.opportunityType === 'exam' ? (form.assessmentId || null) : null,
         eligibility,
       });
       onCreated(res);
@@ -146,14 +179,27 @@ function CreateDriveModal({ onClose, onCreated }) {
     }
   };
 
+  const typeLabel = form.opportunityType === 'internship' ? 'Internship' : form.opportunityType === 'exam' ? 'Exam / Test' : 'Placement Drive';
+
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: Z.MODAL, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: 'min(560px, 100%)', maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800, color: '#181818' }}>📣 Schedule a Placement Drive</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800, color: '#181818' }}>📣 Schedule a {typeLabel}</h3>
 
         <div style={{ display: 'grid', gap: 12 }}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Drive Title *</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Opportunity Type *</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {OPPORTUNITY_TYPES.map(t => (
+                <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, opportunityType: t.value }))}
+                  style={{ ...btnG, flex: 1, padding: '8px 10px', fontSize: 12, background: form.opportunityType === t.value ? 'var(--app-primary,#0176D3)' : '#fff', color: form.opportunityType === t.value ? '#fff' : '#0176D3' }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Title *</label>
             <input style={inp} value={form.title} onChange={set('title')} placeholder="e.g. Infosys Campus Drive 2026" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -172,7 +218,7 @@ function CreateDriveModal({ onClose, onCreated }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Drive Date *</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Date *</label>
               <input style={inp} type="date" value={form.driveDate} onChange={set('driveDate')} />
             </div>
             <div>
@@ -189,6 +235,31 @@ function CreateDriveModal({ onClose, onCreated }) {
             <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={form.description} onChange={set('description')} placeholder="Roles, eligibility, package details, what to bring..." />
           </div>
 
+          {form.opportunityType === 'exam' && (
+            <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#181818', marginBottom: 8 }}>Exam Details</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Exam Provider</label>
+                  <select style={inp} value={form.examProvider} onChange={set('examProvider')}>
+                    {EXAM_PROVIDERS.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>External Registration Link</label>
+                  <input style={inp} value={form.registrationLink} onChange={set('registrationLink')} placeholder="https://..." />
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Link to In-Platform Assessment (optional)</label>
+                <select style={inp} value={form.assessmentId} onChange={set('assessmentId')}>
+                  <option value="">— None —</option>
+                  {assessments.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
           <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 12, marginTop: 4 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: '#181818', marginBottom: 8 }}>Eligibility (leave blank for all students)</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -202,8 +273,12 @@ function CreateDriveModal({ onClose, onCreated }) {
               </div>
             </div>
             <div style={{ marginTop: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Branches / Degrees (comma separated)</label>
-              <input style={inp} value={form.branches} onChange={set('branches')} placeholder="B.Tech CSE, B.Tech IT" />
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Degrees (comma separated)</label>
+              <input style={inp} value={form.degrees} onChange={set('degrees')} placeholder="B.Tech, M.Tech, MCA" />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Branches / Departments (comma separated)</label>
+              <input style={inp} value={form.branches} onChange={set('branches')} placeholder="CSE, IT, ECE" />
             </div>
             <div style={{ marginTop: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Required Skills (comma separated)</label>
@@ -216,7 +291,7 @@ function CreateDriveModal({ onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
             <button style={btnG} onClick={onClose}>Cancel</button>
             <button style={{ ...btnP, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
-              {saving ? 'Creating...' : 'Create Drive'}
+              {saving ? 'Creating...' : `Create ${typeLabel}`}
             </button>
           </div>
         </div>
@@ -315,6 +390,118 @@ function DriveDetailModal({ driveId, onClose }) {
   );
 }
 
+const RESOURCE_CATEGORIES = ['Aptitude', 'Coding', 'Verbal', 'Reasoning', 'Interview', 'Other'];
+
+function TrainingResourcesPanel() {
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ title: '', url: '', description: '', category: 'Aptitude' });
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.getTrainingResources()
+      .then(r => setResources(r?.data || []))
+      .catch(e => setError(e.message || 'Failed to load training resources'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (!form.title.trim() || !form.url.trim()) { setError('Title and URL are required.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      await api.createTrainingResource({
+        title: form.title.trim(),
+        url: form.url.trim(),
+        description: form.description.trim(),
+        category: form.category,
+      });
+      setForm({ title: '', url: '', description: '', category: 'Aptitude' });
+      load();
+    } catch (e) {
+      setError(e.message || 'Failed to add resource');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id) => {
+    if (!window.confirm('Remove this training resource?')) return;
+    try {
+      await api.deleteTrainingResource(id);
+      setResources(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      window.alert(e.message || 'Failed to remove resource');
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={card}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#181818', marginBottom: 12 }}>➕ Add Training Resource</div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Title *</label>
+              <input style={inp} value={form.title} onChange={set('title')} placeholder="e.g. Quant Aptitude Practice Set" />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Category</label>
+              <select style={inp} value={form.category} onChange={set('category')}>
+                {RESOURCE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>URL *</label>
+            <input style={inp} value={form.url} onChange={set('url')} placeholder="https://..." />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Description</label>
+            <input style={inp} value={form.description} onChange={set('description')} placeholder="Short note for students" />
+          </div>
+          {error && <div style={{ color: '#BA0517', fontSize: 13 }}>{error}</div>}
+          <div>
+            <button style={{ ...btnP, opacity: saving ? 0.6 : 1 }} disabled={saving} onClick={submit}>
+              {saving ? 'Adding...' : '+ Add Resource'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10 }}><Spinner /> Loading...</div>
+      ) : resources.length === 0 ? (
+        <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
+          No training resources added yet. Add aptitude, coding or interview prep links for your students above.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+          {resources.map(r => (
+            <div key={r.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#181818' }}>{r.title}</h4>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 999, padding: '2px 10px' }}>{r.category}</span>
+              </div>
+              {r.description && <div style={{ fontSize: 12, color: '#706E6B' }}>{r.description}</div>}
+              <a href={r.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0176D3', fontWeight: 700, wordBreak: 'break-all' }}>{r.url}</a>
+              <div>
+                <button style={{ ...btnD, padding: '4px 12px', fontSize: 12 }} onClick={() => remove(r.id)}>Remove</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CollegeDrives() {
   const [tab, setTab] = useState('drives');
   const [jobs, setJobs] = useState([]);
@@ -324,6 +511,7 @@ export default function CollegeDrives() {
   const [statuses, setStatuses] = useState({});
   const [showCreate, setShowCreate] = useState(false);
   const [openDriveId, setOpenDriveId] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('');
 
   const loadAll = () => {
     setLoading(true);
@@ -376,25 +564,40 @@ export default function CollegeDrives() {
         action={<button style={btnP} onClick={() => setShowCreate(true)}>+ Schedule Drive</button>}
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button onClick={() => setTab('drives')} style={{ ...btnG, background: tab === 'drives' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'drives' ? '#fff' : '#0176D3' }}>🏫 My Drives ({drives.length})</button>
         <button onClick={() => setTab('jobs')} style={{ ...btnG, background: tab === 'jobs' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'jobs' ? '#fff' : '#0176D3' }}>🌐 Job Openings ({jobs.length})</button>
+        <button onClick={() => setTab('training')} style={{ ...btnG, background: tab === 'training' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'training' ? '#fff' : '#0176D3' }}>📚 Training Resources</button>
       </div>
+
+      {tab === 'drives' && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button onClick={() => setTypeFilter('')} style={{ ...btnG, padding: '4px 12px', fontSize: 12, background: !typeFilter ? 'var(--app-primary,#0176D3)' : '#fff', color: !typeFilter ? '#fff' : '#0176D3' }}>All</button>
+          {OPPORTUNITY_TYPES.map(t => (
+            <button key={t.value} onClick={() => setTypeFilter(t.value)} style={{ ...btnG, padding: '4px 12px', fontSize: 12, background: typeFilter === t.value ? 'var(--app-primary,#0176D3)' : '#fff', color: typeFilter === t.value ? '#fff' : '#0176D3' }}>{t.label}</button>
+          ))}
+        </div>
+      )}
 
       {loading && <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10 }}><Spinner /> Loading...</div>}
       {error && <div style={{ color: '#BA0517', padding: 40 }}>{error}</div>}
 
       {!loading && !error && tab === 'drives' && (
-        drives.length === 0 ? (
-          <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
-            No placement drives scheduled yet. Click "+ Schedule Drive" to organize your first campus drive.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-            {drives.map(d => <PlacementDriveCard key={d.id} drive={d} onOpen={(drv) => setOpenDriveId(drv.id)} onDelete={cancelDrive} />)}
-          </div>
-        )
+        (() => {
+          const filtered = typeFilter ? drives.filter(d => (d.opportunityType || 'placement') === typeFilter) : drives;
+          return filtered.length === 0 ? (
+            <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
+              No placement drives scheduled yet. Click "+ Schedule Drive" to organize your first campus drive.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+              {filtered.map(d => <PlacementDriveCard key={d.id} drive={d} onOpen={(drv) => setOpenDriveId(drv.id)} onDelete={cancelDrive} />)}
+            </div>
+          );
+        })()
       )}
+
+      {!loading && !error && tab === 'training' && <TrainingResourcesPanel />}
 
       {!loading && !error && tab === 'jobs' && (
         jobs.length === 0 ? (

@@ -118,6 +118,7 @@ const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
 const CandidateJobAlerts = lazy(() => import('./pages/candidate/CandidateJobAlerts.jsx'));
+const CandidateOpportunities = lazy(() => import('./pages/candidate/CandidateOpportunities.jsx'));
 
 const RecruiterInterviews = lazy(() => import('./pages/recruiter/RecruiterInterviews.jsx'));
 const RecruiterOffers = lazy(() => import('./pages/recruiter/RecruiterOffers.jsx'));
@@ -631,6 +632,7 @@ export default function App() {
             <Route path="interviews" element={<Suspense fallback={<PageLoader />}><CandidateInterviews user={user} /></Suspense>} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
+            <Route path="opportunities" element={<Suspense fallback={<PageLoader />}><CandidateOpportunities /></Suspense>} />
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
             <Route path="background-verification" element={<CandidateBackgroundVerification user={user} />} />
             <Route path="offer/:offerId" element={<CandidateOffer user={user} />} />

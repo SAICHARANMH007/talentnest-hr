@@ -24,8 +24,16 @@ const placementDriveSchema = new mongoose.Schema({
   location:    { type: String, trim: true, default: '' },
   driveDate:   { type: Date, required: true },
   registrationDeadline: { type: Date, default: null },
+  // Type of opportunity: a regular placement drive, an internship, or an
+  // exam/test (e.g. TCS NQT, AMCAT, HackerRank, HackerEarth) — exams may
+  // link to an external registration page and/or an in-platform Assessment.
+  opportunityType: { type: String, enum: ['placement', 'internship', 'exam'], default: 'placement' },
+  examProvider:     { type: String, trim: true, default: '' },
+  registrationLink: { type: String, trim: true, default: '' },
+  assessmentId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', default: null },
   eligibility: {
     minCGPA:      { type: Number, default: null },
+    degrees:      { type: [String], default: [] },
     branches:     { type: [String], default: [] },
     passingYears: { type: [Number], default: [] },
     skills:       { type: [String], default: [] },
