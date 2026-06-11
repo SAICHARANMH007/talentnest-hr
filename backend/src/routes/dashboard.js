@@ -1178,7 +1178,13 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
     };
   });
 
-  res.json({ success: true, data: matches, total: matches.length });
+  const total = matches.length;
+  const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const skip  = (page - 1) * limit;
+  const data  = matches.slice(skip, skip + limit);
+
+  res.json({ success: true, data, total, hasMore: skip + data.length < total });
 }));
 
 /* GET /api/dashboard/company-directory?q=...
@@ -1247,7 +1253,7 @@ router.get('/company-groups/:name/candidates', authenticate, allowRoles('super_a
     return norm && norm.toLowerCase() === key;
   }));
 
-  const data = matches.map(c => ({
+  const allData = matches.map(c => ({
     id: String(c._id),
     name: c.name,
     email: c.email,
@@ -1260,7 +1266,13 @@ router.get('/company-groups/:name/candidates', authenticate, allowRoles('super_a
     expectedCTC: c.expectedCTC || '',
   }));
 
-  res.json({ success: true, data, total: data.length });
+  const total = allData.length;
+  const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const skip  = (page - 1) * limit;
+  const data  = allData.slice(skip, skip + limit);
+
+  res.json({ success: true, data, total, hasMore: skip + data.length < total });
 }));
 
 

@@ -12,19 +12,42 @@ const STAT_S = {
   padding: 20, display: 'flex', flexDirection: 'column', gap: 6,
 };
 
+const PAGE_SIZE = 50;
+
 function CandidateDrawer({ collegeName, onClose }) {
   const [candidates, setCandidates] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!collegeName) return;
     setLoading(true);
-    api.getCollegeGroupCandidates(collegeName)
-      .then(r => setCandidates(r?.data || []))
+    setCandidates([]);
+    api.getCollegeGroupCandidates(collegeName, { page: 1, limit: PAGE_SIZE })
+      .then(r => {
+        setCandidates(r?.data || []);
+        setTotal(r?.total ?? (r?.data || []).length);
+        setHasMore(!!r?.hasMore);
+      })
       .catch(e => setError(e.message || 'Failed to load candidates'))
       .finally(() => setLoading(false));
   }, [collegeName]);
+
+  const loadMore = () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = Math.floor(candidates.length / PAGE_SIZE) + 1;
+    api.getCollegeGroupCandidates(collegeName, { page: nextPage, limit: PAGE_SIZE })
+      .then(r => {
+        setCandidates(prev => [...prev, ...(r?.data || [])]);
+        setHasMore(!!r?.hasMore);
+      })
+      .catch(e => setError(e.message || 'Failed to load candidates'))
+      .finally(() => setLoadingMore(false));
+  };
 
   if (!collegeName) return null;
 
@@ -33,7 +56,7 @@ function CandidateDrawer({ collegeName, onClose }) {
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', width: 'min(520px, 100%)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 24px rgba(0,0,0,0.15)' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#706E6B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>College</div>
+            <div style={{ fontSize: 11, color: '#706E6B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>College{total ? ` · ${total}` : ''}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#181818' }}>{collegeName}</div>
           </div>
           <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 16, cursor: 'pointer', color: '#374151' }}>✕</button>
@@ -61,6 +84,14 @@ function CandidateDrawer({ collegeName, onClose }) {
               </div>
             </div>
           ))}
+          {!loading && hasMore && (
+            <div style={{ padding: '16px 0', textAlign: 'center' }}>
+              <button onClick={loadMore} disabled={loadingMore}
+                style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #0176D3', background: '#fff', color: '#0176D3', fontSize: 13, fontWeight: 700, cursor: loadingMore ? 'default' : 'pointer' }}>
+                {loadingMore ? 'Loading…' : `Load more (${candidates.length} of ${total})`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

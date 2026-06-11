@@ -567,7 +567,7 @@ export default function PeoplePage({ user }) {
     try {
       const r = await api.syncContacts(contacts);
       setSyncResults(r?.data || r);
-    } catch { setSyncResults({ matched: [], unmatched: [] }); }
+    } catch { setSyncResults({ matched: [], unmatched: [], candidateMatches: [] }); }
     finally { setSyncing(false); }
   };
 
@@ -727,6 +727,26 @@ export default function PeoplePage({ user }) {
                   </div>
                 </>
               )}
+              {syncResults.candidateMatches?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0176D3', background: '#EFF6FF', display: 'inline-block', padding: '4px 12px', borderRadius: 20, marginBottom: 8 }}>
+                    📄 {syncResults.candidateMatches.length} contact{syncResults.candidateMatches.length !== 1 ? 's' : ''} found in our candidate database — not yet a registered TalentNest user
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {syncResults.candidateMatches.map(c => (
+                      <div key={String(c._id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, overflow: 'hidden' }}>
+                          {c.avatarUrl ? <img src={c.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.name ? c.name[0].toUpperCase() : '👤')}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[c.title, c.currentCompany].filter(Boolean).join(' · ') || c.email || c.phone}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {syncResults.unmatched?.length > 0 && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>
@@ -767,7 +787,7 @@ export default function PeoplePage({ user }) {
                   </div>
                 </div>
               )}
-              {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && (
+              {syncResults.matched?.length === 0 && syncResults.unmatched?.length === 0 && syncResults.candidateMatches?.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '16px', color: '#6B7280', fontSize: 13, background: '#F9FAFB', borderRadius: 10 }}>No contacts matched. Check the format (emails or phone numbers) and try again.</div>
               )}
             </div>

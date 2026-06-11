@@ -393,13 +393,64 @@ router.post('/sync-contacts', asyncHandler(async (req, res) => {
     return { ...u, connectionStatus };
   });
 
-  const unmatched = contacts.filter(c => {
+  let unmatched = contacts.filter(c => {
     const email = c.email?.toLowerCase().trim();
     const phone = c.phone?.replace(/\D/g,'').slice(-10);
     return (!email || !matchedEmailSet.has(email)) && (!phone || !matchedPhoneSet.has(phone));
   });
 
-  res.json({ success: true, matched, unmatched });
+  // Many phone/email matches exist only as Candidate profiles (resumes/bulk
+  // imports) with no User login account, so the User-only lookup above misses
+  // them. Search Candidate.phone/email for the still-unmatched contacts and
+  // surface them as a separate "found in our database, but not on TalentNest
+  // yet as a registered user" category — they can't be connected with directly,
+  // but their profile can be viewed.
+  const candidateMatches = [];
+  if (unmatched.length) {
+    const remainingEmails = unmatched.map(c => c.email?.toLowerCase().trim()).filter(Boolean);
+    const remainingPhones = unmatched.map(c => c.phone?.replace(/\D/g,'').slice(-10)).filter(Boolean);
+    const remainingPhoneSet = new Set(remainingPhones);
+
+    const candidateProfiles = await Candidate.find({
+      tenantId,
+      deletedAt: null,
+      userId: null,
+      $or: [
+        ...(remainingEmails.length ? [{ email: { $in: remainingEmails } }] : []),
+        ...(remainingPhones.length ? [{ phone: { $exists: true, $ne: '' } }] : []),
+      ],
+    }).select('name email phone avatarUrl photoUrl title currentCompany').lean();
+
+    const seen = new Set();
+    candidateProfiles.forEach(c => {
+      const email = c.email?.toLowerCase();
+      const phoneNorm = c.phone?.replace(/\D/g,'').slice(-10);
+      const isMatch = (email && remainingEmails.includes(email)) || (phoneNorm && remainingPhoneSet.has(phoneNorm));
+      if (!isMatch) return;
+      const key = String(c._id);
+      if (seen.has(key)) return;
+      seen.add(key);
+      candidateMatches.push({
+        _id: c._id,
+        name: c.name || c.email || 'Candidate',
+        avatarUrl: c.avatarUrl || c.photoUrl || '',
+        title: c.title || '',
+        currentCompany: c.currentCompany || '',
+        email: c.email || '',
+        phone: c.phone || '',
+      });
+    });
+
+    const candidateEmailSet = new Set(candidateProfiles.map(c => c.email?.toLowerCase()));
+    const candidatePhoneSet = new Set(candidateProfiles.map(c => c.phone?.replace(/\D/g,'').slice(-10)));
+    unmatched = unmatched.filter(c => {
+      const email = c.email?.toLowerCase().trim();
+      const phone = c.phone?.replace(/\D/g,'').slice(-10);
+      return (!email || !candidateEmailSet.has(email)) && (!phone || !candidatePhoneSet.has(phone));
+    });
+  }
+
+  res.json({ success: true, matched, unmatched, candidateMatches });
 }));
 
 // ─── POST /api/connections/request/:userId — send connection request ──────────
