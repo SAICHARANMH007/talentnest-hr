@@ -223,6 +223,8 @@ export default function CommunitiesPage({ user }) {
   const FILTERS = [
     { id: 'all',      label: 'All' },
     { id: 'joined',   label: '✓ Joined' },
+    { id: 'college',  label: '🎓 Colleges' },
+    { id: 'company',  label: '🏢 Companies' },
     { id: 'tech',     label: '💻 Tech' },
     { id: 'hr',       label: '🎯 HR & Recruiting' },
     { id: 'business', label: '📈 Business' },
@@ -232,7 +234,9 @@ export default function CommunitiesPage({ user }) {
 
   const visible = communities.filter(c => {
     if (filter === 'joined' && !c.isMember) return false;
-    if (filter !== 'all' && filter !== 'joined' && c.category !== filter) return false;
+    if (filter === 'college' && !c.collegeName) return false;
+    if (filter === 'company' && !c.companyName) return false;
+    if (!['all', 'joined', 'college', 'company'].includes(filter) && c.category !== filter) return false;
     if (search.trim().length >= 2) {
       const q = search.toLowerCase();
       return c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);

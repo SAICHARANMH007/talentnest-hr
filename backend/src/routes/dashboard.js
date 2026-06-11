@@ -17,6 +17,7 @@ const { exportToExcel } = require('../utils/exportToExcel');
 const { phoneSearchRegex } = require('../utils/phoneSearch');
 const PaymentRecord   = require('../models/PaymentRecord');
 const { cacheRoute }  = require('../middleware/cache');
+const { normalizeCompanyName } = require('../utils/companyNames');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -479,6 +480,21 @@ function getLatestEducation(education) {
     }
   });
   return latest;
+}
+
+/** De-duplicates candidate records by email (case-insensitive) — imports/
+ * re-saves can leave more than one Candidate document for the same person,
+ * which otherwise shows up as the same person listed twice in group drill-downs. */
+function dedupeByEmail(list) {
+  const seen = new Set();
+  const out = [];
+  for (const c of list) {
+    const key = c.email ? String(c.email).toLowerCase().trim() : `_id:${c._id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
 }
 
 /** Some older candidate records have an empty Candidate.educationList even
@@ -1043,10 +1059,11 @@ router.post('/college/students/import', authenticate, allowRoles('admin'), async
 router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const currentYear = new Date().getFullYear();
 
-  const [candidates, tenants] = await Promise.all([
+  const [rawCandidates, tenants] = await Promise.all([
     Candidate.find({ deletedAt: null }).select('email college educationList isFresher').lean(),
     Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
   ]);
+  const candidates = dedupeByEmail(rawCandidates);
 
   const tenantKeys = new Set(
     tenants.map(t => String(t.name || '').trim().replace(/\s+/g, ' ').toLowerCase())
@@ -1115,9 +1132,10 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
   const name = String(req.params.name || '').trim().replace(/\s+/g, ' ');
   if (!name) throw new AppError('College name is required.', 400);
 
-  const candidates = await Candidate.find({ deletedAt: null })
+  const rawCandidates = await Candidate.find({ deletedAt: null })
     .select('name email phone college educationList isFresher currentCompany title experience location')
     .lean();
+  const candidates = dedupeByEmail(rawCandidates);
 
   const fallback = await getEducationFallbackMap(candidates);
   const key = name.toLowerCase();
@@ -1174,9 +1192,8 @@ router.get('/company-directory', asyncHandler(async (req, res) => {
   const companyNames = await Candidate.distinct('currentCompany', { currentCompany: { $exists: true, $ne: '' } });
 
   const byKey = new Map();
-  const normalize = (name) => String(name || '').trim().replace(/\s+/g, ' ');
   companyNames.forEach(name => {
-    const cleaned = normalize(name);
+    const cleaned = normalizeCompanyName(name);
     if (!cleaned) return;
     const key = cleaned.toLowerCase();
     if (!byKey.has(key)) byKey.set(key, cleaned);
@@ -1194,12 +1211,13 @@ router.get('/company-directory', asyncHandler(async (req, res) => {
    (case/whitespace-insensitive) so the platform admin can see which companies
    exist on the platform and how many candidates are currently there. */
 router.get('/company-groups', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const candidates = await Candidate.find({ deletedAt: null, currentCompany: { $exists: true, $ne: '' } })
-    .select('currentCompany isFresher').lean();
+  const rawCandidates = await Candidate.find({ deletedAt: null, currentCompany: { $exists: true, $ne: '' } })
+    .select('email currentCompany isFresher').lean();
+  const candidates = dedupeByEmail(rawCandidates);
 
   const groups = new Map();
   for (const c of candidates) {
-    const name = String(c.currentCompany || '').trim().replace(/\s+/g, ' ');
+    const name = normalizeCompanyName(c.currentCompany);
     if (!name) continue;
     const key = name.toLowerCase();
     if (!groups.has(key)) {
@@ -1218,13 +1236,18 @@ router.get('/company-groups', authenticate, allowRoles('super_admin'), asyncHand
 router.get('/company-groups/:name/candidates', authenticate, allowRoles('super_admin'), asyncHandler(async (req, res) => {
   const name = String(req.params.name || '').trim().replace(/\s+/g, ' ');
   if (!name) throw new AppError('Company name is required.', 400);
+  const key = name.toLowerCase();
 
-  const regex = new RegExp('^' + escapeRegex(name) + '$', 'i');
-  const candidates = await Candidate.find({ deletedAt: null, currentCompany: regex })
-    .select('name email phone college title experience location currentCTC expectedCTC')
+  const rawCandidates = await Candidate.find({ deletedAt: null, currentCompany: { $exists: true, $ne: '' } })
+    .select('name email phone college title experience location currentCTC expectedCTC currentCompany')
     .lean();
 
-  const data = candidates.map(c => ({
+  const matches = dedupeByEmail(rawCandidates.filter(c => {
+    const norm = normalizeCompanyName(c.currentCompany);
+    return norm && norm.toLowerCase() === key;
+  }));
+
+  const data = matches.map(c => ({
     id: String(c._id),
     name: c.name,
     email: c.email,

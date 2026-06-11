@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
+import { StarRating, ReviewCard, SubmitReviewForm } from './CompanyReviewsPage.jsx';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ROLE_COLOR = { admin: '#0176D3', recruiter: '#7C3AED', candidate: '#059669', super_admin: '#DC2626', superadmin: '#DC2626' };
@@ -633,6 +634,71 @@ function AboutTab({ community }) {
   );
 }
 
+// ── Reviews Tab (company communities only) ─────────────────────────────────────
+function ReviewsTab({ user, companyName }) {
+  const [reviews,  setReviews]  = useState([]);
+  const [avg,      setAvg]      = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api.getCompanyReviewsByName(companyName);
+      setReviews(r?.data || []);
+      setAvg(r?.avgRating || null);
+    } catch { setReviews([]); }
+    setLoading(false);
+  }, [companyName]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
+      <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />
+      Loading reviews…
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {avg && <span style={{ fontSize: 28, fontWeight: 900, color: '#F59E0B' }}>{avg}</span>}
+          <div>
+            {avg && <StarRating value={Math.round(parseFloat(avg))} size={16} />}
+            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''} for {companyName}</div>
+          </div>
+        </div>
+        <button onClick={() => setShowForm(v => !v)} style={showForm ? btnG : btnP}>
+          {showForm ? '✕ Close' : '✍️ Write a Review'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div style={{ marginBottom: 18 }}>
+          <SubmitReviewForm
+            user={user}
+            companies={[]}
+            prefilledCompany={companyName}
+            onSuccess={() => { load(); setShowForm(false); }}
+          />
+        </div>
+      )}
+
+      {reviews.length === 0 ? (
+        <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No reviews yet</div>
+          <div style={{ fontSize: 13, color: '#9CA3AF' }}>Be the first to share your experience at {companyName}.</div>
+        </div>
+      ) : (
+        reviews.map(r => <ReviewCard key={r._id} review={r} />)
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function CommunityDetailPage({ user }) {
   const { slug }   = useParams();
@@ -842,6 +908,7 @@ export default function CommunityDetailPage({ user }) {
     { id: 'posts',   label: `💬 Posts` },
     { id: 'jobs',    label: `💼 Jobs` },
     { id: 'members', label: `👥 Members (${community?.memberCount || 0})` },
+    ...(community?.companyName ? [{ id: 'reviews', label: `⭐ Reviews` }] : []),
     { id: 'about',   label: `ℹ️ About` },
   ];
 
@@ -1040,6 +1107,7 @@ export default function CommunityDetailPage({ user }) {
 
         {tab === 'jobs' && <JobsTab jobs={jobs} loading={jobsLoading} />}
         {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} />}
+        {tab === 'reviews' && community?.companyName && <ReviewsTab user={user} companyName={community.companyName} />}
         {tab === 'about' && <AboutTab community={community} />}
       </div>
     </div>

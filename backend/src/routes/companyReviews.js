@@ -63,6 +63,21 @@ router.post('/public/:orgSlug', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Review posted! Thank you for your feedback.' });
 }));
 
+// GET /api/company-reviews/by-company/:name — authenticated: all reviews for a
+// given company name across all tenants (used by Company Communities).
+router.get('/by-company/:name', ...guard, asyncHandler(async (req, res) => {
+  const name = String(req.params.name || '').trim();
+  if (!name) return res.json({ success: true, data: [], avgRating: null, total: 0 });
+
+  const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp('^' + escapeRegex(name) + '$', 'i');
+  const reviews = await CompanyReview.find({ companyName: regex, deletedAt: null, isApproved: true })
+    .sort({ createdAt: -1 }).lean();
+
+  const avg = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+  res.json({ success: true, data: reviews, avgRating: avg, total: reviews.length });
+}));
+
 // GET /api/company-reviews/my-org — authenticated: list all (non-deleted) reviews for own org
 router.get('/my-org', ...guard, asyncHandler(async (req, res) => {
   const reviews = await CompanyReview.find({ tenantId: req.tenantId, deletedAt: null })

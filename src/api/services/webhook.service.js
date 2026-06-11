@@ -21,6 +21,7 @@ export const webhookService = {
     return r;
   },
   async getMyOrgReviews()              { return req('GET', '/company-reviews/my-org'); },
+  async getCompanyReviewsByName(name)  { return req('GET', `/company-reviews/by-company/${encodeURIComponent(name)}`); },
   async submitMyOrgReview(data)        { return req('POST', '/company-reviews/my-org', data); },
   async getAdminReviews()              { const r = await req('GET', '/company-reviews'); return r?.data || r; },
   async getReportedReviews()           { const r = await req('GET', '/company-reviews/reported'); return r?.data || r; },

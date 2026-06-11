@@ -4,7 +4,7 @@ import { card, btnP, btnG } from '../../constants/styles.js';
 
 const STARS = [1, 2, 3, 4, 5];
 
-function StarRating({ value, onChange, size = 24 }) {
+export function StarRating({ value, onChange, size = 24 }) {
   const [hovered, setHovered] = useState(0);
   return (
     <div style={{ display: 'flex', gap: 4 }}>
@@ -19,7 +19,7 @@ function StarRating({ value, onChange, size = 24 }) {
   );
 }
 
-function ReviewCard({ review }) {
+export function ReviewCard({ review }) {
   return (
     <div style={{ ...card, padding: '18px 20px', borderRadius: 14, marginBottom: 10, border: '1px solid #F1F5F9' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -55,7 +55,7 @@ function ReviewCard({ review }) {
 
 const EMPTY_FORM = { companyName: '', rating: 0, title: '', pros: '', cons: '', role: '', isAnonymous: false };
 
-function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany }) {
+export function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany }) {
   const [form, setForm]           = useState({ ...EMPTY_FORM, companyName: prefilledCompany || '' });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone]           = useState(false);

@@ -9,6 +9,7 @@ const FeedPost     = require('../models/FeedPost');
 const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
+const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
 
 // ─── PUBLIC: GET /api/communities/public/:slug — no auth, for share links ────
 // Must be defined BEFORE router.use(auth) so it doesn't require a token.
@@ -141,14 +142,15 @@ function collegeMemberFilter(name) {
   };
 }
 
-/** Matches users whose current employer matches the given company name
- * (case/whitespace-insensitive), used for auto-membership in company communities. */
+/** Matches users whose current employer matches the given (canonical) company
+ * name — including common legal-suffix and abbreviation variants (e.g. "Tcs",
+ * "TCS", "Infosys Ltd") — used for auto-membership in company communities. */
 function companyMemberFilter(name) {
-  const normalized = name.trim().replace(/\s+/g, ' ');
-  const exact = { $regex: '^' + escapeRegex(normalized) + '$', $options: 'i' };
+  const variants = companyNameVariants(name);
+  const pattern = '^(' + variants.map(escapeRegex).join('|') + ')$';
   return {
     deletedAt: null,
-    currentCompany: exact,
+    currentCompany: { $regex: pattern, $options: 'i' },
   };
 }
 
@@ -277,15 +279,6 @@ async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantI
   }));
 }
 
-// Placeholder/non-company values that sometimes end up in the free-text
-// "Current Company" field — these should never become communities.
-const COMPANY_NAME_BLOCKLIST = new Set([
-  'n/a', 'na', 'none', 'nil', 'nothing', '-', '--', 'n.a', 'n.a.',
-  'self', 'self employed', 'self-employed', 'freelance', 'freelancer',
-  'fresher', 'unemployed', 'not applicable', 'not working', 'currently not working',
-  'currently unemployed', 'no company', 'tbd', 'na.',
-]);
-
 /** Creates a community for any company name found in candidates' "Current
  * Company" field that doesn't already have one. Mirrors the college community
  * auto-creation above — new companies discovered from candidate profiles
@@ -299,8 +292,8 @@ async function ensureCompanyCommunities(createdBy, fallbackTenantId) {
   const companyNames = await Candidate.distinct('currentCompany', { deletedAt: null, currentCompany: { $exists: true, $ne: '' } });
   const names = new Map();
   companyNames.forEach(raw => {
-    const name = String(raw || '').trim().replace(/\s+/g, ' ');
-    if (name.length < 2 || COMPANY_NAME_BLOCKLIST.has(name.toLowerCase())) return;
+    const name = normalizeCompanyName(raw);
+    if (!name) return;
     names.set(name.toLowerCase(), name);
   });
 
@@ -432,7 +425,55 @@ router.post('/merge-duplicates', asyncHandler(async (req, res) => {
     deletedDocs += rest.length;
   }
 
-  res.json({ success: true, message: `Merged ${mergedGroups} duplicate slug group(s), deleted ${deletedDocs} duplicate document(s).`, mergedGroups, deletedDocs });
+  // Second pass: merge company communities that represent the same company
+  // under different name variants (e.g. "Tcs Community" vs "Tata Consultancy
+  // Services Community") once normalized to a canonical company name.
+  const companyDocs = await Community.find({ companyName: { $exists: true, $ne: '' } }).sort({ createdAt: 1 }).lean();
+  const byCompanyKey = {};
+  companyDocs.forEach(c => {
+    const norm = normalizeCompanyName(c.companyName);
+    if (!norm) return;
+    const key = norm.toLowerCase();
+    (byCompanyKey[key] = byCompanyKey[key] || []).push({ ...c, _canonical: norm });
+  });
+
+  // Third pass: merge college communities whose collegeName only differs by
+  // case/whitespace.
+  const collegeDocs = await Community.find({ collegeName: { $exists: true, $ne: '' } }).sort({ createdAt: 1 }).lean();
+  const byCollegeKey = {};
+  collegeDocs.forEach(c => {
+    const norm = String(c.collegeName || '').trim().replace(/\s+/g, ' ');
+    if (!norm) return;
+    const key = norm.toLowerCase();
+    (byCollegeKey[key] = byCollegeKey[key] || []).push({ ...c, _canonical: norm });
+  });
+
+  for (const groups of [Object.values(byCompanyKey), Object.values(byCollegeKey)]) {
+    for (const docs of groups) {
+      if (docs.length <= 1) continue;
+
+      const keeper     = docs[0];
+      const rest       = docs.slice(1);
+      const allMembers = [...new Set(docs.flatMap(d => d.memberIds.map(id => String(id))))];
+      const field      = keeper.companyName ? 'companyName' : 'collegeName';
+
+      await Community.findByIdAndUpdate(keeper._id, {
+        $set: { memberIds: allMembers, memberCount: allMembers.length, [field]: keeper._canonical },
+      });
+
+      const dupIds = rest.map(d => d._id);
+      await FeedPost.updateMany(
+        { communityId: { $in: dupIds } },
+        { $set: { communityId: keeper._id, communitySlug: keeper.slug } },
+      );
+      await Community.deleteMany({ _id: { $in: dupIds } });
+
+      mergedGroups++;
+      deletedDocs += rest.length;
+    }
+  }
+
+  res.json({ success: true, message: `Merged ${mergedGroups} duplicate group(s), deleted ${deletedDocs} duplicate document(s).`, mergedGroups, deletedDocs });
 }));
 
 // ─── POST /api/communities — create a new community (admin/recruiter/superadmin) ──
@@ -526,7 +567,7 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 
   // Same idea for company communities, keyed off the user's "Current Company".
-  const userCompany = normalizeCollegeName(req.user.currentCompany);
+  const userCompany = normalizeCompanyName(req.user.currentCompany);
   const companyCommunities = unique.filter(c => c.companyName);
   const companyCounts = {};
   if (companyCommunities.length) {
@@ -537,7 +578,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
   const data = unique.map(c => {
     const isCollegeMember = !!c.collegeName && userCollege && normalizeCollegeName(c.collegeName) === userCollege;
-    const isCompanyMember = !!c.companyName && userCompany && normalizeCollegeName(c.companyName) === userCompany;
+    const isCompanyMember = !!c.companyName && userCompany && normalizeCompanyName(c.companyName) === userCompany;
     return {
       ...c,
       isMember: c.memberIds.some(id => String(id) === uid) || isCollegeMember || isCompanyMember,
@@ -602,8 +643,8 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 
   const userCollege = normalizeCollegeName(req.user.college);
   const isCollegeMember = !!community.collegeName && userCollege && normalizeCollegeName(community.collegeName) === userCollege;
-  const userCompany = normalizeCollegeName(req.user.currentCompany);
-  const isCompanyMember = !!community.companyName && userCompany && normalizeCollegeName(community.companyName) === userCompany;
+  const userCompany = normalizeCompanyName(req.user.currentCompany);
+  const isCompanyMember = !!community.companyName && userCompany && normalizeCompanyName(community.companyName) === userCompany;
 
   res.json({
     success: true,
