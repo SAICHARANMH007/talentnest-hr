@@ -61,6 +61,8 @@ const CollegeStudents = lazy(() => import('./pages/college/CollegeStudents.jsx')
 const CollegePlacements = lazy(() => import('./pages/college/CollegePlacements.jsx'));
 const CollegeAddCandidates = lazy(() => import('./pages/college/CollegeAddCandidates.jsx'));
 const CollegeDrives = lazy(() => import('./pages/college/CollegeDrives.jsx'));
+const CollegeDriveCreate = lazy(() => import('./pages/college/CollegeDriveCreate.jsx'));
+const CollegeDriveDetail = lazy(() => import('./pages/college/CollegeDriveDetail.jsx'));
 const CompanyCollegeDrives = lazy(() => import('./pages/recruiter/CompanyCollegeDrives.jsx'));
 const AdminInsights      = lazy(() => import('./pages/admin/AdminInsights.jsx'));
 const AdminInterviewKits = lazy(() => import('./pages/admin/AdminInterviewKits.jsx'));
@@ -656,6 +658,8 @@ export default function App() {
             <Route path="applicants" element={isCollege ? <Suspense fallback={<PageLoader />}><CollegePlacements user={user} /></Suspense> : <ApplicantsRecordsPage user={user} />} />
             {isCollege && <Route path="add-candidates" element={<Suspense fallback={<PageLoader />}><CollegeAddCandidates user={user} /></Suspense>} />}
             {isCollege && <Route path="drives" element={<Suspense fallback={<PageLoader />}><CollegeDrives user={user} /></Suspense>} />}
+            {isCollege && <Route path="drives/new" element={<Suspense fallback={<PageLoader />}><CollegeDriveCreate user={user} /></Suspense>} />}
+            {isCollege && <Route path="drives/:driveId" element={<Suspense fallback={<PageLoader />}><CollegeDriveDetail user={user} /></Suspense>} />}
             {!isCollege && (rk === 'recruiter' || rk === 'admin') && <Route path="college-drives" element={<Suspense fallback={<PageLoader />}><CompanyCollegeDrives user={user} /></Suspense>} />}
             <Route path="assigned-candidates" element={<AssignedCandidates user={user} />} />
             <Route path="review/:assessmentId/:submissionId" element={<AssessmentReviewPage user={user} />} />
