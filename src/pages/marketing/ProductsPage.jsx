@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { CareerJourneyIllustration } from '../../components/marketing/Illustrations.jsx';
+import { CareerJourneyIllustration, PipelineBoardIllustration, OnboardingChecklistIllustration, GrowthRocketIllustration, PayrollCardIllustration, SearchTalentIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 
@@ -15,6 +15,7 @@ const PRODUCTS = [
     icon:     '🎯',
     accent:   '#0176D3',
     gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)',
+    illustration: PipelineBoardIllustration,
     tagline:  'Your complete recruitment workspace — pipeline, chat, calls, interviews, offers.',
     what:     'HireBoard is where recruiters manage their entire workflow — source candidates, communicate via chat and calls, run video interviews, and close with digital offer letters — all in one screen.',
     bullets: [
@@ -34,6 +35,7 @@ const PRODUCTS = [
     icon:     '🏢',
     accent:   '#059669',
     gradient: 'linear-gradient(135deg,#059669,#0891B2)',
+    illustration: OnboardingChecklistIllustration,
     tagline:  'Full HR control — analytics, team, pre-boarding, automation, org branding.',
     what:     'HR admins see everything — every recruiter, every job, every application, every hire — with tools to approve, verify documents, automate notifications, and brand the entire hiring operation.',
     bullets: [
@@ -53,6 +55,7 @@ const PRODUCTS = [
     icon:     '🚀',
     accent:   '#7c3aed',
     gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)',
+    illustration: GrowthRocketIllustration,
     tagline:  'Apply, track, chat, interview, sign — one account for the full journey.',
     what:     'JobTrack gives candidates everything in one place — not just apply and wait, but apply, set alerts, chat with recruiters, attend video interviews, sign offers, and complete pre-boarding from their phone.',
     bullets: [
@@ -127,6 +130,7 @@ export default function ProductsPage() {
               </div>
               {/* Right: feature list */}
               <div style={{ padding:'clamp(28px,4vw,48px)', background:'var(--mkt-surface-bg)' }}>
+                {p.illustration && <p.illustration style={{ width:'100%', maxWidth:240, height:'auto', display:'block', margin:'0 auto 20px' }} />}
                 <div style={{ fontSize:11,fontWeight:700,color:'var(--mkt-text-muted)',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:16 }}>What you can do</div>
                 <ul style={{ listStyle:'none',margin:0,padding:0,display:'flex',flexDirection:'column',gap:12 }}>
                   {p.bullets.map(b => (
@@ -151,14 +155,15 @@ export default function ProductsPage() {
           </div>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:20 }}>
             {[
-              { to:'/careers', icon:'📋', name:'Job Board', accent:'#0176D3', gradient:'linear-gradient(135deg,#0176D3,#00C2CB)', desc:'Browse all active jobs from every company on TalentNest HR. Candidates apply directly. Companies get applications in their HireBoard pipeline instantly.' },
-              { to:'/hrms',    icon:'⚙️', name:'HRMS',      accent:'#059669', gradient:'linear-gradient(135deg,#059669,#34d399)', desc:'Powered by Faceify — face-recognition attendance, shift scheduling, leave management, and payroll input exports for your workforce.' },
+              { to:'/careers', icon:'📋', name:'Job Board', accent:'#0176D3', gradient:'linear-gradient(135deg,#0176D3,#00C2CB)', desc:'Browse all active jobs from every company on TalentNest HR. Candidates apply directly. Companies get applications in their HireBoard pipeline instantly.', illustration: SearchTalentIllustration },
+              { to:'/hrms',    icon:'⚙️', name:'HRMS',      accent:'#059669', gradient:'linear-gradient(135deg,#059669,#34d399)', desc:'Powered by Faceify — face-recognition attendance, shift scheduling, leave management, and payroll input exports for your workforce.', illustration: PayrollCardIllustration },
             ].map(p => (
               <div key={p.name} className="mkt-reveal" style={{ background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:20,padding:'28px 24px' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:12,marginBottom:16 }}>
                   <div style={{ width:44,height:44,borderRadius:13,background:p.gradient,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0 }}>{p.icon}</div>
                   <div style={{ fontSize:18,fontWeight:900,color:'var(--mkt-text-heading)' }}>{p.name}</div>
                 </div>
+                <p.illustration style={{ width:'100%', maxWidth:200, height:'auto', display:'block', margin:'0 auto 16px' }} />
                 <p style={{ fontSize:13,color:'var(--mkt-text-secondary)',lineHeight:1.65,margin:'0 0 20px' }}>{p.desc}</p>
                 <Link to={p.to} style={{ fontSize:13,fontWeight:700,color:p.accent,textDecoration:'none' }}>Learn more →</Link>
               </div>

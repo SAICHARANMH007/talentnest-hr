@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { HandshakeDealIllustration, SearchTalentIllustration, GlobalNetworkIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const SERVICES = [
   {
@@ -148,6 +149,7 @@ export default function ServicesPage() {
             <Link to="/contact" className="btn btn-primary btn-lg">Hire Talent Now →</Link>
             <Link to="/careers" className="btn btn-secondary btn-lg" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }}>Browse Open Jobs</Link>
           </div>
+          <HandshakeDealIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '40px auto 0' }} />
         </div>
       </section>
 

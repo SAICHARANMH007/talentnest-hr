@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { PipelineBoardIllustration, VideoInterviewIllustration, AnalyticsChartIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#0176D3';
@@ -61,6 +62,12 @@ const SECTIONS = [
   },
 ];
 
+const SECTION_ILLUSTRATIONS = {
+  '📅 Interviews & Offers': VideoInterviewIllustration,
+  '📊 Jobs, Assessments & Analytics': AnalyticsChartIllustration,
+  '🛡️ Compliance & Enterprise Controls': VerifiedShieldIllustration,
+};
+
 export default function ProductHireBoard() {
   useMarketingTheme();
   useEffect(() => {
@@ -101,18 +108,21 @@ export default function ProductHireBoard() {
             </div>
           </div>
           {/* Stats block */}
-          <div className="mkt-reveal" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
-            {[
-              { n:'5 days', l:'average time to shortlist vs 45-day industry average', c:'#0176D3' },
-              { n:'Zero', l:'extra tools — pipeline, chat, calls, and offers in one place', c:'#00C2CB' },
-              { n:'Auto', l:'WhatsApp + email on every candidate stage move', c:'#7c3aed' },
-              { n:'1 click', l:'interview scheduling with video room + calendar invite', c:'#059669' },
-            ].map(s => (
-              <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
-                <div style={{ fontSize:20,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
-                <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
-              </div>
-            ))}
+          <div className="mkt-reveal">
+            <PipelineBoardIllustration style={{ width:'100%', maxWidth:360, height:'auto', display:'block', margin:'0 auto 16px' }} />
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
+              {[
+                { n:'5 days', l:'average time to shortlist vs 45-day industry average', c:'#0176D3' },
+                { n:'Zero', l:'extra tools — pipeline, chat, calls, and offers in one place', c:'#00C2CB' },
+                { n:'Auto', l:'WhatsApp + email on every candidate stage move', c:'#7c3aed' },
+                { n:'1 click', l:'interview scheduling with video room + calendar invite', c:'#059669' },
+              ].map(s => (
+                <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
+                  <div style={{ fontSize:20,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
+                  <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -135,6 +145,7 @@ export default function ProductHireBoard() {
           {SECTIONS.map((sec, si) => (
             <div key={sec.heading} style={{ marginBottom: si < SECTIONS.length-1 ? 56 : 0 }}>
               <h2 className="mkt-reveal" style={{ fontSize:'clamp(18px,2.5vw,24px)',fontWeight:900,color:'var(--mkt-text-heading)',margin:'0 0 24px',letterSpacing:'-0.02em' }}>{sec.heading}</h2>
+              {SECTION_ILLUSTRATIONS[sec.heading] && (() => { const SecIll = SECTION_ILLUSTRATIONS[sec.heading]; return <SecIll style={{ width:'100%', maxWidth:280, height:'auto', display:'block', margin:'0 auto 24px' }} />; })()}
               <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16 }}>
                 {sec.items.map((item,i) => (
                   <div key={item.name} className="mkt-reveal" style={{ display:'flex',gap:14,padding:'18px 20px',background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:14,animationDelay:`${i*0.04}s`,transition:'all 0.2s' }}

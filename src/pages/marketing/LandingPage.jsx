@@ -6,7 +6,7 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
-import { CollegePlacementIllustration, TalentMatchIllustration } from '../../components/marketing/Illustrations.jsx';
+import { CollegePlacementIllustration, UnifiedPlatformIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── shared tiny helpers ────────────────────────────────────────────────────
 const G  = 'linear-gradient(135deg,#0176D3 0%,#00C2CB 100%)';
@@ -81,6 +81,7 @@ const TESTIMONIALS = [
 ];
 
 const TRUST_BADGES = [
+  'Verified Talent Network',
   'IT Staffing',
   'Cybersecurity Hiring',
   'Executive Search',
@@ -312,6 +313,7 @@ export default function LandingPage() {
                 { text: 'Fast Shortlist Delivery', color: '#00C2CB' },
                 { text: '90-Day Replacement', color: '#34D399' },
                 { text: '100% Confidential', color: '#A78BFA' },
+                { text: 'Privacy-First Verification', color: '#0EA5E9' },
               ].map(p => (
                 <span key={p.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 100, padding: '6px 13px' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
@@ -467,7 +469,7 @@ export default function LandingPage() {
           </SectionHeading>
 
           <div className="mkt-reveal" style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-            <TalentMatchIllustration style={{ width: '100%', maxWidth: 320, height: 'auto' }} />
+            <UnifiedPlatformIllustration style={{ width: '100%', maxWidth: 320, height: 'auto' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 22, marginTop: 52 }}>

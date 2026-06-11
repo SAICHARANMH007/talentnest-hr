@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { SearchTalentIllustration, ChatSupportIllustration, AnalyticsChartIllustration, IdentityCardIllustration, GrowthRocketIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#7c3aed';
@@ -57,6 +58,13 @@ const SECTIONS = [
   },
 ];
 
+const SECTION_ILLUSTRATIONS = {
+  '💬 Stay Connected With Recruiters': ChatSupportIllustration,
+  '📋 Track Every Application': AnalyticsChartIllustration,
+  '📜 Offers, Onboarding & Profile': IdentityCardIllustration,
+  '🛠️ Candidate Career Tools': GrowthRocketIllustration,
+};
+
 export default function ProductJobTrack() {
   useMarketingTheme();
   useEffect(() => {
@@ -99,18 +107,21 @@ export default function ProductJobTrack() {
               <Link to="/products" style={{ fontSize:13,color:'rgba(255,255,255,0.35)',textDecoration:'none',fontWeight:600 }}>← All Products</Link>
             </div>
           </div>
-          <div className="mkt-reveal" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
-            {[
-              { n:'Live', l:'application status — know exactly where you stand at all times', c:'#7c3aed' },
-              { n:'Chat', l:'with your recruiter directly inside the platform', c:'#C4B5FD' },
-              { n:'Zero', l:'downloads — video interviews from your phone browser', c:'#0176D3' },
-              { n:'2 min', l:'to sign your offer letter digitally, from anywhere', c:'#10B981' },
-            ].map(s => (
-              <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
-                <div style={{ fontSize:18,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
-                <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
-              </div>
-            ))}
+          <div className="mkt-reveal">
+            <SearchTalentIllustration style={{ width:'100%', maxWidth:340, height:'auto', display:'block', margin:'0 auto 16px' }} />
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
+              {[
+                { n:'Live', l:'application status — know exactly where you stand at all times', c:'#7c3aed' },
+                { n:'Chat', l:'with your recruiter directly inside the platform', c:'#C4B5FD' },
+                { n:'Zero', l:'downloads — video interviews from your phone browser', c:'#0176D3' },
+                { n:'2 min', l:'to sign your offer letter digitally, from anywhere', c:'#10B981' },
+              ].map(s => (
+                <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
+                  <div style={{ fontSize:18,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
+                  <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -137,6 +148,7 @@ export default function ProductJobTrack() {
           {SECTIONS.map((sec, si) => (
             <div key={sec.heading} style={{ marginBottom: si < SECTIONS.length-1 ? 56 : 0 }}>
               <h2 className="mkt-reveal" style={{ fontSize:'clamp(18px,2.5vw,24px)',fontWeight:900,color:'var(--mkt-text-heading)',margin:'0 0 24px',letterSpacing:'-0.02em' }}>{sec.heading}</h2>
+              {SECTION_ILLUSTRATIONS[sec.heading] && (() => { const SecIll = SECTION_ILLUSTRATIONS[sec.heading]; return <SecIll style={{ width:'100%', maxWidth:280, height:'auto', display:'block', margin:'0 auto 24px' }} />; })()}
               <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16 }}>
                 {sec.items.map((item,i) => (
                   <div key={item.name} className="mkt-reveal" style={{ display:'flex',gap:14,padding:'18px 20px',background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:14,animationDelay:`${i*0.04}s`,transition:'all 0.2s' }}

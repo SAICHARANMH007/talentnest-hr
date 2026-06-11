@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import { AnalyticsChartIllustration, OnboardingChecklistIllustration, PayrollCardIllustration, GlobalNetworkIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#059669';
@@ -57,6 +58,13 @@ const SECTIONS = [
   },
 ];
 
+const SECTION_ILLUSTRATIONS = {
+  '📜 Hiring & Onboarding': OnboardingChecklistIllustration,
+  '⚙️ Team, Org & Automation': PayrollCardIllustration,
+  '🌐 Multi-tenant & Enterprise Scale': GlobalNetworkIllustration,
+  '💼 Jobs & Recruitment Control': VerifiedShieldIllustration,
+};
+
 export default function ProductPeopleDesk() {
   useMarketingTheme();
   useEffect(() => {
@@ -96,18 +104,21 @@ export default function ProductPeopleDesk() {
               <Link to="/products" style={{ display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.18)',padding:'13px 20px',borderRadius:12,fontWeight:700,fontSize:14,textDecoration:'none' }}>← All Products</Link>
             </div>
           </div>
-          <div className="mkt-reveal" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
-            {[
-              { n:'Real-time', l:'analytics — no manual reporting, ever', c:'#059669' },
-              { n:'One view', l:'across all recruiters, all roles, all pipelines', c:'#0891B2' },
-              { n:'Automated', l:'pre-boarding from the moment someone is hired', c:'#7c3aed' },
-              { n:'Digital', l:'offer letters signed in under 10 minutes', c:'#F59E0B' },
-            ].map(s => (
-              <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
-                <div style={{ fontSize:18,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
-                <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
-              </div>
-            ))}
+          <div className="mkt-reveal">
+            <AnalyticsChartIllustration style={{ width:'100%', maxWidth:340, height:'auto', display:'block', margin:'0 auto 16px' }} />
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
+              {[
+                { n:'Real-time', l:'analytics — no manual reporting, ever', c:'#059669' },
+                { n:'One view', l:'across all recruiters, all roles, all pipelines', c:'#0891B2' },
+                { n:'Automated', l:'pre-boarding from the moment someone is hired', c:'#7c3aed' },
+                { n:'Digital', l:'offer letters signed in under 10 minutes', c:'#F59E0B' },
+              ].map(s => (
+                <div key={s.n} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:14,padding:'18px 16px' }}>
+                  <div style={{ fontSize:18,fontWeight:900,color:s.c,marginBottom:4 }}>{s.n}</div>
+                  <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -133,6 +144,7 @@ export default function ProductPeopleDesk() {
           {SECTIONS.map((sec, si) => (
             <div key={sec.heading} style={{ marginBottom: si < SECTIONS.length-1 ? 56 : 0 }}>
               <h2 className="mkt-reveal" style={{ fontSize:'clamp(18px,2.5vw,24px)',fontWeight:900,color:'var(--mkt-text-heading)',margin:'0 0 24px',letterSpacing:'-0.02em' }}>{sec.heading}</h2>
+              {SECTION_ILLUSTRATIONS[sec.heading] && (() => { const SecIll = SECTION_ILLUSTRATIONS[sec.heading]; return <SecIll style={{ width:'100%', maxWidth:280, height:'auto', display:'block', margin:'0 auto 24px' }} />; })()}
               <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16 }}>
                 {sec.items.map((item,i) => (
                   <div key={item.name} className="mkt-reveal" style={{ display:'flex',gap:14,padding:'18px 20px',background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:14,animationDelay:`${i*0.04}s`,transition:'all 0.2s' }}
