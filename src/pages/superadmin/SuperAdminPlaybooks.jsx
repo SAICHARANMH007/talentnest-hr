@@ -2610,7 +2610,7 @@ function buildProductIntelligencePlaybook() {
     h4.sub{font-size:13px;font-weight:700;color:#1e293b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f4f8}
   </style>
   </head><body>
-${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Complete Product Intelligence Playbook','Document Classification: Founder + Investor + Enterprise Grade &nbsp;|&nbsp; Full codebase audit — 131 pages, 60 backend routes, 55+ database models, 6 user roles, 40+ core features. Every claim sourced from actual code — no speculation.','2.0',today,'Founder + Investor + Enterprise Grade')}
+${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Complete Product Intelligence Playbook','Document Classification: Founder + Investor + Enterprise Grade &nbsp;|&nbsp; Full codebase audit — 131 pages, 60 backend routes, 55+ database models, 7 user roles, 40+ core features. Every claim sourced from actual code — no speculation.','2.1',today,'Founder + Investor + Enterprise Grade')}
 
 <div class="container">
 
@@ -2680,7 +2680,7 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
     <div class="stat-grid">
       <div class="stat-box"><div class="stat-num">58</div><div class="stat-label">Backend Routes</div></div>
       <div class="stat-box"><div class="stat-num">54</div><div class="stat-label">DB Models</div></div>
-      <div class="stat-box"><div class="stat-num">6</div><div class="stat-label">User Roles</div></div>
+      <div class="stat-box"><div class="stat-num">7</div><div class="stat-label">User Roles</div></div>
       <div class="stat-box"><div class="stat-num">30+</div><div class="stat-label">Core Features</div></div>
       <div class="stat-box"><div class="stat-num">2</div><div class="stat-label">Real-time Channels</div></div>
       <div class="stat-box"><div class="stat-num">3</div><div class="stat-label">Storage Providers</div></div>
@@ -2747,13 +2747,14 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
   <!-- 4. USER ROLES -->
   <div class="section" id="user-analysis">
     <h2><span class="icon" style="background:#0176D318">👥</span>Complete User Analysis</h2>
-    <p>TalentNest HR serves 6 distinct user roles, each with a separate nav, permissions set, and feature surface. Understanding each user's journey is critical to product decisions and sales positioning.</p>
+    <p>TalentNest HR serves 7 distinct user roles, each with a separate nav, permissions set, and feature surface. Understanding each user's journey is critical to product decisions and sales positioning.</p>
     <div class="cards">
       <div class="card"><div class="card-icon">🎯</div><h4>Candidate</h4><p>Job seekers who apply, track applications, build community presence, and use pre-boarding features. Primary growth lever — more candidates = more employer value.</p></div>
       <div class="card"><div class="card-icon">🧑‍💼</div><h4>Recruiter</h4><p>Talent acquisition professionals who source, pipeline, screen, interview, and offer candidates. Power users who spend the most time in the platform daily.</p></div>
       <div class="card"><div class="card-icon">🔑</div><h4>Admin (HR Manager)</h4><p>Organisation-wide HR manager. Controls org settings, billing, job approvals, analytics, all recruiters, and all candidates within their org.</p></div>
       <div class="card"><div class="card-icon">📊</div><h4>Hiring Manager</h4><p>Department head who reviews pipeline, approves final candidates, and participates in interview scoring. Limited view, maximum focus.</p></div>
       <div class="card"><div class="card-icon">🏢</div><h4>Client</h4><p>Third-party clients (e.g. RPO/staffing clients) who view shortlisted candidates and track placement progress without access to internal data.</p></div>
+      <div class="card"><div class="card-icon">🎓</div><h4>Placement Officer (College)</h4><p>College/university placement cell staff using the College Hiring Portal. Track students (current + alumni), manage on-campus placement drives, monitor applications/placements at companies hiring on TalentNest, and view skill-gap &amp; course recommendations for their student pool.</p></div>
       <div class="card"><div class="card-icon">🚀</div><h4>Super Admin</h4><p>Platform operator. Full cross-tenant visibility, user impersonation, billing control, org management, and platform health monitoring.</p></div>
     </div>
     <h3>User Journey Maps</h3>
@@ -2764,6 +2765,7 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <tr><td>Admin</td><td>Signup / invite</td><td>Setup org → Hire team → Analytics → Insights</td><td>Org-level analytics + billing control</td></tr>
       <tr><td>Hiring Manager</td><td>Admin invite</td><td>Review shortlist → Interview → Approve hire</td><td>Interview calendar + pipeline view</td></tr>
       <tr><td>Client</td><td>Agency invite</td><td>View shortlists → Track placements</td><td>Real-time placement dashboard</td></tr>
+      <tr><td>Placement Officer</td><td>College tenant signup / admin invite</td><td>Track students → Schedule drives → Monitor placements → Share courses</td><td>Drill-down placement dashboard + skill-gap insights</td></tr>
       <tr><td>Super Admin</td><td>Hardcoded seed</td><td>Monitor platform → Support orgs → Manage billing</td><td>Command center + system health</td></tr>
     </table>
     <h3>User Pain Points Solved</h3>
@@ -2775,12 +2777,14 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <tr><td>Recruiter</td><td>"I can't track referrals"</td><td>Built-in referral link generator with reward tracking</td></tr>
       <tr><td>Admin</td><td>"I don't know how our hiring is performing"</td><td>Real-time analytics, time-to-fill, diversity reports, NPS</td></tr>
       <tr><td>Admin</td><td>"BGV is manual and slow"</td><td>Digital BGV document collection and tracker</td></tr>
+      <tr><td>Placement Officer</td><td>"I can't see how our students are doing across companies"</td><td>Drill-down placement dashboard — students, drives, applications, placements, top hiring companies, all in one portal</td></tr>
+      <tr><td>Placement Officer</td><td>"I don't know which skills our students are missing"</td><td>Skill Gap Analysis — compares in-demand job skills vs. student skill coverage, with course recommendations</td></tr>
     </table>
   </div>
 
   <div class="section" id="user-roles">
-    <h2><span class="icon" style="background:#10b98118">👥</span>User Roles (6 Types)</h2>
-    <p>Source: <code>backend/src/models/User.js</code> → <code>enum: ['super_admin','admin','recruiter','hiring_manager','client','candidate']</code></p>
+    <h2><span class="icon" style="background:#10b98118">👥</span>User Roles (7 Types)</h2>
+    <p>Source: <code>backend/src/models/User.js</code> → <code>enum: ['super_admin','admin','recruiter','hiring_manager','client','candidate','placement_officer']</code></p>
 
     <div class="role-card">
       <div class="role-header"><span style="font-size:20px">👑</span><div><strong style="font-size:14px;color:#DC2626">super_admin</strong> <span class="badge badge-red">Platform Owner</span></div></div>
@@ -2858,6 +2862,20 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
         <li>NPS surveys, company reviews</li>
       </ul>
     </div>
+
+    <div class="role-card">
+      <div class="role-header"><span style="font-size:20px">🎓</span><div><strong style="font-size:14px;color:#16A34A">placement_officer</strong> <span class="badge badge-green">College Placement Cell</span></div></div>
+      <ul class="check">
+        <li>College Hiring Portal — drill-down overview dashboard (students, drives, applications, placements)</li>
+        <li>Manage student roster (current students + alumni), filter by department/batch/type</li>
+        <li>View per-student profile with skills, education, and recommended courses</li>
+        <li>Schedule and manage on-campus/virtual placement drives (eligibility, registrations)</li>
+        <li>Track placement records — stage, company, applied date, with private follow-up notes</li>
+        <li>Skill Gap Analysis — in-demand job skills vs. student skill coverage, with course links</li>
+        <li>Department/batch-wise placement rate breakdowns and top hiring companies</li>
+        <li>Tenant type: <code>college</code> (Tenant model) — accessed via <code>/api/dashboard/college/*</code> routes</li>
+      </ul>
+    </div>
   </div>
 
   <!-- 5. FEATURE INVENTORY -->
@@ -2905,7 +2923,8 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <tr><td>38</td><td><strong>Org Customizations</strong> — logo, brand colors, email branding, career page</td><td><code>customizations.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
       <tr><td>39</td><td><strong>Interest Tracking</strong> — candidate swipes/interests on job cards</td><td><code>interest.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
       <tr><td>40</td><td><strong>Invites</strong> — magic-link org invitations for team members</td><td><code>invites.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
-      <tr><td>41</td><td><strong>Aadhaar-Linked Candidate Verification</strong> — name + phone match against Aadhaar-linked record, zero data storage, locks verified name</td><td><em>not yet built</em></td><td><span class="badge badge-amber">PLANNED — see §37</span></td></tr>
+      <tr><td>41</td><td><strong>College Hiring Portal</strong> — placement officer dashboard (drill-down stats, department/batch breakdowns, top hiring companies), student roster with profile &amp; course recommendations, placement drives scheduling, placement record tracking with private notes, skill-gap analysis</td><td><code>dashboard.js</code> (<code>/college/*</code> routes), <code>PlacementDrive.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>42</td><td><strong>Aadhaar-Linked Candidate Verification</strong> — name + phone match against Aadhaar-linked record, zero data storage, locks verified name</td><td><em>not yet built</em></td><td><span class="badge badge-amber">PLANNED — see §37</span></td></tr>
     </table>
   </div>
 
@@ -4130,7 +4149,7 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
     <ul class="check">
       <li><strong>Communities load in &lt;1s (was 15-20s):</strong> <code>communities.js</code> previously re-ran the full default-community upsert and per-college-tenant community sync (40-100+ extra DB queries) on <em>every</em> page load. These idempotent maintenance jobs are now throttled to run at most once every 10 minutes (<code>MAINTENANCE_SYNC_INTERVAL_MS</code>), with new community auto-creation for candidates/companies still running async in the background so new colleges/companies appear without blocking the request.</li>
       <li><strong>Top communities surface first:</strong> the community list (both 🎓 Colleges and 🏢 Companies filters) is now sorted by the user's own college/company first, then by live <code>memberCount</code> descending, then alphabetically — so the most popular college and company communities always appear at the top.</li>
-      <li><strong>Near-duplicate college names merged:</strong> new shared utility <code>backend/src/utils/collegeNames.js</code> (<code>normalizeCollegeKey</code>) strips punctuation/casing/`&amp;` differences so "B.V. Raju Institute of Technology", "BV Raju Institute of Technology" and "St. Joseph's College" / "St Josephs College" all group into a single college community and a single row in College Groups — used consistently in <code>communities.js</code> and <code>dashboard.js</code> (<code>/college-groups</code> routes).</li>
+      <li><strong>Near-duplicate college names merged:</strong> new shared utility <code>backend/src/utils/collegeNames.js</code> (<code>normalizeCollegeKey</code>) strips punctuation/casing/\`&amp;\` differences so "B.V. Raju Institute of Technology", "BV Raju Institute of Technology" and "St. Joseph's College" / "St Josephs College" all group into a single college community and a single row in College Groups — used consistently in <code>communities.js</code> and <code>dashboard.js</code> (<code>/college-groups</code> routes).</li>
       <li><strong>Super Admin → College Groups page:</strong> now has a search box (filter by college/school name), pagination (20 per page with Previous/Next), a rank column, and a "🏆 Top college" badge on the #1 college by total students.</li>
       <li><strong>Company Reviews fixed for Company Communities:</strong> writing a review from a Company Community (e.g. "Wipro Community") previously failed for Super Admins with <code>Path \`tenantId\` is required.</code> because <code>tenantGuard</code> does not set <code>req.tenantId</code> for the <code>super_admin</code> role. <code>CompanyReview.tenantId</code> is now optional and only set when a tenant context exists — reviews of non-tenant companies (sourced purely from the Community) save correctly.</li>
     </ul>
