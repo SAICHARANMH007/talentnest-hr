@@ -277,6 +277,10 @@ router.patch('/me', authenticate, asyncHandler(async (req, res) => {
     await syncProfile(updated.email, update, updated.tenantId);
   }
 
+  // Evict the auth middleware user cache so college/company/profile changes
+  // (e.g. Communities auto-membership) take effect on the very next request
+  clearUserAuthCache(req.user._id || req.user.id);
+
   res.json({ success: true, data: userService.normalize(updated) });
 }));
 
