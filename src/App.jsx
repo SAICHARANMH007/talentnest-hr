@@ -530,7 +530,7 @@ export default function App() {
     navigate('/login', { replace: true });
   };
 
-  const rk = user ? (user.role === 'super_admin' ? 'superadmin' : user.role) : null;
+  const rk = user ? (user.role === 'super_admin' ? 'superadmin' : (user.role === 'placement_officer' && user.tenantType === 'college' ? 'admin' : user.role)) : null;
   const isCollege = user?.tenantType === 'college';
 
   const authRedirect = user ? <Navigate to="/app" replace /> : <Suspense fallback={<PageLoader />}><AuthScreen onAuth={auth} /></Suspense>;
@@ -599,7 +599,7 @@ export default function App() {
         {/* Default redirect based on role */}
         <Route index element={<Navigate to={
           user?.role === 'super_admin' ? 'analytics' :
-            user?.role === 'admin' ? 'analytics' : 'dashboard'
+            (user?.role === 'admin' || (user?.role === 'placement_officer' && user?.tenantType === 'college')) ? 'analytics' : 'dashboard'
         } replace />} />
 
         {/* Public user profile — view any user's full profile */}

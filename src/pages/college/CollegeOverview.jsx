@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card } from '../../constants/styles.js';
@@ -13,19 +14,20 @@ const STAT_LABEL = { fontSize: 12, fontWeight: 700, color: '#706E6B', textTransf
 const STAT_VALUE = { fontSize: 32, fontWeight: 800, color: '#181818' };
 
 const STATS = [
-  { key: 'totalStudents',     label: 'Total Students',     icon: '🎓', color: '#0176D3' },
-  { key: 'currentStudents',   label: 'Current Students',   icon: '📚', color: '#16A34A' },
-  { key: 'alumniCount',       label: 'Alumni',              icon: '🧑‍🎓', color: '#7C3AED' },
-  { key: 'totalApplications', label: 'Total Applications',  icon: '📝', color: '#0891B2' },
-  { key: 'totalPlacements',   label: 'Placements',          icon: '💼', color: '#D97706' },
-  { key: 'placementRate',     label: 'Placement Rate',      icon: '📈', color: '#16A34A', suffix: '%' },
-  { key: 'upcomingInterviews',label: 'Upcoming Interviews', icon: '🗓️', color: '#DB2777' },
+  { key: 'totalStudents',     label: 'Total Students',     icon: '🎓', color: '#0176D3', to: '/app/candidates' },
+  { key: 'currentStudents',   label: 'Current Students',   icon: '📚', color: '#16A34A', to: '/app/candidates?type=student' },
+  { key: 'alumniCount',       label: 'Alumni',              icon: '🧑‍🎓', color: '#7C3AED', to: '/app/candidates?type=alumni' },
+  { key: 'totalApplications', label: 'Total Applications',  icon: '📝', color: '#0891B2', to: '/app/applicants' },
+  { key: 'totalPlacements',   label: 'Placements',          icon: '💼', color: '#D97706', to: '/app/applicants?stage=Hired' },
+  { key: 'placementRate',     label: 'Placement Rate',      icon: '📈', color: '#16A34A', suffix: '%', to: '/app/applicants?stage=Hired' },
+  { key: 'upcomingInterviews',label: 'Upcoming Interviews', icon: '🗓️', color: '#DB2777', to: '/app/applicants?stage=Interview' },
 ];
 
 const inputS = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' };
 const btnP = { background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '10px 24px', cursor: 'pointer', fontSize: 13 };
 
 export default function CollegeOverview({ user }) {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,11 +37,19 @@ export default function CollegeOverview({ user }) {
   const [sendResult, setSendResult] = useState('');
   const [sendError, setSendError] = useState('');
 
+  const [skillGaps, setSkillGaps] = useState([]);
+  const [skillGapsLoading, setSkillGapsLoading] = useState(true);
+
   useEffect(() => {
     api.getCollegeOverview()
       .then(r => setData(r?.data || r))
       .catch(e => setError(e.message || 'Failed to load overview'))
       .finally(() => setLoading(false));
+
+    api.getCollegeSkillGaps()
+      .then(r => setSkillGaps((r?.data || r) || []))
+      .catch(() => setSkillGaps([]))
+      .finally(() => setSkillGapsLoading(false));
   }, []);
 
   const sendAnnouncement = async () => {
@@ -69,7 +79,14 @@ export default function CollegeOverview({ user }) {
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         {STATS.map(s => (
-          <div key={s.key} style={STAT_S}>
+          <div
+            key={s.key}
+            style={{ ...STAT_S, cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.15s' }}
+            onClick={() => navigate(s.to)}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+            title="Click to view details"
+          >
             <div style={{ position: 'absolute', top: -10, right: -10, fontSize: 56, opacity: 0.08 }}>{s.icon}</div>
             <span style={STAT_LABEL}>{s.icon} {s.label}</span>
             <span style={{ ...STAT_VALUE, color: s.color }}>{data?.[s.key] ?? 0}{s.suffix || ''}</span>
@@ -84,7 +101,12 @@ export default function CollegeOverview({ user }) {
           {(data?.departmentBreakdown || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No department data yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(data?.departmentBreakdown || []).map(d => (
-              <div key={d.name}>
+              <div
+                key={d.name}
+                onClick={() => navigate(`/app/candidates?dept=${encodeURIComponent(d.name)}`)}
+                style={{ cursor: 'pointer' }}
+                title={`View students in ${d.name}`}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#181818', marginBottom: 4 }}>
                   <span>{d.name}</span><span style={{ fontWeight: 700 }}>{d.count}</span>
                 </div>
@@ -102,7 +124,12 @@ export default function CollegeOverview({ user }) {
           {(data?.yearBreakdown || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No batch data yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(data?.yearBreakdown || []).map(y => (
-              <div key={y.year}>
+              <div
+                key={y.year}
+                onClick={() => navigate(`/app/candidates?year=${encodeURIComponent(y.year)}`)}
+                style={{ cursor: 'pointer' }}
+                title={`View students from batch ${y.year}`}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#181818', marginBottom: 4 }}>
                   <span>{y.year}</span><span style={{ fontWeight: 700 }}>{y.count}</span>
                 </div>
@@ -120,7 +147,12 @@ export default function CollegeOverview({ user }) {
           {(data?.placementRateByBatch || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No batch data yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(data?.placementRateByBatch || []).map(b => (
-              <div key={b.year}>
+              <div
+                key={b.year}
+                onClick={() => navigate(`/app/candidates?year=${encodeURIComponent(b.year)}`)}
+                style={{ cursor: 'pointer' }}
+                title={`View students from batch ${b.year}`}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#181818', marginBottom: 4 }}>
                   <span>{b.year}</span>
                   <span style={{ fontWeight: 700 }}>{b.placed}/{b.total} placed · {b.rate}%</span>
@@ -141,7 +173,12 @@ export default function CollegeOverview({ user }) {
           {(data?.recentPlacements || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No placements recorded yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(data?.recentPlacements || []).map((p, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 8 }}>
+              <div
+                key={i}
+                onClick={() => navigate(`/app/applicants?stage=Hired${p.studentName ? `&q=${encodeURIComponent(p.studentName)}` : ''}`)}
+                style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 8, cursor: 'pointer' }}
+                title="View placement record"
+              >
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#181818' }}>{p.studentName || '—'}</div>
                 <div style={{ fontSize: 12, color: '#706E6B' }}>{p.jobTitle || 'Role'} @ {p.company || 'Company'}</div>
               </div>
@@ -155,7 +192,12 @@ export default function CollegeOverview({ user }) {
           {(data?.topCompanies || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No hiring data yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(data?.topCompanies || []).map(c => (
-              <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#181818' }}>
+              <div
+                key={c.name}
+                onClick={() => navigate(`/app/applicants?stage=Hired&company=${encodeURIComponent(c.name)}`)}
+                style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#181818', cursor: 'pointer' }}
+                title={`View students placed at ${c.name}`}
+              >
                 <span>{c.name}</span>
                 <span style={{ fontWeight: 700, color: '#0176D3' }}>{c.count} hire{c.count === 1 ? '' : 's'}</span>
               </div>
@@ -169,13 +211,52 @@ export default function CollegeOverview({ user }) {
           {(data?.recentStudents || []).length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No students yet.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(data?.recentStudents || []).map((s, i) => (
-              <div key={i} style={{ fontSize: 13, color: '#181818' }}>
+              <div
+                key={i}
+                onClick={() => navigate(`/app/candidates?q=${encodeURIComponent(s.email || s.name || '')}`)}
+                style={{ fontSize: 13, color: '#181818', cursor: 'pointer' }}
+                title="View student profile"
+              >
                 <strong>{s.name || '—'}</strong>
                 <div style={{ fontSize: 11, color: '#9E9D9B' }}>{s.email}</div>
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Skill gap analysis & course recommendations */}
+      <div style={{ ...card, marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#181818' }}>📊 Skill Gap Analysis &amp; Course Recommendations</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#706E6B' }}>
+          Skills most in-demand across active jobs on TalentNest, compared with how many of your students currently have them. Share these courses with students to help close the gap.
+        </p>
+        {skillGapsLoading ? (
+          <div style={{ color: '#706E6B', display: 'flex', gap: 10 }}><Spinner /> Loading...</div>
+        ) : skillGaps.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#9E9D9B' }}>No skill gap data available yet.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {skillGaps.map(g => (
+              <div key={g.skill} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{g.skill}</span>
+                  <span style={{ fontSize: 11, color: '#9E9D9B' }}>{g.demandCount} job{g.demandCount === 1 ? '' : 's'} want this</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#706E6B', marginBottom: 8 }}>
+                  Only <strong>{g.coveragePct}%</strong> of your students ({g.studentsWithSkill}) list this skill.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {(g.courses || []).map((c, i) => (
+                    <a key={i} href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none' }}>
+                      📘 {c.title} — {c.provider}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Announcement composer */}

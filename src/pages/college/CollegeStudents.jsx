@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, inp, btnG, btnP, Z } from '../../constants/styles.js';
@@ -21,6 +22,18 @@ function TypeBadge({ type }) {
 }
 
 function ProfileModal({ student, onClose }) {
+  const [recommendations, setRecommendations] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!student) return;
+    setRecsLoading(true);
+    api.getStudentSkillRecommendations(student.id)
+      .then(r => setRecommendations((r?.data || r)?.recommendations || []))
+      .catch(() => setRecommendations([]))
+      .finally(() => setRecsLoading(false));
+  }, [student?.id]);
+
   if (!student) return null;
   return (
     <div
@@ -93,9 +106,35 @@ function ProfileModal({ student, onClose }) {
           <div style={{ fontSize: 13, color: '#706E6B', whiteSpace: 'pre-wrap' }}>{student.achievements || 'No achievements added yet.'}</div>
         </div>
 
-        <div>
+        <div style={{ marginBottom: 16 }}>
           <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#181818' }}>Skills</h4>
           <div style={{ fontSize: 13, color: '#706E6B' }}>{(student.skills || []).join(', ') || '—'}</div>
+        </div>
+
+        <div>
+          <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#181818' }}>📈 Recommended Skills &amp; Courses</h4>
+          {recsLoading ? (
+            <div style={{ fontSize: 13, color: '#706E6B' }}>Loading recommendations...</div>
+          ) : recommendations.length === 0 ? (
+            <div style={{ fontSize: 13, color: '#706E6B' }}>No additional recommendations right now — this student's skills cover current job demand well.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recommendations.map((r, i) => (
+                <div key={i} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#181818', marginBottom: 4 }}>
+                    {r.skill} <span style={{ fontWeight: 400, color: '#9E9D9B', fontSize: 11 }}>({r.demandCount} job{r.demandCount === 1 ? '' : 's'} want this)</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {(r.courses || []).map((c, j) => (
+                      <a key={j} href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none' }}>
+                        📘 {c.title} — {c.provider}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -124,13 +163,16 @@ function downloadStudentsCSV(rows) {
 }
 
 export default function CollegeStudents() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState('');
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('');
+  const [q, setQ] = useState(() => searchParams.get('q') || '');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [type, setType] = useState(() => searchParams.get('type') || '');
+  const [dept, setDept] = useState(() => searchParams.get('dept') || '');
+  const [year, setYear] = useState(() => searchParams.get('year') || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -139,7 +181,7 @@ export default function CollegeStudents() {
   useEffect(() => {
     setLoading(true);
     setChecked(new Set());
-    api.getCollegeStudents({ q: search, type, page })
+    api.getCollegeStudents({ q: search, type, dept, year, page })
       .then(r => {
         const body = r?.data !== undefined ? r : { data: r };
         setData(body.data || []);
@@ -148,7 +190,16 @@ export default function CollegeStudents() {
       })
       .catch(e => setError(e.message || 'Failed to load students'))
       .finally(() => setLoading(false));
-  }, [search, type, page]);
+  }, [search, type, dept, year, page]);
+
+  function clearDrillDown() {
+    setDept(''); setYear(''); setPage(1);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('dept'); next.delete('year');
+      return next;
+    });
+  }
 
   function onSearchSubmit(e) {
     e.preventDefault();
@@ -179,6 +230,15 @@ export default function CollegeStudents() {
         title="🎓 Students"
         subtitle="Students and alumni who registered on TalentNest with your college's name. Click a row to view their full profile — education, CGPA, certifications and projects."
       />
+
+      {(dept || year) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#181818' }}>
+          <span style={{ fontWeight: 700 }}>Filtered by:</span>
+          {dept && <span style={{ background: '#EFF6FF', color: '#0176D3', borderRadius: 999, padding: '4px 12px', fontWeight: 600 }}>Department: {dept}</span>}
+          {year && <span style={{ background: '#F0FDF4', color: '#16A34A', borderRadius: 999, padding: '4px 12px', fontWeight: 600 }}>Batch: {year}</span>}
+          <button type="button" style={{ ...btnG, padding: '4px 12px', fontSize: 12 }} onClick={clearDrillDown}>✕ Clear</button>
+        </div>
+      )}
 
       <form onSubmit={onSearchSubmit} style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <input

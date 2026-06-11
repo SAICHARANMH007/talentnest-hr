@@ -16,9 +16,11 @@ const AppError        = require('../utils/AppError');
 const { exportToExcel } = require('../utils/exportToExcel');
 const { phoneSearchRegex } = require('../utils/phoneSearch');
 const PaymentRecord   = require('../models/PaymentRecord');
+const PlacementDrive  = require('../models/PlacementDrive');
 const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
+const { getCoursesForSkill } = require('../utils/skillCourses');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -527,7 +529,7 @@ async function getCollegeFilter(req) {
 }
 
 /* GET /api/dashboard/college/overview — placement officer dashboard summary */
-router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.get('/college/overview', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -675,7 +677,7 @@ router.get('/college/overview', authenticate, allowRoles('admin'), asyncHandler(
 /* POST /api/dashboard/college/announcements — broadcast a notification to every
    student/alumnus registered under this college. Used by the placement officer
    to share drive updates, deadlines, and important notices in real time. */
-router.post('/college/announcements', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.post('/college/announcements', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -705,7 +707,7 @@ router.post('/college/announcements', authenticate, allowRoles('admin'), asyncHa
 }));
 
 /* GET /api/dashboard/college/students/export — download full student roster as Excel */
-router.get('/college/students/export', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.get('/college/students/export', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -766,7 +768,7 @@ router.get('/college/students/export', authenticate, allowRoles('admin'), asyncH
 
 /* GET /api/dashboard/college/drives — active job openings on the platform that
    this college's placement officer can promote to their students. */
-router.get('/college/drives', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.get('/college/drives', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -795,7 +797,7 @@ router.get('/college/drives', authenticate, allowRoles('admin'), asyncHandler(as
 
 /* POST /api/dashboard/college/drives/:jobId/notify — notify all students of this
    college about a specific job opening. */
-router.post('/college/drives/:jobId/notify', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.post('/college/drives/:jobId/notify', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -823,12 +825,245 @@ router.post('/college/drives/:jobId/notify', authenticate, allowRoles('admin'), 
   res.json({ success: true, recipients: students.length });
 }));
 
-/* GET /api/dashboard/college/students — students who registered with this college name */
-router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+/** Finds this college's students who match a placement drive's eligibility
+ * criteria (minimum CGPA, branch/degree, passing year, required skills). Any
+ * criterion left empty is skipped, so a drive with no eligibility filters
+ * matches every student. */
+async function findEligibleCandidates(college, eligibility = {}) {
+  const students = await Candidate.find({ college: college.regex, deletedAt: null })
+    .select('name email phone skills educationList isFresher currentCompany')
+    .lean();
+
+  const { minCGPA, branches = [], passingYears = [], skills = [] } = eligibility || {};
+  const branchesLc = branches.map(b => String(b).toLowerCase().trim()).filter(Boolean);
+  const skillsLc = skills.map(s => String(s).toLowerCase().trim()).filter(Boolean);
+
+  return students.filter(s => {
+    const education = parseJsonArray(s.educationList);
+    const latest = getLatestEducation(education);
+
+    if (branchesLc.length) {
+      const branch = String(latest?.degree || latest?.field || '').toLowerCase();
+      if (!branchesLc.some(b => branch.includes(b))) return false;
+    }
+    if (passingYears.length) {
+      const year = parseInt(latest?.year, 10);
+      if (!Number.isFinite(year) || !passingYears.includes(year)) return false;
+    }
+    if (minCGPA != null && minCGPA !== '') {
+      const grade = parseFloat(latest?.grade);
+      if (!Number.isFinite(grade) || grade < Number(minCGPA)) return false;
+    }
+    if (skillsLc.length) {
+      const candSkills = (s.skills || []).map(sk => String(sk).toLowerCase());
+      if (!skillsLc.some(sk => candSkills.includes(sk))) return false;
+    }
+    return true;
+  });
+}
+
+/* GET /api/dashboard/college/placement-drives — list this college's own
+   organized placement drives (distinct from the platform-wide job "drives"
+   feed at /college/drives). */
+router.get('/college/placement-drives', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const { q = '', type = '' } = req.query;
+  const drives = await PlacementDrive.find({ tenantId: req.user.tenantId, deletedAt: null })
+    .sort({ driveDate: -1 }).lean();
+
+  const data = drives.map(d => {
+    const counts = { registered: 0, shortlisted: 0, selected: 0, rejected: 0 };
+    (d.registrations || []).forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    return {
+      id: String(d._id),
+      title: d.title,
+      companyName: d.companyName || '',
+      jobId: d.jobId ? String(d.jobId) : null,
+      description: d.description || '',
+      mode: d.mode,
+      location: d.location || '',
+      driveDate: d.driveDate,
+      registrationDeadline: d.registrationDeadline,
+      eligibility: d.eligibility || {},
+      status: d.status,
+      totalEligible: (d.registrations || []).length,
+      counts,
+      createdAt: d.createdAt,
+    };
+  });
+
+  res.json({ success: true, data });
+}));
+
+/* POST /api/dashboard/college/placement-drives — create a new placement drive.
+   Eligible students are auto-computed from the eligibility criteria and added
+   as "registered"; they're notified immediately so they know a drive is
+   coming up. */
+router.post('/college/placement-drives', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { title, companyName, jobId, description, mode, location, driveDate, registrationDeadline, eligibility } = req.body;
+  if (!title || !String(title).trim()) throw new AppError('Drive title is required.', 400);
+  if (!driveDate) throw new AppError('Drive date is required.', 400);
+
+  const cleanEligibility = {
+    minCGPA: eligibility?.minCGPA != null && eligibility.minCGPA !== '' ? Number(eligibility.minCGPA) : null,
+    branches: Array.isArray(eligibility?.branches) ? eligibility.branches.map(String).map(s => s.trim()).filter(Boolean) : [],
+    passingYears: Array.isArray(eligibility?.passingYears) ? eligibility.passingYears.map(Number).filter(Number.isFinite) : [],
+    skills: Array.isArray(eligibility?.skills) ? eligibility.skills.map(String).map(s => s.trim()).filter(Boolean) : [],
+  };
+
+  const eligible = await findEligibleCandidates(college, cleanEligibility);
+
+  const drive = await PlacementDrive.create({
+    tenantId: req.user.tenantId,
+    collegeName: college.name,
+    title: String(title).trim().slice(0, 200),
+    companyName: companyName ? String(companyName).trim().slice(0, 150) : '',
+    jobId: jobId || null,
+    description: description ? String(description).trim().slice(0, 2000) : '',
+    mode: ['On-Campus', 'Virtual', 'Off-Campus'].includes(mode) ? mode : 'On-Campus',
+    location: location ? String(location).trim().slice(0, 200) : '',
+    driveDate: new Date(driveDate),
+    registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+    eligibility: cleanEligibility,
+    status: 'upcoming',
+    registrations: eligible.map(c => ({ candidateId: c._id, status: 'registered' })),
+    createdBy: req.user._id || req.user.id,
+  });
+
+  // Notify eligible students about the new drive (best-effort, non-blocking).
+  if (eligible.length) {
+    const Notification = require('../models/Notification');
+    const userIds = eligible.map(c => c._id);
+    const users = await User.find({ _id: { $in: userIds } }).select('_id tenantId').lean();
+    if (users.length) {
+      Notification.insertMany(users.map(u => ({
+        userId: u._id,
+        tenantId: u.tenantId,
+        type: 'system',
+        title: `New placement drive: ${drive.title}`,
+        message: `${drive.companyName || 'Your placement office'} is conducting "${drive.title}" on ${new Date(drive.driveDate).toLocaleDateString()}. You're eligible — check your placement office for details.`,
+        link: '/app/drives',
+        metadata: { kind: 'placement_drive', driveId: String(drive._id) },
+      }))).catch(() => {});
+    }
+  }
+
+  res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
+}));
+
+/* GET /api/dashboard/college/placement-drives/:id — drive detail with the full
+   list of eligible/registered students (drill-down). */
+router.get('/college/placement-drives/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+
+  const candidateIds = (drive.registrations || []).map(r => r.candidateId);
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } })
+    .select('name email phone skills educationList').lean();
+  const candMap = new Map(candidates.map(c => [String(c._id), c]));
+
+  const registrations = (drive.registrations || []).map(r => {
+    const c = candMap.get(String(r.candidateId)) || {};
+    const latest = getLatestEducation(parseJsonArray(c.educationList));
+    return {
+      candidateId: String(r.candidateId),
+      name: c.name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      branch: latest?.degree || latest?.field || '',
+      year: latest?.year || '',
+      grade: latest?.grade || '',
+      skills: c.skills || [],
+      status: r.status,
+      notes: r.notes || '',
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      id: String(drive._id),
+      title: drive.title,
+      companyName: drive.companyName || '',
+      jobId: drive.jobId ? String(drive.jobId) : null,
+      description: drive.description || '',
+      mode: drive.mode,
+      location: drive.location || '',
+      driveDate: drive.driveDate,
+      registrationDeadline: drive.registrationDeadline,
+      eligibility: drive.eligibility || {},
+      status: drive.status,
+      registrations,
+    },
+  });
+}));
+
+/* PATCH /api/dashboard/college/placement-drives/:id — update drive details/status. */
+router.patch('/college/placement-drives/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+
+  const { title, companyName, description, mode, location, driveDate, registrationDeadline, status } = req.body;
+  if (title !== undefined) drive.title = String(title).trim().slice(0, 200);
+  if (companyName !== undefined) drive.companyName = String(companyName).trim().slice(0, 150);
+  if (description !== undefined) drive.description = String(description).trim().slice(0, 2000);
+  if (mode !== undefined && ['On-Campus', 'Virtual', 'Off-Campus'].includes(mode)) drive.mode = mode;
+  if (location !== undefined) drive.location = String(location).trim().slice(0, 200);
+  if (driveDate !== undefined) drive.driveDate = new Date(driveDate);
+  if (registrationDeadline !== undefined) drive.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+  if (status !== undefined && ['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) drive.status = status;
+
+  await drive.save();
+  res.json({ success: true, data: { id: String(drive._id) } });
+}));
+
+/* PATCH /api/dashboard/college/placement-drives/:id/registrations/:candidateId
+   — update one student's status within a drive (registered → shortlisted →
+   selected/rejected). This is how the placement officer "conducts" a drive
+   round by round. */
+router.patch('/college/placement-drives/:id/registrations/:candidateId', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+
+  const { status, notes } = req.body;
+  if (status !== undefined && !['registered', 'shortlisted', 'selected', 'rejected'].includes(status)) {
+    throw new AppError('Invalid status.', 400);
+  }
+
+  const reg = drive.registrations.find(r => String(r.candidateId) === req.params.candidateId);
+  if (!reg) throw new AppError('Student is not part of this drive.', 404);
+
+  if (status !== undefined) reg.status = status;
+  if (notes !== undefined) reg.notes = String(notes).trim().slice(0, 500);
+  reg.updatedAt = new Date();
+
+  await drive.save();
+  res.json({ success: true });
+}));
+
+/* DELETE /api/dashboard/college/placement-drives/:id — cancel/remove a drive. */
+router.delete('/college/placement-drives/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const drive = await PlacementDrive.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    { $set: { deletedAt: new Date() } }
+  );
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+  res.json({ success: true });
+}));
+
+/* GET /api/dashboard/college/students — students who registered with this college name */
+router.get('/college/students', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const { q = '', type = '', dept = '', year = '' } = req.query;
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
@@ -872,6 +1107,7 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
       education,
       latestEducation: latestEducation ? {
         degree: latestEducation.degree || '',
+        field: latestEducation.field || '',
         institution: latestEducation.institution || '',
         university: latestEducation.university || '',
         year: latestEducation.year || '',
@@ -893,6 +1129,18 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
 
   if (type === 'student' || type === 'alumni') {
     mapped = mapped.filter(s => s.studentType === type);
+  }
+
+  if (dept.trim()) {
+    const deptLower = dept.trim().toLowerCase();
+    mapped = mapped.filter(s => {
+      const name = ((s.latestEducation?.degree || s.latestEducation?.field || 'Unspecified').trim() || 'Unspecified').toLowerCase();
+      return name === deptLower;
+    });
+  }
+
+  if (year.trim()) {
+    mapped = mapped.filter(s => String(s.latestEducation?.year || '') === year.trim());
   }
 
   const totalFiltered = mapped.length;
@@ -918,11 +1166,11 @@ router.get('/college/students', authenticate, allowRoles('admin'), asyncHandler(
 }));
 
 /* GET /api/dashboard/college/placements — application/placement records for this college's students */
-router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.get('/college/placements', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const { q = '', stage = '' } = req.query;
+  const { q = '', stage = '', company = '' } = req.query;
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
@@ -937,6 +1185,13 @@ router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandle
 
   const appFilter = { candidateId: { $in: ids }, deletedAt: null };
   if (stage) appFilter.currentStage = stage;
+  if (company.trim()) {
+    const esc = escapeRegex(company.trim());
+    const companyJobIds = await Job.find({
+      $or: [{ companyName: new RegExp(esc, 'i') }, { company: new RegExp(esc, 'i') }],
+    }).distinct('_id');
+    appFilter.jobId = { $in: companyJobIds };
+  }
 
   const [apps, total] = await Promise.all([
     Application.find(appFilter)
@@ -967,7 +1222,7 @@ router.get('/college/placements', authenticate, allowRoles('admin'), asyncHandle
    follow-up notes on one of their students' applications. Scoped to applications
    belonging to candidates registered under this college; never touches the
    employer's own pipeline (currentStage, recruiterNotes, etc.). */
-router.patch('/college/placements/:id/notes', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.patch('/college/placements/:id/notes', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -992,7 +1247,7 @@ router.patch('/college/placements/:id/notes', authenticate, allowRoles('admin'),
      isFresher, educationList: [{institution,degree,field,year,grade}], certifications }
    The college's own name is always used as `college` so the new candidates are
    immediately visible in this placement officer's portal and college community. */
-router.post('/college/students/import', authenticate, allowRoles('admin'), asyncHandler(async (req, res) => {
+router.post('/college/students/import', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
@@ -1050,6 +1305,79 @@ router.post('/college/students/import', authenticate, allowRoles('admin'), async
   }
 
   res.json({ success: true, created, skipped, errors });
+}));
+
+/* GET /api/dashboard/college/skill-gaps — compares the skills most requested
+   by active job postings (platform-wide) against how many of this college's
+   students currently list that skill, surfacing the biggest gaps with
+   suggested courses so the placement officer can run targeted upskilling
+   sessions. */
+router.get('/college/skill-gaps', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const [students, activeJobs] = await Promise.all([
+    Candidate.find({ college: college.regex, deletedAt: null }).select('skills').lean(),
+    Job.find({ status: 'active', isPublic: true, deletedAt: null }).select('skills').limit(200).lean(),
+  ]);
+
+  const demandCounts = new Map();
+  activeJobs.forEach(j => (j.skills || []).forEach(s => {
+    const key = String(s).trim();
+    if (!key) return;
+    demandCounts.set(key, (demandCounts.get(key) || 0) + 1);
+  }));
+
+  const studentSkillCounts = new Map();
+  students.forEach(s => {
+    const seen = new Set((s.skills || []).map(sk => String(sk).trim().toLowerCase()));
+    seen.forEach(sk => studentSkillCounts.set(sk, (studentSkillCounts.get(sk) || 0) + 1));
+  });
+
+  const totalStudents = students.length || 1;
+  const gaps = [...demandCounts.entries()]
+    .map(([skill, demand]) => {
+      const haveCount = studentSkillCounts.get(skill.toLowerCase()) || 0;
+      return {
+        skill,
+        demandCount: demand,
+        studentsWithSkill: haveCount,
+        coveragePct: Math.round((haveCount / totalStudents) * 1000) / 10,
+        courses: getCoursesForSkill(skill),
+      };
+    })
+    .sort((a, b) => (b.demandCount - b.studentsWithSkill) - (a.demandCount - a.studentsWithSkill))
+    .slice(0, 12);
+
+  res.json({ success: true, data: gaps, totalStudents: students.length });
+}));
+
+/* GET /api/dashboard/college/students/:id/skill-recommendations — for one
+   student, lists in-demand skills (from active jobs platform-wide) they don't
+   yet have, with suggested courses to close the gap. */
+router.get('/college/students/:id/skill-recommendations', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const student = await Candidate.findOne({ _id: req.params.id, college: college.regex, deletedAt: null }).select('name skills').lean();
+  if (!student) throw new AppError('Student not found.', 404);
+
+  const activeJobs = await Job.find({ status: 'active', isPublic: true, deletedAt: null }).select('skills').limit(200).lean();
+  const demandCounts = new Map();
+  activeJobs.forEach(j => (j.skills || []).forEach(s => {
+    const key = String(s).trim();
+    if (!key) return;
+    demandCounts.set(key, (demandCounts.get(key) || 0) + 1);
+  }));
+
+  const studentSkills = new Set((student.skills || []).map(s => String(s).trim().toLowerCase()));
+  const recommendations = [...demandCounts.entries()]
+    .filter(([skill]) => !studentSkills.has(skill.toLowerCase()))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([skill, demandCount]) => ({ skill, demandCount, courses: getCoursesForSkill(skill) }));
+
+  res.json({ success: true, data: { studentName: student.name || '', currentSkills: student.skills || [], recommendations } });
 }));
 
 /* GET /api/dashboard/college-groups — super admin view of all "college groups".

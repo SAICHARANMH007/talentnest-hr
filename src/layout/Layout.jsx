@@ -1000,7 +1000,7 @@ function ImpersonationBanner() {
 
 // ── Main Layout ────────────────────────────────────────────────────────────────
 export default function Layout({ user, onLogout }) {
-  const rk                               = user.role === 'super_admin' ? 'superadmin' : (user.role === 'admin' && user.tenantType === 'college' ? 'college' : user.role);
+  const rk                               = user.role === 'super_admin' ? 'superadmin' : ((user.role === 'admin' || user.role === 'placement_officer') && user.tenantType === 'college' ? 'college' : user.role);
   const nav                              = NAVS[rk] || NAVS.candidate;
   const [mobileOpen, setMobileOpen]      = useState(false);
   const [showChangePwd, setShowChangePwd]= useState(false);

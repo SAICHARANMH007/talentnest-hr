@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, inp, btnG, btnP } from '../../constants/styles.js';
@@ -83,19 +84,21 @@ function NotesCell({ record, onSaved }) {
 }
 
 export default function CollegePlacements() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState('');
-  const [search, setSearch] = useState('');
-  const [stage, setStage] = useState('');
+  const [q, setQ] = useState(() => searchParams.get('q') || '');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [stage, setStage] = useState(() => searchParams.get('stage') || '');
+  const [company, setCompany] = useState(() => searchParams.get('company') || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    api.getCollegePlacements({ q: search, stage, page })
+    api.getCollegePlacements({ q: search, stage, company, page })
       .then(r => {
         const body = r?.data !== undefined ? r : { data: r };
         setData(body.data || []);
@@ -104,12 +107,21 @@ export default function CollegePlacements() {
       })
       .catch(e => setError(e.message || 'Failed to load placement records'))
       .finally(() => setLoading(false));
-  }, [search, stage, page]);
+  }, [search, stage, company, page]);
 
   function onSearchSubmit(e) {
     e.preventDefault();
     setPage(1);
     setSearch(q.trim());
+  }
+
+  function clearCompanyFilter() {
+    setCompany(''); setPage(1);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('company');
+      return next;
+    });
   }
 
   function onNoteSaved(id, notes) {
@@ -128,6 +140,14 @@ export default function CollegePlacements() {
         title="📇 Placement Records"
         subtitle="Track your students' job applications and placement outcomes across companies hiring on TalentNest. Add private follow-up notes for your own reference."
       />
+
+      {company && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#181818' }}>
+          <span style={{ fontWeight: 700 }}>Filtered by:</span>
+          <span style={{ background: '#FEF3E7', color: '#D97706', borderRadius: 999, padding: '4px 12px', fontWeight: 600 }}>Company: {company}</span>
+          <button type="button" style={{ ...btnG, padding: '4px 12px', fontSize: 12 }} onClick={clearCompanyFilter}>✕ Clear</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {STAGES.map(s => (
