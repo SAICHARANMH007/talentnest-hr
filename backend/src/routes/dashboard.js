@@ -1241,6 +1241,23 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
   drive.registrations.push({ candidateId: candidate._id, status: 'registered' });
   await drive.save();
 
+  // Notify the college's placement officers/admins about the new registration (best-effort).
+  try {
+    const Notification = require('../models/Notification');
+    const officers = await User.find({ tenantId: drive.tenantId, role: { $in: ['admin', 'placement_officer'] }, deletedAt: null }).select('_id').lean();
+    if (officers.length) {
+      await Notification.insertMany(officers.map(o => ({
+        userId: o._id,
+        tenantId: drive.tenantId,
+        type: 'system',
+        title: `New registration: ${drive.title}`,
+        message: `${candidate.name || candidate.email} registered for "${drive.title}".`,
+        link: '/app/drives',
+        metadata: { kind: 'placement_drive_registration', driveId: String(drive._id), candidateId: String(candidate._id) },
+      })));
+    }
+  } catch {}
+
   res.json({ success: true, data: { status: 'registered' } });
 }));
 

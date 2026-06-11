@@ -1015,6 +1015,23 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
 
   const Job = require('../models/Job');
 
+  // Company communities: only show jobs posted by that specific company.
+  if (community.companyName) {
+    const companyRx = companyNameRegex(community.companyName);
+    const jobs = await Job.find({
+      tenantId,
+      status: 'active',
+      deletedAt: null,
+      $or: [{ company: companyRx }, { companyName: companyRx }],
+    })
+      .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(15)
+      .lean();
+
+    return res.json({ success: true, data: jobs });
+  }
+
   // Build keyword regex from community slug + name words
   const hashtags = getCommunityHashtags(community);
   const rawWords = hashtags.map(h => h.replace('#', ''));
@@ -1041,6 +1058,28 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
     .lean();
 
   res.json({ success: true, data: jobs });
+}));
+
+// ─── GET /api/communities/:slug/drives — placement drives for college community ─
+router.get('/:slug/drives', asyncHandler(async (req, res) => {
+  const community = await Community.findOne({ slug: req.params.slug }).lean();
+  if (!community) throw new AppError('Community not found.', 404);
+  if (!community.collegeName) return res.json({ success: true, data: [] });
+
+  const PlacementDrive = require('../models/PlacementDrive');
+  const collegeRx = new RegExp(`^${escapeRegex(community.collegeName)}$`, 'i');
+
+  const drives = await PlacementDrive.find({
+    collegeName: collegeRx,
+    deletedAt: null,
+    status: { $ne: 'cancelled' },
+  })
+    .select('title companyName description mode location driveDate registrationDeadline opportunityType examProvider status')
+    .sort({ driveDate: -1 })
+    .limit(20)
+    .lean();
+
+  res.json({ success: true, data: drives });
 }));
 
 // ─── POST /api/communities/:slug/seed-posts — seed posts using real platform users ─

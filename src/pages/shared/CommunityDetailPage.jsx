@@ -478,6 +478,47 @@ function JobsTab({ jobs, loading }) {
   );
 }
 
+// ── Drives Tab (college communities) ─────────────────────────────────────────
+const DRIVE_TYPE_LABELS = {
+  placement: '🎯 Placement Drive',
+  internship: '💼 Internship',
+  exam: '📝 Exam / Test',
+};
+
+function DrivesTab({ drives, loading }) {
+  if (loading) return <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>Loading drives…</div>;
+  if (!drives.length) return (
+    <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>📣</div>
+      <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No placement drives yet</div>
+      <div style={{ fontSize: 13, color: '#9CA3AF' }}>Upcoming placement drives, internships and exams from this college will appear here.</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {drives.map(d => (
+        <div key={d._id} style={{ ...card, padding: '14px 16px', borderRadius: 12, border: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{d.title}</div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: '#EFF6FF', borderRadius: 999, padding: '2px 10px' }}>
+              {DRIVE_TYPE_LABELS[d.opportunityType] || DRIVE_TYPE_LABELS.placement}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {d.companyName && <span>🏢 {d.companyName}</span>}
+            <span>🗓️ {new Date(d.driveDate).toLocaleDateString()}</span>
+            <span>• {d.mode}</span>
+            {d.location && <span>📍 {d.location}</span>}
+            {d.examProvider && <span>• {d.examProvider}</span>}
+          </div>
+          {d.description && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>{d.description}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Members Tab ───────────────────────────────────────────────────────────────
 function MembersTab({ members, loading, total }) {
   if (loading) return (
@@ -706,6 +747,7 @@ export default function CommunityDetailPage({ user }) {
   const [community, setCommunity] = useState(null);
   const [posts,     setPosts]     = useState([]);
   const [jobs,      setJobs]      = useState([]);
+  const [drives,    setDrives]    = useState([]);
   const [members,   setMembers]   = useState([]);
   const [totalMembers, setTotalMembers] = useState(0);
   const [isMember,  setIsMember]  = useState(false);
@@ -713,6 +755,7 @@ export default function CommunityDetailPage({ user }) {
   const [loading,   setLoading]   = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
   const [jobsLoading,  setJobsLoading]  = useState(false);
+  const [drivesLoading, setDrivesLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
   const [joining,   setJoining]   = useState(false);
   const [seeding,   setSeeding]   = useState(false);
@@ -764,6 +807,15 @@ export default function CommunityDetailPage({ user }) {
     setJobsLoading(false);
   }, [slug]);
 
+  const loadDrives = useCallback(async () => {
+    setDrivesLoading(true);
+    try {
+      const r = await api.getCommunityDrives(slug);
+      setDrives(r?.data || []);
+    } catch {}
+    setDrivesLoading(false);
+  }, [slug]);
+
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
     try {
@@ -778,6 +830,7 @@ export default function CommunityDetailPage({ user }) {
 
   useEffect(() => {
     if (tab === 'jobs'    && !jobs.length)    loadJobs();
+    if (tab === 'drives'  && !drives.length)  loadDrives();
     if (tab === 'members' && !members.length) loadMembers();
   }, [tab]);
 
@@ -906,7 +959,9 @@ export default function CommunityDetailPage({ user }) {
   const bg = community?.coverColor || '#0176D3';
   const TABS = [
     { id: 'posts',   label: `💬 Posts` },
-    { id: 'jobs',    label: `💼 Jobs` },
+    ...(community?.collegeName
+      ? [{ id: 'drives', label: `📣 Placement Drives` }]
+      : [{ id: 'jobs', label: `💼 Jobs` }]),
     { id: 'members', label: `👥 Members (${community?.memberCount || 0})` },
     ...(community?.companyName ? [{ id: 'reviews', label: `⭐ Reviews` }] : []),
     { id: 'about',   label: `ℹ️ About` },
@@ -1106,6 +1161,7 @@ export default function CommunityDetailPage({ user }) {
         )}
 
         {tab === 'jobs' && <JobsTab jobs={jobs} loading={jobsLoading} />}
+        {tab === 'drives' && <DrivesTab drives={drives} loading={drivesLoading} />}
         {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} />}
         {tab === 'reviews' && community?.companyName && <ReviewsTab user={user} companyName={community.companyName} />}
         {tab === 'about' && <AboutTab community={community} />}

@@ -31,6 +31,9 @@ export const communityService = {
   async getCommunityJobs(slug) {
     return req('GET', `/communities/${slug}/jobs`);
   },
+  async getCommunityDrives(slug) {
+    return req('GET', `/communities/${slug}/drives`);
+  },
   async seedCommunityPosts(slug) {
     return req('POST', `/communities/${slug}/seed-posts`, {});
   },
