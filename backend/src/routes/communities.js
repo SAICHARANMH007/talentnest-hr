@@ -1067,17 +1067,21 @@ router.get('/:slug/drives', asyncHandler(async (req, res) => {
   if (!community.collegeName) return res.json({ success: true, data: [] });
 
   const PlacementDrive = require('../models/PlacementDrive');
-  const collegeRx = new RegExp(`^${escapeRegex(community.collegeName)}$`, 'i');
+  const communityKey = normalizeCollegeKey(community.collegeName);
 
-  const drives = await PlacementDrive.find({
-    collegeName: collegeRx,
+  const candidates = await PlacementDrive.find({
     deletedAt: null,
     status: { $ne: 'cancelled' },
   })
-    .select('title companyName description mode location driveDate registrationDeadline opportunityType examProvider status')
+    .select('title companyName description mode location driveDate registrationDeadline opportunityType examProvider status collegeName')
     .sort({ driveDate: -1 })
-    .limit(20)
+    .limit(200)
     .lean();
+
+  const drives = candidates
+    .filter(d => normalizeCollegeKey(d.collegeName) === communityKey)
+    .slice(0, 20)
+    .map(({ collegeName, ...rest }) => rest);
 
   res.json({ success: true, data: drives });
 }));
