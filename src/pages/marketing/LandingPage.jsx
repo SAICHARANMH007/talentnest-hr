@@ -6,7 +6,7 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
-import { CollegePlacementIllustration, UnifiedPlatformIllustration } from '../../components/marketing/Illustrations.jsx';
+import { CollegePlacementIllustration, UnifiedPlatformIllustration, CareerJourneyIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── shared tiny helpers ────────────────────────────────────────────────────
 const G  = 'linear-gradient(135deg,#0176D3 0%,#00C2CB 100%)';
@@ -643,6 +643,40 @@ export default function LandingPage() {
               </div>
               {/* Decorative elements */}
               <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'var(--mkt-accent)', opacity: 0.1, filter: 'blur(30px)' }} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          CAREER JOURNEY
+      ══════════════════════════════════════════════════════════════ */}
+      <section className="mkt-reveal" style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(60px, 10vw, 120px) 0', borderTop: '1px solid var(--mkt-card-border)' }}>
+        <div className="tn-container">
+          <SectionLabel>Built For Every Stage</SectionLabel>
+          <SectionHeading sub="From your first campus placement to your next big career move — your verified profile and track record travel with you, every step of the way.">
+            One platform for your <span className="mkt-gradient-text">entire career journey</span>
+          </SectionHeading>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48, alignItems: 'center', marginTop: 64 }}>
+            <div className="mkt-reveal">
+              <CareerJourneyIllustration style={{ width: '100%', maxWidth: 380, height: 'auto', display: 'block', margin: '0 auto' }} />
+            </div>
+            <div className="mkt-reveal-delayed" style={{ display: 'grid', gap: 24 }}>
+              {[
+                { icon: '🎓', t: 'Campus to First Job', d: 'Get discovered through your college placement cell, apply to verified employers, and land your first role.' },
+                { icon: '📋', t: 'Onboarding & Growth', d: 'Track applications, interviews, and offers in one place — then build your skills with personalized course recommendations.' },
+                { icon: '🔁', t: 'Career Moves', d: 'When you\'re ready for what\'s next, your verified profile and work history make every application faster and more credible.' },
+                { icon: '🤝', t: 'A Trusted Network for Life', d: 'One verified professional identity that follows you across employers — built on consent-based, privacy-first verification.' },
+              ].map(item => (
+                <div key={item.t} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--mkt-section-bg)', border: '1px solid var(--mkt-card-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{item.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--mkt-text-heading)', marginBottom: 4 }}>{item.t}</div>
+                    <div style={{ fontSize: 14, color: 'var(--mkt-text-muted)', lineHeight: 1.7 }}>{item.d}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
