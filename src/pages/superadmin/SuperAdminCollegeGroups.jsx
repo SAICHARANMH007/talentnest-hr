@@ -98,12 +98,16 @@ function CandidateDrawer({ collegeName, onClose }) {
   );
 }
 
+const GROUPS_PAGE_SIZE = 20;
+
 export default function SuperAdminCollegeGroups() {
   const [data, setData] = useState([]);
   const [incomplete, setIncomplete] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     api.getCollegeGroups()
@@ -119,6 +123,13 @@ export default function SuperAdminCollegeGroups() {
   const totalGroups = data.length;
   const totalStudents = data.reduce((sum, g) => sum + g.totalStudents, 0);
   const groupsWithOfficer = data.filter(g => g.hasPlacementOfficer).length;
+
+  const filtered = search.trim()
+    ? data.filter(g => g.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : data;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / GROUPS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((currentPage - 1) * GROUPS_PAGE_SIZE, currentPage * GROUPS_PAGE_SIZE);
 
   return (
     <div>
@@ -155,16 +166,31 @@ export default function SuperAdminCollegeGroups() {
 
       {error && <div style={{ color: '#BA0517', padding: '12px 0' }}>{error}</div>}
 
+      {!loading && data.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search college / school name…"
+            style={{ width: '100%', maxWidth: 360, padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, boxSizing: 'border-box' }}
+          />
+        </div>
+      )}
+
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         {loading ? (
           <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10, justifyContent: 'center' }}><Spinner /> Loading...</div>
         ) : data.length === 0 ? (
           <div style={{ color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>No college groups found yet.</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>No colleges match "{search}".</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
+                  <th style={TH}>#</th>
                   <th style={TH}>College / School</th>
                   <th style={TH}>Total Students</th>
                   <th style={TH}>Current Students</th>
@@ -174,11 +200,23 @@ export default function SuperAdminCollegeGroups() {
                 </tr>
               </thead>
               <tbody>
-                {data.map(g => (
+                {pageRows.map((g, i) => {
+                  const rank = data.indexOf(g) + 1;
+                  return (
                   <tr key={g.name} onClick={() => setSelected(g.name)} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                    <td style={TD}><div style={{ fontWeight: 700, color: '#0176D3' }}>{g.name}</div></td>
+                    <td style={TD}>{rank}</td>
+                    <td style={TD}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 700, color: '#0176D3' }}>{g.name}</span>
+                        {rank === 1 && (
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', color: '#B45309' }}>
+                            🏆 Top college
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td style={TD}>{g.totalStudents}</td>
                     <td style={TD}>{g.currentStudents}</td>
                     <td style={TD}>{g.alumni}</td>
@@ -199,12 +237,29 @@ export default function SuperAdminCollegeGroups() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {!loading && filtered.length > GROUPS_PAGE_SIZE && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: currentPage <= 1 ? '#CBD5E1' : '#181818', fontSize: 13, fontWeight: 700, cursor: currentPage <= 1 ? 'default' : 'pointer' }}>
+            ← Previous
+          </button>
+          <span style={{ fontSize: 13, color: '#706E6B', fontWeight: 600 }}>
+            Page {currentPage} of {totalPages} · {filtered.length} colleges
+          </span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', color: currentPage >= totalPages ? '#CBD5E1' : '#181818', fontSize: 13, fontWeight: 700, cursor: currentPage >= totalPages ? 'default' : 'pointer' }}>
+            Next →
+          </button>
+        </div>
+      )}
 
       <CandidateDrawer collegeName={selected} onClose={() => setSelected(null)} />
     </div>

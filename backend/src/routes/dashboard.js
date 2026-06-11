@@ -18,6 +18,7 @@ const { phoneSearchRegex } = require('../utils/phoneSearch');
 const PaymentRecord   = require('../models/PaymentRecord');
 const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName } = require('../utils/companyNames');
+const { normalizeCollegeKey } = require('../utils/collegeNames');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -1066,7 +1067,7 @@ router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHand
   const candidates = dedupeByEmail(rawCandidates);
 
   const tenantKeys = new Set(
-    tenants.map(t => String(t.name || '').trim().replace(/\s+/g, ' ').toLowerCase())
+    tenants.map(t => normalizeCollegeKey(t.name))
   );
 
   const fallback = await getEducationFallbackMap(candidates);
@@ -1098,7 +1099,7 @@ router.get('/college-groups', authenticate, allowRoles('super_admin'), asyncHand
       continue;
     }
 
-    const key = collegeName.toLowerCase();
+    const key = normalizeCollegeKey(collegeName);
     if (!groups.has(key)) {
       groups.set(key, {
         name: collegeName,
@@ -1138,7 +1139,7 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
   const candidates = dedupeByEmail(rawCandidates);
 
   const fallback = await getEducationFallbackMap(candidates);
-  const key = name.toLowerCase();
+  const key = normalizeCollegeKey(name);
   const currentYear = new Date().getFullYear();
 
   const matches = candidates.filter(c => {
@@ -1156,7 +1157,7 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
       if (latest?.institution) collegeName = String(latest.institution).trim().replace(/\s+/g, ' ');
     }
 
-    return collegeName.toLowerCase() === key;
+    return normalizeCollegeKey(collegeName) === key;
   }).map(c => {
     const education = parseJsonArray(c.educationList);
     const latest = getLatestEducation(education);

@@ -10,6 +10,7 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError     = require('../utils/AppError');
 const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
+const { normalizeCollegeKey } = require('../utils/collegeNames');
 
 // ─── PUBLIC: GET /api/communities/public/:slug — no auth, for share links ────
 // Must be defined BEFORE router.use(auth) so it doesn't require a token.
@@ -120,7 +121,7 @@ function escapeRegex(s) {
 }
 
 function normalizeCollegeName(name) {
-  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return normalizeCollegeKey(name);
 }
 
 function collegeSlug(name) {
@@ -289,7 +290,7 @@ async function getCollegeNameCounts() {
   const counts = new Map();
   for (const { collegeName } of resolved) {
     if (!collegeName) continue;
-    const key = collegeName.toLowerCase();
+    const key = normalizeCollegeName(collegeName);
     const entry = counts.get(key) || { name: collegeName, count: 0 };
     entry.count++;
     counts.set(key, entry);
@@ -322,8 +323,8 @@ async function getCommunityCandidates(community) {
   const resolved = await getResolvedCandidates();
   let matching;
   if (community.collegeName) {
-    const key = community.collegeName.toLowerCase();
-    matching = resolved.filter(r => r.collegeName.toLowerCase() === key).map(r => r.candidate);
+    const key = normalizeCollegeName(community.collegeName);
+    matching = resolved.filter(r => normalizeCollegeName(r.collegeName) === key).map(r => r.candidate);
   } else if (community.companyName) {
     const key = community.companyName.toLowerCase();
     matching = resolved.filter(r => r.companyName.toLowerCase() === key).map(r => r.candidate);
