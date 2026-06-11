@@ -64,7 +64,10 @@ function companyNameVariants(canonicalName) {
 
   const key = name.toLowerCase();
   Object.entries(COMPANY_ALIASES).forEach(([alias, canonical]) => {
-    if (canonical.toLowerCase() === key) variants.add(alias);
+    if (canonical.toLowerCase() === key) {
+      variants.add(alias);
+      LEGAL_SUFFIXES.forEach(suffix => variants.add(alias + suffix));
+    }
   });
 
   return [...variants];
