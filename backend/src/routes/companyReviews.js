@@ -92,7 +92,7 @@ router.post('/my-org', ...guard, asyncHandler(async (req, res) => {
   if (!rating || rating < 1 || rating > 5) throw new AppError('Rating between 1 and 5 is required.', 400);
   const u = req.user;
   await CompanyReview.create({
-    tenantId    : req.tenantId,
+    ...(req.tenantId ? { tenantId: req.tenantId } : {}),
     reviewerName: isAnonymous ? 'Anonymous' : (u.name?.trim() || 'Anonymous'),
     role        : (role || u.title || u.role || '').trim().slice(0, 100),
     rating      : Math.round(Number(rating)),

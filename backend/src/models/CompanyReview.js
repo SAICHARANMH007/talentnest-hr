@@ -2,7 +2,10 @@
 const mongoose = require('mongoose');
 
 const companyReviewSchema = new mongoose.Schema({
-  tenantId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
+  // Optional: reviews written from a Company Community (e.g. "Wipro
+  // Community") describe a company that may not be a TalentNest tenant, so
+  // tenantId is only set when the reviewer belongs to a real org/tenant.
+  tenantId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
   reviewerName:  { type: String, default: 'Anonymous' },
   role:          { type: String, trim: true, default: '' },
   rating:        { type: Number, required: true, min: 1, max: 5 },

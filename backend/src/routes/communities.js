@@ -392,6 +392,15 @@ let lastCandidateCollegeSync = 0;
 let lastCandidateCompanySync = 0;
 const CANDIDATE_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Throttle the maintenance work at the top of GET / (upserting default
+// communities + ensuring one community per College/Campus tenant) — these
+// were previously run (and awaited) on EVERY request, adding 40-100+ extra
+// queries to every page load. They're idempotent, so re-running them every
+// 10 minutes is more than enough to pick up newly registered colleges.
+let lastDefaultsSync = 0;
+let lastCollegeTenantSync = 0;
+const MAINTENANCE_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
 // Per-pass cap on how many new communities to create — high enough that a
 // full backfill of all colleges/companies discovered in candidate data
 // completes in one or two sync passes.
@@ -704,18 +713,25 @@ router.get('/', asyncHandler(async (req, res) => {
 
   // Upsert each default by slug only — one canonical community per slug, shared across all tenants
   const createdBy = req.user._id || req.user.id;
-  await Promise.all(
-    DEFAULTS.map(d =>
-      Community.findOneAndUpdate(
-        { slug: d.slug },
-        { $setOnInsert: { ...d, createdBy, memberIds: [], memberCount: 0 } },
-        { upsert: true }
+  const now = Date.now();
+  if (now - lastDefaultsSync >= MAINTENANCE_SYNC_INTERVAL_MS) {
+    lastDefaultsSync = now;
+    await Promise.all(
+      DEFAULTS.map(d =>
+        Community.findOneAndUpdate(
+          { slug: d.slug },
+          { $setOnInsert: { ...d, createdBy, memberIds: [], memberCount: 0 } },
+          { upsert: true }
+        )
       )
-    )
-  );
+    );
+  }
 
   // Auto-create one community per College/Campus tenant (e.g. "Sree Vidyanikethan Community")
-  await ensureCollegeCommunities(createdBy);
+  if (now - lastCollegeTenantSync >= MAINTENANCE_SYNC_INTERVAL_MS) {
+    lastCollegeTenantSync = now;
+    await ensureCollegeCommunities(createdBy);
+  }
   // Auto-create communities for any other colleges/companies discovered from
   // candidate profiles (College/School Name, education history, Current Company).
   // Run in the background so this request isn't blocked on a full candidate scan.
@@ -796,9 +812,14 @@ router.get('/', asyncHandler(async (req, res) => {
     };
   });
 
-  // Surface the user's own college/company community at the top of the list so
-  // it isn't buried among the dozens of default communities.
-  data.sort((a, b) => (b.isOwnCollege - a.isOwnCollege) || (b.isOwnCompany - a.isOwnCompany));
+  // Surface the user's own college/company community at the top of the list,
+  // then rank college/company communities by their live member count so the
+  // most popular ones appear first (the "🎓 Colleges" / "🏢 Companies" filters
+  // simply filter this same ordered list).
+  data.sort((a, b) => (b.isOwnCollege - a.isOwnCollege)
+    || (b.isOwnCompany - a.isOwnCompany)
+    || (b.memberCount - a.memberCount)
+    || a.name.localeCompare(b.name));
 
   res.json({ success: true, data, total: data.length });
 }));
