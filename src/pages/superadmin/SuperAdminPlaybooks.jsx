@@ -2610,7 +2610,7 @@ function buildProductIntelligencePlaybook() {
     h4.sub{font-size:13px;font-weight:700;color:#1e293b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #f0f4f8}
   </style>
   </head><body>
-${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Complete Product Intelligence Playbook','Document Classification: Founder + Investor + Enterprise Grade &nbsp;|&nbsp; Full codebase audit — 131 pages, 60 backend routes, 55+ database models, 6 user roles, 30+ core features. Every claim sourced from actual code — no speculation.','1.0',today,'Founder + Investor + Enterprise Grade')}
+${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Complete Product Intelligence Playbook','Document Classification: Founder + Investor + Enterprise Grade &nbsp;|&nbsp; Full codebase audit — 131 pages, 60 backend routes, 55+ database models, 6 user roles, 40+ core features. Every claim sourced from actual code — no speculation.','2.0',today,'Founder + Investor + Enterprise Grade')}
 
 <div class="container">
 
@@ -2652,7 +2652,9 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <li><a href="#playbook-marketing">33. Marketing Playbook</a></li>
       <li><a href="#playbook-operations">34. Operations Playbook</a></li>
       <li><a href="#playbook-superadmin">35. Super Admin Playbook</a></li>
-      <li><a href="#final-verdict">36. Final Verdict</a></li>
+      <li><a href="#recent-updates">36. Recent Platform Updates (v2.0)</a></li>
+      <li><a href="#aadhaar-verification">37. Aadhaar-Linked Candidate Verification (Spec)</a></li>
+      <li><a href="#final-verdict">38. Final Verdict</a></li>
     </ol>
   </div>
 
@@ -2903,6 +2905,7 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <tr><td>38</td><td><strong>Org Customizations</strong> — logo, brand colors, email branding, career page</td><td><code>customizations.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
       <tr><td>39</td><td><strong>Interest Tracking</strong> — candidate swipes/interests on job cards</td><td><code>interest.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
       <tr><td>40</td><td><strong>Invites</strong> — magic-link org invitations for team members</td><td><code>invites.js</code></td><td><span class="badge badge-green">LIVE</span></td></tr>
+      <tr><td>41</td><td><strong>Aadhaar-Linked Candidate Verification</strong> — name + phone match against Aadhaar-linked record, zero data storage, locks verified name</td><td><em>not yet built</em></td><td><span class="badge badge-amber">PLANNED — see §37</span></td></tr>
     </table>
   </div>
 
@@ -4114,6 +4117,66 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <div class="stat-box"><div class="stat-num">99.5%</div><div class="stat-label">Uptime Target</div></div>
       <div class="stat-box"><div class="stat-num">24h</div><div class="stat-label">Max Support Response</div></div>
     </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- RECENT PLATFORM UPDATES (v2.0) -->
+  <div class="section" id="recent-updates">
+    <h2><span class="icon" style="background:#10b98118">🆕</span>Recent Platform Updates — v2.0</h2>
+    <p>Everything shipped since the v1.0 audit. Sourced directly from the codebase — every item below corresponds to a real commit.</p>
+
+    <h3>Communities &amp; College/Company Groups Overhaul</h3>
+    <ul class="check">
+      <li><strong>Communities load in &lt;1s (was 15-20s):</strong> <code>communities.js</code> previously re-ran the full default-community upsert and per-college-tenant community sync (40-100+ extra DB queries) on <em>every</em> page load. These idempotent maintenance jobs are now throttled to run at most once every 10 minutes (<code>MAINTENANCE_SYNC_INTERVAL_MS</code>), with new community auto-creation for candidates/companies still running async in the background so new colleges/companies appear without blocking the request.</li>
+      <li><strong>Top communities surface first:</strong> the community list (both 🎓 Colleges and 🏢 Companies filters) is now sorted by the user's own college/company first, then by live <code>memberCount</code> descending, then alphabetically — so the most popular college and company communities always appear at the top.</li>
+      <li><strong>Near-duplicate college names merged:</strong> new shared utility <code>backend/src/utils/collegeNames.js</code> (<code>normalizeCollegeKey</code>) strips punctuation/casing/`&amp;` differences so "B.V. Raju Institute of Technology", "BV Raju Institute of Technology" and "St. Joseph's College" / "St Josephs College" all group into a single college community and a single row in College Groups — used consistently in <code>communities.js</code> and <code>dashboard.js</code> (<code>/college-groups</code> routes).</li>
+      <li><strong>Super Admin → College Groups page:</strong> now has a search box (filter by college/school name), pagination (20 per page with Previous/Next), a rank column, and a "🏆 Top college" badge on the #1 college by total students.</li>
+      <li><strong>Company Reviews fixed for Company Communities:</strong> writing a review from a Company Community (e.g. "Wipro Community") previously failed for Super Admins with <code>Path \`tenantId\` is required.</code> because <code>tenantGuard</code> does not set <code>req.tenantId</code> for the <code>super_admin</code> role. <code>CompanyReview.tenantId</code> is now optional and only set when a tenant context exists — reviews of non-tenant companies (sourced purely from the Community) save correctly.</li>
+    </ul>
+
+    <h3>Mobile Layout Fix</h3>
+    <ul class="check">
+      <li><strong>"I'm a fresher" / Terms checkbox alignment fixed on mobile</strong> in both Account Creation (<code>AuthScreen.jsx</code>) and the public Application modal (<code>PublicApplyModal.jsx</code>). Root cause: a global mobile rule in <code>src/index.css</code> (<code>input, select, textarea { width: 100% !important }</code> at <code>max-width: 768px</code>) was stretching checkbox <code>&lt;input&gt;</code> elements to full row width, squeezing the label text into a one-word-per-line column. Fixed by excluding <code>input[type="checkbox"]</code> and <code>input[type="radio"]</code> from that rule, matching the existing pattern already used in <code>mobile-additions.css</code>.</li>
+    </ul>
+  </div>
+
+  <!-- AADHAAR-LINKED CANDIDATE VERIFICATION (SPEC) -->
+  <div class="section" id="aadhaar-verification">
+    <h2><span class="icon" style="background:#0176D318">🆔</span>Aadhaar-Linked Candidate Verification — Specification (Planned)</h2>
+    <div class="alert alert-blue"><span>📋</span><div><strong>Status: Planned / not yet built.</strong> This section documents the agreed specification for the next identity-verification feature so it can be implemented exactly as designed, with privacy as the first principle.</div></div>
+
+    <h3>What it does</h3>
+    <p>Lets a candidate earn a <strong>"✅ Aadhaar Verified"</strong> badge on their TalentNest profile by confirming their identity with just two pieces of information they already have on file:</p>
+    <ul class="check">
+      <li><strong>Full name</strong> (as on the candidate's profile)</li>
+      <li><strong>Registered mobile number</strong> (the same phone number linked to their Aadhaar with UIDAI)</li>
+    </ul>
+    <p>TalentNest sends only these two values to an authorised Aadhaar-linked verification provider (e.g. a UIDAI-empanelled KYC/eKYC API or DigiLocker-based name-to-mobile match). The provider responds with a simple <strong>match / no-match</strong> — TalentNest never sees, requests, or handles the candidate's Aadhaar number, Aadhaar document, photo, address, or any other demographic data from the Aadhaar record.</p>
+
+    <h3>Zero-Storage Privacy Design</h3>
+    <table>
+      <tr><th>What happens</th><th>What is stored</th></tr>
+      <tr><td>Candidate submits name + phone for verification</td><td>Nothing extra — these already exist on the candidate's profile</td></tr>
+      <tr><td>TalentNest calls the verification provider with name + phone</td><td>The API request/response is <strong>not logged or persisted</strong> — used only in-memory to compute the result</td></tr>
+      <tr><td>Provider returns match / no-match</td><td>A single boolean <code>aadhaarVerified: true</code> + <code>aadhaarVerifiedAt: &lt;timestamp&gt;</code> on the <code>Candidate</code> document</td></tr>
+      <tr><td>No Aadhaar number, document image, or government ID data</td><td><span class="badge badge-red">Never stored — by design</span></td></tr>
+    </table>
+
+    <h3>"Locking" the Name</h3>
+    <ul class="check">
+      <li>Once <code>aadhaarVerified</code> is set to <code>true</code>, the candidate's <strong>name field becomes read-only</strong> in the profile editor — it cannot be silently changed after verification, preventing identity bait-and-switch once a recruiter has seen the verified badge.</li>
+      <li>If a candidate genuinely needs their name corrected (e.g. spelling fix, legal name change), they must contact support, which can clear <code>aadhaarVerified</code> and unlock the field for re-verification.</li>
+    </ul>
+
+    <h3>Where it shows up</h3>
+    <ul class="check">
+      <li>A "✅ Aadhaar Verified" badge next to the candidate's name on their profile, in the Application Pipeline, and in the Talent Pool — giving recruiters a quick, trustworthy identity signal without TalentNest ever holding sensitive ID data.</li>
+      <li>Candidates without verification simply don't show the badge — verification is optional and does not block applying for jobs.</li>
+    </ul>
+
+    <h3>Why this approach</h3>
+    <p>This design gives recruiters confidence that "the person who applied is who they say they are" — the single biggest source of hiring fraud in India — while keeping TalentNest's data-protection footprint minimal: no Aadhaar numbers or documents ever touch TalentNest's database, so there is no PII breach risk from this feature and no DPDP Act (India's data protection law) data-retention obligations beyond a single boolean flag and a timestamp.</p>
   </div>
 
   <div class="divider"></div>
