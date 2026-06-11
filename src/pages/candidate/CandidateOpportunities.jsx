@@ -10,6 +10,7 @@ const TABS = [
   { id: 'internship', icon: '💼', label: 'Internships' },
   { id: 'exam', icon: '📝', label: 'Exams & Tests' },
   { id: 'training', icon: '📚', label: 'Training Resources' },
+  { id: 'courses', icon: '📈', label: 'Recommended Courses' },
 ];
 
 const STATUS_COLORS = {
@@ -116,6 +117,58 @@ function TrainingResourcesTab() {
   );
 }
 
+function RecommendedCoursesTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.getCandidateSkillRecommendations()
+      .then(r => setData(r?.data || null))
+      .catch(e => setError(e.message || 'Failed to load course recommendations'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10 }}><Spinner /> Loading...</div>;
+  if (error) return <div style={{ color: '#BA0517', padding: 40 }}>{error}</div>;
+
+  const recs = data?.recommendations || [];
+  if (recs.length === 0) {
+    return (
+      <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
+        You're already covering the most in-demand skills on the platform. Check back later for new recommendations.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: '#706E6B', margin: '0 0 12px' }}>
+        Skills most requested by active jobs on TalentNest that aren't yet on your profile — sorted by how many open roles want them. Add courses to your skillset to unlock more matching jobs.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+        {recs.map(g => (
+          <div key={g.skill} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: 14, color: '#181818' }}>{g.skill}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 999, padding: '2px 10px' }}>
+                {g.demandCount} job{g.demandCount === 1 ? '' : 's'} want this
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {(g.courses || []).map((c, i) => (
+                <a key={i} href={c.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#0176D3', textDecoration: 'none' }}>
+                  📘 {c.title} — {c.provider}
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CandidateOpportunities() {
   const [tab, setTab] = useState('placement');
   const [opportunities, setOpportunities] = useState([]);
@@ -164,6 +217,8 @@ export default function CandidateOpportunities() {
 
       {tab === 'training' ? (
         <TrainingResourcesTab />
+      ) : tab === 'courses' ? (
+        <RecommendedCoursesTab />
       ) : loading ? (
         <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10 }}><Spinner /> Loading...</div>
       ) : error ? (

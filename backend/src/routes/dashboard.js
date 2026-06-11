@@ -1320,6 +1320,31 @@ router.get('/candidate/training-resources', authenticate, allowRoles('candidate'
   })) });
 }));
 
+/* GET /api/dashboard/candidate/skill-recommendations — for the logged-in
+   candidate, lists in-demand skills (from active jobs platform-wide) they
+   don't yet have, with suggested courses to close the gap and how many
+   active jobs want each skill. */
+router.get('/candidate/skill-recommendations', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).select('skills').lean();
+
+  const activeJobs = await Job.find({ status: 'active', isPublic: true, deletedAt: null }).select('skills').limit(200).lean();
+  const demandCounts = new Map();
+  activeJobs.forEach(j => (j.skills || []).forEach(s => {
+    const key = String(s).trim();
+    if (!key) return;
+    demandCounts.set(key, (demandCounts.get(key) || 0) + 1);
+  }));
+
+  const candidateSkills = new Set((candidate?.skills || []).map(s => String(s).trim().toLowerCase()));
+  const recommendations = [...demandCounts.entries()]
+    .filter(([skill]) => !candidateSkills.has(skill.toLowerCase()))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([skill, demandCount]) => ({ skill, demandCount, courses: getCoursesForSkill(skill) }));
+
+  res.json({ success: true, data: { currentSkills: candidate?.skills || [], recommendations } });
+}));
+
 /* GET /api/dashboard/college/students — students who registered with this college name */
 router.get('/college/students', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);

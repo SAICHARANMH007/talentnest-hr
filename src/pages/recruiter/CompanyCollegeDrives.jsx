@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import { card } from '../../constants/styles.js';
+import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
+import { card, inp } from '../../constants/styles.js';
 
 const STATUS_COLORS = {
   upcoming: { bg: 'rgba(1,118,211,0.1)', color: '#0176D3' },
@@ -21,6 +22,7 @@ export default function CompanyCollegeDrives() {
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [collegeFilter, setCollegeFilter] = useState('');
 
   useEffect(() => {
     api.getCompanyCollegeDrives()
@@ -29,6 +31,10 @@ export default function CompanyCollegeDrives() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filteredDrives = collegeFilter.trim()
+    ? drives.filter(d => (d.collegeName || '').toLowerCase().includes(collegeFilter.trim().toLowerCase()))
+    : drives;
+
   return (
     <div>
       <PageHeader
@@ -36,17 +42,35 @@ export default function CompanyCollegeDrives() {
         subtitle="Placement drives, internships and exams your organization is conducting across colleges."
       />
 
+      {drives.length > 0 && (
+        <div style={{ maxWidth: 320, marginBottom: 16 }}>
+          <CollegeAutocomplete
+            value={collegeFilter}
+            onChange={setCollegeFilter}
+            label="Filter by College"
+            labelStyle={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}
+            inputStyle={inp}
+            dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+            itemStyle={{ color: '#181818' }}
+            itemHoverBg="rgba(1,118,211,0.08)"
+            placeholder="Search college name..."
+          />
+        </div>
+      )}
+
       {loading && <div style={{ color: '#706E6B', padding: 40, display: 'flex', gap: 10 }}><Spinner /> Loading...</div>}
       {error && <div style={{ color: '#BA0517', padding: 40 }}>{error}</div>}
 
       {!loading && !error && (
-        drives.length === 0 ? (
+        filteredDrives.length === 0 ? (
           <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
-            No placement drives found for your organization yet. When a college schedules a drive with your company name, it will show up here.
+            {drives.length === 0
+              ? 'No placement drives found for your organization yet. When a college schedules a drive with your company name, it will show up here.'
+              : 'No drives found for that college.'}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-            {drives.map(d => {
+            {filteredDrives.map(d => {
               const sc = STATUS_COLORS[d.status] || STATUS_COLORS.upcoming;
               return (
                 <div key={d.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8 }}>

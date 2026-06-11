@@ -42,6 +42,7 @@ export const dashboardService = {
   async getCandidateOpportunities()      { return req('GET', '/dashboard/candidate/opportunities'); },
   async registerForOpportunity(id)       { return req('POST', `/dashboard/candidate/opportunities/${id}/register`); },
   async getCandidateTrainingResources()  { return req('GET', '/dashboard/candidate/training-resources'); },
+  async getCandidateSkillRecommendations() { return req('GET', '/dashboard/candidate/skill-recommendations'); },
   async getCollegeSkillGaps()            { return req('GET', '/dashboard/college/skill-gaps'); },
   async getStudentSkillRecommendations(id) { return req('GET', `/dashboard/college/students/${id}/skill-recommendations`); },
   async getDashboardStats(platform)     { return req('GET', `/dashboard/stats${platform ? '?platform=true' : ''}`); },
