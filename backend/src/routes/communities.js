@@ -239,13 +239,19 @@ async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantI
       const latest = getLatestEducation(parseJsonArray(c.educationList));
       if (latest?.institution) name = String(latest.institution).trim().replace(/\s+/g, ' ');
     }
-    if (name) names.set(name.toLowerCase(), name);
+    if (name && name.length >= 3) names.set(name.toLowerCase(), name);
   }
 
-  await Promise.all([...names.values()].map(async (name) => {
+  // Only create communities for names that don't have one yet, in small
+  // batches per pass — new colleges fully appear within a few sync windows
+  // without a single request having to create dozens of documents at once.
+  const missing = [];
+  for (const name of names.values()) {
     const exists = await Community.findOne({ collegeName: { $regex: '^' + escapeRegex(name) + '$', $options: 'i' } }).select('_id').lean();
-    if (exists) return;
+    if (!exists) missing.push(name);
+  }
 
+  await Promise.all(missing.slice(0, 25).map(async (name) => {
     const baseSlug = collegeSlug(name);
     let slug = baseSlug;
     let attempt = 0;
@@ -271,6 +277,15 @@ async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantI
   }));
 }
 
+// Placeholder/non-company values that sometimes end up in the free-text
+// "Current Company" field — these should never become communities.
+const COMPANY_NAME_BLOCKLIST = new Set([
+  'n/a', 'na', 'none', 'nil', 'nothing', '-', '--', 'n.a', 'n.a.',
+  'self', 'self employed', 'self-employed', 'freelance', 'freelancer',
+  'fresher', 'unemployed', 'not applicable', 'not working', 'currently not working',
+  'currently unemployed', 'no company', 'tbd', 'na.',
+]);
+
 /** Creates a community for any company name found in candidates' "Current
  * Company" field that doesn't already have one. Mirrors the college community
  * auto-creation above — new companies discovered from candidate profiles
@@ -285,13 +300,17 @@ async function ensureCompanyCommunities(createdBy, fallbackTenantId) {
   const names = new Map();
   companyNames.forEach(raw => {
     const name = String(raw || '').trim().replace(/\s+/g, ' ');
-    if (name) names.set(name.toLowerCase(), name);
+    if (name.length < 2 || COMPANY_NAME_BLOCKLIST.has(name.toLowerCase())) return;
+    names.set(name.toLowerCase(), name);
   });
 
-  await Promise.all([...names.values()].map(async (name) => {
+  const missing = [];
+  for (const name of names.values()) {
     const exists = await Community.findOne({ companyName: { $regex: '^' + escapeRegex(name) + '$', $options: 'i' } }).select('_id').lean();
-    if (exists) return;
+    if (!exists) missing.push(name);
+  }
 
+  await Promise.all(missing.slice(0, 25).map(async (name) => {
     const baseSlug = collegeSlug(name);
     let slug = baseSlug;
     let attempt = 0;
@@ -470,9 +489,10 @@ router.get('/', asyncHandler(async (req, res) => {
   // Auto-create one community per College/Campus tenant (e.g. "Sree Vidyanikethan Community")
   await ensureCollegeCommunities(createdBy);
   // Auto-create communities for any other colleges/companies discovered from
-  // candidate profiles (College/School Name, education history, Current Company)
-  await ensureCollegeCommunitiesFromCandidates(createdBy, req.user.tenantId);
-  await ensureCompanyCommunities(createdBy, req.user.tenantId);
+  // candidate profiles (College/School Name, education history, Current Company).
+  // Run in the background so this request isn't blocked on a full candidate scan.
+  ensureCollegeCommunitiesFromCandidates(createdBy, req.user.tenantId).catch(() => {});
+  ensureCompanyCommunities(createdBy, req.user.tenantId).catch(() => {});
 
   const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
 
