@@ -38,10 +38,11 @@ function uploadBuffer(buffer, options = {}) {
       if (!/invalid signature/i.test(err2?.message || '')) throw err2;
       const cfg = cloudinary.config();
       const mask = (s) => s ? `${s.slice(0, 2)}***${s.slice(-2)} (len ${s.length})` : '(missing)';
-      console.error('[cloudinaryUpload] Both SHA-256 and SHA-1 signatures rejected. ' +
-        `cloud_name=${mask(cfg.cloud_name)} api_key=${mask(cfg.api_key)} api_secret=${mask(cfg.api_secret)} — ` +
-        'verify these exactly match the Cloudinary Dashboard > Settings > API Keys (no extra spaces/quotes/newlines).');
-      throw err2;
+      const debugInfo = `cloud_name=${mask(cfg.cloud_name)} api_key=${mask(cfg.api_key)} api_secret=${mask(cfg.api_secret)}`;
+      console.error('[cloudinaryUpload] Both SHA-256 and SHA-1 signatures rejected. ' + debugInfo +
+        ' — verify these exactly match the Cloudinary Dashboard > Settings > API Keys (no extra spaces/quotes/newlines).');
+      const e = new Error(`${err2.message} [debug: ${debugInfo}]`);
+      throw e;
     });
   });
 }
