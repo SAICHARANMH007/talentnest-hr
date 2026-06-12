@@ -27,6 +27,7 @@ function SkeletonRow() {
 }
 
 const EMPTY_FEEDBACK = { rating: 3, strengths: '', weaknesses: '', recommendation: 'hold', notes: '' };
+const EMPTY_RESCHEDULE = { date: '', time: '', notes: '' };
 
 export default function ClientInterviews({ user }) {
   const [interviews, setInterviews] = useState([]);
@@ -36,6 +37,9 @@ export default function ClientInterviews({ user }) {
   const [feedbackTarget, setFeedbackTarget] = useState(null);
   const [feedback,       setFeedback]       = useState(EMPTY_FEEDBACK);
   const [submitting,     setSubmitting]      = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [reschedule,       setReschedule]       = useState(EMPTY_RESCHEDULE);
+  const [rescheduling,     setRescheduling]     = useState(false);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -69,6 +73,22 @@ export default function ClientInterviews({ user }) {
       load();
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSubmitting(false);
+  };
+
+  const rf = (k, v) => setReschedule(p => ({ ...p, [k]: v }));
+
+  const handleSubmitReschedule = async () => {
+    if (!rescheduleTarget) return;
+    if (!reschedule.date || !reschedule.time) { setToast('❌ Please choose a date and time'); return; }
+    setRescheduling(true);
+    try {
+      await api.rescheduleInterview(rescheduleTarget.app.id || rescheduleTarget.app._id, rescheduleTarget.idx, reschedule);
+      setToast('✅ Interview rescheduled');
+      setRescheduleTarget(null);
+      setReschedule(EMPTY_RESCHEDULE);
+      load();
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setRescheduling(false);
   };
 
   return (
@@ -105,7 +125,12 @@ export default function ClientInterviews({ user }) {
                     <td style={S.td}><div style={{ fontWeight: 600 }}>{cName}</div></td>
                     <td style={S.td}>{jTitle}</td>
                     <td style={S.td}>Round {idx + 1}</td>
-                    <td style={S.td}><div style={{ whiteSpace: 'nowrap', color: isPast ? '#706E6B' : '#0176D3' }}>{fmt(round.scheduledAt)}</div></td>
+                    <td style={S.td}>
+                      <div style={{ whiteSpace: 'nowrap', color: isPast ? '#706E6B' : '#0176D3' }}>{fmt(round.scheduledAt)}</div>
+                      {!isPast && (
+                        <button onClick={() => { setRescheduleTarget({ app, idx }); setReschedule(EMPTY_RESCHEDULE); }} style={{ ...btnG, fontSize: 11, padding: '2px 8px', marginTop: 4 }}>Reschedule</button>
+                      )}
+                    </td>
                     <td style={S.td}>{FORMAT_ICON[round.format] || '—'} {round.format}</td>
                     <td style={S.td}>
                       {hasFeedback ? (
@@ -151,6 +176,21 @@ export default function ClientInterviews({ user }) {
               </div>
             </div>
             <Field label="Additional Notes" value={feedback.notes} onChange={v => sf('notes', v)} type="textarea" />
+          </div>
+        </Modal>
+      )}
+
+      {rescheduleTarget && (
+        <Modal title={`📅 Reschedule — Round ${rescheduleTarget.idx + 1}`} onClose={() => setRescheduleTarget(null)} footer={
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => setRescheduleTarget(null)} style={btnG}>Cancel</button>
+            <button onClick={handleSubmitReschedule} disabled={rescheduling} style={btnP}>{rescheduling ? 'Saving…' : 'Save New Time'}</button>
+          </div>
+        }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Field label="New Date" value={reschedule.date} onChange={v => rf('date', v)} type="date" />
+            <Field label="New Time" value={reschedule.time} onChange={v => rf('time', v)} type="time" />
+            <Field label="Reason / Notes" value={reschedule.notes} onChange={v => rf('notes', v)} type="textarea" placeholder="Optional note for the recruiter" />
           </div>
         </Modal>
       )}

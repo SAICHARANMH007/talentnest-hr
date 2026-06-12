@@ -40,6 +40,21 @@ export default function ClientDashboard({ user }) {
 
   const avgScore    = apps.filter(a => a.aiMatchScore > 0).reduce((s, a, _, arr) => s + a.aiMatchScore / arr.length, 0);
 
+  // Real weekly application volume (last 5 weeks) for sparklines — replaces hardcoded mock data
+  const weeklyCounts = (() => {
+    const now = Date.now();
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const buckets = [0, 0, 0, 0, 0];
+    apps.forEach(a => {
+      const created = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      if (!created) return;
+      const weeksAgo = Math.floor((now - created) / WEEK);
+      const idx = 4 - weeksAgo; // most recent week = last index
+      if (idx >= 0 && idx <= 4) buckets[idx]++;
+    });
+    return buckets;
+  })();
+
   // Stage breakdown for bar chart
   const stageData = Object.entries(STAGE_COLOR).map(([s, color]) => ({
     label: s, value: apps.filter(a => a.currentStage === s).length, color,
@@ -60,10 +75,10 @@ export default function ClientDashboard({ user }) {
         <>
           {/* KPI Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14, marginBottom: 24 }}>
-            <KpiCard icon="📋" label="Total Applications" value={total}            color="#0176D3" sparkValues={[0, 1, 2, total > 3 ? total - 2 : 0, total]} />
-            <KpiCard icon="⭐" label="Shortlisted"        value={shortlisted.length} color="#7C3AED" />
+            <KpiCard icon="📋" label="Total Applications" value={total}            color="#0176D3" sparkValues={weeklyCounts} />
+            <KpiCard icon="⭐" label="Shortlisted"        value={shortlisted.length} color="#7C3AED" onClick={() => navigate('/app/client/shortlists')} />
             <KpiCard icon="📄" label="Offers Extended"    value={offers.length}     color="#059669" />
-            <KpiCard icon="🎊" label="Hired"              value={hired.length}      color="#2E844A" trend={hired.length > 0 ? 100 : 0} />
+            <KpiCard icon="🎊" label="Hired"              value={hired.length}      color="#2E844A" trend={hired.length > 0 ? 100 : 0} onClick={() => navigate('/app/client/placements')} />
             <KpiCard icon="🎯" label="Avg Match Score"     value={avgScore > 0 ? `${Math.round(avgScore)}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
           </div>
 

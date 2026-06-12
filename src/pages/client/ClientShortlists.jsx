@@ -36,6 +36,7 @@ export default function ClientShortlists({ user }) {
   const [error,   setError]   = useState('');
   const [toast,   setToast]   = useState('');
   const [ratings, setRatings] = useState({});
+  const [comments, setComments] = useState({});
   const [savingId,setSavingId]= useState('');
 
   const load = useCallback(() => {
@@ -45,9 +46,14 @@ export default function ClientShortlists({ user }) {
         const arr = Array.isArray(r) ? r : (r?.data || []);
         const sl  = arr.filter(a => ['Shortlisted','Interview Round 1','Interview Round 2','Offer','Hired'].includes(a.currentStage));
         setApps(sl);
-        const rMap = {};
-        sl.forEach(a => { if (a.clientRating) rMap[a.id || a._id] = a.clientRating; });
+        const rMap = {}, cMap = {};
+        sl.forEach(a => {
+          const id = a.id || a._id;
+          if (a.feedback?.rating) rMap[id] = a.feedback.rating;
+          if (a.feedback?.comment) cMap[id] = a.feedback.comment;
+        });
         setRatings(rMap);
+        setComments(cMap);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -59,8 +65,17 @@ export default function ClientShortlists({ user }) {
     setRatings(p => ({ ...p, [appId]: rating }));
     setSavingId(appId);
     try {
-      await api.addFeedback(appId, { rating, comment: '' });
+      await api.addFeedback(appId, { rating, comment: comments[appId] || '' });
       setToast('✅ Rating saved');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setSavingId('');
+  };
+
+  const handleSaveComment = async (appId) => {
+    setSavingId(appId);
+    try {
+      await api.addFeedback(appId, { rating: ratings[appId] || 0, comment: comments[appId] || '' });
+      setToast('✅ Feedback saved');
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSavingId('');
   };
@@ -130,6 +145,11 @@ export default function ClientShortlists({ user }) {
                     <td style={S.td}><Badge label={a.currentStage || '—'} color={S.stageColor[a.currentStage] || '#706E6B'} /></td>
                     <td style={S.td}>
                       <StarRating rating={rating} onRate={r => handleRate(appId, r)} />
+                      <div style={{ display: 'flex', gap: 4, marginTop: 6, alignItems: 'center' }}>
+                        <input value={comments[appId] || ''} onChange={e => setComments(p => ({ ...p, [appId]: e.target.value }))}
+                          placeholder="Add a comment…" style={{ ...inp, fontSize: 11, padding: '4px 8px', width: 140 }} />
+                        <button onClick={() => handleSaveComment(appId)} disabled={isSaving} style={{ ...btnG, fontSize: 11, padding: '4px 8px' }}>Save</button>
+                      </div>
                       {isSaving && <span style={{ fontSize: 11, color: '#706E6B', marginTop: 4, display: 'block' }}>Saving…</span>}
                     </td>
                     <td style={S.td}>
@@ -139,6 +159,12 @@ export default function ClientShortlists({ user }) {
                             <button onClick={() => handleApprove(appId)} disabled={isSaving} style={{ ...btnP, fontSize: 12 }}>Approve</button>
                             <button onClick={() => handleReject(appId)} disabled={isSaving} style={{ ...btnD, fontSize: 12 }}>Reject</button>
                           </>
+                        )}
+                        {['Interview Round 1', 'Interview Round 2'].includes(a.currentStage) && (
+                          <button onClick={() => handleReject(appId)} disabled={isSaving} style={{ ...btnD, fontSize: 12 }}>Reject</button>
+                        )}
+                        {!['Shortlisted', 'Interview Round 1', 'Interview Round 2'].includes(a.currentStage) && (
+                          <span style={{ fontSize: 11, color: '#706E6B' }}>—</span>
                         )}
                       </div>
                     </td>

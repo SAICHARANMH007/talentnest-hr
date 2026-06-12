@@ -46,6 +46,9 @@ export const applicationService = {
   async scheduleInterview(appId, details) {
     return req('PATCH', `/applications/${appId}/interview`, details);
   },
+  async rescheduleInterview(appId, roundIndex, details) {
+    return req('PATCH', `/applications/${appId}/interview/${roundIndex}/reschedule`, details);
+  },
   async addApplicationNotes(appId, notes) {
     return req('PATCH', `/applications/${appId}/notes`, { notes });
   },

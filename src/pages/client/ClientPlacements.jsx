@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import { card, btnG } from '../../constants/styles.js';
+import { card, btnG, inp } from '../../constants/styles.js';
+import Toast from '../../components/ui/Toast.jsx';
 import { api } from '../../api/api.js';
 
 // ── Styles outside component ───────────────────────────────────────────────────
@@ -30,17 +31,33 @@ export default function ClientPlacements({ user }) {
   const [placements, setPlacements] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
+  const [notes,      setNotes]      = useState({});
+  const [savingId,   setSavingId]   = useState('');
+  const [toast,      setToast]      = useState('');
 
   useEffect(() => {
     setLoading(true);
     api.getApplications({ stage: 'Hired' })
       .then(r => {
         const arr = Array.isArray(r) ? r : (r?.data || []);
-        setPlacements(arr.filter(a => a.currentStage === 'Hired'));
+        const hired = arr.filter(a => a.currentStage === 'Hired');
+        setPlacements(hired);
+        const nMap = {};
+        hired.forEach(p => { nMap[p.id || p._id] = p.recruiterNotes || ''; });
+        setNotes(nMap);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const saveNote = async (appId) => {
+    setSavingId(appId);
+    try {
+      await api.updateAppNotes(appId, notes[appId] || '');
+      setToast('✅ Note saved');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setSavingId('');
+  };
 
   const thisMonth = placements.filter(p => {
     const d = new Date(p.updatedAt || p.createdAt);
@@ -50,6 +67,7 @@ export default function ClientPlacements({ user }) {
 
   return (
     <div>
+      <Toast msg={toast} onClose={() => setToast('')} />
       <PageHeader title="🏆 Placements" subtitle="Your full placement history" />
 
       {loading ? (
@@ -80,14 +98,16 @@ export default function ClientPlacements({ user }) {
               </div>
             ) : (
               <table style={S.table}>
-                <thead><tr>{['Candidate','Role','Match Score','Hired Date'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Candidate','Role','Match Score','Hired Date','Notes'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {placements.map(p => {
+                    const appId = p.id || p._id;
                     const cName = p.candidateId?.name || p.candidateId?.email?.split('@')[0] || '—';
                     const jTitle = p.jobId?.title || '—';
                     const score = p.aiMatchScore || 0;
+                    const isSaving = savingId === appId;
                     return (
-                      <tr key={p.id || p._id}
+                      <tr key={appId}
                         onMouseEnter={e => e.currentTarget.style.background='#FAFAF9'}
                         onMouseLeave={e => e.currentTarget.style.background=''}>
                         <td style={S.td}>
@@ -104,6 +124,15 @@ export default function ClientPlacements({ user }) {
                           )}
                         </td>
                         <td style={S.td}>{fmt(p.updatedAt || p.createdAt)}</td>
+                        <td style={S.td}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <input value={notes[appId] || ''} onChange={e => setNotes(prev => ({ ...prev, [appId]: e.target.value }))}
+                              placeholder="Onboarding notes…" style={{ ...inp, fontSize: 11, padding: '4px 8px', width: 160 }} />
+                            <button onClick={() => saveNote(appId)} disabled={isSaving} style={{ ...btnG, fontSize: 11, padding: '4px 8px' }}>
+                              {isSaving ? '…' : 'Save'}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}

@@ -1845,6 +1845,35 @@ router.post('/:id/interview/:roundIndex/scorecard', ...guard,
   })
 );
 
+// PATCH /api/applications/:id/interview/:roundIndex/reschedule — change date/time of an existing round
+router.patch('/:id/interview/:roundIndex/reschedule', ...guard,
+  allowRoles('admin', 'super_admin', 'recruiter', 'client', 'hiring_manager'),
+  asyncHandler(async (req, res) => {
+    const { date, time, notes } = req.body;
+    if (!date || !time) throw new AppError('date and time are required.', 400);
+
+    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    if (!app) throw new AppError('Application not found.', 404);
+    await assertScopedAccess(req, app);
+
+    const idx = parseInt(req.params.roundIndex, 10);
+    if (isNaN(idx) || idx < 0 || idx >= app.interviewRounds.length) {
+      throw new AppError('Invalid round index.', 400);
+    }
+
+    const newDate = new Date(`${date}T${time}`);
+    if (isNaN(newDate.getTime())) throw new AppError('Invalid date/time.', 400);
+
+    app.interviewRounds[idx].scheduledAt = newDate;
+    app.markModified('interviewRounds');
+    app.stageHistory.push({ stage: app.currentStage, movedBy: req.user.id, movedAt: new Date(), notes: notes || `Interview Round ${idx + 1} rescheduled` });
+    await app.save();
+
+    logger.audit('Interview rescheduled', req.user.id, req.user.tenantId, { appId: app._id, roundIndex: idx, newDate });
+    res.json({ success: true, data: normalizeApp(app) });
+  })
+);
+
 // POST /api/applications/:id/interview/:roundIndex/kit-scores — save structured kit scores
 router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
