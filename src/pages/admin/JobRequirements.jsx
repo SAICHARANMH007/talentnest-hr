@@ -1,11 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Modal from '../../components/ui/Modal.jsx';
+import PostJobForm from '../../components/shared/PostJobForm.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+
+const EMPLOYMENT_TYPE_TO_JOB_TYPE = {
+  full_time: 'Full-Time', part_time: 'Part-Time', contract: 'Contract', internship: 'Internship',
+};
+const PRIORITY_TO_URGENCY = { urgent: 'High', high: 'High', medium: 'Medium', low: 'Low' };
+
+function reqToJobInitialData(r) {
+  return {
+    title: r.title || '',
+    company: r.clientId?.companyName || '',
+    industry: r.clientId?.industry || '',
+    department: r.department || '',
+    location: r.location || '',
+    jobType: EMPLOYMENT_TYPE_TO_JOB_TYPE[r.employmentType] || 'Full-Time',
+    experience: r.experienceRequired || '',
+    openings: r.openings || 1,
+    urgency: PRIORITY_TO_URGENCY[r.priority] || 'Medium',
+    skills: Array.isArray(r.skillsRequired) ? r.skillsRequired.join(', ') : '',
+    description: r.description || '',
+    clientId: r.clientId?.id || r.clientId?._id || '',
+  };
+}
 
 // ── Styles outside component ───────────────────────────────────────────────────
 const S = {
@@ -58,6 +81,9 @@ export default function JobRequirements({ user }) {
   const [recruiters, setRecruiters] = useState([]);
   const [detail,     setDetail]     = useState(null); // requirement being viewed/managed
   const [saving,     setSaving]     = useState(false);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [jobSaving,    setJobSaving]    = useState(false);
+  const jobFormRef = useRef(null);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -96,6 +122,21 @@ export default function JobRequirements({ user }) {
       setToast('✅ Assigned');
     } catch (e) { setToast(`❌ ${e.message}`); }
     setSaving(false);
+  };
+
+  const handleCreateJob = async (form) => {
+    if (!detail) return;
+    setJobSaving(true);
+    try {
+      const r = await api.createJob({ ...form, recruiterId: user.id });
+      const job = r?.data || r;
+      const jobId = job?.id || job?._id;
+      const updated = await api.updateJobRequirementStatus(detail.id || detail._id, { status: 'converted', convertedJobId: jobId });
+      refreshDetail(updated?.data || updated);
+      setShowJobModal(false);
+      setToast('✅ Job posted and linked to this requirement!');
+    } catch (e) { setToast(`❌ ${e.message}`); }
+    setJobSaving(false);
   };
 
   const handleSaveNotes = async (notes) => {
@@ -227,15 +268,36 @@ export default function JobRequirements({ user }) {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 6, textTransform: 'uppercase' }}>Status</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {detail.status !== 'in_progress' && <button onClick={() => handleStatusChange('in_progress')} disabled={saving} style={{ ...btnG, fontSize: 12 }}>Mark In Progress</button>}
-                {detail.status !== 'converted' && <button onClick={() => handleStatusChange('converted')} disabled={saving} style={{ ...btnP, fontSize: 12 }}>✅ Mark Job Posted</button>}
+                {!detail.convertedJobId && <button onClick={() => setShowJobModal(true)} disabled={saving} style={{ ...btnP, fontSize: 12 }}>🚀 Create Job Posting</button>}
                 {detail.status !== 'closed' && <button onClick={() => handleStatusChange('closed')} disabled={saving} style={{ ...btnG, fontSize: 12 }}>Close</button>}
                 {detail.status === 'closed' && <button onClick={() => handleStatusChange('new')} disabled={saving} style={{ ...btnG, fontSize: 12 }}>Reopen</button>}
               </div>
-              <div style={{ fontSize: 11, color: '#9E9D9B', marginTop: 8 }}>
-                Tip: Use the regular "Post Job" page to create the actual job listing for this client, then come back here and mark it as "Job Posted".
-              </div>
+              {detail.convertedJobId && (
+                <div style={{ fontSize: 12, color: '#2E844A', marginTop: 8 }}>
+                  ✅ Job posted and linked — the client will see candidates for this job in their portal.
+                </div>
+              )}
+              {!detail.convertedJobId && (
+                <div style={{ fontSize: 11, color: '#9E9D9B', marginTop: 8 }}>
+                  "Create Job Posting" opens the standard job form, links the new job to {detail.clientId?.companyName || 'this client'}, and marks this requirement as "Job Posted" — so the client sees pipeline progress automatically.
+                </div>
+              )}
             </div>
           </div>
+        </Modal>
+      )}
+
+      {showJobModal && detail && (
+        <Modal title={`🚀 Create Job Posting — ${detail.title}`} onClose={() => !jobSaving && setShowJobModal(false)} footer={
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowJobModal(false)} disabled={jobSaving} style={btnG}>Cancel</button>
+            <button onClick={() => jobFormRef.current?.submit()} disabled={jobSaving} style={btnP}>{jobSaving ? 'Posting…' : 'Post Job'}</button>
+          </div>
+        }>
+          <div style={{ fontSize: 12, color: '#706E6B', marginBottom: 12 }}>
+            Review and complete the details below, then post the job. It will be linked to <strong>{detail.clientId?.companyName || 'this client'}</strong> so they can track candidates in their portal.
+          </div>
+          <PostJobForm ref={jobFormRef} onSave={handleCreateJob} saving={jobSaving} hideButtons initialData={reqToJobInitialData(detail)} />
         </Modal>
       )}
     </div>
