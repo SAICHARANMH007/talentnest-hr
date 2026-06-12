@@ -12,6 +12,7 @@
 const express   = require('express');
 const router    = express.Router();
 const OrgCustomizations = require('../models/OrgCustomizations');
+const Organization      = require('../models/Organization');
 const { authenticate }  = require('../middleware/auth');
 const { allowRoles }    = require('../middleware/rbac');
 const asyncHandler      = require('../utils/asyncHandler');
@@ -44,7 +45,12 @@ function toPlain(doc) {
 router.get('/', ...guard, asyncHandler(async (req, res) => {
   const orgId = resolveOrgId(req);
   const doc   = await OrgCustomizations.getOrCreate(orgId);
-  res.json({ success: true, data: toPlain(doc) });
+  const data  = toPlain(doc);
+  // Surface org-level branches/locations (configured in Org Settings) for use
+  // in job posting and other forms — additive, empty when not configured.
+  const org = await Organization.findById(orgId).select('settings.branches').lean();
+  data.branches = org?.settings?.branches || [];
+  res.json({ success: true, data });
 }));
 
 // ── PATCH /api/customizations — update singleton sections ─────────────────────

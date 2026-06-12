@@ -49,7 +49,7 @@ const guard = [authMiddleware, tenantGuard];
 // ── PUBLIC — optimised for high traffic (millions of requests) ───────────────
 // Only select fields needed by the public job board — reduces payload ~60%.
 // No auth required. HTTP cache headers tell CDN/browsers to cache for 5 minutes.
-const PUBLIC_JOB_FIELDS = 'title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline screeningQuestions referralReward referralEnabled companyDescription hqCity hqCountry foundedYear employeeCount website productsServices cultureNotes successStories applicationCount';
+const PUBLIC_JOB_FIELDS = 'title company companyName department industry location branch jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline screeningQuestions referralReward referralEnabled companyDescription hqCity hqCountry foundedYear employeeCount website productsServices cultureNotes successStories applicationCount';
 // Lean variant strips heavy text fields (description/requirements/benefits) — used by
 // the candidate matching pool fetch where only scoring fields are needed (~70% smaller).
 const LEAN_JOB_FIELDS  = 'title company companyName department industry location jobType workMode experience urgency skills salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt updatedAt numberOfOpenings applicationDeadline';
@@ -665,13 +665,13 @@ router.get('/public/org/:orgSlug', asyncHandler(async (req, res) => {
       isPublic: true,
       status: 'active',
       deletedAt: null,
-    }).select('title company companyName department industry location jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt numberOfOpenings applicationDeadline companyDescription hqCity hqCountry foundedYear employeeCount website productsServices cultureNotes successStories applicationCount').sort({ createdAt: -1 }).lean(),
+    }).select('title company companyName department industry location branch jobType workMode experience urgency skills description requirements benefits salaryMin salaryMax salaryCurrency salaryType careerPageSlug externalUrl createdAt numberOfOpenings applicationDeadline companyDescription hqCity hqCountry foundedYear employeeCount website productsServices cultureNotes successStories applicationCount').sort({ createdAt: -1 }).lean(),
     require('../models/OrgCustomizations').findOne({ orgId: org._id }).select('employerBrand brandColors').lean(),
   ]);
 
   res.json({
     success: true,
-    org: { name: org.name, logoUrl: org.logoUrl, slug: req.params.orgSlug },
+    org: { name: org.name, logoUrl: org.logoUrl, slug: req.params.orgSlug, branches: org.settings?.branches || [] },
     employerBrand: orgCustom?.employerBrand || {},
     brandColors: orgCustom?.brandColors || {},
     data: jobs.map(normalizeJob),

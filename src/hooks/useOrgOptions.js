@@ -18,6 +18,7 @@ export function useOrgOptions() {
   const [departments, setDepartments]       = useState(DEPARTMENTS);
   const [industries, setIndustries]         = useState(INDUSTRIES);
   const [locations, setLocations]           = useState([]);
+  const [branches, setBranches]             = useState([]);
   const [sources, setSources]               = useState([]);
   const [stages, setStages]                 = useState(STAGES);
   const [fieldVisibility, setFieldVisibility] = useState({});
@@ -56,6 +57,9 @@ export function useOrgOptions() {
       // Org locations
       const orgLocs = (data.locations || []).map(l => l.name || l).filter(Boolean);
       setLocations(orgLocs);
+
+      // Org branches/locations (from Org Settings → Branches & Locations)
+      setBranches(data.branches || []);
 
       // Org sources merged with defaults
       const orgSrcs = (data.sources || []).map(s => s.name || s).filter(Boolean);
@@ -97,7 +101,7 @@ export function useOrgOptions() {
   // Helper: returns true if feature is visible (defaults to true if not configured)
   const isVisible = (key) => fieldVisibility[key] !== false;
 
-  return { departments, industries, locations, sources, stages, fieldVisibility, isVisible, loaded };
+  return { departments, industries, locations, branches, sources, stages, fieldVisibility, isVisible, loaded };
 }
 
 /** Call this after admin saves customizations to bust the cache. */

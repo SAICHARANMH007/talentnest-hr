@@ -10,7 +10,7 @@ import { INDUSTRIES } from '../../constants/picklists.js';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 const EMPTY = {
-  title: '', company: '', department: '', industry: '', location: '',
+  title: '', company: '', department: '', industry: '', location: '', branch: '',
   jobType: 'Full-Time', workMode: 'Onsite', experience: '',
   salaryMin: '', salaryMax: '', salaryType: 'CTC', salaryCurrency: 'INR',
   openings: '', applicationDeadline: '', urgency: 'Medium',
@@ -30,7 +30,7 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const [parsing, setParsing] = useState(false);
   const [newQ, setNewQ] = useState(EMPTY_Q);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const { departments, locations } = useOrgOptions();
+  const { departments, locations, branches } = useOrgOptions();
 
   // Reset form when initialData changes (e.g. editing a different job)
   const prevInitRef = useRef(initialData);
@@ -161,6 +161,11 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
           <Field label="Location"       value={form.location}   onChange={v => sf('location', v)}
             placeholder="Hyderabad, Telangana"
             options={locations.length ? locations.map(l => ({ value: l, label: l })) : undefined} />
+          {branches.length > 0 && (
+            <Dropdown label="Branch / Office" value={form.branch} onChange={v => sf('branch', v)}
+              options={branches.map(b => b.name)} placeholder="Select Branch"
+              hint="Which office/branch this role is based out of" />
+          )}
           <Dropdown label="Job Type"    value={form.jobType}    onChange={v => sf('jobType', v)}
             options={['Full-Time', 'Part-Time', 'Contract', 'C2H', 'C2C', 'Internship', 'Freelance']} />
           <Dropdown label="Work Mode"   value={form.workMode}   onChange={v => sf('workMode', v)}

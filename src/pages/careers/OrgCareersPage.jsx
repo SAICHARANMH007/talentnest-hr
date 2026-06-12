@@ -37,6 +37,7 @@ export default function OrgCareersPage() {
   const [search, setSearch] = useState('');
   const [urgency, setUrgency] = useState('All');
   const [location, setLocation] = useState('All');
+  const [branch, setBranch] = useState('All');
   const [applying, setApplying] = useState(null);
   const [referJob, setReferJob] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -120,12 +121,14 @@ export default function OrgCareersPage() {
   }, [orgSlug]);
 
   const locations = ['All', ...new Set(jobs.map(j => j.location).filter(Boolean))];
+  const branches = ['All', ...new Set(jobs.map(j => j.branch).filter(Boolean))];
   const filtered = jobs.filter(j => {
     const q = search.toLowerCase();
     const matchSearch = !q || (j.title || '').toLowerCase().includes(q) || (j.company || '').toLowerCase().includes(q) || (j.skills || []).join(',').toLowerCase().includes(q);
     const matchUrgency = urgency === 'All' || j.urgency === urgency;
     const matchLocation = location === 'All' || j.location === location;
-    return matchSearch && matchUrgency && matchLocation;
+    const matchBranch = branch === 'All' || j.branch === branch;
+    return matchSearch && matchUrgency && matchLocation && matchBranch;
   });
 
   const accentColor = '#0176D3';
@@ -347,6 +350,28 @@ export default function OrgCareersPage() {
               <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 9 }}>▼</span>
             </div>
           )}
+
+          {branches.length > 1 && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <select value={branch} onChange={e => setBranch(e.target.value)}
+                style={{
+                  padding: '8px 28px 8px 12px',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: 50,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: branch === 'All' ? '#64748B' : accentColor,
+                  background: '#F8FAFC',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none'
+                }}>
+                {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All Branches' : b}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: 9 }}>▼</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -356,7 +381,7 @@ export default function OrgCareersPage() {
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>🔍</div>
             <p style={{ fontSize: 15 }}>No roles match your search. Try clearing the filters.</p>
-            <button onClick={() => { setSearch(''); setUrgency('All'); setLocation('All'); }}
+            <button onClick={() => { setSearch(''); setUrgency('All'); setLocation('All'); setBranch('All'); }}
               style={{ marginTop: 12, padding: '8px 20px', background: accentColor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
               Clear Filters
             </button>
@@ -397,7 +422,7 @@ export default function OrgCareersPage() {
                           </a>
                         </h3>
                         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: '#64748B', fontSize: 13 }}>
-                          {j.location && <span>📍 {j.location}</span>}
+                          {j.location && <span>📍 {j.location}{j.branch ? ` · ${j.branch}` : ''}</span>}
                           {j.jobType && <span>💼 {j.jobType}</span>}
                           {j.experience && <span>🗓 {j.experience} exp</span>}
                           {(j.salaryMin || j.salaryMax) && (
