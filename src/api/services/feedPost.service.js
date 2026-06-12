@@ -21,6 +21,9 @@ export const feedPostService = {
   async reactToPost(id, type) {
     return req('POST', `/social-posts/${id}/react`, { type });
   },
+  async votePoll(id, optionIndex) {
+    return req('POST', `/social-posts/${id}/vote`, { optionIndex });
+  },
   async toggleSavePost(id) {
     return req('POST', `/social-posts/${id}/save`, {});
   },

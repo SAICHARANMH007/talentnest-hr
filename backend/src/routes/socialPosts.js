@@ -108,15 +108,39 @@ router.get('/saved/list', asyncHandler(async (req, res) => {
   res.json({ success: true, data: posts });
 }));
 
-const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'];
+const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question', 'poll'];
 
 // POST /api/social-posts
 router.post('/', asyncHandler(async (req, res) => {
-  const { content, images, postType, communityId, communitySlug, mentions } = req.body;
+  const { content, images, postType, communityId, communitySlug, mentions, jobDetails, resourceLink, poll } = req.body;
   if (!content?.trim()) throw new AppError('Post content is required.', 400);
   const safeType = VALID_POST_TYPES.includes(postType) ? postType : 'update';
   const u = req.user;
   const mentionIds = sanitizeMentions(mentions, u._id || u.id);
+
+  let safePoll;
+  if (safeType === 'poll' && poll?.question?.trim() && Array.isArray(poll.options)) {
+    const options = poll.options.map(o => (typeof o === 'string' ? o : o?.text || '')).map(t => t.trim()).filter(Boolean).slice(0, 6);
+    if (options.length >= 2) {
+      const days = Number(poll.durationDays) || 3;
+      safePoll = {
+        question : poll.question.trim(),
+        options  : options.map(text => ({ text, votes: [] })),
+        expiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
+      };
+    }
+  }
+
+  let safeJobDetails;
+  if (safeType === 'hiring' && jobDetails && typeof jobDetails === 'object') {
+    safeJobDetails = {
+      title   : String(jobDetails.title   || '').trim().slice(0, 120),
+      company : String(jobDetails.company || '').trim().slice(0, 120),
+      location: String(jobDetails.location|| '').trim().slice(0, 120),
+      link    : String(jobDetails.link     || '').trim().slice(0, 300),
+    };
+  }
+
   const post = await FeedPost.create({
     tenantId    : u.tenantId,
     authorId    : u._id || u.id,
@@ -129,6 +153,9 @@ router.post('/', asyncHandler(async (req, res) => {
     hashtags    : extractHashtags(content),
     mentions    : mentionIds,
     postType    : safeType,
+    ...(safeJobDetails ? { jobDetails: safeJobDetails } : {}),
+    ...(safeType === 'resource' && resourceLink ? { resourceLink: String(resourceLink).trim().slice(0, 300) } : {}),
+    ...(safePoll ? { poll: safePoll } : {}),
     ...(communityId ? { communityId, communitySlug: communitySlug || '' } : {}),
   });
 
@@ -274,6 +301,31 @@ router.post('/:id/react', asyncHandler(async (req, res) => {
   } catch {}
 
   res.json({ success: true, reactions: post.reactions });
+}));
+
+// POST /api/social-posts/:id/vote — vote on a poll post
+router.post('/:id/vote', asyncHandler(async (req, res) => {
+  const { optionIndex } = req.body;
+  const post = await FeedPost.findOne({ _id: req.params.id, tenantId: req.user.tenantId, isDeleted: false });
+  if (!post) throw new AppError('Post not found.', 404);
+  if (post.postType !== 'poll' || !post.poll?.options?.length) throw new AppError('This post is not a poll.', 400);
+  if (post.poll.expiresAt && post.poll.expiresAt < new Date()) throw new AppError('This poll has closed.', 400);
+  const idx = Number(optionIndex);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= post.poll.options.length) throw new AppError('Invalid poll option.', 400);
+
+  const uid = String(req.user._id || req.user.id);
+  // Remove any existing vote by this user, then add to the chosen option
+  post.poll.options.forEach(o => { o.votes = o.votes.filter(v => String(v) !== uid); });
+  post.poll.options[idx].votes.push(uid);
+  await post.save();
+
+  try {
+    const socketRegistry = require('../socket');
+    const { emitToTenant } = require('../socket/platformSocket');
+    emitToTenant(socketRegistry.getIO(), post.tenantId, 'post:polled', { postId: String(post._id), poll: post.poll });
+  } catch {}
+
+  res.json({ success: true, poll: post.poll });
 }));
 
 // POST /api/social-posts/:id/comment

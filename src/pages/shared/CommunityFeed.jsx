@@ -67,6 +67,7 @@ function PostTypeBadge({ type }) {
     tip         : { label: '💡 Pro Tip',       bg: '#FFFBEB', color: '#B45309' },
     feedback    : { label: '⭐ Feedback',       bg: '#F0FDF4', color: '#166534' },
     question    : { label: '❓ Question',       bg: '#EFF6FF', color: '#1E40AF' },
+    poll        : { label: '🗳️ Poll',          bg: '#F5F3FF', color: '#5B21B6' },
   }[type];
   if (!cfg) return null;
   return (
@@ -544,6 +545,54 @@ const FEED_REPORT_REASONS = [
   { value: 'other',          label: '📋 Other' },
 ];
 
+function PollWidget({ post, userId }) {
+  const [poll, setPoll] = useState(post.poll);
+  const [voting, setVoting] = useState(false);
+
+  useEffect(() => { setPoll(post.poll); }, [post.poll]);
+
+  const totalVotes = poll.options.reduce((sum, o) => sum + (o.votes?.length || 0), 0);
+  const myVoteIdx = poll.options.findIndex(o => (o.votes || []).some(v => String(v) === String(userId)));
+  const isClosed = poll.expiresAt && new Date(poll.expiresAt) < new Date();
+
+  const vote = async (idx) => {
+    if (voting || isClosed) return;
+    setVoting(true);
+    try {
+      const res = await api.votePoll(post._id, idx);
+      if (res?.poll) setPoll(res.poll);
+    } finally { setVoting(false); }
+  };
+
+  return (
+    <div style={{ border: '1px solid #DDD6FE', background: '#F5F3FF', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+      {poll.question && <div style={{ fontSize: 14, fontWeight: 800, color: '#0A1628', marginBottom: 10 }}>{poll.question}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {poll.options.map((opt, i) => {
+          const votes = opt.votes?.length || 0;
+          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+          const selected = myVoteIdx === i;
+          return (
+            <button key={i} onClick={() => vote(i)} disabled={voting || isClosed}
+              style={{ position: 'relative', textAlign: 'left', border: `1.5px solid ${selected ? '#5B21B6' : '#DDD6FE'}`, background: '#fff', borderRadius: 10, padding: '9px 12px', cursor: (voting || isClosed) ? 'default' : 'pointer', overflow: 'hidden' }}>
+              {(myVoteIdx >= 0 || isClosed) && (
+                <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: selected ? '#EDE9FE' : '#F3F4F6', transition: 'width 0.3s' }} />
+              )}
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: selected ? 800 : 600, color: '#1F2937' }}>{selected ? '✓ ' : ''}{opt.text}</span>
+                {(myVoteIdx >= 0 || isClosed) && <span style={{ fontSize: 12, fontWeight: 800, color: '#5B21B6', flexShrink: 0 }}>{pct}%</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
+        {totalVotes} vote{totalVotes !== 1 ? 's' : ''} · {isClosed ? 'Poll closed' : poll.expiresAt ? `Closes ${new Date(poll.expiresAt).toLocaleDateString()}` : 'Open'}
+      </div>
+    </div>
+  );
+}
+
 function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
@@ -687,6 +736,39 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
       <ImageGrid images={post.images} />
 
+      {post.postType === 'hiring' && post.jobDetails?.title && (
+        <div style={{ border: '1px solid #BBF7D0', background: '#F0FDF4', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💼 Job Opening</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0A1628' }}>{post.jobDetails.title}</div>
+          {(post.jobDetails.company || post.jobDetails.location) && (
+            <div style={{ fontSize: 12.5, color: '#374151', marginTop: 2 }}>
+              {post.jobDetails.company}{post.jobDetails.company && post.jobDetails.location ? ' · ' : ''}{post.jobDetails.location}
+            </div>
+          )}
+          {post.jobDetails.link && (
+            <a href={post.jobDetails.link} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: 8, padding: '6px 16px', borderRadius: 8, background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+              Apply →
+            </a>
+          )}
+        </div>
+      )}
+
+      {post.postType === 'resource' && post.resourceLink && (
+        <a href={post.resourceLink} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #A5F3FC', background: '#ECFEFF', borderRadius: 12, padding: '12px 14px', marginBottom: 10, textDecoration: 'none' }}>
+          <span style={{ fontSize: 20 }}>📎</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resource Link</div>
+            <div style={{ fontSize: 13, color: '#0E7490', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.resourceLink}</div>
+          </div>
+        </a>
+      )}
+
+      {post.postType === 'poll' && post.poll?.options?.length > 0 && (
+        <PollWidget post={post} userId={userId} />
+      )}
+
       <ReactionBar
         post={post}
         userId={userId}
@@ -709,32 +791,85 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
   );
 }
 
+// ── Post Categories ──────────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { value: 'update',       label: 'Post',     icon: '💬', color: '#0176D3', title: 'Create a Post',        sub: 'Share an update with the community',     placeholder: 'Share a career update, win, or news…' },
+  { value: 'hiring',       label: 'Hiring',   icon: '💼', color: '#059669', title: 'Post a Job Opening',   sub: "Let the community know you're hiring",   placeholder: "Describe the role, responsibilities, and who you're looking for…" },
+  { value: 'tip',          label: 'Tip',      icon: '💡', color: '#D97706', title: 'Share a Pro Tip',      sub: 'Help others with career advice',          placeholder: 'Share advice that helped you in your career…' },
+  { value: 'question',     label: 'Question', icon: '❓', color: '#7C3AED', title: 'Ask the Community',    sub: 'Get advice from your network',            placeholder: 'What do you want to ask?' },
+  { value: 'achievement',  label: 'Win',      icon: '🏆', color: '#B45309', title: 'Celebrate a Win',      sub: "Share something you're proud of",         placeholder: 'What did you achieve?' },
+  { value: 'feedback',     label: 'Feedback', icon: '⭐', color: '#DB2777', title: 'Share Feedback',       sub: 'Rate and review an experience',           placeholder: 'Tell us more about your experience…' },
+  { value: 'resource',     label: 'Resource', icon: '📎', color: '#0891B2', title: 'Share a Resource',     sub: 'Post a useful link, guide, or tool',      placeholder: 'What makes this resource useful?' },
+  { value: 'milestone',    label: 'Milestone',icon: '🎯', color: '#DC2626', title: 'Share a Milestone',    sub: 'Mark a career milestone',                 placeholder: 'What milestone did you reach?' },
+  { value: 'announcement', label: 'News',     icon: '📢', color: '#1D4ED8', title: 'Post an Announcement', sub: 'Share news with everyone',                placeholder: 'Share an announcement or update…' },
+  { value: 'poll',         label: 'Poll',     icon: '🗳️', color: '#5B21B6', title: 'Create a Poll',       sub: 'Ask the community to vote',               placeholder: 'Add more context (optional)…' },
+];
+
+const TIP_TOPICS      = ['Career Growth', 'Interview Prep', 'Resume', 'Networking', 'Productivity'];
+const QUESTION_TOPICS = ['Salary', 'Interview', 'Career Change', 'Skills', 'Workplace'];
+const WIN_TYPES       = ['New Job', 'Promotion', 'Certification', 'Project', 'Personal Growth'];
+
+const fieldInput = {
+  width: '100%', padding: '10px 13px', borderRadius: 10, border: '1px solid #E5E7EB',
+  background: '#FAFBFC', fontSize: 13.5, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+};
+
+function ChipPicker({ options, value, onChange, color }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {options.map(o => (
+        <button key={o} type="button" onClick={() => onChange(value === o ? '' : o)}
+          style={{ fontSize: 12, padding: '6px 14px', borderRadius: 20, border: `1px solid ${value === o ? color : '#E5E7EB'}`, background: value === o ? `${color}15` : '#F9FAFB', color: value === o ? color : '#6B7280', fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s' }}>
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StarRating({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <button key={n} type="button" onClick={() => onChange(n)}
+          style={{ background: 'none', border: 'none', fontSize: 30, cursor: 'pointer', padding: 0, lineHeight: 1, color: n <= value ? '#F59E0B' : '#E5E7EB', transition: 'color 0.1s' }}>
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Create Post ────────────────────────────────────────────────────────────────
-function CreatePost({ user, onCreate }) {
+function CreatePost({ user, onCreate, isMobile }) {
+  const [modalOpen,  setModalOpen]  = useState(false);
   const [text,       setText]       = useState('');
   const [postType,   setPostType]   = useState('update');
   const [submitting, setSubmitting] = useState(false);
-  const [expanded,   setExpanded]   = useState(false);
   const [images,     setImages]     = useState([]);
   const [uploading,  setUploading]  = useState(false);
   const [uploadErr,  setUploadErr]  = useState('');
   const [mentions,   setMentions]   = useState([]); // [{ userId, name }]
+
+  // Category-specific fields
+  const [jobTitle,     setJobTitle]     = useState('');
+  const [company,      setCompany]      = useState('');
+  const [jobLocation,  setJobLocation]  = useState('');
+  const [applyLink,    setApplyLink]    = useState('');
+  const [resourceTitle, setResourceTitle] = useState('');
+  const [resourceLink,  setResourceLink]  = useState('');
+  const [milestoneDate, setMilestoneDate] = useState('');
+  const [rating,        setRating]        = useState(5);
+  const [topicTag,      setTopicTag]      = useState('');
+  const [pollQuestion,  setPollQuestion]  = useState('');
+  const [pollOptions,   setPollOptions]   = useState(['', '']);
+  const [pollDuration,  setPollDuration]  = useState(3);
+
   const mentionAc = useMentionAutocomplete();
   const fileRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const POST_TYPES = [
-    { value: 'update',        label: '💬 Update',        color: '#0176D3' },
-    { value: 'tip',           label: '💡 Pro Tip',        color: '#D97706' },
-    { value: 'question',      label: '❓ Ask Community',  color: '#7C3AED' },
-    { value: 'achievement',   label: '🏆 Achievement',    color: '#B45309' },
-    { value: 'hiring',        label: '💼 Hiring',         color: '#059669' },
-    { value: 'feedback',      label: '⭐ Feedback',       color: '#DB2777' },
-    { value: 'resource',      label: '📎 Resource',       color: '#0891B2' },
-    { value: 'milestone',     label: '🎯 Milestone',      color: '#DC2626' },
-    { value: 'announcement',  label: '📢 Announce',       color: '#1D4ED8' },
-  ];
-  const activeType = POST_TYPES.find(t => t.value === postType) || POST_TYPES[0];
+  const activeType = CATEGORIES.find(t => t.value === postType) || CATEGORIES[0];
 
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -780,114 +915,258 @@ function CreatePost({ user, onCreate }) {
     });
   };
 
+  const resetForm = () => {
+    setText(''); setPostType('update'); setImages([]); setMentions([]); setUploadErr(''); mentionAc.close();
+    setJobTitle(''); setCompany(''); setJobLocation(''); setApplyLink('');
+    setResourceTitle(''); setResourceLink(''); setMilestoneDate('');
+    setRating(5); setTopicTag(''); setPollQuestion(''); setPollOptions(['', '']); setPollDuration(3);
+  };
+
+  const openModal = (type) => { setPostType(type || 'update'); setModalOpen(true); };
+  const closeModal = () => { if (submitting) return; setModalOpen(false); resetForm(); };
+
+  const canSubmit = () => {
+    if (postType === 'poll') return pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2;
+    if (postType === 'hiring') return text.trim() && jobTitle.trim();
+    return !!text.trim();
+  };
+
   const submit = async () => {
-    if (!text.trim() || submitting) return;
+    if (!canSubmit() || submitting) return;
     setSubmitting(true);
     try {
       const activeMentionIds = mentions
         .filter(m => text.includes(`@[${m.name}](${m.userId})`))
         .map(m => m.userId);
-      await onCreate({ content: text.trim(), postType, images, mentions: activeMentionIds });
-      setText(''); setPostType('update'); setExpanded(false); setImages([]); setMentions([]); mentionAc.close();
+      let finalContent = text.trim();
+      const payload = { postType, images, mentions: activeMentionIds };
+
+      if (postType === 'feedback') {
+        finalContent = `${'⭐'.repeat(rating)} ${finalContent}`.trim();
+      }
+      if ((postType === 'tip' || postType === 'question' || postType === 'achievement') && topicTag) {
+        finalContent = `${finalContent}\n\n#${topicTag.replace(/\s+/g, '')}`;
+      }
+      if (postType === 'milestone' && milestoneDate) {
+        finalContent = `${finalContent}\n\n📅 ${milestoneDate}`;
+      }
+      if (postType === 'hiring') {
+        payload.jobDetails = { title: jobTitle.trim(), company: company.trim(), location: jobLocation.trim(), link: applyLink.trim() };
+      }
+      if (postType === 'resource') {
+        if (resourceTitle.trim()) finalContent = `${resourceTitle.trim()}\n\n${finalContent}`.trim();
+        payload.resourceLink = resourceLink.trim();
+      }
+      if (postType === 'poll') {
+        finalContent = finalContent || pollQuestion.trim();
+        payload.poll = {
+          question: pollQuestion.trim(),
+          options: pollOptions.filter(o => o.trim()).map(o => o.trim()),
+          durationDays: pollDuration,
+        };
+      }
+
+      payload.content = finalContent;
+      await onCreate(payload);
+      closeModal();
     } finally { setSubmitting(false); }
   };
 
   const charLeft = 3000 - text.length;
 
   return (
-    <div style={{ ...card, padding: 0, marginBottom: 12, borderRadius: 16, border: `1px solid ${expanded ? activeType.color + '33' : '#F1F5F9'}`, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-      {/* Accent header bar — only shown while composing */}
-      {expanded && (
-        <div style={{ background: `linear-gradient(135deg, ${activeType.color} 0%, ${activeType.color}cc 100%)`, padding: '10px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: 13, letterSpacing: '0.02em' }}>✨ Create a Post</span>
-          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.18)', borderRadius: 20, padding: '2px 10px' }}>{activeType.label}</span>
-        </div>
-      )}
-      <div style={{ padding: '16px 18px' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+    <>
+      <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
-          <div style={{ flex: 1, position: 'relative' }}>
-            <textarea
-              ref={textareaRef}
-              value={text}
-              onChange={handleTextChange}
-              placeholder={`Share a career update, tip, or hiring news, ${user?.name?.split(' ')[0] || 'there'}… (use @ to mention someone)`}
-              rows={expanded ? 4 : 2}
-              maxLength={3000}
-              style={{ width: '100%', resize: 'none', border: '1px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'inherit', lineHeight: 1.65, background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
-              onFocus={e => { e.currentTarget.style.border = `1px solid ${activeType.color}`; e.currentTarget.style.boxShadow = `0 0 0 3px ${activeType.color}1a`; setExpanded(true); }}
-              onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
-            />
-            <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
-            {expanded && (
-              <div style={{ marginTop: 12 }}>
-                {/* Post type chips */}
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Post type</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                    {POST_TYPES.map(t => (
-                      <button key={t.value} onClick={() => setPostType(t.value)}
-                        style={{ fontSize: 11, padding: '5px 13px', borderRadius: 20, border: `1px solid ${postType === t.value ? t.color : '#E5E7EB'}`, background: postType === t.value ? `${t.color}15` : '#F9FAFB', color: postType === t.value ? t.color : '#6B7280', cursor: 'pointer', fontWeight: 700, transition: 'all 0.12s' }}>
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Image previews */}
-                {images.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(images.length, 4)}, 1fr)`, gap: 8, marginBottom: 12 }}>
-                    {images.map((img, i) => (
-                      <div key={i} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', aspectRatio: '1 / 1' }}>
-                        <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        <button onClick={() => removeImage(i)}
-                          style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, backdropFilter: 'blur(2px)' }}>
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {uploading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px dashed #D1D5DB', background: '#F9FAFB' }}>
-                    <div style={{ width: 16, height: 16, border: '2px solid #E5E7EB', borderTopColor: activeType.color, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Uploading photo…</span>
-                  </div>
-                )}
-                {uploadErr && (
-                  <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>
-                    ⚠️ {uploadErr}
-                  </div>
-                )}
-
-                {/* Toolbar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <button
-                      onClick={() => { setUploadErr(''); fileRef.current?.click(); }}
-                      disabled={images.length >= 4 || uploading}
-                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1 }}>
-                      📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
-                    </button>
-                    <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
-                    <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>
-                      {charLeft < 500 ? `${charLeft} left` : ''}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setExpanded(false); setText(''); setImages([]); setUploadErr(''); }} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
-                    <button onClick={submit} disabled={!text.trim() || submitting}
-                      style={{ ...btnP, background: activeType.color, fontSize: 13, padding: '7px 20px', opacity: (!text.trim() || submitting) ? 0.6 : 1 }}>
-                      {submitting ? 'Posting…' : 'Post'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <button onClick={() => openModal('update')}
+            style={{ flex: 1, textAlign: 'left', padding: '11px 16px', borderRadius: 24, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Start a post, {user?.name?.split(' ')[0] || 'there'}…
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {[
+            { type: 'update',  icon: '🖼️', label: 'Photo',  color: '#0176D3' },
+            { type: 'hiring',  icon: '💼', label: 'Hiring', color: '#059669' },
+            { type: 'poll',    icon: '🗳️', label: 'Poll',   color: '#5B21B6' },
+            { type: 'tip',     icon: '💡', label: 'Tip',    color: '#D97706' },
+          ].map(a => (
+            <button key={a.type} onClick={() => openModal(a.type)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid #E5E7EB', background: '#F9FAFB', color: a.color, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              <span style={{ fontSize: 15 }}>{a.icon}</span> {a.label}
+            </button>
+          ))}
         </div>
       </div>
-    </div>
+
+      {modalOpen && (
+        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', width: isMobile ? '100%' : 560, maxWidth: '100%', maxHeight: isMobile ? '92vh' : '88vh', borderRadius: isMobile ? '20px 20px 0 0' : 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            {/* Header */}
+            <div style={{ background: `linear-gradient(135deg, ${activeType.color} 0%, ${activeType.color}cc 100%)`, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 900, fontSize: 16 }}>{activeType.icon} {activeType.title}</div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>{activeType.sub}</div>
+              </div>
+              <button onClick={closeModal} style={{ background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+
+            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+              {/* Category picker */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #F1F5F9' }}>
+                {CATEGORIES.map(c => (
+                  <button key={c.value} onClick={() => setPostType(c.value)} title={c.label}
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, border: `1px solid ${postType === c.value ? c.color : '#E5E7EB'}`, background: postType === c.value ? `${c.color}15` : '#F9FAFB', color: postType === c.value ? c.color : '#6B7280', fontWeight: 700, cursor: 'pointer' }}>
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Author + text */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+                <Avatar name={user?.name} src={user?.avatarUrl} size={40} role={user?.role} />
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <textarea
+                    ref={textareaRef}
+                    value={text}
+                    onChange={handleTextChange}
+                    placeholder={activeType.placeholder}
+                    rows={postType === 'poll' ? 2 : 4}
+                    maxLength={3000}
+                    style={{ ...fieldInput, resize: 'none', lineHeight: 1.6, padding: '11px 14px' }}
+                  />
+                  <MentionDropdown suggestions={mentionAc.suggestions} searching={mentionAc.searching} onSelect={selectMention} />
+                </div>
+              </div>
+
+              {/* Category-specific fields */}
+              {postType === 'hiring' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, padding: 14, borderRadius: 12, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Details</div>
+                  <input style={fieldInput} placeholder="Job title *" value={jobTitle} onChange={e => setJobTitle(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input style={fieldInput} placeholder="Company" value={company} onChange={e => setCompany(e.target.value)} />
+                    <input style={fieldInput} placeholder="Location" value={jobLocation} onChange={e => setJobLocation(e.target.value)} />
+                  </div>
+                  <input style={fieldInput} placeholder="Apply link (optional)" value={applyLink} onChange={e => setApplyLink(e.target.value)} />
+                </div>
+              )}
+
+              {postType === 'resource' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, padding: 14, borderRadius: 12, background: '#ECFEFF', border: '1px solid #A5F3FC' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resource Details</div>
+                  <input style={fieldInput} placeholder="Resource title" value={resourceTitle} onChange={e => setResourceTitle(e.target.value)} />
+                  <input style={fieldInput} placeholder="Link (URL)" value={resourceLink} onChange={e => setResourceLink(e.target.value)} />
+                </div>
+              )}
+
+              {(postType === 'tip' || postType === 'question' || postType === 'achievement') && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                    {postType === 'achievement' ? 'Win type' : 'Topic'}
+                  </div>
+                  <ChipPicker
+                    options={postType === 'tip' ? TIP_TOPICS : postType === 'question' ? QUESTION_TOPICS : WIN_TYPES}
+                    value={topicTag} onChange={setTopicTag} color={activeType.color}
+                  />
+                </div>
+              )}
+
+              {postType === 'feedback' && (
+                <div style={{ marginBottom: 14, padding: 14, borderRadius: 12, background: '#FDF2F8', border: '1px solid #FBCFE8' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#DB2777', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Your rating</div>
+                  <StarRating value={rating} onChange={setRating} />
+                </div>
+              )}
+
+              {postType === 'milestone' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Date reached (optional)</div>
+                  <input type="date" style={{ ...fieldInput, maxWidth: 200 }} value={milestoneDate} onChange={e => setMilestoneDate(e.target.value)} />
+                </div>
+              )}
+
+              {postType === 'poll' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, padding: 14, borderRadius: 12, background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#5B21B6', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Poll Question</div>
+                  <input style={fieldInput} placeholder="Ask a question…" value={pollQuestion} onChange={e => setPollQuestion(e.target.value)} maxLength={300} />
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#5B21B6', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>Options</div>
+                  {pollOptions.map((opt, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input style={fieldInput} placeholder={`Option ${i + 1}`} value={opt} maxLength={120}
+                        onChange={e => setPollOptions(prev => prev.map((o, idx) => idx === i ? e.target.value : o))} />
+                      {pollOptions.length > 2 && (
+                        <button type="button" onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
+                          style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 18, cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 6 && (
+                    <button type="button" onClick={() => setPollOptions(prev => [...prev, ''])}
+                      style={{ alignSelf: 'flex-start', background: 'none', border: '1px dashed #C4B5FD', color: '#5B21B6', fontSize: 12, fontWeight: 700, borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>
+                      + Add option
+                    </button>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#5B21B6' }}>Poll length:</span>
+                    <select value={pollDuration} onChange={e => setPollDuration(Number(e.target.value))} style={{ ...fieldInput, width: 'auto', padding: '6px 10px' }}>
+                      <option value={1}>1 day</option>
+                      <option value={3}>3 days</option>
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Images (not for poll) */}
+              {postType !== 'poll' && (
+                <>
+                  {images.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(images.length, 4)}, 1fr)`, gap: 8, marginBottom: 12 }}>
+                      {images.map((img, i) => (
+                        <div key={i} style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', aspectRatio: '1 / 1' }}>
+                          <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <button onClick={() => removeImage(i)}
+                            style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, backdropFilter: 'blur(2px)' }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {uploading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px dashed #D1D5DB', background: '#F9FAFB' }}>
+                      <div style={{ width: 16, height: 16, border: '2px solid #E5E7EB', borderTopColor: activeType.color, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Uploading photo…</span>
+                    </div>
+                  )}
+                  {uploadErr && (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {uploadErr}</div>
+                  )}
+                  <button onClick={() => { setUploadErr(''); fileRef.current?.click(); }} disabled={images.length >= 4 || uploading}
+                    style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1, marginBottom: 8 }}>
+                    📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 20px', borderTop: '1px solid #F1F5F9', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>{charLeft < 500 ? `${charLeft} left` : ''}</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={closeModal} style={{ ...btnG, fontSize: 12, padding: '7px 14px' }}>Cancel</button>
+                <button onClick={submit} disabled={!canSubmit() || submitting}
+                  style={{ ...btnP, background: activeType.color, fontSize: 13, padding: '7px 20px', opacity: (!canSubmit() || submitting) ? 0.6 : 1 }}>
+                  {submitting ? 'Posting…' : 'Post'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1255,6 +1534,9 @@ export default function CommunityFeed({ user }) {
         return next;
       });
     },
+    'post:polled': ({ postId, poll }) => {
+      setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, poll } : p));
+    },
   });
 
   const FILTERS = [
@@ -1267,6 +1549,7 @@ export default function CommunityFeed({ user }) {
     { value: 'resource',     label: '📎 Resources' },
     { value: 'milestone',    label: '🎯 Milestones' },
     { value: 'announcement', label: '📢 News' },
+    { value: 'poll',         label: '🗳️ Polls' },
   ];
 
   // Client-side filtering
@@ -1409,7 +1692,7 @@ export default function CommunityFeed({ user }) {
           {tab === 'feed' && (
             <>
               <SearchBar value={search} onChange={setSearch} />
-              <CreatePost user={user} onCreate={handleCreate} />
+              <CreatePost user={user} onCreate={handleCreate} isMobile={isMobile} />
 
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>

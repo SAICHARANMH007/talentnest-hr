@@ -34,8 +34,23 @@ const feedPostSchema = new Schema({
   savedBy     : [{ type: Types.ObjectId, ref: 'User' }],
   postType    : {
     type   : String,
-    enum   : ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question'],
+    enum   : ['update', 'achievement', 'announcement', 'milestone', 'hiring', 'resource', 'tip', 'feedback', 'question', 'poll'],
     default: 'update',
+  },
+  jobDetails  : {
+    title   : { type: String, default: '' },
+    company : { type: String, default: '' },
+    location: { type: String, default: '' },
+    link    : { type: String, default: '' },
+  },
+  resourceLink : { type: String, default: '' },
+  poll: {
+    question : { type: String, default: '' },
+    options  : [{
+      text : { type: String, default: '' },
+      votes: [{ type: Types.ObjectId, ref: 'User' }],
+    }],
+    expiresAt: { type: Date, default: null },
   },
   communityId  : { type: Types.ObjectId, ref: 'Community', default: null },
   communitySlug: { type: String, default: null },
