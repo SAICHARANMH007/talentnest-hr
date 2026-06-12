@@ -264,6 +264,7 @@ export default function MeetingRoom() {
 
   const socketRef = useRef(null);
   const peerConnsRef = useRef({});
+  const remoteStreamsRef = useRef({});
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const iceServersRef = useRef(STATIC_FALLBACK_ICE); // replaced by dynamic creds on mount
@@ -377,6 +378,7 @@ export default function MeetingRoom() {
         peerConnsRef.current[socketId].close();
         delete peerConnsRef.current[socketId];
       }
+      delete remoteStreamsRef.current[socketId];
       showToast(`${name || 'A participant'} left`);
     });
 
@@ -447,12 +449,15 @@ export default function MeetingRoom() {
       if (candidate) socket.emit('ice-candidate', { to: sid, candidate });
     };
 
-    // When remote tracks arrive, update peers state → VideoTile shows video
+    // When remote tracks arrive, update peers state → VideoTile shows video/audio.
+    // Accumulate tracks onto one persistent MediaStream per peer — audio and video
+    // tracks fire ontrack separately, and relying on e.streams[0] directly can
+    // overwrite the peer's stream with one that's missing the audio track.
     pc.ontrack = (e) => {
-      const remoteStream = e.streams?.[0];
-      if (remoteStream) {
-        setPeers(prev => ({ ...prev, [sid]: { stream: remoteStream } }));
-      }
+      if (!remoteStreamsRef.current[sid]) remoteStreamsRef.current[sid] = new MediaStream();
+      const remoteStream = remoteStreamsRef.current[sid];
+      if (!remoteStream.getTracks().includes(e.track)) remoteStream.addTrack(e.track);
+      setPeers(prev => ({ ...prev, [sid]: { stream: remoteStream } }));
     };
 
     // Auto-restart ICE if connection fails
