@@ -19,6 +19,19 @@ const S = {
 
 const STATUS_LABEL = { new: 'New', in_progress: 'In Progress', converted: 'Job Posted', closed: 'Closed' };
 
+function billingLabel(c) {
+  if (!c) return '—';
+  const val = c.billingValue || 0;
+  const cur = c.billingCurrency || 'INR';
+  switch (c.billingType) {
+    case 'percentage_of_ctc': return `${val}% of candidate's annual CTC`;
+    case 'flat_per_hire': return `${cur} ${val.toLocaleString?.() ?? val} per hire`;
+    case 'retainer': return `${cur} ${val.toLocaleString?.() ?? val} / month retainer`;
+    case 'custom': return c.billingNotes || 'Custom terms';
+    default: return '—';
+  }
+}
+
 const STATUS_FILTERS = [
   { value: '', label: 'All Statuses' },
   { value: 'new', label: 'New' },
@@ -56,7 +69,7 @@ export default function JobRequirements({ user }) {
   }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.getUsers('recruiter').then(list => setRecruiters(Array.isArray(list) ? list : [])).catch(() => {}); }, []);
+  useEffect(() => { api.getJobRequirementRecruiters().then(r => setRecruiters(Array.isArray(r) ? r : (r?.data || []))).catch(() => {}); }, []);
 
   const refreshDetail = (updated) => {
     setDetail(updated);
@@ -189,11 +202,19 @@ export default function JobRequirements({ user }) {
               Submitted by {detail.submittedBy?.name || 'Client'} on {fmt(detail.createdAt)}
             </div>
 
+            <div style={{ background: '#FAFAF9', border: '1px solid #F3F2F2', borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 4, textTransform: 'uppercase' }}>Billing for this Client</div>
+              <div style={{ fontSize: 13, color: '#181818' }}>💰 {billingLabel(detail.clientId)}</div>
+              {detail.clientId?.billingType !== 'custom' && detail.clientId?.billingNotes && (
+                <div style={{ fontSize: 12, color: '#706E6B', marginTop: 4 }}>{detail.clientId.billingNotes}</div>
+              )}
+            </div>
+
             <hr style={{ border: 'none', borderTop: '1px solid #F3F2F2', margin: '4px 0' }} />
 
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', marginBottom: 6, textTransform: 'uppercase' }}>Assign Recruiter</div>
-              <Field value={detail.assignedRecruiter?._id || detail.assignedRecruiter?.id || ''} onChange={handleAssign} disabled={saving}
+              <Field value={detail.assignedRecruiter ? String(detail.assignedRecruiter.id || detail.assignedRecruiter._id || '') : ''} onChange={handleAssign} disabled={saving}
                 options={[{ value: '', label: 'Unassigned' }, ...recruiters.map(rec => ({ value: String(rec.id || rec._id), label: rec.name }))]} />
             </div>
 

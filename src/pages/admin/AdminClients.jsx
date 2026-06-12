@@ -16,7 +16,26 @@ const S = {
   empty: { textAlign: 'center', padding: '60px 24px', color: '#706E6B', fontSize: 14 },
 };
 
-const EMPTY_FORM = { companyName: '', contactPerson: '', email: '', phone: '', industry: '' };
+const EMPTY_FORM = { companyName: '', contactPerson: '', email: '', phone: '', industry: '', billingType: 'percentage_of_ctc', billingValue: '', billingCurrency: 'INR', billingNotes: '' };
+
+const BILLING_TYPES = [
+  { value: 'percentage_of_ctc', label: '% of Candidate Annual CTC' },
+  { value: 'flat_per_hire', label: 'Flat Fee per Hire' },
+  { value: 'retainer', label: 'Monthly Retainer' },
+  { value: 'custom', label: 'Custom / Negotiated' },
+];
+
+function billingLabel(c) {
+  const val = c.billingValue || 0;
+  const cur = c.billingCurrency || 'INR';
+  switch (c.billingType) {
+    case 'percentage_of_ctc': return `${val}% of candidate's annual CTC`;
+    case 'flat_per_hire': return `${cur} ${val.toLocaleString?.() ?? val} per hire`;
+    case 'retainer': return `${cur} ${val.toLocaleString?.() ?? val} / month retainer`;
+    case 'custom': return c.billingNotes || 'Custom terms';
+    default: return '—';
+  }
+}
 
 function SkeletonCard() {
   return (
@@ -29,6 +48,7 @@ function SkeletonCard() {
 }
 
 export default function AdminClients({ user }) {
+  const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(user?.role);
   const [clients,  setClients]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
@@ -52,18 +72,27 @@ export default function AdminClients({ user }) {
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); };
-  const openEdit = (c) => { setEditing(c); setForm({ companyName: c.companyName || '', contactPerson: c.contactPerson || '', email: c.email || '', phone: c.phone || '', industry: c.industry || '' }); setShowForm(true); };
+  const openNew = () => { if (!isAdmin) return; setEditing(null); setForm(EMPTY_FORM); setShowForm(true); };
+  const openEdit = (c) => {
+    if (!isAdmin) return;
+    setEditing(c);
+    setForm({
+      companyName: c.companyName || '', contactPerson: c.contactPerson || '', email: c.email || '', phone: c.phone || '', industry: c.industry || '',
+      billingType: c.billingType || 'percentage_of_ctc', billingValue: c.billingValue ?? '', billingCurrency: c.billingCurrency || 'INR', billingNotes: c.billingNotes || '',
+    });
+    setShowForm(true);
+  };
 
   const handleSave = async () => {
     if (!form.companyName.trim()) { setToast('❌ Company name is required'); return; }
     setSaving(true);
     try {
+      const payload = { ...form, billingValue: Number(form.billingValue) >= 0 ? Number(form.billingValue) : 0 };
       if (editing) {
-        await api.updateClient(editing.id || editing._id, form);
+        await api.updateClient(editing.id || editing._id, payload);
         setToast('✅ Client updated');
       } else {
-        await api.createClient(form);
+        await api.createClient(payload);
         setToast('✅ Client added');
       }
       setShowForm(false);
@@ -87,8 +116,8 @@ export default function AdminClients({ user }) {
   return (
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
-      <PageHeader title="🏢 Client Companies" subtitle="Manage client accounts for placement tracking" action={
-        <button onClick={openNew} style={btnP}>+ Add Client</button>
+      <PageHeader title="🏢 Client Companies" subtitle={isAdmin ? 'Manage client accounts and billing terms' : 'Client accounts and how they are billed'} action={
+        isAdmin ? <button onClick={openNew} style={btnP}>+ Add Client</button> : null
       } />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
@@ -130,19 +159,25 @@ export default function AdminClients({ user }) {
               {c.contactPerson && <div style={{ fontSize: 12, color: '#3E3E3C', marginBottom: 2 }}>👤 {c.contactPerson}</div>}
               {c.email && <div style={{ fontSize: 12, color: '#3E3E3C', marginBottom: 2 }}>✉ {c.email}</div>}
               {c.phone && <div style={{ fontSize: 12, color: '#3E3E3C', marginBottom: 10 }}>📞 {c.phone}</div>}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #F3F2F2' }}>
-                <button onClick={() => openEdit(c)} style={{ ...btnG, flex: 1, fontSize: 12 }}>Edit</button>
-                {c.isActive !== false && (
-                  <button onClick={() => handleDeactivate(c.id || c._id)} style={{ ...btnD, fontSize: 12 }}>Deactivate</button>
-                )}
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #F3F2F2', fontSize: 12 }}>
+                <span style={{ fontWeight: 700, color: '#706E6B', textTransform: 'uppercase', fontSize: 10 }}>Billing</span>
+                <div style={{ color: '#181818', marginTop: 2 }}>💰 {billingLabel(c)}</div>
               </div>
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #F3F2F2' }}>
+                  <button onClick={() => openEdit(c)} style={{ ...btnG, flex: 1, fontSize: 12 }}>Edit</button>
+                  {c.isActive !== false && (
+                    <button onClick={() => handleDeactivate(c.id || c._id)} style={{ ...btnD, fontSize: 12 }}>Deactivate</button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
       {/* Add / Edit Modal */}
-      {showForm && (
+      {isAdmin && showForm && (
         <Modal title={editing ? '✏️ Edit Client' : '🏢 Add Client'} onClose={() => setShowForm(false)} footer={
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button onClick={() => setShowForm(false)} style={btnG}>Cancel</button>
@@ -155,6 +190,19 @@ export default function AdminClients({ user }) {
             <Field label="Contact Person" value={form.contactPerson} onChange={v => sf('contactPerson', v)} />
             <Field label="Email" value={form.email} onChange={v => sf('email', v)} type="email" />
             <Field label="Phone" value={form.phone} onChange={v => sf('phone', v)} />
+
+            <hr style={{ border: 'none', borderTop: '1px solid #F3F2F2', margin: '4px 0' }} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#706E6B', textTransform: 'uppercase' }}>Billing / Commercial Terms</div>
+            <Field label="Billing Basis" value={form.billingType} onChange={v => sf('billingType', v)} options={BILLING_TYPES} />
+            {form.billingType !== 'custom' && (
+              <div style={{ display: 'flex', gap: 12 }}>
+                <Field label={form.billingType === 'percentage_of_ctc' ? 'Percentage (%)' : 'Amount'} type="number" min={0} value={form.billingValue} onChange={v => sf('billingValue', v)} placeholder={form.billingType === 'percentage_of_ctc' ? 'e.g. 8.33' : 'e.g. 10000'} />
+                {form.billingType !== 'percentage_of_ctc' && (
+                  <Field label="Currency" value={form.billingCurrency} onChange={v => sf('billingCurrency', v)} placeholder="INR" />
+                )}
+              </div>
+            )}
+            <Field label="Billing Notes" type="textarea" rows={2} value={form.billingNotes} onChange={v => sf('billingNotes', v)} placeholder="Any extra context for recruiters, e.g. payment terms, replacement guarantee" />
           </div>
         </Modal>
       )}

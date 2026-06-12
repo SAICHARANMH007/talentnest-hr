@@ -154,6 +154,7 @@ export const platformService = {
   async updateJobRequirement(id, data)  { return req('PATCH', `/job-requirements/${id}`, data); },
   async updateJobRequirementStatus(id, data) { return req('PATCH', `/job-requirements/${id}/status`, data); },
   async withdrawJobRequirement(id)      { return req('DELETE', `/job-requirements/${id}`); },
+  async getJobRequirementRecruiters()   { return req('GET', '/job-requirements/meta/recruiters'); },
 
   // Raw Data (super_admin)
   async getOrgs()                       { return req('GET',   '/orgs'); },

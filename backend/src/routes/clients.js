@@ -11,6 +11,8 @@ const AppError     = require('../utils/AppError');
 const logger       = require('../middleware/logger');
 
 const guard = [authMiddleware, tenantGuard];
+// Roles allowed to view (read-only) every client account in the org, e.g. to see billing/commercial terms
+const VIEW_ROLES = ['admin', 'super_admin', 'recruiter', 'hiring_manager'];
 
 /** Escape regex special chars to prevent ReDoS on user-supplied search strings */
 function escRe(s) { return String(s).slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -23,7 +25,7 @@ function normalize(c) {
 
 // GET /api/clients
 router.get('/', ...guard,
-  allowRoles('admin', 'super_admin'),
+  allowRoles(...VIEW_ROLES),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
     const filter = { tenantId: req.user.tenantId };
@@ -38,7 +40,7 @@ router.get('/', ...guard,
 );
 
 // GET /api/clients/:id
-router.get('/:id', ...guard, asyncHandler(async (req, res) => {
+router.get('/:id', ...guard, allowRoles(...VIEW_ROLES), asyncHandler(async (req, res) => {
   const c = await Client.findOne({ _id: req.params.id, tenantId: req.user.tenantId }).lean();
   if (!c) throw new AppError('Client not found.', 404);
   res.json({ success: true, data: normalize(c) });
@@ -48,7 +50,7 @@ router.get('/:id', ...guard, asyncHandler(async (req, res) => {
 router.post('/', ...guard,
   allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
-    const { companyName, contactPerson, email, phone, industry } = req.body;
+    const { companyName, contactPerson, email, phone, industry, billingType, billingValue, billingCurrency, billingNotes } = req.body;
     if (!companyName) throw new AppError('companyName is required.', 400);
 
     const c = await Client.create({
@@ -58,6 +60,10 @@ router.post('/', ...guard,
       email: email ? email.toLowerCase().trim() : '',
       phone: phone || '',
       industry: industry || '',
+      billingType: ['percentage_of_ctc', 'flat_per_hire', 'retainer', 'custom'].includes(billingType) ? billingType : 'percentage_of_ctc',
+      billingValue: Number(billingValue) >= 0 ? Number(billingValue) : 0,
+      billingCurrency: billingCurrency || 'INR',
+      billingNotes: billingNotes || '',
     });
 
     logger.audit('Client created', req.user.id, req.user.tenantId, { clientId: c._id });

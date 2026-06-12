@@ -706,6 +706,7 @@ export default function App() {
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
             <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
             <Route path="job-requirements" element={<JobRequirements user={user} />} />
+            {rk === 'recruiter' && <Route path="clients" element={<AdminClients user={user} />} />}
           </>
         )}
 
@@ -775,6 +776,8 @@ export default function App() {
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
             <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
+            <Route path="job-requirements" element={<JobRequirements user={user} />} />
+            <Route path="clients" element={<AdminClients user={user} />} />
           </>
         )}
         {rk === 'client' && (

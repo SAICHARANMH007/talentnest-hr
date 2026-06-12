@@ -14,6 +14,12 @@ const clientSchema = new mongoose.Schema({
   phone         : { type: String },
   industry      : { type: String },
 
+  // Commercial terms — how this client is billed for placements
+  billingType    : { type: String, enum: ['percentage_of_ctc', 'flat_per_hire', 'retainer', 'custom'], default: 'percentage_of_ctc' },
+  billingValue   : { type: Number, default: 0, min: 0 },
+  billingCurrency: { type: String, default: 'INR' },
+  billingNotes   : { type: String, default: '' },
+
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

@@ -2,6 +2,7 @@
 const express        = require('express');
 const router         = express.Router();
 const JobRequirement = require('../models/JobRequirement');
+const User           = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard }    = require('../middleware/tenantGuard');
 const { allowRoles }     = require('../middleware/rbac');
@@ -11,12 +12,21 @@ const AppError     = require('../utils/AppError');
 const logger       = require('../middleware/logger');
 
 const guard = [authMiddleware, tenantGuard];
+// Roles allowed to view/triage every client requirement in the org and assign recruiters to them
+const TRIAGE_ROLES = ['admin', 'super_admin', 'recruiter', 'hiring_manager'];
 
 function normalize(r) {
   const o = r.toObject ? r.toObject() : { ...r };
   o.id = o.id || o._id?.toString();
   return o;
 }
+
+// GET /api/job-requirements/meta/recruiters — lightweight list of recruiters for the assignment dropdown
+router.get('/meta/recruiters', ...guard, allowRoles(...TRIAGE_ROLES), asyncHandler(async (req, res) => {
+  const recruiters = await User.find({ tenantId: req.user.tenantId, role: 'recruiter', isActive: true, deletedAt: null })
+    .select('name email').sort({ name: 1 }).lean();
+  res.json({ success: true, data: recruiters.map(r => ({ id: r._id.toString(), name: r.name, email: r.email })) });
+}));
 
 // GET /api/job-requirements
 router.get('/', ...guard, asyncHandler(async (req, res) => {
@@ -26,7 +36,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   if (req.user.role === 'client') {
     if (!req.user.clientId) return res.json(paginatedResponse([], 0, limit, page));
     filter.clientId = req.user.clientId;
-  } else if (!['admin', 'super_admin', 'recruiter'].includes(req.user.role)) {
+  } else if (!TRIAGE_ROLES.includes(req.user.role)) {
     throw new AppError('Forbidden.', 403);
   }
 
@@ -35,7 +45,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     JobRequirement.find(filter)
-      .populate('clientId', 'companyName')
+      .populate('clientId', 'companyName industry billingType billingValue billingCurrency billingNotes')
       .populate('submittedBy', 'name email')
       .populate('assignedRecruiter', 'name email')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -50,7 +60,7 @@ router.get('/:id', ...guard, asyncHandler(async (req, res) => {
   if (req.user.role === 'client') filter.clientId = req.user.clientId;
 
   const r = await JobRequirement.findOne(filter)
-    .populate('clientId', 'companyName')
+    .populate('clientId', 'companyName industry billingType billingValue billingCurrency billingNotes')
     .populate('submittedBy', 'name email')
     .populate('assignedRecruiter', 'name email');
   if (!r) throw new AppError('Job requirement not found.', 404);
@@ -102,7 +112,7 @@ router.patch('/:id', ...guard, allowRoles('client'), asyncHandler(async (req, re
 }));
 
 // PATCH /api/job-requirements/:id/status — admin/recruiter manage workflow
-router.patch('/:id/status', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+router.patch('/:id/status', ...guard, allowRoles(...TRIAGE_ROLES), asyncHandler(async (req, res) => {
   const { status, assignedRecruiter, internalNotes, convertedJobId } = req.body;
 
   const existing = await JobRequirement.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
