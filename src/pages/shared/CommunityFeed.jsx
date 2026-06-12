@@ -739,6 +739,14 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
       <ImageGrid images={post.images} />
 
+      {post.videos?.length > 0 && (
+        <video src={post.videos[0]} controls style={{ width: '100%', maxHeight: 420, borderRadius: 12, marginTop: 12, background: '#000', display: 'block' }} />
+      )}
+
+      {post.audioUrl && (
+        <audio src={post.audioUrl} controls style={{ width: '100%', marginTop: 12, display: 'block' }} />
+      )}
+
       {post.postType === 'hiring' && post.jobDetails?.title && (
         <div style={{ border: '1px solid #BBF7D0', background: '#F0FDF4', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💼 Job Opening</div>
@@ -858,6 +866,12 @@ function CreatePost({ user, onCreate, isMobile }) {
   const [images,     setImages]     = useState([]);
   const [uploading,  setUploading]  = useState(false);
   const [uploadErr,  setUploadErr]  = useState('');
+  const [video,        setVideo]        = useState('');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoErr,     setVideoErr]      = useState('');
+  const [audioUrl,     setAudioUrl]      = useState('');
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [audioErr,     setAudioErr]      = useState('');
   const [mentions,   setMentions]   = useState([]); // [{ userId, name }]
 
   // Category-specific fields
@@ -884,6 +898,8 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   const mentionAc = useMentionAutocomplete();
   const fileRef = useRef(null);
+  const videoFileRef = useRef(null);
+  const audioFileRef = useRef(null);
   const textareaRef = useRef(null);
 
   const activeType = CATEGORIES.find(t => t.value === postType) || CATEGORIES[0];
@@ -913,6 +929,42 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   const removeImage = (idx) => setImages(p => p.filter((_, i) => i !== idx));
 
+  const handleVideoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    setVideoErr('');
+    try {
+      const formData = new FormData();
+      formData.append('video', file);
+      const r = await api.uploadFeedVideo(formData);
+      if (r?.url) setVideo(r.url);
+      else setVideoErr('Video upload failed. Please try again.');
+    } catch (err) { setVideoErr(err?.message || 'Video upload failed. Please try again.'); }
+    setUploadingVideo(false);
+    e.target.value = '';
+  };
+
+  const removeVideo = () => setVideo('');
+
+  const handleAudioSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAudio(true);
+    setAudioErr('');
+    try {
+      const formData = new FormData();
+      formData.append('audio', file);
+      const r = await api.uploadFeedAudio(formData);
+      if (r?.url) setAudioUrl(r.url);
+      else setAudioErr('Audio upload failed. Please try again.');
+    } catch (err) { setAudioErr(err?.message || 'Audio upload failed. Please try again.'); }
+    setUploadingAudio(false);
+    e.target.value = '';
+  };
+
+  const removeAudio = () => setAudioUrl('');
+
   const handleTextChange = (e) => {
     const val = e.target.value;
     setText(val);
@@ -934,6 +986,7 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   const resetForm = () => {
     setText(''); setPostType('update'); setImages([]); setMentions([]); setUploadErr(''); mentionAc.close();
+    setVideo(''); setVideoErr(''); setAudioUrl(''); setAudioErr('');
     setJobTitle(''); setCompany(''); setJobLocation(''); setApplyLink('');
     setResourceTitle(''); setResourceLink(''); setMilestoneDate('');
     setRating(5); setTopicTag(''); setPollQuestion(''); setPollOptions(['', '']); setPollDuration(3);
@@ -958,7 +1011,7 @@ function CreatePost({ user, onCreate, isMobile }) {
         .filter(m => text.includes(`@[${m.name}](${m.userId})`))
         .map(m => m.userId);
       let finalContent = text.trim();
-      const payload = { postType, images, mentions: activeMentionIds };
+      const payload = { postType, images, videos: video ? [video] : [], audioUrl, mentions: activeMentionIds };
 
       if (postType === 'achievement') {
         finalContent = `${celebrationEmoji} ${finalContent}`.trim();
@@ -1222,11 +1275,57 @@ function CreatePost({ user, onCreate, isMobile }) {
                   {uploadErr && (
                     <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {uploadErr}</div>
                   )}
-                  <button onClick={() => { setUploadErr(''); fileRef.current?.click(); }} disabled={images.length >= 4 || uploading}
-                    style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1, marginBottom: 8 }}>
-                    📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
-                  </button>
+                  {video && (
+                    <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', marginBottom: 12 }}>
+                      <video src={video} controls style={{ width: '100%', maxHeight: 240, display: 'block', background: '#000' }} />
+                      <button onClick={removeVideo}
+                        style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, backdropFilter: 'blur(2px)' }}>×</button>
+                    </div>
+                  )}
+                  {uploadingVideo && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px dashed #D1D5DB', background: '#F9FAFB' }}>
+                      <div style={{ width: 16, height: 16, border: '2px solid #E5E7EB', borderTopColor: activeType.color, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Uploading video…</span>
+                    </div>
+                  )}
+                  {videoErr && (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {videoErr}</div>
+                  )}
+
+                  {audioUrl && (
+                    <div style={{ position: 'relative', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <audio src={audioUrl} controls style={{ flex: 1 }} />
+                      <button onClick={removeAudio}
+                        style={{ background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+                    </div>
+                  )}
+                  {uploadingAudio && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 14px', borderRadius: 10, border: '1px dashed #D1D5DB', background: '#F9FAFB' }}>
+                      <div style={{ width: 16, height: 16, border: '2px solid #E5E7EB', borderTopColor: activeType.color, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600 }}>Uploading audio…</span>
+                    </div>
+                  )}
+                  {audioErr && (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {audioErr}</div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={() => { setUploadErr(''); fileRef.current?.click(); }} disabled={images.length >= 4 || uploading}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: images.length >= 4 ? 0.5 : 1, marginBottom: 8 }}>
+                      📷 {uploading ? 'Uploading…' : `Photo${images.length > 0 ? ` (${images.length}/4)` : ''}`}
+                    </button>
+                    <button onClick={() => { setVideoErr(''); videoFileRef.current?.click(); }} disabled={!!video || uploadingVideo}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: video ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: video ? 0.5 : 1, marginBottom: 8 }}>
+                      🎥 {uploadingVideo ? 'Uploading…' : 'Video'}
+                    </button>
+                    <button onClick={() => { setAudioErr(''); audioFileRef.current?.click(); }} disabled={!!audioUrl || uploadingAudio}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, cursor: audioUrl ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5, opacity: audioUrl ? 0.5 : 1, marginBottom: 8 }}>
+                      🎙️ {uploadingAudio ? 'Uploading…' : 'Voice'}
+                    </button>
+                  </div>
                   <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
+                  <input ref={videoFileRef} type="file" accept="video/*" onChange={handleVideoSelect} style={{ display: 'none' }} />
+                  <input ref={audioFileRef} type="file" accept="audio/*" onChange={handleAudioSelect} style={{ display: 'none' }} />
                 </>
               )}
             </div>

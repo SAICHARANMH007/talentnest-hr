@@ -27,6 +27,8 @@ const feedPostSchema = new Schema({
   authorTitle : { type: String, default: '' },
   content     : { type: String, required: true, maxlength: 3000 },
   images      : [{ type: String }],
+  videos      : [{ type: String }],
+  audioUrl    : { type: String, default: '' },
   hashtags    : [{ type: String }],
   mentions    : [{ type: Types.ObjectId, ref: 'User' }],
   reactions   : [reactionSchema],

@@ -55,6 +55,38 @@ export const feedPostService = {
     }
     return res.json();
   },
+  async uploadFeedVideo(formData) {
+    const token = getToken();
+    const headers = { 'X-Requested-With': 'TalentNest' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/social-posts/upload-video`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || e.message || `Upload failed (${res.status})`);
+    }
+    return res.json();
+  },
+  async uploadFeedAudio(formData) {
+    const token = getToken();
+    const headers = { 'X-Requested-With': 'TalentNest' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/social-posts/upload-audio`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || e.message || `Upload failed (${res.status})`);
+    }
+    return res.json();
+  },
   async getPublicPost(id) {
     const res = await fetch(`${API_BASE_URL}/social-posts/public/${id}`);
     return res.json();

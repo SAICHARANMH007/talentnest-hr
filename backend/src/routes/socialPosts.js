@@ -11,6 +11,8 @@ const multer       = require('multer');
 const { uploadBuffer } = require('../utils/cloudinaryUpload');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Larger limit for feed video/audio uploads
+const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // GET /api/social-posts/public/:id — no auth required
 router.get('/public/:id', asyncHandler(async (req, res) => {
@@ -24,6 +26,8 @@ router.get('/public/:id', asyncHandler(async (req, res) => {
     authorTitle  : post.authorTitle,
     content      : post.content,
     images       : post.images,
+    videos       : post.videos,
+    audioUrl     : post.audioUrl,
     hashtags     : post.hashtags,
     postType     : post.postType,
     reactionCount: post.reactions?.length || 0,
@@ -112,7 +116,7 @@ const VALID_POST_TYPES = ['update', 'achievement', 'announcement', 'milestone', 
 
 // POST /api/social-posts
 router.post('/', asyncHandler(async (req, res) => {
-  const { content, images, postType, communityId, communitySlug, mentions, jobDetails, resourceLink, poll } = req.body;
+  const { content, images, videos, audioUrl, postType, communityId, communitySlug, mentions, jobDetails, resourceLink, poll } = req.body;
   if (!content?.trim()) throw new AppError('Post content is required.', 400);
   const safeType = VALID_POST_TYPES.includes(postType) ? postType : 'update';
   const u = req.user;
@@ -150,6 +154,8 @@ router.post('/', asyncHandler(async (req, res) => {
     authorTitle : u.title  || roleTitle(u.role),
     content     : content.trim(),
     images      : Array.isArray(images) ? images.slice(0, 4) : [],
+    videos      : Array.isArray(videos) ? videos.slice(0, 1) : [],
+    audioUrl    : typeof audioUrl === 'string' ? audioUrl.slice(0, 500) : '',
     hashtags    : extractHashtags(content),
     mentions    : mentionIds,
     postType    : safeType,
@@ -572,6 +578,75 @@ router.post('/upload-image', handleUpload, asyncHandler(async (req, res) => {
   } catch (err) {
     console.error('[upload-image] Cloudinary upload failed:', err.message || err);
     throw new AppError(`Image upload failed: ${err.message || 'Cloudinary error'}`, 502);
+  }
+}));
+
+// POST /api/social-posts/upload-video
+function handleVideoUpload(req, res, next) {
+  uploadMedia.single('video')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Video is too large. Maximum size is 50 MB.'
+        : err.message || 'File upload error.';
+      return res.status(400).json({ success: false, error: msg });
+    }
+    next();
+  });
+}
+
+router.post('/upload-video', handleVideoUpload, asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('No video provided.', 400);
+
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error('[upload-video] Cloudinary env vars missing');
+    throw new AppError('Video upload not configured on server.', 503);
+  }
+
+  try {
+    const result = await uploadBuffer(req.file.buffer, {
+      folder: 'talentnest/feed',
+      resource_type: 'video',
+    });
+    res.json({ success: true, url: result.secure_url });
+  } catch (err) {
+    console.error('[upload-video] Cloudinary upload failed:', err.message || err);
+    throw new AppError(`Video upload failed: ${err.message || 'Cloudinary error'}`, 502);
+  }
+}));
+
+// POST /api/social-posts/upload-audio
+function handleAudioUpload(req, res, next) {
+  uploadMedia.single('audio')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Audio is too large. Maximum size is 50 MB.'
+        : err.message || 'File upload error.';
+      return res.status(400).json({ success: false, error: msg });
+    }
+    next();
+  });
+}
+
+router.post('/upload-audio', handleAudioUpload, asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('No audio provided.', 400);
+
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error('[upload-audio] Cloudinary env vars missing');
+    throw new AppError('Audio upload not configured on server.', 503);
+  }
+
+  try {
+    // Cloudinary treats audio files as 'video' resource type
+    const result = await uploadBuffer(req.file.buffer, {
+      folder: 'talentnest/feed',
+      resource_type: 'video',
+    });
+    res.json({ success: true, url: result.secure_url });
+  } catch (err) {
+    console.error('[upload-audio] Cloudinary upload failed:', err.message || err);
+    throw new AppError(`Audio upload failed: ${err.message || 'Cloudinary error'}`, 502);
   }
 }));
 
