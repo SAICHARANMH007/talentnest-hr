@@ -170,6 +170,7 @@ app.use('/api/assessments', require('./src/routes/assessments'));
 app.use('/api/offers', require('./src/routes/offers'));
 app.use('/api/candidate-requests', require('./src/routes/candidateRequests'));
 app.use('/api/clients', require('./src/routes/clients'));
+app.use('/api/job-requirements', require('./src/routes/jobRequirements'));
 app.use('/api/leads', require('./src/routes/leads'));
 app.use('/api/social', require('./src/routes/social'));
 app.use('/api/platform', require('./src/routes/platform'));

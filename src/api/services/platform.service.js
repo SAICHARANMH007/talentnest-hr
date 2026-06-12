@@ -147,6 +147,14 @@ export const platformService = {
   async updateClient(id, data)          { return req('PATCH', `/clients/${id}`, data); },
   async deleteClient(id)                { return req('DELETE', `/clients/${id}`); },
 
+  // Job Requirements (raised by Client logins, worked by org admin/recruiters)
+  async getJobRequirements(qs)          { return req('GET', `/job-requirements${qs ? `?${qs}` : ''}`); },
+  async getJobRequirement(id)           { return req('GET', `/job-requirements/${id}`); },
+  async createJobRequirement(data)      { return req('POST', '/job-requirements', data); },
+  async updateJobRequirement(id, data)  { return req('PATCH', `/job-requirements/${id}`, data); },
+  async updateJobRequirementStatus(id, data) { return req('PATCH', `/job-requirements/${id}/status`, data); },
+  async withdrawJobRequirement(id)      { return req('DELETE', `/job-requirements/${id}`); },
+
   // Raw Data (super_admin)
   async getOrgs()                       { return req('GET',   '/orgs'); },
   async getRawData(model, id)           { return req('GET',   `/platform/raw/${model}/${id}`); },

@@ -136,6 +136,8 @@ const HiringManagerDashboard = lazy(() => import('./pages/hiring_manager/HiringM
 const ClientShortlists = lazy(() => import('./pages/client/ClientShortlists.jsx'));
 const ClientInterviews = lazy(() => import('./pages/client/ClientInterviews.jsx'));
 const ClientPlacements = lazy(() => import('./pages/client/ClientPlacements.jsx'));
+const ClientRequirements = lazy(() => import('./pages/client/ClientRequirements.jsx'));
+const JobRequirements = lazy(() => import('./pages/admin/JobRequirements.jsx'));
 
 const InterestConfirmedPage = lazy(() => import('./pages/public/InterestConfirmedPage.jsx'));
 const InterestDeclinedPage = lazy(() => import('./pages/public/InterestDeclinedPage.jsx'));
@@ -703,6 +705,7 @@ export default function App() {
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
             <Route path="communities/:slug" element={<Suspense fallback={<PageLoader />}><CommunityDetailPage user={user} /></Suspense>} />
             <Route path="company-reviews" element={<Suspense fallback={<PageLoader />}><CompanyReviewsPage user={user} /></Suspense>} />
+            <Route path="job-requirements" element={<JobRequirements user={user} />} />
           </>
         )}
 
@@ -780,6 +783,7 @@ export default function App() {
             <Route path="shortlists" element={<ClientShortlists user={user} />} />
             <Route path="interviews" element={<ClientInterviews user={user} />} />
             <Route path="placements" element={<ClientPlacements user={user} />} />
+            <Route path="requirements" element={<ClientRequirements user={user} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />
             <Route path="people" element={<Suspense fallback={<PageLoader />}><PeoplePage user={user} /></Suspense>} />
             <Route path="communities" element={<Suspense fallback={<PageLoader />}><CommunitiesPage user={user} /></Suspense>} />
