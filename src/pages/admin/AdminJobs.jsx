@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useOrgOptions } from '../../hooks/useOrgOptions.js';
 
 function useIsMobile() {
   const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900);
@@ -82,6 +83,8 @@ export default function AdminJobs({ user }) {
   const [statusFilter, setStatusFilter] = useState('All');
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const [locFilter, setLocFilter] = useState('All');
+  const [branchFilter, setBranchFilter] = useState('All');
+  const { branches: orgBranches } = useOrgOptions();
   const [recruiterFilter, setRecruiterFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -124,6 +127,7 @@ export default function AdminJobs({ user }) {
       status: statusFilter === 'All' ? undefined : (statusFilter === 'Open' ? 'active' : statusFilter.toLowerCase()),
       urgency: urgencyFilter === 'All' ? undefined : urgencyFilter,
       location: locFilter === 'All' ? undefined : locFilter,
+      branch: branchFilter === 'All' ? undefined : branchFilter,
       recruiterId: recruiterFilter === 'All' ? undefined : recruiterFilter,
     };
 
@@ -160,7 +164,7 @@ export default function AdminJobs({ user }) {
   useEffect(() => {
     setPage(1);
     load(1);
-  }, [statusFilter, search, urgencyFilter, locFilter, recruiterFilter]);
+  }, [statusFilter, search, urgencyFilter, locFilter, branchFilter, recruiterFilter]);
 
   // Handle pagination changes
   useEffect(() => {
@@ -309,7 +313,7 @@ export default function AdminJobs({ user }) {
   const recruiters  = [...new Set(jobs.map(j => j.recruiterName).filter(Boolean))];
   // Server-side filtering: 'filtered' just returns the fetched jobs
   const filtered = jobs;
-  const hasFilters = !!(search || statusFilter!=='All' || urgencyFilter!=='All' || locFilter!=='All' || recruiterFilter!=='All');
+  const hasFilters = !!(search || statusFilter!=='All' || urgencyFilter!=='All' || locFilter!=='All' || branchFilter!=='All' || recruiterFilter!=='All');
 
   return (
     <div>
@@ -598,6 +602,12 @@ export default function AdminJobs({ user }) {
               {locations.map(l=><option key={l} value={l}>{l}</option>)}
             </select>
           )}
+          {orgBranches.length > 0 && (
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} style={{ ...fSel, color:branchFilter!=='All'?'#0176D3':'#706E6B' }}>
+              <option value="All">All Branches</option>
+              {orgBranches.map(b=><option key={b.name} value={b.name}>{b.name}</option>)}
+            </select>
+          )}
           {recruiters.length > 0 && (
             <select value={recruiterFilter} onChange={e=>setRecruiterFilter(e.target.value)} style={{ ...fSel, color:recruiterFilter!=='All'?'#0176D3':'#706E6B' }}>
               <option value="All">All Recruiters</option>
@@ -605,7 +615,7 @@ export default function AdminJobs({ user }) {
             </select>
           )}
           {hasFilters && (
-            <button onClick={()=>{setSearch('');setStatusFilter('All');setUrgencyFilter('All');setLocFilter('All');setRecruiterFilter('All');}}
+            <button onClick={()=>{setSearch('');setStatusFilter('All');setUrgencyFilter('All');setLocFilter('All');setBranchFilter('All');setRecruiterFilter('All');}}
               style={{ background:'none', border:'none', color:'#BA0517', fontSize:12, cursor:'pointer', fontWeight:600 }}>✕ Clear</button>
           )}
         </div>

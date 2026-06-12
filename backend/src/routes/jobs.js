@@ -149,6 +149,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   if (req.query.department && req.query.department !== 'All') filter.department = { $regex: escRe(req.query.department), $options: 'i' };
   if (req.query.industry && req.query.industry !== 'All') filter.industry = { $regex: escRe(req.query.industry), $options: 'i' };
   if (req.query.location && req.query.location !== 'All') filter.location = { $regex: escRe(req.query.location), $options: 'i' };
+  if (req.query.branch && req.query.branch !== 'All') filter.branch = req.query.branch;
   
   if (req.query.search) {
     const { expandSearch } = require('../utils/search');
