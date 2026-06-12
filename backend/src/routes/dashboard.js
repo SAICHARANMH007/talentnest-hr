@@ -2965,36 +2965,6 @@ router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super
 
 // ── Recruiter Dashboard ───────────────────────────────────────────────────────
 
-/* GET /api/dashboard/recruiter-stats */
-router.get('/recruiter-stats', authenticate, allowRoles('recruiter'), asyncHandler(async (req, res) => {
-  const myJobs = await Job.find({ assignedRecruiters: req.user._id }).select('_id').lean();
-  const ids    = myJobs.map(j => j._id);
-  const [total, inInterview, offerExtended, hired] = await Promise.all([
-    Application.countDocuments({ jobId: { $in: ids }, deletedAt: null }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Interview Round 1', deletedAt: null }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Offer', deletedAt: null }),
-    Application.countDocuments({ jobId: { $in: ids }, currentStage: 'Hired', deletedAt: null }),
-  ]);
-  const active = await Application.countDocuments({ jobId: { $in: ids }, currentStage: { $in: STAGES_ACTIVE }, deletedAt: null });
-  res.json({ success: true, data: {
-    jobsPosted: myJobs.length, totalApplicants: total,
-    inInterview, offerExtended, hired,
-    conversionRate: total > 0 ? Math.round((hired / total) * 100) : 0,
-    activePipeline: active,
-    subtitle: `${active} active candidates in pipeline`,
-    changes: await (async () => {
-      const ago30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const [appsNew, appsOld, jobsNew] = await Promise.all([
-        Application.countDocuments({ jobId: { $in: ids }, createdAt: { $gte: ago30 } }),
-        Application.countDocuments({ jobId: { $in: ids }, createdAt: { $lt: ago30 } }),
-        Job.countDocuments({ assignedRecruiters: req.user._id, createdAt: { $gte: ago30 } }),
-      ]);
-      const pct = (n, o) => o > 0 ? Math.round(((n - o) / o) * 100) : (n > 0 ? 100 : 0);
-      return { jobsPosted: jobsNew, totalApplicants: pct(appsNew, appsOld) };
-    })(),
-  }});
-}));
-
 /* GET /api/dashboard/hiring-funnel */
 router.get('/hiring-funnel', authenticate, allowRoles('recruiter'), asyncHandler(async (req, res) => {
   const ids = (await Job.find({ assignedRecruiters: req.user._id }).select('_id').lean()).map(j => j._id);
