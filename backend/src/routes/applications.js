@@ -1547,18 +1547,33 @@ async function sendWhatsApp(to, body) {
 
 // PATCH /api/applications/:id/interview — schedule interview
 router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
-  const { date, time, format, interviewerName, interviewerEmail, videoLink, notes } = req.body;
-  if (!date || !time) throw new AppError('date and time are required.', 400);
-  if (videoLink && !/^https?:\/\//i.test(videoLink)) throw new AppError('videoLink must start with https://', 400);
-  if (notes && notes.length > 1000) throw new AppError('Notes must be 1000 characters or fewer.', 400);
+  const { date, time, format, interviewerName, interviewerEmail, videoLink, notes, roundIndex: bodyRoundIndex } = req.body;
 
   const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
   if (!app) throw new AppError('Application not found.', 404);
 
-  const scheduledAt = new Date(`${date}T${time}`);
-  const endAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000); // +1 hour
-  const roundIndex = app.interviewRounds.length; // 0-based index of this new round
-  const roundLabel = `Interview Round ${roundIndex + 1}`;
+  // "+ Create Room" on an already-scheduled round sends roundIndex to UPDATE that
+  // round in place (e.g. to attach a video link) instead of scheduling a new one.
+  const isRoundUpdate = bodyRoundIndex !== undefined && bodyRoundIndex !== null
+    && Number.isInteger(Number(bodyRoundIndex)) && Number(bodyRoundIndex) >= 0
+    && Number(bodyRoundIndex) < app.interviewRounds.length;
+
+  if (!isRoundUpdate && (!date || !time)) throw new AppError('date and time are required.', 400);
+  if (videoLink && !/^https?:\/\//i.test(videoLink)) throw new AppError('videoLink must start with https://', 400);
+  if (notes && notes.length > 1000) throw new AppError('Notes must be 1000 characters or fewer.', 400);
+
+  let scheduledAt, endAt, roundIndex, roundLabel;
+  if (isRoundUpdate) {
+    roundIndex = Number(bodyRoundIndex);
+    scheduledAt = app.interviewRounds[roundIndex].scheduledAt;
+    endAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
+    roundLabel = `Interview Round ${roundIndex + 1}`;
+  } else {
+    scheduledAt = new Date(`${date}T${time}`);
+    endAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000); // +1 hour
+    roundIndex = app.interviewRounds.length; // 0-based index of this new round
+    roundLabel = `Interview Round ${roundIndex + 1}`;
+  }
 
   // Auto-create TalentNest video room for this interview
   let nativeJoinLink = '';
@@ -1594,6 +1609,16 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     nativeJoinLink = `${frontendBase}/meeting/${vRoom.roomToken}`;
   } catch (e) {
     console.error('[interview] video room creation failed:', e.message);
+  }
+
+  if (isRoundUpdate) {
+    // Just attach/refresh the video room link on the existing round — no new
+    // round, no stage change, no re-notification.
+    const round = app.interviewRounds[roundIndex];
+    round.videoLink = nativeJoinLink || videoLink || round.videoLink || '';
+    app.markModified('interviewRounds');
+    await app.save();
+    return res.json({ success: true, data: normalizeApp(app) });
   }
 
   app.interviewRounds.push({

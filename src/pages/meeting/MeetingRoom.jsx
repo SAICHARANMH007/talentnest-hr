@@ -413,6 +413,7 @@ export default function MeetingRoom() {
 
     socket.on('new-message',   (m) => setChatMessages(prev => [...prev, m]));
     socket.on('meeting-ended', ()  => setMeetingEnded(true));
+    socket.on('removed-from-room', () => { setMeetingEnded(true); socket.disconnect(); });
 
     socket.on('error', ({ code, message }) => {
       if (code === 'ROOM_ENDED') setMeetingEnded(true);
@@ -648,7 +649,7 @@ export default function MeetingRoom() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', paddingBottom: 100 }}>
         <div style={{ flex: 1, padding: 20, display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: 16, alignContent: 'center' }}>
           {participantEntries.map(p => (
-            <VideoTile key={p.socketId} {...p} showControls={identity.isHost} onRemove={(sid) => socketRef.current?.emit('remove-user', { targetSocketId: sid })} />
+            <VideoTile key={p.socketId} {...p} showControls={identity.isHost} onRemove={(sid) => socketRef.current?.emit('remove-participant', { roomToken, targetSocketId: sid })} />
           ))}
         </div>
         {chatOpen && <ChatPanel messages={chatMessages} onSend={sendMessage} roomToken={roomToken} socket={socketRef.current} />}
