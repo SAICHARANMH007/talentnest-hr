@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
@@ -227,7 +228,7 @@ function Lightbox({ images, index, onClose }) {
     return () => window.removeEventListener('keydown', h);
   }, [images.length, onClose]);
 
-  return (
+  return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer', borderRadius: '50%', width: 40, height: 40 }}>×</button>
       {cur > 0 && (
@@ -248,7 +249,8 @@ function Lightbox({ images, index, onClose }) {
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -669,9 +671,9 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
   );
 
   return (
-    <div id={post._id} style={{ ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+    <div id={post._id} style={isMobile ? { ...card, padding: '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', borderTop: post.isPinned ? '3px solid #93C5FD' : 'none', position: 'relative' } : { ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
       {/* Report modal */}
-      {showReport && (
+      {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => setShowReport(false)}>
           <div style={{ background: 'var(--app-card-bg, #fff)', borderRadius: 16, padding: '24px', maxWidth: 420, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: '1px solid var(--app-card-border, transparent)' }}
@@ -696,7 +698,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {post.isPinned && (
@@ -1030,8 +1033,8 @@ function CreatePost({ user, onCreate, isMobile }) {
         </div>
       </div>
 
-      {modalOpen && (
-        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
+      {modalOpen && createPortal(
+        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 10000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: '#fff', width: isMobile ? '100%' : 560, maxWidth: '100%', maxHeight: isMobile ? '92vh' : '88vh', borderRadius: isMobile ? '20px 20px 0 0' : 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             {/* Header */}
@@ -1240,7 +1243,8 @@ function CreatePost({ user, onCreate, isMobile }) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
