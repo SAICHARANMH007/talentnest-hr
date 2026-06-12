@@ -23,6 +23,20 @@ const { resolveCollegeName } = require('../utils/collegeDirectory');
 
 const guard = [authMiddleware, tenantGuard];
 
+// Throws 403 if a 'client' or 'hiring_manager' login tries to act on an
+// application for a job outside their assigned scope. No-op for other roles
+// (those are scoped/checked elsewhere).
+async function assertScopedAccess(req, app) {
+  if (req.user.role === 'client') {
+    if (!req.user.clientId) throw new AppError('Not authorized for this application.', 403);
+    const job = await Job.findOne({ _id: app.jobId, clientId: req.user.clientId }).select('_id').lean();
+    if (!job) throw new AppError('Not authorized for this application.', 403);
+  } else if (req.user.role === 'hiring_manager') {
+    const job = await Job.findOne({ _id: app.jobId, hiringManagers: req.user.id }).select('_id').lean();
+    if (!job) throw new AppError('Not authorized for this application.', 403);
+  }
+}
+
 const VALID_STAGES = [
   'Applied', 'Screening', 'Shortlisted',
   'Interview Round 1', 'Interview Round 2',
@@ -802,6 +816,22 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
       filter.jobId = { $in: myJobIds };
     }
   }
+
+  // Client logins only see applications for their own company's jobs.
+  if (req.user.role === 'client') {
+    if (req.user.clientId) {
+      const myJobs = await Job.find({ tenantId: req.user.tenantId, clientId: req.user.clientId }).select('_id').lean();
+      filter.jobId = { $in: myJobs.map(j => j._id) };
+    } else {
+      filter.jobId = { $in: [] };
+    }
+  }
+
+  // Hiring-manager logins only see applications for jobs they're assigned to.
+  if (req.user.role === 'hiring_manager') {
+    const myJobs = await Job.find({ tenantId: req.user.tenantId, hiringManagers: req.user.id }).select('_id').lean();
+    filter.jobId = { $in: myJobs.map(j => j._id) };
+  }
   if (req.query.email || req.query.candidateId) {
     const ids = new Set();
     // By direct candidateId
@@ -1085,7 +1115,7 @@ router.get('/:id', ...guard, asyncHandler(async (req, res) => {
 
 // PATCH /api/applications/:id/stage — move pipeline stage
 router.patch('/:id/stage', ...guard,
-  allowRoles('admin', 'super_admin', 'recruiter'),
+  allowRoles('admin', 'super_admin', 'recruiter', 'client', 'hiring_manager'),
   asyncHandler(async (req, res) => {
     const { notes } = req.body;
     const stage = normalizeStage(req.body.stage);
@@ -1107,6 +1137,18 @@ router.patch('/:id/stage', ...guard,
             assignedRecruiters: req.user.id,
           }).select('_id').session(session);
           if (!assignedJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
+        }
+        if (req.user.role === 'client') {
+          const clientJob = req.user.clientId && await Job.findOne({
+            _id: app.jobId, tenantId: req.user.tenantId, clientId: req.user.clientId,
+          }).select('_id').session(session);
+          if (!clientJob) throw new AppError('You can only update applicants for your own jobs.', 403);
+        }
+        if (req.user.role === 'hiring_manager') {
+          const hmJob = await Job.findOne({
+            _id: app.jobId, tenantId: req.user.tenantId, hiringManagers: req.user.id,
+          }).select('_id').session(session);
+          if (!hmJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
         }
 
         app.currentStage = stage;
@@ -1454,6 +1496,9 @@ router.patch('/:id/stage', ...guard,
 // PATCH /api/applications/:id/notes
 router.patch('/:id/notes', ...guard, asyncHandler(async (req, res) => {
   const { notes } = req.body;
+  const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
+  if (!existing) throw new AppError('Application not found.', 404);
+  await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
     { $set: { recruiterNotes: notes } },
@@ -1467,6 +1512,9 @@ router.patch('/:id/notes', ...guard, asyncHandler(async (req, res) => {
 router.patch('/:id/tags', ...guard, asyncHandler(async (req, res) => {
   const { tags } = req.body;
   if (!Array.isArray(tags)) throw new AppError('tags must be an array.', 400);
+  const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
+  if (!existing) throw new AppError('Application not found.', 404);
+  await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
     { $set: { tags } },
@@ -1476,9 +1524,12 @@ router.patch('/:id/tags', ...guard, asyncHandler(async (req, res) => {
   res.json({ success: true, data: normalizeApp(app) });
 }));
 
-// PATCH /api/applications/:id/feedback — recruiter feedback
+// PATCH /api/applications/:id/feedback — recruiter/client/hiring-manager feedback
 router.patch('/:id/feedback', ...guard, asyncHandler(async (req, res) => {
   const { rating, strengths, weaknesses, recommendation, comment } = req.body;
+  const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
+  if (!existing) throw new AppError('Application not found.', 404);
+  await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
     { $set: { feedback: { rating, strengths, weaknesses, recommendation, comment: comment || '' } } },
@@ -1759,13 +1810,14 @@ router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruite
 
 // POST /api/applications/:id/interview/:roundIndex/scorecard — submit interview scorecard
 router.post('/:id/interview/:roundIndex/scorecard', ...guard,
-  allowRoles('admin', 'super_admin', 'recruiter'),
+  allowRoles('admin', 'super_admin', 'recruiter', 'client', 'hiring_manager'),
   asyncHandler(async (req, res) => {
     const { roundIndex } = req.params;
     const { rating, technicalScore, communicationScore, problemSolvingScore, cultureFitScore, strengths, weaknesses, recommendation, notes } = req.body;
 
     const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
     if (!app) throw new AppError('Application not found.', 404);
+    await assertScopedAccess(req, app);
 
     const idx = parseInt(roundIndex, 10);
     if (isNaN(idx) || idx < 0 || idx >= app.interviewRounds.length) {

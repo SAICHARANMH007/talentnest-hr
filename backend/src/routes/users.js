@@ -32,10 +32,13 @@ router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), ch
   if (req.user.role !== 'super_admin' && role === 'admin') throw new AppError('Forbidden: Only Super Admin can invite an Admin.', 403);
   if (req.user.role === 'recruiter' && role !== 'candidate') throw new AppError('Forbidden: Recruiter can only create candidates.', 403);
   if (role === 'placement_officer' && req.user.tenantType !== 'college') throw new AppError('Forbidden: Placement Officer accounts are only available for college tenants.', 403);
-  if (req.user.role === 'admin' && !['recruiter', 'candidate'].includes(role)) {
+  if (req.user.role === 'admin' && !['recruiter', 'candidate', 'hiring_manager', 'client'].includes(role)) {
     if (!(req.user.tenantType === 'college' && role === 'placement_officer')) {
-      throw new AppError('Forbidden: Admin can only invite Recruiters or Candidates.', 403);
+      throw new AppError('Forbidden: Admin can only invite Recruiters, Candidates, Hiring Managers, or Client logins.', 403);
     }
+  }
+  if (role === 'client' && !metadata.clientId) {
+    throw new AppError('clientId is required when inviting a Client login.', 400);
   }
 
   const checks = runValidations({ name: v.name(name), email: v.email(email) });
@@ -43,6 +46,12 @@ router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), ch
 
   let tenantId = req.user.role === 'super_admin' ? req.body.tenantId : req.user.tenantId;
   if (!tenantId) throw new AppError('tenantId is required.', 400);
+
+  if (role === 'client' && metadata.clientId) {
+    const Client = require('../models/Client');
+    const clientDoc = await Client.findOne({ _id: metadata.clientId, tenantId }).select('_id').lean();
+    if (!clientDoc) throw new AppError('Invalid clientId for this organisation.', 400);
+  }
 
   const newUser = await userService.inviteUser({
     name: checks.values.name,

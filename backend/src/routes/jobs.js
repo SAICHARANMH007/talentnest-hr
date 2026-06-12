@@ -143,6 +143,10 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
     filter.assignedRecruiters = req.user.id;
   } else if (req.query.recruiterId && ['admin', 'super_admin'].includes(req.user.role)) {
     filter.assignedRecruiters = req.query.recruiterId;
+  } else if (req.user.role === 'client') {
+    filter.clientId = req.user.clientId || null;
+  } else if (req.user.role === 'hiring_manager') {
+    filter.hiringManagers = req.user.id;
   }
   if (req.query.status) filter.status = req.query.status;
   if (req.query.urgency && req.query.urgency !== 'All') filter.urgency = req.query.urgency;

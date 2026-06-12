@@ -8,6 +8,7 @@ import { btnP, btnG, card } from '../../constants/styles.js';
 import { parseJD } from '../../api/matching.js';
 import { INDUSTRIES } from '../../constants/picklists.js';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
+import { api } from '../../api/api.js';
 
 const EMPTY = {
   title: '', company: '', department: '', industry: '', location: '', branch: '',
@@ -17,6 +18,7 @@ const EMPTY = {
   skills: '', description: '', requirements: '', benefits: '',
   education: '', externalUrl: '', isPublic: true,
   screeningQuestions: [],
+  hiringManagers: [],
   // Extended company profile
   companyDescription: '', hqCity: '', hqCountry: '', foundedYear: '',
   employeeCount: '', website: '', productsServices: '', cultureNotes: '', successStories: '',
@@ -31,6 +33,16 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
   const [newQ, setNewQ] = useState(EMPTY_Q);
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const { departments, locations, branches } = useOrgOptions();
+  const [hiringManagerOptions, setHiringManagerOptions] = useState([]);
+
+  useEffect(() => {
+    api.getUsers('hiring_manager').then(list => setHiringManagerOptions(Array.isArray(list) ? list : [])).catch(() => {});
+  }, []);
+
+  const toggleHiringManager = (id) => {
+    const cur = Array.isArray(form.hiringManagers) ? form.hiringManagers : [];
+    sf('hiringManagers', cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]);
+  };
 
   // Reset form when initialData changes (e.g. editing a different job)
   const prevInitRef = useRef(initialData);
@@ -185,6 +197,24 @@ const PostJobForm = forwardRef(function PostJobForm({ onSave, onCancel, saving, 
             hint="Redirect candidates to this URL instead of applying here"
             type="url" />
         </div>
+        {hiringManagerOptions.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#181818', margin: '0 0 6px' }}>Hiring Managers</p>
+            <p style={{ fontSize: 11, color: '#706E6B', margin: '0 0 8px' }}>These logins will be able to view and review candidates for this job</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {hiringManagerOptions.map(hm => {
+                const id = String(hm.id || hm._id);
+                const checked = (form.hiringManagers || []).includes(id);
+                return (
+                  <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: `1px solid ${checked ? '#0176D3' : '#E5E7EB'}`, background: checked ? 'rgba(1,118,211,0.06)' : '#fff', fontSize: 12, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleHiringManager(id)} style={{ margin: 0 }} />
+                    {hm.name}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Section: Skills ── */}

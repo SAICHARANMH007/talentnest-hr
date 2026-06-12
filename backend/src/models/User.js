@@ -23,6 +23,9 @@ const userSchema = new mongoose.Schema({
   // Mirrors Tenant.type so the UI can tailor navigation (e.g. 'college' admins get a Campus Portal nav)
   tenantType: { type: String, trim: true, default: '' },
 
+  // For role === 'client': scopes this login to a single Client company's jobs/applications.
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', default: null },
+
   isActive          : { type: Boolean, default: true },
   mustChangePassword: { type: Boolean, default: false },
 

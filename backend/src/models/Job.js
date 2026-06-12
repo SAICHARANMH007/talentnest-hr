@@ -115,6 +115,9 @@ const jobSchema = new mongoose.Schema({
 
   assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
+  // Hiring-manager logins scoped to this job (Phase 1 data-isolation)
+  hiringManagers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
   // Full audit trail of every recruiter who has ever worked on this job.
   // Never deleted — provides complete handoff history for admin/super_admin visibility.
   recruiterHistory: [{
@@ -132,6 +135,8 @@ const jobSchema = new mongoose.Schema({
 jobSchema.index({ tenantId: 1 });
 jobSchema.index({ tenantId: 1, status: 1 });
 jobSchema.index({ assignedRecruiters: 1 });
+jobSchema.index({ hiringManagers: 1 });
+jobSchema.index({ clientId: 1 });
 jobSchema.index({ skills: 1 });
 jobSchema.index({ createdAt: -1 });
 // ── Additional performance indexes ───────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import { btnP, btnG } from '../../constants/styles.js';
 
-const EMPTY_USER = { name: '', email: '', phone: '', role: 'recruiter', tenantId: '' };
+const EMPTY_USER = { name: '', email: '', phone: '', role: 'recruiter', tenantId: '', clientId: '' };
 
 /**
  * Dedicated page for Provisioning a new Platform User.
@@ -15,6 +15,7 @@ const EMPTY_USER = { name: '', email: '', phone: '', role: 'recruiter', tenantId
 export default function ProvisionUserPage({ user, onBack, onSuccess }) {
   const [form, setForm] = useState(EMPTY_USER);
   const [orgs, setOrgs] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
@@ -35,25 +36,35 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (form.role !== 'client') return;
+    api.getClients().then(r => setClients(Array.isArray(r) ? r : (r?.data || []))).catch(() => setClients([]));
+  }, [form.role]);
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!form.name || !form.email || !form.phone || !form.tenantId) { 
-      setToast('❌ Name, email, phone, and organisation are required'); 
-      return; 
+    if (!form.name || !form.email || !form.phone || !form.tenantId) {
+      setToast('❌ Name, email, phone, and organisation are required');
+      return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { 
-      setToast('❌ Please enter a valid email address'); 
-      return; 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setToast('❌ Please enter a valid email address');
+      return;
+    }
+    if (form.role === 'client' && !form.clientId) {
+      setToast('❌ Please select which company this client login belongs to');
+      return;
     }
 
     setSaving(true);
     try {
-      await api.createUser({ 
-        name: form.name, 
-        email: form.email, 
+      await api.createUser({
+        name: form.name,
+        email: form.email,
         phone: form.phone,
-        role: form.role, 
-        tenantId: form.tenantId 
+        role: form.role,
+        tenantId: form.tenantId,
+        ...(form.role === 'client' ? { clientId: form.clientId } : {}),
       });
       setToast(`✅ Invitation email sent successfully to ${form.email}`);
       setTimeout(() => { if (onSuccess) onSuccess(); else if (onBack) onBack(); }, 1500);
@@ -99,10 +110,11 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
                {value:'recruiter', label:'Recruiter (Standard Access)'},
                {value:'admin', label:'Admin (Company Manager)'},
                {value:'hiring_manager', label:'Hiring Manager (Review only)'},
+               {value:'client', label:'Client (External Company Portal)'},
                {value:'candidate', label:'Candidate (Limited Access)'}
-             ]} 
+             ]}
            />
-           
+
            {user.role === 'super_admin' ? (
              <Field 
                label="Assign to Organisation" 
@@ -120,6 +132,18 @@ export default function ProvisionUserPage({ user, onBack, onSuccess }) {
              </div>
            )}
         </FormRow>
+
+        {form.role === 'client' && (
+          <Field
+            label="Client Company"
+            required
+            value={form.clientId}
+            onChange={v => sf('clientId', v)}
+            options={clients.map(c => ({ value: String(c.id || c._id), label: c.companyName }))}
+            placeholder={clients.length ? 'Select company...' : 'No clients found — add one under Clients first'}
+            hint="This login will only see jobs and candidates belonging to this company"
+          />
+        )}
 
         <div style={{ padding: '16px', background: 'rgba(1,118,211,0.04)', borderRadius: 12, border: '1px solid rgba(1,118,211,0.1)' }}>
            <p style={{ margin: 0, fontSize: 13, color: '#3E3E3C', lineHeight: 1.5 }}>
