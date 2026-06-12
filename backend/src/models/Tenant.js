@@ -89,6 +89,14 @@ const tenantSchema = new mongoose.Schema({
       secondary: { type: String },
     },
     maxStorageGB: { type: Number, default: 5 },
+    // Branches / regional offices — additive, optional. Empty by default for
+    // existing single-location orgs (no behavior change unless configured).
+    branches: [{
+      name   : { type: String, trim: true },
+      city   : { type: String, trim: true },
+      address: { type: String, trim: true },
+      isHQ   : { type: Boolean, default: false },
+    }],
   },
   stats: {
     storageUsed: { type: Number, default: 0 }, // in bytes

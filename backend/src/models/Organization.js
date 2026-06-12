@@ -36,6 +36,14 @@ const orgSchema = new mongoose.Schema({
     dataVisibility    : { type: String, enum: ['own', 'org'], default: 'org' },
     security          : { type: mongoose.Schema.Types.Mixed },
     featureFlags      : { type: mongoose.Schema.Types.Mixed },
+    // Branches / regional offices — additive, optional. Empty by default for
+    // existing single-location orgs (no behavior change unless configured).
+    branches: [{
+      name   : { type: String, trim: true },
+      city   : { type: String, trim: true },
+      address: { type: String, trim: true },
+      isHQ   : { type: Boolean, default: false },
+    }],
   },
 
   // Stats / Analytics

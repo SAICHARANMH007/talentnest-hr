@@ -170,6 +170,12 @@ export default function OrgSettings({ user }) {
   const [invitingOfficer, setInvitingOfficer] = useState(false);
   const [officerMsg, setOfficerMsg] = useState('');
 
+  // Branches / Locations
+  const [branches, setBranches] = useState([]);
+  const [newBranch, setNewBranch] = useState({ name: '', city: '', address: '' });
+  const [savingBranches, setSavingBranches] = useState(false);
+  const [branchMsg, setBranchMsg] = useState('');
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
@@ -183,6 +189,7 @@ export default function OrgSettings({ user }) {
         setOrg(o);
         setForm({ name: o.name || '', domain: o.domain || '', industry: o.industry || '', size: o.size || '' });
         setStages(o.settings?.pipelineStages || ['applied','screening','shortlisted','interview_scheduled','offer_extended','selected','rejected']);
+        setBranches(o.settings?.branches || []);
         if (o.settings?.emailSettings) setEmailForm(prev => ({
           ...prev,
           ...o.settings.emailSettings,
@@ -251,7 +258,7 @@ export default function OrgSettings({ user }) {
     if (!org) return;
     setSaving(true); setError('');
     try {
-      await api.updateOrg(org.id, { ...form, settings: { ...(org.settings || {}), pipelineStages: stages } });
+      await api.updateOrg(org.id, { ...form, settings: { ...(org.settings || {}), pipelineStages: stages, branches } });
       setSuccess('Settings saved!');
       setTimeout(() => setSuccess(''), 3000);
       load();
@@ -337,6 +344,35 @@ export default function OrgSettings({ user }) {
     setStages(newStages);
   };
 
+  // ── Branches / Locations ────────────────────────────────────────────────
+  const addBranch = () => {
+    const name = newBranch.name.trim();
+    if (!name) return;
+    setBranches(prev => [...prev, { name, city: newBranch.city.trim(), address: newBranch.address.trim(), isHQ: prev.length === 0 }]);
+    setNewBranch({ name: '', city: '', address: '' });
+  };
+
+  const removeBranch = (idx) => setBranches(prev => prev.filter((_, i) => i !== idx));
+
+  const setHQBranch = (idx) => setBranches(prev => prev.map((b, i) => ({ ...b, isHQ: i === idx })));
+
+  const setMemberBranch = async (memberId, branch) => {
+    setTeamMembers(prev => prev.map(m => (m.id || m._id) === memberId ? { ...m, branch } : m));
+    try { await api.updateUser(memberId, { branch }); } catch {}
+  };
+
+  const saveBranches = async () => {
+    if (!org) return;
+    setSavingBranches(true); setBranchMsg('');
+    try {
+      await api.updateOrg(org.id, { settings: { ...(org.settings || {}), branches } });
+      setBranchMsg('✅ Branches saved!');
+      setTimeout(() => setBranchMsg(''), 3000);
+      load();
+    } catch (e) { setBranchMsg(`❌ ${e.message}`); }
+    setSavingBranches(false);
+  };
+
   const saveEmailSettings = async () => {
     setSavingEmail(true);
     try {
@@ -405,6 +441,13 @@ export default function OrgSettings({ user }) {
                     {m.isActive ? '● Active' : '○ Pending'}
                   </span>
                 </div>
+                {branches.length > 0 && (
+                  <select value={m.branch || ''} onChange={e => setMemberBranch(m.id || m._id, e.target.value)}
+                    style={{ marginTop:5, fontSize:9, fontWeight:600, color:'#475569', background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:6, padding:'2px 4px', maxWidth:110 }}>
+                    <option value="">No branch</option>
+                    {branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                  </select>
+                )}
                 {isCollege && m.role === 'placement_officer' && (
                   <div style={{ display:'flex', gap:4, marginTop:6, justifyContent:'center' }}>
                     {!m.isActive && (
@@ -525,6 +568,52 @@ export default function OrgSettings({ user }) {
               options={['1-10','11-50','51-200','201-500','501-1000','1000+'].map(s => ({ value: s, label: s }))}
               placeholder="Select size" />
           </FormRow>
+        </div>
+
+        {/* Branches / Locations */}
+        <div style={glass}>
+          <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>🏢 Branches & Locations</h3>
+          <p style={{ color: '#9E9D9B', fontSize: 12, marginBottom: 16 }}>
+            {isCollege
+              ? 'Add campuses/locations if your institution has more than one. Optional — leave empty if you have a single campus.'
+              : 'Add office locations if your organisation has multiple branches. Optional — leave empty for a single-location org. Team members and jobs can then be tagged to a branch.'}
+          </p>
+
+          {branchMsg && (
+            <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, background: branchMsg.startsWith('❌') ? 'rgba(220,38,38,0.08)' : 'rgba(16,185,129,0.08)', color: branchMsg.startsWith('❌') ? '#DC2626' : '#10B981' }}>
+              {branchMsg}
+            </div>
+          )}
+
+          {branches.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {branches.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(1,118,211,0.06)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
+                  <span style={{ color: '#181818', fontSize: 12.5, fontWeight: 700 }}>{b.name}</span>
+                  {b.city && <span style={{ color: '#706E6B', fontSize: 12 }}>· {b.city}</span>}
+                  {b.address && <span style={{ color: '#9E9D9B', fontSize: 11.5 }}>· {b.address}</span>}
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => setHQBranch(i)} title="Mark as headquarters"
+                    style={{ background: b.isHQ ? 'rgba(245,158,11,0.12)' : 'none', border: b.isHQ ? '1px solid rgba(245,158,11,0.35)' : '1px solid transparent', borderRadius: 6, color: b.isHQ ? '#B45309' : '#9E9D9B', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '3px 8px' }}>
+                    {b.isHQ ? '★ HQ' : '☆ Set as HQ'}
+                  </button>
+                  <button onClick={() => removeBranch(i)} style={{ background: 'none', border: 'none', color: '#FE5C4C', cursor: 'pointer', fontSize: 12, padding: '2px 4px', lineHeight: 1 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
+            <Field style={{ flex: '1 1 160px' }} label="Branch Name" value={newBranch.name} onChange={v => setNewBranch(p => ({ ...p, name: v }))} placeholder={isCollege ? 'e.g. Main Campus' : 'e.g. Bangalore Office'} />
+            <Field style={{ flex: '1 1 140px' }} label="City" value={newBranch.city} onChange={v => setNewBranch(p => ({ ...p, city: v }))} placeholder="e.g. Bangalore" />
+            <Field style={{ flex: '1 1 200px' }} label="Address (optional)" value={newBranch.address} onChange={v => setNewBranch(p => ({ ...p, address: v }))} placeholder="Street, area" />
+            <button onClick={addBranch} style={{ background: 'rgba(1,118,211,0.2)', border: '1px solid rgba(1,118,211,0.4)', borderRadius: 10, color: '#0176D3', fontWeight: 700, padding: '11px 16px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>+ Add Branch</button>
+          </div>
+
+          <button onClick={saveBranches} disabled={savingBranches}
+            style={{ background: '#0176D3', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '10px 20px', cursor: savingBranches ? 'default' : 'pointer', opacity: savingBranches ? 0.7 : 1, fontSize: 13 }}>
+            {savingBranches ? 'Saving…' : 'Save Branches'}
+          </button>
         </div>
 
         {!isCollege && <div style={glass}>

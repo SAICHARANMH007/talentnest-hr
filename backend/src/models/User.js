@@ -63,6 +63,9 @@ const userSchema = new mongoose.Schema({
   phone       : { type: String, trim: true },
   title       : { type: String, trim: true },
   location    : { type: String, trim: true },
+  // Org branch/location this member belongs to (matches a name in org.settings.branches).
+  // Optional — empty for orgs that haven't set up branches.
+  branch      : { type: String, trim: true, default: '' },
   summary     : { type: String },
   experience  : { type: Number, min: 0, max: 60 },
   isFresher   : { type: Boolean, default: false },

@@ -54,6 +54,8 @@ const jobSchema = new mongoose.Schema({
   },
 
   location: { type: String, trim: true },
+  // Org branch this job belongs to (matches a name in org.settings.branches). Optional.
+  branch  : { type: String, trim: true, default: '' },
   jobType : { type: String },
   experience: { type: String, trim: true, default: '' },
   requirements: { type: String, default: '' },
