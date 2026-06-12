@@ -22,6 +22,7 @@ export const jobService = {
     return req('GET', `/jobs?${p.toString()}`);
   },
   async getJob(id)                    { return req('GET', `/jobs/${id}`); },
+  async getMyTeamJobs()                { return req('GET', '/jobs/my-team'); },
   async createJob(data)               { return req('POST', '/jobs', data); },
   async deleteJob(id)                 { return req('DELETE', `/jobs/${id}`); },
   async patchJob(id, d)               { return req('PATCH', `/jobs/${id}`, d); },

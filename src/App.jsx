@@ -133,6 +133,7 @@ const OfferComparison     = lazy(() => import('./pages/candidate/OfferComparison
 
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard.jsx'));
 const HiringManagerDashboard = lazy(() => import('./pages/hiring_manager/HiringManagerDashboard.jsx'));
+const MyTeam = lazy(() => import('./pages/hiring_manager/MyTeam.jsx'));
 const ClientShortlists = lazy(() => import('./pages/client/ClientShortlists.jsx'));
 const ClientInterviews = lazy(() => import('./pages/client/ClientInterviews.jsx'));
 const ClientPlacements = lazy(() => import('./pages/client/ClientPlacements.jsx'));
@@ -726,6 +727,7 @@ export default function App() {
             <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
+            <Route path="hiring-managers" element={<AdminUsers filterRole="hiring_manager" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="interview-kits" element={<AdminInterviewKits user={user} />} />
             <Route path="webhooks" element={<AdminWebhooks user={user} />} />
             <Route path="diversity" element={<DiversityReport user={user} />} />
@@ -769,6 +771,7 @@ export default function App() {
         {rk === 'hiring_manager' && (
           <>
             <Route path="dashboard" element={<HiringManagerDashboard user={user} />} />
+            <Route path="my-team" element={<Suspense fallback={<PageLoader />}><MyTeam user={user} /></Suspense>} />
             <Route path="pipeline" element={<AdminPipeline user={user} />} />
             <Route path="interviews" element={<RecruiterInterviews user={user} />} />
             <Route path="feed" element={<Suspense fallback={<PageLoader />}><CommunityFeed user={user} /></Suspense>} />

@@ -176,6 +176,34 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   res.json(paginatedResponse(jobs.map(normalizeJob), total, limit, page));
 }));
 
+// GET /api/jobs/my-team — hiring manager's assigned jobs, with recruiter team & pipeline stats
+router.get('/my-team', ...guard, allowRoles('hiring_manager'), asyncHandler(async (req, res) => {
+  const jobs = await Job.find({ tenantId: req.user.tenantId, hiringManagers: req.user.id, deletedAt: null })
+    .populate('assignedRecruiters', 'name email')
+    .select('title company companyName status approvalStatus applicantsCount applicationCount openings location department createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const jobIds = jobs.map(j => j._id);
+  const stageCounts = await Application.aggregate([
+    { $match: { jobId: { $in: jobIds }, deletedAt: null } },
+    { $group: { _id: { jobId: '$jobId', stage: '$currentStage' }, count: { $sum: 1 } } },
+  ]);
+  const statsByJob = {};
+  for (const sc of stageCounts) {
+    const jid = sc._id.jobId.toString();
+    statsByJob[jid] = statsByJob[jid] || {};
+    statsByJob[jid][sc._id.stage] = sc.count;
+  }
+
+  const data = jobs.map(j => ({
+    ...j,
+    id: j._id.toString(),
+    pipelineStats: statsByJob[j._id.toString()] || {},
+  }));
+  res.json({ success: true, data });
+}));
+
 router.get('/pending', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const filter = { status: 'draft', deletedAt: null };
   if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;

@@ -688,7 +688,7 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
     clearSel();
   };
 
-  const lbl         = recruiterView ? 'Candidate' : filterRole.charAt(0).toUpperCase() + filterRole.slice(1);
+  const lbl         = recruiterView ? 'Candidate' : filterRole === 'hiring_manager' ? 'Hiring Manager' : filterRole.charAt(0).toUpperCase() + filterRole.slice(1);
   const pageTitle   = recruiterView ? 'My Candidates' : `Manage ${lbl}s`;
   const pageSubtitle = hasFilters
     ? `${filtered.length} matching of ${pagination.total} ${lbl.toLowerCase()}s`
