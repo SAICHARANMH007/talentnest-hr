@@ -808,6 +808,12 @@ const CATEGORIES = [
 const TIP_TOPICS      = ['Career Growth', 'Interview Prep', 'Resume', 'Networking', 'Productivity'];
 const QUESTION_TOPICS = ['Salary', 'Interview', 'Career Change', 'Skills', 'Workplace'];
 const WIN_TYPES       = ['New Job', 'Promotion', 'Certification', 'Project', 'Personal Growth'];
+const JOB_TYPES       = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Remote'];
+const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Lead'];
+const CELEBRATION_EMOJIS = ['🎉', '🚀', '🥳', '👏', '🔥', '💪'];
+const RESOURCE_TYPES  = ['Article', 'Video', 'Course', 'Tool', 'Template'];
+const MILESTONE_TYPES = ['Work Anniversary', 'Promotion', 'New Job', 'Certification', 'Other'];
+const NEWS_PRIORITIES = ['Normal', 'Important', 'Urgent'];
 
 const fieldInput = {
   width: '100%', padding: '10px 13px', borderRadius: 10, border: '1px solid #E5E7EB',
@@ -864,6 +870,14 @@ function CreatePost({ user, onCreate, isMobile }) {
   const [pollQuestion,  setPollQuestion]  = useState('');
   const [pollOptions,   setPollOptions]   = useState(['', '']);
   const [pollDuration,  setPollDuration]  = useState(3);
+  const [jobType,         setJobType]         = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('');
+  const [celebrationEmoji, setCelebrationEmoji] = useState('🎉');
+  const [feedbackSubject, setFeedbackSubject] = useState('');
+  const [wouldRecommend,  setWouldRecommend]  = useState(true);
+  const [resourceType,    setResourceType]    = useState('');
+  const [milestoneType,   setMilestoneType]   = useState('');
+  const [newsPriority,    setNewsPriority]    = useState('Normal');
 
   const mentionAc = useMentionAutocomplete();
   const fileRef = useRef(null);
@@ -920,6 +934,8 @@ function CreatePost({ user, onCreate, isMobile }) {
     setJobTitle(''); setCompany(''); setJobLocation(''); setApplyLink('');
     setResourceTitle(''); setResourceLink(''); setMilestoneDate('');
     setRating(5); setTopicTag(''); setPollQuestion(''); setPollOptions(['', '']); setPollDuration(3);
+    setJobType(''); setExperienceLevel(''); setCelebrationEmoji('🎉');
+    setFeedbackSubject(''); setWouldRecommend(true); setResourceType(''); setMilestoneType(''); setNewsPriority('Normal');
   };
 
   const openModal = (type) => { setPostType(type || 'update'); setModalOpen(true); };
@@ -941,21 +957,36 @@ function CreatePost({ user, onCreate, isMobile }) {
       let finalContent = text.trim();
       const payload = { postType, images, mentions: activeMentionIds };
 
+      if (postType === 'achievement') {
+        finalContent = `${celebrationEmoji} ${finalContent}`.trim();
+      }
       if (postType === 'feedback') {
-        finalContent = `${'⭐'.repeat(rating)} ${finalContent}`.trim();
+        const subjectPrefix = feedbackSubject.trim() ? `${feedbackSubject.trim()} — ` : '';
+        finalContent = `${'⭐'.repeat(rating)} ${subjectPrefix}${finalContent}`.trim();
+        finalContent += wouldRecommend ? '\n\n👍 Would recommend' : '\n\n👎 Would not recommend';
       }
       if ((postType === 'tip' || postType === 'question' || postType === 'achievement') && topicTag) {
         finalContent = `${finalContent}\n\n#${topicTag.replace(/\s+/g, '')}`;
       }
-      if (postType === 'milestone' && milestoneDate) {
-        finalContent = `${finalContent}\n\n📅 ${milestoneDate}`;
+      if (postType === 'milestone') {
+        if (milestoneType) finalContent = `🎯 ${milestoneType}\n\n${finalContent}`.trim();
+        if (milestoneDate) finalContent += `\n\n📅 ${milestoneDate}`;
       }
       if (postType === 'hiring') {
-        payload.jobDetails = { title: jobTitle.trim(), company: company.trim(), location: jobLocation.trim(), link: applyLink.trim() };
+        const extra = [jobType, experienceLevel ? `${experienceLevel} level` : ''].filter(Boolean).join(' · ');
+        const location = [jobLocation.trim(), extra].filter(Boolean).join(' · ');
+        payload.jobDetails = { title: jobTitle.trim(), company: company.trim(), location, link: applyLink.trim() };
       }
       if (postType === 'resource') {
-        if (resourceTitle.trim()) finalContent = `${resourceTitle.trim()}\n\n${finalContent}`.trim();
+        let prefix = '';
+        if (resourceType) prefix += `[${resourceType}] `;
+        if (resourceTitle.trim()) prefix += `${resourceTitle.trim()}\n\n`;
+        if (prefix) finalContent = `${prefix}${finalContent}`.trim();
         payload.resourceLink = resourceLink.trim();
+      }
+      if (postType === 'announcement' && newsPriority !== 'Normal') {
+        const tag = newsPriority === 'Urgent' ? '🚨 URGENT' : '⚡ IMPORTANT';
+        finalContent = `${tag}\n\n${finalContent}`.trim();
       }
       if (postType === 'poll') {
         finalContent = finalContent || pollQuestion.trim();
@@ -1049,6 +1080,16 @@ function CreatePost({ user, onCreate, isMobile }) {
                     <input style={fieldInput} placeholder="Company" value={company} onChange={e => setCompany(e.target.value)} />
                     <input style={fieldInput} placeholder="Location" value={jobLocation} onChange={e => setJobLocation(e.target.value)} />
                   </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <select style={fieldInput} value={jobType} onChange={e => setJobType(e.target.value)}>
+                      <option value="">Job type (optional)</option>
+                      {JOB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select style={fieldInput} value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}>
+                      <option value="">Experience level (optional)</option>
+                      {EXPERIENCE_LEVELS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
                   <input style={fieldInput} placeholder="Apply link (optional)" value={applyLink} onChange={e => setApplyLink(e.target.value)} />
                 </div>
               )}
@@ -1056,20 +1097,35 @@ function CreatePost({ user, onCreate, isMobile }) {
               {postType === 'resource' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, padding: 14, borderRadius: 12, background: '#ECFEFF', border: '1px solid #A5F3FC' }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resource Details</div>
+                  <ChipPicker options={RESOURCE_TYPES} value={resourceType} onChange={setResourceType} color={activeType.color} />
                   <input style={fieldInput} placeholder="Resource title" value={resourceTitle} onChange={e => setResourceTitle(e.target.value)} />
                   <input style={fieldInput} placeholder="Link (URL)" value={resourceLink} onChange={e => setResourceLink(e.target.value)} />
                 </div>
               )}
 
-              {(postType === 'tip' || postType === 'question' || postType === 'achievement') && (
+              {(postType === 'tip' || postType === 'question') && (
                 <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                    {postType === 'achievement' ? 'Win type' : 'Topic'}
-                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Topic</div>
                   <ChipPicker
-                    options={postType === 'tip' ? TIP_TOPICS : postType === 'question' ? QUESTION_TOPICS : WIN_TYPES}
+                    options={postType === 'tip' ? TIP_TOPICS : QUESTION_TOPICS}
                     value={topicTag} onChange={setTopicTag} color={activeType.color}
                   />
+                </div>
+              )}
+
+              {postType === 'achievement' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Celebrate with</div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    {CELEBRATION_EMOJIS.map(e => (
+                      <button key={e} type="button" onClick={() => setCelebrationEmoji(e)}
+                        style={{ fontSize: 20, width: 40, height: 40, borderRadius: 10, border: `1.5px solid ${celebrationEmoji === e ? activeType.color : '#E5E7EB'}`, background: celebrationEmoji === e ? `${activeType.color}15` : '#F9FAFB', cursor: 'pointer' }}>
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Win type</div>
+                  <ChipPicker options={WIN_TYPES} value={topicTag} onChange={setTopicTag} color={activeType.color} />
                 </div>
               )}
 
@@ -1077,13 +1133,33 @@ function CreatePost({ user, onCreate, isMobile }) {
                 <div style={{ marginBottom: 14, padding: 14, borderRadius: 12, background: '#FDF2F8', border: '1px solid #FBCFE8' }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: '#DB2777', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Your rating</div>
                   <StarRating value={rating} onChange={setRating} />
+                  <input style={{ ...fieldInput, marginTop: 12 }} placeholder="What/who is this about? (company, product, course…)" value={feedbackSubject} onChange={e => setFeedbackSubject(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button type="button" onClick={() => setWouldRecommend(true)}
+                      style={{ fontSize: 12, padding: '6px 14px', borderRadius: 20, border: `1px solid ${wouldRecommend ? '#059669' : '#E5E7EB'}`, background: wouldRecommend ? '#ECFDF5' : '#F9FAFB', color: wouldRecommend ? '#059669' : '#6B7280', fontWeight: 700, cursor: 'pointer' }}>
+                      👍 Recommend
+                    </button>
+                    <button type="button" onClick={() => setWouldRecommend(false)}
+                      style={{ fontSize: 12, padding: '6px 14px', borderRadius: 20, border: `1px solid ${!wouldRecommend ? '#DC2626' : '#E5E7EB'}`, background: !wouldRecommend ? '#FEF2F2' : '#F9FAFB', color: !wouldRecommend ? '#DC2626' : '#6B7280', fontWeight: 700, cursor: 'pointer' }}>
+                      👎 Don't recommend
+                    </button>
+                  </div>
                 </div>
               )}
 
               {postType === 'milestone' && (
                 <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Date reached (optional)</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Milestone type</div>
+                  <ChipPicker options={MILESTONE_TYPES} value={milestoneType} onChange={setMilestoneType} color={activeType.color} />
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 12, marginBottom: 8 }}>Date reached (optional)</div>
                   <input type="date" style={{ ...fieldInput, maxWidth: 200 }} value={milestoneDate} onChange={e => setMilestoneDate(e.target.value)} />
+                </div>
+              )}
+
+              {postType === 'announcement' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Priority</div>
+                  <ChipPicker options={NEWS_PRIORITIES} value={newsPriority} onChange={v => setNewsPriority(v || 'Normal')} color={activeType.color} />
                 </div>
               )}
 
