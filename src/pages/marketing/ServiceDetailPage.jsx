@@ -3,7 +3,18 @@ import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { HandshakeDealIllustration, ProcessFlowIllustration, VerifiedShieldIllustration } from '../../components/marketing/Illustrations.jsx';
+import { ProcessFlowIllustration, VerifiedShieldIllustration, DevTalentIllustration, CyberShieldIllustration, DiverseTeamIllustration, ContractToHireIllustration, CompanyBridgeIllustration, HRDashboardIllustration, LongTermTeamIllustration } from '../../components/marketing/Illustrations.jsx';
+
+// ─── Per-Service Hero Illustrations ────────────────────────────────────────────
+const HERO_ILLUSTRATIONS = {
+  'it-staffing': DevTalentIllustration,
+  'cybersecurity': CyberShieldIllustration,
+  'non-it-staffing': DiverseTeamIllustration,
+  'c2h': ContractToHireIllustration,
+  'c2c': CompanyBridgeIllustration,
+  'hrms-platform': HRDashboardIllustration,
+  'permanent-staffing': LongTermTeamIllustration,
+};
 
 // ─── Service Data ─────────────────────────────────────────────────────────────
 const SERVICES = {
@@ -415,8 +426,9 @@ const SERVICES = {
 };
 
 // ─── Shared Layout Component ──────────────────────────────────────────────────
-function ServicePage({ data }) {
+function ServicePage({ data, slug }) {
   const { icon, title, tagline, heroDesc, accent, coverImg, overview, whyUs, process, roles, guarantees, stats, faqs } = data;
+  const HeroIllustration = HERO_ILLUSTRATIONS[slug] || DevTalentIllustration;
   useMarketingTheme(); // apply theme CSS variables so dark/light/mixed modes work
 
   useEffect(() => {
@@ -471,7 +483,7 @@ function ServicePage({ data }) {
                 View Talent Pool
               </Link>
             </div>
-            <HandshakeDealIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '40px auto 0' }} />
+            <HeroIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '40px auto 0' }} />
           </div>
         </div>
       </section>
@@ -680,5 +692,5 @@ export default function ServiceDetailPage() {
   const { slug } = useParams();
   const data = SERVICES[slug];
   if (!data) return <Navigate to="/services" replace />;
-  return <ServicePage data={data} />;
+  return <ServicePage data={data} slug={slug} />;
 }

@@ -6,7 +6,7 @@ import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
-import { CollegePlacementIllustration, UnifiedPlatformIllustration, CareerJourneyIllustration } from '../../components/marketing/Illustrations.jsx';
+import { CollegePlacementIllustration, UnifiedPlatformIllustration, VerifiedCandidateIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── shared tiny helpers ────────────────────────────────────────────────────
 const G  = 'linear-gradient(135deg,#0176D3 0%,#00C2CB 100%)';
@@ -660,7 +660,7 @@ export default function LandingPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48, alignItems: 'center', marginTop: 64 }}>
             <div className="mkt-reveal">
-              <CareerJourneyIllustration style={{ width: '100%', maxWidth: 380, height: 'auto', display: 'block', margin: '0 auto' }} />
+              <VerifiedCandidateIllustration style={{ width: '100%', maxWidth: 380, height: 'auto', display: 'block', margin: '0 auto' }} />
             </div>
             <div className="mkt-reveal-delayed" style={{ display: 'grid', gap: 24 }}>
               {[

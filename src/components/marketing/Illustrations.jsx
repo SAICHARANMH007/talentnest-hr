@@ -846,3 +846,203 @@ export function OfferSignatureIllustration({ style }) {
     </svg>
   );
 }
+
+export function VerifiedCandidateIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Verified candidate profile card with identity confirmation badge and skill tags">
+      <ellipse cx="160" cy="265" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* profile card */}
+      <rect x="30" y="40" width="260" height="200" rx="20" fill="#E6F4FF" />
+      {/* person */}
+      <circle cx="150" cy="100" r="38" fill="#FDC8A0" />
+      <path d="M112 100a38 38 0 0 1 76 0v8h-76z" fill="#1F2937" />
+      <path d="M86 230c4-58 30-98 64-98s60 40 64 98z" fill="#0176D3" />
+      <path d="M86 230c4-58 30-98 64-98v98z" fill="#00C2CB" opacity="0.5" />
+      {/* verification badge */}
+      <circle cx="226" cy="172" r="32" fill="#10B981" />
+      <circle cx="226" cy="172" r="32" fill="none" stroke="#FFFFFF" strokeWidth="4" />
+      <path d="M212 172l9 9 19-20" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* skill tags */}
+      <rect x="50" y="220" width="58" height="22" rx="11" fill="#0176D3" opacity="0.15" />
+      <rect x="116" y="220" width="58" height="22" rx="11" fill="#00C2CB" opacity="0.18" />
+      <rect x="182" y="220" width="58" height="22" rx="11" fill="#F59E0B" opacity="0.18" />
+      {/* sparkles */}
+      <circle cx="60" cy="60" r="8" fill="#F59E0B" opacity="0.5" />
+      <circle cx="284" cy="80" r="6" fill="#7C3AED" opacity="0.5" />
+    </svg>
+  );
+}
+
+export function DevTalentIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Software developer writing code on a laptop for IT staffing">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* laptop */}
+      <rect x="90" y="120" width="140" height="90" rx="10" fill="#032D60" />
+      <rect x="102" y="130" width="116" height="64" rx="4" fill="#0D1B2A" />
+      <rect x="112" y="140" width="50" height="6" rx="3" fill="#00C2CB" opacity="0.8" />
+      <rect x="112" y="152" width="80" height="6" rx="3" fill="#10B981" opacity="0.7" />
+      <rect x="124" y="164" width="60" height="6" rx="3" fill="#F59E0B" opacity="0.7" />
+      <rect x="112" y="176" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.7" />
+      {/* person */}
+      <circle cx="160" cy="60" r="30" fill="#FDB897" />
+      <path d="M130 60a30 30 0 0 1 60 0v6h-60z" fill="#111827" />
+      <path d="M108 150c4-46 28-78 52-78s48 32 52 78z" fill="#0176D3" />
+      {/* code brackets accent */}
+      <text x="240" y="64" fontSize="40" fontWeight="900" fill="#00C2CB" opacity="0.5" fontFamily="monospace">{'</>'}</text>
+      <circle cx="50" cy="90" r="10" fill="#F59E0B" opacity="0.4" />
+    </svg>
+  );
+}
+
+export function CyberShieldIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Digital security shield with lock representing cybersecurity staffing">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#032D60" opacity="0.08" />
+      <path d="M160 20l78 28v58c0 56-36 98-78 114-42-16-78-58-78-114V48z" fill="#032D60" />
+      <path d="M160 20l78 28v58c0 56-36 98-78 114z" fill="#0176D3" opacity="0.45" />
+      {/* lock */}
+      <rect x="132" y="106" width="56" height="44" rx="6" fill="#FFFFFF" />
+      <path d="M140 106v-13a20 20 0 0140 0v13" stroke="#FFFFFF" strokeWidth="6" fill="none" />
+      <circle cx="160" cy="128" r="7" fill="#032D60" />
+      {/* network nodes */}
+      <path d="M48 70L96 50M272 70L224 50M48 170L96 190M272 170L224 190" stroke="#94A3B8" strokeWidth="2" opacity="0.4" />
+      <circle cx="48" cy="70" r="9" fill="#10B981" opacity="0.7" />
+      <circle cx="272" cy="70" r="9" fill="#00C2CB" opacity="0.7" />
+      <circle cx="48" cy="170" r="9" fill="#F59E0B" opacity="0.7" />
+      <circle cx="272" cy="170" r="9" fill="#7C3AED" opacity="0.7" />
+    </svg>
+  );
+}
+
+export function DiverseTeamIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Diverse team of non-IT professionals from finance, operations and admin functions">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* person 1 */}
+      <circle cx="100" cy="110" r="26" fill="#FDC8A0" />
+      <path d="M74 110a26 26 0 0 1 52 0v4H74z" fill="#1F2937" />
+      <path d="M64 200c2-44 18-72 36-72s34 28 36 72z" fill="#F59E0B" />
+      {/* person 2 (center, taller) */}
+      <circle cx="160" cy="90" r="30" fill="#F4A988" />
+      <path d="M130 90a30 30 0 0 1 60 0v6h-60z" fill="#3B2415" />
+      <path d="M118 200c2-50 22-84 42-84s40 34 42 84z" fill="#0176D3" />
+      {/* person 3 */}
+      <circle cx="222" cy="110" r="26" fill="#FDB897" />
+      <path d="M196 110a26 26 0 0 1 52 0v4h-52z" fill="#111827" />
+      <path d="M186 200c2-44 18-72 36-72s34 28 36 72z" fill="#00C2CB" />
+      {/* shared briefcase */}
+      <rect x="142" y="160" width="36" height="26" rx="4" fill="#032D60" />
+      <rect x="154" y="152" width="12" height="10" rx="2" fill="#032D60" />
+      {/* sparkles */}
+      <circle cx="50" cy="60" r="8" fill="#10B981" opacity="0.4" />
+      <circle cx="270" cy="60" r="10" fill="#7C3AED" opacity="0.4" />
+    </svg>
+  );
+}
+
+export function ContractToHireIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Path from a temporary contract to a permanent hire badge">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* contract document left */}
+      <rect x="30" y="60" width="100" height="130" rx="10" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="48" y="80" width="64" height="10" rx="5" fill="#94A3B8" opacity="0.6" />
+      <rect x="48" y="100" width="64" height="8" rx="4" fill="#94A3B8" opacity="0.4" />
+      <rect x="48" y="116" width="44" height="8" rx="4" fill="#94A3B8" opacity="0.4" />
+      <rect x="48" y="158" width="44" height="16" rx="8" fill="#F59E0B" opacity="0.25" />
+      <text x="70" y="170" textAnchor="middle" fontSize="9" fontWeight="800" fill="#F59E0B" fontFamily="sans-serif">TEMP</text>
+      {/* arrow */}
+      <path d="M138 120c30-10 60-10 88 0" stroke="#00C2CB" strokeWidth="4" strokeDasharray="6 8" fill="none" />
+      <path d="M220 112l16 8-16 8z" fill="#00C2CB" />
+      {/* permanent badge right */}
+      <rect x="190" y="50" width="100" height="130" rx="10" fill="#032D60" />
+      <circle cx="240" cy="90" r="24" fill="#10B981" />
+      <path d="M230 90l7 7 14-15" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="210" y="130" width="60" height="10" rx="5" fill="#FFFFFF" opacity="0.85" />
+      <rect x="210" y="148" width="44" height="16" rx="8" fill="#10B981" opacity="0.3" />
+      <text x="232" y="160" textAnchor="middle" fontSize="9" fontWeight="800" fill="#10B981" fontFamily="sans-serif">PERM</text>
+    </svg>
+  );
+}
+
+export function CompanyBridgeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Two company buildings connected through a corp-to-corp partnership">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      {/* left building */}
+      <rect x="30" y="80" width="90" height="130" rx="8" fill="#0176D3" />
+      <rect x="48" y="100" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      <rect x="84" y="100" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      <rect x="48" y="136" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      <rect x="84" y="136" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      <rect x="48" y="172" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      <rect x="84" y="172" width="20" height="20" rx="3" fill="#E6F4FF" opacity="0.7" />
+      {/* right building */}
+      <rect x="200" y="50" width="90" height="160" rx="8" fill="#032D60" />
+      <rect x="218" y="70" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="254" y="70" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="218" y="106" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="254" y="106" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="218" y="142" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="254" y="142" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="218" y="178" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      <rect x="254" y="178" width="20" height="20" rx="3" fill="#00C2CB" opacity="0.5" />
+      {/* connection */}
+      <path d="M120 180c30-20 70-20 80-30" stroke="#F59E0B" strokeWidth="6" fill="none" strokeLinecap="round" />
+      <circle cx="160" cy="170" r="16" fill="#F59E0B" />
+      <path d="M152 170h16M160 162v16" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HRDashboardIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="HRMS platform dashboard with employee management modules">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#0176D3" opacity="0.08" />
+      <rect x="30" y="30" width="260" height="170" rx="14" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2" />
+      <rect x="30" y="30" width="260" height="34" rx="14" fill="#032D60" />
+      <circle cx="50" cy="47" r="6" fill="#10B981" />
+      <circle cx="68" cy="47" r="6" fill="#F59E0B" />
+      <circle cx="86" cy="47" r="6" fill="#00C2CB" />
+      {[
+        { x: 46, y: 80, c: '#0176D3' },
+        { x: 130, y: 80, c: '#00C2CB' },
+        { x: 214, y: 80, c: '#F59E0B' },
+        { x: 46, y: 140, c: '#10B981' },
+        { x: 130, y: 140, c: '#7C3AED' },
+        { x: 214, y: 140, c: '#0176D3' },
+      ].map((m, i) => (
+        <g key={i}>
+          <rect x={m.x} y={m.y} width="60" height="44" rx="8" fill={m.c} opacity="0.12" />
+          <circle cx={m.x + 16} cy={m.y + 16} r="8" fill={m.c} />
+          <rect x={m.x + 30} y={m.y + 12} width="22" height="6" rx="3" fill={m.c} opacity="0.6" />
+          <rect x={m.x + 12} y={m.y + 30} width="36" height="6" rx="3" fill="#94A3B8" opacity="0.4" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export function LongTermTeamIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Growing team tree representing long-term permanent staffing">
+      <ellipse cx="160" cy="225" rx="130" ry="13" fill="#10B981" opacity="0.08" />
+      {/* trunk */}
+      <rect x="148" y="120" width="24" height="90" rx="6" fill="#032D60" />
+      {/* canopy made of people */}
+      <circle cx="160" cy="80" r="50" fill="#10B981" opacity="0.15" />
+      <circle cx="120" cy="80" r="22" fill="#0176D3" />
+      <circle cx="160" cy="55" r="22" fill="#00C2CB" />
+      <circle cx="200" cy="80" r="22" fill="#F59E0B" />
+      <circle cx="160" cy="100" r="22" fill="#10B981" />
+      <circle cx="120" cy="80" r="8" fill="#FFFFFF" opacity="0.85" />
+      <circle cx="160" cy="55" r="8" fill="#FFFFFF" opacity="0.85" />
+      <circle cx="200" cy="80" r="8" fill="#FFFFFF" opacity="0.85" />
+      <circle cx="160" cy="100" r="8" fill="#FFFFFF" opacity="0.85" />
+      {/* growth rings */}
+      <rect x="148" y="150" width="24" height="6" rx="3" fill="#00C2CB" opacity="0.4" />
+      <rect x="148" y="170" width="24" height="6" rx="3" fill="#F59E0B" opacity="0.4" />
+    </svg>
+  );
+}
