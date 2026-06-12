@@ -1046,3 +1046,308 @@ export function LongTermTeamIllustration({ style }) {
     </svg>
   );
 }
+
+// ─── Per-Service Process Illustrations ─────────────────────────────────────────
+
+export function DevPipelineFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="IT staffing delivery pipeline from sourcing to deployment">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#0176D3', n: '1' },
+        { x: 127, y: 96, c: '#00C2CB', n: '2' },
+        { x: 233, y: 96, c: '#7C3AED', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <text x="135" y="56" fontSize="20" fontWeight="900" fill="#00C2CB" fontFamily="monospace">{'</>'}</text>
+      <rect x="160" y="42" width="80" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="160" y="54" width="50" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function SecurityAuditFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Cybersecurity engagement process from scanning to ongoing monitoring">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#032D60" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#032D60', n: '1' },
+        { x: 127, y: 96, c: '#0176D3', n: '2' },
+        { x: 233, y: 96, c: '#F59E0B', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <rect x="120" y="44" width="20" height="16" rx="3" fill="#10B981" />
+      <path d="M124 44v-6a6 6 0 0112 0v6" stroke="#10B981" strokeWidth="3" fill="none" />
+      <rect x="150" y="42" width="90" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="150" y="54" width="60" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function TalentFunnelFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Non-IT staffing process from sourcing to placement">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#F59E0B', n: '1' },
+        { x: 127, y: 96, c: '#0176D3', n: '2' },
+        { x: 233, y: 96, c: '#00C2CB', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <circle cx="130" cy="48" r="9" fill="#00C2CB" />
+      <circle cx="146" cy="48" r="9" fill="#F59E0B" opacity="0.8" />
+      <rect x="162" y="42" width="80" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="162" y="54" width="50" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function TrialToHireFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Contract-to-hire process from trial period to permanent conversion">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#F59E0B" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#F59E0B', n: '1' },
+        { x: 127, y: 96, c: '#00C2CB', n: '2' },
+        { x: 233, y: 96, c: '#0176D3', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <circle cx="132" cy="50" r="12" fill="none" stroke="#F59E0B" strokeWidth="3" />
+      <path d="M132 43v7l5 4" stroke="#F59E0B" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <rect x="156" y="42" width="84" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="156" y="54" width="54" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function PartnershipFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Corp-to-corp partnership process from scoping to renewal">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#0176D3" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#0176D3', n: '1' },
+        { x: 127, y: 96, c: '#032D60', n: '2' },
+        { x: 233, y: 96, c: '#00C2CB', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <rect x="120" y="40" width="18" height="20" rx="2" fill="#FFFFFF" opacity="0.85" />
+      <rect x="124" y="45" width="10" height="2" fill="#032D60" />
+      <rect x="124" y="50" width="10" height="2" fill="#032D60" />
+      <rect x="150" y="42" width="90" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="150" y="54" width="60" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function PlatformRolloutFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="HRMS platform rollout process from setup to go-live">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#7C3AED" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#7C3AED', n: '1' },
+        { x: 127, y: 96, c: '#0176D3', n: '2' },
+        { x: 233, y: 96, c: '#00C2CB', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <g transform="translate(130 50)">
+        <circle r="10" fill="none" stroke="#7C3AED" strokeWidth="3" />
+        {[0, 60, 120, 180, 240, 300].map((deg) => (
+          <rect key={deg} x="-1.5" y="-14" width="3" height="5" rx="1.5" fill="#7C3AED" transform={`rotate(${deg})`} />
+        ))}
+      </g>
+      <rect x="156" y="42" width="84" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="156" y="54" width="54" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+export function CareerPlacementFlowIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Permanent staffing process from sourcing to long-term retention">
+      <ellipse cx="180" cy="225" rx="150" ry="13" fill="#10B981" opacity="0.08" />
+      <path d="M40 180C90 60 270 60 320 180" stroke="#94A3B8" strokeWidth="3" strokeDasharray="4 8" fill="none" opacity="0.5" />
+      {[
+        { x: 40, y: 180, c: '#0176D3', n: '1' },
+        { x: 127, y: 96, c: '#00C2CB', n: '2' },
+        { x: 233, y: 96, c: '#F59E0B', n: '3' },
+        { x: 320, y: 180, c: '#10B981', n: '4' },
+      ].map((s) => (
+        <g key={s.n}>
+          <circle cx={s.x} cy={s.y} r="22" fill={s.c} />
+          <text x={s.x} y={s.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill="#fff" fontFamily="sans-serif">{s.n}</text>
+        </g>
+      ))}
+      <rect x="100" y="30" width="160" height="40" rx="10" fill="#032D60" />
+      <path d="M120 56l8-12 6 6 10-14" stroke="#10B981" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M138 36h8v8" stroke="#10B981" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="156" y="42" width="84" height="8" rx="4" fill="#FFFFFF" opacity="0.85" />
+      <rect x="156" y="54" width="54" height="6" rx="3" fill="#00C2CB" opacity="0.6" />
+    </svg>
+  );
+}
+
+// ─── Per-Service Guarantee Illustrations ───────────────────────────────────────
+
+export function CodeGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing IT staffing SLA and quality guarantees">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#0176D3" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#00C2CB" opacity="0.18" />
+      <text x="160" y="138" textAnchor="middle" fontSize="34" fontWeight="900" fill="#00C2CB" fontFamily="monospace">{'</>'}</text>
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="83" textAnchor="middle" fontSize="13" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">SLA</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="13" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">QA</text>
+    </svg>
+  );
+}
+
+export function SecurityComplianceIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing cybersecurity compliance and SLA guarantees">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#032D60" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#10B981" opacity="0.18" />
+      <rect x="142" y="110" width="36" height="28" rx="4" fill="#10B981" />
+      <path d="M148 110v-8a12 12 0 0124 0v8" stroke="#10B981" strokeWidth="4" fill="none" />
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="83" textAnchor="middle" fontSize="13" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">ISO</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="12" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">SOC2</text>
+    </svg>
+  );
+}
+
+export function ReplacementGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing non-IT staffing replacement guarantee">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#0176D3" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#F59E0B" opacity="0.18" />
+      <circle cx="148" cy="118" r="14" fill="#F59E0B" />
+      <circle cx="172" cy="118" r="14" fill="#00C2CB" />
+      <path d="M134 144c0-12 8-18 14-18s14 6 14 18M158 144c0-12 8-18 14-18s14 6 14 18" fill="#FFFFFF" opacity="0.6" />
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="83" textAnchor="middle" fontSize="12" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">90-DAY</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="12" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">RE-FILL</text>
+    </svg>
+  );
+}
+
+export function ConversionGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing contract-to-hire conversion guarantee">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#F59E0B" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#F59E0B" opacity="0.18" />
+      <path d="M134 124h44" stroke="#F59E0B" strokeWidth="6" strokeLinecap="round" />
+      <path d="M168 108l16 16-16 16" stroke="#F59E0B" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="82" textAnchor="middle" fontSize="11" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">TRIAL</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="202" textAnchor="middle" fontSize="11" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">CONVERT</text>
+    </svg>
+  );
+}
+
+export function SLAGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing corp-to-corp SLA and contract guarantees">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#0176D3" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#00C2CB" opacity="0.18" />
+      <rect x="138" y="100" width="44" height="50" rx="4" fill="#FFFFFF" opacity="0.9" />
+      <rect x="146" y="112" width="28" height="4" fill="#032D60" />
+      <rect x="146" y="122" width="28" height="4" fill="#032D60" />
+      <rect x="146" y="132" width="18" height="4" fill="#032D60" />
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="83" textAnchor="middle" fontSize="13" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">SLA</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="13" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">NDA</text>
+    </svg>
+  );
+}
+
+export function UptimeGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing HRMS platform uptime and data security guarantees">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#7C3AED" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#7C3AED" opacity="0.18" />
+      <text x="160" y="118" textAnchor="middle" fontSize="26" fontWeight="900" fill="#7C3AED" fontFamily="sans-serif">99.9%</text>
+      <text x="160" y="142" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7C3AED" fontFamily="sans-serif">UPTIME</text>
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="83" textAnchor="middle" fontSize="12" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">SOC2</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="12" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">GDPR</text>
+    </svg>
+  );
+}
+
+export function RetentionGuaranteeIllustration({ style }) {
+  return (
+    <svg viewBox="0 0 320 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} role="img" aria-label="Shield representing permanent staffing long-term retention guarantee">
+      <ellipse cx="160" cy="255" rx="120" ry="14" fill="#10B981" opacity="0.08" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130-52-20-90-66-90-130V62z" fill="#032D60" />
+      <path d="M160 30l90 32v62c0 64-38 110-90 130z" fill="#0176D3" opacity="0.35" />
+      <circle cx="160" cy="124" r="44" fill="#10B981" opacity="0.18" />
+      <path d="M134 142l16-26 14 14 22-34" stroke="#10B981" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="186" cy="96" r="5" fill="#10B981" />
+      <rect x="30" y="60" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#0176D3" strokeWidth="2" transform="rotate(-12 62 78)" />
+      <text x="62" y="82" textAnchor="middle" fontSize="11" fontWeight="900" fill="#0176D3" transform="rotate(-12 62 78)" fontFamily="sans-serif">90-DAY</text>
+      <rect x="226" y="180" width="64" height="36" rx="6" fill="#FFFFFF" stroke="#00C2CB" strokeWidth="2" transform="rotate(10 258 198)" />
+      <text x="258" y="203" textAnchor="middle" fontSize="12" fontWeight="900" fill="#00C2CB" transform="rotate(10 258 198)" fontFamily="sans-serif">RETAIN</text>
+    </svg>
+  );
+}
+

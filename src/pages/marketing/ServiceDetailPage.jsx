@@ -3,7 +3,7 @@ import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
-import { ProcessFlowIllustration, VerifiedShieldIllustration, DevTalentIllustration, CyberShieldIllustration, DiverseTeamIllustration, ContractToHireIllustration, CompanyBridgeIllustration, HRDashboardIllustration, LongTermTeamIllustration } from '../../components/marketing/Illustrations.jsx';
+import { DevTalentIllustration, CyberShieldIllustration, DiverseTeamIllustration, ContractToHireIllustration, CompanyBridgeIllustration, HRDashboardIllustration, LongTermTeamIllustration, DevPipelineFlowIllustration, SecurityAuditFlowIllustration, TalentFunnelFlowIllustration, TrialToHireFlowIllustration, PartnershipFlowIllustration, PlatformRolloutFlowIllustration, CareerPlacementFlowIllustration, CodeGuaranteeIllustration, SecurityComplianceIllustration, ReplacementGuaranteeIllustration, ConversionGuaranteeIllustration, SLAGuaranteeIllustration, UptimeGuaranteeIllustration, RetentionGuaranteeIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── Per-Service Hero Illustrations ────────────────────────────────────────────
 const HERO_ILLUSTRATIONS = {
@@ -14,6 +14,28 @@ const HERO_ILLUSTRATIONS = {
   'c2c': CompanyBridgeIllustration,
   'hrms-platform': HRDashboardIllustration,
   'permanent-staffing': LongTermTeamIllustration,
+};
+
+// ─── Per-Service Process Illustrations ─────────────────────────────────────────
+const PROCESS_ILLUSTRATIONS = {
+  'it-staffing': DevPipelineFlowIllustration,
+  'cybersecurity': SecurityAuditFlowIllustration,
+  'non-it-staffing': TalentFunnelFlowIllustration,
+  'c2h': TrialToHireFlowIllustration,
+  'c2c': PartnershipFlowIllustration,
+  'hrms-platform': PlatformRolloutFlowIllustration,
+  'permanent-staffing': CareerPlacementFlowIllustration,
+};
+
+// ─── Per-Service Guarantee Illustrations ───────────────────────────────────────
+const GUARANTEE_ILLUSTRATIONS = {
+  'it-staffing': CodeGuaranteeIllustration,
+  'cybersecurity': SecurityComplianceIllustration,
+  'non-it-staffing': ReplacementGuaranteeIllustration,
+  'c2h': ConversionGuaranteeIllustration,
+  'c2c': SLAGuaranteeIllustration,
+  'hrms-platform': UptimeGuaranteeIllustration,
+  'permanent-staffing': RetentionGuaranteeIllustration,
 };
 
 // ─── Service Data ─────────────────────────────────────────────────────────────
@@ -429,6 +451,8 @@ const SERVICES = {
 function ServicePage({ data, slug }) {
   const { icon, title, tagline, heroDesc, accent, coverImg, overview, whyUs, process, roles, guarantees, stats, faqs } = data;
   const HeroIllustration = HERO_ILLUSTRATIONS[slug] || DevTalentIllustration;
+  const ProcessIllustration = PROCESS_ILLUSTRATIONS[slug] || DevPipelineFlowIllustration;
+  const GuaranteeIllustration = GUARANTEE_ILLUSTRATIONS[slug] || CodeGuaranteeIllustration;
   useMarketingTheme(); // apply theme CSS variables so dark/light/mixed modes work
 
   useEffect(() => {
@@ -548,7 +572,7 @@ function ServicePage({ data, slug }) {
             <h2 className="section-title">A Structured <span>Approach to Success</span></h2>
             <p className="section-subtitle">We’ve refined our delivery model to ensure consistency, speed, and absolute quality at every stage.</p>
           </div>
-          <ProcessFlowIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
+          <ProcessIllustration style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-4" style={{ gap:24, alignItems:'stretch' }}>
             {process.map((s, idx) => (
               <div key={s.step} className="mkt-reveal-delayed" style={{ 
@@ -610,7 +634,7 @@ function ServicePage({ data, slug }) {
             <h2 className="section-title">Built-In <span>Risk Protection</span></h2>
             <p className="section-subtitle">We stand behind every placement with industry-leading guarantees that put your interests first.</p>
           </div>
-          <VerifiedShieldIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
+          <GuaranteeIllustration style={{ width: '100%', maxWidth: 280, height: 'auto', display: 'block', margin: '0 auto 32px' }} />
           <div className="grid-2" style={{ gap:24, alignItems:'stretch' }}>
             {guarantees.map(g => (
               <div key={g.title} className="mkt-reveal-delayed" style={{ background:'var(--mkt-card-bg)', borderRadius:20, padding:32, border:'1px solid var(--mkt-card-border)', display:'flex', gap:24, boxShadow:'var(--shadow-md)', alignItems:'flex-start' }}>
