@@ -48,6 +48,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
       .populate('clientId', 'companyName industry billingType billingValue billingCurrency billingNotes')
       .populate('submittedBy', 'name email')
       .populate('assignedRecruiter', 'name email')
+      .populate('convertedJobId', 'title status applicantsCount applicationCount')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     JobRequirement.countDocuments(filter),
   ]);
@@ -62,7 +63,8 @@ router.get('/:id', ...guard, asyncHandler(async (req, res) => {
   const r = await JobRequirement.findOne(filter)
     .populate('clientId', 'companyName industry billingType billingValue billingCurrency billingNotes')
     .populate('submittedBy', 'name email')
-    .populate('assignedRecruiter', 'name email');
+    .populate('assignedRecruiter', 'name email')
+    .populate('convertedJobId', 'title status applicantsCount applicationCount');
   if (!r) throw new AppError('Job requirement not found.', 404);
   res.json({ success: true, data: normalize(r) });
 }));

@@ -169,7 +169,11 @@ export default function ClientRequirements({ user }) {
                       ) : (
                         <span style={{ fontSize: 11, color: '#706E6B' }}>
                           {r.status === 'in_progress' && '🔄 Being worked on'}
-                          {r.status === 'converted' && '✅ Job created'}
+                          {r.status === 'converted' && (
+                            r.convertedJobId
+                              ? `✅ Job posted: ${r.convertedJobId.title}${r.convertedJobId.applicantsCount || r.convertedJobId.applicationCount ? ` (${r.convertedJobId.applicantsCount || r.convertedJobId.applicationCount} candidates)` : ''}`
+                              : '✅ Job created'
+                          )}
                           {r.status === 'closed' && '🚫 Closed'}
                         </span>
                       )}
