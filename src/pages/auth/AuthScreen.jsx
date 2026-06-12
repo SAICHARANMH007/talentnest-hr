@@ -1629,20 +1629,28 @@ function CollegeForm({ onAuth, onBack, onForgot, navigate, prefill }) {
     </div>
   );
 
+  const COLLEGE_GRADIENT = 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)';
+  const COLLEGE_BTN = { ...BTN_P, background: COLLEGE_GRADIENT, boxShadow: '0 4px 14px rgba(124,58,237,0.35)' };
+  const COLLEGE_INP = { ...INP, border: '1.5px solid rgba(124,58,237,0.22)' };
+
   return (
-    <div className="tn-auth-dark" style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)' }}>
-      <div style={CARD}>
+    <div className="tn-auth-dark" style={{ ...BG, alignItems: 'flex-start', paddingTop: 'clamp(20px, 5vw, 40px)', paddingBottom: 'clamp(20px, 5vw, 40px)', position: 'relative', overflow: 'hidden' }}>
+      {/* Campus ambient background */}
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: 'radial-gradient(circle at 15% 10%, rgba(124,58,237,0.18) 0%, transparent 45%), radial-gradient(circle at 85% 90%, rgba(76,29,149,0.18) 0%, transparent 45%), #0A1628',
+        zIndex: 0,
+      }} />
+      <div style={{ ...CARD, position: 'relative', zIndex: 1, border: '1px solid rgba(124,58,237,0.18)', boxShadow: '0 32px 80px rgba(76,29,149,0.25)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-            <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20 }}>
-              <Logo size="lg" variant="full" theme="dark" />
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <div style={{ width: 72, height: 72, background: COLLEGE_GRADIENT, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: '0 12px 24px rgba(124,58,237,0.35)' }}>🎓</div>
           </div>
-          <div style={{ height: 1, width: '100%', background: 'rgba(255,255,255,0.06)', marginBottom: 24 }} />
+          <div style={{ height: 1, width: '100%', background: 'rgba(124,58,237,0.15)', marginBottom: 24 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 10, color: 'rgba(255,255,255,0.6)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(124,58,237,0.2)', borderRadius: 10, color: 'rgba(255,255,255,0.6)', fontSize: 14, cursor: 'pointer', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
             <div style={{ flex: 1, textAlign: 'left' }}>
-              <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>College / Campus</h2>
+              <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Campus Portal</h2>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '2px 0 0' }}>
                 {mode === 'login' ? 'Sign in to your campus placement portal' : 'Register your college on TalentNest HR'}
               </p>
@@ -1661,26 +1669,26 @@ function CollegeForm({ onAuth, onBack, onForgot, navigate, prefill }) {
             <>
               <div>
                 <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>COLLEGE / INSTITUTION NAME *</label>
-                <input value={collegeName} onChange={e => setCollegeName(e.target.value)} placeholder="e.g. ABC Institute of Technology" style={INP} autoComplete="organization" />
+                <input value={collegeName} onChange={e => setCollegeName(e.target.value)} placeholder="e.g. ABC Institute of Technology" style={COLLEGE_INP} autoComplete="organization" />
               </div>
               <div>
                 <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>YOUR NAME *</label>
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="Placement Officer name" style={INP} autoComplete="name" />
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Placement Officer name" style={COLLEGE_INP} autoComplete="name" />
               </div>
               <div>
                 <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>MOBILE NUMBER</label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={INP} autoComplete="tel" />
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" style={COLLEGE_INP} autoComplete="tel" />
               </div>
             </>
           )}
           <div>
             <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>WORK EMAIL *</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="placement@college.edu" style={INP} autoComplete="email" />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="placement@college.edu" style={COLLEGE_INP} autoComplete="email" />
           </div>
           <div>
             <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '0.5px' }}>PASSWORD *</label>
             <div style={{ position: 'relative' }}>
-              <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...INP, paddingRight: 48 }} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} onKeyDown={e => e.key === 'Enter' && submit()} />
+              <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••" style={{ ...COLLEGE_INP, paddingRight: 48 }} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} onKeyDown={e => e.key === 'Enter' && submit()} />
               <button type="button" onClick={() => setShowPw(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <EyeIcon visible={showPw} />
               </button>
@@ -1690,17 +1698,17 @@ function CollegeForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 
           {mode === 'login' && (
             <div style={{ textAlign: 'right' }}>
-              <span onClick={onForgot} style={{ color: '#0176D3', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Forgot password?</span>
+              <span onClick={onForgot} style={{ color: '#A78BFA', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Forgot password?</span>
             </div>
           )}
 
-          <button onClick={submit} disabled={loading} style={{ ...BTN_P, width: '100%', padding: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, marginTop: 6 }}>
+          <button onClick={submit} disabled={loading} style={{ ...COLLEGE_BTN, width: '100%', padding: '14px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, marginTop: 6 }}>
             {loading ? <><Spinner /> {mode === 'login' ? 'Signing in…' : 'Creating account…'}</> : (mode === 'login' ? '🔐 Sign In' : '🎓 Register College')}
           </button>
 
           <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '8px 0 0' }}>
             {mode === 'login' ? "Don't have a college account yet? " : 'Already registered? '}
-            <span onClick={() => { setError(''); setMode(mode === 'login' ? 'register' : 'login'); }} style={{ color: '#0176D3', cursor: 'pointer', fontWeight: 700 }}>
+            <span onClick={() => { setError(''); setMode(mode === 'login' ? 'register' : 'login'); }} style={{ color: '#A78BFA', cursor: 'pointer', fontWeight: 700 }}>
               {mode === 'login' ? 'Register your college' : 'Sign in'}
             </span>
           </p>

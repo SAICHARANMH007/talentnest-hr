@@ -165,6 +165,11 @@ export default function OrgSettings({ user }) {
   const [newDeptName, setNewDeptName] = useState('');
   const [savingDept, setSavingDept] = useState(false);
 
+  // College: Placement Officer invites
+  const [officerForm, setOfficerForm] = useState({ name: '', email: '' });
+  const [invitingOfficer, setInvitingOfficer] = useState(false);
+  const [officerMsg, setOfficerMsg] = useState('');
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
@@ -204,7 +209,7 @@ export default function OrgSettings({ user }) {
         if (orgId) {
           const members = await api.getUsers({ orgId, limit: 10000000 });
           const list = Array.isArray(members?.data) ? members.data : (Array.isArray(members) ? members : []);
-          setTeamMembers(list.filter(m => ['admin','super_admin','recruiter','hiring_manager'].includes(m.role)));
+          setTeamMembers(list.filter(m => ['admin','super_admin','recruiter','hiring_manager','placement_officer'].includes(m.role)));
         }
       } catch {}
     } catch {}
@@ -284,6 +289,37 @@ export default function OrgSettings({ user }) {
     } catch (e) { setError(e.message); }
   };
 
+  const inviteOfficer = async () => {
+    const name = officerForm.name.trim();
+    const email = officerForm.email.trim();
+    if (!name || !email) { setOfficerMsg('Name and email are required.'); return; }
+    setInvitingOfficer(true);
+    setOfficerMsg('');
+    try {
+      await api.createUser({ name, email, role: 'placement_officer' });
+      setOfficerForm({ name: '', email: '' });
+      setOfficerMsg(`✅ Invitation sent to ${email}`);
+      load();
+    } catch (e) { setOfficerMsg(`❌ ${e.message}`); }
+    setInvitingOfficer(false);
+  };
+
+  const resendOfficerInvite = async (id) => {
+    try {
+      await api.resendUserInvite(id);
+      setOfficerMsg('✅ Invitation resent.');
+      setTimeout(() => setOfficerMsg(''), 3000);
+    } catch (e) { setOfficerMsg(`❌ ${e.message}`); }
+  };
+
+  const removeOfficer = async (id) => {
+    if (!window.confirm('Remove this placement officer?')) return;
+    try {
+      await api.deleteUser(id);
+      load();
+    } catch (e) { setOfficerMsg(`❌ ${e.message}`); }
+  };
+
   const addStage = () => {
     if (!newStage.trim()) return;
     const slug = newStage.trim().toLowerCase().replace(/\s+/g, '_');
@@ -350,9 +386,10 @@ export default function OrgSettings({ user }) {
           const admins    = teamMembers.filter(m => m.role === 'admin' || m.role === 'super_admin');
           const recruiters = teamMembers.filter(m => m.role === 'recruiter');
           const managers  = teamMembers.filter(m => m.role === 'hiring_manager');
+          const officers  = teamMembers.filter(m => m.role === 'placement_officer');
 
-          const ROLE_COLOR = { admin:'#0176D3', super_admin:'#7c3aed', recruiter:'#059669', hiring_manager:'#F59E0B' };
-          const ROLE_LABEL = { admin:'Admin', super_admin:'Super Admin', recruiter:'Recruiter', hiring_manager:'Hiring Manager' };
+          const ROLE_COLOR = { admin:'#0176D3', super_admin:'#7c3aed', recruiter:'#059669', hiring_manager:'#F59E0B', placement_officer:'#7C3AED' };
+          const ROLE_LABEL = { admin:'Admin', super_admin:'Super Admin', recruiter:'Recruiter', hiring_manager:'Hiring Manager', placement_officer:'Placement Officer' };
 
           const MemberCard = ({ m }) => (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, minWidth:100 }}>
@@ -368,6 +405,14 @@ export default function OrgSettings({ user }) {
                     {m.isActive ? '● Active' : '○ Pending'}
                   </span>
                 </div>
+                {isCollege && m.role === 'placement_officer' && (
+                  <div style={{ display:'flex', gap:4, marginTop:6, justifyContent:'center' }}>
+                    {!m.isActive && (
+                      <button onClick={() => resendOfficerInvite(m.id||m._id)} title="Resend invite" style={{ fontSize:9, padding:'3px 7px', borderRadius:6, border:'1px solid rgba(124,58,237,0.3)', background:'rgba(124,58,237,0.06)', color:'#7C3AED', cursor:'pointer', fontWeight:700 }}>📧 Resend</button>
+                    )}
+                    <button onClick={() => removeOfficer(m.id||m._id)} title="Remove" style={{ fontSize:9, padding:'3px 7px', borderRadius:6, border:'1px solid rgba(220,38,38,0.25)', background:'rgba(220,38,38,0.05)', color:'#DC2626', cursor:'pointer', fontWeight:700 }}>✕ Remove</button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -380,7 +425,9 @@ export default function OrgSettings({ user }) {
                   <p style={{ color:'#9E9D9B', fontSize:12, margin:0 }}>{org?.name} · {teamMembers.length} team member{teamMembers.length!==1?'s':''}</p>
                 </div>
                 <span style={{ fontSize:11, color:'#64748B', background:'#F1F5F9', padding:'4px 10px', borderRadius:20, fontWeight:600 }}>
-                  {admins.length} Admin{admins.length!==1?'s':''} · {recruiters.length} Recruiter{recruiters.length!==1?'s':''}
+                  {isCollege
+                    ? `${admins.length} Admin${admins.length!==1?'s':''} · ${officers.length} Officer${officers.length!==1?'s':''}`
+                    : `${admins.length} Admin${admins.length!==1?'s':''} · ${recruiters.length} Recruiter${recruiters.length!==1?'s':''}`}
                 </span>
               </div>
 
@@ -417,7 +464,7 @@ export default function OrgSettings({ user }) {
 
               {/* Hiring Managers */}
               {managers.length > 0 && (
-                <div>
+                <div style={{ marginBottom: officers.length ? 24 : 0 }}>
                   <div style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:'#F59E0B' }} />
                     Hiring Manager{managers.length!==1?'s':''}
@@ -427,9 +474,43 @@ export default function OrgSettings({ user }) {
                   </div>
                 </div>
               )}
+
+              {/* Placement Officers */}
+              {officers.length > 0 && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ display:'inline-block', width:10, height:10, borderRadius:'50%', background:'#7C3AED' }} />
+                    Placement Officer{officers.length!==1?'s':''}
+                  </div>
+                  <div style={{ display:'flex', gap:24, flexWrap:'wrap', paddingLeft:8 }}>
+                    {officers.map(m => <MemberCard key={m.id||m._id} m={m} />)}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
+
+        {/* College: Invite Placement Officers (multi-officer accounts) */}
+        {isCollege && (
+          <div style={{ ...glass, border: '1px solid rgba(124,58,237,0.18)' }}>
+            <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>🎓 Placement Officers</h3>
+            <p style={{ color: '#9E9D9B', fontSize: 12, marginBottom: 16 }}>Invite colleagues to manage placements alongside you. They'll get an email to set their password.</p>
+            {officerMsg && (
+              <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, background: officerMsg.startsWith('❌') ? 'rgba(220,38,38,0.08)' : 'rgba(124,58,237,0.08)', color: officerMsg.startsWith('❌') ? '#DC2626' : '#7C3AED' }}>
+                {officerMsg}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <Field style={{ flex: '1 1 180px' }} label="Name" value={officerForm.name} onChange={v => setOfficerForm(p => ({ ...p, name: v }))} placeholder="Officer's full name" />
+              <Field style={{ flex: '1 1 220px' }} label="Email" value={officerForm.email} onChange={v => setOfficerForm(p => ({ ...p, email: v }))} placeholder="officer@college.edu" />
+              <button onClick={inviteOfficer} disabled={invitingOfficer}
+                style={{ background: 'linear-gradient(135deg, #7C3AED, #4C1D95)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, padding: '11px 20px', cursor: invitingOfficer ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: invitingOfficer ? 0.7 : 1, fontSize: 13 }}>
+                {invitingOfficer ? 'Inviting…' : '+ Invite Officer'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={glass}>
           <h3 style={{ color: '#181818', fontWeight: 700, fontSize: 15, margin: '0 0 16px' }}>Organisation Profile</h3>

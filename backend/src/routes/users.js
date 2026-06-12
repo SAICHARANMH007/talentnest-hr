@@ -31,7 +31,12 @@ router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), ch
   const { name, email, role = 'recruiter', ...metadata } = req.body;
   if (req.user.role !== 'super_admin' && role === 'admin') throw new AppError('Forbidden: Only Super Admin can invite an Admin.', 403);
   if (req.user.role === 'recruiter' && role !== 'candidate') throw new AppError('Forbidden: Recruiter can only create candidates.', 403);
-  if (req.user.role === 'admin' && !['recruiter', 'candidate'].includes(role)) throw new AppError('Forbidden: Admin can only invite Recruiters or Candidates.', 403);
+  if (role === 'placement_officer' && req.user.tenantType !== 'college') throw new AppError('Forbidden: Placement Officer accounts are only available for college tenants.', 403);
+  if (req.user.role === 'admin' && !['recruiter', 'candidate'].includes(role)) {
+    if (!(req.user.tenantType === 'college' && role === 'placement_officer')) {
+      throw new AppError('Forbidden: Admin can only invite Recruiters or Candidates.', 403);
+    }
+  }
 
   const checks = runValidations({ name: v.name(name), email: v.email(email) });
   if (checks.hasErrors) throw new AppError(checks.errors[0].message, 400);
@@ -44,6 +49,7 @@ router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), ch
     email: checks.values.email,
     role, tenantId,
     addedBy: req.user._id,
+    tenantType: role === 'placement_officer' ? 'college' : metadata.tenantType,
     ...metadata
   });
 
