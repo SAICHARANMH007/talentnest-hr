@@ -1969,3 +1969,6 @@ router.get('/status/:token', asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+module.exports.normalizeStage = normalizeStage;
+module.exports.VALID_STAGES = VALID_STAGES;
+module.exports.STAGE_ALIAS = STAGE_ALIAS;
