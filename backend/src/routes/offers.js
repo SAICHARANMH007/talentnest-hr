@@ -527,6 +527,11 @@ router.get('/:id/pdf', authMiddleware, asyncHandler(async (req, res) => {
   const offer = await OfferLetter.findById(req.params.id);
   if (!offer) throw new AppError('Offer not found.', 404);
 
+  // Tenant check for non-super-admin
+  if (req.user.role !== 'super_admin' && String(offer.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Access denied.', 403);
+  }
+
   // Must have a generated PDF
   if (!offer.signedDocUrl) throw new AppError('Signed PDF not yet generated. The candidate must sign the offer first.', 404);
 

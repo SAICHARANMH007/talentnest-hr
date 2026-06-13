@@ -124,7 +124,9 @@ router.post('/resend-invite', authenticate, allowRoles('super_admin', 'admin'), 
   const { userId } = req.body;
   if (!userId) throw new AppError('userId is required.', 400);
 
-  const user = await User.findById(userId);
+  const userFilter = { _id: userId };
+  if (req.user.role !== 'super_admin') userFilter.tenantId = req.user.tenantId;
+  const user = await User.findOne(userFilter);
   if (!user) throw new AppError('User not found.', 404);
   if (user.inviteStatus === 'accepted') throw new AppError('User has already accepted the invite.', 400);
 
@@ -149,7 +151,9 @@ router.post('/resend-invite', authenticate, allowRoles('super_admin', 'admin'), 
 
 // DELETE /api/admin/revoke-invite/:userId — revoke a pending invite (hard-deletes the unactivated user)
 router.delete('/revoke-invite/:userId', authenticate, allowRoles('super_admin', 'admin'), asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.userId);
+  const userFilter = { _id: req.params.userId };
+  if (req.user.role !== 'super_admin') userFilter.tenantId = req.user.tenantId;
+  const user = await User.findOne(userFilter);
   if (!user) throw new AppError('User not found.', 404);
   if (user.inviteStatus === 'accepted') throw new AppError('Cannot revoke — user has already accepted.', 400);
 

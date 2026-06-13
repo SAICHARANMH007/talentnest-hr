@@ -439,7 +439,9 @@ router.post('/:id/report', asyncHandler(async (req, res) => {
 router.patch('/reports/:reportId/dismiss', asyncHandler(async (req, res) => {
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
   if (!isAdmin) throw new AppError('Not authorized.', 403);
-  const report = await PostReport.findById(req.params.reportId);
+  const reportFilter = { _id: req.params.reportId };
+  if (!['super_admin', 'superadmin'].includes(req.user.role)) reportFilter.tenantId = req.user.tenantId;
+  const report = await PostReport.findOne(reportFilter);
   if (!report) throw new AppError('Report not found.', 404);
   report.status     = 'dismissed';
   report.resolvedBy = req.user._id || req.user.id;
@@ -452,10 +454,12 @@ router.patch('/reports/:reportId/dismiss', asyncHandler(async (req, res) => {
 router.delete('/reports/:reportId/delete-post', asyncHandler(async (req, res) => {
   const isAdmin = ['admin', 'super_admin', 'superadmin'].includes(req.user.role);
   if (!isAdmin) throw new AppError('Not authorized.', 403);
-  const report = await PostReport.findById(req.params.reportId);
+  const reportFilter = { _id: req.params.reportId };
+  if (!['super_admin', 'superadmin'].includes(req.user.role)) reportFilter.tenantId = req.user.tenantId;
+  const report = await PostReport.findOne(reportFilter);
   if (!report) throw new AppError('Report not found.', 404);
 
-  await FeedPost.findByIdAndUpdate(report.postId, { isDeleted: true });
+  await FeedPost.findOneAndUpdate({ _id: report.postId, tenantId: report.tenantId }, { isDeleted: true });
   await PostReport.updateMany({ postId: report.postId }, { status: 'reviewed', resolvedBy: req.user._id || req.user.id, resolvedAt: new Date() });
   res.json({ success: true });
 }));

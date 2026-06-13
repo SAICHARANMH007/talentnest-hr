@@ -32,6 +32,9 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
 
   const recipient = await User.findById(toUserId).lean();
   if (!recipient) return res.status(404).json({ success: false, error: 'Recipient not found.' });
+  if (role !== 'super_admin' && String(recipient.tenantId) !== String(req.user.tenantId)) {
+    return res.status(403).json({ success: false, error: 'Cannot message a user outside your organization.' });
+  }
 
   const msg = await DirectMessage.create({
     tenantId  : req.user.tenantId,
@@ -100,6 +103,13 @@ router.get('/contacts', authenticate, asyncHandler(async (req, res) => {
 router.get('/thread/:userId', authenticate, asyncHandler(async (req, res) => {
   const myId      = new mongoose.Types.ObjectId(req.user._id || req.user.id);
   const partnerId = new mongoose.Types.ObjectId(req.params.userId);
+
+  if (req.user.role !== 'super_admin') {
+    const partner = await User.findById(partnerId).select('tenantId').lean();
+    if (!partner || String(partner.tenantId) !== String(req.user.tenantId)) {
+      return res.status(403).json({ success: false, error: 'Cannot view messages with a user outside your organization.' });
+    }
+  }
 
   const msgs = await DirectMessage.find({
     $or: [

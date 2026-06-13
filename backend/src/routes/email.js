@@ -141,7 +141,8 @@ const resendLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error
 router.get('/logs', authMiddleware, allowRoles('admin', 'super_admin', 'recruiter'), async (req, res) => {
   try {
     const { status, search } = req.query;
-    let logs = await EmailLog.find({});
+    const logFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+    let logs = await EmailLog.find(logFilter);
     if (status && status !== 'all') logs = logs.filter(l => l.status === status);
     if (search) {
       const q = search.toLowerCase();
@@ -161,7 +162,8 @@ router.get('/logs', authMiddleware, allowRoles('admin', 'super_admin', 'recruite
 // POST /api/email/logs/:id/resend — retry a failed email
 router.post('/logs/:id/resend', authMiddleware, allowRoles('admin', 'super_admin', 'recruiter'), resendLimiter, async (req, res) => {
   try {
-    const log = await EmailLog.findById(req.params.id);
+    const logFilter = req.user.role === 'super_admin' ? { _id: req.params.id } : { _id: req.params.id, tenantId: req.user.tenantId };
+    const log = await EmailLog.findOne(logFilter);
     if (!log) return res.status(404).json({ error: 'Log entry not found.' });
     if (!log.body) return res.status(400).json({ error: 'No stored email body — cannot resend.' });
     await sendEmail(log.to, log.subject, log.body);

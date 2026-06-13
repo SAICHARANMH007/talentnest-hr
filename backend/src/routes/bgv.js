@@ -53,7 +53,9 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
 // ── GET /api/bgv/user/:userId — admin/recruiter view a candidate's docs ───────
 router.get('/user/:userId', authMiddleware, allowRoles('admin', 'super_admin', 'recruiter'),
   asyncHandler(async (req, res) => {
-    const docs = await BgvDocument.find({ userId: req.params.userId, deletedAt: null })
+    const filter = { userId: req.params.userId, deletedAt: null };
+    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+    const docs = await BgvDocument.find(filter)
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, data: docs.map(norm) });
@@ -64,7 +66,8 @@ router.get('/:id/file', authMiddleware, asyncHandler(async (req, res) => {
   const doc = await BgvDocument.findOne({ _id: req.params.id, deletedAt: null }).lean();
   if (!doc) throw new AppError('Document not found.', 404);
   const isOwner = String(doc.userId) === String(req.user.id);
-  const isStaff = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const isStaff = ['admin', 'super_admin', 'recruiter'].includes(req.user.role)
+    && (req.user.role === 'super_admin' || String(doc.tenantId) === String(req.user.tenantId));
   if (!isOwner && !isStaff) throw new AppError('Access denied.', 403);
   res.json({ success: true, data: { ...norm(doc), fileUrl: doc.fileUrl } });
 }));
@@ -92,8 +95,10 @@ router.patch('/:id/verify', authMiddleware, allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
     const { status, rejectNote } = req.body;
     if (!['verified', 'rejected', 'under_review'].includes(status)) throw new AppError('Invalid status.', 400);
-    const doc = await BgvDocument.findByIdAndUpdate(
-      req.params.id,
+    const docFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') docFilter.tenantId = req.user.tenantId;
+    const doc = await BgvDocument.findOneAndUpdate(
+      docFilter,
       { $set: { status, rejectNote: rejectNote || '', verifiedBy: req.user.id, verifiedAt: new Date() } },
       { new: true }
     );

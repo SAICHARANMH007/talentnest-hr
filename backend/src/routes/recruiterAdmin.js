@@ -24,7 +24,9 @@ router.post('/invite-candidate', authenticate, allowRoles('super_admin', 'admin'
   const effectiveTenantId = req.user.tenantId;
   if (!effectiveTenantId) throw new AppError('Tenant context missing from token.', 400);
 
-  const job = await Job.findById(jobId).lean();
+  const jobFilter = { _id: jobId };
+  if (req.user.role !== 'super_admin') jobFilter.tenantId = effectiveTenantId;
+  const job = await Job.findOne(jobFilter).lean();
   if (!job) throw new AppError('Job not found.', 404);
 
   const cleanEmail = email.toLowerCase().trim();

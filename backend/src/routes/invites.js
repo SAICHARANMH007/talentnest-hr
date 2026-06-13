@@ -152,7 +152,9 @@ router.post('/talent-match', auth, allowRoles('admin', 'super_admin', 'recruiter
     const { candidateId, jobId, action } = req.body; // action: 'shortlist' | 'interest' | 'park'
     if (!candidateId || !jobId) return res.status(400).json({ error: 'candidateId and jobId required.' });
 
-    const job = await Job.findById(jobId);
+    const jobFilter = { _id: jobId };
+    if (req.user.role !== 'super_admin') jobFilter.tenantId = req.user.tenantId;
+    const job = await Job.findOne(jobFilter);
     if (!job) return res.status(404).json({ error: 'Job not found.' });
 
     const candidateUser = await User.findById(candidateId);
@@ -225,7 +227,9 @@ router.post('/', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (r
     if (!Array.isArray(candidateIds) || !candidateIds.length || !jobId)
       return res.status(400).json({ error: 'candidateIds (array) and jobId required.' });
 
-    const job = await Job.findById(jobId);
+    const jobFilter = { _id: jobId };
+    if (req.user.role !== 'super_admin') jobFilter.tenantId = req.user.tenantId;
+    const job = await Job.findOne(jobFilter);
     if (!job) return res.status(404).json({ error: 'Job not found.' });
     const j = job.toJSON ? job.toJSON() : job;
 
@@ -483,11 +487,13 @@ router.patch('/:id/status', auth, allowRoles('admin', 'super_admin', 'recruiter'
     if (!['interested', 'declined', 'sent', 'opened'].includes(status))
       return res.status(400).json({ error: 'Invalid status.' });
 
-    const invite = await Invite.findById(req.params.id);
+    const inviteFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') inviteFilter.tenantId = req.user.tenantId;
+    const invite = await Invite.findOne(inviteFilter);
     if (!invite) return res.status(404).json({ error: 'Invite not found.' });
 
     const updates = { status, respondedAt: ['interested','declined'].includes(status) ? new Date().toISOString() : undefined };
-    await Invite.findByIdAndUpdate(req.params.id, updates);
+    await Invite.findOneAndUpdate(inviteFilter, updates);
 
     // If manually marked interested, auto-create application
     if (status === 'interested' && invite.jobId && invite.candidateId) {
@@ -511,7 +517,9 @@ router.patch('/:id/status', auth, allowRoles('admin', 'super_admin', 'recruiter'
 // ── POST /api/invites/:id/resend ─── retry a failed invite ───────────────────
 router.post('/:id/resend', auth, allowRoles('admin', 'super_admin', 'recruiter'), async (req, res) => {
   try {
-    const invite = await Invite.findById(req.params.id);
+    const resendFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') resendFilter.tenantId = req.user.tenantId;
+    const invite = await Invite.findOne(resendFilter);
     if (!invite) return res.status(404).json({ error: 'Invite not found.' });
     const inv = invite.toJSON ? invite.toJSON() : invite;
 
@@ -546,7 +554,10 @@ router.post('/:id/resend', auth, allowRoles('admin', 'super_admin', 'recruiter')
 // ── DELETE /api/invites/:id ─── admin delete ──────────────────────────────────
 router.delete('/:id', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
   try {
-    await Invite.findByIdAndDelete(req.params.id);
+    const deleteFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') deleteFilter.tenantId = req.user.tenantId;
+    const result = await Invite.findOneAndDelete(deleteFilter);
+    if (!result) return res.status(404).json({ error: 'Invite not found.' });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

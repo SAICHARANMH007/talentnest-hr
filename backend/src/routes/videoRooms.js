@@ -19,7 +19,9 @@ router.post('/', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), 
   const { interviewId } = req.body;
   if (!interviewId) throw new AppError('interviewId required', 400);
 
-  const app = await Application.findOne({ _id: interviewId, deletedAt: null }).lean();
+  const appFilter = { _id: interviewId, deletedAt: null };
+  if (req.user.role !== 'super_admin') appFilter.tenantId = req.user.tenantId;
+  const app = await Application.findOne(appFilter).lean();
   if (!app) throw new AppError('Application not found', 404);
 
   const existing = await VideoRoom.findOne({ interviewId }).lean();
@@ -81,8 +83,16 @@ router.get('/join/:roomToken', asyncHandler(async (req, res) => {
 
 // GET /api/video-rooms/by-interview/:interviewId — get room for an interview
 router.get('/by-interview/:interviewId', authenticate, asyncHandler(async (req, res) => {
-  const room = await VideoRoom.findOne({ interviewId: req.params.interviewId }).select('-chatMessages').lean();
+  const roomFilter = { interviewId: req.params.interviewId };
+  if (req.user.role !== 'super_admin') roomFilter.tenantId = req.user.tenantId;
+  const room = await VideoRoom.findOne(roomFilter).select('-chatMessages').lean();
   if (!room) return res.json({ success: true, data: null });
+
+  // Only staff (admin/super_admin/recruiter) and the assigned host may see the hostToken
+  const isStaff = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const isHost  = String(room.hostUserId) === String(req.user._id || req.user.id);
+  if (!isStaff && !isHost) delete room.hostToken;
+
   res.json({ success: true, data: room });
 }));
 
@@ -163,8 +173,10 @@ router.get('/turn-credentials', asyncHandler(async (req, res) => {
 // PATCH /api/video-rooms/:id — update scheduledAt (reschedule from meeting room UI)
 router.patch('/:id', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { scheduledAt } = req.body;
+  const patchFilter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') patchFilter.tenantId = req.user.tenantId;
   const room = await VideoRoom.findOneAndUpdate(
-    { _id: req.params.id },
+    patchFilter,
     { $set: { ...(scheduledAt ? { scheduledAt: new Date(scheduledAt) } : {}) } },
     { new: true }
   ).lean();

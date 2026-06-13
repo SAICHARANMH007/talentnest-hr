@@ -40,8 +40,10 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/candidate-requests/:id
-router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
-  const r = await CandidateRequest.findById(req.params.id)
+router.get('/:id', authMiddleware, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  const r = await CandidateRequest.findOne(filter)
     .populate('tenantId', 'name').populate('requestedBy', 'name email').lean();
   if (!r) throw new AppError('Request not found.', 404);
   res.json({ success: true, data: { ...r, id: r._id?.toString() } });
@@ -98,12 +100,15 @@ router.patch('/:id', authMiddleware,
     const allowed = ['status', 'adminNotes', 'chargeAmount', 'submittedCandidates'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
 
-    const prevRequest = await CandidateRequest.findById(req.params.id).lean();
+    const reqFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') reqFilter.tenantId = req.user.tenantId;
+
+    const prevRequest = await CandidateRequest.findOne(reqFilter).lean();
     if (!prevRequest) throw new AppError('Request not found.', 404);
 
     if (updates.status === 'fulfilled') updates.fulfilledAt = new Date();
 
-    const r = await CandidateRequest.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true })
+    const r = await CandidateRequest.findOneAndUpdate(reqFilter, { $set: updates }, { new: true })
       .populate('submittedCandidates', 'name email phone title');
     if (!r) throw new AppError('Request not found.', 404);
 
@@ -493,8 +498,10 @@ router.get('/:id/suggested-candidates', ...guard, allowRoles('super_admin'), asy
 router.delete('/:id', ...guard,
   allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
-    const r = await CandidateRequest.findByIdAndUpdate(
-      req.params.id, { $set: { status: 'cancelled' } }, { new: true }
+    const reqFilter = { _id: req.params.id };
+    if (req.user.role !== 'super_admin') reqFilter.tenantId = req.user.tenantId;
+    const r = await CandidateRequest.findOneAndUpdate(
+      reqFilter, { $set: { status: 'cancelled' } }, { new: true }
     );
     if (!r) throw new AppError('Request not found.', 404);
     res.json({ success: true, message: 'Request cancelled.' });

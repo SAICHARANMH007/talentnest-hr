@@ -28,8 +28,9 @@ const COLLECTIONS = [
 const SINGLETONS = ['emailSignature', 'fieldVisibility', 'brandColors', 'offerLetterTemplate', 'hiringSettings', 'employerBrand', 'dashboardWidgets'];
 
 function resolveOrgId(req) {
-  // super_admin can pass ?orgId=... or uses their own tenantId
-  return req.query.orgId || req.user.tenantId || req.user.orgId;
+  // Only super_admin may target another org via ?orgId=...
+  if (req.user.role === 'super_admin' && req.query.orgId) return req.query.orgId;
+  return req.user.tenantId || req.user.orgId;
 }
 
 function toPlain(doc) {
