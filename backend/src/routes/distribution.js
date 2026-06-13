@@ -12,6 +12,7 @@ const Organization     = require('../models/Organization');
 const { authenticate } = require('../middleware/auth');
 const { allowRoles }   = require('../middleware/rbac');
 const asyncHandler     = require('../utils/asyncHandler');
+const AppError         = require('../utils/AppError');
 
 const SITE_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
@@ -216,13 +217,19 @@ router.post('/retry/:jobId/:platform', authenticate, allowRoles('admin', 'super_
 }));
 
 // ── GET /api/distribution/employer-settings/:tenantId — get platform settings ─
-router.get('/employer-settings/:tenantId', authenticate, asyncHandler(async (req, res) => {
+router.get('/employer-settings/:tenantId', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  if (req.user.role !== 'super_admin' && String(req.params.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Access denied.', 403);
+  }
   const org = await Organization.findById(req.params.tenantId).select('distributionSettings').lean();
   res.json({ success: true, data: org?.distributionSettings || { naukri: false, shine: false, timesjobs: false } });
 }));
 
 // ── PATCH /api/distribution/employer-settings/:tenantId — save checklist ──────
 router.patch('/employer-settings/:tenantId', authenticate, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  if (req.user.role !== 'super_admin' && String(req.params.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Access denied.', 403);
+  }
   const { naukri, shine, timesjobs } = req.body;
   await Organization.findByIdAndUpdate(req.params.tenantId, {
     $set: {
