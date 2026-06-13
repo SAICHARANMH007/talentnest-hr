@@ -25,9 +25,15 @@ export default function BillingPage() {
         api.getBillingPlans(),
         api.getBillingInvoices(),
       ]);
-      setUsage(u.data || u);
+      const usageData = u.data || u;
+      setUsage(usageData);
       setPlans(p.data || p);
       setInvoices(i.data || i || []);
+      setBillingDetails({
+        gstinNumber   : usageData?.gstinNumber || '',
+        billingAddress: usageData?.billingAddress || '',
+        billingState  : usageData?.billingState || '',
+      });
     } catch (err) {
       setToast(`❌ Failed to load billing data: ${err.message}`);
     } finally {
@@ -46,8 +52,7 @@ export default function BillingPage() {
 
   const handleUpdateBilling = async () => {
     try {
-      // Assuming api.patchTenant exists or using generic org update logic from prompt
-      await api.updateOrgSettings(usage.tenantId || 'self', billingDetails);
+      await api.updateBillingDetails(billingDetails);
       setToast('✅ Billing details updated successfully.');
     } catch (err) {
       setToast(`❌ Failed to update billing: ${err.message}`);

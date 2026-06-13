@@ -20,6 +20,7 @@ export const platformService = {
   async createBillingOrder(planName)      { return req('POST', '/billing/create-order', { planName }); },
   async verifyBillingPayment(data)       { return req('POST', '/billing/verify-payment', data); },
   async getBillingInvoices()             { return req('GET', '/billing/invoices'); },
+  async updateBillingDetails(data)       { return req('PATCH', '/billing/details', data); },
 
   // Org Settings
   async getMyOrg()                       { return req('GET', '/orgs/my-org'); },

@@ -103,6 +103,30 @@ router.get('/usage', auth, tenantGuard, asyncHandler(async (req, res) => {
         candidates: { used: totalCandidates, max: limits.maxCandidateRecords },
         storageGB: { used: 0, max: limits.maxStorageGB }, // Storage tracking deferred
       },
+      gstinNumber   : tenant.gstinNumber || '',
+      billingAddress: tenant.billingAddress || '',
+      billingState  : tenant.billingState || '',
+    },
+  });
+}));
+
+// PATCH /api/billing/details — update GST/billing address for the org
+router.patch('/details', auth, allowRoles('admin', 'super_admin'), tenantGuard, asyncHandler(async (req, res) => {
+  const { gstinNumber, billingAddress, billingState } = req.body;
+  const updates = {};
+  if (gstinNumber    !== undefined) updates.gstinNumber    = String(gstinNumber).trim();
+  if (billingAddress !== undefined) updates.billingAddress = String(billingAddress).trim();
+  if (billingState   !== undefined) updates.billingState   = String(billingState).trim();
+
+  const tenant = await Tenant.findByIdAndUpdate(req.user.tenantId, { $set: updates }, { new: true });
+  if (!tenant) throw new AppError('Tenant not found.', 404);
+
+  res.json({
+    success: true,
+    data: {
+      gstinNumber   : tenant.gstinNumber || '',
+      billingAddress: tenant.billingAddress || '',
+      billingState  : tenant.billingState || '',
     },
   });
 }));
