@@ -297,6 +297,13 @@ router.patch('/:id', ...guard,
     }
     await offer.save();
 
+    if (status === 'declined') {
+      const { fireWebhooks } = require('../services/webhookService');
+      fireWebhooks(app.tenantId, 'offer.declined', {
+        offerId: String(offer._id), applicationId: String(offer.applicationId), candidateName: offer.templateData?.candidateName || '',
+      }).catch(() => {});
+    }
+
     logger.audit('Offer updated', req.user.id, req.user.tenantId, { offerId: offer._id });
     res.json({ success: true, data: normalizeOffer(offer) });
   })

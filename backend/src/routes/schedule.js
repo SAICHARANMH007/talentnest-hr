@@ -153,6 +153,12 @@ router.post('/:token/confirm', asyncHandler(async (req, res) => {
       }
       await app.save();
 
+      // ── Fire webhooks (non-blocking)
+      const { fireWebhooks } = require('../services/webhookService');
+      fireWebhooks(link.tenantId, 'interview.scheduled', {
+        applicationId: String(app._id), roundIndex, roundLabel: newStage, scheduledAt: chosen, format: link.format || 'video',
+      }).catch(() => {});
+
       // Notify recruiter
       const User = require('../models/User');
       const tenantAdmins = await User.find({

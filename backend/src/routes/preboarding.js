@@ -30,7 +30,7 @@ async function createPreBoardingForApplication(applicationId, tenantId, createdB
   const job       = app.jobId       || {};
   const mockOfferId = require('crypto').createHash('md5').update(String(applicationId)).digest('hex');
 
-  return PreBoarding.create({
+  const pb = await PreBoarding.create({
     tenantId,
     candidateId  : candidate._id || app.candidateId,
     applicationId: applicationId,
@@ -42,6 +42,13 @@ async function createPreBoardingForApplication(applicationId, tenantId, createdB
     status        : 'pending',
     tasks         : DEFAULT_TASKS.map(t => ({ ...t })),
   });
+
+  const { fireWebhooks } = require('../services/webhookService');
+  fireWebhooks(tenantId, 'onboarding.initiated', {
+    applicationId: String(applicationId), candidateName: pb.candidateName, designation: pb.designation,
+  }).catch(() => {});
+
+  return pb;
 }
 
 // (helper exported at bottom alongside router)
@@ -276,6 +283,13 @@ router.patch('/:id/tasks/:taskId', authenticate, asyncHandler(async (req, res) =
   if (record.status !== newStatus) {
     await PreBoarding.findByIdAndUpdate(record._id, { status: newStatus });
     record.status = newStatus;
+
+    if (newStatus === 'completed') {
+      const { fireWebhooks } = require('../services/webhookService');
+      fireWebhooks(record.tenantId, 'onboarding.completed', {
+        applicationId: String(record.applicationId), candidateName: record.candidateName,
+      }).catch(() => {});
+    }
   }
 
   res.json({ success: true, data: { ...record, id: record._id.toString() } });
@@ -393,7 +407,15 @@ router.patch('/:id/tasks/:taskId/verify', authenticate, tenantGuard, allowRoles(
   const allDone = record.tasks.every(t => t.completedAt || !t.isRequired);
   const anyDone = record.tasks.some(t => t.completedAt);
   const newStatus = allDone ? 'completed' : anyDone ? 'in_progress' : 'pending';
-  if (record.status !== newStatus) await PreBoarding.findByIdAndUpdate(record._id, { status: newStatus });
+  if (record.status !== newStatus) {
+    await PreBoarding.findByIdAndUpdate(record._id, { status: newStatus });
+    if (newStatus === 'completed') {
+      const { fireWebhooks } = require('../services/webhookService');
+      fireWebhooks(record.tenantId, 'onboarding.completed', {
+        applicationId: String(record.applicationId), candidateName: record.candidateName,
+      }).catch(() => {});
+    }
+  }
 
   // If ALL document tasks are now verified → mark the candidate User as BGV verified
   const docTasks = record.tasks.filter(t => t.category === 'document');

@@ -6,11 +6,21 @@ const SUPPORTED_EVENTS = [
   'application.stage_changed',
   'application.hired',
   'application.rejected',
+  'application.shortlisted',
+  'application.withdrawn',
   'interview.scheduled',
+  'interview.completed',
+  'interview.cancelled',
   'offer.sent',
   'offer.accepted',
+  'offer.declined',
   'job.created',
   'job.closed',
+  'job.published',
+  'job.approved',
+  'onboarding.initiated',
+  'onboarding.completed',
+  'bgv.submitted',
 ];
 
 async function fireWebhooks(tenantId, event, payload) {

@@ -87,6 +87,12 @@ router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req,
     fileSize : req.file.size,
     mimeType : mime,
   });
+
+  if (doc.tenantId) {
+    const { fireWebhooks } = require('../services/webhookService');
+    fireWebhooks(doc.tenantId, 'bgv.submitted', { userId: String(req.user.id), docType, docName: doc.docName }).catch(() => {});
+  }
+
   res.status(201).json({ success: true, data: norm(doc) });
 }));
 
