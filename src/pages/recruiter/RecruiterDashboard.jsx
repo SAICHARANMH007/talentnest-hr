@@ -22,10 +22,6 @@ const toId = (v) => { if (!v) return ''; if (typeof v === 'object') return v.id 
 
 // Optimization: Job and Application lookup maps to prevent O(N*M) complexity
 
-const SkeletonCard = () => (
-  <div style={{background:'linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)',backgroundSize:'200% 100%',animation:'shimmer 1.5s infinite',borderRadius:'12px',height:'80px',width:'100%'}} />
-);
-
 export default function RecruiterDashboard({ user }) {
   const navigate = useNavigate();
   const [stats,  setStats]  = useState(null);

@@ -46,20 +46,9 @@ body {
 }
 
 /* ── Performance Animations ── */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes fadeInPage {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.tn-shimmer {
-  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
 }
 
 .tn-page-transition {
@@ -377,18 +366,6 @@ a:hover { text-decoration: underline; }
   animation: tn-fadein 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ── Skeleton loader ─────────────────────────────────────────────────────── */
-@keyframes tn-shimmer {
-  0%   { background-position: -600px 0; }
-  100% { background-position:  600px 0; }
-}
-.tn-skeleton {
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-  background-size: 600px 100%;
-  animation: tn-shimmer 1.4s infinite linear;
-  border-radius: 6px;
-}
-
 /* ── Drawer slide-in from right — iOS spring ─────────────────────────────── */
 @keyframes tn-slide-in-right {
   from { transform: translateX(100%); opacity: 0; }
@@ -522,19 +499,6 @@ img, video, iframe {
   max-width: 100%;
   height: auto;
   display: block;
-}
-
-/* ── Skeleton shimmer ── */
-.tn-skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 8px;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
 
 /* ── Page fade-in ── */
@@ -2538,17 +2502,6 @@ input[type="radio"]:checked {
 }
 .tn-notif-panel {
   animation: tn-notif-spring 0.3s var(--ios-spring) both;
-}
-
-/* ── Skeleton shimmer — smoother wave ── */
-.tn-skeleton {
-  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%);
-  background-size: 400% 100%;
-  animation: ios-shimmer 1.6s ease-in-out infinite;
-}
-@keyframes ios-shimmer {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
 }
 
 /* ── Reduced motion: respect user accessibility preference ── */

@@ -253,7 +253,7 @@ export default function AdminInsights({ user }) {
             <div>
               <p style={{ ...LABEL, marginBottom: 0 }}>Smart Alerts</p>
               {alertsSection.loading ? (
-                <span style={{ fontSize: 12, color: '#94A3B8' }}>Loading…</span>
+                <span style={{ fontSize: 12, color: '#94A3B8', display: 'inline-flex', alignItems: 'center', gap: 6 }}><Spinner /> Loading…</span>
               ) : totalAlerts === 0 ? (
                 <span style={{ fontSize: 12, color: '#10B981', fontWeight: 700 }}>✅ All clear — no actions needed</span>
               ) : (
