@@ -34,6 +34,7 @@ const SECTIONS = [
       { icon:'📜', name:'Digital offer letter generation', detail:'Generate branded offer letters from candidate data. Approve and send digitally. Candidates e-sign with their name — IP, timestamp, and signed PDF archived automatically.' },
       { icon:'📋', name:'Pre-boarding checklist management', detail:'When a candidate is hired, a pre-boarding checklist is created automatically — Aadhaar, PAN, salary slips, experience letter, background verification, IT setup, orientation. Track progress per candidate.' },
       { icon:'✅', name:'Background document verification', detail:'Candidates upload their documents. You review each one and mark it verified, rejected, or request resubmission — with notes sent back to the candidate.' },
+      { icon:'🏅', name:'Hire with TalentNest Verified Candidates', detail:'Candidates who complete identity and mobile ownership verification carry a TalentNest Verified badge — one trusted identity per person, fewer duplicate or fake profiles, and less verification effort for your team.' },
       { icon:'📅', name:'Joining date & CTC tracking', detail:'Record CTC offered and joining date when a candidate is hired. Visible in the pre-boarding record and the candidate\'s onboarding checklist.' },
     ],
   },

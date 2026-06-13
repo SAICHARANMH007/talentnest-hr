@@ -44,6 +44,7 @@ const SECTIONS = [
       { icon:'✅', name:'Complete your pre-boarding checklist', detail:'Once hired, a checklist appears in your Onboarding section — Aadhaar, PAN, salary slips, experience letter, background verification consent, bank details, IT setup, compliance training. Upload each from your phone.' },
       { icon:'🧩', name:'Take skills assessments for jobs', detail:'Some roles require a skills assessment at apply time. Complete it inside JobTrack — your score is sent to the recruiter alongside your application automatically.' },
       { icon:'👤', name:'Build your candidate profile', detail:'Name, phone, email, current title, skills, work experience, preferred location, notice period, current CTC, expected CTC, LinkedIn URL, resume upload, and video resume. Recruiters search this profile.' },
+      { icon:'🏅', name:'Earn TalentNest Verified Candidate status', detail:'Complete identity and mobile ownership verification to receive the TalentNest Verified badge — one trusted professional identity, recognized by every employer on the platform.' },
     ],
   },
   {
@@ -52,7 +53,7 @@ const SECTIONS = [
       { icon:'📝', name:'Built-in Resume Builder', detail:'Create a professional, ATS-friendly resume directly in JobTrack. Choose templates, add your skills, and export to PDF in one click — ready for any application.' },
       { icon:'📱', name:'Mobile-first candidate dashboard', detail:'Manage your entire career search from your phone. Optimized for mobile viewports, ensuring you never miss a recruiter message or interview invite.' },
       { icon:'🎬', name:'Record and attach video resumes', detail:'Stand out from the crowd by recording a 60-second video introduction. Attach it to your profile so recruiters can see your communication skills and personality.' },
-      { icon:'🏅', name:'BGV document vault', detail:'Upload and store your compliance documents (ID, Education, Experience) in a secure vault. Share them with hiring teams for instant verification once hired.' },
+      { icon:'🗂️', name:'BGV document vault', detail:'Upload and store your compliance documents (ID, Education, Experience) in a secure vault — never shown publicly. Share them with hiring teams for instant verification once hired.' },
       { icon:'🔒', name:'Privacy & Visibility controls', detail:'Choose who can see your profile. Set your visibility to Public, Private, or Incognito. You have total control over your career data.' },
     ],
   },

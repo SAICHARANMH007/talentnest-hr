@@ -16,6 +16,7 @@ const SECTIONS = [
       { icon:'📥', name:'Bulk add candidates', detail:'Add your entire student roster in one go — no need for every student to register individually before they can be tracked for placements.' },
       { icon:'🧑‍🎓', name:'Student directory', detail:'See every student linked to your college — profile, skills, education history, and current placement status — in one searchable list.' },
       { icon:'📇', name:'Placement records', detail:'Track every registration against every drive — who applied, who was shortlisted, selected, or rejected — across companies and drive types.' },
+      { icon:'🏅', name:'Verified student profiles', detail:'Students who complete TalentNest identity verification carry a Verified Candidate badge — giving your placement cell and recruiting companies trusted, fraud-resistant placement records.' },
       { icon:'📈', name:'Skill-gap recommendations', detail:'See which in-demand skills your students are missing compared to active jobs platform-wide, with suggested courses to close the gap.' },
     ],
   },

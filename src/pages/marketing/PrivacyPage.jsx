@@ -37,7 +37,16 @@ const SECTIONS = [
     \nAll third-party service providers are bound by data processing agreements and may not use your data for their own purposes.`,
   },
   {
-    title: '4. Data Security',
+    title: '4. Identity Verification & Trust',
+    content: `TalentNest offers an optional identity verification program for candidates ("TalentNest Verified Candidate"). When you choose to verify:
+    \n• We confirm your identity and mobile number ownership to establish that your profile belongs to you
+    \n• This helps prevent fake profiles, duplicate accounts, and impersonation across the platform
+    \n• Your sensitive identity documents (e.g. government ID) are stored securely and are **never displayed publicly** — they are used solely to confirm authenticity
+    \n• Only your verification status (a "TalentNest Verified Candidate" badge) and the professional information you choose to share are visible to employers
+    \n• Verification is consent-based — you control what information is shared and with whom`,
+  },
+  {
+    title: '5. Data Security',
     content: `We implement industry-standard security measures to protect your data:
     \n• All data is encrypted in transit using TLS 1.2+
     \n• Passwords are hashed using bcrypt (never stored in plain text)
@@ -47,7 +56,7 @@ const SECTIONS = [
     \nDespite these measures, no security system is impenetrable. We encourage you to use strong passwords and not share your account credentials.`,
   },
   {
-    title: '5. Cookies and Tracking',
+    title: '6. Cookies and Tracking',
     content: `We use cookies and similar tracking technologies to:
     \n• Keep you logged in (session cookies)
     \n• Remember your preferences
@@ -55,7 +64,7 @@ const SECTIONS = [
     \nYou can control cookies through your browser settings. Disabling cookies may affect some features of the platform.`,
   },
   {
-    title: '6. Your Rights',
+    title: '7. Your Rights',
     content: `Depending on your location, you may have the right to:
     \n• **Access**: Request a copy of the personal data we hold about you
     \n• **Correction**: Ask us to correct inaccurate data
@@ -65,7 +74,7 @@ const SECTIONS = [
     \nTo exercise these rights, email us at hr@talentnesthr.com. We will respond within 30 days.`,
   },
   {
-    title: '7. Data Retention',
+    title: '8. Data Retention',
     content: `We retain your data for as long as your account is active or as needed to provide services. Specifically:
     \n• Active accounts: Data retained indefinitely while account is in use
     \n• Deleted accounts: Core data deleted within 30 days; anonymised usage data may be retained for analytics
@@ -73,15 +82,15 @@ const SECTIONS = [
     \n• Payment records: Retained for 7 years as required by Indian tax law`,
   },
   {
-    title: '8. Children\'s Privacy',
+    title: '9. Children\'s Privacy',
     content: `Our platform is not directed to individuals under the age of 18. We do not knowingly collect personal information from children. If you believe we have inadvertently collected such information, please contact us immediately at hr@talentnesthr.com.`,
   },
   {
-    title: '9. Changes to This Policy',
+    title: '10. Changes to This Policy',
     content: `We may update this Privacy Policy from time to time. We will notify you of significant changes by email or by posting a prominent notice on our platform. Your continued use of the platform after changes constitutes acceptance of the updated policy.`,
   },
   {
-    title: '10. Contact Us',
+    title: '11. Contact Us',
     content: `For questions, concerns, or to exercise your data rights, contact our Data Protection Officer:
     \n• **Email**: hr@talentnesthr.com
     \n• **Phone**: +91 79955 35539
