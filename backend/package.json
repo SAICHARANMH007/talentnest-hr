@@ -12,7 +12,8 @@
     "test": "vitest run",
     "seed": "node src/db/seed.js",
     "seed:fresh": "node src/db/seedFresh.js",
-    "seed:automations": "node src/db/seedSystemAutomations.js"
+    "seed:automations": "node src/db/seedSystemAutomations.js",
+    "refresh-job-dates": "node src/db/refreshJobDates.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -718,6 +718,9 @@ async function seedMassiveJobs(tnOrg, adminUserId) {
   const tenantId = od.id || od._id?.toString();
   const slug = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const randomDateThisWeek = () => new Date(Date.now() - Math.floor(Math.random() * 7) * DAY_MS - Math.floor(Math.random() * DAY_MS));
+
   let locIndex     = 0;
   let companyIndex = 0;
   let jobCount     = 0;
@@ -777,6 +780,7 @@ async function seedMassiveJobs(tnOrg, adminUserId) {
           approvalStatus: 'approved',
           isPublic:       true,
           createdBy:      adminUserId,
+          createdAt:      randomDateThisWeek(),
         });
 
         jobCount++;
