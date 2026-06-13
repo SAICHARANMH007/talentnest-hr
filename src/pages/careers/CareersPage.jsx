@@ -11,6 +11,7 @@ import { requestGeolocation } from '../../utils/geolocation.js';
 import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 import ReferEarnModal from '../../components/modals/ReferEarnModal.jsx';
 import { getCompanyCareerUrl } from '../../utils/url.js';
+import useSEO from '../../hooks/useSEO.js';
 
 const TYPE_COLOR = { High: '#BA0517', Medium: '#F59E0B', Low: '#10b981' };
 
@@ -164,6 +165,13 @@ export default function CareersPage() {
   const [sharePopover, setSharePopover] = useState(null); // job id whose share popover is open
   const [expanded, setExpanded] = useState(null); // id of job whose details are expanded
   const jobListRef = useRef(null);
+
+  useSEO({
+    title: 'Job Board — Browse Open Jobs | TalentNest HR',
+    description: 'Browse and apply to the latest job openings on the TalentNest Job Board — filter by location, urgency, and keyword across IT, non-IT, and contract roles.',
+    path: '/careers',
+    keywords: 'TalentNest JobBoard, TalentNest Job Board, job board, browse jobs, apply for jobs, job openings India',
+  });
 
   useEffect(() => {
     const handler = setTimeout(() => {

@@ -20,7 +20,7 @@ const PRODUCT_ITEMS = [
   { to: '/products/peopledesk', hash: '', icon: '🏢', title: 'PeopleDesk', desc: 'HR control for admins & org managers' },
   { to: '/products/jobtrack',   hash: '', icon: '🚀', title: 'JobTrack',   desc: 'Apply, track & sign offers — candidates' },
   { to: '/products/campushub',  hash: '', icon: '🎓', title: 'CampusHub',  desc: 'Run placements for your campus' },
-  { to: '/careers',             hash: '', icon: '📋', title: 'Job Board',  desc: 'Browse jobs from all companies' },
+  { to: '/careers',             hash: '', icon: '📋', title: 'JobBoard',  desc: 'Browse jobs from all companies' },
   { to: '/hrms',                hash: '', icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce management' },
 ];
 
