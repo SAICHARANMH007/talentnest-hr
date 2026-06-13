@@ -272,7 +272,15 @@ export default function AdminWebhooks({ user }) {
           <p style={{ color: '#6B7280', marginBottom: 16 }}>No webhooks configured yet.</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             <button style={btnP} onClick={() => setModal('create')}>Create your first webhook</button>
-            <button onClick={async () => { setSeeding(true); try { await api.seedWebhooks(); load(); } catch (e) { setActionError(e?.message || 'Failed to seed.'); } setSeeding(false); }} disabled={seeding}
+            <button onClick={async () => {
+              setSeeding(true); setActionError('');
+              try {
+                const r = await api.seedWebhooks();
+                if (r?.success === false) setActionError(r.message || 'Unable to seed sample webhooks.');
+                else load();
+              } catch (e) { setActionError(e?.message || 'Failed to seed.'); }
+              setSeeding(false);
+            }} disabled={seeding}
               style={{ padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {seeding ? 'Adding sample data…' : '📥 Load Sample Webhooks'}
             </button>
