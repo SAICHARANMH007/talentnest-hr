@@ -1363,10 +1363,10 @@ function CreatePost({ user, onCreate, isMobile }) {
 function ProfileSidebar({ user, connectionCount }) {
   const bg = ROLE_COLOR[user?.role] || '#0176D3';
   return (
-    <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
+    <div className="tn-sidecard" style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
       <div style={{ height: 70, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)` }} />
       <div style={{ padding: '0 16px 16px', marginTop: -32 }}>
-        <div style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #fff', overflow: 'hidden', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, color: '#fff' }}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', border: '3px solid #fff', overflow: 'hidden', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
           {user?.avatarUrl
             ? <img src={user.avatarUrl} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : (user?.name || '?')[0].toUpperCase()}
@@ -1378,12 +1378,12 @@ function ProfileSidebar({ user, connectionCount }) {
         </div>
         {/* Connection count — prominent below name */}
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 20, fontWeight: 900, color: '#0176D3' }}>{connectionCount}</span>
+          <span style={{ fontSize: 20, fontWeight: 900, background: `linear-gradient(135deg, ${bg}, #7C3AED)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{connectionCount}</span>
           <span style={{ fontSize: 12, color: '#6B7280' }}>connection{connectionCount !== 1 ? 's' : ''}</span>
         </div>
         {user?.email && (
           <div style={{ marginTop: 8, fontSize: 12, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user.email}
+            ✉️ {user.email}
           </div>
         )}
       </div>
@@ -1393,16 +1393,17 @@ function ProfileSidebar({ user, connectionCount }) {
 
 function QuickStats({ myPosts, myReactions, bookmarkCount }) {
   const stats = [
-    { label: 'Posts',     value: myPosts,     color: '#0176D3' },
-    { label: 'Reactions', value: myReactions,  color: '#7C3AED' },
-    { label: 'Saved',     value: bookmarkCount,color: '#F59E0B' },
+    { label: 'Posts',     value: myPosts,      color: '#0176D3', icon: '📝' },
+    { label: 'Reactions', value: myReactions,   color: '#7C3AED', icon: '❤️' },
+    { label: 'Saved',     value: bookmarkCount, color: '#F59E0B', icon: '🔖' },
   ];
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
+    <div className="tn-sidecard" style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your Activity</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ textAlign: 'center', padding: '6px 4px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {stats.map((s, i) => (
+          <div key={s.label} style={{ textAlign: 'center', padding: '6px 4px', borderLeft: i > 0 ? '1px solid #F1F5F9' : 'none' }}>
+            <div style={{ fontSize: 13, marginBottom: 2 }}>{s.icon}</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
             <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{s.label}</div>
           </div>
@@ -1421,8 +1422,8 @@ function TrendingHashtags({ posts, onHashtagClick, activeHashtag }) {
 
   if (!counts.length) return null;
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 14, border: '1px solid #F1F5F9' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Trending Topics</div>
+    <div className="tn-sidecard" style={{ ...card, padding: '14px 16px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🔥 Trending Topics</div>
       {counts.map(([tag, count]) => (
         <div key={tag} onClick={() => onHashtagClick(tag === activeHashtag ? null : tag)}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 6, background: activeHashtag === tag ? '#EFF6FF' : 'transparent', transition: 'background 0.12s' }}
@@ -1453,8 +1454,8 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
 
   if (!people.length) return null;
   return (
-    <div style={{ ...card, padding: '14px 16px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grow Your Network</div>
+    <div className="tn-sidecard" style={{ ...card, padding: '14px 16px', borderRadius: 16, border: '1px solid #F1F5F9' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🌱 Grow Your Network</div>
       {people.map(p => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0 }}>
@@ -1890,7 +1891,7 @@ export default function CommunityFeed({ user }) {
                   Loading feed…
                 </div>
               ) : visiblePosts.length === 0 ? (
-                <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+                <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 16, border: '1px solid #F1F5F9' }}>
                   <div style={{ fontSize: 52, marginBottom: 14 }}>
                     {networkOnly ? '🤝' : '📭'}
                   </div>
@@ -1954,6 +1955,8 @@ export default function CommunityFeed({ user }) {
         @keyframes tn-spin { to { transform: rotate(360deg); } }
         .tn-postcard { transition: box-shadow 0.15s, border-color 0.15s; }
         .tn-postcard:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); border-color: #E5E7EB; }
+        .tn-sidecard { transition: box-shadow 0.15s, transform 0.15s; }
+        .tn-sidecard:hover { box-shadow: 0 6px 20px rgba(15,23,42,0.07); transform: translateY(-1px); }
         .tn-composer-btn { transition: background 0.15s, border-color 0.15s; }
         .tn-composer-btn:hover { background: #F1F5F9; border-color: #D1D5DB; }
         .tn-filter-chip { transition: transform 0.1s, box-shadow 0.1s; }
