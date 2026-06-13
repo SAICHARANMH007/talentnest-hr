@@ -334,7 +334,8 @@ export default function CareersPage() {
     const jid  = j.id || j._id;
     const slug = j.seoSlug || j.careerPageSlug || jid;
     const jobUrl = `${window.location.origin}/careers/job/${slug}`;
-    const title = `${j.title}${j.company ? ` @ ${j.company}` : ''}`;
+    const companyName = isLoggedIn ? j.company : 'TalentNest HR';
+    const title = `${j.title}${companyName ? ` @ ${companyName}` : ''}`;
     const text  = `🚀 Job Opening: ${title}${j.location ? ` · ${j.location}` : ''}`;
 
     // Use native Web Share API (mobile shows WhatsApp, Instagram, etc. automatically)
@@ -607,7 +608,7 @@ export default function CareersPage() {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
-                            {(j.company || 'T').charAt(0).toUpperCase()}
+                            {((isLoggedIn ? j.company : 'TalentNest HR') || 'T').charAt(0).toUpperCase()}
                           </div>
                           {/* Crawlable link to the SSR canonical page for non-JS bots */}
                           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0A1628', margin: 0 }}>
@@ -737,7 +738,7 @@ export default function CareersPage() {
           {jobs.slice(0, 100).map(j => (
             <article key={j.id || j._id}>
               <h3><a href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}>{j.title}</a></h3>
-              <p>{j.company || j.companyName} · {j.location} · {j.jobType}</p>
+              <p>TalentNest HR · {j.location} · {j.jobType}</p>
               {(j.createdAt) && <time dateTime={new Date(j.createdAt).toISOString()}>Posted {new Date(j.createdAt).toLocaleDateString('en-IN')}</time>}
               {j.description && <p>{j.description.slice(0, 200)}</p>}
             </article>
@@ -755,7 +756,7 @@ export default function CareersPage() {
         <div>
           {jobs.slice(0, 50).map(j => (
             <a key={j.id || j._id} href={j.canonicalUrl || `/careers/job/${j.seoSlug || j._id || j.id}`}>
-              {j.title} — {j.company} — {j.location}
+              {j.title} — TalentNest HR — {j.location}
             </a>
           ))}
         </div>

@@ -41,7 +41,6 @@ export default function JobDetailPage() {
   const [applying, setApplying] = useState(false);
   const [quickApplying, setQuickApplying] = useState(false);
   const [quickDone, setQuickDone]         = useState(null); // { trackerUrl }
-  const explicitOrg = searchParams.get('org');
   const refToken    = searchParams.get('ref') || '';
   const [isLoggedIn] = useState(!!sessionStorage.getItem('tn_token'));
   const [showRefer, setShowRefer] = useState(false);
@@ -105,7 +104,7 @@ export default function JobDetailPage() {
           el.setAttribute('content', content);
         };
         const canonical = `${SITEURL}/careers/job/${slug}`;
-        const desc = `${j.title} opening at ${explicitOrg || 'TalentNest HR'} in ${j.location || 'India'}. ${j.description ? j.description.slice(0, 120).replace(/\n/g, ' ') + '…' : ''}`;
+        const desc = `${j.title} opening at TalentNest HR in ${j.location || 'India'}. ${j.description ? j.description.slice(0, 120).replace(/\n/g, ' ') + '…' : ''}`;
 
         setMeta('description', desc);
         setMeta('og:title',       `${j.title} — ${j.location} | TalentNest HR`, true);
@@ -242,7 +241,7 @@ export default function JobDetailPage() {
 
           {/* Meta row */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 28, alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')}</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: 600 }}>🏢 {isLoggedIn ? (job.company || 'TalentNest HR') : 'TalentNest HR'}</span>
             {job.jobType && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>💼 {job.jobType}</span>}
             {job.workMode && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>🏠 {job.workMode}</span>}
             {job.experience && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>⏱ {job.experience}</span>}
@@ -362,7 +361,7 @@ export default function JobDetailPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2E8F0', padding: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 14px' }}>Job Details</h3>
             {[
-              ['Company',     isLoggedIn ? (job.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')],
+              ['Company',     isLoggedIn ? (job.company || 'TalentNest HR') : 'TalentNest HR'],
               ['Location',    job.location],
               ['Job Type',    job.jobType],
               ['Work Mode',   job.workMode],
