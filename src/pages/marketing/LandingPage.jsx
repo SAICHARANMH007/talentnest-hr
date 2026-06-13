@@ -335,8 +335,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Live Jobs Panel — min-height reserves space to prevent CLS when jobs load */}
-          <div className="mkt-reveal-delayed" style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480, width: '100%', margin: '0 auto', minHeight: 320 }}>
+          {/* Right — Live Jobs Panel — min-height reserves space to prevent CLS when jobs load. Hidden on mobile (see .mkt-live-jobs-panel media query). */}
+          <div className="mkt-reveal-delayed mkt-live-jobs-panel" style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480, width: '100%', margin: '0 auto', minHeight: 320 }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -504,16 +504,17 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(48px,6vw,72px) clamp(16px,5vw,80px)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
           <p className="mkt-reveal" style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--mkt-accent)', marginBottom: 12 }}>
-            Three products. One platform.
+            Four products. One platform.
           </p>
           <h2 className="mkt-reveal" style={{ fontSize: 'clamp(24px,3.5vw,40px)', fontWeight: 900, color: 'var(--mkt-text-heading)', margin: '0 0 40px', letterSpacing: '-0.03em' }}>
             Built for every person in the hiring journey
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20, marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 20, marginBottom: 40 }}>
             {[
               { emoji: '🎯', name: 'HireBoard',  role: 'For Recruiters', desc: 'Pipeline board, advanced match scores, video interviews, offer letters — one screen.', color: '#0176D3', gradient: 'linear-gradient(135deg,#0176D3,#00C2CB)', to: '/products/hireboard' },
               { emoji: '🏢', name: 'PeopleDesk', role: 'For HR Admins',  desc: 'Analytics, pre-boarding, background verification, org career page — total control.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)', to: '/products/peopledesk' },
               { emoji: '🚀', name: 'JobTrack',   role: 'For Job Seekers', desc: 'Browse jobs, track every application live, join interviews, sign offer from phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)', to: '/products/jobtrack' },
+              { emoji: '🎓', name: 'CampusHub',  role: 'For Colleges', desc: 'Run placement drives, track student outcomes, and surface skill-gap insights for your campus.', color: '#F59E0B', gradient: 'linear-gradient(135deg,#F59E0B,#EA580C)', to: '/products/campushub' },
             ].map(p => (
               <Link key={p.name} to={p.to} className="mkt-reveal" style={{
                 display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px',
@@ -679,6 +680,23 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
+
+          {/* Verified profile highlight strip */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20, marginTop: 56, padding: '28px 32px', borderRadius: 20, background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)' }}>
+            {[
+              { icon: '✅', t: 'Verified Candidates', d: 'Profiles backed by document-verified work history, education, and identity checks.' },
+              { icon: '🔒', t: 'Privacy-First', d: 'Consent-based sharing — candidates control who sees their verified profile and when.' },
+              { icon: '📈', t: 'Travels With You', d: 'Your verification status and history carry forward to every employer on the platform.' },
+            ].map(item => (
+              <div key={item.t} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--mkt-text-heading)', marginBottom: 4 }}>{item.t}</div>
+                  <div style={{ fontSize: 13, color: 'var(--mkt-text-muted)', lineHeight: 1.6 }}>{item.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -817,6 +835,7 @@ export default function LandingPage() {
           .mkt-stat-item { border-right: none!important; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 20px 0!important; }
           .mkt-stat-item:last-child { border-bottom: none!important; }
           .mkt-cta-btn { width: 100%; max-width: 320px; }
+          .mkt-live-jobs-panel { display: none!important; }
         }
       `}</style>
     </div>
