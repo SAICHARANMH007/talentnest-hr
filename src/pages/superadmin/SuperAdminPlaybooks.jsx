@@ -4255,6 +4255,334 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
 </body></html>`;
 }
 
+// ─── UX & Feature Playbook (every page, button, table, filter, form — all 7 roles) ──
+function buildUXFeaturePlaybook() {
+  const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const roleSection = (id, icon, bg, title, navList, rows, checklist) => `
+  <div class="section" id="${id}">
+    <h2><span class="icon" style="background:${bg}">${icon}</span>${title}</h2>
+    <p><strong>Sidebar nav:</strong> ${navList}</p>
+    <table>
+      <tr><th>Page</th><th>Route</th><th>What it does</th></tr>
+      ${rows.map(r => `<tr><td><strong>${r[0]}</strong></td><td><code>${r[1]}</code></td><td>${r[2]}</td></tr>`).join('\n      ')}
+    </table>
+    <h3>Key Features</h3>
+    <ul class="check">
+      ${checklist.map(c => `<li>${c}</li>`).join('\n      ')}
+    </ul>
+  </div>`;
+
+  return `<!DOCTYPE html><html lang="en"><head><title>UX & Feature Playbook — TalentNest HR</title>${BASE_STYLES}</head><body>
+${heroHtml('🧭','UX & FEATURE PLAYBOOK','UX & Feature Playbook','Every page, table, filter, button, form, and feature for all 7 roles — candidate to super admin. The complete in-app experience, role by role.','1.0',today,'Product Team')}
+<div class="container">
+
+  <div class="toc"><h2>📑 TABLE OF CONTENTS</h2><ol>
+    <li><a href="#shared">Shared Elements (All Roles)</a></li>
+    <li><a href="#candidate">Candidate</a></li>
+    <li><a href="#recruiter">Recruiter</a></li>
+    <li><a href="#admin">Admin</a></li>
+    <li><a href="#superadmin">Super Admin</a></li>
+    <li><a href="#client">Client</a></li>
+    <li><a href="#college">College</a></li>
+    <li><a href="#hiring-manager">Hiring Manager</a></li>
+    <li><a href="#inventory">Master Inventory</a></li>
+  </ol></div>
+
+  <div class="section" id="shared">
+    <h2><span class="icon" style="background:#dbeafe">🌐</span>Shared Elements (All Roles)</h2>
+    <p>These appear outside the per-role sidebar nav and are common to every logged-in user.</p>
+    <div class="cards">
+      <div class="card"><div class="card-icon">🔔</div><h4>Notification Bell</h4><p>Unread/All tabs, per-type icons, "Mark all read", detail drill-down, admin "Refresh" rebuilds live feed</p></div>
+      <div class="card"><div class="card-icon">💬</div><h4>Messages</h4><p>ChatPanel (lazy-loaded), unread badge polled every 20s</p></div>
+      <div class="card"><div class="card-icon">🟢</div><h4>Who's Online</h4><p>OnlinePanel — start a chat with an online user</p></div>
+      <div class="card"><div class="card-icon">🎨</div><h4>Theme Switcher</h4><p>Light / Dark / Ocean, sidebar footer or profile menu</p></div>
+      <div class="card"><div class="card-icon">👤</div><h4>Profile Menu</h4><p>My Profile, Change Password, Email Settings, Theme, Sign Out</p></div>
+      <div class="card"><div class="card-icon">🕵️</div><h4>Impersonation Banner</h4><p>Shown when a Super Admin is impersonating — "✕ Exit Impersonation"</p></div>
+      <div class="card"><div class="card-icon">📡</div><h4>Offline Banner</h4><p>"Connection Lost" red bar via navigator.onLine</p></div>
+      <div class="card"><div class="card-icon">⏰</div><h4>Trial Banner</h4><p>Admin-only — "N days left in trial" + Upgrade now</p></div>
+      <div class="card"><div class="card-icon">📱</div><h4>Mobile Nav</h4><p>Hamburger slide-out sidebar, duplicated top bar icons</p></div>
+      <div class="card"><div class="card-icon">⚡</div><h4>Quick Action Menu</h4><p>Floating role-aware quick-action button</p></div>
+      <div class="card"><div class="card-icon">📞</div><h4>Call Manager</h4><p>Incoming/outgoing voice &amp; video call UI</p></div>
+      <div class="card"><div class="card-icon">📢</div><h4>Broadcast Banner</h4><p>Platform-wide, role-targeted announcements</p></div>
+    </div>
+    <div class="alert alert-blue">🔁 <strong>Role resolution</strong>: a college-tenant <code>admin</code>/<code>placement_officer</code> sees the College sidebar instead of the standard Admin sidebar — even though their stored role is <code>admin</code>/<code>placement_officer</code>.</div>
+  </div>
+
+  ${roleSection('candidate', '🧑‍💼', '#dbeafe', 'Candidate',
+    'Dashboard · Find Jobs · Opportunities · My Applications · My Interviews · Career Community · My Network · Communities · Company Reviews · Offer Comparison · Job Alerts · Refer &amp; Grow · Pre-boarding · BGV Documents · My Profile',
+    [
+      ['Dashboard','/app/dashboard','Pipeline status, matched jobs, profile completion, next interview, skills-gap analyzer'],
+      ['Find Jobs (Smart Match)','/app/smart-match','AI-style job matching, skill-match reasoning, company/industry/department filters'],
+      ['Opportunities','/app/opportunities','Placement drives, internships, exams/tests, training resources, recommended courses'],
+      ['My Applications','/app/applications','7-stage pipeline tracker, invitations, offer signing, assessments, withdraw'],
+      ['My Interviews','/app/interviews','Upcoming &amp; past interviews, join links, "Add to Calendar" (.ics)'],
+      ['Career Community','/app/feed','Social feed — posts, likes, comments, hashtags, mentions'],
+      ['My Network','/app/people','Connections, requests, masked contact-info requests, profile drawer'],
+      ['Communities','/app/communities','Discover/join communities by category'],
+      ['Company Reviews','/app/company-reviews','Browse &amp; submit employer reviews (star rating, pros/cons)'],
+      ['Offer Comparison','/app/offer-comparison','Compare up to 3 offers, decision score, pre-decision checklist'],
+      ['Job Alerts','/app/job-alerts','Create/manage email alerts (keywords, location, type, frequency)'],
+      ['Refer &amp; Grow','/app/refer-earn','Referral program — referral link, coin rewards, job referral tracking'],
+      ['Pre-boarding','/app/onboarding','Pre-joining checklist, document uploads, offer signing'],
+      ['BGV Documents','/app/background-verification','Upload KYC/employment docs, "TalentNest Verified" badge'],
+      ['My Profile','/app/profile','Personal info, work history, education, certifications, resume, video resume'],
+    ],
+    [
+      'Apply via Smart Match, Explore Jobs, or Careers page with screening questions',
+      'Track 7-stage pipeline: Applied → Screening → Shortlisted → Interview → Offer → Hired',
+      'View assigned recruiter, interview details, calendar export, rejection feedback',
+      'View, sign, and download offer letters; compare up to 3 offers',
+      'Register for placement drives/internships/exams, take exam assessments',
+      'Refer friends for coin rewards; track referral progress',
+      'Complete pre-boarding tasks, upload BGV/KYC documents',
+      'Career feed, My Network, Communities, Company Reviews — full social layer',
+    ]
+  )}
+
+  ${roleSection('recruiter', '🧑‍💻', '#dcfce7', 'Recruiter',
+    'Dashboard · My Performance · Applicants · My Jobs · College Drives · My Candidates · Assigned to Me · Job Match · Pipeline · Talent Pool · Interviews · Offers · Pre-boarding · Assessments · Outreach · Candidate Requests · Client Requirements · Clients · Career Community · My Network · Communities · Company Reviews · My Profile',
+    [
+      ['Dashboard','/app/dashboard','Real-time metrics, daily action queue, bottleneck alerts, hiring funnel, job performance table'],
+      ['My Performance','/app/my-performance','Personal KPIs — jobs, placements, offer acceptance %, avg days to hire'],
+      ['My Jobs','/app/jobs','Create/edit/post/close/reopen jobs, urgency filter, attach screening assessments'],
+      ['Applicants','/app/applicants','Flat applicant table across jobs — stage/source/status/score filters, CSV export'],
+      ['College Drives','/app/college-drives','Read-only view of company’s placement drives across colleges'],
+      ['My Candidates','/app/candidates','Candidate database, bulk add-to-pipeline, log outreach, park'],
+      ['Assigned to Me','/app/assigned-candidates','Job-grouped assigned candidates, handoff history, SLA indicators'],
+      ['Job Match','/app/talent-match','UTO-scored candidate-to-job matching, shortlist/park/reach-out'],
+      ['Pipeline','/app/pipeline','Kanban drag-drop across 9 stages — tags, notes, schedule, offer, feedback'],
+      ['Talent Pool','/app/talent-pool','Org-wide curated pools + personal parked candidates'],
+      ['Interviews','/app/interviews','Schedule interviews (date/time/format/interviewer), submit scorecards'],
+      ['Offers','/app/offers','Generate/edit/send offer letters (WYSIWYG), download signed PDF'],
+      ['Pre-boarding','/app/onboarding','Onboarding checklist + document tracking for hired candidates'],
+      ['Assessments','/app/assessments','Create MCQ/Text/Code assessments, Excel import, review submissions'],
+      ['Outreach','/app/outreach','Bulk invitation tracking — sent/opened/interested/declined/failed'],
+      ['Candidate Requests','/app/candidate-requests','Submit sourcing requests to TalentNest, view verified candidates'],
+      ['Client Requirements','/app/job-requirements','Client hiring requirements → job-posting pipeline'],
+      ['Clients','/app/clients','Manage client accounts &amp; billing terms (% CTC / flat fee / retainer)'],
+    ],
+    [
+      'Post jobs with Smart parsing of JDs; submit drafts for admin approval',
+      'Kanban pipeline across 9 stages with tags, notes, screening answers, assessment results',
+      'UTO/AI-scored Job Match — shortlist, park, or reach out to candidates',
+      'Schedule interviews, create video rooms, submit scorecards',
+      'Generate &amp; send offer letters with template variables; track signed PDFs',
+      'Bulk outreach campaigns with open/interest/decline tracking',
+      'Manage client accounts and convert client requirements into job posts',
+      'Talent Pool — org-wide pools + personal parked candidates, pull-to-job',
+    ]
+  )}
+
+  ${roleSection('admin', '👔', '#fef3c7', 'Admin',
+    'Overview · Insights · Applicants · Job Approvals · Candidates · College Drives · Outreach · Assessments · Pre-boarding · Candidate Requests · Assignments · Recruiters · Hiring Managers · Org Chart · Client Requirements · All Jobs · Interview Kits · Webhooks · Diversity · Reviews · Referrals · Talent Pool · NPS · Time to Fill · Merge Duplicates · Sourcing Tracker · Rejection Templates · Offer Letter Builder · Dashboard Widgets · Headcount Planner · Hiring Alerts (SLA) · Custom Stages · Automation · Customizations · Career Community · My Network · Communities · Reported Posts · Org Settings · Platform Guide · Billing · My Profile',
+    [
+      ['Overview','/app/analytics','Executive dashboard — KPIs, trends, hiring funnel, sources, top recruiters'],
+      ['Insights','/app/insights','Smart alerts, offer analytics, SLA compliance, stage velocity, dropout analysis'],
+      ['Applicants','/app/applicants','Org-wide application records — multi-filter, CSV export'],
+      ['Job Approvals','/app/job-approvals','Approve/reject jobs submitted by recruiters with feedback'],
+      ['Candidates','/app/candidates','Org-wide candidate database — search/filter, merge duplicates'],
+      ['College Drives','/app/college-drives','All company college drives org-wide, per-drive metrics'],
+      ['Outreach','/app/outreach','Bulk email/WhatsApp campaigns + delivery logs'],
+      ['Assessments','/app/assessments','Org-wide assessment tracking, scoring &amp; feedback'],
+      ['Pre-boarding','/app/onboarding','Onboarding records, task/document verification (approve/reject)'],
+      ['Candidate Requests','/app/candidate-requests','Submit sourcing requests, track fulfillment'],
+      ['Assignments','/app/assigned-candidates','Org-wide candidate-recruiter assignments, reassign/unassign'],
+      ['Recruiters','/app/recruiters','Manage recruiter team — stats, invite, deactivate, reassign jobs'],
+      ['Hiring Managers','/app/hiring-managers','Manage hiring manager accounts — team, interviews'],
+      ['Org Chart','/app/org-chart','Visual org hierarchy, redistribute jobs/candidates, auto-classify'],
+      ['Client Requirements','/app/job-requirements','All org client hiring requirements, fulfillment tracking'],
+      ['All Jobs','/app/jobs','All org jobs across recruiters — lifecycle management'],
+      ['Interview Kits','/app/interview-kits','Reusable interview question kits, link to jobs, set default'],
+      ['Webhooks','/app/webhooks','Outbound event webhooks — events, signing secret, delivery logs'],
+      ['Diversity','/app/diversity','Gender representation &amp; hiring funnel by gender'],
+      ['Reviews','/app/reviews','Candidate feedback/review management, sentiment'],
+      ['Referrals','/app/referrals','Employee referral program — rewards, conversion'],
+      ['Talent Pool','/app/talent-pool','Org-wide passive candidate pool — bulk tag/assign'],
+      ['NPS','/app/nps-dashboard','Net Promoter Score dashboard — candidate satisfaction'],
+      ['Time to Fill','/app/time-to-fill','Days-to-fill per job, bottleneck identification'],
+      ['Merge Duplicates','/app/duplicate-merge','Find &amp; merge duplicate candidate records'],
+      ['Sourcing Tracker','/app/sourcing-tracker','Source quality/conversion/cost-per-hire'],
+      ['Rejection Templates','/app/rejection-templates','Reusable rejection email templates, stage-tagged'],
+      ['Offer Letter Builder','/app/offer-letter-builder','Customize offer letter sections with placeholders'],
+      ['Dashboard Widgets','/app/dashboard-widgets','Enable/disable/reorder admin dashboard widgets'],
+      ['Headcount Planner','/app/headcount-planner','Forecast vs actual hires by department/role'],
+      ['Hiring Alerts (SLA)','/app/sla-alerts','SLA config &amp; breach alerts per stage'],
+      ['Custom Stages','/app/custom-stages','Define custom pipeline stages — reorder, color'],
+      ['Automation','/app/automation','Workflow rules — trigger → conditions → actions'],
+      ['Customizations','/app/customizations','Branding, custom candidate fields, email templates'],
+      ['Career Community','/app/feed','Social feed (admin can moderate posts)'],
+      ['My Network','/app/people','Professional network browsing'],
+      ['Communities','/app/communities','Community discovery &amp; membership'],
+      ['Reported Posts','/app/reported-posts','Moderate flagged community posts — delete/ban/warn'],
+      ['Org Settings','/app/org-settings','Org config — email provider, branding, stages, team'],
+      ['Platform Guide','/app/modal-guide','Component/modal showcase reference'],
+      ['Billing','/app/billing','Subscription plan, usage, invoices, payment method'],
+      ['My Profile','/app/profile','Edit own profile, change password'],
+    ],
+    [
+      'Org-wide analytics with deep-dive insights (SLA, velocity, dropout, alerts)',
+      'Approve/reject recruiter-submitted jobs with feedback notes',
+      'Manage recruiters, hiring managers, org chart, and team redistribution',
+      'Interview kits, custom pipeline stages, automation rules (trigger → action)',
+      'Diversity, NPS, time-to-fill, sourcing, headcount planning reports',
+      'Webhooks for external integrations; rejection &amp; offer-letter template builders',
+      'Org settings — email provider, branding, custom fields, password policy',
+      'Moderate community posts; manage billing &amp; subscription plan',
+    ]
+  )}
+
+  ${roleSection('superadmin', '👑', '#ede9fe', 'Super Admin',
+    'Command Center · Overview · Platform · Organisations · Company Reviews · NPS Dashboard · Reported Posts · Registered Users · Guest Applicants · Candidate Database · College Groups · Company Groups · Application Records · Job Approvals · Billing · Security · Permissions · Import &amp; Assign · Recruiters · Hiring Managers · Admins · All Jobs · Assessments · Pre-boarding · BGV Tracker · Automation · Customizations · Outreach · Contact Enquiries · Candidate Requests · Playbooks · Blog Manager · Job Referrals · Platform Referrals · Career Community · My Network · Communities · Org Reviews · Modal Guide · My Profile',
+    [
+      ['Command Center','/app/command-center','Global search, impersonation, system health, quick-action shortcuts'],
+      ['Overview','/app/analytics','Platform-wide analytics — all orgs/tenants aggregated'],
+      ['Platform','/app/platform','Master control — org health, revenue, backups, broadcast announcements'],
+      ['Organisations','/app/organisations','Master org directory — CRUD, members, billing, merge users'],
+      ['Company Reviews','/app/reviews','Platform-wide company review management'],
+      ['NPS Dashboard','/app/nps-dashboard','Platform-wide candidate satisfaction (NPS)'],
+      ['Reported Posts','/app/reported-posts','Moderate flagged community posts platform-wide'],
+      ['Registered Users','/app/candidates','All registered candidates platform-wide'],
+      ['Guest Applicants','/app/unregistered-candidates','Manage guest/unregistered applicants'],
+      ['Candidate Database','/app/all-candidates','Master candidate records across all orgs'],
+      ['College Groups','/app/college-groups','Manage college groups — student/alumni by affiliation'],
+      ['Company Groups','/app/company-groups','Manage company groups — candidates by affiliation'],
+      ['Application Records','/app/applicants','Platform-wide application records'],
+      ['Job Approvals','/app/job-approvals','Approve/reject jobs platform-wide'],
+      ['Billing','/app/billing','Platform billing overview'],
+      ['Security','/app/security','Plan-based feature flags, audit log, impersonation'],
+      ['Permissions','/app/permissions','Role-based permission matrix — per-field view/edit'],
+      ['Import &amp; Assign','/app/import-candidates','Bulk import candidates (Excel/CSV), mass invitations'],
+      ['Recruiters','/app/recruiters','Manage recruiter accounts platform-wide'],
+      ['Hiring Managers','/app/hiring-managers','Manage hiring manager accounts platform-wide'],
+      ['Admins','/app/admins','View/manage all organisation admins'],
+      ['All Jobs','/app/jobs','All job postings across all organisations'],
+      ['Assessments','/app/assessments','Platform-wide assessment tracking'],
+      ['Pre-boarding','/app/onboarding','Platform-wide onboarding templates/records'],
+      ['BGV Tracker','/app/bgv-tracker','Verify background-verification documents platform-wide'],
+      ['Automation','/app/automation','Platform-wide automation rules'],
+      ['Customizations','/app/customizations','Field schema editor &amp; automation config'],
+      ['Outreach','/app/outreach','Platform-wide outreach campaign tracking'],
+      ['Contact Enquiries','/app/contact-leads','Inbound contact/lead enquiries from the website'],
+      ['Candidate Requests','/app/candidate-requests','Fulfill candidate requests platform-wide, advanced search'],
+      ['Playbooks','/app/playbooks','Generate/download/preview internal documentation (this page!)'],
+      ['Blog Manager','/app/blogs','Create/edit/publish/feature platform blog posts'],
+      ['Job Referrals','/app/referrals','Platform-wide referral program tracking'],
+      ['Platform Referrals','/app/platform-referrals','Referral leaderboard, badge tiers, coin rewards'],
+      ['Career Community','/app/feed','Social feed (platform-wide moderation)'],
+      ['My Network','/app/people','Professional network browsing'],
+      ['Communities','/app/communities','Community discovery &amp; membership'],
+      ['Org Reviews','/app/company-reviews','Company review browsing'],
+      ['Modal Guide','/app/modal-guide','Component/modal showcase reference'],
+      ['My Profile','/app/profile','Edit own profile, change password'],
+    ],
+    [
+      'Command Center — global search across users/jobs/orgs + impersonation',
+      'Platform tab — org health, revenue dashboard, DB backup download, deduplication',
+      'Full org directory — create/edit/suspend/delete orgs, invite admins, merge users',
+      'Security — plan-based feature flags, CSV audit log export',
+      'Permissions — role × resource permission matrix (view/edit per field)',
+      'Candidate Database &amp; Guest Applicants — master records across every tenant',
+      'BGV Tracker — verify/reject KYC documents platform-wide',
+      'Playbooks — generate this very documentation set; Blog Manager for marketing content',
+    ]
+  )}
+
+  ${roleSection('client', '🏢', '#cffafe', 'Client',
+    'Dashboard · Hiring Requirements · Shortlists · Interviews · Placements · Career Community · My Network · Communities · Company Reviews · My Profile',
+    [
+      ['Dashboard','/app/dashboard','Recruitment pipeline KPIs, stage breakdown, top shortlisted, recent hires'],
+      ['Hiring Requirements','/app/requirements','Submit new hiring needs, track status (Submitted → In Progress → Job Posted → Closed)'],
+      ['Shortlists','/app/shortlists','Rate/comment/approve/reject shortlisted candidates across interview stages'],
+      ['Interviews','/app/interviews','Review scheduled interviews, give feedback, reschedule'],
+      ['Placements','/app/placements','Track hired candidates, monthly placement count, onboarding notes'],
+      ['Career Community','/app/feed','Shared social feed (same as other roles)'],
+      ['My Network','/app/people','Professional network browsing'],
+      ['Communities','/app/communities','Community discovery &amp; membership'],
+      ['Company Reviews','/app/company-reviews','Company review browsing'],
+      ['My Profile','/app/profile','Edit own profile, change password'],
+    ],
+    [
+      'Submit hiring requirements (job title, dept, location, type, openings, budget, priority)',
+      'Edit/withdraw "new" status requirements; track status through to "Job Posted"',
+      'Review recruitment pipeline dashboard — KPIs, stage breakdown, top 6 shortlisted',
+      'Rate candidates (1-5 stars), save comments, approve to Interview Round 1 or reject',
+      'View all scheduled interviews; reschedule; submit interview feedback (rating/strengths/concerns/recommendation)',
+      'View placement history (all hired candidates) and add onboarding notes',
+    ]
+  )}
+
+  ${roleSection('college', '🎓', '#fce7f3', 'College',
+    'Overview · Students · Add Candidates · Placement Records · Placement Drives · Reviews · Career Community · My Network · Communities · Org Settings · My Profile',
+    [
+      ['Overview','/app/analytics','Student counts, placement metrics, department/batch breakdowns, skill gaps'],
+      ['Students','/app/candidates','Student database — profiles, education, AI skill recommendations'],
+      ['Add Candidates','/app/add-candidates','Bulk import via Excel/CSV with column mapping, or add manually'],
+      ['Placement Records','/app/applicants','Track student applications &amp; placement outcomes across companies'],
+      ['Placement Drives','/app/drives','Create placement drives, internships, exams; manage training resources'],
+      ['Reviews','/app/reviews','College-scoped company reviews'],
+      ['Career Community','/app/feed','Shared social feed (same as other roles)'],
+      ['My Network','/app/people','Professional network browsing'],
+      ['Communities','/app/communities','Community discovery &amp; membership'],
+      ['Org Settings','/app/org-settings','College-specific organisation settings'],
+      ['My Profile','/app/profile','Edit own profile, change password'],
+    ],
+    [
+      'Placement overview dashboard — student counts, application metrics, placement rate by batch',
+      'Skill-gap analysis with course recommendations; broadcast announcements to students',
+      'Manage student database — view detailed profiles (education, certs, projects, skills)',
+      'Bulk import students (Excel/CSV) with column mapping, or add manually (fresher/alumni)',
+      'Track student job applications/placements; private follow-up notes',
+      'Create placement drives, internships, exam opportunities; notify eligible students',
+      'Manage training resources by category (Aptitude, Coding, Verbal, Reasoning, Interview, Other)',
+    ]
+  )}
+
+  ${roleSection('hiring-manager', '🧑‍⚖️', '#e0e7ff', 'Hiring Manager',
+    'Dashboard · My Team · Pipeline · Interviews · Client Requirements · Clients · Career Community · My Network · Communities · Company Reviews · My Profile',
+    [
+      ['Dashboard','/app/dashboard','View-only KPIs, pipeline donut, today’s priority board, candidate list with search/filter/sort'],
+      ['My Team','/app/my-team','Jobs assigned to this manager, assigned recruiters, pipeline stage breakdown'],
+      ['Pipeline','/app/pipeline','Team’s pipeline (shared AdminPipeline), view-only'],
+      ['Interviews','/app/interviews','Team’s scheduled interviews (shared RecruiterInterviews), view-only'],
+      ['Client Requirements','/app/job-requirements','Client hiring requirements (shared, read access)'],
+      ['Clients','/app/clients','Client list, read-only'],
+      ['Career Community','/app/feed','Shared social feed (same as other roles)'],
+      ['My Network','/app/people','Professional network browsing'],
+      ['Communities','/app/communities','Community discovery &amp; membership'],
+      ['Company Reviews','/app/company-reviews','Company review browsing'],
+      ['My Profile','/app/profile','Edit own profile, change password'],
+    ],
+    [
+      'Dashboard — KPIs (total apps, in-interview, offers, hires, rejected, avg match score)',
+      'Today’s priority board — today’s interviews, stuck-in-screening, pending feedback',
+      'My Team — assigned jobs with recruiter team, openings, candidates per job',
+      'Navigate to pipeline &amp; interviews for assigned jobs — view-only (no edit rights)',
+      'View client requirements and client list (read-only)',
+    ]
+  )}
+
+  <div class="section" id="inventory">
+    <h2><span class="icon" style="background:#f0fdf4">📋</span>Master Inventory</h2>
+    <p>Summary of sidebar pages documented per role. Source: <code>Product-Bible/Product/UX-Playbook/</code> (00-overview.md through 07-hiring-manager.md, 99-master-inventory.md).</p>
+    <table>
+      <tr><th>Role</th><th>Sidebar Nav Key</th><th>Documented Pages</th><th>Unique Components</th></tr>
+      <tr><td><span class="badge badge-blue">Candidate</span></td><td><code>candidate</code></td><td>15</td><td>11 candidate-specific + 4 shared</td></tr>
+      <tr><td><span class="badge badge-green">Recruiter</span></td><td><code>recruiter</code></td><td>18 + 5 shared</td><td>14 recruiter-specific + shared admin/candidate pages</td></tr>
+      <tr><td><span class="badge badge-amber">Admin</span></td><td><code>admin</code></td><td>42</td><td>34 admin-specific + 8 shared</td></tr>
+      <tr><td><span class="badge badge-purple">Super Admin</span></td><td><code>superadmin</code></td><td>40</td><td>17 super-admin-only + 23 shared with admin/recruiter</td></tr>
+      <tr><td><span class="badge" style="background:#cffafe;color:#0e7490">Client</span></td><td><code>client</code></td><td>5 + 5 shared</td><td>5 client-specific</td></tr>
+      <tr><td><span class="badge" style="background:#fce7f3;color:#be185d">College</span></td><td><code>college</code></td><td>5 + 6 shared</td><td>5 college-specific</td></tr>
+      <tr><td><span class="badge" style="background:#e0e7ff;color:#4338ca">Hiring Manager</span></td><td><code>hiring_manager</code></td><td>2 + 9 shared</td><td>2 HM-specific, rest read-only shared views</td></tr>
+    </table>
+    <div class="alert alert-green">✅ Derived directly from <code>src/layout/Layout.jsx</code> (NAVS config), <code>src/App.jsx</code> (routes), and a page-by-page audit of <code>src/pages/</code>. Anything not found in code is marked <code>NOT FOUND IN CODE</code> in the source documents.</div>
+  </div>
+
+</div>
+<footer>Generated by <strong>TalentNest HR</strong> Super Admin · UX &amp; Feature Playbook · ${today} · Confidential &amp; Internal · Source: Product-Bible/Product/UX-Playbook/</footer>
+</body></html>`;
+}
+
 // ─── Full Bible (combines all 10 playbooks into one master document) ───────────
 function buildFullBiblePlaybook() {
   const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -4362,6 +4690,7 @@ const PRESET_PLAYBOOKS = [
   { id: 'platform',    icon: '🌐', title: 'Platform Playbook',     desc: 'Feature matrix, flags, email config, plan limits',   color: '#06b6d4', badge: 'PLATFORM',   fn: buildPlatformPlaybook },
   { id: 'user',        icon: '📖', title: 'User Playbook',         desc: 'End-user guide: candidates, recruiters, admins, FAQ', color: '#ec4899', badge: 'GUIDE',      fn: buildUserPlaybook },
   { id: 'audit',       icon: '🔍', title: 'System Audit Report',   desc: 'Full manual inspection: backend API, frontend code, UI/UX, all bugs found & fixed, sign-off checklist', color: '#7c3aed', badge: 'AUDIT LIVE', fn: buildAuditReportPlaybook },
+  { id: 'ux-feature',  icon: '🧭', title: 'UX & Feature Playbook', desc: 'Every page, table, filter, button, form & feature for all 7 roles — candidate to super admin, role by role', color: '#14b8a6', badge: 'FEATURE MAP', fn: buildUXFeaturePlaybook },
 ];
 
 
