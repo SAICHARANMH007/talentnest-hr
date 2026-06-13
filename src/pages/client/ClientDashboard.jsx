@@ -76,9 +76,9 @@ export default function ClientDashboard({ user }) {
           {/* KPI Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14, marginBottom: 24 }}>
             <KpiCard icon="📋" label="Total Applications" value={total}            color="#0176D3" sparkValues={weeklyCounts} />
-            <KpiCard icon="⭐" label="Shortlisted"        value={shortlisted.length} color="#7C3AED" onClick={() => navigate('/app/client/shortlists')} />
+            <KpiCard icon="⭐" label="Shortlisted"        value={shortlisted.length} color="#7C3AED" onClick={() => navigate('/app/shortlists')} />
             <KpiCard icon="📄" label="Offers Extended"    value={offers.length}     color="#059669" />
-            <KpiCard icon="🎊" label="Hired"              value={hired.length}      color="#2E844A" trend={hired.length > 0 ? 100 : 0} onClick={() => navigate('/app/client/placements')} />
+            <KpiCard icon="🎊" label="Hired"              value={hired.length}      color="#2E844A" trend={hired.length > 0 ? 100 : 0} onClick={() => navigate('/app/placements')} />
             <KpiCard icon="🎯" label="Avg Match Score"     value={avgScore > 0 ? `${Math.round(avgScore)}%` : '—'} color={scoreColor(avgScore)} sub="match quality" />
           </div>
 
