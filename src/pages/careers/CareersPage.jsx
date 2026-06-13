@@ -190,7 +190,7 @@ export default function CareersPage() {
     let el = document.getElementById(id);
     if (viewingJob && viewingJob.status === 'active') {
       if (!el) { el = document.createElement('script'); el.id = id; el.type = 'application/ld+json'; document.head.appendChild(el); }
-      const company  = viewingJob.companyName || viewingJob.company || 'TalentNest Partner';
+      const company  = 'TalentNest HR';
       const parts    = (viewingJob.location || '').split(',').map(s => s.trim());
       const siteUrl  = 'https://www.talentnesthr.com';
       const slug     = viewingJob.careerPageSlug || viewingJob._id || viewingJob.id;
@@ -266,7 +266,7 @@ export default function CareersPage() {
           document.querySelectorAll('script[data-tn-job-ld]').forEach(el => el.remove());
           const BASE = window.location.origin;
           arr.slice(0, 50).forEach(j => {
-            const company = j.companyName || j.company || 'TalentNest HR';
+            const company = 'TalentNest HR';
             const remote  = (j.location || '').toLowerCase().includes('remote');
             const ld = {
               '@context': 'https://schema.org',

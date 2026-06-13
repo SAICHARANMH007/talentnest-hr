@@ -133,13 +133,13 @@ export default function JobDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'JobPosting',
           title: j.title,
-          description: j.description || `${j.title} opening at ${isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR')} in ${j.location || 'India'}.`,
+          description: j.description || `${j.title} opening at TalentNest HR in ${j.location || 'India'}.`,
           datePosted: j.createdAt || new Date().toISOString(),
           validThrough: new Date(Date.now() + 60 * 86400000).toISOString(),
           employmentType: mapType(j.jobType),
           hiringOrganization: {
             '@type': 'Organization',
-            name: isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR'),
+            name: 'TalentNest HR',
             sameAs: SITEURL,
           },
           jobLocation: {
@@ -153,7 +153,7 @@ export default function JobDetailPage() {
           },
           identifier: {
             '@type': 'PropertyValue',
-            name: isLoggedIn ? (j.company || 'TalentNest HR') : (explicitOrg || 'TalentNest HR'),
+            name: 'TalentNest HR',
             value: slug,
           },
           url: canonical,
