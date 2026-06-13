@@ -162,14 +162,14 @@ function DetailDrawer({ record, onClose }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(5,13,26,0.45)', backdropFilter: 'blur(6px)' }} />
       <div className="tn-drawer" style={{ position: 'relative', width: 'min(720px, 100vw)', height: '100dvh', background: '#fff', boxShadow: '-20px 0 60px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', gap: 16, flexShrink: 0 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: '#0176D3', fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>Applicant Record</div>
             <h2 style={{ margin: '4px 0 0', fontSize: 22, color: '#0A1628' }}>{record.candidateName || record.email?.split('@')[0] || record.phone || `Applicant-${(record.applicationId||record.candidateId||'').slice(-4)}`}</h2>
           </div>
           <button onClick={onClose} style={{ width: 40, height: 40, border: 'none', borderRadius: 10, background: '#F8FAFC', cursor: 'pointer', fontSize: 18 }}>×</button>
         </div>
-        <div style={{ padding: 24, overflowY: 'auto' }}>
+        <div style={{ padding: 24, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             {fields.filter(([, value]) => value !== undefined && value !== null && value !== '').map(([label, value]) => (
               <div key={label} style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: 12, background: '#F8FAFC' }}>

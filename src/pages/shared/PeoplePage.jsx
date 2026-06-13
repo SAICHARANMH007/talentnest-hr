@@ -83,12 +83,12 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
         <div style={{ height: 90, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
-        <div style={{ padding: '0 20px 24px', flex: 1 }}>
+        <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <div style={{ marginTop: -36, marginBottom: 12 }}>
             <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={72} role={person.role} />
           </div>
