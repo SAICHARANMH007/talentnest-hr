@@ -12,11 +12,20 @@ const { SUPPORTED_EVENTS } = require('../services/webhookService');
 const router = express.Router();
 const guard  = [authMiddleware, tenantGuard];
 
-// GET /api/webhooks — list webhooks for org
+// GET /api/webhooks — list webhooks for org (super_admin sees all orgs, with org name attached)
 router.get('/', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user?.role === 'super_admin';
   const filter = isSuperAdmin ? { deletedAt: null } : { tenantId: req.tenantId, deletedAt: null };
-  const hooks = await Webhook.find(filter).sort({ createdAt: -1 }).lean();
+  let hooks = await Webhook.find(filter).sort({ createdAt: -1 }).lean();
+
+  if (isSuperAdmin && hooks.length) {
+    const Organization = require('../models/Organization');
+    const orgIds = [...new Set(hooks.map(h => String(h.tenantId)))];
+    const orgs = await Organization.find({ _id: { $in: orgIds } }).select('name').lean();
+    const orgNameById = new Map(orgs.map(o => [String(o._id), o.name]));
+    hooks = hooks.map(h => ({ ...h, orgName: orgNameById.get(String(h.tenantId)) || 'Unknown Organization' }));
+  }
+
   res.json({ success: true, data: hooks, supportedEvents: SUPPORTED_EVENTS });
 }));
 

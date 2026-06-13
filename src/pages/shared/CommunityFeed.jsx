@@ -1770,6 +1770,10 @@ export default function CommunityFeed({ user }) {
 
   const handleTouchStart = (e) => {
     if (!isMobile || window.scrollY > 0) return;
+    // Don't treat taps on buttons/links/inputs (reactions, comments, etc.) as the
+    // start of a pull-to-refresh gesture — incidental finger movement during a tap
+    // was triggering a full feed reload.
+    if (e.target.closest('button, a, input, textarea, [role="button"]')) return;
     pullStartY.current = e.touches[0].clientY;
   };
   const handleTouchMove = (e) => {

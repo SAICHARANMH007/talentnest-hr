@@ -192,6 +192,7 @@ function DeliveryLog({ deliveries }) {
 }
 
 export default function AdminWebhooks({ user }) {
+  const isSuperAdmin = user?.role === 'super_admin';
   const [hooks, setHooks]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(null); // null | 'create' | hookObject
@@ -243,9 +244,13 @@ export default function AdminWebhooks({ user }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>🔗 Webhooks</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Push real-time events to external systems when things happen in TalentNest.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>
+            {isSuperAdmin
+              ? 'Track webhooks configured across all organizations on the platform.'
+              : 'Push real-time events to external systems when things happen in TalentNest.'}
+          </p>
         </div>
-        <button style={btnP} onClick={() => setModal('create')}>+ New Webhook</button>
+        {!isSuperAdmin && <button style={btnP} onClick={() => setModal('create')}>+ New Webhook</button>}
       </div>
 
       {/* Info card */}
@@ -269,22 +274,28 @@ export default function AdminWebhooks({ user }) {
       ) : hooks.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔗</div>
-          <p style={{ color: '#6B7280', marginBottom: 16 }}>No webhooks configured yet.</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <button style={btnP} onClick={() => setModal('create')}>Create your first webhook</button>
-            <button onClick={async () => {
-              setSeeding(true); setActionError('');
-              try {
-                const r = await api.seedWebhooks();
-                if (r?.success === false) setActionError(r.message || 'Unable to seed sample webhooks.');
-                else load();
-              } catch (e) { setActionError(e?.message || 'Failed to seed.'); }
-              setSeeding(false);
-            }} disabled={seeding}
-              style={{ padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              {seeding ? 'Adding sample data…' : '📥 Load Sample Webhooks'}
-            </button>
-          </div>
+          {isSuperAdmin ? (
+            <p style={{ color: '#6B7280', marginBottom: 0 }}>No organization has configured any webhooks yet.</p>
+          ) : (
+            <>
+              <p style={{ color: '#6B7280', marginBottom: 16 }}>No webhooks configured yet.</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                <button style={btnP} onClick={() => setModal('create')}>Create your first webhook</button>
+                <button onClick={async () => {
+                  setSeeding(true); setActionError('');
+                  try {
+                    const r = await api.seedWebhooks();
+                    if (r?.success === false) setActionError(r.message || 'Unable to seed sample webhooks.');
+                    else load();
+                  } catch (e) { setActionError(e?.message || 'Failed to seed.'); }
+                  setSeeding(false);
+                }} disabled={seeding}
+                  style={{ padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  {seeding ? 'Adding sample data…' : '📥 Load Sample Webhooks'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -296,7 +307,14 @@ export default function AdminWebhooks({ user }) {
                 <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ ...STATUS_DOT, background: hook.isActive ? '#22C55E' : '#D1D5DB' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{hook.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{hook.name}</div>
+                      {isSuperAdmin && (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 20, padding: '2px 10px' }}>
+                          🏢 {hook.orgName}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hook.url}</div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
                       {hook.events?.length || 0} event{hook.events?.length !== 1 ? 's' : ''} · {hook.failureCount > 0 ? <span style={{ color: '#EF4444' }}>{hook.failureCount} failures</span> : 'No failures'}
@@ -304,16 +322,20 @@ export default function AdminWebhooks({ user }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}
-                      onClick={() => toggleActive(hook)}>
-                      {hook.isActive ? 'Disable' : 'Enable'}
-                    </button>
-                    <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}
-                      onClick={() => test(hook)} disabled={testing === hook._id}>
-                      {testing === hook._id ? '⏳' : '🧪 Test'}
-                    </button>
-                    <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }} onClick={() => setModal(hook)}>Edit</button>
-                    <button style={{ ...btnD, fontSize: 11, padding: '4px 10px' }} onClick={() => del(hook._id)}>Delete</button>
+                    {!isSuperAdmin && (
+                      <>
+                        <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}
+                          onClick={() => toggleActive(hook)}>
+                          {hook.isActive ? 'Disable' : 'Enable'}
+                        </button>
+                        <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}
+                          onClick={() => test(hook)} disabled={testing === hook._id}>
+                          {testing === hook._id ? '⏳' : '🧪 Test'}
+                        </button>
+                        <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }} onClick={() => setModal(hook)}>Edit</button>
+                        <button style={{ ...btnD, fontSize: 11, padding: '4px 10px' }} onClick={() => del(hook._id)}>Delete</button>
+                      </>
+                    )}
                     <button style={{ ...btnG, fontSize: 11, padding: '4px 10px' }}
                       onClick={() => setExpanded(isExp ? null : hook._id)}>
                       {isExp ? '▲' : '▼'}
