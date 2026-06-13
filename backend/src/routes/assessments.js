@@ -250,6 +250,9 @@ router.get('/:id', auth, async (req, res) => {
 
     // Candidates: only sanitized questions (no isCorrect), also include job title
     if (req.user.role === 'candidate') {
+      if (String(parsed.tenantId) !== String(req.user.tenantId)) {
+        return res.status(403).json({ error: 'Access denied.' });
+      }
       parsed.questions = sanitizeQuestions(parsed.questions);
       const job = await Job.findById(parsed.jobId).lean();
       parsed.jobTitle = job?.title || '';
