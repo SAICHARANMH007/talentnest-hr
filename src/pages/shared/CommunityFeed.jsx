@@ -740,7 +740,9 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
       <ImageGrid images={post.images} />
 
       {post.videos?.length > 0 && (
-        <video src={post.videos[0]} controls style={{ width: '100%', maxHeight: 420, borderRadius: 12, marginTop: 12, background: '#000', display: 'block' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', maxHeight: 420, borderRadius: 12, marginTop: 12, background: '#000', overflow: 'hidden' }}>
+          <video src={post.videos[0]} controls style={{ maxWidth: '100%', maxHeight: 420, width: 'auto', height: 'auto', display: 'block' }} />
+        </div>
       )}
 
       {post.audioUrl && (
@@ -859,6 +861,14 @@ function StarRating({ value, onChange }) {
 
 // ── Create Post ────────────────────────────────────────────────────────────────
 function CreatePost({ user, onCreate, isMobile }) {
+  // The composer modal only needs the bottom-sheet treatment on narrow phone screens —
+  // use a tighter breakpoint than the page-layout `isMobile` so it centers on desktop/tablet.
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsNarrow(window.innerWidth < 640);
+    window.addEventListener('resize', h, { passive: true });
+    return () => window.removeEventListener('resize', h);
+  }, []);
   const [modalOpen,  setModalOpen]  = useState(false);
   const [text,       setText]       = useState('');
   const [postType,   setPostType]   = useState('update');
@@ -1087,9 +1097,9 @@ function CreatePost({ user, onCreate, isMobile }) {
       </div>
 
       {modalOpen && createPortal(
-        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 10000, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
+        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 10000, display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center', justifyContent: 'center' }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: '#fff', width: isMobile ? '100%' : 560, maxWidth: '100%', maxHeight: isMobile ? '92vh' : '88vh', borderRadius: isMobile ? '20px 20px 0 0' : 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            style={{ background: '#fff', width: isNarrow ? '100%' : 560, maxWidth: '100%', maxHeight: isNarrow ? '92vh' : '88vh', borderRadius: isNarrow ? '20px 20px 0 0' : 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             {/* Header */}
             <div style={{ background: `linear-gradient(135deg, ${activeType.color} 0%, ${activeType.color}cc 100%)`, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
@@ -1276,8 +1286,8 @@ function CreatePost({ user, onCreate, isMobile }) {
                     <div style={{ marginBottom: 12, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {uploadErr}</div>
                   )}
                   {video && (
-                    <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', marginBottom: 12 }}>
-                      <video src={video} controls style={{ width: '100%', maxHeight: 240, display: 'block', background: '#000' }} />
+                    <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', marginBottom: 12, display: 'flex', justifyContent: 'center', background: '#000' }}>
+                      <video src={video} controls style={{ maxWidth: '100%', maxHeight: 240, width: 'auto', height: 'auto', display: 'block' }} />
                       <button onClick={removeVideo}
                         style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(17,24,39,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 24, height: 24, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0, backdropFilter: 'blur(2px)' }}>×</button>
                     </div>
@@ -1564,10 +1574,11 @@ export default function CommunityFeed({ user }) {
 
   const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
-  // Silent background refresh every 60s — catches any events missed by the socket
+  // Silent background refresh every 60s — catches any events missed by the socket.
+  // Skip while the user has scrolled down reading, so new posts don't shift their place.
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered && window.scrollY < 80) {
         loadPosts(1, filter);
       }
     }, 60_000);

@@ -12,7 +12,7 @@ const { uploadBuffer } = require('../utils/cloudinaryUpload');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 // Larger limit for feed video/audio uploads
-const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 // GET /api/social-posts/public/:id — no auth required
 router.get('/public/:id', asyncHandler(async (req, res) => {
@@ -590,7 +590,7 @@ function handleVideoUpload(req, res, next) {
   uploadMedia.single('video')(req, res, (err) => {
     if (err) {
       const msg = err.code === 'LIMIT_FILE_SIZE'
-        ? 'Video is too large. Maximum size is 50 MB.'
+        ? 'Video is too large. Maximum size is 100 MB.'
         : err.message || 'File upload error.';
       return res.status(400).json({ success: false, error: msg });
     }
@@ -624,7 +624,7 @@ function handleAudioUpload(req, res, next) {
   uploadMedia.single('audio')(req, res, (err) => {
     if (err) {
       const msg = err.code === 'LIMIT_FILE_SIZE'
-        ? 'Audio is too large. Maximum size is 50 MB.'
+        ? 'Audio is too large. Maximum size is 100 MB.'
         : err.message || 'File upload error.';
       return res.status(400).json({ success: false, error: msg });
     }
