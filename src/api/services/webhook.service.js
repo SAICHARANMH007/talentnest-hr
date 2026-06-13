@@ -9,6 +9,7 @@ export const webhookService = {
   async deleteWebhook(id)              { return req('DELETE', `/webhooks/${id}`); },
   async testWebhook(id)                { const r = await req('POST', `/webhooks/${id}/test`); return r?.data || r; },
   async getWebhookEvents()             { const r = await req('GET', '/webhooks/events'); return r?.data || r; },
+  async seedWebhooks()                 { return req('POST', '/webhooks/seed', {}); },
 
   // Company reviews (public + admin)
   async getPublicReviews(orgSlug)      { const r = await fetch(`${API_BASE}/company-reviews/public/${orgSlug}`).then(x => x.json()); return r; },

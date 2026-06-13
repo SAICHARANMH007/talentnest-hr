@@ -124,4 +124,66 @@ router.post('/:id/test', ...guard, allowRoles('admin', 'super_admin'), asyncHand
   res.json({ success: true, data: { responseCode, success, error, durationMs } });
 }));
 
+// POST /api/webhooks/seed — admin: add a few sample webhooks so the page isn't empty
+router.post('/seed', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tenantId = req.tenantId;
+  if (!tenantId) return res.json({ success: false, message: 'Not available for super_admin.' });
+
+  const existing = await Webhook.countDocuments({ tenantId, deletedAt: null });
+  if (existing >= 3) return res.json({ success: true, message: 'Webhooks already exist.', count: existing });
+
+  const now = Date.now();
+  const samples = [
+    {
+      tenantId,
+      name: 'Slack — Hiring Alerts',
+      url: 'https://hooks.slack.example.com/services/T00000000/B00000000/sample-token',
+      events: ['application.created', 'application.hired', 'interview.scheduled'],
+      secret: crypto.randomBytes(24).toString('hex'),
+      isActive: true,
+      lastTriggeredAt: new Date(now - 2 * 3600000),
+      failureCount: 0,
+      recentDeliveries: [
+        { event: 'application.hired',     sentAt: new Date(now - 2 * 3600000),  responseCode: 200, success: true,  error: '', durationMs: 312 },
+        { event: 'interview.scheduled',   sentAt: new Date(now - 6 * 3600000),  responseCode: 200, success: true,  error: '', durationMs: 248 },
+        { event: 'application.created',   sentAt: new Date(now - 26 * 3600000), responseCode: 200, success: true,  error: '', durationMs: 401 },
+      ],
+    },
+    {
+      tenantId,
+      name: 'Zapier — HR System Sync',
+      url: 'https://hooks.zapier.com/hooks/catch/123456/abcdef/',
+      events: ['offer.accepted', 'application.stage_changed'],
+      secret: crypto.randomBytes(24).toString('hex'),
+      isActive: true,
+      lastTriggeredAt: new Date(now - 5 * 3600000),
+      failureCount: 1,
+      recentDeliveries: [
+        { event: 'application.stage_changed', sentAt: new Date(now - 5 * 3600000),  responseCode: 200, success: true,  error: '', durationMs: 189 },
+        { event: 'offer.accepted',            sentAt: new Date(now - 30 * 3600000), responseCode: 500, success: false, error: 'Internal Server Error', durationMs: 5021 },
+        { event: 'application.stage_changed', sentAt: new Date(now - 48 * 3600000), responseCode: 200, success: true,  error: '', durationMs: 215 },
+      ],
+    },
+    {
+      tenantId,
+      name: 'Internal Analytics Endpoint',
+      url: 'https://api.example.com/webhooks/talentnest',
+      events: ['job.created', 'job.closed', 'application.rejected'],
+      secret: '',
+      isActive: false,
+      lastTriggeredAt: new Date(now - 4 * 24 * 3600000),
+      failureCount: 3,
+      recentDeliveries: [
+        { event: 'job.closed',           sentAt: new Date(now - 4 * 24 * 3600000), responseCode: 0,   success: false, error: 'Connection timed out', durationMs: 8000 },
+        { event: 'application.rejected', sentAt: new Date(now - 5 * 24 * 3600000), responseCode: 404, success: false, error: 'Not Found', durationMs: 152 },
+        { event: 'job.created',          sentAt: new Date(now - 6 * 24 * 3600000), responseCode: 200, success: true,  error: '', durationMs: 233 },
+      ],
+    },
+  ];
+
+  const toCreate = samples.slice(0, Math.max(0, 3 - existing));
+  const created = await Webhook.insertMany(toCreate);
+  res.json({ success: true, message: `${created.length} sample webhooks added.`, count: created.length });
+}));
+
 module.exports = router;

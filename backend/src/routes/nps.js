@@ -108,7 +108,10 @@ router.post('/seed', authMiddleware, tenantGuard, asyncHandler(async (req, res) 
   const tenantId = req.user.tenantId;
   if (!tenantId) return res.json({ success: false, message: 'Not available for super_admin.' });
 
-  const existing = await CandidateNPS.countDocuments({ tenantId });
+  // Count only *answered* surveys — matches the stats query, so a tenant with
+  // unanswered survey emails (respondedAt not set yet) doesn't get stuck
+  // thinking data already exists while the dashboard still shows empty.
+  const existing = await CandidateNPS.countDocuments({ tenantId, respondedAt: { $exists: true }, score: { $exists: true } });
   if (existing >= 10) return res.json({ success: true, message: 'NPS data already exists.', count: existing });
 
   const mongoose  = require('mongoose');

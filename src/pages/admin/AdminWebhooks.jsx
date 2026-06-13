@@ -199,6 +199,7 @@ export default function AdminWebhooks({ user }) {
   const [testResult, setTestResult] = useState({}); // { [hookId]: result }
   const [expanded, setExpanded] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [seeding, setSeeding]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -269,7 +270,13 @@ export default function AdminWebhooks({ user }) {
         <div style={{ ...card, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔗</div>
           <p style={{ color: '#6B7280', marginBottom: 16 }}>No webhooks configured yet.</p>
-          <button style={btnP} onClick={() => setModal('create')}>Create your first webhook</button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <button style={btnP} onClick={() => setModal('create')}>Create your first webhook</button>
+            <button onClick={async () => { setSeeding(true); try { await api.seedWebhooks(); load(); } catch (e) { setActionError(e?.message || 'Failed to seed.'); } setSeeding(false); }} disabled={seeding}
+              style={{ padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {seeding ? 'Adding sample data…' : '📥 Load Sample Webhooks'}
+            </button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

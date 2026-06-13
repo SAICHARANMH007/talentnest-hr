@@ -50,6 +50,7 @@ export default function AdminNPS() {
   const [startDate, setStart] = useState('');
   const [endDate, setEnd]     = useState('');
   const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
 
   const load = (s, e) => {
     setLoad(true);
@@ -102,10 +103,19 @@ export default function AdminNPS() {
             NPS surveys are sent automatically to candidates after they are hired or rejected.
             Data appears here as candidates respond.
           </div>
-          <button onClick={async () => { setSeeding(true); try { await api.seedNPS(); load('',''); } catch {} setSeeding(false); }} disabled={seeding}
+          <button onClick={async () => {
+            setSeeding(true); setSeedMsg('');
+            try {
+              const r = await api.seedNPS();
+              if (r?.success === false) setSeedMsg(r.message || 'No NPS data could be generated for this organization.');
+              else load('', '');
+            } catch (e) { setSeedMsg(e?.message || 'Failed to generate NPS data.'); }
+            setSeeding(false);
+          }} disabled={seeding}
             style={{ marginTop: 20, padding: '10px 22px', borderRadius: 10, border: '1px dashed #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            {seeding ? 'Adding sample data…' : '📥 Load Sample NPS Data'}
+            {seeding ? 'Generating from your hires & applications…' : '📥 Generate NPS Data from Recent Activity'}
           </button>
+          {seedMsg && <div style={{ marginTop: 12, fontSize: 12, color: '#DC2626' }}>{seedMsg}</div>}
         </div>
       ) : (
         <>
