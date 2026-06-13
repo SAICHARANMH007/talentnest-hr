@@ -75,6 +75,16 @@ export default function ProductHireBoard() {
     title: 'HireBoard — Recruitment Workspace for Recruiters | TalentNest HR',
     description: 'HireBoard is the all-in-one recruitment workspace — visual pipeline board, smart match scores, integrated chat & video interviews, and one-click digital offer letters.',
     path: '/products/hireboard',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'HireBoard',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      brand: { '@type': 'Brand', name: 'TalentNest HR' },
+      description: 'HireBoard is the all-in-one recruitment workspace for recruiters — visual pipeline board, smart match scores, integrated chat, calling, video interviews, and digital offer letters.',
+      url: 'https://www.talentnesthr.com/products/hireboard',
+    },
   });
   useEffect(() => {
     window.scrollTo({ top:0, behavior:'instant' });

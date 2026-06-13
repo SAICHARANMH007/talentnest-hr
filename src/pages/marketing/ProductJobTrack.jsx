@@ -73,6 +73,16 @@ export default function ProductJobTrack() {
     title: 'JobTrack — Job Search & Application Tracker | TalentNest HR',
     description: 'JobTrack lets candidates apply, chat with recruiters, join video interviews, sign offers digitally, and become a TalentNest Verified Candidate — all from one account.',
     path: '/products/jobtrack',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'JobTrack',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      brand: { '@type': 'Brand', name: 'TalentNest HR' },
+      description: 'JobTrack is the candidate platform for job search and applications — browse jobs with match scores, chat with recruiters, join video interviews, and sign offers digitally.',
+      url: 'https://www.talentnesthr.com/products/jobtrack',
+    },
   });
   useEffect(() => {
     window.scrollTo({ top:0, behavior:'instant' });

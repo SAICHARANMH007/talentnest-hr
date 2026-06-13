@@ -55,6 +55,16 @@ export default function ProductCampusHub() {
     title: 'CampusHub — Campus Placement Portal | TalentNest HR',
     description: 'CampusHub helps placement officers run campus recruitment — bulk student onboarding, placement drives with verified employers, internships, exams, and skill-gap insights.',
     path: '/products/campushub',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'CampusHub',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      brand: { '@type': 'Brand', name: 'TalentNest HR' },
+      description: 'CampusHub is the campus placement portal for placement officers — bulk student onboarding, placement drives with verified employers, internships, exams, and skill-gap insights.',
+      url: 'https://www.talentnesthr.com/products/campushub',
+    },
   });
   useEffect(() => {
     window.scrollTo({ top:0, behavior:'instant' });

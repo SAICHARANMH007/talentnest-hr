@@ -93,6 +93,23 @@ export default function ProductsPage() {
     title: 'Products — HireBoard, PeopleDesk, JobTrack & CampusHub | TalentNest HR',
     description: 'Explore TalentNest\'s four products: HireBoard for recruiters, PeopleDesk for HR admins, JobTrack for job seekers, and CampusHub for colleges — one platform for every person in the hiring journey.',
     path: '/products',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      itemListElement: PRODUCTS.map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'SoftwareApplication',
+          name: p.name,
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          brand: { '@type': 'Brand', name: 'TalentNest HR' },
+          description: p.what,
+          url: `https://www.talentnesthr.com${p.to}`,
+        },
+      })),
+    },
   });
   useEffect(() => {
     window.scrollTo({ top:0, behavior:'instant' });

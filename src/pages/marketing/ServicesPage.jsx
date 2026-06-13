@@ -104,6 +104,22 @@ export default function ServicesPage() {
     title: 'Services — IT, Cybersecurity & Non-IT Staffing | TalentNest HR',
     description: 'TalentNest HR offers full-cycle staffing services — IT staffing, cybersecurity hiring, non-IT recruitment, C2H, C2C, and permanent placements with a 5-day shortlist guarantee.',
     path: '/services',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      itemListElement: SERVICES.map((s, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Service',
+          name: s.title,
+          provider: { '@type': 'Organization', name: 'TalentNest HR' },
+          description: s.desc,
+          url: `https://www.talentnesthr.com/services/${s.slug}`,
+          areaServed: { '@type': 'Country', name: 'India' },
+        },
+      })),
+    },
   });
 
   useEffect(() => {

@@ -34,6 +34,16 @@ export default function HRMSPage() {
     title: 'HRMS Platform — ATS & Recruitment Software | TalentNest HR',
     description: 'TalentNest HRMS combines an applicant tracking system with face-recognition attendance, shift scheduling, leave management, and payroll exports — live in 24 hours.',
     path: '/hrms',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'TalentNest HRMS',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      brand: { '@type': 'Brand', name: 'TalentNest HR' },
+      description: 'TalentNest HRMS combines an applicant tracking system with face-recognition attendance, shift scheduling, leave management, and payroll input exports.',
+      url: 'https://www.talentnesthr.com/hrms',
+    },
   });
 
   useEffect(() => {

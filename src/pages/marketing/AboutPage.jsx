@@ -34,6 +34,18 @@ export default function AboutPage() {
     title: 'About Us — TalentNest HR',
     description: 'TalentNest HR is building India\'s largest verified talent identity network — combining recruitment, HR management, and a trusted candidate identity layer in one platform.',
     path: '/about',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'AboutPage',
+      name: 'About TalentNest HR',
+      url: 'https://www.talentnesthr.com/about',
+      mainEntity: {
+        '@type': 'Organization',
+        name: 'TalentNest HR',
+        url: 'https://www.talentnesthr.com',
+        description: 'TalentNest HR is building India\'s largest verified talent identity network — combining recruitment, HR management, and a trusted candidate identity layer in one platform.',
+      },
+    },
   });
 
   useEffect(() => {

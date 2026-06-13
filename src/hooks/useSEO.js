@@ -8,8 +8,8 @@ const setMeta = (selector, attr, val, content) => {
   el.setAttribute('content', content);
 };
 
-// Sets document title, meta description, OG/Twitter tags, and canonical link for a page.
-export default function useSEO({ title, description, path = '/', keywords }) {
+// Sets document title, meta description, OG/Twitter tags, canonical link, and optional JSON-LD schema for a page.
+export default function useSEO({ title, description, path = '/', keywords, schema }) {
   useEffect(() => {
     if (title) document.title = title;
 
@@ -33,5 +33,24 @@ export default function useSEO({ title, description, path = '/', keywords }) {
     let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
     canonical.href = `${BASE_URL}${path}`;
-  }, [title, description, path, keywords]);
+
+    const ldId = 'tn-page-ld';
+    let ldScript = document.getElementById(ldId);
+    if (schema) {
+      if (!ldScript) {
+        ldScript = document.createElement('script');
+        ldScript.id = ldId;
+        ldScript.type = 'application/ld+json';
+        document.head.appendChild(ldScript);
+      }
+      ldScript.textContent = JSON.stringify(schema);
+    } else if (ldScript) {
+      ldScript.remove();
+    }
+
+    return () => {
+      const el = document.getElementById(ldId);
+      if (el) el.remove();
+    };
+  }, [title, description, path, keywords, schema]);
 }

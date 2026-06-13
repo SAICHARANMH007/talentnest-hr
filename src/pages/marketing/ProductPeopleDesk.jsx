@@ -73,6 +73,16 @@ export default function ProductPeopleDesk() {
     title: 'PeopleDesk — HR Admin & Analytics Platform | TalentNest HR',
     description: 'PeopleDesk gives HR admins full control — live analytics, job approval workflows, pre-boarding automation, background verification, and custom org branding, all in one dashboard.',
     path: '/products/peopledesk',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'PeopleDesk',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      brand: { '@type': 'Brand', name: 'TalentNest HR' },
+      description: 'PeopleDesk is the HR admin platform for org-wide hiring control — live analytics, job approval workflows, pre-boarding automation, background verification, and custom branding.',
+      url: 'https://www.talentnesthr.com/products/peopledesk',
+    },
   });
   useEffect(() => {
     window.scrollTo({ top:0, behavior:'instant' });
