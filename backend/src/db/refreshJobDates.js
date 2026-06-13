@@ -1,10 +1,10 @@
 'use strict';
 /**
  * refreshJobDates.js
- * One-time migration: spreads `createdAt` for all active, public jobs across
- * the current week (today down to 6 days ago) with randomized times, so the
- * job board and JobPosting JSON-LD (datePosted) always look freshly posted
- * to candidates and job-board crawlers (Naukri, Indeed, Google for Jobs, etc.)
+ * One-time migration: sets `createdAt` for all active, public jobs to today
+ * (with a randomized time-of-day so entries aren't identical), so the job
+ * board and JobPosting JSON-LD (datePosted) always look freshly posted to
+ * candidates and job-board crawlers (Naukri, Indeed, Google for Jobs, etc.)
  * Run with: node backend/src/db/refreshJobDates.js
  */
 
@@ -14,10 +14,9 @@ const Job = require('../models/Job');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function randomDateThisWeek() {
-  const daysAgo = Math.floor(Math.random() * 7); // 0–6 days ago
+function randomTimeToday() {
   const msIntoDay = Math.floor(Math.random() * DAY_MS);
-  return new Date(Date.now() - daysAgo * DAY_MS - msIntoDay);
+  return new Date(Date.now() - msIntoDay);
 }
 
 async function run() {
@@ -36,12 +35,12 @@ async function run() {
 
   const bulk = Job.collection.initializeUnorderedBulkOp();
   for (const job of jobs) {
-    const createdAt = randomDateThisWeek();
+    const createdAt = randomTimeToday();
     bulk.find({ _id: job._id }).updateOne({ $set: { createdAt, updatedAt: createdAt } });
   }
 
   await bulk.execute();
-  console.log(`✅ Refreshed createdAt/updatedAt for ${jobs.length} jobs to dates within the last 7 days`);
+  console.log(`✅ Refreshed createdAt/updatedAt for ${jobs.length} jobs to today`);
 
   await mongoose.disconnect();
   console.log('Done');
