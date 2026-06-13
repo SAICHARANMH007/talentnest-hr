@@ -15,6 +15,7 @@ import BroadcastBanner from '../components/shared/BroadcastBanner.jsx';
 import { useMarketingTheme } from '../context/MarketingThemeContext.jsx';
 const ChatPanel = lazy(() => import('../components/shared/ChatPanel.jsx'));
 import CallManager from '../components/calling/CallManager.jsx';
+import CommandPalette from '../components/shared/CommandPalette.jsx';
 
 function AppIcon({ name, size = 18, color = 'currentColor' }) {
   const common = {
@@ -53,6 +54,14 @@ function AppIcon({ name, size = 18, color = 'currentColor' }) {
         <circle cx="12" cy="12" r="4" fill="#22c55e" stroke="none" />
         <path d="M5 12a7 7 0 0 1 14 0" opacity="0.7" />
         <path d="M2.5 12a9.5 9.5 0 0 1 19 0" opacity="0.45" />
+      </svg>
+    );
+  }
+  if (name === 'search') {
+    return (
+      <svg {...common}>
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.3-4.3" />
       </svg>
     );
   }
@@ -749,7 +758,7 @@ function NotificationBell({ userRole, compact = false }) {
 }
 
 // ── Sidebar Content ────────────────────────────────────────────────────────────
-function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs }) {
+function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs, setShowPalette }) {
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const { themeId, setThemeId } = useMarketingTheme();
@@ -801,6 +810,7 @@ function SidebarContent({ nav, orgLogo, user, rk, onLogout, setMobileOpen, setSh
         </div>
         <div style={{ color: sidebarMuted, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, width: '100%', flexShrink: 0 }}>{(user.role || '').replace('_', ' ').toUpperCase()}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, minHeight: 36, width: '100%' }}>
+          <button className="tn-app-icon-btn" onClick={() => setShowPalette?.(true)} title="Search (Ctrl+K)" aria-label="Search" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}><AppIcon name="search" size={16} /></button>
           <NotificationBell userRole={user?.role} compact />
           <button className="tn-app-icon-btn" onClick={() => setShowInbox?.(true)} title="Messages" aria-label="Messages" style={{ ...sidebarActionBtn, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <AppIcon name="message" size={16} />
@@ -1055,7 +1065,20 @@ export default function Layout({ user, onLogout }) {
   const [showInbox,  setShowInbox]    = useState(false);
   const [unreadMsgs, setUnreadMsgs]   = useState(0);
   const [chatRecipient, setChatRecipient] = useState(null);
+  const [showPalette, setShowPalette] = useState(false);
   useHeartbeat(user);
+
+  // Global command palette shortcut — Ctrl/Cmd+K
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowPalette(open => !open);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Platform-wide real-time sync — dispatch a browser event so any page can
   // listen and refresh its data when a stage change happens anywhere in the tenant
@@ -1071,7 +1094,7 @@ export default function Layout({ user, onLogout }) {
     return () => clearInterval(t);
   }, [user?.role]);
 
-  const sidebarProps = { nav, user, rk, onLogout, setMobileOpen, orgLogo: customLogoUrl || orgLogo, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs };
+  const sidebarProps = { nav, user, rk, onLogout, setMobileOpen, orgLogo: customLogoUrl || orgLogo, setShowChangePwd, setShowEmailSettings, setShowOnline, setShowInbox, unreadMsgs, setShowPalette };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: '#F3F2F2', fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Plus Jakarta Sans', system-ui, sans-serif", paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
@@ -1139,6 +1162,9 @@ export default function Layout({ user, onLogout }) {
               <button className="tn-app-icon-btn" onClick={onLogout} title="Sign Out" aria-label="Sign Out" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🚪</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, width: '100%' }}>
+              <button className="tn-app-icon-btn" onClick={() => setShowPalette(true)} title="Search" aria-label="Search" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AppIcon name="search" size={18} />
+              </button>
               <NotificationBell userRole={user?.role} />
               <button className="tn-app-icon-btn" onClick={() => { setShowInbox(true); setUnreadMsgs(0); }} title="Messages" aria-label="Messages" style={{ position: 'relative', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 8, padding: 0, cursor: 'pointer', fontSize: 16, minHeight: 40, minWidth: 40, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <AppIcon name="message" size={18} />
@@ -1164,6 +1190,7 @@ export default function Layout({ user, onLogout }) {
       <QuickActionMenu user={user} />
       <CallManager user={user} />
       <BroadcastBanner userRole={user?.role} />
+      <CommandPalette open={showPalette} onClose={() => setShowPalette(false)} nav={nav} onLogout={onLogout} />
     </div>
   );
 }
