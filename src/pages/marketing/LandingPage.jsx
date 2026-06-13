@@ -431,7 +431,7 @@ export default function LandingPage() {
         <div className="tn-container" style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
           <div style={{ minWidth: 220, textAlign: 'center' }} className="mkt-trust-label">
             <div style={{ color: 'var(--mkt-text-heading)', fontSize: 14, fontWeight: 800 }}>Trusted by growing teams across India</div>
-            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>Jobs across every industry — just like Naukri, built for faster hiring</div>
+            <div style={{ color: 'var(--mkt-text-muted)', fontSize: 12, marginTop: 4 }}>Building India's largest verified professional identity network — one trusted profile per candidate</div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', flex: 1 }}>
             {TRUST_BADGES.map(item => (
@@ -682,11 +682,21 @@ export default function LandingPage() {
           </div>
 
           {/* Verified profile highlight strip */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20, marginTop: 56, padding: '28px 32px', borderRadius: 20, background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)' }}>
+          <div style={{ marginTop: 56, textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 100, padding: '6px 16px', marginBottom: 16 }}>
+              <span style={{ fontSize: 16 }}>🏅</span>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', color: '#059669', textTransform: 'uppercase' }}>TalentNest Verified Candidate</span>
+            </div>
+            <p style={{ fontSize: 15, color: 'var(--mkt-text-muted)', lineHeight: 1.8, maxWidth: 680, margin: '0 auto', fontWeight: 500 }}>
+              Every TalentNest Verified Candidate has completed identity verification and mobile ownership verification — establishing one trusted professional identity per person, locked to its rightful owner.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20, marginTop: 28, padding: '28px 32px', borderRadius: 20, background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)' }}>
             {[
-              { icon: '✅', t: 'Verified Candidates', d: 'Profiles backed by document-verified work history, education, and identity checks.' },
-              { icon: '🔒', t: 'Privacy-First', d: 'Consent-based sharing — candidates control who sees their verified profile and when.' },
-              { icon: '📈', t: 'Travels With You', d: 'Your verification status and history carry forward to every employer on the platform.' },
+              { icon: '🆔', t: 'One Identity, Verified', d: 'Verified name and mobile ownership lock each profile to its rightful owner — reducing fake profiles, duplicate accounts, and impersonation.' },
+              { icon: '✅', t: 'A Trust Standard, Not Just a Badge', d: 'Employers can trust that a Verified Candidate has met TalentNest\'s identity verification requirements — improving hiring confidence and reducing verification effort.' },
+              { icon: '🔒', t: 'Privacy-First by Design', d: 'Sensitive ID documents are never publicly visible. Only your verification status and required professional details are shown — always with your consent.' },
+              { icon: '📈', t: 'Travels With You', d: 'Your achievements, assessments, certifications, projects, education, and career history stay connected to one trusted identity across every employer.' },
             ].map(item => (
               <div key={item.t} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                 <div style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</div>

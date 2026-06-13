@@ -124,6 +124,41 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── VISION: VERIFIED TALENT IDENTITY NETWORK ── */}
+      <section className="mkt-section-light abt-section-lg" style={{ padding: '100px 0', background: 'var(--mkt-surface-bg)', borderTop: '1px solid var(--mkt-card-border)', borderBottom: '1px solid var(--mkt-card-border)' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 52 }}>
+            <span className="section-tag">🌐 Our Vision</span>
+            <h2 style={{ color: 'var(--mkt-text-heading)', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: '-0.03em', margin: '16px 0 14px', lineHeight: 1.15 }}>
+              Building the world's largest <span style={{ color: 'var(--mkt-primary)' }}>verified talent identity network</span>
+            </h2>
+            <p style={{ color: 'var(--mkt-text-muted)', maxWidth: 720, margin: '0 auto', lineHeight: 1.8, fontSize: 16 }}>
+              TalentNest is more than a job board — it's a trusted professional identity platform. Every <strong>TalentNest Verified Candidate</strong> completes identity verification and mobile ownership verification, establishing one trusted professional identity per person. This reduces fake profiles, duplicate accounts, and impersonation, while giving employers higher-quality candidate data and reduced verification effort.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
+            {[
+              { icon: '🙋', title: 'For Candidates', desc: 'Gain credibility, profile protection, and ownership of your professional identity. Your achievements, assessments, certifications, projects, education, and career history stay connected to a single trusted profile — for life.' },
+              { icon: '🏢', title: 'For Employers', desc: 'A TalentNest Verified Candidate has completed the identity verification requirements set by our platform — giving you higher-confidence hiring decisions, cleaner candidate data, and less time spent on manual verification.' },
+              { icon: '🎓', title: 'For Colleges & Institutions', desc: 'Trusted student profiles and verified placement records give placement cells a reliable, fraud-resistant record of every student\'s journey from campus to career.' },
+            ].map(item => (
+              <div key={item.title} className="mkt-card" style={{ background: 'var(--mkt-card-bg)', borderRadius: 20, padding: 32, border: `1px solid var(--mkt-card-border)` }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg, var(--mkt-primary), var(--mkt-accent))`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 18 }}>
+                  {item.icon}
+                </div>
+                <h3 style={{ color: 'var(--mkt-text-heading)', fontSize: 19, fontWeight: 800, margin: '0 0 10px' }}>{item.title}</h3>
+                <p style={{ color: 'var(--mkt-text-muted)', fontSize: 14, lineHeight: 1.75, margin: 0 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 760, marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ color: 'var(--mkt-text-muted)', fontSize: 14, lineHeight: 1.8 }}>
+              <strong style={{ color: 'var(--mkt-text-heading)' }}>Privacy by design:</strong> sensitive identity documents are never publicly visible. Verification exists solely to establish authenticity and trust — only your verification status and required professional information are shown, always with your consent.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── VALUES ── */}
       <section className="mkt-section-light abt-section-lg" style={{ padding: '100px 0', textAlign: 'center' }}>
         <div className="container">

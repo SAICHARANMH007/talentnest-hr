@@ -154,7 +154,7 @@ export default function CandidateBackgroundVerification({ user }) {
               TalentNest Verified — Your Profile is Trusted
             </div>
             <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
-              Your background verification is <b>complete and approved</b>. The <b>🏅 TalentNest Verified</b> badge is now visible on your profile to all recruiters.
+              Your background verification is <b>complete and approved</b>. The <b>🏅 TalentNest Verified</b> badge is now visible on your profile to all recruiters — confirming you've met TalentNest's identity verification standard and hold one trusted professional identity on the platform.
             </div>
             <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {['🔍 Higher search visibility', '📞 More recruiter callbacks', '⚡ Faster hiring process', '✅ Pre-cleared for interviews'].map(b => (
@@ -177,6 +177,14 @@ export default function CandidateBackgroundVerification({ user }) {
         <span style={{ fontSize: 22, flexShrink: 0 }}>💡</span>
         <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
           <b>Upload once, use everywhere.</b> When you're hired for a job, your recruiter can access these documents directly — no need to re-submit the same documents for each employer. All documents are encrypted and only shared with HR teams during the hiring process.
+        </div>
+      </div>
+
+      {/* Privacy note */}
+      <div style={{ ...card, marginBottom: 20, padding: '14px 20px', background: 'rgba(100,116,139,0.05)', border: '1px solid rgba(100,116,139,0.15)', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 22, flexShrink: 0 }}>🔒</span>
+        <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
+          <b>Your documents are never public.</b> Verification exists only to confirm your identity and reduce fake or duplicate profiles. Your ID documents stay private — only your verification status (the 🏅 TalentNest Verified badge) and required professional details are ever shown to recruiters.
         </div>
       </div>
 
