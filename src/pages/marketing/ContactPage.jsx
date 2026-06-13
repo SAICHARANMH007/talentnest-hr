@@ -5,6 +5,7 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { api } from '../../api/api.js';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { ChatSupportIllustration, ConnectIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const CONTACT_ITEMS = [
   { icon: '📍', label: 'Address', value: 'Ganesh Nagar, Ameenpur, Hyderabad, Telangana 500049, India' },
@@ -25,6 +26,12 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  useSEO({
+    title: 'Contact Us — TalentNest HR',
+    description: 'Get in touch with TalentNest HR for staffing, recruitment, and HRMS solutions. Call, WhatsApp, or email our team — we typically respond within one business day.',
+    path: '/contact',
+  });
 
   /* ── Derived Styles (Inside component to access theme) ── */
   const inpStyle = {
@@ -52,7 +59,6 @@ export default function ContactPage() {
   };
 
   useEffect(() => {
-    document.title = 'Contact Us — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { ServiceSolutionsIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const SERVICES = [
   {
@@ -99,8 +100,13 @@ const SERVICE_PROMISES = [
 ];
 
 export default function ServicesPage() {
+  useSEO({
+    title: 'Services — IT, Cybersecurity & Non-IT Staffing | TalentNest HR',
+    description: 'TalentNest HR offers full-cycle staffing services — IT staffing, cybersecurity hiring, non-IT recruitment, C2H, C2C, and permanent placements with a 5-day shortlist guarantee.',
+    path: '/services',
+  });
+
   useEffect(() => {
-    document.title = 'Services — IT, Cybersecurity & Non-IT Staffing | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

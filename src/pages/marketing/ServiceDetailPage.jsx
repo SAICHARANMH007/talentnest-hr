@@ -3,6 +3,7 @@ import { Link, useParams, Navigate } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 import { DevTalentIllustration, CyberShieldIllustration, DiverseTeamIllustration, ContractToHireIllustration, CompanyBridgeIllustration, HRDashboardIllustration, LongTermTeamIllustration, DevPipelineFlowIllustration, SecurityAuditFlowIllustration, TalentFunnelFlowIllustration, TrialToHireFlowIllustration, PartnershipFlowIllustration, PlatformRolloutFlowIllustration, CareerPlacementFlowIllustration, CodeGuaranteeIllustration, SecurityComplianceIllustration, ReplacementGuaranteeIllustration, ConversionGuaranteeIllustration, SLAGuaranteeIllustration, UptimeGuaranteeIllustration, RetentionGuaranteeIllustration } from '../../components/marketing/Illustrations.jsx';
 
 // ─── Per-Service Hero Illustrations ────────────────────────────────────────────
@@ -455,8 +456,13 @@ function ServicePage({ data, slug }) {
   const GuaranteeIllustration = GUARANTEE_ILLUSTRATIONS[slug] || CodeGuaranteeIllustration;
   useMarketingTheme(); // apply theme CSS variables so dark/light/mixed modes work
 
+  useSEO({
+    title: `${title} | TalentNest HR`,
+    description: heroDesc || tagline,
+    path: `/services/${slug}`,
+  });
+
   useEffect(() => {
-    document.title = `${title} | TalentNest HR`;
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

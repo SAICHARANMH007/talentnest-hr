@@ -5,6 +5,7 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { BLOGS, CATEGORIES as STATIC_CATEGORIES } from '../../data/blogs.js';
 import api from '../../api/api.js';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 export default function BlogPage() {
   const { theme, themeId } = useMarketingTheme();
@@ -12,8 +13,13 @@ export default function BlogPage() {
   const [search, setSearch]     = useState('');
   const [apiBlogs, setApiBlogs] = useState(null); // null = not loaded yet
 
+  useSEO({
+    title: 'Blog — Hiring Insights & Career Advice | TalentNest HR',
+    description: 'Practical guides on hiring, staffing, recruitment technology, and career growth from the TalentNest HR team — covering IT staffing, HR automation, and candidate verification.',
+    path: '/blog',
+  });
+
   useEffect(() => {
-    document.title = 'Blog — Hiring Insights & Career Advice | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

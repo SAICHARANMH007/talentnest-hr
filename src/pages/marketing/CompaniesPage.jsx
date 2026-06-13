@@ -5,6 +5,7 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { API_BASE_URL } from '../../api/config.js';
 import { RecruiterIllustration, GlobalNetworkIllustration, TalentMatchIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const INDUSTRY_ICONS = { 
   Technology: '💻', 
@@ -28,8 +29,13 @@ export default function CompaniesPage() {
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [loading, setLoading] = useState(true);
 
+  useSEO({
+    title: 'Our Clients — TalentNest HR',
+    description: 'See the companies hiring through TalentNest HR — browse verified employers and their open roles across IT, non-IT, and enterprise teams.',
+    path: '/companies',
+  });
+
   useEffect(() => {
-    document.title = 'Our Clients — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const SECTIONS = [
   {
@@ -100,8 +101,13 @@ const SECTIONS = [
 ];
 
 export default function PrivacyPage() {
+  useSEO({
+    title: 'Privacy Policy — TalentNest HR',
+    description: 'Learn how TalentNest HR collects, uses, and protects your data — including our identity verification process, privacy-first design, and your data rights.',
+    path: '/privacy',
+  });
+
   useEffect(() => {
-    document.title = 'Privacy Policy — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

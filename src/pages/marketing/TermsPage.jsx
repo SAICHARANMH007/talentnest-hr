@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 20-Section Terms of Service — Data-focused, legally comprehensive
@@ -394,8 +395,13 @@ export default function TermsPage() {
   const { theme } = useMarketingTheme();
   const [activeId, setActiveId] = useState('acceptance');
 
+  useSEO({
+    title: 'Terms of Service — TalentNest HR',
+    description: 'Read the TalentNest HR Terms of Service — covering account use, recruiter and candidate responsibilities, payments, and platform policies.',
+    path: '/terms',
+  });
+
   useEffect(() => {
-    document.title = 'Terms of Service — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

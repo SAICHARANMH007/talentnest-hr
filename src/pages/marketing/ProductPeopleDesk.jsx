@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { AnalyticsChartIllustration, OnboardingChecklistIllustration, TeamAutomationIllustration, MultiTenantIllustration, ComplianceBadgeIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#059669';
@@ -68,8 +69,12 @@ const SECTION_ILLUSTRATIONS = {
 
 export default function ProductPeopleDesk() {
   useMarketingTheme();
+  useSEO({
+    title: 'PeopleDesk — HR Admin & Analytics Platform | TalentNest HR',
+    description: 'PeopleDesk gives HR admins full control — live analytics, job approval workflows, pre-boarding automation, background verification, and custom org branding, all in one dashboard.',
+    path: '/products/peopledesk',
+  });
   useEffect(() => {
-    document.title = 'PeopleDesk — For HR Admins | TalentNest HR';
     window.scrollTo({ top:0, behavior:'instant' });
     if (!document.getElementById('marketing-css')) {
       const l = document.createElement('link');

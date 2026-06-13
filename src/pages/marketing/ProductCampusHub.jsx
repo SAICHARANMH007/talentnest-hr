@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { CampusHubIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#F59E0B';
@@ -50,8 +51,12 @@ const SECTIONS = [
 
 export default function ProductCampusHub() {
   useMarketingTheme();
+  useSEO({
+    title: 'CampusHub — Campus Placement Portal | TalentNest HR',
+    description: 'CampusHub helps placement officers run campus recruitment — bulk student onboarding, placement drives with verified employers, internships, exams, and skill-gap insights.',
+    path: '/products/campushub',
+  });
   useEffect(() => {
-    document.title = 'CampusHub — For Placement Officers & Colleges | TalentNest HR';
     window.scrollTo({ top:0, behavior:'instant' });
     if (!document.getElementById('marketing-css')) {
       const l = document.createElement('link');

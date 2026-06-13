@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { SearchTalentIllustration, RecruiterChatIllustration, ApplicationTrackerIllustration, OfferSignatureIllustration, CareerToolsIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 const AC  = '#7c3aed';
@@ -68,8 +69,12 @@ const SECTION_ILLUSTRATIONS = {
 
 export default function ProductJobTrack() {
   useMarketingTheme();
+  useSEO({
+    title: 'JobTrack — Job Search & Application Tracker | TalentNest HR',
+    description: 'JobTrack lets candidates apply, chat with recruiters, join video interviews, sign offers digitally, and become a TalentNest Verified Candidate — all from one account.',
+    path: '/products/jobtrack',
+  });
   useEffect(() => {
-    document.title = 'JobTrack — For Candidates | TalentNest HR';
     window.scrollTo({ top:0, behavior:'instant' });
     if (!document.getElementById('marketing-css')) {
       const l = document.createElement('link');

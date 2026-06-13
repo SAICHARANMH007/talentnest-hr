@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { IdentityCardIllustration, PayrollCardIllustration, FaceRecognitionIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const FEATURES = [
   { icon: '🎯', title: 'Advanced Facial Recognition', desc: 'Secure, contactless attendance marking with 99.9% accuracy. Identifies employees in under 0.5 seconds, even with masks or lighting changes.' },
@@ -29,9 +30,13 @@ const USECASES = [
 
 export default function HRMSPage() {
   const { theme } = useMarketingTheme();
-  
+  useSEO({
+    title: 'HRMS Platform — ATS & Recruitment Software | TalentNest HR',
+    description: 'TalentNest HRMS combines an applicant tracking system with face-recognition attendance, shift scheduling, leave management, and payroll exports — live in 24 hours.',
+    path: '/hrms',
+  });
+
   useEffect(() => {
-    document.title = 'HRMS Platform — ATS & Recruitment Software | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

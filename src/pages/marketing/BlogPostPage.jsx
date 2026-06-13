@@ -5,6 +5,7 @@ import MarketingFooter from './MarketingFooter.jsx';
 import { BLOGS } from '../../data/blogs.js';
 import api from '../../api/api.js';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 export default function BlogPostPage() {
   const { theme, themeId } = useMarketingTheme();
@@ -47,9 +48,11 @@ export default function BlogPostPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  useEffect(() => {
-    document.title = post?.title ? `${post.title} | TalentNest HR Blog` : 'Blog — TalentNest HR';
-  }, [post]);
+  useSEO({
+    title: post?.title ? `${post.title} | TalentNest HR Blog` : 'Blog — TalentNest HR',
+    description: post?.excerpt || 'Read the latest hiring insights and career advice from the TalentNest HR team.',
+    path: `/blog/${slug}`,
+  });
 
   if (loading) {
     return (

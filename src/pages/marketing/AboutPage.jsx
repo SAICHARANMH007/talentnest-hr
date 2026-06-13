@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { TeamGrowthIllustration, ValuesHeartIllustration, GrowthRocketIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const VALUES = [
   { icon: '🎯', title: 'Quality Over Volume', desc: 'We send 3 perfect candidates, not 30 average ones. Every submission is intentional, vetted, and worth your time.' },
@@ -29,9 +30,13 @@ const DIFFERENTIATORS = [
 
 export default function AboutPage() {
   const { theme } = useMarketingTheme();
-  
+  useSEO({
+    title: 'About Us — TalentNest HR',
+    description: 'TalentNest HR is building India\'s largest verified talent identity network — combining recruitment, HR management, and a trusted candidate identity layer in one platform.',
+    path: '/about',
+  });
+
   useEffect(() => {
-    document.title = 'About Us — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

@@ -4,6 +4,7 @@ import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
 import { TrustGraphIllustration } from '../../components/marketing/Illustrations.jsx';
+import useSEO from '../../hooks/useSEO.js';
 
 const ff = "'Plus Jakarta Sans','Segoe UI',sans-serif";
 
@@ -88,8 +89,12 @@ const PRODUCTS = [
 
 export default function ProductsPage() {
   useMarketingTheme();
+  useSEO({
+    title: 'Products — HireBoard, PeopleDesk, JobTrack & CampusHub | TalentNest HR',
+    description: 'Explore TalentNest\'s four products: HireBoard for recruiters, PeopleDesk for HR admins, JobTrack for job seekers, and CampusHub for colleges — one platform for every person in the hiring journey.',
+    path: '/products',
+  });
   useEffect(() => {
-    document.title = 'Products — TalentNest HR';
     window.scrollTo({ top:0, behavior:'instant' });
     if (!document.getElementById('marketing-css')) {
       const l = document.createElement('link');

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MarketingNav from './MarketingNav.jsx';
 import MarketingFooter from './MarketingFooter.jsx';
 import { useMarketingTheme } from '../../context/MarketingThemeContext.jsx';
+import useSEO from '../../hooks/useSEO.js';
 import { PipelineBoardIllustration, VideoInterviewIllustration, JobAnalyticsIllustration, EnterpriseControlIllustration } from '../../components/marketing/Illustrations.jsx';
 
 const ff  = "'Plus Jakarta Sans','Segoe UI',sans-serif";
@@ -70,8 +71,12 @@ const SECTION_ILLUSTRATIONS = {
 
 export default function ProductHireBoard() {
   useMarketingTheme();
+  useSEO({
+    title: 'HireBoard — Recruitment Workspace for Recruiters | TalentNest HR',
+    description: 'HireBoard is the all-in-one recruitment workspace — visual pipeline board, smart match scores, integrated chat & video interviews, and one-click digital offer letters.',
+    path: '/products/hireboard',
+  });
   useEffect(() => {
-    document.title = 'HireBoard — For Recruiters | TalentNest HR';
     window.scrollTo({ top:0, behavior:'instant' });
     if (!document.getElementById('marketing-css')) {
       const l = document.createElement('link');
