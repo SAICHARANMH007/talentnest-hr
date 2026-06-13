@@ -31,6 +31,7 @@ export default function AboutPage() {
   const { theme } = useMarketingTheme();
   
   useEffect(() => {
+    document.title = 'About Us — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

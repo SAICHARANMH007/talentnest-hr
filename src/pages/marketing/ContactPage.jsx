@@ -52,6 +52,7 @@ export default function ContactPage() {
   };
 
   useEffect(() => {
+    document.title = 'Contact Us — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

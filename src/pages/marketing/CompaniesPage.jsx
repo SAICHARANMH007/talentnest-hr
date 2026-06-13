@@ -29,6 +29,7 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    document.title = 'Our Clients — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

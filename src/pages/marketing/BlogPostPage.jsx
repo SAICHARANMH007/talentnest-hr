@@ -47,6 +47,10 @@ export default function BlogPostPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  useEffect(() => {
+    document.title = post?.title ? `${post.title} | TalentNest HR Blog` : 'Blog — TalentNest HR';
+  }, [post]);
+
   if (loading) {
     return (
       <div className="mkt-page" style={{ fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", background: 'var(--mkt-section-bg)', color: 'var(--mkt-text)' }}>

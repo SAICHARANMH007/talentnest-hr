@@ -101,6 +101,7 @@ const SECTIONS = [
 
 export default function PrivacyPage() {
   useEffect(() => {
+    document.title = 'Privacy Policy — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

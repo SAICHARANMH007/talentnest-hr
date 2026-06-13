@@ -456,6 +456,7 @@ function ServicePage({ data, slug }) {
   useMarketingTheme(); // apply theme CSS variables so dark/light/mixed modes work
 
   useEffect(() => {
+    document.title = `${title} | TalentNest HR`;
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

@@ -31,6 +31,7 @@ export default function HRMSPage() {
   const { theme } = useMarketingTheme();
   
   useEffect(() => {
+    document.title = 'HRMS Platform — ATS & Recruitment Software | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);

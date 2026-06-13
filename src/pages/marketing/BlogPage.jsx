@@ -13,6 +13,7 @@ export default function BlogPage() {
   const [apiBlogs, setApiBlogs] = useState(null); // null = not loaded yet
 
   useEffect(() => {
+    document.title = 'Blog — Hiring Insights & Career Advice | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

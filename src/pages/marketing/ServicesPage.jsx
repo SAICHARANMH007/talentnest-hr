@@ -100,6 +100,7 @@ const SERVICE_PROMISES = [
 
 export default function ServicesPage() {
   useEffect(() => {
+    document.title = 'Services — IT, Cybersecurity & Non-IT Staffing | TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link');
       link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';

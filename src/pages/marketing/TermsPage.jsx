@@ -395,6 +395,7 @@ export default function TermsPage() {
   const [activeId, setActiveId] = useState('acceptance');
 
   useEffect(() => {
+    document.title = 'Terms of Service — TalentNest HR';
     if (!document.getElementById('marketing-css')) {
       const link = document.createElement('link'); link.id = 'marketing-css'; link.rel = 'stylesheet'; link.href = '/marketing.css';
       document.head.appendChild(link);
