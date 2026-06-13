@@ -153,9 +153,11 @@ export async function req(method, path, body, auth = true) {
     _inflight.set(path, promise);
     return promise;
   }
-  // Mutations — invalidate cache for the affected resource path
-  const base = path.split('?')[0].replace(/\/[a-f0-9]{24}(\/.*)?$/, '');
-  clearCacheByPrefix(base);
+  // Mutations — invalidate cache for the affected resource (and any sibling
+  // GET routes under the same root, e.g. POST /nps/seed must also invalidate
+  // the cached GET /nps/stats, not just GET /nps/seed which is never cached).
+  const firstSegment = path.split('?')[0].split('/')[1];
+  clearCacheByPrefix(`/${firstSegment}`);
   return _doReq(method, path, body, auth);
 }
 
