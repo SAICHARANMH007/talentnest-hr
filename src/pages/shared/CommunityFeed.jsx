@@ -671,7 +671,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
   );
 
   return (
-    <div id={post._id} style={isMobile ? { ...card, padding: '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', borderTop: post.isPinned ? '3px solid #93C5FD' : 'none', position: 'relative' } : { ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+    <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile ? { ...card, padding: '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', borderTop: post.isPinned ? '3px solid #93C5FD' : 'none', position: 'relative' } : { ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -1076,7 +1076,7 @@ function CreatePost({ user, onCreate, isMobile }) {
       <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
-          <button onClick={() => openModal('update')}
+          <button onClick={() => openModal('update')} className="tn-composer-btn"
             style={{ flex: 1, textAlign: 'left', padding: '11px 16px', borderRadius: 24, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
             Start a post, {user?.name?.split(' ')[0] || 'there'}…
           </button>
@@ -1820,20 +1820,20 @@ export default function CommunityFeed({ user }) {
       {/* Header */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Career Community</h1>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #0176D3 0%, #7C3AED 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Career Community</h1>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: '#9CA3AF' }}>Share wins, hiring updates, career tips, and resources with your professional network</p>
         </div>
         <div />
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 14, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #E5E7EB' }}>
+      <div style={{ display: 'inline-flex', gap: 4, marginBottom: 14, marginLeft: isMobile ? 12 : 0, marginRight: isMobile ? 12 : 0, padding: 4, background: '#F1F5F9', borderRadius: 12 }}>
         {[
           { id: 'feed',  label: 'Feed' },
           { id: 'saved', label: `★ Saved (${savedCount})` },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '10px 20px', border: 'none', background: tab === t.id ? 'rgba(1,118,211,0.06)' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? '#0176D3' : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, transition: 'all 0.15s', borderRadius: '8px 8px 0 0' }}>
+            style={{ padding: '8px 20px', border: 'none', background: tab === t.id ? '#fff' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 800 : 600, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderRadius: 9, transition: 'all 0.15s', boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
             {t.label}
           </button>
         ))}
@@ -1845,12 +1845,12 @@ export default function CommunityFeed({ user }) {
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
             {/* My Network chip */}
             <button
-              onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }}
+              onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }} className="tn-filter-chip"
               style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${networkOnly ? '#059669' : '#D1D5DB'}`, background: networkOnly ? '#D1FAE5' : '#fff', color: networkOnly ? '#065F46' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               🤝 My Network {networkOnly && connections.length > 0 && <span style={{ background: '#059669', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>{connections.length}</span>}
             </button>
             {FILTERS.map(f => (
-              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); }}
+              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); }} className="tn-filter-chip"
                 style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${filter === f.value && !activeHash && !networkOnly ? '#0176D3' : '#D1D5DB'}`, background: filter === f.value && !activeHash && !networkOnly ? '#EFF6FF' : '#fff', color: filter === f.value && !activeHash && !networkOnly ? '#1D4ED8' : '#374151', fontSize: 12, fontWeight: filter === f.value && !activeHash && !networkOnly ? 700 : 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 {f.label}
               </button>
@@ -1950,7 +1950,15 @@ export default function CommunityFeed({ user }) {
         )}
       </div>
 
-      <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes tn-spin { to { transform: rotate(360deg); } }
+        .tn-postcard { transition: box-shadow 0.15s, border-color 0.15s; }
+        .tn-postcard:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); border-color: #E5E7EB; }
+        .tn-composer-btn { transition: background 0.15s, border-color 0.15s; }
+        .tn-composer-btn:hover { background: #F1F5F9; border-color: #D1D5DB; }
+        .tn-filter-chip { transition: transform 0.1s, box-shadow 0.1s; }
+        .tn-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
+      `}</style>
     </div>
   );
 }
