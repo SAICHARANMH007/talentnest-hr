@@ -25,6 +25,24 @@ const TOUR_STEPS = {
     { id: 'organisations', title: "Org Management", desc: "Provision, manage, and support multi-tenant organisations." },
     { id: 'platform', title: "System Controls", desc: "Manage feature flags, security layers, and platform-wide config." },
     { id: 'playbooks', title: "Documentation Hub", desc: "Generate and download stakeholder playbooks and pitch decks." }
+  ],
+  client: [
+    { id: 'dashboard', title: "Client Dashboard", desc: "See a snapshot of your hiring requirements, shortlists, and placements." },
+    { id: 'requirements', title: "Hiring Requirements", desc: "Share new roles and track progress on the requirements you've raised." },
+    { id: 'shortlists', title: "Shortlisted Candidates", desc: "Review and respond to candidates shortlisted for your roles." },
+    { id: 'profile', title: "Your Profile", desc: "Manage your account details and preferences here." }
+  ],
+  college: [
+    { id: 'analytics', title: "Placement Overview", desc: "Track student placements, drives, and outcomes at a glance." },
+    { id: 'candidates', title: "Students", desc: "Manage your student roster and their placement readiness." },
+    { id: 'drives', title: "Placement Drives", desc: "Organise and monitor on-campus and virtual placement drives." },
+    { id: 'profile', title: "Your Profile", desc: "Manage your account details and preferences here." }
+  ],
+  hiring_manager: [
+    { id: 'dashboard', title: "Hiring Manager Dashboard", desc: "Get a quick view of your team's open roles and pipeline health." },
+    { id: 'my-team', title: "My Team", desc: "See the roles and headcount you're hiring for." },
+    { id: 'pipeline', title: "Pipeline", desc: "Review and move candidates through your hiring stages." },
+    { id: 'profile', title: "Your Profile", desc: "Manage your account details and preferences here." }
   ]
 };
 
@@ -47,7 +65,7 @@ export default function PlatformPresentationModal() {
   // Update spotlight position when step changes
   useEffect(() => {
     if (step >= 0 && user) {
-      const role = user.role === 'super_admin' ? 'super_admin' : user.role;
+      const role = user.role === 'super_admin' ? 'super_admin' : ((user.role === 'admin' || user.role === 'placement_officer') && user.tenantType === 'college' ? 'college' : user.role);
       const steps = TOUR_STEPS[role] || TOUR_STEPS['candidate'];
       const current = steps[step];
       
@@ -78,7 +96,7 @@ export default function PlatformPresentationModal() {
 
   if (!visible || !user) return null;
 
-  const role = user.role === 'super_admin' ? 'super_admin' : user.role;
+  const role = user.role === 'super_admin' ? 'super_admin' : ((user.role === 'admin' || user.role === 'placement_officer') && user.tenantType === 'college' ? 'college' : user.role);
   const steps = TOUR_STEPS[role] || TOUR_STEPS['candidate'];
   const currentStep = steps[step];
   const firstName = user.name?.split(' ')[0] || 'User';
