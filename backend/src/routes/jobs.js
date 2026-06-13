@@ -409,6 +409,8 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
         pingIndexNow(job).catch(() => {});
         const { evaluateWorkflows } = require('../services/workflowEngine');
         evaluateWorkflows(job.tenantId, { event: 'job_published', tenantId: job.tenantId, jobTitle: job.title, jobId: job._id.toString() }).catch(() => {});
+        const { fireWebhooks } = require('../services/webhookService');
+        fireWebhooks(job.tenantId, 'job.published', { jobId: String(job._id), title: job.title }).catch(() => {});
       } else if (updates.status === 'closed' && prevJob?.status === 'active') {
         require('./distribution').logJobClosed(job._id);
         require('./feed').invalidateFeedCache();
@@ -445,6 +447,9 @@ router.patch('/:id/approve', ...guard, allowRoles('admin', 'super_admin'), async
   try { require('./feed').invalidateFeedCache(); } catch {}
   pingIndexNow(job).catch(() => {});
   require('./jobAlerts').notifyMatchingAlerts(job).catch(() => {});
+
+  const { fireWebhooks } = require('../services/webhookService');
+  fireWebhooks(job.tenantId, 'job.approved', { jobId: String(job._id), title: job.title }).catch(() => {});
 
   logger.audit('Job approved', req.user.id, req.user.tenantId, { jobId: job._id });
   res.json({ success: true, data: normalizeJob(job) });

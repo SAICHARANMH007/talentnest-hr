@@ -1454,8 +1454,9 @@ router.patch('/:id/stage', ...guard,
     const { fireWebhooks } = require('../services/webhookService');
     const whPayload = { applicationId: String(app._id), candidateName: wfBase.candidateName, jobTitle: wfBase.jobTitle, stage, recruiterName: req.user.name || req.user.email };
     fireWebhooks(req.user.tenantId, 'application.stage_changed', whPayload).catch(() => {});
-    if (stage === 'Hired')    fireWebhooks(req.user.tenantId, 'application.hired',    whPayload).catch(() => {});
-    if (stage === 'Rejected') fireWebhooks(req.user.tenantId, 'application.rejected', whPayload).catch(() => {});
+    if (stage === 'Hired')       fireWebhooks(req.user.tenantId, 'application.hired',       whPayload).catch(() => {});
+    if (stage === 'Rejected')    fireWebhooks(req.user.tenantId, 'application.rejected',    whPayload).catch(() => {});
+    if (stage === 'Shortlisted') fireWebhooks(req.user.tenantId, 'application.shortlisted', whPayload).catch(() => {});
 
     logger.audit('Stage changed', req.user.id, req.user.tenantId, { appId: app._id, stage });
 
@@ -1694,6 +1695,12 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     Job.findById(app.jobId).select('title').lean(),
   ]);
 
+  // ── Fire webhooks (non-blocking)
+  const { fireWebhooks } = require('../services/webhookService');
+  fireWebhooks(req.user.tenantId, 'interview.scheduled', {
+    applicationId: String(app._id), roundIndex, roundLabel, scheduledAt, format: format || 'video',
+  }).catch(() => {});
+
   const orgName = req.tenant?.name || 'TalentNest HR';
   const dateStr = scheduledAt.toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -1841,6 +1848,13 @@ router.post('/:id/interview/:roundIndex/scorecard', ...guard,
     await app.save();
 
     logger.audit('Scorecard submitted', req.user.id, req.user.tenantId, { appId: app._id, roundIndex: idx });
+
+    // ── Fire webhooks (non-blocking)
+    const { fireWebhooks } = require('../services/webhookService');
+    fireWebhooks(req.user.tenantId, 'interview.completed', {
+      applicationId: String(app._id), roundIndex: idx, recommendation: recommendation || 'hold',
+    }).catch(() => {});
+
     res.json({ success: true, data: normalizeApp(app) });
   })
 );
@@ -1938,6 +1952,11 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
 
   await Job.findByIdAndUpdate(app.jobId, { $inc: { applicationCount: -1 } });
   logger.audit('Application archived', req.user.id, req.user.tenantId || app.tenantId, { appId: app._id, reason: withdrawalReason });
+
+  // ── Fire webhooks (non-blocking)
+  const { fireWebhooks } = require('../services/webhookService');
+  fireWebhooks(app.tenantId, 'application.withdrawn', { applicationId: String(app._id), reason: withdrawalReason }).catch(() => {});
+
   res.json({ success: true, message: 'Application withdrawn.' });
 }));
 

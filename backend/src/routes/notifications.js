@@ -95,6 +95,7 @@ router.post('/platform-summary', auth, asyncHandler(async (req, res) => {
     title  : `Platform Overview`,
     message: `${totalUsers} active users · ${totalOrgs} organisation${totalOrgs !== 1 ? 's' : ''} · ${activeRecruiters} recruiter${activeRecruiters !== 1 ? 's' : ''} active`,
     metadata: { totalUsers, totalOrgs, activeRecruiters },
+    link   : '/app/organisations',
     read   : false,
   });
 
@@ -105,6 +106,7 @@ router.post('/platform-summary', auth, asyncHandler(async (req, res) => {
       title  : `${newUsersToday} new user${newUsersToday > 1 ? 's' : ''} joined today`,
       message: `${newUsersWeek} new user${newUsersWeek !== 1 ? 's' : ''} joined this week across all organisations.`,
       metadata: { newUsersToday, newUsersWeek },
+      link   : '/app/admins?tab=users',
       read   : false,
     });
   }
@@ -116,6 +118,7 @@ router.post('/platform-summary', auth, asyncHandler(async (req, res) => {
       title  : `${pendingInvites} pending invite${pendingInvites > 1 ? 's' : ''}`,
       message: `${pendingInvites} user${pendingInvites > 1 ? 's have' : ' has'} not yet accepted their invitation. Consider resending.`,
       metadata: { pendingInvites },
+      link   : '/app/admins?tab=pending',
       read   : false,
     });
   }

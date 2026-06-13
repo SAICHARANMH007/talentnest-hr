@@ -443,7 +443,8 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   const [showInvite, setShowInvite]   = useState(false);
   const [advOpen, setAdvOpen]         = useState(false);
   const [useTempPwd, setUseTempPwd]   = useState(false);
-  const [activeTab, setActiveTab]     = useState('users'); // 'users' | 'pending'
+  // Deep-link support: notifications can route here with ?tab=pending to open the Pending Invites tab
+  const [activeTab, setActiveTab]     = useState(() => new URLSearchParams(window.location.search).get('tab') === 'pending' ? 'pending' : 'users'); // 'users' | 'pending'
   const [pendingInvites, setPending]  = useState([]);
   const [pendingLoad, setPendingLoad] = useState(false);
   const [formErrors, setFormErrors]   = useState({});
