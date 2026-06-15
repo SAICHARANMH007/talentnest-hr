@@ -100,4 +100,37 @@ function textMatches(candidateText, criterionText) {
   return false;
 }
 
-module.exports = { textMatches, normalize };
+// Removes all whitespace from a normalized string, so spaced-out input like
+// "m b a" or "M.B.A" collapses to "mba" for comparison against compact forms.
+function compact(text) {
+  return normalize(text).replace(/\s+/g, '');
+}
+
+/**
+ * Returns true if `candidateText` (e.g. a student's name, email, degree or
+ * branch) should be considered a match for a free-text search `query`,
+ * case-insensitively and regardless of spacing/punctuation — e.g. searching
+ * "mba", "MBA", "M.B.A" or "m b a" all match a candidate whose degree is
+ * "Master of Business Administration", and "cse" matches "Computer Science".
+ */
+function searchMatches(candidateText, query) {
+  const cand = normalize(candidateText);
+  const q = normalize(query);
+  if (!cand || !q) return false;
+  if (cand.includes(q) || q.includes(cand)) return true;
+
+  const candCompact = compact(candidateText);
+  const qCompact = compact(query);
+  if (candCompact.includes(qCompact) || qCompact.includes(candCompact)) return true;
+
+  for (const [canonical, aliases] of Object.entries(ALIASES)) {
+    const forms = [canonical, ...aliases].map(normalize);
+    const formsCompact = forms.map(f => f.replace(/\s+/g, ''));
+    const qMatchesGroup = forms.some(f => formMatches(q, f)) || formsCompact.includes(qCompact);
+    const candMatchesGroup = forms.some(f => formMatches(cand, f)) || formsCompact.some(f => candCompact.includes(f));
+    if (qMatchesGroup && candMatchesGroup) return true;
+  }
+  return false;
+}
+
+module.exports = { textMatches, normalize, searchMatches };

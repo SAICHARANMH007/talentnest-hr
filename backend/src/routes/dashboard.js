@@ -24,7 +24,7 @@ const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
 const { getCoursesForSkill } = require('../utils/skillCourses');
-const { textMatches: degreeTextMatches } = require('../utils/degreeMatch');
+const { textMatches: degreeTextMatches, searchMatches } = require('../utils/degreeMatch');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -1184,10 +1184,15 @@ router.post('/college/placement-drives/:id/notify', authenticate, allowRoles('ad
   const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
   if (!drive) throw new AppError('Placement drive not found.', 404);
 
-  const { audience = 'eligible', passingYears = [], degrees = [], branches = [], message: customMessage = '' } = req.body || {};
+  const { audience = 'eligible', passingYears = [], degrees = [], branches = [], message: customMessage = '', candidateIds = [] } = req.body || {};
 
   let candidates;
-  if (audience === 'registered') {
+  if (audience === 'specific') {
+    const ids = (Array.isArray(candidateIds) ? candidateIds : []).filter(Boolean);
+    if (!ids.length) throw new AppError('Select at least one student to notify.', 400);
+    candidates = await Candidate.find({ _id: { $in: ids }, college: college.regex, deletedAt: null })
+      .select('name email userId educationList').lean();
+  } else if (audience === 'registered') {
     const candidateIds = (drive.registrations || []).map(r => r.candidateId);
     candidates = await Candidate.find({ _id: { $in: candidateIds }, deletedAt: null })
       .select('name email userId educationList').lean();
@@ -1488,6 +1493,43 @@ router.post('/college/training-resources', authenticate, allowRoles('admin', 'pl
   res.json({ success: true, data: { id: String(resource._id) } });
 }));
 
+/* POST /api/dashboard/college/training-resources/:id/notify — alert specific
+   students that a new training resource is available. */
+router.post('/college/training-resources/:id/notify', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const resource = await TrainingResource.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+  if (!resource) throw new AppError('Training resource not found.', 404);
+
+  const { candidateIds = [], message: customMessage = '' } = req.body || {};
+  const ids = (Array.isArray(candidateIds) ? candidateIds : []).filter(Boolean);
+  if (!ids.length) throw new AppError('Select at least one student to notify.', 400);
+
+  const candidates = await Candidate.find({ _id: { $in: ids }, college: college.regex, deletedAt: null }).select('userId').lean();
+  const recipients = candidates.filter(c => c.userId);
+  if (!recipients.length) {
+    return res.json({ success: true, recipients: 0, message: 'No matching students with an active account found.' });
+  }
+
+  const Notification = require('../models/Notification');
+  const text = customMessage?.trim()
+    ? customMessage.trim().slice(0, 500)
+    : `New ${resource.category} resource added: "${resource.title}". Check Training Resources under Opportunities.`;
+
+  await Notification.insertMany(recipients.map(c => ({
+    userId: c.userId,
+    tenantId: req.user.tenantId,
+    type: 'system',
+    title: `New training resource: ${resource.title}`,
+    message: text,
+    link: '/app/opportunities',
+    metadata: { kind: 'training_resource_notify', resourceId: String(resource._id) },
+  })));
+
+  res.json({ success: true, recipients: recipients.length });
+}));
+
 /* DELETE /api/dashboard/college/training-resources/:id */
 router.delete('/college/training-resources/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const resource = await TrainingResource.findOneAndUpdate(
@@ -1666,14 +1708,6 @@ router.get('/college/students', authenticate, allowRoles('admin', 'placement_off
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
   const filter = { college: college.regex, deletedAt: null };
-  if (q.trim()) {
-    const esc = escapeRegex(q.trim());
-    filter.$or = [
-      { name: new RegExp(esc, 'i') },
-      { email: new RegExp(esc, 'i') },
-      { phone: new RegExp(esc, 'i') },
-    ];
-  }
 
   const allStudents = await Candidate.find(filter)
     .select('name email phone title experience isFresher skills createdAt currentCompany location educationList certifications projects achievements')
@@ -1724,6 +1758,18 @@ router.get('/college/students', authenticate, allowRoles('admin', 'placement_off
       _idObj: s._id,
     };
   });
+
+  if (q.trim()) {
+    const query = q.trim();
+    mapped = mapped.filter(s =>
+      searchMatches(s.name, query) ||
+      searchMatches(s.email, query) ||
+      searchMatches(s.phone, query) ||
+      searchMatches(s.title, query) ||
+      searchMatches(s.latestEducation?.degree || '', query) ||
+      searchMatches(s.latestEducation?.field || '', query)
+    );
+  }
 
   if (type === 'student' || type === 'alumni') {
     mapped = mapped.filter(s => s.studentType === type);

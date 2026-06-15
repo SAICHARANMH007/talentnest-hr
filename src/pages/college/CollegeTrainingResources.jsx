@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import Toast from '../../components/ui/Toast.jsx';
+import StudentSearchPicker from '../../components/shared/StudentSearchPicker.jsx';
 import { card, inp, btnP, btnG, btnD } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
@@ -75,6 +76,56 @@ function AddResourceForm({ onAdded }) {
   );
 }
 
+function NotifyResourcePanel({ resource, onClose, onSent }) {
+  const [selected, setSelected] = useState(new Set());
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const send = async () => {
+    if (selected.size === 0) {
+      setResult({ ok: false, message: 'Select at least one student first.' });
+      return;
+    }
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await api.notifyTrainingResource(resource.id, {
+        candidateIds: Array.from(selected),
+        message,
+      });
+      setResult({ ok: true, recipients: res?.recipients ?? 0, message: res?.message });
+      if (res?.recipients) onSent?.();
+    } catch (e) {
+      setResult({ ok: false, message: e.message || 'Failed to send notification' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ border: '1.5px solid rgba(1,118,211,0.25)', borderRadius: 8, padding: 12, marginTop: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#181818' }}>📣 Notify students about "{resource.title}"</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#706E6B', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>✕ Close</button>
+      </div>
+      <StudentSearchPicker selected={selected} setSelected={setSelected} />
+      <div style={{ marginTop: 8, marginBottom: 8 }}>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} style={{ ...inp, minHeight: 50, resize: 'vertical' }} placeholder="Optional message — a default note about this resource is sent if left blank." />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={send} disabled={sending} style={{ ...btnP, fontSize: 12, padding: '6px 14px', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending...' : '📣 Send Notification'}</button>
+        {result && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: result.ok ? '#16A34A' : '#BA0517' }}>
+            {result.ok ? `Sent to ${result.recipients} student${result.recipients === 1 ? '' : 's'}.` : result.message}
+            {result.ok && result.message ? ` ${result.message}` : ''}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CollegeTrainingResources() {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +133,7 @@ export default function CollegeTrainingResources() {
   const [toast, setToast] = useState('');
   const [filter, setFilter] = useState('all');
   const [busyId, setBusyId] = useState(null);
+  const [notifyId, setNotifyId] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -159,12 +211,22 @@ export default function CollegeTrainingResources() {
                   </div>
                   {r.description && <p style={{ fontSize: 13, color: '#475569', margin: 0 }}>{r.description}</p>}
                   <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#0176D3', fontWeight: 700, wordBreak: 'break-all' }}>🔗 {r.url}</a>
-                  <button
-                    onClick={() => remove(r.id)}
-                    disabled={busyId === r.id}
-                    style={{ ...btnD, fontSize: 12, padding: '6px 12px', marginTop: 4, alignSelf: 'flex-start', opacity: busyId === r.id ? 0.6 : 1 }}>
-                    {busyId === r.id ? 'Removing...' : '🗑️ Remove'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={() => setNotifyId(id => id === r.id ? null : r.id)}
+                      style={{ ...btnG, fontSize: 12, padding: '6px 12px' }}>
+                      {notifyId === r.id ? '✕ Cancel' : '📣 Notify Students'}
+                    </button>
+                    <button
+                      onClick={() => remove(r.id)}
+                      disabled={busyId === r.id}
+                      style={{ ...btnD, fontSize: 12, padding: '6px 12px', opacity: busyId === r.id ? 0.6 : 1 }}>
+                      {busyId === r.id ? 'Removing...' : '🗑️ Remove'}
+                    </button>
+                  </div>
+                  {notifyId === r.id && (
+                    <NotifyResourcePanel resource={r} onClose={() => setNotifyId(null)} />
+                  )}
                 </div>
               );
             })}

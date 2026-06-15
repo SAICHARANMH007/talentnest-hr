@@ -6,6 +6,7 @@ import { card, btnG, btnP, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 import { DEGREES, ALL_BRANCHES } from '../../constants/education.js';
+import StudentSearchPicker from '../../components/shared/StudentSearchPicker.jsx';
 
 const REG_STATUSES = ['registered', 'shortlisted', 'selected', 'rejected'];
 const REG_COLORS = {
@@ -36,12 +37,17 @@ function NotifyPanel({ driveId, registrations, onClose }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
 
   const registeredYears = Array.from(new Set((registrations || []).map(r => r.year).filter(Boolean))).sort();
 
   const toggle = (list, setList, value) => setList(l => l.includes(value) ? l.filter(v => v !== value) : [...l, value]);
 
   const send = async () => {
+    if (audience === 'specific' && selectedStudents.size === 0) {
+      setResult({ ok: false, message: 'Select at least one student first.' });
+      return;
+    }
     setSending(true);
     setResult(null);
     try {
@@ -51,6 +57,7 @@ function NotifyPanel({ driveId, registrations, onClose }) {
         degrees,
         branches,
         message,
+        candidateIds: audience === 'specific' ? Array.from(selectedStudents) : [],
       });
       setResult({ ok: true, recipients: res?.recipients ?? 0, message: res?.message });
     } catch (e) {
@@ -72,10 +79,18 @@ function NotifyPanel({ driveId, registrations, onClose }) {
         <select value={audience} onChange={e => setAudience(e.target.value)} style={inp}>
           <option value="eligible">All students eligible for this drive</option>
           <option value="registered">Only students already registered</option>
+          <option value="specific">Specific students (search & select)</option>
         </select>
       </div>
 
-      {registeredYears.length > 0 && (
+      {audience === 'specific' && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Search & select students</label>
+          <StudentSearchPicker selected={selectedStudents} setSelected={setSelectedStudents} />
+        </div>
+      )}
+
+      {audience !== 'specific' && registeredYears.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by passing year (optional)</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -94,6 +109,7 @@ function NotifyPanel({ driveId, registrations, onClose }) {
         </div>
       )}
 
+      {audience !== 'specific' && (
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by degree (optional — leave blank to use this drive's eligibility)</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 100, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
@@ -105,7 +121,9 @@ function NotifyPanel({ driveId, registrations, onClose }) {
           ))}
         </div>
       </div>
+      )}
 
+      {audience !== 'specific' && (
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by branch / specialization (optional)</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 100, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
@@ -117,6 +135,7 @@ function NotifyPanel({ driveId, registrations, onClose }) {
           ))}
         </div>
       </div>
+      )}
 
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Message (optional — a default reminder is sent if left blank)</label>

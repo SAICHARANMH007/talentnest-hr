@@ -44,6 +44,7 @@ export const dashboardService = {
   async getTrainingResources()           { return req('GET', '/dashboard/college/training-resources'); },
   async createTrainingResource(payload)  { return req('POST', '/dashboard/college/training-resources', payload); },
   async deleteTrainingResource(id)       { return req('DELETE', `/dashboard/college/training-resources/${id}`); },
+  async notifyTrainingResource(id, payload) { return req('POST', `/dashboard/college/training-resources/${id}/notify`, payload); },
   async getCandidateOpportunities()      { return req('GET', '/dashboard/candidate/opportunities'); },
   async registerForOpportunity(id)       { return req('POST', `/dashboard/candidate/opportunities/${id}/register`); },
   async getCandidateTrainingResources()  { return req('GET', '/dashboard/candidate/training-resources'); },
