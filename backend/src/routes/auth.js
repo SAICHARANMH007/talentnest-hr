@@ -196,6 +196,12 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       // 2. Create user
       const { title, currentCompany, experience, isFresher, availability, industry, department } = req.body;
       const college = await resolveCollegeName(req.body.college, session);
+      // Seed the Education tab with the college/school provided at signup, so
+      // it shows up immediately instead of an empty "No education entries yet"
+      // (the standalone college field isn't read by the profile's Education tab).
+      const initialEducationList = college
+        ? JSON.stringify([{ id: crypto.randomBytes(6).toString('hex'), degree: '', institution: college, university: '', location: '', year: '', grade: '' }])
+        : '';
       const [user] = await User.create([{
         tenantId: tenant._id,
         name: name.trim(),
@@ -213,6 +219,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
         ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
         ...(isFresher      ? { isFresher: true }                     : {}),
         ...(college        ? { college }                             : {}),
+        ...(initialEducationList ? { educationList: initialEducationList } : {}),
         ...(availability   ? { availability }                        : {}),
         ...(industry       ? { industry }                            : {}),
         ...(department     ? { department }                          : {}),
@@ -236,6 +243,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
             ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
             ...(isFresher      ? { isFresher: true }                          : {}),
             ...(college        ? { college }                                   : {}),
+            ...(initialEducationList ? { educationList: initialEducationList } : {}),
             ...(availability   ? { availability }                              : {}),
             ...(industry       ? { industry }                                  : {}),
             ...(department     ? { department }                                : {}),

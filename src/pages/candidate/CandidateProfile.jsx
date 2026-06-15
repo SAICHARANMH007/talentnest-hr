@@ -36,6 +36,47 @@ function Section({ title, children }) {
   );
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Converts a native <input type="month"> value ("YYYY-MM") into the "MMM YYYY"
+// text the from/to fields already store (e.g. "Jan 2020").
+function monthInputToText(v) {
+  if (!v) return '';
+  const [y, m] = v.split('-');
+  const idx = parseInt(m, 10) - 1;
+  return MONTH_NAMES[idx] ? `${MONTH_NAMES[idx]} ${y}` : '';
+}
+
+// Best-effort parse of "MMM YYYY" / "Month YYYY" text back into "YYYY-MM" so
+// the calendar picker can show the currently-entered date pre-selected.
+function textToMonthInput(text) {
+  const m = String(text || '').match(/([A-Za-z]+)\s+(\d{4})/);
+  if (!m) return '';
+  const idx = MONTH_NAMES.findIndex(mn => mn.toLowerCase() === m[1].slice(0, 3).toLowerCase());
+  if (idx < 0) return '';
+  return `${m[2]}-${String(idx + 1).padStart(2, '0')}`;
+}
+
+// Compact calendar-icon date picker that writes a formatted "MMM YYYY" string
+// into a sibling text field — gives a native month/year picker without
+// changing the underlying from/to data shape (still free-text "MMM YYYY").
+function MonthPickerButton({ value, onPick, disabled }) {
+  return (
+    <input
+      type="month"
+      aria-label="Pick month and year"
+      value={textToMonthInput(value)}
+      disabled={disabled}
+      onChange={e => onPick(monthInputToText(e.target.value))}
+      style={{
+        width: 46, minHeight: 46, padding: '0 6px', background: disabled ? '#f8fafc' : '#fff',
+        border: '1.5px solid #D6D9DE', borderRadius: 10, color: '#181818', fontSize: 12,
+        boxSizing: 'border-box', cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
+      }}
+    />
+  );
+}
+
 function WorkEntry({ entry, onChange, onDelete }) {
   const sf = (k, v) => onChange({ ...entry, [k]: v });
   return (
@@ -60,12 +101,18 @@ function WorkEntry({ entry, onChange, onDelete }) {
             {['Full-Time', 'Part-Time', 'Contract', 'Freelance', 'Internship'].map(t => <option key={t}>{t}</option>)}
           </select>
         </div>
-        <Field label="From (MM/YYYY)" value={entry.from || ''} onChange={v => sf('from', v)} placeholder="Jan 2020"/>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <Field label="From (MM/YYYY)" value={entry.from || ''} onChange={v => sf('from', v)} placeholder="Jan 2020"/>
+          </div>
+          <MonthPickerButton value={entry.from} onPick={v => sf('from', v)} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <Field label="To (MM/YYYY)" value={entry.current ? 'Present' : (entry.to || '')} onChange={v => sf('to', v)} placeholder="Dec 2022" disabled={!!entry.current}/>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#706E6B', fontSize: 11, cursor: 'pointer', marginBottom: 6, whiteSpace: 'nowrap' }}>
+          <MonthPickerButton value={entry.to} onPick={v => sf('to', v)} disabled={!!entry.current} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#706E6B', fontSize: 11, cursor: 'pointer', marginBottom: 12, whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={!!entry.current} onChange={e => sf('current', e.target.checked)} style={{ accentColor: '#0176D3' }}/> Current
           </label>
         </div>

@@ -205,6 +205,30 @@ function getLatestEducation(education) {
   return latest;
 }
 
+/** Picks the company name a candidate's company community membership should
+ * be based on when "Current Company" is blank — the role marked as their
+ * current job in their work-experience history, or else the most recent one
+ * by end/start year, or else the last entry added. Used so adding "Accenture"
+ * as a work-experience entry is enough to join the Accenture community, even
+ * for freshers who never filled the standalone "Current Company" field. */
+function getCurrentOrLatestCompany(workHistory) {
+  const entries = (workHistory || []).filter(w => w?.company);
+  if (!entries.length) return '';
+  const current = entries.find(w => w.current);
+  if (current) return current.company;
+  const parseYear = (s) => {
+    const m = String(s || '').match(/(\d{4})/);
+    return m ? parseInt(m[1], 10) : -Infinity;
+  };
+  let best = entries[0];
+  let bestYear = Math.max(parseYear(best.to), parseYear(best.from));
+  for (const e of entries.slice(1)) {
+    const y = Math.max(parseYear(e.to), parseYear(e.from));
+    if (y >= bestYear) { best = e; bestYear = y; }
+  }
+  return best.company;
+}
+
 /** De-duplicates candidate records by email (case-insensitive) — imports/
  * re-saves can leave more than one Candidate document for the same person,
  * which otherwise shows up as the same person listed twice in member lists. */
@@ -241,7 +265,7 @@ async function getResolvedCandidates() {
   }
 
   const rawCandidates = await Candidate.find({ deletedAt: null })
-    .select('name email avatarUrl photoUrl location department college currentCompany educationList userId createdAt')
+    .select('name email avatarUrl photoUrl location department college currentCompany educationList workHistory userId createdAt')
     .lean();
   const candidates = dedupeCandidatesByEmail(rawCandidates);
 
@@ -269,10 +293,16 @@ async function getResolvedCandidates() {
       if (latest?.institution) collegeName = String(latest.institution).trim().replace(/\s+/g, ' ');
     }
 
+    let companyName = normalizeCompanyName(c.currentCompany) || '';
+    if (!companyName) {
+      const latestCompany = getCurrentOrLatestCompany(parseJsonArray(c.workHistory));
+      if (latestCompany) companyName = normalizeCompanyName(latestCompany) || '';
+    }
+
     return {
       candidate: c,
       collegeName: collegeName.length >= 3 ? collegeName : '',
-      companyName: normalizeCompanyName(c.currentCompany) || '',
+      companyName,
     };
   });
 
@@ -326,7 +356,11 @@ async function getCommunityCandidates(community) {
     const key = normalizeCollegeName(community.collegeName);
     matching = resolved.filter(r => normalizeCollegeName(r.collegeName) === key).map(r => r.candidate);
   } else if (community.companyName) {
-    const key = community.companyName.toLowerCase();
+    // Older communities may have been created with a raw, un-normalized
+    // company name (e.g. "Accenture Pvt Ltd") before canonicalization was
+    // introduced — normalize both sides so a candidate resolved to canonical
+    // "Accenture" still matches a community literally named "Accenture Pvt Ltd".
+    const key = (normalizeCompanyName(community.companyName) || community.companyName).toLowerCase();
     matching = resolved.filter(r => r.companyName.toLowerCase() === key).map(r => r.candidate);
   } else {
     matching = [];
@@ -481,13 +515,11 @@ async function ensureCompanyCommunities(createdBy, fallbackTenantId) {
   const tenantId = await resolveFallbackTenantId(fallbackTenantId);
   if (!tenantId) return;
 
-  const companyNames = await Candidate.distinct('currentCompany', { deletedAt: null, currentCompany: { $exists: true, $ne: '' } });
+  const companyCounts = await getCompanyNameCounts();
   const names = new Map();
-  companyNames.forEach(raw => {
-    const name = normalizeCompanyName(raw);
-    if (!name) return;
-    names.set(name.toLowerCase(), name);
-  });
+  for (const [key, { name }] of companyCounts) {
+    names.set(key, name);
+  }
 
   // Single bulk lookup of existing company communities, instead of one
   // findOne() per candidate-derived name — turns N queries into 1.
