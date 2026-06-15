@@ -19,6 +19,7 @@ const PaymentRecord   = require('../models/PaymentRecord');
 const PlacementDrive  = require('../models/PlacementDrive');
 const TrainingResource = require('../models/TrainingResource');
 const Assessment      = require('../models/Assessment');
+const AssessmentSubmission = require('../models/AssessmentSubmission');
 const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
@@ -991,9 +992,20 @@ router.get('/college/placement-drives/:id', authenticate, allowRoles('admin', 'p
     .select('name email phone skills educationList').lean();
   const candMap = new Map(candidates.map(c => [String(c._id), c]));
 
+  let submissionMap = new Map();
+  if (drive.opportunityType === 'exam' && drive.assessmentId) {
+    const submissions = await AssessmentSubmission.find({
+      tenantId: req.user.tenantId,
+      assessmentId: String(drive.assessmentId),
+      candidateId: { $in: candidateIds.map(String) },
+    }).select('candidateId status score maxScore percentage result submittedAt').lean();
+    submissionMap = new Map(submissions.map(s => [String(s.candidateId), s]));
+  }
+
   const registrations = (drive.registrations || []).map(r => {
     const c = candMap.get(String(r.candidateId)) || {};
     const latest = getLatestEducation(parseJsonArray(c.educationList));
+    const sub = submissionMap.get(String(r.candidateId));
     return {
       candidateId: String(r.candidateId),
       name: c.name || '',
@@ -1005,6 +1017,12 @@ router.get('/college/placement-drives/:id', authenticate, allowRoles('admin', 'p
       skills: c.skills || [],
       status: r.status,
       notes: r.notes || '',
+      examStatus: sub ? sub.status : (drive.opportunityType === 'exam' && drive.assessmentId ? 'not_started' : null),
+      examScore: sub ? sub.score : null,
+      examMaxScore: sub ? sub.maxScore : null,
+      examPercentage: sub ? sub.percentage : null,
+      examResult: sub ? sub.result : null,
+      examSubmittedAt: sub ? sub.submittedAt : null,
     };
   });
 

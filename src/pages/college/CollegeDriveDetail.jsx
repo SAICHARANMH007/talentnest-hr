@@ -19,6 +19,13 @@ const OPPORTUNITY_TYPE_LABELS = {
   exam: '📝 Exam / Test',
 };
 
+const EXAM_STATUS_LABELS = {
+  not_started: { label: 'Not Started', bg: '#F1F5F9', color: '#706E6B' },
+  in_progress: { label: 'In Progress', bg: 'rgba(245,158,11,0.12)', color: '#B45309' },
+  submitted: { label: 'Submitted', bg: 'rgba(22,163,74,0.1)', color: '#16A34A' },
+  expired: { label: 'Expired', bg: 'rgba(186,5,23,0.08)', color: '#BA0517' },
+};
+
 export default function CollegeDriveDetail() {
   const { driveId } = useParams();
   const navigate = useNavigate();
@@ -93,10 +100,22 @@ export default function CollegeDriveDetail() {
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{r.name || r.email}</div>
                     <div style={{ fontSize: 12, color: '#706E6B' }}>{r.email}{r.branch ? ` · ${r.branch}` : ''}{r.year ? ` (${r.year})` : ''}</div>
                   </div>
-                  <select value={r.status} onChange={e => updateStatus(r.candidateId, e.target.value)}
-                    style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: 'none', background: rc.bg, color: rc.color, textTransform: 'capitalize', cursor: 'pointer' }}>
-                    {REG_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {drive.opportunityType === 'exam' && drive.assessmentId && r.examStatus && (() => {
+                      const ec = EXAM_STATUS_LABELS[r.examStatus] || EXAM_STATUS_LABELS.not_started;
+                      return (
+                        <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, background: ec.bg, color: ec.color, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          📝 {ec.label}
+                          {r.examStatus === 'submitted' && r.examPercentage != null && ` · ${r.examPercentage}%`}
+                          {r.examStatus === 'submitted' && r.examResult && r.examResult !== 'pending' && ` (${r.examResult === 'pass' ? '✅ Pass' : '❌ Fail'})`}
+                        </span>
+                      );
+                    })()}
+                    <select value={r.status} onChange={e => updateStatus(r.candidateId, e.target.value)}
+                      style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: 'none', background: rc.bg, color: rc.color, textTransform: 'capitalize', cursor: 'pointer' }}>
+                      {REG_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
               );
             })}
