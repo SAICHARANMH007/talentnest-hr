@@ -425,20 +425,15 @@ router.get('/colleges', authenticate, asyncHandler(async (req, res) => {
   res.json({ success: true, data: colleges.map(c => ({ id: String(c._id), name: c.name })) });
 }));
 
-/* GET /api/dashboard/college-directory?q=...
-   Public, unauthenticated directory of known college/school names — used to
-   power autocomplete during candidate registration/profile editing so that
-   "SelfCrops" / "selfcrops " / " SELFCROPS" etc. all resolve to one canonical
-   entry. Merges registered College/Campus tenants, every candidate's College/
-   School Name, and — for candidates who left that field blank — the
-   institution from their latest education entry (falling back to the User
-   profile's educationList the same way /college-groups does). This mirrors
-   the /college-groups grouping exactly, so every existing "college group"
-   shows up as a suggestion here, and a brand-new name typed by a student is
-   simply stored on their profile (see auth.js / profile routes) and becomes
-   the directory's (and college-groups') next group automatically. */
-router.get('/college-directory', asyncHandler(async (req, res) => {
-  const q = String(req.query.q || '').trim().toLowerCase();
+/** Cache for the full college-directory name list (see below) — this endpoint
+ * is public/unauthenticated and gets hit on every autocomplete keystroke, so
+ * rebuilding it from a full Candidate scan each time would be wasteful. A
+ * short TTL keeps it responsive to newly-registered colleges (a brand-new
+ * name becomes searchable for everyone within COLLEGE_DIRECTORY_CACHE_MS). */
+const COLLEGE_DIRECTORY_CACHE_MS = 60 * 1000;
+let collegeDirectoryCache = { names: null, expiresAt: 0 };
+
+async function buildCollegeDirectory() {
   const [tenantNames, candidates] = await Promise.all([
     Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
     Candidate.find({ deletedAt: null }).select('email college educationList').lean(),
@@ -479,11 +474,42 @@ router.get('/college-directory', asyncHandler(async (req, res) => {
     if (latest?.institution) addName(latest.institution);
   });
 
-  let results = [...byKey.values()];
-  if (q) results = results.filter(name => name.toLowerCase().includes(q));
-  results.sort((a, b) => a.localeCompare(b));
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+}
 
-  res.json({ success: true, data: results.slice(0, 20) });
+/* GET /api/dashboard/college-directory?q=...
+   Public, unauthenticated directory of known college/school names — used to
+   power autocomplete during candidate registration/profile editing so that
+   "SelfCrops" / "selfcrops " / " SELFCROPS" etc. all resolve to one canonical
+   entry. Merges registered College/Campus tenants, every candidate's College/
+   School Name, and — for candidates who left that field blank — the
+   institution from their latest education entry (falling back to the User
+   profile's educationList the same way /college-groups does). This mirrors
+   the /college-groups grouping exactly, so every existing "college group"
+   shows up as a suggestion here, and a brand-new name typed by a student is
+   simply stored on their profile (see auth.js / profile routes) and becomes
+   the directory's (and college-groups') next group automatically. */
+router.get('/college-directory', asyncHandler(async (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+
+  const now = Date.now();
+  if (!collegeDirectoryCache.names || collegeDirectoryCache.expiresAt <= now) {
+    collegeDirectoryCache = { names: await buildCollegeDirectory(), expiresAt: now + COLLEGE_DIRECTORY_CACHE_MS };
+  }
+
+  let results = collegeDirectoryCache.names;
+  if (q) {
+    results = results
+      .filter(name => name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return a.localeCompare(b);
+      });
+  }
+
+  res.json({ success: true, data: results.slice(0, 30) });
 }));
 
 // ── College / Campus Portal ─────────────────────────────────────────────────

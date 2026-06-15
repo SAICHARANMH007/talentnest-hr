@@ -1,19 +1,24 @@
 'use strict';
 const Tenant = require('../models/Tenant');
 const Candidate = require('../models/Candidate');
+const { normalizeCollegeKey } = require('./collegeNames');
 
 /**
  * Resolves a user-typed college/school name to its canonical form so that
- * "SelfCrops", "selfcrops " and " SELFCROPS " all collapse into a single
- * directory entry. If a registered College/Campus tenant or a previously
- * entered Candidate.college value matches (ignoring case/whitespace), that
- * existing canonical name is reused; otherwise the trimmed input becomes a
- * new directory entry.
+ * "SelfCrops", "selfcrops ", " SELFCROPS " and even "VNR VJIET." vs "VNR
+ * VJIET" all collapse into a single directory entry / college group. If a
+ * registered College/Campus tenant or a previously entered Candidate.college
+ * value normalizes to the same key (via normalizeCollegeKey — the same
+ * punctuation/case-insensitive key used by /college-groups and
+ * /college-directory), that existing canonical name is reused so the
+ * candidate joins that same college community; otherwise the trimmed input
+ * is returned as-is and becomes a brand-new directory entry / college group.
  */
 async function resolveCollegeName(rawName, session = null) {
   const cleaned = String(rawName || '').trim().replace(/\s+/g, ' ');
   if (!cleaned) return '';
-  const key = cleaned.toLowerCase();
+  const key = normalizeCollegeKey(cleaned);
+  if (!key) return cleaned;
 
   const tenantQuery = Tenant.find({ type: 'college', deletedAt: null }).select('name');
   const candidateQuery = Candidate.find({ college: { $exists: true, $ne: '' } }).select('college');
@@ -25,10 +30,12 @@ async function resolveCollegeName(rawName, session = null) {
   ]);
 
   for (const t of tenants || []) {
-    if (t.name && t.name.trim().replace(/\s+/g, ' ').toLowerCase() === key) return t.name.trim().replace(/\s+/g, ' ');
+    const name = t.name && t.name.trim().replace(/\s+/g, ' ');
+    if (name && normalizeCollegeKey(name) === key) return name;
   }
   for (const c of candidates || []) {
-    if (c.college && c.college.trim().replace(/\s+/g, ' ').toLowerCase() === key) return c.college.trim().replace(/\s+/g, ' ');
+    const name = c.college && c.college.trim().replace(/\s+/g, ' ');
+    if (name && normalizeCollegeKey(name) === key) return name;
   }
   return cleaned;
 }
