@@ -834,7 +834,7 @@ router.post('/college/drives/:jobId/notify', authenticate, allowRoles('admin', '
  * matches every student. */
 async function findEligibleCandidates(college, eligibility = {}) {
   const students = await Candidate.find({ college: college.regex, deletedAt: null })
-    .select('name email phone skills educationList isFresher currentCompany')
+    .select('name email phone skills educationList isFresher currentCompany userId')
     .lean();
 
   const { minCGPA, degrees = [], branches = [], passingYears = [], skills = [] } = eligibility || {};
@@ -958,21 +958,24 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
   });
 
   // Notify eligible students about the new drive (best-effort, non-blocking).
-  if (eligible.length) {
+  const recipients = eligible.filter(c => c.userId);
+  if (recipients.length) {
     const Notification = require('../models/Notification');
-    const userIds = eligible.map(c => c._id);
-    const users = await User.find({ _id: { $in: userIds } }).select('_id tenantId').lean();
-    if (users.length) {
-      Notification.insertMany(users.map(u => ({
-        userId: u._id,
-        tenantId: u.tenantId,
-        type: 'system',
-        title: `New placement drive: ${drive.title}`,
-        message: `${drive.companyName || 'Your placement office'} is conducting "${drive.title}" on ${new Date(drive.driveDate).toLocaleDateString()}. You're eligible — check your placement office for details.`,
-        link: '/app/drives',
-        metadata: { kind: 'placement_drive', driveId: String(drive._id) },
-      }))).catch(() => {});
-    }
+    Notification.insertMany(recipients.map(c => ({
+      userId: c.userId,
+      tenantId: req.user.tenantId,
+      type: 'system',
+      title: `New placement drive: ${drive.title}`,
+      message: `${drive.companyName || 'Your placement office'} is conducting "${drive.title}" on ${new Date(drive.driveDate).toLocaleDateString()}. You're eligible — check the Opportunities page for details.`,
+      link: '/app/opportunities',
+      metadata: { kind: 'placement_drive', driveId: String(drive._id) },
+    }))).catch(() => {});
+
+    try {
+      const { emitToTenant } = require('../socket/platformSocket');
+      const socketRegistry   = require('../socket/index');
+      emitToTenant(socketRegistry.getIO(), req.user.tenantId, 'drive:registrationChanged', { driveId: String(drive._id) });
+    } catch {}
   }
 
   res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
