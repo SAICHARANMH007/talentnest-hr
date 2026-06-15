@@ -1826,7 +1826,7 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
   let pipelineApplication = null;
   try {
     if (drive.jobId) {
-      const job = await Job.findOne({ _id: drive.jobId, deletedAt: null }).lean();
+      const job = await Job.findOne({ _id: drive.jobId, status: 'active', deletedAt: null }).lean();
       if (job) {
         const existingApp = await Application.findOne({ jobId: job._id, candidateId: candidate._id, deletedAt: null });
         if (!existingApp) {
@@ -2398,6 +2398,15 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
   res.json({ success: true, data, total, hasMore: skip + data.length < total });
 }));
 
+// Cache for /company-directory — merges Candidate.currentCompany with company
+// names found inside candidates' workHistory entries (so e.g. a fresher who
+// only listed "Accenture" as a past employer still shows up in the directory
+// and gets suggested to others typing "accenture"). Recomputed periodically
+// since it requires scanning + JSON-parsing every candidate's workHistory.
+let companyDirectoryCache = null;
+let companyDirectoryCacheAt = 0;
+const COMPANY_DIRECTORY_CACHE_MS = 10 * 60 * 1000; // 10 minutes
+
 /* GET /api/dashboard/company-directory?q=...
    Public, unauthenticated directory of known company names — used to power
    autocomplete for "Current Company" / "Company / Employer" fields so that
@@ -2406,19 +2415,34 @@ router.get('/college-groups/:name/candidates', authenticate, allowRoles('super_a
    become part of this directory automatically. */
 router.get('/company-directory', asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
-  const companyNames = await Candidate.distinct('currentCompany', { currentCompany: { $exists: true, $ne: '' } });
 
-  const byKey = new Map();
-  companyNames.forEach(name => {
-    const cleaned = normalizeCompanyName(name);
-    if (!cleaned) return;
-    const key = cleaned.toLowerCase();
-    if (!byKey.has(key)) byKey.set(key, cleaned);
-  });
+  const now = Date.now();
+  if (!companyDirectoryCache || now - companyDirectoryCacheAt > COMPANY_DIRECTORY_CACHE_MS) {
+    const byKey = new Map();
+    const add = (raw) => {
+      const cleaned = normalizeCompanyName(raw);
+      if (!cleaned) return;
+      const key = cleaned.toLowerCase();
+      if (!byKey.has(key)) byKey.set(key, cleaned);
+    };
 
-  let results = [...byKey.values()];
+    const currentCompanies = await Candidate.distinct('currentCompany', { currentCompany: { $exists: true, $ne: '' } });
+    currentCompanies.forEach(add);
+
+    const withHistory = await Candidate.find({ workHistory: { $exists: true, $ne: '' } }).select('workHistory').lean();
+    withHistory.forEach(c => {
+      try {
+        const entries = JSON.parse(c.workHistory);
+        if (Array.isArray(entries)) entries.forEach(e => e?.company && add(e.company));
+      } catch {}
+    });
+
+    companyDirectoryCache = [...byKey.values()].sort((a, b) => a.localeCompare(b));
+    companyDirectoryCacheAt = now;
+  }
+
+  let results = companyDirectoryCache;
   if (q) results = results.filter(name => name.toLowerCase().includes(q));
-  results.sort((a, b) => a.localeCompare(b));
 
   res.json({ success: true, data: results.slice(0, 20) });
 }));

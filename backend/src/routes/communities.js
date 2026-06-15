@@ -798,7 +798,18 @@ router.get('/', asyncHandler(async (req, res) => {
   // only compute it for the requesting user's own college/company — enough to
   // power the "auto-added to your college/company community" experience — and
   // fall back to the stored memberCount for everything else.
-  const userCompany = normalizeCompanyName(req.user.currentCompany);
+  // Fresher candidates who've only added work experience (no "Current Company"
+  // on their account) wouldn't otherwise show as a member of their company's
+  // community — fall back to the same resolved company name (current/most
+  // recent work-experience entry) used for company-community member lists.
+  let userCompany = normalizeCompanyName(req.user.currentCompany);
+  if (!userCompany && req.user.email) {
+    try {
+      const resolved = await getResolvedCandidates();
+      const mine = resolved.find(r => (r.candidate.email || '').toLowerCase().trim() === req.user.email.toLowerCase().trim());
+      if (mine?.companyName) userCompany = mine.companyName;
+    } catch {}
+  }
   const collegeCounts = {};
   const companyCounts = {};
   try {
@@ -888,7 +899,14 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 
   const userCollege = normalizeCollegeName(req.user.college);
   const isCollegeMember = !!community.collegeName && userCollege && normalizeCollegeName(community.collegeName) === userCollege;
-  const userCompany = normalizeCompanyName(req.user.currentCompany);
+  let userCompany = normalizeCompanyName(req.user.currentCompany);
+  if (!userCompany && community.companyName && req.user.email) {
+    try {
+      const resolved = await getResolvedCandidates();
+      const mine = resolved.find(r => (r.candidate.email || '').toLowerCase().trim() === req.user.email.toLowerCase().trim());
+      if (mine?.companyName) userCompany = mine.companyName;
+    } catch {}
+  }
   const isCompanyMember = !!community.companyName && userCompany && normalizeCompanyName(community.companyName) === userCompany;
 
   res.json({
