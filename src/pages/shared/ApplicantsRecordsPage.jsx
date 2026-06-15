@@ -251,17 +251,16 @@ export default function ApplicantsRecordsPage({ user }) {
   }, [filters]);
 
   // Page data: just the current 100 rows
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await api.getApplicants({ ...filters, page, limit: PAGE_SIZE });
       setRows(Array.isArray(res?.data) ? res.data : []);
       setPages(res?.pagination?.pages || 1);
     } catch (e) {
-      setToast('Applicant records could not load: ' + e.message);
-      setRows([]);
+      if (!silent) { setToast('Applicant records could not load: ' + e.message); setRows([]); }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [filters, page]);
 
@@ -273,6 +272,13 @@ export default function ApplicantsRecordsPage({ user }) {
 
   // On page change (or filter change after page resets to 1): load page data
   useEffect(() => { load(); }, [load]);
+
+  // Live updates — silently refresh the current page + summary when any application stage changes
+  useEffect(() => {
+    const handler = () => { load(true); loadSummary(); };
+    window.addEventListener('tn:stageChanged', handler);
+    return () => window.removeEventListener('tn:stageChanged', handler);
+  }, [load, loadSummary]);
 
   const visibleRows = useMemo(() => rows, [rows]);
 

@@ -97,10 +97,20 @@ export default function CandidateInterviews() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getCandidateUpcomingInterviews()
-      .then(r => setData(r?.data || r || { upcoming: [], past: [] }))
-      .catch(e => setError(e.message || 'Failed to load interviews'))
-      .finally(() => setLoading(false));
+    const loadInterviews = (silent = false) => {
+      if (!silent) setLoading(true);
+      api.getCandidateUpcomingInterviews()
+        .then(r => setData(r?.data || r || { upcoming: [], past: [] }))
+        .catch(e => { if (!silent) setError(e.message || 'Failed to load interviews'); })
+        .finally(() => { if (!silent) setLoading(false); });
+    };
+
+    loadInterviews();
+
+    // Live updates — silently refresh when an interview is scheduled/updated
+    const handler = () => loadInterviews(true);
+    window.addEventListener('tn:stageChanged', handler);
+    return () => window.removeEventListener('tn:stageChanged', handler);
   }, []);
 
   const { upcoming = [], past = [] } = data || {};

@@ -70,20 +70,27 @@ export default function AdminPipeline({ user }) {
   const [hiredModal,  setHiredModal]  = useState(null); // { appId, candidateName, jobTitle }
   const dragId = useRef(null);
 
-  const load = useCallback(() => {
-    setLoading(true); setError('');
-    const jobQ = jobFilter ? `?jobId=${jobFilter}` : '';
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    setError('');
     Promise.all([
       api.getApplications(jobFilter ? { jobId: jobFilter } : {}),
       api.getJobs(),
     ]).then(([a, j]) => {
       setApps(Array.isArray(a) ? a : (a?.data || []));
       setJobs(Array.isArray(j) ? j : (j?.data || []));
-    }).catch(e => { setError(e.message); setApps([]); setJobs([]); })
-      .finally(() => setLoading(false));
+    }).catch(e => { if (!silent) { setError(e.message); setApps([]); setJobs([]); } })
+      .finally(() => { if (!silent) setLoading(false); });
   }, [jobFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Live updates — silently refresh the board when any application stage changes anywhere in the org
+  useEffect(() => {
+    const handler = () => load(true);
+    window.addEventListener('tn:stageChanged', handler);
+    return () => window.removeEventListener('tn:stageChanged', handler);
+  }, [load]);
 
   const sf = (k, v) => setSchedForm(p => ({ ...p, [k]: v }));
 

@@ -660,6 +660,20 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
 
+  // Real-time broadcast — pipeline/applicant lists refresh instantly for everyone in the tenant
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), appTenantId, 'application:stageChanged', {
+      applicationId: String(app._id),
+      jobId        : String(app.jobId),
+      candidateId  : String(app.candidateId),
+      stage        : 'Applied',
+      movedBy      : String(req.user._id || req.user.id),
+      movedAt      : new Date().toISOString(),
+    });
+  } catch { /* non-fatal */ }
+
   res.status(201).json({ success: true, data: normalizeApp(app) });
 }));
 
@@ -1956,6 +1970,20 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
   // ── Fire webhooks (non-blocking)
   const { fireWebhooks } = require('../services/webhookService');
   fireWebhooks(app.tenantId, 'application.withdrawn', { applicationId: String(app._id), reason: withdrawalReason }).catch(() => {});
+
+  // Real-time broadcast — pipeline/applicant lists drop this application instantly
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), app.tenantId, 'application:stageChanged', {
+      applicationId: String(app._id),
+      jobId        : String(app.jobId),
+      candidateId  : String(app.candidateId),
+      stage        : 'Withdrawn',
+      movedBy      : String(req.user._id || req.user.id),
+      movedAt      : new Date().toISOString(),
+    });
+  } catch { /* non-fatal */ }
 
   res.json({ success: true, message: 'Application withdrawn.' });
 }));
