@@ -4,6 +4,7 @@ import { api } from '../../api/api.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { btnP, btnG, card } from '../../constants/styles.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 const TABS = [
   { id: 'placement', icon: '🎯', label: 'Placements' },
@@ -176,15 +177,18 @@ export default function CandidateOpportunities() {
   const [error, setError] = useState('');
   const [registering, setRegistering] = useState({});
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     api.getCandidateOpportunities()
       .then(r => setOpportunities(r?.data || []))
-      .catch(e => setError(e.message || 'Failed to load opportunities'))
-      .finally(() => setLoading(false));
+      .catch(e => { if (!silent) setError(e.message || 'Failed to load opportunities'); })
+      .finally(() => { if (!silent) setLoading(false); });
   };
 
   useEffect(() => { load(); }, []);
+
+  // Live updates — silently refresh when a placement officer updates this student's status
+  usePlatformEvents({ 'drive:registrationChanged': () => load(true) });
 
   const register = async (id) => {
     setRegistering(prev => ({ ...prev, [id]: true }));

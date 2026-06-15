@@ -1104,11 +1104,41 @@ router.patch('/college/placement-drives/:id/registrations/:candidateId', authent
   const reg = drive.registrations.find(r => String(r.candidateId) === req.params.candidateId);
   if (!reg) throw new AppError('Student is not part of this drive.', 404);
 
+  const statusChanged = status !== undefined && status !== reg.status;
   if (status !== undefined) reg.status = status;
   if (notes !== undefined) reg.notes = String(notes).trim().slice(0, 500);
   reg.updatedAt = new Date();
 
   await drive.save();
+
+  if (statusChanged) {
+    // Notify the candidate and broadcast a real-time update so their
+    // Opportunities/Applications page reflects the new status instantly.
+    try {
+      const Notification = require('../models/Notification');
+      const candidate = await Candidate.findById(req.params.candidateId).select('userId name email').lean();
+      if (candidate?.userId) {
+        await Notification.create({
+          userId: candidate.userId,
+          tenantId: drive.tenantId,
+          type: 'system',
+          title: `Drive update: ${drive.title}`,
+          message: `Your status for "${drive.title}" was updated to "${status}".`,
+          link: '/app/opportunities',
+          metadata: { kind: 'placement_drive_status', driveId: String(drive._id), status },
+        });
+      }
+
+      const { emitToTenant } = require('../socket/platformSocket');
+      const socketRegistry   = require('../socket/index');
+      emitToTenant(socketRegistry.getIO(), drive.tenantId, 'drive:registrationChanged', {
+        driveId: String(drive._id),
+        candidateId: String(req.params.candidateId),
+        status,
+      });
+    } catch {}
+  }
+
   res.json({ success: true });
 }));
 
@@ -1301,6 +1331,17 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
 
   drive.registrations.push({ candidateId: candidate._id, status: 'registered' });
   await drive.save();
+
+  // Real-time broadcast — placement officers see new registrations instantly
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), drive.tenantId, 'drive:registrationChanged', {
+      driveId: String(drive._id),
+      candidateId: String(candidate._id),
+      status: 'registered',
+    });
+  } catch {}
 
   // Notify the college's placement officers/admins about the new registration (best-effort).
   try {

@@ -4,6 +4,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, btnG } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 const REG_STATUSES = ['registered', 'shortlisted', 'selected', 'rejected'];
 const REG_COLORS = {
@@ -40,6 +41,14 @@ export default function CollegeDriveDetail() {
       .catch(e => setError(e.message || 'Failed to load drive'))
       .finally(() => setLoading(false));
   }, [driveId]);
+
+  // Live updates — silently re-sync registrations & exam progress when a student registers or their status/exam changes
+  usePlatformEvents({
+    'drive:registrationChanged': (data) => {
+      if (data?.driveId !== driveId) return;
+      api.getPlacementDrive(driveId).then(r => setDrive(r?.data || null)).catch(() => {});
+    },
+  });
 
   const updateStatus = async (candidateId, status) => {
     setDrive(d => ({ ...d, registrations: d.registrations.map(r => r.candidateId === candidateId ? { ...r, status } : r) }));

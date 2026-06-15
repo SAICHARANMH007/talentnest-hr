@@ -4,6 +4,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
 
 function formatSalary(min, max, currency) {
   const symbol = currency === 'USD' ? '$' : '₹';
@@ -249,18 +250,21 @@ export default function CollegeDrives() {
   const [statuses, setStatuses] = useState({});
   const [typeFilter, setTypeFilter] = useState('');
 
-  const loadAll = () => {
-    setLoading(true);
+  const loadAll = (silent = false) => {
+    if (!silent) setLoading(true);
     Promise.all([api.getCollegeDrives(), api.getPlacementDrives()])
       .then(([j, d]) => {
         setJobs(j?.data || j || []);
         setDrives(d?.data || []);
       })
-      .catch(e => setError(e.message || 'Failed to load placement drives'))
-      .finally(() => setLoading(false));
+      .catch(e => { if (!silent) setError(e.message || 'Failed to load placement drives'); })
+      .finally(() => { if (!silent) setLoading(false); });
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  // Live updates — silently refresh registration counts when a student registers or their status changes
+  usePlatformEvents({ 'drive:registrationChanged': () => loadAll(true) });
 
   const notify = async (jobId) => {
     setStatuses(prev => ({ ...prev, [jobId]: 'sending' }));
