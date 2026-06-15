@@ -851,7 +851,7 @@ async function findEligibleCandidates(college, eligibility = {}) {
       if (!degreesLc.some(d => degree.includes(d))) return false;
     }
     if (branchesLc.length) {
-      const branch = String(latest?.degree || latest?.field || '').toLowerCase();
+      const branch = String(latest?.field || latest?.degree || '').toLowerCase();
       if (!branchesLc.some(b => branch.includes(b))) return false;
     }
     if (passingYears.length) {

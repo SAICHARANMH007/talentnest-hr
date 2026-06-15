@@ -10,6 +10,7 @@ import CompanyAutocomplete from '../../components/shared/CompanyAutocomplete.jsx
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
+import { DEGREES, BRANCHES_BY_DEGREE, DEFAULT_BRANCHES } from '../../constants/education.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const parseJ = (s, fallback = []) => { if (Array.isArray(s)) return s; try { return JSON.parse(s || '[]'); } catch { return fallback; } };
@@ -79,21 +80,72 @@ function WorkEntry({ entry, onChange, onDelete }) {
 
 function EduEntry({ entry, onChange, onDelete }) {
   const sf = (k, v) => onChange({ ...entry, [k]: v });
+
+  const degreeValue = entry.degree || '';
+  const [customDegree, setCustomDegree] = useState(() => degreeValue !== '' && !DEGREES.includes(degreeValue));
+  const degreeSelectValue = customDegree ? 'Other' : degreeValue;
+
+  const fieldValue = entry.field || '';
+  const branchOptions = BRANCHES_BY_DEGREE[degreeValue] || DEFAULT_BRANCHES;
+  const [customBranch, setCustomBranch] = useState(() => fieldValue !== '' && !branchOptions.includes(fieldValue));
+  const branchSelectValue = customBranch ? 'Other' : fieldValue;
+
+  const labelStyle = { fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 };
+
   return (
     <div style={{ border: '1px solid rgba(1,118,211,0.15)', borderRadius: 10, padding: 14, marginBottom: 12, background: 'rgba(1,118,211,0.03)' }}>
       <div className="form-grid-2">
-        <Field label="Degree / Qualification *" value={entry.degree || ''} onChange={v => sf('degree', v)} placeholder="B.Tech Computer Science"/>
+        <div>
+          <label style={labelStyle}>Degree / Qualification *</label>
+          <select
+            value={degreeSelectValue}
+            onChange={e => {
+              if (e.target.value === 'Other') { setCustomDegree(true); sf('degree', ''); }
+              else { setCustomDegree(false); sf('degree', e.target.value); }
+            }}
+            style={inp}
+          >
+            <option value="">Select degree</option>
+            {DEGREES.map(d => <option key={d} value={d}>{d}</option>)}
+            <option value="Other">Other (type below)</option>
+          </select>
+          {customDegree && (
+            <div style={{ marginTop: 8 }}>
+              <Field value={degreeValue} onChange={v => sf('degree', v)} placeholder="Enter your degree / qualification"/>
+            </div>
+          )}
+        </div>
         <CollegeAutocomplete
           value={entry.institution || ''}
           onChange={v => sf('institution', v)}
           label="Institution *"
-          labelStyle={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}
+          labelStyle={labelStyle}
           inputStyle={{ width: '100%', minHeight: 46, padding: '11px 14px', background: '#fff', border: '1.5px solid #D6D9DE', borderRadius: 10, color: '#181818', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
           dropdownStyle={{ background: '#fff', border: '1.5px solid #D6D9DE', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
           itemStyle={{ color: '#181818' }}
           itemHoverBg="rgba(1,118,211,0.08)"
           placeholder="JNTU Hyderabad"
         />
+        <div>
+          <label style={labelStyle}>Branch / Specialization</label>
+          <select
+            value={branchSelectValue}
+            onChange={e => {
+              if (e.target.value === 'Other') { setCustomBranch(true); sf('field', ''); }
+              else { setCustomBranch(false); sf('field', e.target.value); }
+            }}
+            style={inp}
+          >
+            <option value="">Select branch / specialization</option>
+            {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
+            <option value="Other">Other (type below)</option>
+          </select>
+          {customBranch && (
+            <div style={{ marginTop: 8 }}>
+              <Field value={fieldValue} onChange={v => sf('field', v)} placeholder="Enter your branch / specialization"/>
+            </div>
+          )}
+        </div>
         <Field label="University / Board" value={entry.university || ''} onChange={v => sf('university', v)} placeholder="JNTU"/>
         <Field label="Location" value={entry.location || ''} onChange={v => sf('location', v)} placeholder="Hyderabad"/>
         <Field label="Year of Passing" value={entry.year || ''} onChange={v => sf('year', v)} placeholder="2019"/>

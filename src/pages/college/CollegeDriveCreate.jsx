@@ -4,6 +4,7 @@ import PageHeader from '../../components/ui/PageHeader.jsx';
 import CompanyAutocomplete from '../../components/shared/CompanyAutocomplete.jsx';
 import { btnP, btnG, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
+import { DEGREES, ALL_BRANCHES } from '../../constants/education.js';
 
 const OPPORTUNITY_TYPES = [
   { value: 'placement', label: '🎯 Placement Drive' },
@@ -26,6 +27,14 @@ export default function CollegeDriveCreate() {
   const [assessments, setAssessments] = useState([]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  // Toggle a value inside a comma-separated list field (degrees/branches)
+  const toggleListValue = (key, value) => setForm(f => {
+    const current = f[key] ? f[key].split(',').map(s => s.trim()).filter(Boolean) : [];
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+    return { ...f, [key]: next.join(', ') };
+  });
+  const isListValueChecked = (key, value) => (form[key] ? form[key].split(',').map(s => s.trim()) : []).includes(value);
 
   useEffect(() => {
     api.getCollegeAssessments().then(r => setAssessments(r?.data || [])).catch(() => {});
@@ -171,12 +180,28 @@ export default function CollegeDriveCreate() {
             </div>
           </div>
           <div style={{ marginTop: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Degrees (comma separated)</label>
-            <input style={inp} value={form.degrees} onChange={set('degrees')} placeholder="B.Tech, M.Tech, MCA" />
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Degrees eligible (select all that apply)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
+              {DEGREES.map(d => (
+                <label key={d} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isListValueChecked('degrees', d)} onChange={() => toggleListValue('degrees', d)} style={{ accentColor: '#0176D3' }} />
+                  {d}
+                </label>
+              ))}
+            </div>
+            <input style={{ ...inp, marginTop: 6 }} value={form.degrees} onChange={set('degrees')} placeholder="Or type/edit directly, comma separated — e.g. B.Tech, M.Tech, MCA" />
           </div>
           <div style={{ marginTop: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Branches / Departments (comma separated)</label>
-            <input style={inp} value={form.branches} onChange={set('branches')} placeholder="CSE, IT, ECE" />
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Branches / Specializations eligible (select all that apply)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
+              {ALL_BRANCHES.map(b => (
+                <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isListValueChecked('branches', b)} onChange={() => toggleListValue('branches', b)} style={{ accentColor: '#0176D3' }} />
+                  {b}
+                </label>
+              ))}
+            </div>
+            <input style={{ ...inp, marginTop: 6 }} value={form.branches} onChange={set('branches')} placeholder="Or type/edit directly, comma separated — e.g. CSE, IT, ECE" />
           </div>
           <div style={{ marginTop: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Required Skills (comma separated)</label>
