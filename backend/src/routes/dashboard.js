@@ -870,14 +870,39 @@ async function findEligibleCandidates(college, eligibility = {}) {
   });
 }
 
+/** Notifies eligible candidates about a (newly created or just-approved)
+ * placement drive and broadcasts a real-time update. Best-effort. */
+function notifyEligibleStudents(drive, eligible, tenantId) {
+  const recipients = eligible.filter(c => c.userId);
+  if (!recipients.length) return;
+
+  const Notification = require('../models/Notification');
+  Notification.insertMany(recipients.map(c => ({
+    userId: c.userId,
+    tenantId,
+    type: 'system',
+    title: `New placement drive: ${drive.title}`,
+    message: `${drive.companyName || 'Your placement office'} is conducting "${drive.title}" on ${new Date(drive.driveDate).toLocaleDateString()}. You're eligible — check the Opportunities page for details.`,
+    link: '/app/opportunities',
+    metadata: { kind: 'placement_drive', driveId: String(drive._id) },
+  }))).catch(() => {});
+
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), tenantId, 'drive:registrationChanged', { driveId: String(drive._id) });
+  } catch {}
+}
+
 /* GET /api/dashboard/college/placement-drives — list this college's own
    organized placement drives (distinct from the platform-wide job "drives"
-   feed at /college/drives). */
+   feed at /college/drives). Pending recruiter drive requests are excluded —
+   see /college/drive-requests. */
 router.get('/college/placement-drives', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const drives = await PlacementDrive.find({ tenantId: req.user.tenantId, deletedAt: null })
+  const drives = await PlacementDrive.find({ tenantId: req.user.tenantId, deletedAt: null, requestStatus: { $ne: 'pending' } })
     .sort({ driveDate: -1 }).lean();
 
   const data = drives.map(d => {
@@ -958,25 +983,7 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
   });
 
   // Notify eligible students about the new drive (best-effort, non-blocking).
-  const recipients = eligible.filter(c => c.userId);
-  if (recipients.length) {
-    const Notification = require('../models/Notification');
-    Notification.insertMany(recipients.map(c => ({
-      userId: c.userId,
-      tenantId: req.user.tenantId,
-      type: 'system',
-      title: `New placement drive: ${drive.title}`,
-      message: `${drive.companyName || 'Your placement office'} is conducting "${drive.title}" on ${new Date(drive.driveDate).toLocaleDateString()}. You're eligible — check the Opportunities page for details.`,
-      link: '/app/opportunities',
-      metadata: { kind: 'placement_drive', driveId: String(drive._id) },
-    }))).catch(() => {});
-
-    try {
-      const { emitToTenant } = require('../socket/platformSocket');
-      const socketRegistry   = require('../socket/index');
-      emitToTenant(socketRegistry.getIO(), req.user.tenantId, 'drive:registrationChanged', { driveId: String(drive._id) });
-    } catch {}
-  }
+  notifyEligibleStudents(drive, eligible, req.user.tenantId);
 
   res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
 }));
@@ -1241,6 +1248,138 @@ router.delete('/college/placement-drives/:id', authenticate, allowRoles('admin',
   res.json({ success: true });
 }));
 
+/* POST /api/dashboard/company/drive-requests — a recruiter/company admin
+   requests a campus drive at a specific college. The drive is created with
+   requestStatus 'pending' and is hidden from the college's normal drive list
+   and from candidates until the college's placement officer approves it. */
+router.post('/company/drive-requests', authenticate, allowRoles('admin', 'recruiter'), asyncHandler(async (req, res) => {
+  if (req.user.tenantType === 'college') throw new AppError('This action is only available for company accounts.', 403);
+
+  const { collegeName, title, description, mode, location, driveDate, registrationDeadline, eligibility, opportunityType, examProvider, registrationLink } = req.body;
+  if (!collegeName || !String(collegeName).trim()) throw new AppError('College name is required.', 400);
+  if (!title || !String(title).trim()) throw new AppError('Drive title is required.', 400);
+  if (!driveDate) throw new AppError('Drive date is required.', 400);
+
+  const normalized = String(collegeName).trim().replace(/\s+/g, ' ');
+  const collegeTenant = await Tenant.findOne({ type: 'college', deletedAt: null, name: new RegExp('^' + escapeRegex(normalized) + '$', 'i') }).select('_id name').lean();
+  if (!collegeTenant) throw new AppError('No registered college matches that name. Please select a college from the suggestions.', 404);
+
+  const myTenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+
+  const cleanEligibility = {
+    minCGPA: eligibility?.minCGPA != null && eligibility.minCGPA !== '' ? Number(eligibility.minCGPA) : null,
+    degrees: Array.isArray(eligibility?.degrees) ? eligibility.degrees.map(String).map(s => s.trim()).filter(Boolean) : [],
+    branches: Array.isArray(eligibility?.branches) ? eligibility.branches.map(String).map(s => s.trim()).filter(Boolean) : [],
+    passingYears: Array.isArray(eligibility?.passingYears) ? eligibility.passingYears.map(Number).filter(Number.isFinite) : [],
+    skills: Array.isArray(eligibility?.skills) ? eligibility.skills.map(String).map(s => s.trim()).filter(Boolean) : [],
+  };
+
+  const drive = await PlacementDrive.create({
+    tenantId: collegeTenant._id,
+    collegeName: collegeTenant.name,
+    title: String(title).trim().slice(0, 200),
+    companyName: myTenant?.name ? String(myTenant.name).trim().slice(0, 150) : '',
+    description: description ? String(description).trim().slice(0, 2000) : '',
+    mode: ['On-Campus', 'Virtual', 'Off-Campus'].includes(mode) ? mode : 'On-Campus',
+    location: location ? String(location).trim().slice(0, 200) : '',
+    driveDate: new Date(driveDate),
+    registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+    opportunityType: ['placement', 'internship', 'exam'].includes(opportunityType) ? opportunityType : 'placement',
+    examProvider: examProvider ? String(examProvider).trim().slice(0, 100) : '',
+    registrationLink: registrationLink ? String(registrationLink).trim().slice(0, 500) : '',
+    eligibility: cleanEligibility,
+    status: 'upcoming',
+    registrations: [],
+    requestStatus: 'pending',
+    requestedByTenantId: req.user.tenantId,
+    requestedByCompanyName: myTenant?.name || '',
+    createdBy: req.user._id || req.user.id,
+  });
+
+  // Notify the college's placement officers/admins about the new drive request.
+  try {
+    const Notification = require('../models/Notification');
+    const officers = await User.find({ tenantId: collegeTenant._id, role: { $in: ['admin', 'placement_officer'] }, deletedAt: null }).select('_id').lean();
+    if (officers.length) {
+      await Notification.insertMany(officers.map(o => ({
+        userId: o._id,
+        tenantId: collegeTenant._id,
+        type: 'system',
+        title: `Campus drive request: ${drive.title}`,
+        message: `${drive.companyName || 'A company'} has requested to conduct "${drive.title}" at your college on ${new Date(drive.driveDate).toLocaleDateString()}. Review and approve to notify eligible students.`,
+        link: '/app/drives',
+        metadata: { kind: 'placement_drive_request', driveId: String(drive._id) },
+      })));
+    }
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), collegeTenant._id, 'drive:registrationChanged', { driveId: String(drive._id) });
+  } catch {}
+
+  res.json({ success: true, data: { id: String(drive._id) } });
+}));
+
+/* GET /api/dashboard/college/drive-requests — pending campus drive requests
+   from companies/recruiters, awaiting this college's approval. */
+router.get('/college/drive-requests', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const drives = await PlacementDrive.find({ tenantId: req.user.tenantId, deletedAt: null, requestStatus: 'pending' })
+    .sort({ createdAt: -1 }).lean();
+
+  res.json({
+    success: true,
+    data: drives.map(d => ({
+      id: String(d._id),
+      title: d.title,
+      companyName: d.companyName || d.requestedByCompanyName || '',
+      description: d.description || '',
+      mode: d.mode,
+      location: d.location || '',
+      driveDate: d.driveDate,
+      registrationDeadline: d.registrationDeadline,
+      opportunityType: d.opportunityType || 'placement',
+      examProvider: d.examProvider || '',
+      registrationLink: d.registrationLink || '',
+      eligibility: d.eligibility || {},
+      createdAt: d.createdAt,
+    })),
+  });
+}));
+
+/* POST /api/dashboard/college/drive-requests/:id/approve — placement officer
+   approves a recruiter's campus drive request. Computes eligible students
+   from the request's eligibility criteria, registers them, notifies them,
+   and publishes the drive into the normal placement-drives list. */
+router.post('/college/drive-requests/:id/approve', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null, requestStatus: 'pending' });
+  if (!drive) throw new AppError('Drive request not found.', 404);
+
+  const eligible = await findEligibleCandidates(college, drive.eligibility);
+  drive.registrations = eligible.map(c => ({ candidateId: c._id, status: 'registered' }));
+  drive.requestStatus = 'approved';
+  await drive.save();
+
+  notifyEligibleStudents(drive, eligible, req.user.tenantId);
+
+  res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
+}));
+
+/* POST /api/dashboard/college/drive-requests/:id/reject — placement officer
+   declines a recruiter's campus drive request. */
+router.post('/college/drive-requests/:id/reject', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const drive = await PlacementDrive.findOneAndUpdate(
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null, requestStatus: 'pending' },
+    { $set: { requestStatus: 'rejected', status: 'cancelled' } }
+  );
+  if (!drive) throw new AppError('Drive request not found.', 404);
+  res.json({ success: true });
+}));
+
 /* GET /api/dashboard/company/college-drives — for company/recruiter admins:
    placement drives across colleges that this company is conducting. */
 router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruiter'), asyncHandler(async (req, res) => {
@@ -1259,7 +1398,7 @@ router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruit
     deletedAt: null,
     status: { $ne: 'cancelled' },
   })
-    .select('title collegeName description mode location driveDate registrationDeadline opportunityType examProvider status registrations')
+    .select('title collegeName description mode location driveDate registrationDeadline opportunityType examProvider status registrations requestStatus')
     .sort({ driveDate: -1 })
     .limit(100)
     .lean();
@@ -1276,6 +1415,7 @@ router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruit
     opportunityType: d.opportunityType,
     examProvider: d.examProvider,
     status: d.status,
+    requestStatus: d.requestStatus || 'none',
     registeredCount: (d.registrations || []).length,
     shortlistedCount: (d.registrations || []).filter(r => r.status === 'shortlisted').length,
     selectedCount: (d.registrations || []).filter(r => r.status === 'selected').length,
@@ -1344,7 +1484,7 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
   if (!collegeName) return res.json({ success: true, data: [] });
 
   const collegeRegex = new RegExp('^' + escapeRegex(collegeName) + '$', 'i');
-  const drives = await PlacementDrive.find({ collegeName: collegeRegex, deletedAt: null, status: { $ne: 'cancelled' } })
+  const drives = await PlacementDrive.find({ collegeName: collegeRegex, deletedAt: null, status: { $ne: 'cancelled' }, requestStatus: { $ne: 'pending' } })
     .sort({ driveDate: -1 }).lean();
 
   const education = parseJsonArray(candidate?.educationList);

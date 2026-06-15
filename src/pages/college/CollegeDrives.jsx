@@ -122,6 +122,50 @@ function PlacementDriveCard({ drive, onOpen, onDelete }) {
   );
 }
 
+function DriveRequestCard({ request, onApprove, onReject, busy }) {
+  const typeLabel = OPPORTUNITY_TYPE_LABELS[request.opportunityType] || OPPORTUNITY_TYPE_LABELS.placement;
+  const elig = request.eligibility || {};
+  return (
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#181818' }}>{request.title}</h3>
+          <div style={{ fontSize: 13, color: '#706E6B', marginTop: 2 }}>🏢 {request.companyName || 'Company'}</div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: 'rgba(245,158,11,0.12)', color: '#B45309' }}>⏳ Pending</span>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 999, padding: '2px 10px' }}>{typeLabel}</span>
+        {request.examProvider && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 999, padding: '2px 10px' }}>{request.examProvider}</span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#706E6B' }}>
+        <span>🗓️ {new Date(request.driveDate).toLocaleDateString()}</span>
+        <span>• {request.mode}</span>
+        {request.location && <span>• 📍 {request.location}</span>}
+        {request.registrationDeadline && <span>• Reg. deadline: {new Date(request.registrationDeadline).toLocaleDateString()}</span>}
+      </div>
+
+      {request.description && <p style={{ fontSize: 13, color: '#475569', margin: 0 }}>{request.description}</p>}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#706E6B' }}>
+        {(elig.degrees || []).length > 0 && <span>🎓 Degrees: {elig.degrees.join(', ')}</span>}
+        {(elig.branches || []).length > 0 && <span>• Branches: {elig.branches.join(', ')}</span>}
+        {(elig.passingYears || []).length > 0 && <span>• Passing years: {elig.passingYears.join(', ')}</span>}
+        {!(elig.degrees || []).length && !(elig.branches || []).length && !(elig.passingYears || []).length && <span>Open to all students</span>}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button style={{ ...btnP, padding: '6px 14px', fontSize: 12, opacity: busy ? 0.6 : 1 }} disabled={busy} onClick={() => onApprove(request.id)}>✅ Approve</button>
+        <button style={{ ...btnD, padding: '6px 14px', fontSize: 12, opacity: busy ? 0.6 : 1 }} disabled={busy} onClick={() => onReject(request.id)}>❌ Decline</button>
+      </div>
+    </div>
+  );
+}
+
 const OPPORTUNITY_TYPES = [
   { value: 'placement', label: '🎯 Placement Drive' },
   { value: 'internship', label: '💼 Internship' },
@@ -249,6 +293,8 @@ export default function CollegeDrives() {
   const [loading, setLoading] = useState(true);
   const [statuses, setStatuses] = useState({});
   const [typeFilter, setTypeFilter] = useState('');
+  const [requests, setRequests] = useState([]);
+  const [requestBusy, setRequestBusy] = useState({});
 
   const loadAll = (silent = false) => {
     if (!silent) setLoading(true);
@@ -261,7 +307,37 @@ export default function CollegeDrives() {
       .finally(() => { if (!silent) setLoading(false); });
   };
 
-  useEffect(() => { loadAll(); }, []);
+  const loadRequests = () => {
+    api.getDriveRequests().then(r => setRequests(r?.data || [])).catch(() => {});
+  };
+
+  useEffect(() => { loadAll(); loadRequests(); }, []);
+
+  const approveRequest = async (id) => {
+    setRequestBusy(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.approveDriveRequest(id);
+      setRequests(prev => prev.filter(r => r.id !== id));
+      loadAll(true);
+    } catch (e) {
+      window.alert(e.message || 'Failed to approve drive request');
+    } finally {
+      setRequestBusy(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const rejectRequest = async (id) => {
+    if (!window.confirm('Decline this campus drive request?')) return;
+    setRequestBusy(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.rejectDriveRequest(id);
+      setRequests(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      window.alert(e.message || 'Failed to decline drive request');
+    } finally {
+      setRequestBusy(prev => ({ ...prev, [id]: false }));
+    }
+  };
 
   // Live updates — silently refresh registration counts when a student registers or their status changes
   usePlatformEvents({ 'drive:registrationChanged': () => loadAll(true) });
@@ -297,6 +373,7 @@ export default function CollegeDrives() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button onClick={() => setTab('drives')} style={{ ...btnG, background: tab === 'drives' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'drives' ? '#fff' : '#0176D3' }}>🏫 My Drives ({drives.length})</button>
+        <button onClick={() => setTab('requests')} style={{ ...btnG, background: tab === 'requests' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'requests' ? '#fff' : '#0176D3' }}>📨 Drive Requests ({requests.length})</button>
         <button onClick={() => setTab('jobs')} style={{ ...btnG, background: tab === 'jobs' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'jobs' ? '#fff' : '#0176D3' }}>🌐 Job Openings ({jobs.length})</button>
         <button onClick={() => setTab('training')} style={{ ...btnG, background: tab === 'training' ? 'var(--app-primary,#0176D3)' : '#fff', color: tab === 'training' ? '#fff' : '#0176D3' }}>📚 Training Resources</button>
       </div>
@@ -326,6 +403,18 @@ export default function CollegeDrives() {
             </div>
           );
         })()
+      )}
+
+      {!loading && !error && tab === 'requests' && (
+        requests.length === 0 ? (
+          <div style={{ ...card, color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>
+            No pending campus drive requests. When a recruiter requests a drive at your college, it will show up here for approval.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+            {requests.map(r => <DriveRequestCard key={r.id} request={r} onApprove={approveRequest} onReject={rejectRequest} busy={!!requestBusy[r.id]} />)}
+          </div>
+        )
       )}
 
       {!loading && !error && tab === 'training' && <TrainingResourcesPanel />}

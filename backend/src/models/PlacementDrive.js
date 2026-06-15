@@ -41,6 +41,13 @@ const placementDriveSchema = new mongoose.Schema({
   status: { type: String, enum: ['upcoming', 'ongoing', 'completed', 'cancelled'], default: 'upcoming' },
   registrations: { type: [registrationSchema], default: [] },
   createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // When a recruiter/company requests a campus drive from a college, the
+  // drive is created with requestStatus 'pending' and is hidden from the
+  // college's main drive list until a placement officer approves it (which
+  // computes eligible students + sends notifications) or rejects it.
+  requestStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+  requestedByTenantId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
+  requestedByCompanyName: { type: String, trim: true, default: '' },
   deletedAt:  { type: Date, default: null },
 }, { timestamps: true });
 
