@@ -894,6 +894,26 @@ function notifyEligibleStudents(drive, eligible, tenantId) {
   } catch {}
 }
 
+/* Notifies the recruiter/admin who requested a campus drive once the
+   college's placement officer approves or declines it. */
+function notifyDriveRequester(drive, outcome) {
+  if (!drive.createdBy) return;
+  const Notification = require('../models/Notification');
+  const verb = outcome === 'approved' ? 'approved' : 'declined';
+  const message = outcome === 'approved'
+    ? `${drive.collegeName || 'The college'} approved your request for "${drive.title}". Eligible students have been notified.`
+    : `${drive.collegeName || 'The college'} declined your request for "${drive.title}".`;
+  Notification.create({
+    userId: drive.createdBy,
+    tenantId: drive.requestedByTenantId,
+    type: 'system',
+    title: `Drive request ${verb}: ${drive.title}`,
+    message,
+    link: '/app/college-drives',
+    metadata: { kind: 'placement_drive_request', driveId: String(drive._id), outcome },
+  }).catch(() => {});
+}
+
 /* GET /api/dashboard/college/placement-drives — list this college's own
    organized placement drives (distinct from the platform-wide job "drives"
    feed at /college/drives). Pending recruiter drive requests are excluded —
@@ -1365,6 +1385,7 @@ router.post('/college/drive-requests/:id/approve', authenticate, allowRoles('adm
   await drive.save();
 
   notifyEligibleStudents(drive, eligible, req.user.tenantId);
+  notifyDriveRequester(drive, 'approved');
 
   res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
 }));
@@ -1377,6 +1398,7 @@ router.post('/college/drive-requests/:id/reject', authenticate, allowRoles('admi
     { $set: { requestStatus: 'rejected', status: 'cancelled' } }
   );
   if (!drive) throw new AppError('Drive request not found.', 404);
+  notifyDriveRequester(drive, 'rejected');
   res.json({ success: true });
 }));
 
@@ -1396,7 +1418,7 @@ router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruit
   const drives = await PlacementDrive.find({
     companyName: companyRx,
     deletedAt: null,
-    status: { $ne: 'cancelled' },
+    $or: [{ status: { $ne: 'cancelled' } }, { requestStatus: 'rejected' }],
   })
     .select('title collegeName description mode location driveDate registrationDeadline opportunityType examProvider status registrations requestStatus')
     .sort({ driveDate: -1 })
