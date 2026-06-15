@@ -164,6 +164,9 @@ export default function CollegeDriveDetail() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [showNotify, setShowNotify] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkStatus, setBulkStatus] = useState('shortlisted');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   useEffect(() => {
     api.getPlacementDrive(driveId)
@@ -190,6 +193,59 @@ export default function CollegeDriveDetail() {
   const regs = (drive?.registrations || []).filter(r => !filter || r.status === filter);
   const typeLabel = drive ? (OPPORTUNITY_TYPE_LABELS[drive.opportunityType] || OPPORTUNITY_TYPE_LABELS.placement) : '';
 
+  const toggleSelected = (candidateId) => setSelected(s => {
+    const next = new Set(s);
+    next.has(candidateId) ? next.delete(candidateId) : next.add(candidateId);
+    return next;
+  });
+
+  const allVisibleSelected = regs.length > 0 && regs.every(r => selected.has(r.candidateId));
+  const toggleSelectAllVisible = () => setSelected(s => {
+    if (allVisibleSelected) {
+      const next = new Set(s);
+      regs.forEach(r => next.delete(r.candidateId));
+      return next;
+    }
+    const next = new Set(s);
+    regs.forEach(r => next.add(r.candidateId));
+    return next;
+  });
+
+  const applyBulkStatus = async () => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    try {
+      await Promise.all(ids.map(id => updateStatus(id, bulkStatus)));
+      setSelected(new Set());
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const exportCsv = () => {
+    if (!drive) return;
+    const header = ['Name', 'Email', 'Branch', 'Year', 'Status', ...(drive.opportunityType === 'exam' && drive.assessmentId ? ['Exam Status', 'Exam %', 'Exam Result'] : [])];
+    const rows = (drive.registrations || []).map(r => {
+      const base = [r.name || '', r.email || '', r.branch || '', r.year || '', r.status];
+      if (drive.opportunityType === 'exam' && drive.assessmentId) {
+        base.push(r.examStatus || '', r.examPercentage != null ? `${r.examPercentage}%` : '', r.examResult || '');
+      }
+      return base;
+    });
+    const escapeCell = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map(row => row.map(escapeCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(drive.title || 'drive').replace(/[^a-z0-9]+/gi, '_')}_registrations.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <button onClick={() => navigate('/app/drives')} style={{ ...btnG, marginBottom: 12 }}>← Back to Placement Drives</button>
@@ -205,7 +261,12 @@ export default function CollegeDriveDetail() {
           <PageHeader
             title={drive.title}
             subtitle={typeLabel}
-            action={<button onClick={() => setShowNotify(s => !s)} style={btnG}>📣 Notify Students</button>}
+            action={
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={exportCsv} style={btnG}>⬇️ Export CSV</button>
+                <button onClick={() => setShowNotify(s => !s)} style={btnG}>📣 Notify Students</button>
+              </div>
+            }
           />
 
           {showNotify && <NotifyPanel driveId={driveId} registrations={drive.registrations} onClose={() => setShowNotify(false)} />}
@@ -231,6 +292,25 @@ export default function CollegeDriveDetail() {
             })}
           </div>
 
+          {regs.length > 0 && (
+            <div style={{ ...card, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#475569', cursor: 'pointer' }}>
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} style={{ accentColor: '#0176D3' }} />
+                Select all {filter ? `(${filter})` : 'visible'}
+              </label>
+              {selected.size > 0 && (
+                <>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0176D3' }}>{selected.size} selected</span>
+                  <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)} style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, border: '1px solid #E2E8F0', textTransform: 'capitalize', cursor: 'pointer' }}>
+                    {REG_STATUSES.map(s => <option key={s} value={s}>Move to: {s}</option>)}
+                  </select>
+                  <button onClick={applyBulkStatus} disabled={bulkBusy} style={{ ...btnP, padding: '4px 14px', fontSize: 12, opacity: bulkBusy ? 0.6 : 1 }}>{bulkBusy ? 'Applying...' : '✅ Apply'}</button>
+                  <button onClick={() => setSelected(new Set())} style={{ background: 'none', border: 'none', color: '#BA0517', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Clear</button>
+                </>
+              )}
+            </div>
+          )}
+
           <div style={card}>
             {regs.length === 0 ? (
               <div style={{ color: '#706E6B', padding: 40, textAlign: 'center', fontSize: 14 }}>No eligible students found for this drive's criteria.</div>
@@ -238,9 +318,12 @@ export default function CollegeDriveDetail() {
               const rc = REG_COLORS[r.status];
               return (
                 <div key={r.candidateId} style={{ padding: '12px 0', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{r.name || r.email}</div>
-                    <div style={{ fontSize: 12, color: '#706E6B' }}>{r.email}{r.branch ? ` · ${r.branch}` : ''}{r.year ? ` (${r.year})` : ''}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input type="checkbox" checked={selected.has(r.candidateId)} onChange={() => toggleSelected(r.candidateId)} style={{ accentColor: '#0176D3', width: 16, height: 16 }} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#181818' }}>{r.name || r.email}</div>
+                      <div style={{ fontSize: 12, color: '#706E6B' }}>{r.email}{r.branch ? ` · ${r.branch}` : ''}{r.year ? ` (${r.year})` : ''}</div>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     {drive.opportunityType === 'exam' && drive.assessmentId && r.examStatus && (() => {
