@@ -78,9 +78,10 @@ export default function StudentSearchPicker({ selected, setSelected }) {
           <div style={{ fontSize: 12, color: '#706E6B' }}>No students matched that search.</div>
         ) : (
           <div>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={selectAllResults} style={{ background: 'none', border: 'none', color: '#0176D3', cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0 }}>Select all {results.length} results</button>
               <button onClick={clearResultsSelection} style={{ background: 'none', border: 'none', color: '#706E6B', cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0 }}>Deselect these</button>
+              {results.length >= 50 && <span style={{ fontSize: 11, color: '#94A3B8' }}>Showing top 50 matches — refine your search to see more.</span>}
             </div>
             <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8 }}>
               {results.map(s => {

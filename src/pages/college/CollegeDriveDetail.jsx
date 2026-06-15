@@ -60,6 +60,7 @@ function NotifyPanel({ driveId, registrations, onClose }) {
         candidateIds: audience === 'specific' ? Array.from(selectedStudents) : [],
       });
       setResult({ ok: true, recipients: res?.recipients ?? 0, message: res?.message });
+      if (audience === 'specific' && res?.recipients) setSelectedStudents(new Set());
     } catch (e) {
       setResult({ ok: false, message: e.message || 'Failed to send notification' });
     } finally {

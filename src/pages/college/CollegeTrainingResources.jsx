@@ -95,7 +95,7 @@ function NotifyResourcePanel({ resource, onClose, onSent }) {
         message,
       });
       setResult({ ok: true, recipients: res?.recipients ?? 0, message: res?.message });
-      if (res?.recipients) onSent?.();
+      if (res?.recipients) { setSelected(new Set()); onSent?.(); }
     } catch (e) {
       setResult({ ok: false, message: e.message || 'Failed to send notification' });
     } finally {
