@@ -154,4 +154,7 @@ export const dashboardService = {
   async getCompanyCollegeDrives() {
     return req('GET', '/dashboard/company/college-drives');
   },
+  async getCompanyCollegeDrive(id) {
+    return req('GET', `/dashboard/company/college-drives/${id}`);
+  },
 };

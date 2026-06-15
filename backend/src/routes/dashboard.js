@@ -1505,6 +1505,82 @@ router.get('/company/college-drives', authenticate, allowRoles('admin', 'recruit
   res.json({ success: true, data });
 }));
 
+/* GET /api/dashboard/company/college-drives/:id — for company/recruiter
+   admins: drill into one of their drives to see exactly which students have
+   registered and their current status (read-only — only the college's
+   placement office can move a student between registered/shortlisted/
+   selected/rejected). Mirrors /college/placement-drives/:id but scoped by
+   companyName instead of tenantId, since a placement drive belongs to the
+   college's tenant. */
+router.get('/company/college-drives/:id', authenticate, allowRoles('admin', 'recruiter'), asyncHandler(async (req, res) => {
+  if (req.user.tenantType === 'college') throw new AppError('This view is only available for company accounts.', 403);
+
+  const tenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+  const companyName = normalizeCompanyName(tenant?.name) || tenant?.name || '';
+  if (!companyName) throw new AppError('Placement drive not found.', 404);
+
+  const variants = companyNameVariants(companyName);
+  const pattern = '^(' + variants.map(escapeRegex).join('|') + ')$';
+  const companyRx = new RegExp(pattern, 'i');
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, companyName: companyRx, deletedAt: null }).lean();
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+
+  const candidateIds = (drive.registrations || []).map(r => r.candidateId);
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } })
+    .select('name email phone skills educationList').lean();
+  const candMap = new Map(candidates.map(c => [String(c._id), c]));
+
+  let submissionMap = new Map();
+  if (drive.opportunityType === 'exam' && drive.assessmentId) {
+    const submissions = await AssessmentSubmission.find({
+      assessmentId: String(drive.assessmentId),
+      candidateId: { $in: candidateIds.map(String) },
+    }).select('candidateId status score maxScore percentage result submittedAt').lean();
+    submissionMap = new Map(submissions.map(s => [String(s.candidateId), s]));
+  }
+
+  const registrations = (drive.registrations || []).map(r => {
+    const c = candMap.get(String(r.candidateId)) || {};
+    const latest = getLatestEducation(parseJsonArray(c.educationList));
+    const sub = submissionMap.get(String(r.candidateId));
+    return {
+      candidateId: String(r.candidateId),
+      name: c.name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      branch: latest?.degree || latest?.field || '',
+      year: latest?.year || '',
+      grade: latest?.grade || '',
+      skills: c.skills || [],
+      status: r.status,
+      examStatus: sub ? sub.status : (drive.opportunityType === 'exam' && drive.assessmentId ? 'not_started' : null),
+      examPercentage: sub ? sub.percentage : null,
+      examResult: sub ? sub.result : null,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      id: String(drive._id),
+      title: drive.title,
+      collegeName: drive.collegeName || '',
+      description: drive.description || '',
+      mode: drive.mode,
+      location: drive.location || '',
+      driveDate: drive.driveDate,
+      registrationDeadline: drive.registrationDeadline,
+      opportunityType: drive.opportunityType || 'placement',
+      examProvider: drive.examProvider || '',
+      assessmentId: drive.assessmentId ? String(drive.assessmentId) : null,
+      eligibility: drive.eligibility || {},
+      status: drive.status,
+      registrations,
+    },
+  });
+}));
+
 /* GET /api/dashboard/college/assessments — list this college tenant's
    assessments for linking to an exam-type opportunity. */
 router.get('/college/assessments', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {

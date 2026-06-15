@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -153,6 +154,7 @@ function RequestDriveForm({ onClose, onSent }) {
 }
 
 export default function CompanyCollegeDrives() {
+  const navigate = useNavigate();
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -218,7 +220,7 @@ export default function CompanyCollegeDrives() {
             {filteredDrives.map(d => {
               const sc = STATUS_COLORS[d.status] || STATUS_COLORS.upcoming;
               return (
-                <div key={d.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div key={d.id} onClick={() => navigate(`/app/college-drives/${d.id}`)} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#181818' }}>{d.title}</h3>
@@ -254,6 +256,7 @@ export default function CompanyCollegeDrives() {
                     {d.shortlistedCount > 0 && <span style={{ fontSize: 12, color: '#B45309' }}>📋 {d.shortlistedCount} shortlisted</span>}
                     {d.selectedCount > 0 && <span style={{ fontSize: 12, color: '#16A34A' }}>✅ {d.selectedCount} selected</span>}
                   </div>
+                  <div style={{ fontSize: 12, color: '#0176D3', fontWeight: 700 }}>👉 Tap to view registered students</div>
                 </div>
               );
             })}
