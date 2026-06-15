@@ -17,9 +17,9 @@ function timeAgo(d) {
 
 function KpiCard({ icon, value, label, color, bg, active, onClick }) {
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} disabled={!onClick}
       style={{ background: active ? bg : '#fff', border: `1.5px solid ${active ? color : '#e8ecf0'}`,
-        borderRadius: 14, padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
+        borderRadius: 14, padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', textAlign: 'left',
         transition: 'all 0.18s', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', flex: '1 1 120px' }}>
       <div style={{ fontSize: 22, marginBottom: 6 }}>{icon}</div>
       <div style={{ color, fontSize: 24, fontWeight: 800 }}>{value}</div>
@@ -327,12 +327,14 @@ function MailTab({ setToast }) {
       {/* KPI */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
         {[
-          { icon: '📬', value: total,  label: 'Total Emails',  color: '#0176D3', bg: '#eff6ff' },
-          { icon: '✅', value: sent,   label: 'Delivered',     color: '#15803d', bg: '#dcfce7' },
-          { icon: '❌', value: failed, label: 'Failed',        color: '#dc2626', bg: '#fee2e2' },
-          { icon: '📈', value: total ? `${Math.round(sent / total * 100)}%` : '—', label: 'Delivery Rate', color: '#7c3aed', bg: '#ede9fe' },
+          { icon: '📬', value: total,  label: 'Total Emails',  color: '#0176D3', bg: '#eff6ff', filterValue: 'all' },
+          { icon: '✅', value: sent,   label: 'Delivered',     color: '#15803d', bg: '#dcfce7', filterValue: 'sent' },
+          { icon: '❌', value: failed, label: 'Failed',        color: '#dc2626', bg: '#fee2e2', filterValue: 'failed' },
+          { icon: '📈', value: total ? `${Math.round(sent / total * 100)}%` : '—', label: 'Delivery Rate', color: '#7c3aed', bg: '#ede9fe', filterValue: null },
         ].map(c => (
-          <KpiCard key={c.label} icon={c.icon} value={c.value} label={c.label} color={c.color} bg={c.bg} active={false} onClick={() => {}} />
+          <KpiCard key={c.label} icon={c.icon} value={c.value} label={c.label} color={c.color} bg={c.bg}
+            active={c.filterValue != null && filter === c.filterValue}
+            onClick={c.filterValue != null ? () => setFilter(c.filterValue) : undefined} />
         ))}
       </div>
 

@@ -20,6 +20,7 @@ const logger         = require('../middleware/logger');
 const crypto         = require('crypto');
 const notifyAllSuperAdmins = require('../utils/notifySuperAdmins');
 const { resolveCollegeName } = require('../utils/collegeDirectory');
+const { syncProfile } = require('../utils/syncProfile');
 
 const guard = [authMiddleware, tenantGuard];
 
@@ -286,13 +287,9 @@ router.post('/public', asyncHandler(async (req, res) => {
   const phoneTrimmed = phone.trim();
 
   let candidate = await Candidate.findOne({ email: emailLower, tenantId: job.tenantId, deletedAt: null });
+  let profileUpdates = {};
   if (!candidate) {
-    candidate = await Candidate.create({
-      tenantId: job.tenantId,
-      name: name.trim(),
-      email: emailLower,
-      phone: phoneTrimmed,
-      source: 'career_page',
+    profileUpdates = {
       ...(title          ? { title: title.trim() }               : {}),
       ...(currentCompany ? { currentCompany: currentCompany.trim() } : {}),
       ...(experience !== undefined && experience !== '' ? { experience: Number(experience) } : {}),
@@ -301,6 +298,14 @@ router.post('/public', asyncHandler(async (req, res) => {
       ...(availability   ? { availability }                        : {}),
       ...(industry       ? { industry }                            : {}),
       ...(department     ? { department }                          : {}),
+    };
+    candidate = await Candidate.create({
+      tenantId: job.tenantId,
+      name: name.trim(),
+      email: emailLower,
+      phone: phoneTrimmed,
+      source: 'career_page',
+      ...profileUpdates,
     });
   } else {
     // Update fields that are newly provided or missing on existing candidate
@@ -316,6 +321,13 @@ router.post('/public', asyncHandler(async (req, res) => {
     if (department)                                        updates.department     = department;
     if (Object.keys(updates).length > 0) await Candidate.findByIdAndUpdate(candidate._id, { $set: updates });
     candidate = { ...candidate.toObject?.() || candidate, ...updates };
+    profileUpdates = updates;
+  }
+
+  // Keep the User record (candidate's own profile login) in sync with whatever
+  // career-page details were captured here, so the profile page reflects the same data.
+  if (Object.keys(profileUpdates).length > 0) {
+    syncProfile(emailLower, profileUpdates, job.tenantId).catch(() => {});
   }
 
   const exists = await Application.findOne({ jobId, candidateId: candidate._id, deletedAt: null });
@@ -877,7 +889,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   const [apps, total] = await Promise.all([
     Application.find(filter)
       .populate('jobId', 'title company companyName location department')
-      .populate('candidateId', 'name email phone title skills experience summary location source videoResumeUrl currentCompany currentCTC expectedCTC relevantExperience candidateStatus linkedinUrl availability workHistory educationList certifications client ta clientSpoc addedBy')
+      .populate('candidateId', 'name email phone title skills experience isFresher summary location source videoResumeUrl currentCompany currentCTC expectedCTC relevantExperience candidateStatus linkedinUrl availability workHistory educationList certifications client ta clientSpoc addedBy')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Application.countDocuments(filter),
   ]);
@@ -891,7 +903,7 @@ router.get('/talent-pool', ...guard, asyncHandler(async (req, res) => {
     ? { status: 'parked', deletedAt: null }
     : { tenantId: req.user.tenantId, status: 'parked', deletedAt: null };
   const apps = await Application.find(poolFilter)
-    .populate('candidateId', 'name email phone title skills location')
+    .populate('candidateId', 'name email phone title skills experience currentCompany location')
     .populate('jobId', 'title company companyName')
     .lean();
   const data = apps.map(a => ({ ...a, id: a._id?.toString() }));
@@ -915,7 +927,7 @@ router.get('/pipeline-smart-match/:jobId',
     const job = await Job.findOne(jobQuery).lean();
     if (!job) throw new AppError('Job not found', 404);
 
-    const CANDIDATE_POP = 'name title skills experience location parsedProfile workHistory educationList summary avatarUrl photoUrl resumeUrl';
+    const CANDIDATE_POP = 'name title skills experience isFresher currentCompany availability location parsedProfile workHistory educationList summary avatarUrl photoUrl resumeUrl';
     const appsQuery = isSuperAdmin
       ? { jobId, status: { $nin: ['withdrawn'] }, deletedAt: null }
       : { jobId, tenantId: req.tenantId, status: { $nin: ['withdrawn'] }, deletedAt: null };
@@ -1135,6 +1147,16 @@ router.patch('/:id/stage', ...guard,
     const stage = normalizeStage(req.body.stage);
     if (!stage) throw new AppError(`Invalid stage. Valid: ${VALID_STAGES.join(', ')}`, 400);
 
+    // Sync candidateStatus on the Candidate record so recruiters see up-to-date status
+    // without having to manually update it. Only update for meaningful stages.
+    const STAGE_TO_CANDIDATE_STATUS = {
+      'Shortlisted'      : 'Shortlisted',
+      'Interview Round 1': 'In Interview',
+      'Interview Round 2': 'In Final Interview',
+      'Offer'            : 'Offer Extended',
+      'Hired'            : 'Placed',
+    };
+
     const mongoose = require('mongoose');
     const session = await mongoose.startSession();
     let app;
@@ -1187,23 +1209,16 @@ router.patch('/:id/stage', ...guard,
             await candidate.save({ session });
           }
         }
+
+        // Sync candidateStatus on the Candidate record so recruiters see up-to-date
+        // status without having to manually update it. Only for meaningful stages.
+        const newCandidateStatus = STAGE_TO_CANDIDATE_STATUS[stage];
+        if (newCandidateStatus) {
+          await Candidate.findByIdAndUpdate(app.candidateId, { $set: { candidateStatus: newCandidateStatus } }).session(session);
+        }
       });
     } finally {
       session.endSession();
-    }
-
-    // Sync candidateStatus on the Candidate record so recruiters see up-to-date status
-    // without having to manually update it. Only update for meaningful stages.
-    const STAGE_TO_CANDIDATE_STATUS = {
-      'Shortlisted'      : 'Shortlisted',
-      'Interview Round 1': 'In Interview',
-      'Interview Round 2': 'In Final Interview',
-      'Offer'            : 'Offer Extended',
-      'Hired'            : 'Placed',
-    };
-    const newCandidateStatus = STAGE_TO_CANDIDATE_STATUS[stage];
-    if (newCandidateStatus) {
-      Candidate.findByIdAndUpdate(app.candidateId, { $set: { candidateStatus: newCandidateStatus } }).catch(() => {});
     }
 
     // Send stage-change email to candidate

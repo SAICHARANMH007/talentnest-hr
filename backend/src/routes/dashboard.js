@@ -401,10 +401,10 @@ const PUBLIC_TTL   = 60 * 1000;
 router.get('/public', asyncHandler(async (_req, res) => {
   if (publicCache && Date.now() - publicCacheAt < PUBLIC_TTL) return res.json(publicCache);
   const [hiredCount, jobsCount, clientsRaw, totalUsers] = await Promise.all([
-    Application.countDocuments({ currentStage: 'Hired' }),
+    Application.countDocuments({ currentStage: 'Hired', deletedAt: null }),
     Job.countDocuments({ status: 'active' }),
     Job.distinct('tenantId', { status: 'active' }),
-    User.countDocuments({ role: 'candidate' }),
+    User.countDocuments({ role: 'candidate', deletedAt: null }),
   ]);
   publicCache = {
     candidatesHired : hiredCount,
@@ -590,7 +590,7 @@ router.get('/college/overview', authenticate, allowRoles('admin', 'placement_off
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const candFilter = { college: college.regex, deletedAt: null };
+  const candFilter = { college: college.regex, tenantId: req.user.tenantId, deletedAt: null };
   const currentYear = new Date().getFullYear();
 
   const students = await Candidate.find(candFilter)
@@ -2056,7 +2056,7 @@ router.get('/college/placements', authenticate, allowRoles('admin', 'placement_o
   const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
-  const candFilter = { college: college.regex, deletedAt: null };
+  const candFilter = { college: college.regex, tenantId: req.user.tenantId, deletedAt: null };
   if (q.trim()) {
     const esc = escapeRegex(q.trim());
     candFilter.$or = [{ name: new RegExp(esc, 'i') }, { email: new RegExp(esc, 'i') }];

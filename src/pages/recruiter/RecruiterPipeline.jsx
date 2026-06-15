@@ -345,7 +345,7 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
           </div>
           <div>
             <div style={{ color: '#0F172A', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>{c?.name}</div>
-            <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700 }}>{c?.title} · {c?.experience || 0}y exp</div>
+            <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700 }}>{c?.title} · {c?.isFresher ? 'Fresher' : `${c?.experience || 0}y exp`}</div>
             <div style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{c?.email} · {c?.phone || 'No phone'}</div>
           </div>
         </div>
@@ -686,6 +686,7 @@ export default function RecruiterPipeline({ user }) {
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [selJob, setSelJob] = useState(() => searchParams.get('jobId') || '');
+  const appId = searchParams.get('appId') || '';
   const [jobSearch, setJobSearch] = useState('');
   const [presetTags, setPresetTags] = useState(DEFAULT_PRESET_TAGS);
   const [tagColors, setTagColors] = useState(DEFAULT_TAG_COLORS);
@@ -773,6 +774,13 @@ export default function RecruiterPipeline({ user }) {
   useEffect(() => {
     if (selJob) loadApps(selJob, pagination.page);
   }, [selJob, pagination.page, stageFilter, statusFilter]);
+
+  // Deep-link from a "New Application" notification — auto-open that applicant's card
+  useEffect(() => {
+    if (!appId || apps.length === 0) return;
+    const target = apps.find(a => a.id === appId);
+    if (target) setDetApp(target);
+  }, [appId, apps]);
 
   const triggerHiredModal = (app, appId, newStage) => {
     if (newStage === 'selected') {

@@ -691,7 +691,7 @@ export default function RecruiterCandidates({ user }) {
                 onClick={() => {
                   const next = !onlineOnly;
                   setOnlineOnly(next);
-                  setResults(applyFilters(allCandidates, next));
+                  setResults(applyClientFilters(allCandidates, next));
                   setSearched(true);
                 }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${onlineOnly ? '#22c55e' : '#DDDBDA'}`, background: onlineOnly ? '#f0fdf4' : '#fff', color: onlineOnly ? '#15803D' : '#706E6B', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}
