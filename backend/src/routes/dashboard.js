@@ -24,6 +24,7 @@ const { cacheRoute }  = require('../middleware/cache');
 const { normalizeCompanyName, companyNameVariants } = require('../utils/companyNames');
 const { normalizeCollegeKey } = require('../utils/collegeNames');
 const { getCoursesForSkill } = require('../utils/skillCourses');
+const { textMatches: degreeTextMatches } = require('../utils/degreeMatch');
 
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -847,12 +848,12 @@ async function findEligibleCandidates(college, eligibility = {}) {
     const latest = getLatestEducation(education);
 
     if (degreesLc.length) {
-      const degree = String(latest?.degree || '').toLowerCase();
-      if (!degreesLc.some(d => degree.includes(d))) return false;
+      const degree = String(latest?.degree || '');
+      if (!degreesLc.some(d => degree.toLowerCase().includes(d) || degreeTextMatches(degree, d))) return false;
     }
     if (branchesLc.length) {
-      const branch = String(latest?.field || latest?.degree || '').toLowerCase();
-      if (!branchesLc.some(b => branch.includes(b))) return false;
+      const branch = String(latest?.field || latest?.degree || '');
+      if (!branchesLc.some(b => branch.toLowerCase().includes(b) || degreeTextMatches(branch, b))) return false;
     }
     if (passingYears.length) {
       const year = parseInt(latest?.year, 10);
@@ -1218,12 +1219,12 @@ router.post('/college/placement-drives/:id/notify', authenticate, allowRoles('ad
         if (!Number.isFinite(year) || !passingYearsNum.includes(year)) return false;
       }
       if (degreesLc.length) {
-        const degree = String(latest?.degree || '').toLowerCase();
-        if (!degreesLc.some(d => degree.includes(d))) return false;
+        const degree = String(latest?.degree || '');
+        if (!degreesLc.some(d => degree.toLowerCase().includes(d) || degreeTextMatches(degree, d))) return false;
       }
       if (branchesLc.length) {
-        const branch = String(latest?.field || latest?.degree || '').toLowerCase();
-        if (!branchesLc.some(b => branch.includes(b))) return false;
+        const branch = String(latest?.field || latest?.degree || '');
+        if (!branchesLc.some(b => branch.toLowerCase().includes(b) || degreeTextMatches(branch, b))) return false;
       }
       return true;
     });
@@ -1511,8 +1512,8 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
 
   const education = parseJsonArray(candidate?.educationList);
   const latest = getLatestEducation(education);
-  const candidateDegree = String(latest?.degree || '').toLowerCase();
-  const candidateBranch = String(latest?.degree || latest?.field || '').toLowerCase();
+  const candidateDegree = String(latest?.degree || '');
+  const candidateBranch = String(latest?.field || latest?.degree || '');
   const candidateYear = parseInt(latest?.year, 10);
   const candidateGrade = parseFloat(latest?.grade);
   const candidateSkills = (candidate?.skills || []).map(s => String(s).toLowerCase());
@@ -1521,10 +1522,10 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
     const elig = d.eligibility || {};
     let isEligible = true;
     if (Array.isArray(elig.degrees) && elig.degrees.length) {
-      isEligible = isEligible && elig.degrees.some(deg => candidateDegree.includes(String(deg).toLowerCase()));
+      isEligible = isEligible && elig.degrees.some(deg => candidateDegree.toLowerCase().includes(String(deg).toLowerCase()) || degreeTextMatches(candidateDegree, deg));
     }
     if (Array.isArray(elig.branches) && elig.branches.length) {
-      isEligible = isEligible && elig.branches.some(b => candidateBranch.includes(String(b).toLowerCase()));
+      isEligible = isEligible && elig.branches.some(b => candidateBranch.toLowerCase().includes(String(b).toLowerCase()) || degreeTextMatches(candidateBranch, b));
     }
     if (Array.isArray(elig.passingYears) && elig.passingYears.length) {
       isEligible = isEligible && Number.isFinite(candidateYear) && elig.passingYears.includes(candidateYear);
