@@ -429,28 +429,55 @@ router.get('/colleges', authenticate, asyncHandler(async (req, res) => {
    Public, unauthenticated directory of known college/school names — used to
    power autocomplete during candidate registration/profile editing so that
    "SelfCrops" / "selfcrops " / " SELFCROPS" etc. all resolve to one canonical
-   entry. Merges registered College/Campus tenants with names students have
-   already typed into their profile. New names typed by students are simply
-   stored on their profile (see auth.js / profile routes) and become part of
-   this directory automatically. */
+   entry. Merges registered College/Campus tenants, every candidate's College/
+   School Name, and — for candidates who left that field blank — the
+   institution from their latest education entry (falling back to the User
+   profile's educationList the same way /college-groups does). This mirrors
+   the /college-groups grouping exactly, so every existing "college group"
+   shows up as a suggestion here, and a brand-new name typed by a student is
+   simply stored on their profile (see auth.js / profile routes) and becomes
+   the directory's (and college-groups') next group automatically. */
 router.get('/college-directory', asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
-  const [tenantNames, candidateNames] = await Promise.all([
+  const [tenantNames, candidates] = await Promise.all([
     Tenant.find({ type: 'college', deletedAt: null }).select('name').lean(),
-    Candidate.distinct('college', { college: { $exists: true, $ne: '' } }),
+    Candidate.find({ deletedAt: null }).select('email college educationList').lean(),
   ]);
+
+  const fallback = await getEducationFallbackMap(candidates);
 
   const byKey = new Map();
   const normalize = (name) => String(name || '').trim().replace(/\s+/g, ' ');
   const addName = (name) => {
     const cleaned = normalize(name);
     if (!cleaned) return;
-    const key = cleaned.toLowerCase();
+    const key = normalizeCollegeKey(cleaned);
+    if (!key) return;
     if (!byKey.has(key)) byKey.set(key, cleaned);
   };
 
   tenantNames.forEach(t => addName(t.name));
-  candidateNames.forEach(addName);
+
+  candidates.forEach(c => {
+    let collegeName = normalize(c.college);
+    let education = parseJsonArray(c.educationList);
+
+    if (!collegeName && c.email) {
+      const fb = fallback.get(c.email.toLowerCase().trim());
+      if (fb) {
+        if (fb.college) collegeName = normalize(fb.college);
+        if (!education.length) education = parseJsonArray(fb.educationList);
+      }
+    }
+
+    if (collegeName) {
+      addName(collegeName);
+      return;
+    }
+
+    const latest = getLatestEducation(education);
+    if (latest?.institution) addName(latest.institution);
+  });
 
   let results = [...byKey.values()];
   if (q) results = results.filter(name => name.toLowerCase().includes(q));
