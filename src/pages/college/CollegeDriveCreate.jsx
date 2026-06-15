@@ -20,11 +20,12 @@ export default function CollegeDriveCreate() {
     title: '', companyName: '', description: '', mode: 'On-Campus', location: '',
     driveDate: '', registrationDeadline: '',
     minCGPA: '', degrees: '', branches: '', passingYears: '', skills: '',
-    opportunityType: 'placement', examProvider: 'TCS NQT', registrationLink: '', assessmentId: '',
+    opportunityType: 'placement', examProvider: 'TCS NQT', registrationLink: '', assessmentId: '', jobId: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [assessments, setAssessments] = useState([]);
+  const [companyJobs, setCompanyJobs] = useState([]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -39,6 +40,24 @@ export default function CollegeDriveCreate() {
   useEffect(() => {
     api.getCollegeAssessments().then(r => setAssessments(r?.data || [])).catch(() => {});
   }, []);
+
+  // Look up active, publicly-listed jobs for the entered company so this drive
+  // can optionally be linked to one — registering students then automatically
+  // land in that job's pipeline.
+  useEffect(() => {
+    const name = form.companyName.trim();
+    if (!name) { setCompanyJobs([]); setForm(f => (f.jobId ? { ...f, jobId: '' } : f)); return; }
+    const t = setTimeout(() => {
+      api.getJobsForCompany(name)
+        .then(r => {
+          const jobs = r?.data || [];
+          setCompanyJobs(jobs);
+          setForm(f => (f.jobId && !jobs.some(j => j.id === f.jobId) ? { ...f, jobId: '' } : f));
+        })
+        .catch(() => setCompanyJobs([]));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form.companyName]);
 
   const submit = async () => {
     if (!form.title.trim() || !form.driveDate) { setError('Drive title and date are required.'); return; }
@@ -64,6 +83,7 @@ export default function CollegeDriveCreate() {
         examProvider: form.opportunityType === 'exam' ? form.examProvider : '',
         registrationLink: form.opportunityType === 'exam' ? form.registrationLink.trim() : '',
         assessmentId: form.opportunityType === 'exam' ? (form.assessmentId || null) : null,
+        jobId: form.jobId || null,
         eligibility,
       });
       if (res?.eligibleCount != null) {
@@ -141,6 +161,19 @@ export default function CollegeDriveCreate() {
           <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Description</label>
           <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={form.description} onChange={set('description')} placeholder="Roles, eligibility, package details, what to bring..." />
         </div>
+
+        {companyJobs.length > 0 && (
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B' }}>Link to Job Posting (optional)</label>
+            <select style={inp} value={form.jobId} onChange={set('jobId')}>
+              <option value="">— None —</option>
+              {companyJobs.map(j => <option key={j.id} value={j.id}>{j.title}{j.location ? ` — ${j.location}` : ''}</option>)}
+            </select>
+            <p style={{ fontSize: 12, color: '#706E6B', marginTop: 4 }}>
+              If you link a job, students who register for this drive are automatically added to that job's recruiter pipeline (Applied stage) as a fresher application.
+            </p>
+          </div>
+        )}
 
         {form.opportunityType === 'exam' && (
           <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 12, marginTop: 4 }}>

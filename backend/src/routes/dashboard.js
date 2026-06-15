@@ -1035,12 +1035,21 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
     if (assessment) cleanAssessmentId = assessment._id;
   }
 
+  // Optional: link this drive to an active, publicly-listed job posting so
+  // that registering candidates are automatically dropped into that job's
+  // pipeline (see /candidate/opportunities/:id/register).
+  let cleanJobId = null;
+  if (jobId) {
+    const job = await Job.findOne({ _id: jobId, status: 'active', isPublic: true, deletedAt: null }).select('_id').lean();
+    if (job) cleanJobId = job._id;
+  }
+
   const drive = await PlacementDrive.create({
     tenantId: req.user.tenantId,
     collegeName: college.name,
     title: String(title).trim().slice(0, 200),
     companyName: companyName ? String(companyName).trim().slice(0, 150) : '',
-    jobId: jobId || null,
+    jobId: cleanJobId,
     description: description ? String(description).trim().slice(0, 2000) : '',
     mode: ['On-Campus', 'Virtual', 'Off-Campus'].includes(mode) ? mode : 'On-Campus',
     location: location ? String(location).trim().slice(0, 200) : '',
@@ -1060,6 +1069,30 @@ router.post('/college/placement-drives', authenticate, allowRoles('admin', 'plac
   notifyEligibleStudents(drive, eligible, req.user.tenantId);
 
   res.json({ success: true, data: { id: String(drive._id) }, eligibleCount: eligible.length });
+}));
+
+/* GET /api/dashboard/college/jobs-for-company — for placement officers: look up
+   a company's active, publicly-listed job postings by company name so a drive
+   can optionally be linked to one (registering candidates then automatically
+   land in that job's pipeline — see /candidate/opportunities/:id/register). */
+router.get('/college/jobs-for-company', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const companyName = normalizeCompanyName(req.query.companyName) || String(req.query.companyName || '').trim();
+  if (!companyName) return res.json({ success: true, data: [] });
+
+  const variants = companyNameVariants(companyName);
+  const pattern = '^(' + variants.map(escapeRegex).join('|') + ')$';
+  const companyRx = new RegExp(pattern, 'i');
+
+  const jobs = await Job.find({ companyName: companyRx, status: 'active', isPublic: true, deletedAt: null })
+    .select('title companyName location')
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+  res.json({ success: true, data: jobs.map(j => ({ id: String(j._id), title: j.title, companyName: j.companyName, location: j.location || '' })) });
 }));
 
 /* GET /api/dashboard/college/placement-drives/:id — drive detail with the full
@@ -1783,7 +1816,83 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
     }
   } catch {}
 
-  res.json({ success: true, data: { status: 'registered' } });
+  // If this drive is linked to a job (optional — set by the recruiter when
+  // requesting/posting the drive), registering also drops the candidate
+  // straight into that job's pipeline at the "Applied" stage, exactly like a
+  // normal application — so the recruiter sees them on the pipeline board
+  // (with their existing Fresher badge from the candidate profile) and can
+  // move them through stages from there. Best-effort: a drive without a
+  // linked job, or any error here, never blocks the drive registration itself.
+  let pipelineApplication = null;
+  try {
+    if (drive.jobId) {
+      const job = await Job.findOne({ _id: drive.jobId, deletedAt: null }).lean();
+      if (job) {
+        const existingApp = await Application.findOne({ jobId: job._id, candidateId: candidate._id, deletedAt: null });
+        if (!existingApp) {
+          const { calculateTalentMatchScore } = require('../utils/matchScore');
+          const { score, breakdown } = calculateTalentMatchScore(job, candidate);
+
+          const app = await Application.create({
+            tenantId: job.tenantId,
+            jobId: job._id,
+            candidateId: candidate._id,
+            source: 'campus_drive',
+            talentMatchScore: score,
+            matchBreakdown: breakdown,
+            currentStage: 'Applied',
+            stageHistory: [{ stage: 'Applied', movedAt: new Date(), notes: `Auto-applied via campus drive: ${drive.title}` }],
+            statusToken: require('crypto').randomBytes(24).toString('hex'),
+          });
+
+          await Job.findByIdAndUpdate(job._id, { $inc: { applicationCount: 1 } });
+          pipelineApplication = { id: String(app._id), jobId: String(job._id), jobTitle: job.title };
+
+          // Notify the candidate that they've also applied for the linked job
+          const Notification = require('../models/Notification');
+          if (req.user._id || req.user.id) {
+            await Notification.create({
+              userId: req.user._id || req.user.id,
+              tenantId: job.tenantId,
+              type: 'application',
+              title: 'Application submitted',
+              message: `Registering for "${drive.title}" also submitted your application for "${job.title}".`,
+              link: '/app/applications',
+              metadata: { kind: 'campus_drive_application', driveId: String(drive._id), jobId: String(job._id), applicationId: String(app._id) },
+            });
+          }
+
+          // Notify assigned recruiters, same as a direct application
+          const recruiters = job.assignedRecruiters || [];
+          for (const rid of recruiters) {
+            Notification.create({
+              userId: rid, tenantId: job.tenantId, type: 'application',
+              title: 'New Application',
+              message: `${candidate.name || candidate.email} applied for ${job.title} (via campus drive: ${drive.title})`,
+              link: `/app/pipeline?jobId=${job._id}`,
+            }).catch(() => {});
+          }
+
+          // Real-time pipeline refresh for the hiring tenant
+          try {
+            const { emitToTenant } = require('../socket/platformSocket');
+            const socketRegistry   = require('../socket/index');
+            emitToTenant(socketRegistry.getIO(), job.tenantId, 'application:stageChanged', {
+              applicationId: String(app._id),
+              jobId: String(job._id),
+              candidateId: String(candidate._id),
+              stage: 'Applied',
+              movedAt: new Date().toISOString(),
+            });
+          } catch {}
+        } else {
+          pipelineApplication = { id: String(existingApp._id), jobId: String(job._id), jobTitle: job.title };
+        }
+      }
+    }
+  } catch {}
+
+  res.json({ success: true, data: { status: 'registered', application: pipelineApplication } });
 }));
 
 /* GET /api/dashboard/candidate/training-resources — resources curated by the

@@ -193,8 +193,11 @@ export default function CandidateOpportunities() {
   const register = async (id) => {
     setRegistering(prev => ({ ...prev, [id]: true }));
     try {
-      await api.registerForOpportunity(id);
+      const res = await api.registerForOpportunity(id);
       setOpportunities(prev => prev.map(o => o.id === id ? { ...o, myStatus: 'registered' } : o));
+      if (res?.data?.application?.jobTitle) {
+        window.alert(`✅ Registered! You've also been added to the application pipeline for "${res.data.application.jobTitle}" — track it under My Applications.`);
+      }
     } catch (e) {
       window.alert(e.message || 'Failed to register');
     } finally {

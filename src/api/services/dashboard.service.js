@@ -30,6 +30,7 @@ export const dashboardService = {
   async getCollegeDrives()               { return req('GET', '/dashboard/college/drives'); },
   async notifyCollegeDrive(jobId)        { return req('POST', `/dashboard/college/drives/${jobId}/notify`); },
   async getPlacementDrives()             { return req('GET', '/dashboard/college/placement-drives'); },
+  async getJobsForCompany(companyName)   { return req('GET', `/dashboard/college/jobs-for-company?companyName=${encodeURIComponent(companyName)}`); },
   async createPlacementDrive(payload)    { return req('POST', '/dashboard/college/placement-drives', payload); },
   async getPlacementDrive(id)            { return req('GET', `/dashboard/college/placement-drives/${id}`); },
   async updatePlacementDrive(id, payload) { return req('PATCH', `/dashboard/college/placement-drives/${id}`, payload); },
