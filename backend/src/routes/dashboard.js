@@ -1142,6 +1142,92 @@ router.patch('/college/placement-drives/:id/registrations/:candidateId', authent
   res.json({ success: true });
 }));
 
+/* POST /api/dashboard/college/placement-drives/:id/notify — placement officer
+   sends a reminder/announcement about this drive to students, optionally
+   filtered by passing year / degree / branch, or limited to already
+   registered students. */
+router.post('/college/placement-drives/:id/notify', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
+  const college = await getCollegeFilter(req);
+  if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).lean();
+  if (!drive) throw new AppError('Placement drive not found.', 404);
+
+  const { audience = 'eligible', passingYears = [], degrees = [], branches = [], message: customMessage = '' } = req.body || {};
+
+  let candidates;
+  if (audience === 'registered') {
+    const candidateIds = (drive.registrations || []).map(r => r.candidateId);
+    candidates = await Candidate.find({ _id: { $in: candidateIds }, deletedAt: null })
+      .select('name email userId educationList').lean();
+  } else {
+    const filters = {
+      degrees: degrees.length ? degrees : (drive.eligibility?.degrees || []),
+      branches: branches.length ? branches : (drive.eligibility?.branches || []),
+      passingYears: passingYears.length ? passingYears.map(Number) : (drive.eligibility?.passingYears || []),
+      minCGPA: drive.eligibility?.minCGPA,
+      skills: drive.eligibility?.skills || [],
+    };
+    candidates = await findEligibleCandidates(college, filters);
+    candidates = candidates.map(c => ({ ...c }));
+    // re-select userId for notification linkage
+    const withUser = await Candidate.find({ _id: { $in: candidates.map(c => c._id) } }).select('userId').lean();
+    const userMap = new Map(withUser.map(c => [String(c._id), c.userId]));
+    candidates = candidates.map(c => ({ ...c, userId: userMap.get(String(c._id)) }));
+  }
+
+  // Apply additional ad-hoc passing year / degree / branch filters on top of "registered" audience too
+  if (audience === 'registered' && (passingYears.length || degrees.length || branches.length)) {
+    const passingYearsNum = passingYears.map(Number);
+    const degreesLc = degrees.map(d => String(d).toLowerCase().trim());
+    const branchesLc = branches.map(b => String(b).toLowerCase().trim());
+    candidates = candidates.filter(c => {
+      const latest = getLatestEducation(parseJsonArray(c.educationList));
+      if (passingYearsNum.length) {
+        const year = parseInt(latest?.year, 10);
+        if (!Number.isFinite(year) || !passingYearsNum.includes(year)) return false;
+      }
+      if (degreesLc.length) {
+        const degree = String(latest?.degree || '').toLowerCase();
+        if (!degreesLc.some(d => degree.includes(d))) return false;
+      }
+      if (branchesLc.length) {
+        const branch = String(latest?.field || latest?.degree || '').toLowerCase();
+        if (!branchesLc.some(b => branch.includes(b))) return false;
+      }
+      return true;
+    });
+  }
+
+  const recipients = candidates.filter(c => c.userId);
+  if (!recipients.length) {
+    return res.json({ success: true, recipients: 0, message: 'No matching students with an active account found.' });
+  }
+
+  const Notification = require('../models/Notification');
+  const text = customMessage?.trim()
+    ? customMessage.trim().slice(0, 500)
+    : `Reminder: "${drive.title}" is scheduled for ${new Date(drive.driveDate).toLocaleDateString()}. Check the Opportunities page for details.`;
+
+  await Notification.insertMany(recipients.map(c => ({
+    userId: c.userId,
+    tenantId: drive.tenantId,
+    type: 'system',
+    title: `Placement Drive: ${drive.title}`,
+    message: text,
+    link: '/app/opportunities',
+    metadata: { kind: 'placement_drive_notify', driveId: String(drive._id) },
+  })));
+
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), drive.tenantId, 'drive:registrationChanged', { driveId: String(drive._id) });
+  } catch {}
+
+  res.json({ success: true, recipients: recipients.length });
+}));
+
 /* DELETE /api/dashboard/college/placement-drives/:id — cancel/remove a drive. */
 router.delete('/college/placement-drives/:id', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
   const drive = await PlacementDrive.findOneAndUpdate(

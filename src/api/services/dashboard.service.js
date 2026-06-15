@@ -35,6 +35,7 @@ export const dashboardService = {
   async updatePlacementDrive(id, payload) { return req('PATCH', `/dashboard/college/placement-drives/${id}`, payload); },
   async updatePlacementDriveRegistration(id, candidateId, payload) { return req('PATCH', `/dashboard/college/placement-drives/${id}/registrations/${candidateId}`, payload); },
   async deletePlacementDrive(id)         { return req('DELETE', `/dashboard/college/placement-drives/${id}`); },
+  async notifyPlacementDrive(id, payload) { return req('POST', `/dashboard/college/placement-drives/${id}/notify`, payload); },
   async getCollegeAssessments()          { return req('GET', '/dashboard/college/assessments'); },
   async getTrainingResources()           { return req('GET', '/dashboard/college/training-resources'); },
   async createTrainingResource(payload)  { return req('POST', '/dashboard/college/training-resources', payload); },

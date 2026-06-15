@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
-import { card, btnG } from '../../constants/styles.js';
+import { card, btnG, btnP, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { usePlatformEvents } from '../../hooks/usePlatformSocket.js';
+import { DEGREES, ALL_BRANCHES } from '../../constants/education.js';
 
 const REG_STATUSES = ['registered', 'shortlisted', 'selected', 'rejected'];
 const REG_COLORS = {
@@ -27,6 +28,114 @@ const EXAM_STATUS_LABELS = {
   expired: { label: 'Expired', bg: 'rgba(186,5,23,0.08)', color: '#BA0517' },
 };
 
+function NotifyPanel({ driveId, registrations, onClose }) {
+  const [audience, setAudience] = useState('eligible');
+  const [passingYears, setPassingYears] = useState('');
+  const [degrees, setDegrees] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const registeredYears = Array.from(new Set((registrations || []).map(r => r.year).filter(Boolean))).sort();
+
+  const toggle = (list, setList, value) => setList(l => l.includes(value) ? l.filter(v => v !== value) : [...l, value]);
+
+  const send = async () => {
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await api.notifyPlacementDrive(driveId, {
+        audience,
+        passingYears: passingYears ? passingYears.split(',').map(s => s.trim()).filter(Boolean).map(Number) : [],
+        degrees,
+        branches,
+        message,
+      });
+      setResult({ ok: true, recipients: res?.recipients ?? 0, message: res?.message });
+    } catch (e) {
+      setResult({ ok: false, message: e.message || 'Failed to send notification' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 16, border: '1.5px solid rgba(1,118,211,0.25)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#181818' }}>📣 Notify Students</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#706E6B', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>✕ Close</button>
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Audience</label>
+        <select value={audience} onChange={e => setAudience(e.target.value)} style={inp}>
+          <option value="eligible">All students eligible for this drive</option>
+          <option value="registered">Only students already registered</option>
+        </select>
+      </div>
+
+      {registeredYears.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by passing year (optional)</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {registeredYears.map(y => (
+              <label key={y} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+                <input type="checkbox" checked={passingYears.split(',').map(s => s.trim()).includes(String(y))}
+                  onChange={() => {
+                    const cur = passingYears.split(',').map(s => s.trim()).filter(Boolean);
+                    const next = cur.includes(String(y)) ? cur.filter(v => v !== String(y)) : [...cur, String(y)];
+                    setPassingYears(next.join(', '));
+                  }} style={{ accentColor: '#0176D3' }} />
+                {y}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by degree (optional — leave blank to use this drive's eligibility)</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 100, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
+          {DEGREES.map(d => (
+            <label key={d} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+              <input type="checkbox" checked={degrees.includes(d)} onChange={() => toggle(degrees, setDegrees, d)} style={{ accentColor: '#0176D3' }} />
+              {d}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Filter by branch / specialization (optional)</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 100, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: 8 }}>
+          {ALL_BRANCHES.map(b => (
+            <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+              <input type="checkbox" checked={branches.includes(b)} onChange={() => toggle(branches, setBranches, b)} style={{ accentColor: '#0176D3' }} />
+              {b}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#706E6B', display: 'block', marginBottom: 4 }}>Message (optional — a default reminder is sent if left blank)</label>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} style={{ ...inp, minHeight: 60, resize: 'vertical' }} placeholder="e.g. Please bring your resume and a valid ID card." />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={send} disabled={sending} style={{ ...btnP, opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending...' : '📣 Send Notification'}</button>
+        {result && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: result.ok ? '#16A34A' : '#BA0517' }}>
+            {result.ok ? `Sent to ${result.recipients} student${result.recipients === 1 ? '' : 's'}.` : result.message}
+            {result.ok && result.message ? ` ${result.message}` : ''}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CollegeDriveDetail() {
   const { driveId } = useParams();
   const navigate = useNavigate();
@@ -34,6 +143,7 @@ export default function CollegeDriveDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
+  const [showNotify, setShowNotify] = useState(false);
 
   useEffect(() => {
     api.getPlacementDrive(driveId)
@@ -75,7 +185,10 @@ export default function CollegeDriveDetail() {
           <PageHeader
             title={drive.title}
             subtitle={typeLabel}
+            action={<button onClick={() => setShowNotify(s => !s)} style={btnG}>📣 Notify Students</button>}
           />
+
+          {showNotify && <NotifyPanel driveId={driveId} registrations={drive.registrations} onClose={() => setShowNotify(false)} />}
 
           <div style={{ ...card, marginBottom: 16 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: drive.description ? 8 : 0, fontSize: 13, color: '#706E6B' }}>
