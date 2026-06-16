@@ -15,6 +15,7 @@ import {
   loadFaceApi,
   openFrontCamera,
   detectFaceRaw,
+  detectFaceEnhanced,
   drawEnhancedFaceMesh,
   captureEnhancedFrame,
   scoreFaceQuality,
@@ -23,7 +24,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STABLE_NEEDED = 15;
-const MIN_QUALITY   = 0.30;
+const MIN_QUALITY   = 0.42; // raised from 0.30 — only accept well-lit, well-framed faces
 const LOGIN_POSES   = [
   { label: 'Look straight at the camera', icon: '👁️' },
   { label: 'Tilt your head slightly left', icon: '↙️' },
@@ -209,9 +210,24 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
     const fa  = faceapiRef.current;
     const vid = videoRef.current;
-    const r   = liveResultRef.current || (fa && vid ? await detectFaceRaw(fa, vid).catch(() => null) : null);
 
-    if (!r || !vid || scoreFaceQuality(r, vid) < MIN_QUALITY) {
+    // First check live result quality (already computed in the RAF loop)
+    const liveR = liveResultRef.current;
+    if (!liveR || !vid || scoreFaceQuality(liveR, vid) < MIN_QUALITY) {
+      isCapturingRef.current = false;
+      setQualityWarn(true);
+      setTimeout(() => setQualityWarn(false), 2000);
+      setTimeout(() => {
+        if (livenessOkRef.current && descsRef.current.length < LOGIN_POSES.length) startCountdown();
+      }, 2500);
+      return;
+    }
+
+    // Re-detect on an enhanced (low-light-processed) frame for a more robust descriptor
+    // This gives better per-identity discrimination than the raw video frame
+    const r = fa && vid ? await detectFaceEnhanced(fa, vid).catch(() => liveR) : liveR;
+
+    if (!r?.descriptor) {
       isCapturingRef.current = false;
       setQualityWarn(true);
       setTimeout(() => setQualityWarn(false), 2000);
@@ -313,10 +329,20 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
   };
 
-  const proceedToCamera = () => {
+  const proceedToCamera = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) { setEmailError('Enter a valid email address.'); return; }
     if (!modelReady) { setEmailError('AI models are still loading. Please wait a moment.'); return; }
+    setEmailError('Checking…');
+    try {
+      const { enrolled } = await api.checkEnrollment({ email: trimmed });
+      if (!enrolled) {
+        setEmailError('Face ID is not set up for this account. Please use password login or enroll your face first from My Profile.');
+        return;
+      }
+    } catch {
+      // Network error — don't block; backend will reject if not enrolled
+    }
     setEmailError('');
     setEmail(trimmed);
     setStep('camera');

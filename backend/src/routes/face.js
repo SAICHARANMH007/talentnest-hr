@@ -477,9 +477,12 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
 
   const score = faceSimilarity(descriptor, storedDesc);
 
-  // Threshold: 0.65 — higher than proctoring (0.50), lower than enrollment dedup (0.72)
-  // This accounts for single-session multi-frame averaging vs enrollment 5-frame average
-  const FACE_LOGIN_THRESHOLD = 0.65;
+  // Threshold: 0.75 — stricter than duplicate detection (0.72).
+  // Users reported cross-person matches at 0.65 (friend's face accepted).
+  // With L2-normalized averaged descriptors, same-person in reasonable conditions
+  // scores 0.78-0.92; genuinely different people score 0.50-0.68.
+  // Setting to 0.75 eliminates false positives while keeping OTP as the fallback.
+  const FACE_LOGIN_THRESHOLD = 0.75;
   const matched = !!user && score >= FACE_LOGIN_THRESHOLD;
 
   if (!matched) {

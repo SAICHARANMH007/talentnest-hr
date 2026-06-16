@@ -270,13 +270,21 @@ export function getEAR(landmarks) {
 export const BLINK_THRESHOLD = 0.21;
 
 // ── Descriptor math ───────────────────────────────────────────────────────────
-/** Average N 128-d float arrays into one */
+/**
+ * Average N 128-d float arrays then L2-normalize the result.
+ * face-api.js descriptors are L2-normalized (norm=1). Averaging N of them
+ * shrinks the norm toward 0, which distorts euclidean distance. Re-normalizing
+ * after averaging restores the proper metric space so similarity thresholds
+ * remain meaningful regardless of the number of captured poses.
+ */
 export function averageDescriptors(descs) {
   if (!descs.length) return [];
   const len = descs[0].length;
   const out = new Array(len).fill(0);
   descs.forEach(d => d.forEach((v, i) => { out[i] += v; }));
-  return out.map(v => v / descs.length);
+  const avg  = out.map(v => v / descs.length);
+  const norm = Math.sqrt(avg.reduce((s, v) => s + v * v, 0));
+  return norm > 1e-9 ? avg.map(v => v / norm) : avg;
 }
 
 /** Average N landmark arrays */
