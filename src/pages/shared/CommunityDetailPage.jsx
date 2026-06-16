@@ -1133,13 +1133,20 @@ export default function CommunityDetailPage({ user }) {
       <div style={{ padding: isMobile ? '0 12px' : 0 }}>
         {tab === 'posts' && (
           <>
+            {/* Create post — members only; non-members see a join nudge */}
             {(isMember || ['admin','super_admin','superadmin'].includes(user?.role))
               ? <CreateCommunityPost user={user} community={community} onCreate={loadPosts} />
               : (
-                <div style={{ ...card, padding: '14px 16px', marginBottom: 14, borderRadius: 14, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
-                  <span>Join this community to post and interact with members.</span>
+                <div style={{ ...card, padding: '12px 16px', marginBottom: 14, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, border: `1.5px dashed ${bg}55` }}>
+                  <span style={{ fontSize: 22 }}>✍️</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Join to post & interact</div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Browse posts below — join the community to share your own.</div>
+                  </div>
                 </div>
               )}
+
+            {/* Posts — always visible to everyone (no membership gate) */}
             {postsLoading ? (
               <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
                 <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />

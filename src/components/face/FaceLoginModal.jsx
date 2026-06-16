@@ -286,22 +286,46 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const submitFace = async () => {
     stopAll();
     setStep('submitting');
-    try {
-      const avgDesc = averageDescriptors(descsRef.current);
-      const result  = await api.identifyFace({
-        descriptor : avgDesc,
-        frames     : descsRef.current,
-      });
-      if (result.found) {
-        setMaskedEmail(result.maskedEmail);
-        setFaceToken(result.faceToken);
-        setStep('found');
-      } else {
-        setStep('not_found');
+    const avgDesc = averageDescriptors(descsRef.current);
+
+    if (prefillEmail) {
+      // ── Email-scoped flow: user typed email on login page → direct face match → login or OTP
+      const em = prefillEmail.trim().toLowerCase();
+      try {
+        const result = await api.faceLogin({ email: em, descriptor: avgDesc, frames: descsRef.current });
+        onSuccess(result.user, result.token);
+      } catch (e) {
+        if (e?.status === 401 || (e?.message || '').toLowerCase().includes('not recogni')) {
+          // Face didn't match → fall back to OTP for the typed email
+          const [local, domain] = em.split('@');
+          setMaskedEmail(local[0] + '*'.repeat(Math.max(2, local.length - 1)) + '@' + domain);
+          try {
+            await api.sendFaceOtp({ email: em });
+            setStep('otp');
+          } catch (e2) {
+            setServerError(e2?.message || 'Could not send verification code. Please try password login.');
+            setStep('error');
+          }
+        } else {
+          setServerError(e?.message || 'Face verification failed. Please try again.');
+          setStep('error');
+        }
       }
-    } catch (e) {
-      setServerError(e?.message || 'Face scan failed. Please try again.');
-      setStep('error');
+    } else {
+      // ── Face-first identify flow: no email → scan to discover account
+      try {
+        const result = await api.identifyFace({ descriptor: avgDesc, frames: descsRef.current });
+        if (result.found) {
+          setMaskedEmail(result.maskedEmail);
+          setFaceToken(result.faceToken);
+          setStep('found');
+        } else {
+          setStep('not_found');
+        }
+      } catch (e) {
+        setServerError(e?.message || 'Face scan failed. Please try again.');
+        setStep('error');
+      }
     }
   };
 
@@ -322,7 +346,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setOtpSubmitting(true);
     setOtpError('');
     try {
-      const result = await api.verifyFaceOtp({ faceToken, otp: code });
+      // faceToken = identify flow; prefillEmail = email-scoped flow
+      const body = faceToken
+        ? { faceToken, otp: code }
+        : { email: prefillEmail.trim().toLowerCase(), otp: code };
+      const result = await api.verifyFaceOtp(body);
       onSuccess(result.user, result.token);
     } catch (e) {
       setOtpError(e?.message || 'Invalid or expired code. Please try again.');
@@ -335,7 +363,10 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setOtpError('');
     setOtpResent(false);
     try {
-      await api.sendFaceOtp({ faceToken });
+      const sendBody = faceToken
+        ? { faceToken }
+        : { email: prefillEmail.trim().toLowerCase() };
+      await api.sendFaceOtp(sendBody);
       setOtpResent(true);
       setTimeout(() => setOtpResent(false), 4000);
     } catch (e) {
@@ -536,10 +567,10 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
           <div style={{ textAlign:'center', padding:'20px 0' }}>
             <Spin />
             <div style={{ color:'rgba(255,255,255,0.7)', fontSize:14, fontWeight:600, marginTop:12 }}>
-              Searching for your account…
+              {prefillEmail ? 'Verifying your face…' : 'Searching for your account…'}
             </div>
             <div style={{ color:'rgba(255,255,255,0.35)', fontSize:12, marginTop:6 }}>
-              Matching face against enrolled accounts
+              {prefillEmail ? 'Comparing against your enrolled Face ID' : 'Matching face against enrolled accounts'}
             </div>
           </div>
         )}
