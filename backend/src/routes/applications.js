@@ -24,6 +24,14 @@ const { syncProfile } = require('../utils/syncProfile');
 
 const guard = [authMiddleware, tenantGuard];
 
+// Middleware that skips tenantGuard for candidate users — candidates access data
+// by email, not by tenantId, so the org-lookup check would wrongly block accounts
+// created before the TalentNest HR tenant was seeded or whose linked org was removed.
+const guardOrCandidate = [
+  authMiddleware,
+  (req, res, next) => req.user?.role === 'candidate' ? next() : tenantGuard(req, res, next),
+];
+
 // Throws 403 if a 'client' or 'hiring_manager' login tries to act on an
 // application for a job outside their assigned scope. No-op for other roles
 // (those are scoped/checked elsewhere).
@@ -515,7 +523,8 @@ router.post('/public', asyncHandler(async (req, res) => {
 // ── PRIVATE ───────────────────────────────────────────────────────────────────
 
 // POST /api/applications — internal apply
-router.post('/', ...guard, asyncHandler(async (req, res) => {
+// Uses guardOrCandidate so candidates with null/missing tenantId can self-apply.
+router.post('/', ...guardOrCandidate, asyncHandler(async (req, res) => {
   let { jobId, candidateId, coverLetter, screeningAnswers,
         geoLat, geoLng, geoAccuracy, geoCity, geoCountry } = req.body;
   if (!jobId) throw new AppError('jobId is required.', 400);
@@ -808,7 +817,7 @@ router.get('/locations', ...guard,
 // GET /api/applications/mine — candidate's own applications
 // Searches ALL Candidate docs by email (across tenants, including soft-deleted ones)
 // so applications remain visible even if a recruiter archived the Candidate record.
-router.get('/mine', ...guard,
+router.get('/mine', ...guardOrCandidate,
   allowRoles('candidate'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
@@ -1988,7 +1997,7 @@ router.patch('/:id/park', ...guard, asyncHandler(async (req, res) => {
 // Candidates: applications live under the job's tenantId (not the candidate's),
 // so we look them up by candidateId across any tenant.
 // HR/Admin: scoped to their own tenant as usual.
-router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
+router.delete('/:id', ...guardOrCandidate, asyncHandler(async (req, res) => {
   let filter = { _id: req.params.id, deletedAt: null };
 
   if (req.user.role === 'candidate') {
