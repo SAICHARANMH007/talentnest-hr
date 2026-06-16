@@ -179,6 +179,33 @@ function PostTypeBanner({ post, isMobile }) {
   );
 }
 
+// "See more / See less" for long post content
+function TruncatedContent({ text, onHashtagClick, limit = 380 }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return null;
+  const isLong = text.length > limit;
+  let displayText = text;
+  if (isLong && !expanded) {
+    let cut = text.lastIndexOf(' ', limit);
+    if (cut < limit * 0.6) cut = limit;
+    // Don't cut inside @[Name](id) mention syntax
+    const mStart = text.lastIndexOf('@[', cut);
+    if (mStart >= 0 && text.indexOf(')', mStart) >= cut) cut = mStart;
+    displayText = text.slice(0, cut).trimEnd() + '…';
+  }
+  return (
+    <div>
+      <RichContent text={displayText} onHashtagClick={onHashtagClick} />
+      {isLong && (
+        <button onClick={() => setExpanded(v => !v)}
+          style={{ background: 'none', border: 'none', color: '#0176D3', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0 0', marginTop: 2, display: 'block' }}>
+          {expanded ? 'See less ▲' : 'See more ▼'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Small inline badge (shown in author row for typed posts without a banner — kept for compact views)
 const POST_TYPE_THEME = {
   hiring:      { icon: '💼', label: 'Hiring',       color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
@@ -427,20 +454,23 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
   const rDef = myReaction ? REACTIONS.find(r => r.type === myReaction.type) : REACTIONS[0];
 
   return (
-    <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 14, paddingTop: 10 }}>
+    <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 16, paddingTop: 10 }}>
       {(totalReactions > 0 || totalComments > 0) && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 2px' }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '0 2px' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {Object.entries(counts).map(([type, count]) => {
               const r = REACTIONS.find(x => x.type === type);
-              return r ? <span key={type} style={{ fontSize: 12, color: '#6B7280' }}>{r.emoji} {count}</span> : null;
+              return r ? (
+                <span key={type} style={{ fontSize: 12, color: '#4B5563', background: '#F3F4F6', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                  {r.emoji} {count}
+                </span>
+              ) : null;
             })}
-            {totalReactions > 0 && <span style={{ fontSize: 12, color: '#9CA3AF' }}>{totalReactions} reaction{totalReactions !== 1 ? 's' : ''}</span>}
           </div>
           {totalComments > 0 && (
             <button onClick={onToggleComments}
-              style={{ background: 'none', border: 'none', fontSize: 12, color: '#6B7280', cursor: 'pointer', padding: '2px 4px', fontWeight: 500 }}>
-              {totalComments} comment{totalComments !== 1 ? 's' : ''}
+              style={{ background: 'none', border: 'none', fontSize: 12, color: '#6B7280', cursor: 'pointer', padding: '2px 6px', fontWeight: 600 }}>
+              💬 {totalComments} comment{totalComments !== 1 ? 's' : ''}
             </button>
           )}
         </div>
@@ -453,7 +483,7 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
           onMouseLeave={() => { timerRef.current = setTimeout(() => setShowPicker(false), 300); }}>
           <button
             onClick={() => onReact(post._id, myReaction?.type || 'like')}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: myReaction ? '#EFF6FF' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: myReaction ? 700 : 500, color: myReaction ? (rDef?.color || '#1D4ED8') : '#6B7280', transition: 'background 0.12s' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: myReaction ? (rDef?.color || '#1D4ED8') + '14' : 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: myReaction ? 700 : 500, color: myReaction ? (rDef?.color || '#1D4ED8') : '#6B7280', transition: 'all 0.12s' }}
             onMouseEnter={e => { if (!myReaction) e.currentTarget.style.background = '#F3F4F6'; }}
             onMouseLeave={e => { if (!myReaction) e.currentTarget.style.background = 'transparent'; }}>
             {rDef?.emoji || '👍'} {rDef?.label || 'Like'}
@@ -474,7 +504,7 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
 
         {/* Comment */}
         <button onClick={onToggleComments}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: showComments ? '#F3F4F6' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: showComments ? 600 : 500, color: '#6B7280', transition: 'background 0.12s' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: showComments ? '#F0F9FF' : 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: showComments ? 700 : 500, color: showComments ? '#0176D3' : '#6B7280', transition: 'all 0.12s' }}
           onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
           onMouseLeave={e => { if (!showComments) e.currentTarget.style.background = 'transparent'; }}>
           💬 Comment
@@ -497,7 +527,7 @@ function ShareButton({ postId }) {
   };
   return (
     <button onClick={share}
-      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: copied ? '#059669' : '#6B7280', transition: 'all 0.15s' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: copied ? 700 : 500, color: copied ? '#059669' : '#6B7280', transition: 'all 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
       {copied ? '✓ Copied' : '↗ Share'}
@@ -690,30 +720,67 @@ function PollWidget({ post, userId }) {
     } finally { setVoting(false); }
   };
 
+  const hasVoted = myVoteIdx >= 0;
+
   return (
-    <div style={{ border: '1px solid #DDD6FE', background: '#F5F3FF', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
-      {poll.question && <div style={{ fontSize: 14, fontWeight: 800, color: '#0A1628', marginBottom: 10 }}>{poll.question}</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #DDD6FE', marginBottom: 12 }}>
+      {/* Poll question header */}
+      {poll.question && (
+        <div style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #5B21B6 100%)', padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>🗳️</span>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Community Poll</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', lineHeight: 1.4 }}>{poll.question}</div>
+          </div>
+        </div>
+      )}
+      {/* Options */}
+      <div style={{ padding: '12px 14px', background: '#FAFAFF', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {poll.options.map((opt, i) => {
           const votes = opt.votes?.length || 0;
           const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
           const selected = myVoteIdx === i;
+          const showResults = hasVoted || isClosed;
           return (
             <button key={i} onClick={() => vote(i)} disabled={voting || isClosed}
-              style={{ position: 'relative', textAlign: 'left', border: `1.5px solid ${selected ? '#5B21B6' : '#DDD6FE'}`, background: '#fff', borderRadius: 10, padding: '9px 12px', cursor: (voting || isClosed) ? 'default' : 'pointer', overflow: 'hidden' }}>
-              {(myVoteIdx >= 0 || isClosed) && (
-                <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: selected ? '#EDE9FE' : '#F3F4F6', transition: 'width 0.3s' }} />
+              style={{
+                position: 'relative', textAlign: 'left',
+                border: `2px solid ${selected ? '#7C3AED' : '#E0D9FF'}`,
+                background: selected ? '#F5F0FF' : '#fff',
+                borderRadius: 10, padding: '10px 14px',
+                cursor: (voting || isClosed) ? 'default' : 'pointer',
+                overflow: 'hidden', transition: 'border-color 0.15s',
+              }}>
+              {showResults && (
+                <div style={{
+                  position: 'absolute', inset: 0, width: `${pct}%`,
+                  background: selected
+                    ? 'linear-gradient(90deg, #DDD6FE 0%, #C4B5FD 100%)'
+                    : 'linear-gradient(90deg, #F3F4F6 0%, #E9E5F5 100%)',
+                  transition: 'width 0.55s cubic-bezier(0.4,0,0.2,1)',
+                }} />
               )}
               <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: selected ? 800 : 600, color: '#1F2937' }}>{selected ? '✓ ' : ''}{opt.text}</span>
-                {(myVoteIdx >= 0 || isClosed) && <span style={{ fontSize: 12, fontWeight: 800, color: '#5B21B6', flexShrink: 0 }}>{pct}%</span>}
+                <span style={{ fontSize: 13, fontWeight: selected ? 800 : 600, color: selected ? '#5B21B6' : '#1F2937', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {selected && <span style={{ fontSize: 13, color: '#7C3AED' }}>✓</span>}
+                  {opt.text}
+                </span>
+                {showResults && (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: selected ? '#5B21B6' : '#6B7280', flexShrink: 0, minWidth: 32, textAlign: 'right' }}>{pct}%</span>
+                )}
               </div>
             </button>
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
-        {totalVotes} vote{totalVotes !== 1 ? 's' : ''} · {isClosed ? 'Poll closed' : poll.expiresAt ? `Closes ${new Date(poll.expiresAt).toLocaleDateString()}` : 'Open'}
+      {/* Footer */}
+      <div style={{ padding: '8px 14px 12px', background: '#FAFAFF', borderTop: '1px solid #EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>
+          🗳 {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: isClosed ? '#DC2626' : '#059669' }}>
+          {isClosed ? '🔒 Poll closed' : poll.expiresAt ? `Closes ${new Date(poll.expiresAt).toLocaleDateString()}` : '✓ Open to vote'}
+        </span>
       </div>
     </div>
   );
@@ -795,11 +862,12 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
   );
 
   const hasBanner = !!(post.postType && post.postType !== 'update' && POST_TYPE_ACCENT[post.postType]);
+  const accentColor = hasBanner ? POST_TYPE_ACCENT[post.postType] : null;
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 16px' : '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', position: 'relative' }
-      : { ...card, padding: hasBanner ? '0 20px 18px' : '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+      ? { ...card, padding: hasBanner ? '0 14px 16px' : '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', position: 'relative', background: accentColor ? accentColor + '07' : 'var(--app-card-bg, #fff)' }
+      : { ...card, padding: hasBanner ? '0 20px 18px' : '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : accentColor ? `1px solid ${accentColor}30` : '1px solid #F1F5F9', position: 'relative', background: accentColor ? accentColor + '05' : 'var(--app-card-bg, #fff)' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -838,20 +906,24 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-        <Avatar name={post.authorName} src={post.authorAvatar} size={40} role={post.authorRole} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12, marginTop: hasBanner ? 14 : 0 }}>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar name={post.authorName} src={post.authorAvatar} size={44} role={post.authorRole} />
+          {isVerified && (
+            <span title="Verified member" style={{ position: 'absolute', bottom: -1, right: -1, width: 16, height: 16, borderRadius: '50%', background: '#059669', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#fff', fontWeight: 800, lineHeight: 1 }}>✓</span>
+          )}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{post.authorName || 'Member'}</span>
-                {isVerified  && <span title="Verified member" style={{ fontSize: 11, color: '#059669', flexShrink: 0 }}>✓</span>}
                 {isConnected && <ConnectionDegree />}
                 <RoleBadge role={post.authorRole} />
-                {post.postType && post.postType !== 'update' && <PostTypeBadge type={post.postType} />}
               </div>
-              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
-                {post.authorTitle && <span>{post.authorTitle} · </span>}
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, lineHeight: 1.4 }}>
+                {post.authorTitle && <span style={{ color: '#6B7280', fontWeight: 500 }}>{post.authorTitle}</span>}
+                {post.authorTitle && <span> · </span>}
                 {timeAgo(post.createdAt)}
               </div>
             </div>
@@ -865,7 +937,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
       {/* Content */}
       <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 2 }}>
-        <RichContent text={post.content} onHashtagClick={onHashtagClick} />
+        <TruncatedContent text={post.content} onHashtagClick={onHashtagClick} />
       </div>
 
       <ImageGrid images={post.images} />
@@ -881,31 +953,42 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
       )}
 
       {post.postType === 'hiring' && post.jobDetails?.title && (
-        <div style={{ border: '1px solid #BBF7D0', background: '#F0FDF4', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💼 Job Opening</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0A1628' }}>{post.jobDetails.title}</div>
-          {(post.jobDetails.company || post.jobDetails.location) && (
-            <div style={{ fontSize: 12.5, color: '#374151', marginTop: 2 }}>
-              {post.jobDetails.company}{post.jobDetails.company && post.jobDetails.location ? ' · ' : ''}{post.jobDetails.location}
+        <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #BBF7D0', marginTop: 10, marginBottom: 12 }}>
+          <div style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, backdropFilter: 'blur(4px)' }}>💼</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Open Position</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.jobDetails.title}</div>
+              {(post.jobDetails.company || post.jobDetails.location) && (
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                  {post.jobDetails.company}{post.jobDetails.company && post.jobDetails.location ? ' · 📍 ' : ''}{post.jobDetails.location}
+                </div>
+              )}
             </div>
-          )}
+            <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '4px 10px', letterSpacing: '0.04em', flexShrink: 0, backdropFilter: 'blur(4px)' }}>HIRING</span>
+          </div>
           {post.jobDetails.link && (
-            <a href={post.jobDetails.link} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'inline-block', marginTop: 8, padding: '6px 16px', borderRadius: 8, background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-              Apply →
-            </a>
+            <div style={{ padding: '10px 16px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, color: '#065F46', fontWeight: 500 }}>Interested? Apply directly →</span>
+              <a href={post.jobDetails.link} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, background: '#059669', color: '#fff', fontSize: 12.5, fontWeight: 800, textDecoration: 'none', boxShadow: '0 2px 10px rgba(5,150,105,0.28)', flexShrink: 0 }}>
+                Apply Now →
+              </a>
+            </div>
           )}
         </div>
       )}
 
       {post.postType === 'resource' && post.resourceLink && (
         <a href={post.resourceLink} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #A5F3FC', background: '#ECFEFF', borderRadius: 12, padding: '12px 14px', marginBottom: 10, textDecoration: 'none' }}>
-          <span style={{ fontSize: 20 }}>📎</span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resource Link</div>
+          style={{ display: 'flex', alignItems: 'stretch', borderRadius: 14, overflow: 'hidden', border: '1px solid #A5F3FC', marginTop: 10, marginBottom: 12, textDecoration: 'none' }}>
+          <div style={{ background: 'linear-gradient(160deg, #22D3EE 0%, #0891B2 100%)', width: 54, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📎</div>
+          <div style={{ flex: 1, padding: '12px 14px', background: '#ECFEFF', minWidth: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#0891B2', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>📚 Resource Link</div>
             <div style={{ fontSize: 13, color: '#0E7490', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.resourceLink}</div>
+            <div style={{ fontSize: 11, color: '#67C3D4', marginTop: 2 }}>Click to open →</div>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', background: '#ECFEFF', flexShrink: 0, fontSize: 18, color: '#0891B2' }}>↗</div>
         </a>
       )}
 
