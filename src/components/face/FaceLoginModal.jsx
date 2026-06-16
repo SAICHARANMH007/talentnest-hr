@@ -85,6 +85,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const [modelReady, setModelReady]   = useState(false);
   const [modelLoading, setMLoading]   = useState(false);
   const [faceapi, setFaceapi]         = useState(null);
+  const [streamReady, setStreamReady] = useState(false);
   const [liveResult, setLiveResult]   = useState(null);
   const [liveness, setLiveness]       = useState(false); // blink confirmed
   const [eyesClosed, setEyesClosed]   = useState(false);
@@ -102,16 +103,17 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const rafRef    = useRef(null);
   const earRef    = useRef({ belowCount:0 }); // track consecutive closed frames
 
-  // Attach stream to video after step='camera' renders the video element.
-  // Stream is acquired directly in proceedToCamera / retryCamera (user gesture context).
+  // Attach stream to video after streamReady is set (stream already obtained via button click)
   useEffect(() => {
-    if (step !== 'camera' || !streamRef.current) return;
+    if (!streamReady || !streamRef.current) return;
     const vid = videoRef.current;
     if (!vid) return;
     vid.srcObject = streamRef.current;
     if (vid.readyState >= 1) vid.play().catch(() => {});
-    return () => stopCamera();
-  }, [step]);
+  }, [streamReady]);
+
+  // Cleanup on unmount
+  useEffect(() => () => stopCamera(), []);
 
   // ── Load face-api models when camera starts ─────────────────────────────────
   useEffect(() => {
@@ -125,7 +127,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
   // ── Live detection + EAR blink tracking loop ────────────────────────────────
   useEffect(() => {
-    if (step !== 'camera' || !modelReady || !faceapi || !videoRef.current) return;
+    if (step !== 'camera' || !modelReady || !faceapi || !videoRef.current || !streamReady) return;
     let active = true;
 
     const loop = async () => {
@@ -160,7 +162,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [step, modelReady, faceapi]);
+  }, [step, modelReady, faceapi, streamReady]);
 
   const stopCamera = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -168,8 +170,8 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     streamRef.current = null;
   };
 
-  // ── Email validation + camera start (must happen in user gesture context) ────
-  const proceedToCamera = async () => {
+  // ── Email validation → move to camera step (no getUserMedia here) ────────────
+  const proceedToCamera = () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) {
       setEmailError('Enter a valid email address.');
@@ -177,16 +179,24 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
     setEmailError('');
     setEmail(trimmed);
-    // Get camera HERE before rendering camera step — keeps us in user gesture context
+    setStep('camera');
+  };
+
+  // ── Open camera — called DIRECTLY from button onClick, zero async before getUserMedia ──
+  const openCamera = async () => {
+    setCamError('');
     try {
       const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } }
       });
       streamRef.current = s;
-    } catch {
-      setCamError('Camera access denied. Please allow camera and try again.');
+      setStreamReady(true);
+      // Also attach immediately in case the useEffect already ran (first render race)
+      const vid = videoRef.current;
+      if (vid) { vid.srcObject = s; if (vid.readyState >= 1) vid.play().catch(() => {}); }
+    } catch (e) {
+      setCamError(`Camera error (${e?.name || 'unknown'}): ${e?.message || 'Check permissions and try again.'}`);
     }
-    setStep('camera');
   };
 
   // ── Capture one frame ────────────────────────────────────────────────────────
@@ -225,24 +235,14 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
   };
 
-  const retryCamera = async () => {
+  const retryCamera = () => {
     stopCamera();
     streamRef.current = null;
+    setStreamReady(false);
     setServerError(''); setCamError('');
     setFrames([]); setDescs([]); setPromptIdx(0);
     setLiveness(false); earRef.current.belowCount = 0;
     setLiveResult(null);
-    // Re-acquire camera in user gesture context
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
-      streamRef.current = s;
-      const vid = videoRef.current;
-      if (vid) { vid.srcObject = s; if (vid.readyState >= 1) vid.play().catch(() => {}); }
-    } catch {
-      setCamError('Camera access denied. Please allow camera and try again.');
-    }
     setStep('camera');
   };
 
@@ -293,9 +293,27 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
         {/* ── Step 2: Camera ────────────────────────────────────────────────── */}
         {step === 'camera' && (
           <>
-            {camError ? (
-              <div style={{ color:'#ef4444', fontSize:13, textAlign:'center' }}>{camError}</div>
+            {!streamReady ? (
+              /* Camera not yet open — show explicit button so getUserMedia runs on direct tap */
+              <div style={{ display:'flex', flexDirection:'column', gap:14, textAlign:'center' }}>
+                {camError ? (
+                  <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)',
+                    borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:12, lineHeight:1.5 }}>
+                    ⚠️ {camError}
+                  </div>
+                ) : (
+                  <div style={{ color:'rgba(255,255,255,0.5)', fontSize:13, lineHeight:1.6 }}>
+                    Tap the button below to open your camera.<br />
+                    Allow camera access when prompted.
+                  </div>
+                )}
+                <button style={btnP} onClick={openCamera}>
+                  📸 {camError ? 'Try Again' : 'Open Camera'}
+                </button>
+                <button style={btnS} onClick={onClose}>Cancel</button>
+              </div>
             ) : (
+              /* Camera stream ready — show video + detection UI */
               <>
                 {/* Liveness banner */}
                 {!liveness ? (
@@ -318,6 +336,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                   border: qualityWarn ? '2px solid #ef4444' : '2px solid rgba(1,118,211,0.4)' }}>
                   <video ref={videoRef} autoPlay playsInline muted
                     onLoadedMetadata={e => e.target.play().catch(() => {})}
+                    onPlaying={() => {}}
                     style={{ width:'100%', display:'block', transform:'scaleX(-1)', borderRadius:12 }} />
                   <canvas ref={canvasRef}
                     style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%',
