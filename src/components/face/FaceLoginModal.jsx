@@ -132,7 +132,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     const loop = async () => {
       if (!active) return;
       const vid = videoRef.current;
-      if (vid && vid.videoWidth > 0) {
+      // readyState >= 2 (HAVE_CURRENT_DATA) guards against Chrome's race where
+      // videoWidth > 0 but the first decoded frame isn't available yet
+      if (vid && vid.videoWidth > 0 && vid.readyState >= 2) {
         try {
           const r = await detectFaceRaw(faceapi, vid);
           if (!active) return;

@@ -298,7 +298,9 @@ function FaceCamera({ stream, onDone, onCancel }) {
     const loop = async () => {
       if (!active) return;
       const vid = videoRef.current;
-      if (vid && (vid.readyState >= 2 || vid.videoWidth > 0)) {
+      // readyState >= 2 AND videoWidth > 0 prevents Chrome race where metadata is
+      // loaded but the first decodable frame isn't available yet
+      if (vid && vid.videoWidth > 0 && vid.readyState >= 2) {
         try {
           const r = await detectFaceRaw(faceapi, vid);
           if (active) {

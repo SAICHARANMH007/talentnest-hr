@@ -67,46 +67,74 @@ export async function loadFaceApi(onProgress) {
 
 // ── Cross-browser camera helper ───────────────────────────────────────────────
 /**
- * Open the front camera with a robust fallback constraint chain.
- * Works on Android Chrome, iOS Safari, desktop Chrome/Firefox/Edge.
+ * Open the front camera with a robust fallback constraint chain + legacy polyfill.
+ * Works on: Android Chrome/Samsung Internet/Tecno WebView, iOS Safari, desktop browsers.
+ * Also handles very old Android (pre-Chrome 47) that only have webkitGetUserMedia.
  * Returns MediaStream or throws a user-friendly Error.
  */
 export async function openFrontCamera() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('Camera not available. Please open this page over HTTPS in Chrome or Safari.');
-  }
-  const constraintChain = [
-    // Ideal: front-facing, 640×480 — works on most modern phones
-    { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
-    // Fallback 1: front-facing without resolution hint (Android may need this)
-    { video: { facingMode: 'user' } },
-    // Fallback 2: any front-facing (ideal, not strict)
-    { video: { facingMode: { ideal: 'user' } } },
-    // Fallback 3: any camera (last resort — may open rear camera)
-    { video: true },
-  ];
+  // ── Modern API (Chrome 47+, Firefox 36+, Safari 11+, most Android 2016+) ──
+  if (navigator.mediaDevices?.getUserMedia) {
+    const constraintChain = [
+      // Ideal: front-facing, 640×480 — works on most modern phones
+      { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
+      // Fallback 1: front-facing without resolution hint (Android may need this)
+      { video: { facingMode: 'user' } },
+      // Fallback 2: any front-facing (ideal, not strict)
+      { video: { facingMode: { ideal: 'user' } } },
+      // Fallback 3: any camera (last resort — may open rear camera)
+      { video: true },
+    ];
 
-  let lastErr;
-  for (const constraints of constraintChain) {
+    let lastErr;
+    for (const constraints of constraintChain) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        lastErr = err;
+        // Permission / device errors are terminal — don't retry
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+        }
+        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          throw new Error('No camera found on this device.');
+        }
+        if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          throw new Error('Camera is being used by another app. Please close it and try again.');
+        }
+        // OverconstrainedError or anything else → try next constraint set
+      }
+    }
+    throw new Error(lastErr?.message || 'Could not open camera. Please check your browser settings.');
+  }
+
+  // ── Legacy API polyfill (very old Android WebViews, Tecno, Firefox < 36) ──
+  // These browsers expose getUserMedia directly on navigator rather than mediaDevices.
+  const legacyGUM = (
+    navigator.getUserMedia ||
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia ||
+    navigator.msGetUserMedia
+  );
+  if (legacyGUM) {
+    const legacyGet = (constraints) =>
+      new Promise((resolve, reject) => legacyGUM.call(navigator, constraints, resolve, reject));
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      return stream;
-    } catch (err) {
-      lastErr = err;
-      // Only retry if the error is about constraints; permission/device errors are terminal
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+      return await legacyGet({ video: { facingMode: 'user' } });
+    } catch (_) {
+      // front-camera constraint not supported → fall back to any camera
+      try {
+        return await legacyGet({ video: true });
+      } catch (err) {
+        if (err.name === 'PermissionDeniedError' || err.name === 'NotAllowedError') {
+          throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+        }
+        throw new Error(err.message || 'Could not open camera on this device.');
       }
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        throw new Error('No camera found on this device.');
-      }
-      if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        throw new Error('Camera is being used by another app. Please close it and try again.');
-      }
-      // OverconstrainedError or anything else → try next constraint set
     }
   }
-  throw new Error(lastErr?.message || 'Could not open camera. Please check your browser settings.');
+
+  throw new Error('Camera not available. Please open this page over HTTPS in Chrome or Safari.');
 }
 
 // ── Low-light enhancement ─────────────────────────────────────────────────────
@@ -268,16 +296,44 @@ export function drawFaceMesh(canvas, videoEl, landmarks) {
 
 /**
  * Draw an enhanced face mesh with colour-coded zones and cross-connection triangulation.
- * Creates a visually rich mesh that shows the density of facial data points.
+ *
+ * Key fixes vs. the naive version:
+ *  1. Canvas internal size = display CSS pixels × devicePixelRatio → sharp on retina/AMOLED
+ *  2. Landmark coordinates (video-pixel space) are scaled to display CSS pixel space,
+ *     so the mesh fills 100% of the visible canvas regardless of phone resolution
+ *  3. Works correctly even when video stream resolution ≠ CSS display size (e.g. 1080p
+ *     stream displayed in a 360px container on Tecno/Samsung)
  */
 export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
   const ctx = canvas.getContext('2d');
-  canvas.width  = videoEl.videoWidth  || videoEl.clientWidth;
-  canvas.height = videoEl.videoHeight || videoEl.clientHeight;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!landmarks?.positions) return;
 
-  const pts = landmarks.positions;
+  // ── Display dimensions (CSS pixels = what user actually sees) ────────────────
+  const dpr      = window.devicePixelRatio || 1;
+  const displayW = canvas.offsetWidth  || canvas.clientWidth  || videoEl.offsetWidth  || videoEl.clientWidth  || 640;
+  const displayH = canvas.offsetHeight || canvas.clientHeight || videoEl.offsetHeight || videoEl.clientHeight || 480;
+
+  // Physical canvas pixel size = CSS size × DPR for crisp rendering on high-DPI screens
+  // Setting canvas.width also clears the canvas and resets the 2D context transform.
+  canvas.width  = Math.round(displayW * dpr);
+  canvas.height = Math.round(displayH * dpr);
+
+  // Scale the drawing context so all coordinates below are in CSS pixels (1 unit = 1 visible px)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (!landmarks?.positions) return;
+  const positions = landmarks.positions;
+
+  // ── face-api returns landmark positions in video-pixel space ─────────────────
+  const videoW = videoEl.videoWidth  || videoEl.clientWidth  || displayW;
+  const videoH = videoEl.videoHeight || videoEl.clientHeight || displayH;
+
+  // Scale factors: convert video-pixel coordinate → CSS display pixel
+  const sx = displayW / videoW;
+  const sy = displayH / videoH;
+
+  // Helpers — map landmark index to display CSS pixel coordinates
+  const px = (i) => positions[i].x * sx;
+  const py = (i) => positions[i].y * sy;
 
   // ── 1. Dense cross-connections (triangulation mesh) ──
   const meshLines = [
@@ -319,11 +375,11 @@ export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
 
   ctx.lineWidth = 0.7;
   meshLines.forEach(([a, b]) => {
-    if (!pts[a] || !pts[b]) return;
+    if (!positions[a] || !positions[b]) return;
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(0,210,120,0.2)';
-    ctx.moveTo(pts[a].x, pts[a].y);
-    ctx.lineTo(pts[b].x, pts[b].y);
+    ctx.moveTo(px(a), py(a));
+    ctx.lineTo(px(b), py(b));
     ctx.stroke();
   });
 
@@ -344,7 +400,7 @@ export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
   ctx.strokeStyle = 'rgba(0,220,130,0.5)';
   contours.forEach(({ path, closed }) => {
     ctx.beginPath();
-    path.forEach((i, n) => n === 0 ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y));
+    path.forEach((i, n) => (n === 0 ? ctx.moveTo(px(i), py(i)) : ctx.lineTo(px(i), py(i))));
     if (closed) ctx.closePath();
     ctx.stroke();
   });
@@ -361,9 +417,9 @@ export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
   zones.forEach(({ idxs, color, r }) => {
     ctx.fillStyle = color;
     idxs.forEach(i => {
-      if (!pts[i]) return;
+      if (!positions[i]) return;
       ctx.beginPath();
-      ctx.arc(pts[i].x, pts[i].y, r, 0, Math.PI * 2);
+      ctx.arc(px(i), py(i), r, 0, Math.PI * 2);
       ctx.fill();
     });
   });
