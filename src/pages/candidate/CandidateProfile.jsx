@@ -444,8 +444,9 @@ export default function CandidateProfile({ user }) {
       const syncedTitle   = form.title   || (currentJob?.title   || '');
       const syncedCompany = form.currentCompany || (currentJob?.company || '');
 
-      // Auto-sync: pull college from the latest education entry if field is blank
-      const latestEdu = eduList[0] || null;
+      // Auto-sync: pull college from the most recent education entry (by year) if field is blank
+      const sortedEdu = [...eduList].sort((a, b) => (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0));
+      const latestEdu = sortedEdu[0] || null;
       const syncedCollege = form.college || (latestEdu?.institution || '');
 
       const profilePayload = {

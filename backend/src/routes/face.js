@@ -286,15 +286,13 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
 // DELETE /api/face/enroll — remove face data (GDPR delete)
 router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
   const uid = String(req.user.id);
-  const unset = {
-    faceEnrolled: false, faceDescriptor: 1, faceLandmarks: 1,
-    faceEnrollmentPhotos: 1, faceEnrolledAt: 1,
-  };
-  await User.findByIdAndUpdate(uid, { $unset: unset, $set: { faceEnrolled: false } });
+  // $unset removes face data fields; $set marks enrolled=false (can't $unset + $set same field)
+  const unsetFields = { faceDescriptor: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
+  await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: { faceEnrolled: false } });
   if (req.user.email && req.user.tenantId) {
     await Candidate.updateMany(
       { email: req.user.email, tenantId: req.user.tenantId, deletedAt: null },
-      { $unset: unset, $set: { faceEnrolled: false } }
+      { $unset: unsetFields, $set: { faceEnrolled: false } }
     );
   }
   logger.audit('Face data deleted', uid, req.user.tenantId, {});
@@ -486,14 +484,18 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
 
   if (!matched) {
     if (user) {
-      const attempts = (user.failedLoginAttempts || 0) + 1;
-      const updateData = { failedLoginAttempts: attempts };
-      if (attempts >= 5) {
-        updateData.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-        updateData.failedLoginAttempts = 0;
+      // Atomic increment to avoid race conditions on concurrent login attempts
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $inc: { failedLoginAttempts: 1 } },
+        { new: true }
+      ).select('failedLoginAttempts').lean();
+      if ((updatedUser?.failedLoginAttempts || 0) >= 5) {
+        await User.findByIdAndUpdate(user._id, {
+          $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000), failedLoginAttempts: 0 },
+        });
         logger.warn('Face login: account locked after 5 failures', { email: emailLower, ip: req.ip });
       }
-      await User.findByIdAndUpdate(user._id, { $set: updateData });
     }
     logger.info('Face login: no match', {
       email   : emailLower,

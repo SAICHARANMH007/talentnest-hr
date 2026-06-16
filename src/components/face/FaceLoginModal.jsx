@@ -258,7 +258,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
   const verifyOtp = async () => {
     const code = otp.trim();
-    if (!code || code.length < 4) { setOtpError('Enter the 6-digit code from your email.'); return; }
+    if (!code || code.length < 6) { setOtpError('Enter the 6-digit code from your email.'); return; }
     setOtpSubmitting(true);
     setOtpError('');
     try {
