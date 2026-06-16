@@ -13,6 +13,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import {
   loadFaceApi,
+  openFrontCamera,
   detectFaceRaw,
   drawEnhancedFaceMesh,
   captureEnhancedFrame,
@@ -69,6 +70,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   // ── Camera state ─────────────────────────────────────────────────────────────
   const [modelReady, setModelReady]   = useState(false);
   const [modelLoading, setMLoading]   = useState(false);
+  const [modelPct, setModelPct]       = useState(0);
   const [faceapi, setFaceapi]         = useState(null);
   const [streamReady, setStreamReady] = useState(false);
   const [liveResult, setLiveResult]   = useState(null);
@@ -112,15 +114,15 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   // ── Cleanup on unmount ───────────────────────────────────────────────────────
   useEffect(() => () => stopAll(), []);
 
-  // ── Load models when camera step starts ─────────────────────────────────────
+  // ── Pre-load AI models as soon as the modal opens (email step) ─────────────
+  // This hides the 6-second download behind the time user takes to type email.
   useEffect(() => {
-    if (step !== 'camera') return;
-    setMLoading(true);
-    loadFaceApi()
+    setMLoading(true); setModelPct(0);
+    loadFaceApi(pct => setModelPct(pct))
       .then(fa => { setFaceapi(fa); faceapiRef.current = fa; setModelReady(true); })
-      .catch(() => setCamError('Failed to load AI models. Check your internet connection.'))
+      .catch(() => { /* model load failure shown only when user tries to proceed */ })
       .finally(() => setMLoading(false));
-  }, [step]);
+  }, []); // run once on mount
 
   // ── RAF detection loop ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -287,39 +289,32 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     streamRef.current = null;
   };
 
-  const openCamera = () => {
+  const openCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setCamError('Camera not available. Make sure the page is open over HTTPS.');
       return;
     }
+    if (!modelReady) {
+      setCamError('AI models are still loading. Please wait a moment and try again.');
+      return;
+    }
     setCamError(''); setOpeningCamera(true);
-
-    const attach = s => {
-      streamRef.current = s;
+    try {
+      const stream = await openFrontCamera(); // robust fallback chain from faceUtils
+      streamRef.current = stream;
       setStreamReady(true);
+      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+    } catch (err) {
+      setCamError(err.message || 'Camera error. Try reloading the page.');
+    } finally {
       setOpeningCamera(false);
-      if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play().catch(() => {}); }
-    };
-    const showErr = err => {
-      setOpeningCamera(false);
-      const n = err?.name || '';
-      setCamError(
-        n === 'NotAllowedError' || n === 'PermissionDeniedError'
-          ? 'Camera blocked. Tap the 🔒 in the address bar → Camera → Allow → reload.'
-          : n === 'NotFoundError'
-            ? 'No camera found on this device.'
-            : 'Camera error. Try reloading the page.'
-      );
-    };
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } } })
-      .then(attach)
-      .catch(() => navigator.mediaDevices.getUserMedia({ video: true }).then(attach).catch(showErr));
+    }
   };
 
   const proceedToCamera = () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) { setEmailError('Enter a valid email address.'); return; }
+    if (!modelReady) { setEmailError('AI models are still loading. Please wait a moment.'); return; }
     setEmailError('');
     setEmail(trimmed);
     setStep('camera');
@@ -376,7 +371,24 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
               ✅ Face login uses AI to verify your identity with enhanced mesh detection.<br />
               ✅ If face recognition fails, a backup OTP will be sent to your email.
             </div>
-            <button style={btnP} onClick={proceedToCamera}>Continue →</button>
+            {/* AI model pre-load progress shown while user types email */}
+            {!modelReady && (
+              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>
+                    <Spin /> Loading AI models… ({modelPct}%)
+                  </span>
+                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>one-time</span>
+                </div>
+                <div style={{ height:3, background:'rgba(255,255,255,0.08)', borderRadius:3 }}>
+                  <div style={{ height:'100%', borderRadius:3, width:`${modelPct}%`,
+                    background:'#0176D3', transition:'width 0.4s ease' }} />
+                </div>
+              </div>
+            )}
+            <button style={{ ...btnP, opacity: (!modelReady && modelPct < 100) ? 0.6 : 1 }} onClick={proceedToCamera}>
+              {modelReady ? 'Continue →' : `Loading… ${modelPct}%`}
+            </button>
             <button style={btnS} onClick={onClose}>Cancel</button>
           </>
         )}

@@ -11,30 +11,99 @@
  *  • Multi-frame descriptor averaging for higher accuracy
  */
 
-const MODEL_CDN = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+// CDN list tried in order — first success wins (handles CDN outages / slow regions)
+const MODEL_CDNS = [
+  'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model',
+  'https://unpkg.com/@vladmandic/face-api/model',
+];
 
 // ── Singleton loader ──────────────────────────────────────────────────────────
 let _faceapi = null;
 let _modelsReady = false;
 let _loadPromise = null;
 
-export async function loadFaceApi() {
-  if (_faceapi && _modelsReady) return _faceapi;
+// Try loading a model from each CDN in order until one succeeds
+async function loadModelWithFallback(net, name) {
+  for (let i = 0; i < MODEL_CDNS.length; i++) {
+    try {
+      await net.loadFromUri(MODEL_CDNS[i]);
+      return;
+    } catch (e) {
+      if (i === MODEL_CDNS.length - 1) throw new Error(`Failed to load ${name} model from all CDNs.`);
+    }
+  }
+}
+
+/**
+ * Load face-api.js and AI models.
+ * Models used (total ~6.5 MB vs old ~12 MB):
+ *   • tinyFaceDetector      190 KB  — fast face detection (replaces ssdMobilenetv1 5.4 MB)
+ *   • faceLandmark68TinyNet  80 KB  — 68-point landmarks (replaces full 350 KB net)
+ *   • faceRecognitionNet    6.2 MB  — 128-d recognition descriptor (required, unchanged)
+ *
+ * onProgress(pct: 0-100) called as each model finishes.
+ */
+export async function loadFaceApi(onProgress) {
+  if (_faceapi && _modelsReady) { onProgress?.(100); return _faceapi; }
   if (_loadPromise) return _loadPromise; // deduplicate concurrent calls
   _loadPromise = (async () => {
     if (!_faceapi) _faceapi = await import('@vladmandic/face-api');
     if (!_modelsReady) {
-      await Promise.all([
-        _faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_CDN),
-        _faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_CDN),
-        _faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_CDN),
-      ]);
+      // Load sequentially so we can report progress; tinyFaceDetector first (smallest)
+      onProgress?.(5);
+      await loadModelWithFallback(_faceapi.nets.tinyFaceDetector,      'tinyFaceDetector');
+      onProgress?.(15);
+      await loadModelWithFallback(_faceapi.nets.faceLandmark68TinyNet,  'faceLandmark68Tiny');
+      onProgress?.(25);
+      await loadModelWithFallback(_faceapi.nets.faceRecognitionNet,     'faceRecognition');
+      onProgress?.(100);
       _modelsReady = true;
     }
     _loadPromise = null;
     return _faceapi;
   })();
   return _loadPromise;
+}
+
+// ── Cross-browser camera helper ───────────────────────────────────────────────
+/**
+ * Open the front camera with a robust fallback constraint chain.
+ * Works on Android Chrome, iOS Safari, desktop Chrome/Firefox/Edge.
+ * Returns MediaStream or throws a user-friendly Error.
+ */
+export async function openFrontCamera() {
+  const constraintChain = [
+    // Ideal: front-facing, 640×480 — works on most modern phones
+    { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
+    // Fallback 1: front-facing without resolution hint (Android may need this)
+    { video: { facingMode: 'user' } },
+    // Fallback 2: any front-facing (ideal, not strict)
+    { video: { facingMode: { ideal: 'user' } } },
+    // Fallback 3: any camera (last resort — may open rear camera)
+    { video: true },
+  ];
+
+  let lastErr;
+  for (const constraints of constraintChain) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      return stream;
+    } catch (err) {
+      lastErr = err;
+      // Only retry if the error is about constraints; permission/device errors are terminal
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+      }
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        throw new Error('No camera found on this device.');
+      }
+      if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        throw new Error('Camera is being used by another app. Please close it and try again.');
+      }
+      // OverconstrainedError or anything else → try next constraint set
+    }
+  }
+  throw new Error(lastErr?.message || 'Could not open camera. Please check your browser settings.');
 }
 
 // ── Low-light enhancement ─────────────────────────────────────────────────────
@@ -111,16 +180,16 @@ export function captureEnhancedFrame(videoEl, quality = 0.92) {
 export async function detectFaceEnhanced(faceapi, videoEl) {
   const canvas = enhanceFrameForLowLight(videoEl);
   return faceapi
-    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
-    .withFaceLandmarks()
+    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }))
+    .withFaceLandmarks(true)   // true = use tiny landmark net
     .withFaceDescriptor();
 }
 
 /** Detect on raw video — faster, used during live overlay */
 export async function detectFaceRaw(faceapi, videoEl) {
   return faceapi
-    .detectSingleFace(videoEl, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
-    .withFaceLandmarks()
+    .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 }))
+    .withFaceLandmarks(true)   // true = use tiny landmark net
     .withFaceDescriptor();
 }
 

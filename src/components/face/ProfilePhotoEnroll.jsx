@@ -15,6 +15,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
 import {
   loadFaceApi,
+  openFrontCamera,
   detectFaceRaw,
   drawFaceMesh,
   captureEnhancedFrame,
@@ -281,8 +282,9 @@ function FaceCamera({ stream, onDone, onCancel }) {
   // ── Load face models ─────────────────────────────────────────────────────────
   useEffect(() => {
     setMLoading(true);
-    flash('Loading AI face models (~6 MB, one-time)…', true);
-    loadFaceApi()
+    let pct = 0;
+    flash(`Loading AI models… ${pct}%`, true);
+    loadFaceApi(p => { pct = p; flash(`Loading AI models… ${p}%`, true); })
       .then(fa => { setFaceapi(fa); setModelReady(true); setToast({ msg:'', ok:true }); })
       .catch(() => flash('Failed to load face models. Check your connection and reload.', false))
       .finally(() => setMLoading(false));
@@ -589,33 +591,18 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 5000); };
 
-  const handleStartCamera = () => {
+  const handleStartCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       flash('Camera not available. Open this page over https:// in Chrome or Safari.', false);
       return;
     }
-
-    const openWith = constraints =>
-      navigator.mediaDevices.getUserMedia(constraints)
-        .then(s => { setPendingStream(s); setShowCamera(true); });
-
-    const onFail = err => {
-      const n = err?.name || 'UnknownError';
-      flash(
-        n === 'NotAllowedError' || n === 'PermissionDeniedError'
-          ? `Camera blocked [${n}]. Tap the 🔒 icon → Camera → Allow → reload the page.`
-          : n === 'NotFoundError' || n === 'DevicesNotFoundError'
-            ? `No camera found [${n}].`
-            : n === 'NotReadableError' || n === 'TrackStartError'
-              ? `Camera in use by another app [${n}]. Close it and retry.`
-              : `Camera error [${n}]: ${err?.message || 'Please try again.'}`,
-        false
-      );
-    };
-
-    openWith({ video: { facingMode: { ideal: 'user' } } })
-      .catch(() => openWith({ video: true }))
-      .catch(onFail);
+    try {
+      const stream = await openFrontCamera(); // robust fallback chain from faceUtils
+      setPendingStream(stream);
+      setShowCamera(true);
+    } catch (err) {
+      flash(err.message || 'Camera error. Please try again.', false);
+    }
   };
 
   const enrolled   = !!frsStatus?.enrolled;
