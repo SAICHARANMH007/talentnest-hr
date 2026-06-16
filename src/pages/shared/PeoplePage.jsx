@@ -305,7 +305,15 @@ function ConnectionButton({ person, onAction, loading }) {
 }
 
 // ── Person Card ────────────────────────────────────────────────────────────────
-function PersonCard({ person, onAction, loading, onCardClick }) {
+function PersonCard({ person, onAction, loading, onCardClick, searchQuery }) {
+  // Highlight which field matched when searching by email or phone
+  const q = searchQuery?.toLowerCase().trim() || '';
+  const nameMatch  = q && person.name  && person.name.toLowerCase().includes(q);
+  const emailMatch = q && person.email && !nameMatch && person.email.toLowerCase().includes(q);
+  const rawPhone   = String(person.phone || '').replace(/\D/g, '');
+  const rawQ       = q.replace(/\D/g, '');
+  const phoneMatch = q && rawPhone && rawQ.length >= 4 && rawPhone.includes(rawQ) && !nameMatch;
+
   return (
     <div style={{ ...card, padding: '14px 16px', borderRadius: 14, cursor: onCardClick ? 'pointer' : 'default' }}
       onClick={onCardClick}>
@@ -317,6 +325,13 @@ function PersonCard({ person, onAction, loading, onCardClick }) {
             <RoleBadge role={person.role} />
             {person.department && <span style={{ fontSize: 11, color: '#9CA3AF' }}>{person.department}</span>}
           </div>
+          {/* Show matched email or phone so user knows why this result appeared */}
+          {emailMatch && (
+            <div style={{ fontSize: 11, color: '#0176D3', marginTop: 1 }}>✉️ {person.email}</div>
+          )}
+          {phoneMatch && !emailMatch && (
+            <div style={{ fontSize: 11, color: '#0176D3', marginTop: 1 }}>📞 {person.phone}</div>
+          )}
           {person.title && <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.title}</div>}
           {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>📍 {person.location}</div>}
           {!person.location && !person.title && person.summary && (
@@ -623,7 +638,7 @@ export default function PeoplePage({ user }) {
           ref={searchRef}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search people by name or role…"
+          placeholder="Search by name, email or phone number…"
           style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none', background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, box-shadow 0.15s' }}
           onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }}
           onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
@@ -647,6 +662,7 @@ export default function PeoplePage({ user }) {
                 person={person}
                 onAction={handleAction}
                 loading={actionLoading === String(person._id || person.id)}
+                searchQuery={searchQuery}
               />
             ))}
           </div>
