@@ -24,6 +24,35 @@ const tenantGuard = async (req, res, next) => {
     if (req.user?.role === 'super_admin') return next();
 
     const tenantId = req.user?.tenantId;
+
+    // Candidates access cross-tenant data via email-based lookups — their
+    // applications and profile are scoped by email, not by tenantId. Allow
+    // candidates through regardless of tenant state (null, not found, suspended,
+    // expired) so job seekers are never locked out of their own data.
+    if (req.user?.role === 'candidate') {
+      req.user.childTenantIds = [];
+      // Attempt to attach the tenant record for downstream use, but never block.
+      if (tenantId) {
+        try {
+          const cached = identityCache.get(tenantId.toString());
+          let org = cached && (Date.now() - cached.at < ID_CACHE_TTL) ? cached.data : null;
+          if (!org) {
+            org = await Organization.findById(tenantId).lean()
+              || await Tenant.findById(tenantId).lean();
+            if (org) identityCache.set(tenantId.toString(), { data: org, model: org.subscriptionStatus ? 'tenant' : 'org', at: Date.now() });
+          }
+          req.tenant   = org || null;
+          req.org      = org || null;
+          req.tenantId = tenantId;
+        } catch { /* non-blocking — candidate proceeds anyway */ }
+      } else {
+        req.tenant   = null;
+        req.org      = null;
+        req.tenantId = null;
+      }
+      return next();
+    }
+
     if (!tenantId) {
       return res.status(403).json({
         success: false,

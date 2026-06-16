@@ -246,21 +246,24 @@ export default function CandidateExploreJobs({ user }) {
   });
 
   useEffect(() => {
-    Promise.all([
-      api.getPublicJobs(),
-      api.getMyApplications(),
-    ]).then(([j, apps]) => {
-      setJobs(Array.isArray(j) ? j : (j.data || []));
-      const map = {};
-      const appList = Array.isArray(apps) ? apps : (apps.data || []);
-      appList.forEach(a => {
-        // jobId may be a populated object (from /mine) or a raw ID string
-        const jid = a.job?._id || (typeof a.jobId === 'object' ? a.jobId?._id : a.jobId);
-        if (jid) map[String(jid)] = true;
-      });
-      setApplied(map);
-    }).catch(e => setError(e.message))
+    // Load jobs and applied-status independently so a transient auth error on
+    // /applications/mine never blocks the job listing from displaying.
+    api.getPublicJobs()
+      .then(j => setJobs(Array.isArray(j) ? j : (j?.data || [])))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+
+    api.getMyApplications()
+      .then(apps => {
+        const map = {};
+        const appList = Array.isArray(apps) ? apps : (apps?.data || []);
+        appList.forEach(a => {
+          const jid = a.job?._id || (typeof a.jobId === 'object' ? a.jobId?._id : a.jobId);
+          if (jid) map[String(jid)] = true;
+        });
+        setApplied(map);
+      })
+      .catch(() => {}); // silent — just means "already applied" badges won't show
   }, [user.id]);
 
   const handleApply = async (jobId, providedAnswers) => {
