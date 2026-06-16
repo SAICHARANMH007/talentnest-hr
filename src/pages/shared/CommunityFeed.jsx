@@ -58,22 +58,45 @@ function ConnectionDegree() {
   );
 }
 
-function PostTypeBadge({ type }) {
-  const cfg = {
-    achievement : { label: '🏆 Achievement',   bg: '#FEF3C7', color: '#92400E' },
-    milestone   : { label: '🎯 Milestone',     bg: '#D1FAE5', color: '#065F46' },
-    hiring      : { label: '💼 Hiring',        bg: '#EFF6FF', color: '#1D4ED8' },
-    announcement: { label: '📢 Announcement',  bg: '#FEF2F2', color: '#991B1B' },
-    resource    : { label: '📎 Resource',      bg: '#F5F3FF', color: '#6D28D9' },
-    tip         : { label: '💡 Pro Tip',       bg: '#FFFBEB', color: '#B45309' },
-    feedback    : { label: '⭐ Feedback',       bg: '#F0FDF4', color: '#166534' },
-    question    : { label: '❓ Question',       bg: '#EFF6FF', color: '#1E40AF' },
-    poll        : { label: '🗳️ Poll',          bg: '#F5F3FF', color: '#5B21B6' },
-  }[type];
-  if (!cfg) return null;
+const POST_TYPE_THEME = {
+  hiring:      { icon: '💼', label: 'Job Opening',   color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  tip:         { icon: '💡', label: 'Pro Tip',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  question:    { icon: '❓', label: 'Question',        color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  achievement: { icon: '🏆', label: 'Win',            color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' },
+  feedback:    { icon: '⭐', label: 'Feedback',        color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
+  resource:    { icon: '📎', label: 'Resource',        color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
+  milestone:   { icon: '🎯', label: 'Milestone',      color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  announcement:{ icon: '📢', label: 'Announcement',   color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  poll:        { icon: '🗳️', label: 'Poll',           color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+};
+
+function PostTypeBanner({ type }) {
+  const theme = POST_TYPE_THEME[type];
+  if (!theme) return null;
   return (
-    <span style={{ fontSize: 11, fontWeight: 600, background: cfg.bg, color: cfg.color, borderRadius: 20, padding: '3px 10px' }}>
-      {cfg.label}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: theme.bg,
+      border: `1px solid ${theme.border}`,
+      borderLeft: `4px solid ${theme.color}`,
+      borderRadius: 10,
+      padding: '9px 14px',
+      marginBottom: 12,
+    }}>
+      <span style={{ fontSize: 18, lineHeight: 1 }}>{theme.icon}</span>
+      <span style={{ fontSize: 12, fontWeight: 800, color: theme.color, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        {theme.label}
+      </span>
+    </div>
+  );
+}
+
+function PostTypeBadge({ type }) {
+  const theme = POST_TYPE_THEME[type];
+  if (!theme) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, background: theme.bg, color: theme.color, border: `1px solid ${theme.border}`, borderRadius: 20, padding: '2px 9px' }}>
+      {theme.icon} {theme.label}
     </span>
   );
 }
@@ -670,8 +693,10 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
     </div>
   );
 
+  const typeTheme = post.postType && post.postType !== 'update' ? POST_TYPE_THEME[post.postType] : null;
+
   return (
-    <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile ? { ...card, padding: '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', borderTop: post.isPinned ? '3px solid #93C5FD' : 'none', position: 'relative' } : { ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+    <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile ? { ...card, padding: '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', borderTop: typeTheme ? `3px solid ${typeTheme.color}` : post.isPinned ? '3px solid #93C5FD' : 'none', position: 'relative' } : { ...card, padding: '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', borderTop: typeTheme ? `3px solid ${typeTheme.color}` : post.isPinned ? '3px solid #93C5FD' : undefined, position: 'relative' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -701,6 +726,9 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
         </div>,
         document.body
       )}
+
+      {/* Post type banner */}
+      {post.postType && post.postType !== 'update' && <PostTypeBanner type={post.postType} />}
 
       {post.isPinned && (
         <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>📌 Pinned post</div>

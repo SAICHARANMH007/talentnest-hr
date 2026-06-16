@@ -24,15 +24,16 @@ const POST_TYPES = [
   { value: 'resource',     label: '📎 Resource' },
   { value: 'announcement', label: '📢 Announce' },
 ];
-const POST_TYPE_STYLE = {
-  tip:          { bg: '#FEF9C3', color: '#854D0E', label: '💡 Pro Tip' },
-  question:     { bg: '#EDE9FE', color: '#6D28D9', label: '❓ Question' },
-  achievement:  { bg: '#D1FAE5', color: '#065F46', label: '🏆 Achievement' },
-  hiring:       { bg: '#DBEAFE', color: '#1E40AF', label: '💼 Hiring' },
-  milestone:    { bg: '#FCE7F3', color: '#9D174D', label: '🎯 Milestone' },
-  resource:     { bg: '#E0F2FE', color: '#0369A1', label: '📎 Resource' },
-  announcement: { bg: '#FEF3C7', color: '#92400E', label: '📢 Announcement' },
-  feedback:     { bg: '#F3F4F6', color: '#374151', label: '⭐ Feedback' },
+const POST_TYPE_THEME = {
+  hiring:      { icon: '💼', label: 'Job Opening',   color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  tip:         { icon: '💡', label: 'Pro Tip',        color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  question:    { icon: '❓', label: 'Question',        color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  achievement: { icon: '🏆', label: 'Win',            color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' },
+  feedback:    { icon: '⭐', label: 'Feedback',        color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
+  resource:    { icon: '📎', label: 'Resource',        color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
+  milestone:   { icon: '🎯', label: 'Milestone',      color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  announcement:{ icon: '📢', label: 'Announcement',   color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  poll:        { icon: '🗳️', label: 'Poll',           color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
 };
 
 function timeAgo(dateStr) {
@@ -89,7 +90,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
   const totalReactions = post.reactions?.length || 0;
   const totalComments  = post.comments?.length  || 0;
-  const typeStyle = POST_TYPE_STYLE[post.postType];
+  const typeTheme = post.postType && post.postType !== 'update' ? POST_TYPE_THEME[post.postType] : null;
 
   const handleReply = (c) => {
     const mention = `@${c.userName} `;
@@ -130,7 +131,15 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   };
 
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+    <div style={{ ...card, padding: '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', borderTop: typeTheme ? `3px solid ${typeTheme.color}` : post.isPinned ? '3px solid #93C5FD' : undefined, position: 'relative' }}>
+      {/* Post type banner */}
+      {typeTheme && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: typeTheme.bg, border: `1px solid ${typeTheme.border}`, borderLeft: `4px solid ${typeTheme.color}`, borderRadius: 10, padding: '9px 14px', marginBottom: 12 }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{typeTheme.icon}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: typeTheme.color, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{typeTheme.label}</span>
+        </div>
+      )}
+
       {post.isPinned && <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 8 }}>📌 Pinned</div>}
 
       {/* Report modal */}
@@ -169,7 +178,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
             <span style={{ fontWeight: 800, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{post.authorName || 'Member'}</span>
             <RoleBadge role={post.authorRole} />
-            {typeStyle && <span style={{ fontSize: 10, fontWeight: 700, background: typeStyle.bg, color: typeStyle.color, borderRadius: 4, padding: '2px 6px' }}>{typeStyle.label}</span>}
+            {typeTheme && <span style={{ fontSize: 10, fontWeight: 700, background: typeTheme.bg, color: typeTheme.color, border: `1px solid ${typeTheme.border}`, borderRadius: 10, padding: '2px 8px' }}>{typeTheme.icon} {typeTheme.label}</span>}
           </div>
           <div style={{ fontSize: 11, color: '#9CA3AF' }}>
             {post.authorTitle && <span>{post.authorTitle} · </span>}
