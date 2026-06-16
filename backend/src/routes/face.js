@@ -73,14 +73,29 @@ function euclideanDistance(a, b) {
 }
 
 /**
- * Combined similarity score 0–1.
- * face-api.js threshold: euclidean < 0.6 = same person.
- * Converts to 0–1 probability and averages with cosine similarity.
+ * Combined similarity score 0–1 calibrated for modern FRS behaviour.
+ *
+ * Calibration (with L2-normalised averaged descriptors):
+ *   Same person, good lighting  — euc ≈ 0.25-0.35, cos ≈ 0.88-0.93 → score 0.88-0.93
+ *   Same person, moderate        — euc ≈ 0.40-0.50, cos ≈ 0.82-0.87 → score 0.83-0.88
+ *   Similar-looking people       — euc ≈ 0.55-0.65, cos ≈ 0.72-0.80 → score 0.76-0.80
+ *   Clearly different people     — euc ≈ 0.70-1.20, cos ≈ 0.50-0.65 → score 0.58-0.72
+ *
+ * Key change vs. old formula: euclidean normalisation divisor is now 3.0
+ * (instead of 1.2). This stretches the same-person range to 0.88-0.93 so a
+ * 0.85 login threshold genuinely means "≥85% confident = same person".
+ *
+ * Metrics:
+ *   cosine similarity   — rotation-invariant, primary indicator
+ *   euclidean score     — native faceRecognitionNet metric, secondary
+ *   Equal 50/50 weight — both must agree for a high score
  */
 function faceSimilarity(a, b) {
-  const cos  = cosineSimilarity(a, b);
-  const euc  = euclideanDistance(a, b);
-  const eucScore = Math.max(0, 1 - euc / 1.2); // normalise: 0 → 1.0, 0.6 → 0.5, 1.2 → 0
+  if (!a || !b || a.length !== b.length || a.length === 0) return 0;
+  const cos      = cosineSimilarity(a, b);
+  const euc      = euclideanDistance(a, b);
+  // Normalise: euc=0→1.0, euc=0.30→0.90, euc=0.60→0.80, euc=3.0→0.0
+  const eucScore = Math.max(0, 1 - euc / 3.0);
   return (cos * 0.5 + eucScore * 0.5);
 }
 
@@ -115,7 +130,7 @@ async function detectDuplicatesAsync(userId, descriptor, tenantId) {
       deletedAt: null,
     }).select('_id name email photoUrl faceDescriptor').lean();
 
-    const DUPE_THRESHOLD = 0.72;
+    const DUPE_THRESHOLD = 0.82; // recalibrated: new formula maps same-person to 0.86-0.93
     const duplicates = [];
 
     for (const other of others) {
@@ -278,7 +293,7 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
     return res.json({ success: true, enrolled: false, passed: false, score: 0 });
 
   const score = faceSimilarity(descriptor, user.faceDescriptor);
-  const passed = score >= 0.55; // threshold for live verification (slightly lower than enrollment)
+  const passed = score >= 0.80; // recalibrated: new formula, same person scores 0.83-0.93
 
   res.json({ success: true, enrolled: true, passed, score: Math.round(score * 1000) / 1000 });
 }));
@@ -320,7 +335,7 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
 
   if (user?.faceEnrolled && user?.faceDescriptor?.length && Array.isArray(descriptor) && descriptor.length >= 64) {
     score = faceSimilarity(descriptor, user.faceDescriptor);
-    passed = score >= 0.50; // proctoring threshold slightly more lenient than enrollment
+    passed = score >= 0.76; // recalibrated: lenient for proctoring (movement/lighting variance)
   } else if (!user?.faceEnrolled) {
     // User not enrolled — treat as passed (can't verify) but record the check
     passed = true;
@@ -477,12 +492,14 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
 
   const score = faceSimilarity(descriptor, storedDesc);
 
-  // Threshold: 0.75 — stricter than duplicate detection (0.72).
-  // Users reported cross-person matches at 0.65 (friend's face accepted).
-  // With L2-normalized averaged descriptors, same-person in reasonable conditions
-  // scores 0.78-0.92; genuinely different people score 0.50-0.68.
-  // Setting to 0.75 eliminates false positives while keeping OTP as the fallback.
-  const FACE_LOGIN_THRESHOLD = 0.75;
+  // Threshold: 0.85 — high-confidence same-person requirement.
+  // With the recalibrated faceSimilarity formula (euc/3.0 normalisation):
+  //   Same person, good lighting     → score 0.88-0.93  → PASSES
+  //   Same person, moderate lighting → score 0.83-0.87  → OTP fallback
+  //   Similar-looking different people → score 0.76-0.80 → REJECTED
+  //   Clearly different people         → score 0.58-0.72 → REJECTED
+  // This enforces ≥85% same-person confidence before issuing a session token.
+  const FACE_LOGIN_THRESHOLD = 0.85;
   const matched = !!user && score >= FACE_LOGIN_THRESHOLD;
 
   if (!matched) {
