@@ -3,296 +3,363 @@
  *
  * Flow:
  *   Step 1: User enters their registered email
- *   Step 2: Camera opens; liveness blink check required
- *   Step 3: 3-frame multi-angle capture (enhanced for low-light)
- *   Step 4: Averaged descriptor POSTed to /api/face/login (email-scoped)
- *   Step 5: On match → onSuccess(user, token) — caller stores the session
- *
- * Security:
- *  • Email-scoped: only compares against the enrolled descriptor for THAT email
- *  • Liveness (blink EAR) prevents photo spoofing
- *  • Low-light enhancement ensures accuracy in dim conditions
- *  • Multi-frame averaging reduces noise (3 frames averaged)
- *  • Server enforces 0.65 cosine+euclidean combined threshold
- *  • Rate-limited: 5 attempts per 15 min per IP
+ *   Step 2: Camera opens; stable-frame liveness (15 consecutive good frames)
+ *   Step 3: Auto 3-2-1 countdown per pose → 3 poses auto-captured
+ *   Step 4: Averaged descriptor POSTed to /api/face/login
+ *   Step 5a: Match → onSuccess(user, token)
+ *   Step 5b: No match → OTP sent to email → user enters OTP → login
  */
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
 import {
   loadFaceApi,
   detectFaceRaw,
-  drawFaceMesh,
+  drawEnhancedFaceMesh,
   captureEnhancedFrame,
   scoreFaceQuality,
-  getEAR,
-  BLINK_THRESHOLD,
   averageDescriptors,
 } from './faceUtils.js';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const STABLE_NEEDED = 15;
+const MIN_QUALITY   = 0.30;
+const LOGIN_POSES   = [
+  { label: 'Look straight at the camera', icon: '👁️' },
+  { label: 'Tilt your head slightly left', icon: '↙️' },
+  { label: 'Tilt your head slightly right', icon: '↘️' },
+];
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const overlay = {
   position:'fixed', inset:0, zIndex:99999,
   background:'rgba(0,0,0,0.82)',
   display:'flex', alignItems:'center', justifyContent:'center',
-  animation:'faceLoginFadeIn 0.2s ease',
 };
 const card = {
   background:'#0d1b2d', border:'1px solid rgba(255,255,255,0.1)',
   borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:420,
   display:'flex', flexDirection:'column', gap:16, boxShadow:'0 24px 80px rgba(0,0,0,0.6)',
-  animation:'faceLoginFadeIn 0.25s ease',
 };
-const title = { color:'#fff', fontSize:18, fontWeight:800, margin:0, display:'flex', alignItems:'center', gap:8 };
-const sub   = { color:'rgba(255,255,255,0.45)', fontSize:12, marginTop:3 };
-const inp   = {
+const titleStyle = { color:'#fff', fontSize:18, fontWeight:800, margin:0, display:'flex', alignItems:'center', gap:8 };
+const sub        = { color:'rgba(255,255,255,0.45)', fontSize:12, marginTop:3 };
+const inp        = {
   width:'100%', boxSizing:'border-box', background:'rgba(255,255,255,0.06)',
   border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'#fff',
   fontSize:14, fontWeight:500, padding:'11px 14px', outline:'none',
 };
-const btnP  = { fontSize:13, fontWeight:700, padding:'12px 0', borderRadius:11,
+const btnP = { fontSize:13, fontWeight:700, padding:'12px 0', borderRadius:11,
   border:'none', background:'#0176D3', color:'#fff', cursor:'pointer', width:'100%' };
-const btnS  = { ...btnP, background:'transparent', border:'1px solid rgba(255,255,255,0.15)',
+const btnS = { ...btnP, background:'transparent', border:'1px solid rgba(255,255,255,0.15)',
   color:'rgba(255,255,255,0.6)' };
 
 function Spin() {
   return (
     <div style={{ width:18, height:18, border:'2.5px solid rgba(255,255,255,0.2)',
       borderTop:'2.5px solid #fff', borderRadius:'50%',
-      animation:'faceLoginSpin 0.8s linear infinite', display:'inline-block', verticalAlign:'middle', marginRight:6 }} />
+      animation:'flSpin 0.8s linear infinite', display:'inline-block', verticalAlign:'middle', marginRight:6 }} />
   );
 }
 
-function StatusDot({ ok }) {
-  return <span style={{ display:'inline-block', width:8, height:8, borderRadius:'50%',
-    background: ok ? '#22c55e' : '#6b7280', marginRight:6, verticalAlign:'middle' }} />;
-}
-
-// Login prompts — 3 angles to average descriptor
-const LOGIN_PROMPTS = [
-  { label:'Look straight at the camera', icon:'👁️' },
-  { label:'Tilt head slightly left',     icon:'↙️' },
-  { label:'Tilt head slightly right',    icon:'↘️' },
-];
-const MIN_QUALITY = 0.42;
-
 export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }) {
-  // Step: 'email' | 'camera' | 'submitting' | 'error'
-  const [step, setStep]           = useState('email');
-  const [email, setEmail]         = useState(prefillEmail);
+  // ── Step state ───────────────────────────────────────────────────────────────
+  const [step, setStep]         = useState('email'); // email|camera|submitting|otp|error
+  const [email, setEmail]       = useState(prefillEmail);
   const [emailError, setEmailError] = useState('');
 
-  // Camera states
+  // ── Camera state ─────────────────────────────────────────────────────────────
   const [modelReady, setModelReady]   = useState(false);
   const [modelLoading, setMLoading]   = useState(false);
   const [faceapi, setFaceapi]         = useState(null);
   const [streamReady, setStreamReady] = useState(false);
   const [liveResult, setLiveResult]   = useState(null);
-  const [liveness, setLiveness]       = useState(false); // blink confirmed
-  const [eyesClosed, setEyesClosed]   = useState(false);
-  const [promptIdx, setPromptIdx]     = useState(0);
-  const [frames, setFrames]           = useState([]);
-  const [descs, setDescs]             = useState([]);
-  const [submitting, setSubmitting]   = useState(false);
+  const [stableFrames, setStableFrames] = useState(0);
+  const [livenessOk, setLivenessOk]   = useState(false);
+  const [capturedCount, setCapturedCount] = useState(0);
+  const [countdown, setCountdown]     = useState(null);
   const [qualityWarn, setQualityWarn] = useState(false);
   const [camError, setCamError]       = useState('');
   const [serverError, setServerError] = useState('');
   const [openingCamera, setOpeningCamera] = useState(false);
 
-  const videoRef  = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const rafRef    = useRef(null);
-  const earRef    = useRef({ belowCount:0 }); // track consecutive closed frames
+  // ── OTP state ────────────────────────────────────────────────────────────────
+  const [otp, setOtp]               = useState('');
+  const [otpError, setOtpError]     = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [resending, setResending]   = useState(false);
 
-  // Attach stream to video after streamReady triggers re-render (video element enters DOM)
+  // ── Refs ─────────────────────────────────────────────────────────────────────
+  const videoRef       = useRef(null);
+  const canvasRef      = useRef(null);
+  const streamRef      = useRef(null);
+  const rafRef         = useRef(null);
+  const descsRef       = useRef([]);
+  const stableCountRef = useRef(0);
+  const livenessOkRef  = useRef(false);
+  const liveResultRef  = useRef(null);
+  const countdownRef   = useRef(null);
+  const isCapturingRef = useRef(false);
+  const faceapiRef     = useRef(null);
+
+  // ── Attach stream to video element once it mounts ───────────────────────────
   useEffect(() => {
     if (!streamReady || !streamRef.current) return;
     const vid = videoRef.current;
     if (!vid) return;
     vid.srcObject = streamRef.current;
-    vid.play().catch(() => {}); // always call play — no readyState check needed
+    vid.play().catch(() => {});
   }, [streamReady]);
 
-  // Cleanup on unmount
-  useEffect(() => () => stopCamera(), []);
+  // ── Cleanup on unmount ───────────────────────────────────────────────────────
+  useEffect(() => () => stopAll(), []);
 
-  // ── Load face-api models when camera starts ─────────────────────────────────
+  // ── Load models when camera step starts ─────────────────────────────────────
   useEffect(() => {
     if (step !== 'camera') return;
     setMLoading(true);
     loadFaceApi()
-      .then(fa => { setFaceapi(fa); setModelReady(true); })
+      .then(fa => { setFaceapi(fa); faceapiRef.current = fa; setModelReady(true); })
       .catch(() => setCamError('Failed to load AI models. Check your internet connection.'))
       .finally(() => setMLoading(false));
   }, [step]);
 
-  // ── Live detection + EAR blink tracking loop ────────────────────────────────
+  // ── RAF detection loop ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (step !== 'camera' || !modelReady || !faceapi || !videoRef.current || !streamReady) return;
+    if (step !== 'camera' || !modelReady || !faceapi || !streamReady) return;
     let active = true;
 
     const loop = async () => {
       if (!active) return;
       const vid = videoRef.current;
-      if (vid && (vid.readyState >= 2 || vid.videoWidth > 0)) {
+      if (vid && vid.videoWidth > 0) {
         try {
-          const r = await detectFaceRaw(faceapi, videoRef.current);
+          const r = await detectFaceRaw(faceapi, vid);
           if (!active) return;
+          liveResultRef.current = r || null;
           setLiveResult(r || null);
-          if (canvasRef.current && videoRef.current) {
-            drawFaceMesh(canvasRef.current, videoRef.current, r?.landmarks);
+
+          if (canvasRef.current && vid) {
+            drawEnhancedFaceMesh(canvasRef.current, vid, r?.landmarks);
           }
 
-          // EAR blink liveness
-          if (r?.landmarks) {
-            const ear = getEAR(r.landmarks);
-            if (ear < BLINK_THRESHOLD) {
-              earRef.current.belowCount++;
-              setEyesClosed(true);
-            } else {
-              if (earRef.current.belowCount >= 2) {
-                setLiveness(true); // confirmed blink
+          // Stable-frame liveness: 15 consecutive good detections = live
+          if (r && scoreFaceQuality(r, vid) >= MIN_QUALITY) {
+            stableCountRef.current++;
+            setStableFrames(Math.min(stableCountRef.current, STABLE_NEEDED));
+            if (!livenessOkRef.current && stableCountRef.current >= STABLE_NEEDED) {
+              livenessOkRef.current = true;
+              setLivenessOk(true);
+            }
+          } else {
+            stableCountRef.current = Math.max(0, stableCountRef.current - 2);
+            setStableFrames(Math.max(0, stableCountRef.current));
+            if (stableCountRef.current < 5) {
+              // Only reset liveness if really dropped
+              if (livenessOkRef.current && stableCountRef.current === 0) {
+                livenessOkRef.current = false;
+                setLivenessOk(false);
               }
-              earRef.current.belowCount = 0;
-              setEyesClosed(false);
             }
           }
         } catch { /* ignore frame errors */ }
       }
       if (active) rafRef.current = requestAnimationFrame(loop);
     };
+
     rafRef.current = requestAnimationFrame(loop);
     return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [step, modelReady, faceapi, streamReady]);
 
-  const stopCamera = () => {
+  // ── Auto-countdown when liveness OK and more poses needed ───────────────────
+  useEffect(() => {
+    if (!livenessOk || capturedCount >= LOGIN_POSES.length) return;
+    if (countdownRef.current || isCapturingRef.current) return;
+    startCountdown();
+  }, [livenessOk, capturedCount]);
+
+  const startCountdown = useCallback(() => {
+    if (isCapturingRef.current) return;
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    let c = 3;
+    setCountdown(c);
+    countdownRef.current = setInterval(() => {
+      c--;
+      if (c > 0) {
+        setCountdown(c);
+      } else {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        setCountdown(null);
+        doCapture();
+      }
+    }, 1000);
+  }, []);
+
+  const cancelCountdown = useCallback(() => {
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setCountdown(null);
+  }, []);
+
+  const doCapture = useCallback(async () => {
+    if (isCapturingRef.current) return;
+    isCapturingRef.current = true;
+
+    const fa  = faceapiRef.current;
+    const vid = videoRef.current;
+    const r   = liveResultRef.current || (fa && vid ? await detectFaceRaw(fa, vid).catch(() => null) : null);
+
+    if (!r || !vid || scoreFaceQuality(r, vid) < MIN_QUALITY) {
+      isCapturingRef.current = false;
+      setQualityWarn(true);
+      setTimeout(() => setQualityWarn(false), 2000);
+      setTimeout(() => {
+        if (livenessOkRef.current && descsRef.current.length < LOGIN_POSES.length) startCountdown();
+      }, 2500);
+      return;
+    }
+
+    descsRef.current.push(Array.from(r.descriptor));
+    const newCount = descsRef.current.length;
+    setCapturedCount(newCount);
+    isCapturingRef.current = false;
+
+    if (newCount >= LOGIN_POSES.length) {
+      await submitFace();
+    }
+    // else: useEffect on [livenessOk, capturedCount] fires startCountdown for next pose
+  }, [startCountdown]);
+
+  const submitFace = async () => {
+    stopAll();
+    setStep('submitting');
+    try {
+      const avgDesc = averageDescriptors(descsRef.current);
+      const result  = await api.faceLogin({ email: email.trim().toLowerCase(), descriptor: avgDesc });
+      onSuccess(result.user, result.token);
+    } catch (e) {
+      // Face didn't match → send OTP fallback
+      if (e?.status === 401 || (e?.message || '').toLowerCase().includes('not recogni')) {
+        await sendOtpFallback();
+      } else {
+        setServerError(e?.message || 'Face verification failed. Please try again.');
+        setStep('error');
+      }
+    }
+  };
+
+  const sendOtpFallback = async () => {
+    try {
+      await api.sendFaceOtp({ email: email.trim().toLowerCase() });
+      setStep('otp');
+    } catch (e) {
+      setServerError(e?.message || 'Could not send verification code. Please try password login.');
+      setStep('error');
+    }
+  };
+
+  const verifyOtp = async () => {
+    const code = otp.trim();
+    if (!code || code.length < 4) { setOtpError('Enter the 6-digit code from your email.'); return; }
+    setOtpSubmitting(true);
+    setOtpError('');
+    try {
+      const result = await api.verifyFaceOtp({ email: email.trim().toLowerCase(), otp: code });
+      onSuccess(result.user, result.token);
+    } catch (e) {
+      setOtpError(e?.message || 'Invalid or expired code. Please try again.');
+    }
+    setOtpSubmitting(false);
+  };
+
+  const resendOtp = async () => {
+    setResending(true);
+    setOtpError('');
+    try {
+      await api.sendFaceOtp({ email: email.trim().toLowerCase() });
+      setOtpError('');
+    } catch {}
+    setResending(false);
+  };
+
+  const stopAll = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    cancelCountdown();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   };
 
-  // ── Email validation → move to camera step (no getUserMedia here) ────────────
-  const proceedToCamera = () => {
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) {
-      setEmailError('Enter a valid email address.');
+  const openCamera = () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCamError('Camera not available. Make sure the page is open over HTTPS.');
       return;
     }
+    setCamError(''); setOpeningCamera(true);
+
+    const attach = s => {
+      streamRef.current = s;
+      setStreamReady(true);
+      setOpeningCamera(false);
+      if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play().catch(() => {}); }
+    };
+    const showErr = err => {
+      setOpeningCamera(false);
+      const n = err?.name || '';
+      setCamError(
+        n === 'NotAllowedError' || n === 'PermissionDeniedError'
+          ? 'Camera blocked. Tap the 🔒 in the address bar → Camera → Allow → reload.'
+          : n === 'NotFoundError'
+            ? 'No camera found on this device.'
+            : 'Camera error. Try reloading the page.'
+      );
+    };
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } } })
+      .then(attach)
+      .catch(() => navigator.mediaDevices.getUserMedia({ video: true }).then(attach).catch(showErr));
+  };
+
+  const proceedToCamera = () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) { setEmailError('Enter a valid email address.'); return; }
     setEmailError('');
     setEmail(trimmed);
     setStep('camera');
   };
 
-  // ── Open camera — called DIRECTLY from button onClick ──────────────────────────
-  const openCamera = () => {
-    // navigator.mediaDevices is undefined on HTTP pages — must be HTTPS
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCamError('Camera not available. Make sure the page is open over https:// in Chrome or Safari.');
-      return;
-    }
-    setCamError('');
-    setOpeningCamera(true);
-
-    const attachStream = s => {
-      streamRef.current = s;
-      setStreamReady(true);
-      setOpeningCamera(false);
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-        videoRef.current.play().catch(() => {});
-      }
-    };
-
-    const showErr = err => {
-      setOpeningCamera(false);
-      const n = err?.name || 'UnknownError';
-      setCamError(
-        n === 'NotAllowedError' || n === 'PermissionDeniedError'
-          ? `Camera blocked [${n}]. Tap the 🔒 in the address bar → Camera → Allow → reload page.`
-          : n === 'NotFoundError' || n === 'DevicesNotFoundError'
-            ? `No camera found [${n}].`
-            : n === 'NotReadableError' || n === 'TrackStartError'
-              ? `Camera is in use by another app [${n}]. Close it and try again.`
-              : `Camera error [${n}]: ${err?.message || 'Try reloading the page.'}`
-      );
-    };
-
-    // Stage 1: try front camera (ideal = never throws OverconstrainedError)
-    // Stage 2: fall back to any camera with zero constraints
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } } })
-      .then(attachStream)
-      .catch(() => navigator.mediaDevices.getUserMedia({ video: true }).then(attachStream).catch(showErr));
-  };
-
-  // ── Capture one frame ────────────────────────────────────────────────────────
-  const capture = async () => {
-    if (!liveResult || !videoRef.current) return;
-
-    const quality = scoreFaceQuality(liveResult, videoRef.current);
-    if (quality < MIN_QUALITY) {
-      setQualityWarn(true);
-      setTimeout(() => setQualityWarn(false), 2000);
-      return;
-    }
-
-    const frame = captureEnhancedFrame(videoRef.current);
-    const desc  = Array.from(liveResult.descriptor);
-
-    const nf = [...frames, frame];
-    const nd = [...descs, desc];
-    setFrames(nf); setDescs(nd);
-
-    if (nf.length < LOGIN_PROMPTS.length) {
-      setPromptIdx(nf.length);
-    } else {
-      // All frames captured — submit
-      stopCamera();
-      setSubmitting(true);
-      setStep('submitting');
-      try {
-        const result = await api.faceLogin({ email: email.trim().toLowerCase(), descriptor: averageDescriptors(nd) });
-        onSuccess(result.user, result.token);
-      } catch (e) {
-        setServerError(e.message || 'Face not recognised. Please try again or use password login.');
-        setStep('error');
-        setSubmitting(false);
-      }
-    }
-  };
-
   const retryCamera = () => {
-    stopCamera();
+    stopAll();
     streamRef.current = null;
     setStreamReady(false);
-    setOpeningCamera(false);
+    setLiveResult(null); liveResultRef.current = null;
+    setStableFrames(0); stableCountRef.current = 0;
+    setLivenessOk(false); livenessOkRef.current = false;
+    setCapturedCount(0); descsRef.current = [];
+    isCapturingRef.current = false;
     setServerError(''); setCamError('');
-    setFrames([]); setDescs([]); setPromptIdx(0);
-    setLiveness(false); earRef.current.belowCount = 0;
-    setLiveResult(null);
     setStep('camera');
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const livenessProgress = Math.round((stableFrames / STABLE_NEEDED) * 100);
+
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      {/* Self-contained keyframes — no dependency on global CSS */}
       <style>{`
-        @keyframes faceLoginFadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-        @keyframes faceLoginSpin   { to { transform:rotate(360deg); } }
+        @keyframes flSpin { to { transform:rotate(360deg); } }
+        @keyframes flFade { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
       `}</style>
-      <div style={card}>
+      <div style={{ ...card, animation:'flFade 0.22s ease' }}>
         {/* Header */}
         <div>
-          <h2 style={title}>🔐 Face Login</h2>
-          <p style={sub}>Enter your registered email, then scan your face to sign in securely.</p>
+          <h2 style={titleStyle}>🔐 Face Login</h2>
+          <p style={sub}>Enter your email, then verify your face to sign in securely.</p>
         </div>
 
-        {/* ── Step 1: Email ─────────────────────────────────────────────────── */}
+        {/* ── Step 1: Email ──────────────────────────────────────────────────── */}
         {step === 'email' && (
           <>
             <div>
-              <label style={{ color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700,
-                display:'block', marginBottom:6, letterSpacing:0.5 }}>REGISTERED EMAIL</label>
+              <label style={{ color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700, display:'block', marginBottom:6, letterSpacing:0.5 }}>
+                REGISTERED EMAIL
+              </label>
               <input
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailError(''); }}
@@ -305,11 +372,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
               />
               {emailError && <div style={{ color:'#ef4444', fontSize:11, marginTop:4 }}>{emailError}</div>}
             </div>
-            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px',
-              fontSize:12, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
-              <StatusDot ok />Face login is only available if you have enrolled your Face ID
-              on your profile page.<br />
-              <StatusDot ok />A blink liveness check + 3-angle face scan will be performed.
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
+              ✅ Face login uses AI to verify your identity with enhanced mesh detection.<br />
+              ✅ If face recognition fails, a backup OTP will be sent to your email.
             </div>
             <button style={btnP} onClick={proceedToCamera}>Continue →</button>
             <button style={btnS} onClick={onClose}>Cancel</button>
@@ -320,17 +385,14 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
         {step === 'camera' && (
           <>
             {!streamReady ? (
-              /* Camera not yet open — show explicit button so getUserMedia runs on direct tap */
               <div style={{ display:'flex', flexDirection:'column', gap:14, textAlign:'center' }}>
                 {camError ? (
-                  <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)',
-                    borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:12, lineHeight:1.5 }}>
+                  <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:12, lineHeight:1.5 }}>
                     ⚠️ {camError}
                   </div>
                 ) : (
                   <div style={{ color:'rgba(255,255,255,0.5)', fontSize:13, lineHeight:1.6 }}>
-                    Tap the button below to open your camera.<br />
-                    Allow camera access when prompted.
+                    Tap below to open your camera.<br />Allow camera access when prompted.
                   </div>
                 )}
                 <button style={{ ...btnP, opacity: openingCamera ? 0.7 : 1 }}
@@ -340,89 +402,94 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 <button style={btnS} onClick={onClose}>Cancel</button>
               </div>
             ) : (
-              /* Camera stream ready — show video + detection UI */
               <>
-                {/* Liveness banner */}
-                {!liveness ? (
-                  <div style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.35)',
-                    borderRadius:10, padding:'8px 14px', fontSize:12, fontWeight:700,
-                    color:'#fbbf24', textAlign:'center' }}>
-                    👁️ Please <strong>blink once</strong> to confirm you are live
-                    {eyesClosed && <span style={{ marginLeft:8, color:'#a3e635' }}>detecting…</span>}
+                {/* Liveness progress bar */}
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color: livenessOk ? '#4ade80' : 'rgba(255,255,255,0.55)' }}>
+                      {livenessOk ? '✅ Liveness confirmed — auto-capturing…' : '👁️ Hold still to verify you are live…'}
+                    </span>
+                    <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>{livenessProgress}%</span>
                   </div>
-                ) : (
-                  <div style={{ background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.35)',
-                    borderRadius:10, padding:'6px 14px', fontSize:12, fontWeight:700,
-                    color:'#4ade80', textAlign:'center' }}>
-                    ✅ Liveness confirmed — follow the prompts below
+                  <div style={{ height:4, background:'rgba(255,255,255,0.1)', borderRadius:4 }}>
+                    <div style={{ height:'100%', borderRadius:4, width:`${livenessProgress}%`,
+                      background: livenessOk ? '#4ade80' : '#0176D3',
+                      transition:'width 0.2s ease, background 0.3s ease' }} />
                   </div>
-                )}
+                </div>
 
-                {/* Video */}
+                {/* Video + mesh overlay */}
                 <div style={{ position:'relative', borderRadius:14, overflow:'hidden',
-                  border: qualityWarn ? '2px solid #ef4444' : '2px solid rgba(1,118,211,0.4)' }}>
+                  border: qualityWarn ? '2px solid #ef4444' : livenessOk ? '2px solid rgba(34,197,94,0.6)' : '2px solid rgba(1,118,211,0.4)' }}>
                   <video ref={videoRef} autoPlay playsInline muted
                     onLoadedMetadata={e => e.target.play().catch(() => {})}
                     onCanPlay={e => e.target.play().catch(() => {})}
-                    onPlaying={() => {}}
                     style={{ width:'100%', display:'block', transform:'scaleX(-1)', borderRadius:12 }} />
                   <canvas ref={canvasRef}
                     style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%',
                       transform:'scaleX(-1)', pointerEvents:'none' }} />
-                  {/* Oval guide */}
+
+                  {/* Oval face guide */}
                   <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-54%)',
-                    width:'48%', paddingBottom:'64%', border:'2.5px solid rgba(0,200,100,0.6)',
+                    width:'48%', paddingBottom:'64%', border:'2.5px solid rgba(0,220,130,0.5)',
                     borderRadius:'50%', pointerEvents:'none' }} />
+
+                  {/* Countdown overlay */}
+                  {countdown !== null && (
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.35)', borderRadius:12 }}>
+                      <div style={{ fontSize:72, fontWeight:900, color:'#fff',
+                        textShadow:'0 0 30px rgba(0,200,130,0.8)', lineHeight:1 }}>{countdown}</div>
+                    </div>
+                  )}
+
+                  {/* Quality warning */}
+                  {qualityWarn && (
+                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(239,68,68,0.2)', borderRadius:12 }}>
+                      <div style={{ color:'#fca5a5', fontWeight:700, fontSize:13, textAlign:'center', padding:'0 16px' }}>
+                        ⚠️ Position your face inside the oval
+                      </div>
+                    </div>
+                  )}
+
                   {/* Progress dots */}
-                  <div style={{ position:'absolute', bottom:10, left:'50%', transform:'translateX(-50%)',
-                    display:'flex', gap:8 }}>
-                    {LOGIN_PROMPTS.map((_, i) => (
-                      <div key={i} style={{ width:9, height:9, borderRadius:'50%',
-                        background: i < frames.length ? '#22c55e' : i===frames.length ? '#0176D3' : 'rgba(255,255,255,0.3)',
-                        border:'2px solid rgba(255,255,255,0.7)', transition:'all 0.2s' }} />
+                  <div style={{ position:'absolute', bottom:10, left:'50%', transform:'translateX(-50%)', display:'flex', gap:8 }}>
+                    {LOGIN_POSES.map((_, i) => (
+                      <div key={i} style={{ width:10, height:10, borderRadius:'50%',
+                        background: i < capturedCount ? '#22c55e' : i === capturedCount ? '#0176D3' : 'rgba(255,255,255,0.3)',
+                        border:'2px solid rgba(255,255,255,0.7)', transition:'all 0.2s',
+                        boxShadow: i === capturedCount ? '0 0 8px rgba(1,118,211,0.8)' : 'none' }} />
                     ))}
                   </div>
+
                   {/* Quality badge */}
-                  {liveResult && (
+                  {liveResult && videoRef.current && (
                     <div style={{ position:'absolute', top:8, right:8, fontSize:10, fontWeight:700,
-                      background:'rgba(0,0,0,0.6)', borderRadius:20, padding:'2px 7px',
-                      color: scoreFaceQuality(liveResult, videoRef.current||{}) >= MIN_QUALITY ? '#22c55e' : '#f59e0b' }}>
-                      {Math.round(scoreFaceQuality(liveResult, videoRef.current||{}) * 100)}% quality
+                      background:'rgba(0,0,0,0.65)', borderRadius:20, padding:'2px 8px',
+                      color: scoreFaceQuality(liveResult, videoRef.current) >= MIN_QUALITY ? '#22c55e' : '#f59e0b' }}>
+                      {Math.round(scoreFaceQuality(liveResult, videoRef.current) * 100)}%
                     </div>
                   )}
                 </div>
 
-                {/* Pose prompt */}
-                {liveness && promptIdx < LOGIN_PROMPTS.length && (
+                {/* Pose instruction */}
+                {livenessOk && capturedCount < LOGIN_POSES.length && (
                   <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.3)',
-                    borderRadius:10, padding:'7px 14px', textAlign:'center',
-                    fontSize:12, fontWeight:700, color:'#4ade80' }}>
-                    <span style={{ fontSize:16, marginRight:6 }}>{LOGIN_PROMPTS[promptIdx].icon}</span>
-                    {LOGIN_PROMPTS[promptIdx].label}
+                    borderRadius:10, padding:'7px 14px', textAlign:'center', fontSize:12, fontWeight:700, color:'#4ade80' }}>
+                    <span style={{ fontSize:16, marginRight:6 }}>{LOGIN_POSES[capturedCount].icon}</span>
+                    {LOGIN_POSES[capturedCount].label}
+                    {countdown !== null && <span style={{ marginLeft:8, color:'#fbbf24' }}>capturing in {countdown}…</span>}
                   </div>
                 )}
 
                 {/* Detection status */}
                 <div style={{ fontSize:11, fontWeight:600, textAlign:'center',
                   color: liveResult ? '#4ade80' : '#6b7280' }}>
-                  {modelLoading
-                    ? '⏳ Loading AI models…'
-                    : !liveResult
-                      ? '❌ No face detected — face the camera directly in good light'
-                      : '✅ Face detected'}
+                  {modelLoading ? '⏳ Loading AI models…'
+                    : !liveResult ? '❌ No face detected — face the camera in good light'
+                    : `✅ Face detected — ${capturedCount}/${LOGIN_POSES.length} poses captured`}
                 </div>
 
-                <div style={{ display:'flex', gap:8 }}>
-                  <button style={{ ...btnS, flex:1 }} onClick={() => { stopCamera(); onClose(); }}>
-                    Cancel
-                  </button>
-                  <button
-                    style={{ ...btnP, flex:2, opacity:(!liveResult||!liveness||!modelReady)?0.4:1 }}
-                    disabled={!liveResult || !liveness || !modelReady}
-                    onClick={capture}>
-                    📸 Capture ({frames.length + 1}/{LOGIN_PROMPTS.length})
-                  </button>
-                </div>
+                <button style={{ ...btnS }} onClick={() => { stopAll(); onClose(); }}>Cancel</button>
               </>
             )}
           </>
@@ -441,7 +508,58 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
           </div>
         )}
 
-        {/* ── Step 4: Error ─────────────────────────────────────────────────── */}
+        {/* ── Step 4: OTP Fallback ──────────────────────────────────────────── */}
+        {step === 'otp' && (
+          <>
+            <div style={{ background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)',
+              borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:24, marginBottom:6 }}>📧</div>
+              <div style={{ color:'#fbbf24', fontSize:13, fontWeight:700, marginBottom:4 }}>
+                Face not recognised
+              </div>
+              <div style={{ color:'rgba(255,255,255,0.6)', fontSize:12, lineHeight:1.5 }}>
+                A 6-digit verification code has been sent to<br />
+                <strong style={{ color:'#fff' }}>{email}</strong>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700, display:'block', marginBottom:6, letterSpacing:0.5 }}>
+                VERIFICATION CODE
+              </label>
+              <input
+                value={otp}
+                onChange={e => { setOtp(e.target.value.replace(/\D/g,'').slice(0,6)); setOtpError(''); }}
+                onKeyDown={e => e.key === 'Enter' && verifyOtp()}
+                placeholder="6-digit code"
+                type="tel"
+                autoFocus
+                maxLength={6}
+                style={{ ...inp, fontSize:20, fontWeight:900, letterSpacing:6, textAlign:'center',
+                  borderColor: otpError ? '#ef4444' : undefined }}
+              />
+              {otpError && <div style={{ color:'#ef4444', fontSize:11, marginTop:4 }}>{otpError}</div>}
+            </div>
+
+            <button style={{ ...btnP, opacity: otpSubmitting ? 0.7 : 1 }}
+              disabled={otpSubmitting || otp.length < 6} onClick={verifyOtp}>
+              {otpSubmitting ? <><Spin /> Verifying…</> : '✓ Verify & Sign In'}
+            </button>
+
+            <div style={{ display:'flex', gap:8 }}>
+              <button style={{ ...btnS, flex:1, fontSize:12 }}
+                onClick={resendOtp} disabled={resending}>
+                {resending ? 'Sending…' : '🔄 Resend Code'}
+              </button>
+              <button style={{ ...btnS, flex:1, fontSize:12 }} onClick={retryCamera}>
+                📸 Try Face Again
+              </button>
+            </div>
+            <button style={btnS} onClick={onClose}>Use Password Login</button>
+          </>
+        )}
+
+        {/* ── Step 5: Error ─────────────────────────────────────────────────── */}
         {step === 'error' && (
           <>
             <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)',

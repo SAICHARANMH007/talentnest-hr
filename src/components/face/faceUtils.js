@@ -189,8 +189,16 @@ export function averageLandmarks(arrays) {
 }
 
 // ── Landmark overlay drawing ──────────────────────────────────────────────────
-/** Draw 68-point mesh overlay on a canvas positioned over the video */
+/** Draw 68-point basic mesh overlay (original) */
 export function drawFaceMesh(canvas, videoEl, landmarks) {
+  drawEnhancedFaceMesh(canvas, videoEl, landmarks);
+}
+
+/**
+ * Draw an enhanced face mesh with colour-coded zones and cross-connection triangulation.
+ * Creates a visually rich mesh that shows the density of facial data points.
+ */
+export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
   const ctx = canvas.getContext('2d');
   canvas.width  = videoEl.videoWidth  || videoEl.clientWidth;
   canvas.height = videoEl.videoHeight || videoEl.clientHeight;
@@ -198,27 +206,93 @@ export function drawFaceMesh(canvas, videoEl, landmarks) {
   if (!landmarks?.positions) return;
 
   const pts = landmarks.positions;
-  ctx.fillStyle = 'rgba(0,200,100,0.85)';
-  pts.forEach(pt => {
+
+  // ── 1. Dense cross-connections (triangulation mesh) ──
+  const meshLines = [
+    // Jaw to cheek connections
+    [0,36],[1,36],[2,31],[3,31],[4,48],[5,48],[6,57],[7,57],[8,57],
+    [9,57],[10,54],[11,54],[12,54],[13,35],[14,35],[15,45],[16,45],
+    // Brow to eye connections
+    [17,36],[18,37],[19,38],[20,39],[21,39],[22,42],[23,43],[24,44],[25,45],[26,45],
+    // Brow to nose bridge
+    [17,27],[21,27],[22,27],[26,27],[19,28],[24,28],
+    // Nose to eyes
+    [31,36],[31,40],[35,45],[35,47],
+    [27,39],[27,42],[28,38],[28,43],[29,37],[29,44],
+    // Nose to mouth
+    [31,48],[35,54],[33,51],[30,57],
+    // Cheek diagonals
+    [1,17],[15,26],[2,17],[14,26],[0,1],[15,16],
+    [1,36],[15,45],[3,36],[13,45],[5,48],[11,54],
+    [36,37],[45,44],[40,41],[46,47],
+    // Forehead triangulation
+    [17,18],[18,19],[19,20],[20,21],[22,23],[23,24],[24,25],[25,26],
+    [17,22],[18,23],[19,24],[20,25],[21,26],
+    // Eye triangulation
+    [36,39],[37,40],[38,41],[42,45],[43,46],[44,47],
+    [36,41],[37,41],[38,40],[42,47],[43,47],[44,46],
+    // Nose triangulation
+    [27,28],[28,29],[29,30],[30,31],[30,35],[31,32],[32,33],[33,34],[34,35],
+    [27,30],[28,31],[28,35],[29,32],[29,34],
+    // Mouth triangulation
+    [48,54],[49,53],[50,52],[60,64],[61,63],[62,66],
+    [48,60],[54,64],[50,62],[52,62],[51,61],[57,66],
+    [48,49],[49,50],[50,51],[51,52],[52,53],[53,54],
+    [54,55],[55,56],[56,57],[57,58],[58,59],[59,48],
+    // Cross-face
+    [36,27],[45,27],[39,30],[42,30],[36,31],[45,35],
+    [0,36],[16,45],[0,17],[16,26],
+    [4,5],[11,12],[5,6],[10,11],
+  ];
+
+  ctx.lineWidth = 0.7;
+  meshLines.forEach(([a, b]) => {
+    if (!pts[a] || !pts[b]) return;
     ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,210,120,0.2)';
+    ctx.moveTo(pts[a].x, pts[a].y);
+    ctx.lineTo(pts[b].x, pts[b].y);
+    ctx.stroke();
   });
 
-  const line = (idxs, closed = false) => {
-    ctx.strokeStyle = 'rgba(0,200,100,0.4)';
-    ctx.lineWidth = 1;
+  // ── 2. Primary contour lines (brighter) ──
+  const contours = [
+    { path: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], closed: false },
+    { path: [17,18,19,20,21], closed: false },
+    { path: [22,23,24,25,26], closed: false },
+    { path: [27,28,29,30], closed: false },
+    { path: [30,31,32,33,34,35,30], closed: false },
+    { path: [36,37,38,39,40,41], closed: true },
+    { path: [42,43,44,45,46,47], closed: true },
+    { path: [48,49,50,51,52,53,54,55,56,57,58,59], closed: true },
+    { path: [60,61,62,63,64,65,66,67], closed: true },
+  ];
+
+  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = 'rgba(0,220,130,0.5)';
+  contours.forEach(({ path, closed }) => {
     ctx.beginPath();
-    idxs.forEach((i, n) => n === 0 ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y));
+    path.forEach((i, n) => n === 0 ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y));
     if (closed) ctx.closePath();
     ctx.stroke();
-  };
+  });
 
-  line([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]); // jaw
-  line([17,18,19,20,21]); line([22,23,24,25,26]);      // brows
-  line([27,28,29,30]); line([30,31,32,33,34,35,30]);   // nose
-  line([36,37,38,39,40,41], true);                     // left eye
-  line([42,43,44,45,46,47], true);                     // right eye
-  line([48,49,50,51,52,53,54,55,56,57,58,59], true);  // outer mouth
-  line([60,61,62,63,64,65,66,67], true);               // inner mouth
+  // ── 3. Colour-coded landmark dots by facial zone ──
+  const zones = [
+    { idxs: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], color: '#a78bfa', r: 2.2 }, // jaw
+    { idxs: [17,18,19,20,21,22,23,24,25,26],             color: '#60a5fa', r: 2.5 }, // brows
+    { idxs: [27,28,29,30,31,32,33,34,35],                color: '#34d399', r: 2.5 }, // nose
+    { idxs: [36,37,38,39,40,41,42,43,44,45,46,47],       color: '#22d3ee', r: 2.8 }, // eyes
+    { idxs: [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67], color: '#fb923c', r: 2.2 }, // mouth
+  ];
+
+  zones.forEach(({ idxs, color, r }) => {
+    ctx.fillStyle = color;
+    idxs.forEach(i => {
+      if (!pts[i]) return;
+      ctx.beginPath();
+      ctx.arc(pts[i].x, pts[i].y, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
 }

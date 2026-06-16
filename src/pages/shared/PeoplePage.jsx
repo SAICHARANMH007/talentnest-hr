@@ -28,19 +28,20 @@ function maskEmail(e) {
   return local[0] + '•'.repeat(Math.max(1, local.length - 1)) + '@' + domain;
 }
 
-function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
-  const [posts, setPosts]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [compose, setCompose]     = useState(false);
-  const [msgText, setMsgText]     = useState('');
-  const [sending, setSending]     = useState(false);
-  const [msgSent, setMsgSent]     = useState(false);
+function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId }) {
+  const [posts, setPosts]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [compose, setCompose]       = useState(false);
+  const [msgText, setMsgText]       = useState('');
+  const [sending, setSending]       = useState(false);
+  const [msgSent, setMsgSent]       = useState(false);
   const [infoStatus, setInfoStatus] = useState(null);
   const [infoContact, setInfoContact] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  const bg = ROLE_COLOR[person.role] || '#0176D3';
+  const bg  = ROLE_COLOR[person.role] || '#0176D3';
   const uid = String(person._id || person.id);
+  const isConnected = person.connectionStatus === 'accepted';
 
   useEffect(() => {
     setLoading(true);
@@ -84,24 +85,37 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }} />
       <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
-        <div style={{ height: 90, background: `linear-gradient(135deg, ${bg} 0%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
-          <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        {/* Hero header with gradient */}
+        <div style={{ height: 110, background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 60%, ${bg}88 100%)`, position: 'relative', flexShrink: 0 }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>×</button>
+          {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 20, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '3px 10px', backdropFilter: 'blur(4px)' }}>✓ Connected</div>}
         </div>
 
         <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          <div style={{ marginTop: -36, marginBottom: 12 }}>
-            <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={72} role={person.role} />
+          {/* Profile photo overlapping header */}
+          <div style={{ marginTop: -44, marginBottom: 14, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+            <div style={{ position: 'relative' }}>
+              {(person.avatarUrl || person.photoUrl) ? (
+                <img src={person.avatarUrl || person.photoUrl} alt={person.name}
+                  style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 16px ${bg}44` }} />
+              ) : (
+                <div style={{ width: 88, height: 88, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 34, border: '4px solid #fff', boxShadow: `0 4px 16px ${bg}44` }}>
+                  {(person.name || '?')[0].toUpperCase()}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
-            <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 4, padding: '3px 8px' }}>
+            <div style={{ fontWeight: 900, fontSize: 22, color: '#0A1628', marginBottom: 6, lineHeight: 1.2 }}>{person.name || 'Member'}</div>
+            <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 6, padding: '3px 10px', display: 'inline-block' }}>
               {ROLE_LABEL[person.role] || person.role || 'Member'}
             </span>
-            {person.title && <div style={{ fontSize: 13, color: '#374151', fontWeight: 600, marginTop: 8 }}>{person.title}</div>}
-            {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>🏢 {person.department}</div>}
+            {person.title && <div style={{ fontSize: 14, color: '#374151', fontWeight: 600, marginTop: 8, lineHeight: 1.4 }}>{person.title}</div>}
+            {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 5 }}>🏢 {person.department}</div>}
             {person.location && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>📍 {person.location}</div>}
             {person.experience > 0 && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>⏱ {person.experience} yr{person.experience !== 1 ? 's' : ''} experience</div>}
+            {person.mutualConnections > 0 && <div style={{ fontSize: 12, color: '#059669', marginTop: 4, fontWeight: 600 }}>🤝 {person.mutualConnections} mutual connection{person.mutualConnections !== 1 ? 's' : ''}</div>}
           </div>
 
           {/* About / Bio */}
@@ -158,16 +172,25 @@ function UserProfileDrawer({ person, onClose, onRemove, currentUserId }) {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-            <button onClick={() => setCompose(v => !v)}
-              style={{ flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              ✉️ {compose ? 'Cancel' : 'Message'}
-            </button>
-            <button onClick={() => { onRemove(person); onClose(); }}
-              style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}>
-              Remove
-            </button>
+            {isConnected && (
+              <button onClick={() => setCompose(v => !v)}
+                style={{ flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 10, border: 'none', background: bg, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                ✉️ {compose ? 'Cancel' : 'Message'}
+              </button>
+            )}
+            {!isConnected && onAction && (
+              <div style={{ flex: 1 }}>
+                <ConnectionButton person={person} onAction={(action, p) => { onAction(action, p); if (action === 'connect') onClose(); }} loading={false} />
+              </div>
+            )}
+            {isConnected && onRemove && (
+              <button onClick={() => { onRemove(person); onClose(); }}
+                style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FCA5A5'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}>
+                Remove
+              </button>
+            )}
           </div>
 
           {/* Inline message compose */}
@@ -371,37 +394,99 @@ function ReasonChip({ reason }) {
   );
 }
 
-// ── Person Grid Card (for suggestions) ────────────────────────────────────────
-function PersonGridCard({ person, onAction, loading }) {
+// ── Person Grid Card (for suggestions) — LinkedIn-style ───────────────────────
+function PersonGridCard({ person, onAction, loading, onCardClick }) {
+  const bg = ROLE_COLOR[person.role] || '#0176D3';
+  const hasPhoto = !!(person.avatarUrl || person.photoUrl);
   return (
-    <div style={{ ...card, padding: '20px 16px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 8 }}>
-      <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={60} role={person.role} />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 4 }}>{person.name || 'Member'}</div>
+    <div
+      onClick={onCardClick}
+      style={{
+        borderRadius: 16, overflow: 'hidden', background: '#fff',
+        border: '1px solid #E5E7EB', boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+        display: 'flex', flexDirection: 'column',
+        cursor: onCardClick ? 'pointer' : 'default',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.14)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.06)'; }}
+    >
+      {/* Gradient header strip */}
+      <div style={{ height: 58, background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 55%, ${bg}77 100%)`, flexShrink: 0, position: 'relative' }}>
+        {person.mutualConnections > 0 && (
+          <div style={{ position: 'absolute', bottom: 6, right: 8, fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 10, padding: '2px 6px', backdropFilter: 'blur(4px)' }}>
+            🤝 {person.mutualConnections} mutual
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: 1 }}>
+        {/* Profile photo overlapping header */}
+        <div style={{ marginTop: -34, marginBottom: 8, position: 'relative' }}>
+          {hasPhoto ? (
+            <img src={person.avatarUrl || person.photoUrl} alt={person.name}
+              style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover',
+                border: '3px solid #fff', boxShadow: `0 4px 14px ${bg}44` }} />
+          ) : (
+            <div style={{ width: 68, height: 68, borderRadius: '50%', background: bg, color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26, fontWeight: 800, border: '3px solid #fff',
+              boxShadow: `0 4px 14px ${bg}44` }}>
+              {(person.name || '?')[0].toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 4, lineHeight: 1.2 }}>
+          {person.name || 'Member'}
+        </div>
         <RoleBadge role={person.role} />
-        {person.title && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 5, fontWeight: 500 }}>{person.title}</div>}
-        {person.location && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>}
+
+        {person.title && (
+          <div style={{ fontSize: 12, color: '#374151', marginTop: 5, fontWeight: 500, lineHeight: 1.3,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {person.title}
+          </div>
+        )}
+        {person.location && (
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>
+        )}
         {!person.title && !person.location && person.summary && (
-          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {person.summary}
           </div>
         )}
+
         {Array.isArray(person.skills) && person.skills.length > 0 && (
           <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             {person.skills.slice(0, 2).map((s, i) => (
-              <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 12, padding: '2px 7px', border: '1px solid #E5E7EB' }}>{s}</span>
+              <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 10, padding: '2px 6px', border: '1px solid #E5E7EB' }}>{s}</span>
             ))}
-            {person.skills.length > 2 && <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 4px' }}>+{person.skills.length - 2}</span>}
+            {person.skills.length > 2 && (
+              <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 3px' }}>+{person.skills.length - 2}</span>
+            )}
           </div>
         )}
-        {person.mutualConnections > 0 && (
-          <div style={{ fontSize: 11, color: '#059669', marginTop: 4, fontWeight: 600 }}>
-            🤝 {person.mutualConnections} mutual connection{person.mutualConnections !== 1 ? 's' : ''}
-          </div>
-        )}
+
         <ReasonChip reason={person.suggestionReason} />
+
+        {/* View profile link */}
+        {onCardClick && (
+          <button
+            onClick={e => { e.stopPropagation(); onCardClick(); }}
+            style={{ marginTop: 8, marginBottom: 6, fontSize: 11, color: bg, background: 'transparent', border: `1px solid ${bg}`, borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 700, transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = bg; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = bg; }}>
+            View Profile
+          </button>
+        )}
+
+        <div onClick={e => e.stopPropagation()}>
+          <ConnectionButton person={person} onAction={onAction} loading={loading} />
+        </div>
       </div>
-      <ConnectionButton person={person} onAction={onAction} loading={loading} />
     </div>
   );
 }
@@ -623,6 +708,8 @@ export default function PeoplePage({ user }) {
 
   const uid = String(user?.id || user?._id || '');
 
+  const openProfile = (person) => setProfilePerson(person);
+
   return (
     <div style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
@@ -663,6 +750,7 @@ export default function PeoplePage({ user }) {
                 onAction={handleAction}
                 loading={actionLoading === String(person._id || person.id)}
                 searchQuery={searchQuery}
+                onCardClick={() => openProfile(person)}
               />
             ))}
           </div>
@@ -863,6 +951,7 @@ export default function PeoplePage({ user }) {
                             person={person}
                             onAction={handleAction}
                             loading={actionLoading === String(person._id || person.id)}
+                            onCardClick={() => openProfile(person)}
                           />
                         ))}
                       </div>
@@ -914,6 +1003,7 @@ export default function PeoplePage({ user }) {
                           person={{ ...person, connectionStatus: 'pending_received' }}
                           onAction={handleAction}
                           loading={actionLoading === String(person._id || person.id)}
+                          onCardClick={() => openProfile(person)}
                         />
                       ))}
                     </div>
@@ -1016,6 +1106,22 @@ export default function PeoplePage({ user }) {
             </div>
           )}
         </>
+      )}
+
+      {/* Profile drawer — opens when any person card is tapped */}
+      {profilePerson && (
+        <UserProfileDrawer
+          person={profilePerson}
+          onClose={() => setProfilePerson(null)}
+          onAction={(action, p) => {
+            handleAction(action, p);
+            if (action === 'remove') setProfilePerson(null);
+          }}
+          onRemove={profilePerson.connectionStatus === 'accepted'
+            ? (p) => { handleAction('remove', p); setProfilePerson(null); }
+            : undefined}
+          currentUserId={uid}
+        />
       )}
 
       <style>{`
