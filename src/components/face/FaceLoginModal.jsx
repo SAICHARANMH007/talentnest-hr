@@ -184,9 +184,12 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   };
 
   // ── Open camera — called DIRECTLY from button onClick ──────────────────────────
-  // Uses promise chain (no async/await) to keep getUserMedia as close to the tap as possible.
-  // facingMode is *ideal* to avoid OverconstrainedError on single-camera Android devices.
   const openCamera = () => {
+    // navigator.mediaDevices is undefined on HTTP pages — must be HTTPS
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCamError('Camera not available. Make sure the page is open over https:// in Chrome or Safari.');
+      return;
+    }
     setCamError('');
     setOpeningCamera(true);
 
@@ -194,38 +197,31 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
       streamRef.current = s;
       setStreamReady(true);
       setOpeningCamera(false);
-      // Attach immediately if video element is already in DOM
       if (videoRef.current) {
         videoRef.current.srcObject = s;
         videoRef.current.play().catch(() => {});
       }
     };
 
-    const handleErr = (err, isRetry) => {
-      if (!isRetry && (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError')) {
-        // Retry with minimal constraints — some Android cameras reject facingMode
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(attachStream)
-          .catch(err2 => handleErr(err2, true));
-        return;
-      }
+    const showErr = err => {
       setOpeningCamera(false);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCamError('Camera blocked — open browser Settings → Site Settings → Camera → set to Allow, then reload.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCamError('No camera found on this device.');
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        setCamError('Camera is busy. Close other apps using the camera and try again.');
-      } else {
-        setCamError(`Camera error (${err.name || 'unknown'}): ${err.message || 'Please try again.'}`);
-      }
+      const n = err?.name || 'UnknownError';
+      setCamError(
+        n === 'NotAllowedError' || n === 'PermissionDeniedError'
+          ? `Camera blocked [${n}]. Tap the 🔒 in the address bar → Camera → Allow → reload page.`
+          : n === 'NotFoundError' || n === 'DevicesNotFoundError'
+            ? `No camera found [${n}].`
+            : n === 'NotReadableError' || n === 'TrackStartError'
+              ? `Camera is in use by another app [${n}]. Close it and try again.`
+              : `Camera error [${n}]: ${err?.message || 'Try reloading the page.'}`
+      );
     };
 
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } }
-    })
+    // Stage 1: try front camera (ideal = never throws OverconstrainedError)
+    // Stage 2: fall back to any camera with zero constraints
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } } })
       .then(attachStream)
-      .catch(err => handleErr(err, false));
+      .catch(() => navigator.mediaDevices.getUserMedia({ video: true }).then(attachStream).catch(showErr));
   };
 
   // ── Capture one frame ────────────────────────────────────────────────────────
@@ -367,6 +363,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                   border: qualityWarn ? '2px solid #ef4444' : '2px solid rgba(1,118,211,0.4)' }}>
                   <video ref={videoRef} autoPlay playsInline muted
                     onLoadedMetadata={e => e.target.play().catch(() => {})}
+                    onCanPlay={e => e.target.play().catch(() => {})}
                     onPlaying={() => {}}
                     style={{ width:'100%', display:'block', transform:'scaleX(-1)', borderRadius:12 }} />
                   <canvas ref={canvasRef}

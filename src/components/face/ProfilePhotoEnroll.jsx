@@ -362,6 +362,7 @@ function FaceCamera({ stream, onDone, onCancel }) {
         border: qualityWarn ? '2.5px solid #ef4444' : '2.5px solid transparent' }}>
         <video ref={videoRef} autoPlay playsInline muted
           onLoadedMetadata={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
+          onCanPlay={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
           onPlaying={() => setCameraReady(true)}
           style={{ width:'100%', borderRadius:14, display:'block', transform:'scaleX(-1)' }} />
         <canvas ref={canvasRef}
@@ -437,31 +438,36 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 5000); };
 
-  // Acquire camera in user gesture context, then show FaceCamera.
-  // Uses promise chain (not async/await) to keep getUserMedia synchronous with the tap.
-  // facingMode is *ideal* (not required) to avoid OverconstrainedError on single-camera Android devices.
   const handleStartCamera = () => {
-    const start = (constraints) =>
+    // navigator.mediaDevices is undefined on HTTP — must be HTTPS
+    if (!navigator.mediaDevices?.getUserMedia) {
+      flash('Camera not available. Make sure the page is open over https:// in Chrome or Safari.', false);
+      return;
+    }
+
+    const openWith = constraints =>
       navigator.mediaDevices.getUserMedia(constraints)
         .then(s => { setPendingStream(s); setShowCamera(true); });
 
-    start({ video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } })
-      .catch(err => {
-        if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
-          // Retry with no constraints — some Android cameras reject facingMode
-          start({ video: true }).catch(err2 =>
-            flash(`Camera error (${err2.name}): ${err2.message || 'Please try again.'}`, false)
-          );
-        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          flash('Camera blocked — open browser Settings → Site Settings → Camera and set this site to Allow, then reload.', false);
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          flash('No camera found on this device.', false);
-        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          flash('Camera is busy (another app may be using it). Close other apps and try again.', false);
-        } else {
-          flash(`Camera error (${err.name}): ${err.message || 'Please try again.'}`, false);
-        }
-      });
+    const onFail = err => {
+      const n = err?.name || 'UnknownError';
+      flash(
+        n === 'NotAllowedError' || n === 'PermissionDeniedError'
+          ? `Camera blocked [${n}]. Tap the 🔒 icon in the address bar → Camera → Allow → then reload the page.`
+          : n === 'NotFoundError' || n === 'DevicesNotFoundError'
+            ? `No camera found on this device [${n}].`
+            : n === 'NotReadableError' || n === 'TrackStartError'
+              ? `Camera is in use by another app [${n}]. Close it and try again.`
+              : `Camera error [${n}]: ${err?.message || 'Please try again.'}`,
+        false
+      );
+    };
+
+    // Stage 1: try front camera (ideal — never causes OverconstrainedError)
+    // Stage 2: fall back to any camera with zero constraints
+    openWith({ video: { facingMode: { ideal: 'user' } } })
+      .catch(() => openWith({ video: true }))
+      .catch(onFail);
   };
 
   const enrolled   = !!frsStatus?.enrolled;
