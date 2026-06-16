@@ -769,6 +769,12 @@ export default function CandidateProfile({ user }) {
               onChange={u => setWork(p => p.map(x => x.id===e.id ? u : x))}
               onDelete={() => setWork(p => p.filter(x => x.id!==e.id))}/>
           ))}
+          {workHistory.length > 0 && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(1,118,211,0.04)', border: '1px dashed rgba(1,118,211,0.2)', display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 12 }}>
+              <span style={{ fontSize: 18 }}>💡</span>
+              <span>Multiple jobs? Click <b style={{ color:'#0176D3' }}>+ Add Job</b> to add more work experience. Each entry appears separately on your resume.</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -790,6 +796,12 @@ export default function CandidateProfile({ user }) {
               onChange={u => setEdu(p => p.map(x => x.id===e.id ? u : x))}
               onDelete={() => setEdu(p => p.filter(x => x.id!==e.id))}/>
           ))}
+          {eduList.length > 0 && (
+            <div style={{ marginTop: 8, marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(1,118,211,0.04)', border: '1px dashed rgba(1,118,211,0.2)', display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 12 }}>
+              <span style={{ fontSize: 18 }}>💡</span>
+              <span>Have multiple degrees? Click <b style={{ color:'#0176D3' }}>+ Add Education</b>. Your most recent qualification auto-fills the Personal tab.</span>
+            </div>
+          )}
 
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, marginTop:24, gap:8 }}>
             <p style={{ color:'#0176D3', fontSize:11, fontWeight:700, margin:0, letterSpacing:1 }}>📜 CERTIFICATIONS — {certList.length} {certList.length===1?'entry':'entries'}</p>
@@ -978,11 +990,17 @@ export default function CandidateProfile({ user }) {
       {/* ── Sticky save footer (all tabs except resume and posts) ── */}
       {tab !== 'resume' && tab !== 'posts' && (
         <div style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 50,
+          background: '#fff',
           display: 'flex',
           gap: 10,
           marginTop: 20,
-          paddingTop: 16,
-          borderTop: '1px solid #F3F2F2',
+          paddingTop: 14,
+          paddingBottom: 14,
+          borderTop: '2px solid #EEF2FF',
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
           flexDirection: isMobile ? 'column' : 'row',
         }}>
           <button

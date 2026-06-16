@@ -156,12 +156,14 @@ export default function ResumeCard({ candidate: raw }) {
   };
 
   return (
-    <div ref={ref} className="page" style={{ fontFamily:"'Segoe UI',Inter,Arial,sans-serif", background:'#fff', color:'#1e293b', maxWidth:860, margin:'0 auto', position:'relative', fontSize:13 }}>
+    <div ref={ref} className="page" style={{ fontFamily:"'Segoe UI',Inter,Arial,sans-serif", background:'#fff', color:'#1e293b', maxWidth:860, margin:'0 auto', fontSize:13 }}>
 
-      {/* Print button */}
-      <button className="no-print" onClick={handlePrint} style={{ position:'absolute', top:12, right:12, zIndex:20, background:'#EAF5FE', backdropFilter:'blur(8px)', color:'#181818', border:'1px solid #C9C7C5', borderRadius:8, padding:'6px 14px', fontSize:11.5, cursor:'pointer', fontWeight:600 }}>
-        🖨 Print / Save PDF
-      </button>
+      {/* Print button bar — separate from header so nothing overlaps on any screen size */}
+      <div className="no-print" style={{ display:'flex', justifyContent:'flex-end', padding:'8px 14px', background:'#F0F7FF', borderBottom:'1px solid #BFDBFE' }}>
+        <button onClick={handlePrint} style={{ background:'#0176D3', color:'#fff', border:'none', borderRadius:8, padding:'7px 18px', fontSize:12, cursor:'pointer', fontWeight:700, display:'flex', alignItems:'center', gap:6, boxShadow:'0 2px 8px rgba(1,118,211,0.25)' }}>
+          🖨 Print / Save PDF
+        </button>
+      </div>
 
       {/* ── HEADER ── */}
       <div style={{ background:'linear-gradient(135deg, #032D60 0%, #014486 100%)', padding:'28px 36px 22px', display:'flex', alignItems:'center', gap:22, position:'relative', overflow:'hidden' }}>
