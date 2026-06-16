@@ -17,6 +17,30 @@ import { DEGREES, BRANCHES_BY_DEGREE, DEFAULT_BRANCHES } from '../../constants/e
 const parseJ = (s, fallback = []) => { if (Array.isArray(s)) return s; try { return JSON.parse(s || '[]'); } catch { return fallback; } };
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+/** Normalize a free-text month+year date: "Jan/2020" → "Jan 2020", "01-2020" → "Jan 2020" */
+function normDate(v) {
+  if (!v) return v;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let s = String(v).trim();
+  // "Jan/2020" or "jan-2020" → "Jan 2020"
+  s = s.replace(/([A-Za-z]{3,})[\/\-](\d{4})/, (_, m, y) => {
+    const mi = MONTHS.findIndex(mn => mn.toLowerCase() === m.slice(0,3).toLowerCase());
+    return mi >= 0 ? `${MONTHS[mi]} ${y}` : `${m} ${y}`;
+  });
+  // "01/2020" → "Jan 2020"
+  s = s.replace(/^(\d{1,2})[\/\-](\d{4})$/, (_, m, y) => {
+    const idx = parseInt(m, 10) - 1;
+    return MONTHS[idx] ? `${MONTHS[idx]} ${y}` : s;
+  });
+  return s.trim();
+}
+
+/** Split tags by comma, semicolon, or pipe — flexible separator support */
+function parseTags(str) {
+  if (Array.isArray(str)) return str.filter(Boolean);
+  return (str || '').split(/[,;|]+/).map(s => s.trim()).filter(Boolean);
+}
+
 function useIsMobile() {
   const [m, setM] = useState(() => window.innerWidth < 640);
   useEffect(() => {
@@ -346,7 +370,7 @@ export default function CandidateProfile({ user }) {
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
     experience:'', isFresher:false, college:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
-    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'',
+    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'', photoUrl:'',
   });
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
@@ -370,7 +394,7 @@ export default function CandidateProfile({ user }) {
           currentCTC: d.currentCTC||'', expectedCTC: d.expectedCTC||'',
           source: d.source||'', dateAdded: d.dateAdded||'',
           candidateStatus: d.candidateStatus||'', additionalDetails: d.additionalDetails||'',
-          gender: d.gender||'',
+          gender: d.gender||'', photoUrl: d.photoUrl||d.avatarUrl||'',
         });
         setWork(parseJ(d.workHistory));
         setEdu(parseJ(d.educationList));
@@ -409,19 +433,46 @@ export default function CandidateProfile({ user }) {
     }
     setSaving(true);
     try {
-      const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
-      const languages = typeof form.languages === 'string' ? form.languages.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.languages) ? form.languages : []);
-      const res = await api.updateProfile({
+      const skills = parseTags(form.skills);
+      const languages = parseTags(form.languages);
+
+      // Normalize work-history dates
+      const normalizedWork = workHistory.map(e => ({ ...e, from: normDate(e.from) || e.from, to: e.current ? '' : (normDate(e.to) || e.to) }));
+
+      // Auto-sync: pull title + currentCompany from the most recent "current" job
+      const currentJob = normalizedWork.find(e => e.current) || null;
+      const syncedTitle   = form.title   || (currentJob?.title   || '');
+      const syncedCompany = form.currentCompany || (currentJob?.company || '');
+
+      // Auto-sync: pull college from the latest education entry if field is blank
+      const latestEdu = eduList[0] || null;
+      const syncedCollege = form.college || (latestEdu?.institution || '');
+
+      const profilePayload = {
         ...form,
         phone: (form.phone || '').replace(/\s+/g, ''),
         skills, languages,
+        title: syncedTitle,
+        currentCompany: syncedCompany,
+        college: syncedCollege,
         experience: form.isFresher ? 0 : (parseInt(form.experience) || 0),
-        workHistory: JSON.stringify(workHistory),
+        workHistory: JSON.stringify(normalizedWork),
         educationList: JSON.stringify(eduList),
         certifications: JSON.stringify(certList),
-      });
+      };
+      // Never wipe photoUrl with an empty string — photo is managed by the dedicated upload panel
+      if (!profilePayload.photoUrl) delete profilePayload.photoUrl;
+      const res = await api.updateProfile(profilePayload);
       const d = res?.data || res;
       setProfile(d);
+      // Reflect server-confirmed values back into form (title, company, college may have been auto-synced)
+      setForm(prev => ({
+        ...prev,
+        title:          d.title          || prev.title,
+        currentCompany: d.currentCompany || prev.currentCompany,
+        college:        d.college        || prev.college,
+        photoUrl:       d.photoUrl       || d.avatarUrl || prev.photoUrl,
+      }));
       // Keep tn_user in sessionStorage/localStorage in sync so PublicApplyModal
       // auto-populates industry, department and other profile fields correctly.
       try {
@@ -435,6 +486,7 @@ export default function CandidateProfile({ user }) {
           industry: d.industry || stored.industry,
           department: d.department || stored.department,
           phone: d.phone || stored.phone,
+          photoUrl: d.photoUrl || d.avatarUrl || stored.photoUrl,
         });
         sessionStorage.setItem('tn_user', updated);
         localStorage.setItem('tn_user', updated);
@@ -554,6 +606,9 @@ export default function CandidateProfile({ user }) {
           </Section>
 
           <Section title="💼 CURRENT ROLE">
+            <div style={{ background:'rgba(1,118,211,0.06)', border:'1px solid rgba(1,118,211,0.18)', borderRadius:8, padding:'8px 12px', marginBottom:14, fontSize:11, color:'#475569', lineHeight:1.6 }}>
+              💡 <b>Auto-sync tip:</b> Save after adding your work experience in the <b>Experience</b> tab — your current job title and company will auto-fill here. Similarly, your latest institution from <b>Education</b> will fill the college field below.
+            </div>
             <div className="form-grid-2">
               <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 8, gridColumn: '1 / -1', width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: `1px solid ${form.isFresher ? '#10B981' : '#D1D5DB'}`, background: form.isFresher ? 'rgba(16,185,129,0.08)' : '#fff', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.isFresher} onChange={e => {
@@ -644,10 +699,10 @@ export default function CandidateProfile({ user }) {
           </p>
           <Field label="Professional Summary *" value={form.summary} onChange={v=>sf('summary',v)} rows={6} placeholder="Results-driven Software Engineer with 5+ years of experience..."/>
           <div style={{ marginTop:14 }}>
-            <Field label="Culture / Work Style Tags (comma-separated)" value={form.culture} onChange={v=>sf('culture',v)} placeholder="collaborative, remote-friendly, agile, data-driven"/>
+            <Field label="Culture / Work Style Tags (comma, semicolon, or pipe separated)" value={form.culture} onChange={v=>sf('culture',v)} placeholder="collaborative, remote-friendly, agile, data-driven"/>
             {form.culture && (
               <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                {(Array.isArray(form.culture) ? form.culture : (form.culture||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#A07E00"/>)}
+                {parseTags(form.culture).map(s=><Badge key={s} label={s} color="#A07E00"/>)}
               </div>
             )}
           </div>
@@ -714,7 +769,7 @@ export default function CandidateProfile({ user }) {
               <Field label="Technical Skills (comma-separated)" value={form.skills} onChange={v=>sf('skills',v)} placeholder="React, Node.js, Python, AWS, Docker, MongoDB..."/>
               {form.skills && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                  {(Array.isArray(form.skills)?form.skills:(form.skills||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#0176D3"/>)}
+                  {parseTags(form.skills).map(s=><Badge key={s} label={s} color="#0176D3"/>)}
                 </div>
               )}
             </div>
@@ -722,7 +777,7 @@ export default function CandidateProfile({ user }) {
               <Field label="Languages Known (comma-separated)" value={form.languages} onChange={v=>sf('languages',v)} placeholder="English (Fluent), Hindi (Native), Telugu (Native)"/>
               {form.languages && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                  {(Array.isArray(form.languages)?form.languages:(form.languages||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#10b981"/>)}
+                  {parseTags(form.languages).map(s=><Badge key={s} label={s} color="#10b981"/>)}
                 </div>
               )}
             </div>
