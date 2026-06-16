@@ -582,14 +582,30 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
         <p style="color:#6B7280;font-size:12px;text-align:center;margin:0">If you didn't request this, please ignore this email and your account remains secure.</p>
       </div>`;
 
+    let emailDelivered = false;
     try {
       await sendEmailWithRetry(emailLower, 'TalentNest — Login Verification Code', html);
+      emailDelivered = true;
     } catch (err) {
-      logger.warn('Face OTP email failed', { email: emailLower, error: err.message });
+      // Log with full context so admins can diagnose email service issues
+      logger.error('Face OTP email FAILED — check SMTP/email service config', {
+        email: emailLower,
+        error: err.message,
+        stack: err.stack?.split('\n')[1] || '',
+      });
+    }
+
+    if (!emailDelivered) {
+      // Tell the user the email failed rather than showing a fake "code sent" screen
+      // (still doesn't reveal whether the email is registered)
+      return res.status(503).json({
+        success: false,
+        error: 'Could not send the verification code right now. Please try password login or contact support.',
+      });
     }
   }
 
-  // Always return success to prevent email enumeration
+  // Return success (no email in system — don't reveal this)
   res.json({ success: true, message: 'If your email is registered, you will receive a verification code.' });
 }));
 

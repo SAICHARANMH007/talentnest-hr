@@ -89,6 +89,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const [otpError, setOtpError]     = useState('');
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [resending, setResending]   = useState(false);
+  const [otpResent, setOtpResent]   = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const videoRef       = useRef(null);
@@ -293,10 +294,19 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const resendOtp = async () => {
     setResending(true);
     setOtpError('');
+    setOtpResent(false);
     try {
       await api.sendFaceOtp({ email: email.trim().toLowerCase() });
-      setOtpError('');
-    } catch {}
+      setOtpResent(true);
+      setTimeout(() => setOtpResent(false), 4000);
+    } catch (e) {
+      const msg = e?.message || '';
+      if (msg.toLowerCase().includes('too many') || e?.status === 429) {
+        setOtpError('Too many requests. Wait 15 minutes before requesting another code.');
+      } else {
+        setOtpError('Could not send code. Check your connection and try again.');
+      }
+    }
     setResending(false);
   };
 
@@ -565,6 +575,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
               </div>
             </div>
 
+            {/* Spam hint + delivery notice */}
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:9, padding:'9px 12px', fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.7 }}>
+              📬 <b style={{ color:'rgba(255,255,255,0.6)' }}>Didn't receive it?</b> Check your <b style={{ color:'rgba(255,255,255,0.6)' }}>spam / junk</b> folder. The code arrives within 1–2 minutes. Subject: <i>TalentNest Login Verification</i>.
+            </div>
+
             <div>
               <label style={{ color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700, display:'block', marginBottom:6, letterSpacing:0.5 }}>
                 VERIFICATION CODE
@@ -580,6 +595,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 style={{ ...inp, fontSize:20, fontWeight:900, letterSpacing:6, textAlign:'center',
                   borderColor: otpError ? '#ef4444' : undefined }}
               />
+              {otpResent && <div style={{ color:'#4ade80', fontSize:11, marginTop:4 }}>✅ New code sent! Check your inbox and spam folder.</div>}
               {otpError && <div style={{ color:'#ef4444', fontSize:11, marginTop:4 }}>{otpError}</div>}
             </div>
 
