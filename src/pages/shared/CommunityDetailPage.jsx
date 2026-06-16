@@ -53,7 +53,7 @@ function PostTypeBanner({ post }) {
     tip:         { gradient:'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)', icon:'💡', title:'Pro Tip',          sub: firstLine?shortFirst(firstLine):'Bookmark this. Your career will thank you.', pill:'🔥 HOT TIP' },
     question:    { gradient:'linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%)', icon:'🤔', title:'Got a Question?',  sub: firstLine?shortFirst(firstLine):'Drop your wisdom in the comments ↓', pill:'💬 ASK' },
     achievement: { gradient:'linear-gradient(135deg,#FBBF24 0%,#B45309 100%)', icon:'🏆', title:'Big W!',           sub: firstLine?shortFirst(firstLine):'This one deserves the spotlight.', pill:'🎉 WIN' },
-    feedback:    { gradient: starCount>0?`linear-gradient(135deg,${STAR_COLOR[starCount]}99 0%,${STAR_COLOR[starCount]} 100%)`:'linear-gradient(135deg,#F472B6 0%,#DB2777 100%)', icon:'⭐', title: starCount>0?`${starCount}/5 — ${STAR_LABEL[starCount]}`:'Honest Review', sub: starCount>0?'Real talk. Straight from the community.':'No filters. No fluff. Just facts.', pill: starCount>0?'★'.repeat(starCount):null },
+    feedback:    { gradient: 'linear-gradient(135deg,#F472B6 0%,#DB2777 100%)', icon:'⭐', title: starCount>0?`${starCount}/5 — ${STAR_LABEL[starCount]}`:'Honest Review', sub: starCount>0?`${STAR_LABEL[starCount]} experience — community rated`:'No filters. No fluff. Just real feedback.', pill: starCount>0?'⭐'.repeat(starCount):'📝 REVIEW' },
     resource:    { gradient:'linear-gradient(135deg,#22D3EE 0%,#0891B2 100%)', icon:'🔥', title:'Resource Drop',    sub: firstLine?shortFirst(firstLine):"Save this. It's worth your time.", pill:'📚 READ' },
     milestone:   { gradient:'linear-gradient(135deg,#F87171 0%,#DC2626 100%)', icon:'🎯', title:'Milestone Alert!', sub: firstLine?shortFirst(firstLine):'Level unlocked. This is huge. 🔓', pill:'🏅 NEW' },
     announcement:{ gradient: isUrgent?'linear-gradient(135deg,#F87171 0%,#DC2626 100%)':isImportant?'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)':'linear-gradient(135deg,#60A5FA 0%,#2563EB 100%)', icon:isUrgent?'🚨':isImportant?'⚡':'📣', title:isUrgent?'Urgent!':isImportant?'Important':'Heads Up!', sub:isUrgent?'Action required — read this now.':isImportant?'Read before you scroll past.':(firstLine?shortFirst(firstLine):"Don't miss this community update."), pill:isUrgent?'🚨 URGENT':isImportant?'⚡ MUST READ':'📣 NEWS' },
@@ -62,13 +62,15 @@ function PostTypeBanner({ post }) {
   const cfg = CFG[type];
   if (!cfg) return null;
   return (
-    <div style={{ background: cfg.gradient, borderRadius: '14px 14px 0 0', padding: '18px 18px', marginLeft: -18, marginRight: -18, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.22))' }}>{cfg.icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>{cfg.title}</div>
-        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{cfg.sub}</div>
+    <div style={{ background: cfg.gradient, borderRadius: '16px 16px 0 0', padding: '18px 18px', marginLeft: -18, marginRight: -18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '52%', background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.18)', pointerEvents: 'none', zIndex: 0 }} />
+      <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.28))', position: 'relative', zIndex: 1 }}>{cfg.icon}</span>
+      <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.22)' }}>{cfg.title}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.88)', marginTop: 3, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{cfg.sub}</div>
       </div>
-      {cfg.pill && <span style={{ fontSize: 10.5, fontWeight: 800, background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 20, padding: '4px 11px', letterSpacing: '0.05em', flexShrink: 0, whiteSpace: 'nowrap', border: '1px solid rgba(255,255,255,0.3)' }}>{cfg.pill}</span>}
+      {cfg.pill && <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '4px 11px', letterSpacing: '0.05em', flexShrink: 0, whiteSpace: 'nowrap', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.35)', position: 'relative', zIndex: 1 }}>{cfg.pill}</span>}
     </div>
   );
 }
@@ -168,7 +170,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   };
 
   return (
-    <div style={{ ...card, padding: hasBanner ? '0 18px 16px' : '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+    <div style={{ ...card, padding: hasBanner ? '0 18px 18px' : '18px 18px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Post type banner — flush to card top */}
       {hasBanner && <PostTypeBanner post={post} />}
 

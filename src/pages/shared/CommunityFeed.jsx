@@ -119,13 +119,11 @@ function PostTypeBanner({ post, isMobile }) {
       pill: '🎉 WIN',
     },
     feedback: {
-      gradient: starCount > 0
-        ? `linear-gradient(135deg, ${STAR_COLOR[starCount]}99 0%, ${STAR_COLOR[starCount]} 100%)`
-        : 'linear-gradient(135deg, #F472B6 0%, #DB2777 100%)',
+      gradient: 'linear-gradient(135deg, #F472B6 0%, #DB2777 100%)',
       icon: '⭐',
       title: starCount > 0 ? `${starCount}/5 — ${STAR_LABEL[starCount]}` : 'Honest Review',
-      sub: starCount > 0 ? 'Real talk. Straight from the community.' : 'No filters. No fluff. Just facts.',
-      pill: starCount > 0 ? '★'.repeat(starCount) : null,
+      sub: starCount > 0 ? `${STAR_LABEL[starCount]} experience — community rated` : 'No filters. No fluff. Just real feedback.',
+      pill: starCount > 0 ? '⭐'.repeat(starCount) : '📝 REVIEW',
     },
     resource: {
       gradient: 'linear-gradient(135deg, #22D3EE 0%, #0891B2 100%)',
@@ -175,17 +173,22 @@ function PostTypeBanner({ post, isMobile }) {
     <div style={{
       background: cfg.gradient,
       borderRadius: `${topRad}px ${topRad}px 0 0`,
-      padding: `18px ${hPad}px`,
-      marginLeft: -hPad, marginRight: -hPad, marginBottom: 14,
+      padding: `${isMobile ? 16 : 20}px ${hPad}px`,
+      marginLeft: -hPad, marginRight: -hPad, marginBottom: 16,
       display: 'flex', alignItems: 'center', gap: 14,
+      position: 'relative', overflow: 'hidden',
     }}>
-      <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.22))' }}>{cfg.icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>{cfg.title}</div>
-        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{cfg.sub}</div>
+      {/* Gloss highlight — gives the iOS/premium gradient shimmer */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '52%', background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none', zIndex: 0 }} />
+      {/* Subtle bottom shine line */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.18)', pointerEvents: 'none', zIndex: 0 }} />
+      <span style={{ fontSize: isMobile ? 30 : 34, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.30))', position: 'relative', zIndex: 1 }}>{cfg.icon}</span>
+      <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.22)' }}>{cfg.title}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.88)', marginTop: 3, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{cfg.sub}</div>
       </div>
       {cfg.pill && (
-        <span style={{ fontSize: 10.5, fontWeight: 800, background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 20, padding: '4px 11px', letterSpacing: '0.05em', flexShrink: 0, whiteSpace: 'nowrap', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.3)', textShadow: 'none' }}>
+        <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '4px 11px', letterSpacing: '0.05em', flexShrink: 0, whiteSpace: 'nowrap', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.35)', textShadow: 'none', position: 'relative', zIndex: 1 }}>
           {cfg.pill}
         </span>
       )}
@@ -430,7 +433,7 @@ function ImageGrid({ images }) {
 
   return (
     <>
-      <div style={{ display: 'grid', gap: 4, marginTop: 12, borderRadius: 12, overflow: 'hidden', ...gridStyle }}>
+      <div style={{ display: 'grid', gap: 3, marginTop: 12, borderRadius: 16, overflow: 'hidden', ...gridStyle }}>
         {images.slice(0, 4).map((img, i) => (
           <div key={i} style={{ position: 'relative', ...(n === 3 && i === 0 ? { gridColumn: '1 / -1' } : {}) }}>
             <img src={img} alt="" onClick={() => setLightbox(i)}
@@ -497,17 +500,17 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
           onMouseLeave={() => { timerRef.current = setTimeout(() => setShowPicker(false), 300); }}>
           <button
             onClick={() => onReact(post._id, myReaction?.type || 'like')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: myReaction ? (rDef?.color || '#1D4ED8') + '14' : 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: myReaction ? 700 : 500, color: myReaction ? (rDef?.color || '#1D4ED8') : '#6B7280', transition: 'all 0.12s' }}
-            onMouseEnter={e => { if (!myReaction) e.currentTarget.style.background = '#F3F4F6'; }}
-            onMouseLeave={e => { if (!myReaction) e.currentTarget.style.background = 'transparent'; }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20, border: myReaction ? `1.5px solid ${(rDef?.color || '#1D4ED8')}30` : '1.5px solid transparent', background: myReaction ? (rDef?.color || '#1D4ED8') + '12' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: myReaction ? 700 : 500, color: myReaction ? (rDef?.color || '#1D4ED8') : '#6B7280', transition: 'all 0.15s' }}
+            onMouseEnter={e => { if (!myReaction) { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.borderColor = 'transparent'; } }}
+            onMouseLeave={e => { if (!myReaction) { e.currentTarget.style.background = 'transparent'; } }}>
             {rDef?.emoji || '👍'} {rDef?.label || 'Like'}
           </button>
           {showPicker && (
-            <div style={{ position: 'absolute', bottom: '115%', left: 0, display: 'flex', gap: 6, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 28, padding: '8px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', zIndex: 200 }}>
+            <div style={{ position: 'absolute', bottom: '115%', left: 0, display: 'flex', gap: 4, background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 32, padding: '8px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.16)', zIndex: 200, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
               {REACTIONS.map(r => (
                 <button key={r.type} title={r.label} onClick={() => { onReact(post._id, r.type); setShowPicker(false); }}
-                  style={{ fontSize: 24, background: myReaction?.type === r.type ? r.color + '18' : 'none', border: 'none', cursor: 'pointer', borderRadius: '50%', padding: '4px 6px', transition: 'transform 0.15s', lineHeight: 1 }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.4)'}
+                  style={{ fontSize: 26, background: myReaction?.type === r.type ? r.color + '18' : 'none', border: 'none', cursor: 'pointer', borderRadius: '50%', padding: '4px 5px', transition: 'transform 0.15s', lineHeight: 1 }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.45)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
                   {r.emoji}
                 </button>
@@ -518,8 +521,8 @@ function ReactionBar({ post, userId, onReact, onToggleComments, showComments }) 
 
         {/* Comment */}
         <button onClick={onToggleComments}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: showComments ? '#F0F9FF' : 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: showComments ? 700 : 500, color: showComments ? '#0176D3' : '#6B7280', transition: 'all 0.12s' }}
-          onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20, border: showComments ? '1.5px solid #0176D330' : '1.5px solid transparent', background: showComments ? '#EFF6FF' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: showComments ? 700 : 500, color: showComments ? '#0176D3' : '#6B7280', transition: 'all 0.15s' }}
+          onMouseEnter={e => { if (!showComments) e.currentTarget.style.background = '#F3F4F6'; }}
           onMouseLeave={e => { if (!showComments) e.currentTarget.style.background = 'transparent'; }}>
           💬 Comment
         </button>
@@ -541,9 +544,9 @@ function ShareButton({ postId }) {
   };
   return (
     <button onClick={share}
-      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13.5, fontWeight: copied ? 700 : 500, color: copied ? '#059669' : '#6B7280', transition: 'all 0.15s' }}
-      onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20, border: copied ? '1.5px solid #05966930' : '1.5px solid transparent', background: copied ? '#F0FDF4' : 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: copied ? 700 : 500, color: copied ? '#059669' : '#6B7280', transition: 'all 0.15s' }}
+      onMouseEnter={e => { if (!copied) e.currentTarget.style.background = '#F3F4F6'; }}
+      onMouseLeave={e => { if (!copied) e.currentTarget.style.background = 'transparent'; }}>
       {copied ? '✓ Copied' : '↗ Share'}
     </button>
   );
@@ -829,9 +832,11 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
     }
   };
 
-  const actionButtons = (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center', position: 'relative' }}>
-      {showConnect && (
+  // Bookmark + ⋯ always live on the RIGHT of the name row — even on mobile.
+  // On mobile the Connect button moves to a compact chip below the name instead.
+  const rightActions = (
+    <div style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0 }}>
+      {!isMobile && showConnect && (
         <InlineConnectButton
           authorId={post.authorId}
           authorName={post.authorName}
@@ -840,7 +845,6 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
         />
       )}
       <BookmarkButton post={post} userId={userId} onToggle={onToggleBookmark} />
-      {/* ⋯ menu for delete + report */}
       <div style={{ position: 'relative' }}>
         <button onClick={() => setShowMenu(v => !v)}
           style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18, padding: '2px 8px', borderRadius: 4, lineHeight: 1 }}
@@ -880,8 +884,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 16px' : '16px 14px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: '8px solid var(--app-bg, #F3F2F2)', position: 'relative', background: accentColor ? accentColor + '07' : 'var(--app-card-bg, #fff)' }
-      : { ...card, padding: hasBanner ? '0 20px 18px' : '18px 20px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : accentColor ? `1px solid ${accentColor}30` : '1px solid #F1F5F9', position: 'relative', background: accentColor ? accentColor + '05' : 'var(--app-card-bg, #fff)' }}>
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 0, marginLeft: -12, marginRight: -12, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: `6px solid ${accentColor ? accentColor + '20' : 'var(--app-bg, #F3F2F2)'}`, position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
+      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px 20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -928,7 +932,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{post.authorName || 'Member'}</span>
@@ -940,19 +944,50 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
                 {post.authorTitle && <span> · </span>}
                 {timeAgo(post.createdAt)}
               </div>
+              {/* Mobile: Connect button below name as a compact chip — keeps name row clean */}
+              {isMobile && showConnect && (
+                <div style={{ marginTop: 5 }}>
+                  <InlineConnectButton
+                    authorId={post.authorId}
+                    authorName={post.authorName}
+                    pendingIds={pendingIds}
+                    onConnect={onConnect}
+                  />
+                </div>
+              )}
             </div>
-            {/* Desktop: actions inline */}
-            {!isMobile && <div style={{ flexShrink: 0 }}>{actionButtons}</div>}
+            {/* Bookmark + ⋯ always on the right edge (both mobile & desktop) */}
+            {rightActions}
           </div>
-          {/* Mobile: actions below name row */}
-          {isMobile && <div style={{ marginTop: 6 }}>{actionButtons}</div>}
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 2 }}>
-        <TruncatedContent text={post.content} onHashtagClick={onHashtagClick} />
-      </div>
+      {/* Content — typed posts get a left accent strip + type label for visual identity */}
+      {hasBanner ? (
+        <div style={{
+          borderLeft: `3px solid ${accentColor}55`,
+          paddingLeft: 10,
+          marginBottom: 14,
+          marginTop: 0,
+          borderRadius: '0 0 0 4px',
+        }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 800, color: accentColor,
+            textTransform: 'uppercase', letterSpacing: '0.07em',
+            marginBottom: 6,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            {POST_TYPE_THEME[post.postType]?.icon} {POST_TYPE_THEME[post.postType]?.label}
+          </div>
+          <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <TruncatedContent text={post.content} onHashtagClick={onHashtagClick} />
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 14.5, color: '#1F2937', lineHeight: 1.72, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 2 }}>
+          <TruncatedContent text={post.content} onHashtagClick={onHashtagClick} />
+        </div>
+      )}
 
       <ImageGrid images={post.images} />
 
