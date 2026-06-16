@@ -1771,14 +1771,21 @@ export default function AuthScreen({ onAuth, initialScreen = 'entry' }) {
     }
   }, []);
 
-  // Navigate to dedicated URL — causes router to mount fresh AuthScreen with correct initialScreen
   const handleSelect = (type) => {
     const urlMap = { candidate: '/login/job-seeker', employer: '/login/employer', college: '/login/college' };
-    navigate(urlMap[type] || '/login');
+    // Push URL so browser back button and shareable links work
+    window.history.pushState({}, '', urlMap[type] || '/login');
+    // Instantly update screen state — no component remount, works on all mobile browsers
+    const next = type === 'candidate' ? 'candidate' : type === 'college' ? 'college' : 'employer';
+    setLastAuthScreen(next);
+    setScreen(next);
   };
 
-  // Back from any form → always go to entry (via URL so browser history works correctly)
-  const goToEntry = () => navigate('/login', { replace: true });
+  // Back from any form → update URL and go to entry screen
+  const goToEntry = () => {
+    window.history.pushState({}, '', '/login');
+    setScreen('entry');
+  };
 
   const openForgot = (from) => {
     setLastAuthScreen(from);
