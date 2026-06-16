@@ -79,8 +79,8 @@ export default function HiringManagerDashboard({ user }) {
       return d >= today && d <= in7;
     })
     .map(a => {
-      const lastRound = a.interviewRounds[a.interviewRounds.length - 1];
-      return { ...a, nextRound: lastRound, nextDate: new Date(lastRound.scheduledAt) };
+      const lastRound = Array.isArray(a.interviewRounds) ? a.interviewRounds[a.interviewRounds.length - 1] : null;
+      return { ...a, nextRound: lastRound || {}, nextDate: new Date((lastRound?.scheduledAt) || 0) };
     })
     .sort((a, b) => a.nextDate - b.nextDate);
 

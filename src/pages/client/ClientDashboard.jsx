@@ -38,7 +38,8 @@ export default function ClientDashboard({ user }) {
   const active      = apps.filter(a => !['Hired','Rejected'].includes(a.currentStage));
   const total       = apps.length;
 
-  const avgScore    = apps.filter(a => a.aiMatchScore > 0).reduce((s, a, _, arr) => s + a.aiMatchScore / arr.length, 0);
+  const scoredApps  = apps.filter(a => a.aiMatchScore > 0);
+  const avgScore    = scoredApps.length ? scoredApps.reduce((s, a) => s + a.aiMatchScore, 0) / scoredApps.length : 0;
 
   // Real weekly application volume (last 5 weeks) for sparklines — replaces hardcoded mock data
   const weeklyCounts = (() => {

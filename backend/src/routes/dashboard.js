@@ -590,7 +590,9 @@ router.get('/college/overview', authenticate, allowRoles('admin', 'placement_off
   const college = await getCollegeFilter(req);
   if (!college) throw new AppError('This dashboard is only available for College/Campus accounts.', 403);
 
-  const candFilter = { college: college.regex, tenantId: req.user.tenantId, deletedAt: null };
+  // Match students by college name only — self-registered students share the college name
+  // but carry their own tenantId, not the placement officer's. Matches skill-gaps endpoint.
+  const candFilter = { college: college.regex, deletedAt: null };
   const currentYear = new Date().getFullYear();
 
   const students = await Candidate.find(candFilter)

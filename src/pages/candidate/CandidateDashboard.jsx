@@ -459,9 +459,10 @@ export default function CandidateDashboard({ user }) {
       </div>
       {/* ── Skills Gap Analyzer ── */}
       {(() => {
+        const skillsRaw = profile?.skills || user?.skills || '';
         const mySkills = new Set(
-          (Array.isArray(profile?.skills) ? profile.skills : (profile?.skills || user?.skills || '').split(','))
-            .map(s => s.trim().toLowerCase()).filter(Boolean)
+          (Array.isArray(skillsRaw) ? skillsRaw : (typeof skillsRaw === 'string' ? skillsRaw : '').split(','))
+            .map(s => String(s).trim().toLowerCase()).filter(Boolean)
         );
         const missingSkills = [];
         const seen = new Set();

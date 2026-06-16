@@ -411,7 +411,7 @@ export default function RecruiterDashboard({ user }) {
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {upcomingInterviews.map(a => {
-                const iv = a.interviewRounds[0]; // guaranteed by upcomingInterviews filter
+                const iv = a.interviewRounds?.[0] || {};
                 const ivDate = new Date(iv.scheduledAt);
                 return (
                 <div key={a.id} onClick={() => { const c = a.candidateId || a.candidate; c ? setDrawerUser({ role:'candidate', ...c, id: c.id||c._id?.toString() }) : navigate("/app/candidates"); }} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"rgba(245,158,11,0.08)", borderRadius:12, border:"1px solid rgba(245,158,11,0.2)", cursor:"pointer" }}>
