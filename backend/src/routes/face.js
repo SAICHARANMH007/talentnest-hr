@@ -217,6 +217,25 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
   if (!Array.isArray(photos) || photos.length === 0)
     throw new AppError('At least one enrollment photo is required.', 400);
 
+  // Anti-spoofing variance check: all frames suspiciously identical → static photo or screen capture
+  if (Array.isArray(descriptors) && descriptors.length >= 3) {
+    const validDescs = descriptors.filter(d => Array.isArray(d) && d.length >= 64);
+    if (validDescs.length >= 3) {
+      const distances = [];
+      for (let i = 0; i < validDescs.length; i++) {
+        for (let j = i + 1; j < validDescs.length; j++) {
+          distances.push(euclideanDistance(validDescs[i], validDescs[j]));
+        }
+      }
+      const avgDist = distances.reduce((s, d) => s + d, 0) / distances.length;
+      if (avgDist < 0.08) {
+        const uid = String(req.user.id);
+        logger.warn('Face enrollment rejected: descriptors too similar', { uid, avgDist });
+        throw new AppError('Enrollment failed: all face captures appear identical — this suggests a static image was used instead of a live face. Please move naturally between poses and try again.', 400);
+      }
+    }
+  }
+
   // Upload all enrollment frames to Cloudinary
   const uid = String(req.user.id);
   const uploadedUrls = [];

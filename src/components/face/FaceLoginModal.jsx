@@ -20,15 +20,21 @@ import {
   captureEnhancedFrame,
   scoreFaceQuality,
   averageDescriptors,
+  getEAR,
+  BLINK_THRESHOLD,
 } from './faceUtils.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STABLE_NEEDED = 15;
 const MIN_QUALITY   = 0.42; // raised from 0.30 — only accept well-lit, well-framed faces
-const LOGIN_POSES   = [
+
+// 5 challenge poses — 3 randomly selected each session (anti-video-replay)
+const ALL_POSES = [
   { label: 'Look straight at the camera', icon: '👁️' },
   { label: 'Tilt your head slightly left', icon: '↙️' },
   { label: 'Tilt your head slightly right', icon: '↘️' },
+  { label: 'Look slightly upward', icon: '⬆️' },
+  { label: 'Look slightly downward', icon: '⬇️' },
 ];
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -63,6 +69,10 @@ function Spin() {
 }
 
 export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }) {
+  // Randomize 3 of 5 poses each session — blocks pre-recorded video replays
+  const loginPosesRef = useRef([...ALL_POSES].sort(() => Math.random() - 0.5).slice(0, 3));
+  const loginPoses    = loginPosesRef.current;
+
   // ── Step state ───────────────────────────────────────────────────────────────
   const [step, setStep]         = useState('email'); // email|camera|submitting|otp|error
   const [email, setEmail]       = useState(prefillEmail);
@@ -84,6 +94,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const [serverError, setServerError] = useState('');
   const [openingCamera, setOpeningCamera] = useState(false);
 
+  // ── Blink / liveness state ───────────────────────────────────────────────────
+  const [blinkOk, setBlinkOk]     = useState(false); // at least 1 confirmed blink detected
+
   // ── OTP state ────────────────────────────────────────────────────────────────
   const [otp, setOtp]               = useState('');
   const [otpError, setOtpError]     = useState('');
@@ -103,6 +116,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const countdownRef   = useRef(null);
   const isCapturingRef = useRef(false);
   const faceapiRef     = useRef(null);
+  const blinkOkRef     = useRef(false);
+  const blinkCountRef  = useRef(0);
+  const inBlinkRef     = useRef(false); // true while EAR is below threshold (eye closing)
 
   // ── Attach stream to video element once it mounts ───────────────────────────
   useEffect(() => {
@@ -148,10 +164,23 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
           }
 
           // Stable-frame liveness: 15 consecutive good detections = live
+          // Blink detection — anti-photo/screen spoofing (requires real eye movement)
+          if (r?.landmarks) {
+            const ear = getEAR(r.landmarks);
+            if (ear < BLINK_THRESHOLD && !inBlinkRef.current) {
+              inBlinkRef.current = true;
+            } else if (ear > BLINK_THRESHOLD + 0.04 && inBlinkRef.current) {
+              inBlinkRef.current = false;
+              blinkCountRef.current++;
+              if (!blinkOkRef.current) { blinkOkRef.current = true; setBlinkOk(true); }
+            }
+          }
+
           if (r && scoreFaceQuality(r, vid) >= MIN_QUALITY) {
             stableCountRef.current++;
             setStableFrames(Math.min(stableCountRef.current, STABLE_NEEDED));
-            if (!livenessOkRef.current && stableCountRef.current >= STABLE_NEEDED) {
+            // Require blink confirmation before declaring liveness
+            if (!livenessOkRef.current && stableCountRef.current >= STABLE_NEEDED && blinkOkRef.current) {
               livenessOkRef.current = true;
               setLivenessOk(true);
             }
@@ -177,7 +206,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
   // ── Auto-countdown when liveness OK and more poses needed ───────────────────
   useEffect(() => {
-    if (!livenessOk || capturedCount >= LOGIN_POSES.length) return;
+    if (!livenessOk || capturedCount >= loginPoses.length) return;
     if (countdownRef.current || isCapturingRef.current) return;
     startCountdown();
   }, [livenessOk, capturedCount]);
@@ -219,7 +248,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
       setQualityWarn(true);
       setTimeout(() => setQualityWarn(false), 2000);
       setTimeout(() => {
-        if (livenessOkRef.current && descsRef.current.length < LOGIN_POSES.length) startCountdown();
+        if (livenessOkRef.current && descsRef.current.length < loginPoses.length) startCountdown();
       }, 2500);
       return;
     }
@@ -233,7 +262,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
       setQualityWarn(true);
       setTimeout(() => setQualityWarn(false), 2000);
       setTimeout(() => {
-        if (livenessOkRef.current && descsRef.current.length < LOGIN_POSES.length) startCountdown();
+        if (livenessOkRef.current && descsRef.current.length < loginPoses.length) startCountdown();
       }, 2500);
       return;
     }
@@ -243,7 +272,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setCapturedCount(newCount);
     isCapturingRef.current = false;
 
-    if (newCount >= LOGIN_POSES.length) {
+    if (newCount >= loginPoses.length) {
       await submitFace();
     }
     // else: useEffect on [livenessOk, capturedCount] fires startCountdown for next pose
@@ -369,6 +398,8 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setLiveResult(null); liveResultRef.current = null;
     setStableFrames(0); stableCountRef.current = 0;
     setLivenessOk(false); livenessOkRef.current = false;
+    setBlinkOk(false); blinkOkRef.current = false;
+    blinkCountRef.current = 0; inBlinkRef.current = false;
     setCapturedCount(0); descsRef.current = [];
     isCapturingRef.current = false;
     setServerError(''); setCamError('');
@@ -460,8 +491,10 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 {/* Liveness progress bar */}
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color: livenessOk ? '#4ade80' : 'rgba(255,255,255,0.55)' }}>
-                      {livenessOk ? '✅ Liveness confirmed — auto-capturing…' : '👁️ Hold still to verify you are live…'}
+                    <span style={{ fontSize:11, fontWeight:700, color: livenessOk ? '#4ade80' : blinkOk ? '#fbbf24' : 'rgba(255,255,255,0.55)' }}>
+                      {livenessOk ? '✅ Liveness confirmed — auto-capturing…'
+                        : blinkOk  ? '✅ Blink confirmed — hold still…'
+                        : '👁️ Please blink once to prove you are live'}
                     </span>
                     <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>{livenessProgress}%</span>
                   </div>
@@ -509,7 +542,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
                   {/* Progress dots */}
                   <div style={{ position:'absolute', bottom:10, left:'50%', transform:'translateX(-50%)', display:'flex', gap:8 }}>
-                    {LOGIN_POSES.map((_, i) => (
+                    {loginPoses.map((_, i) => (
                       <div key={i} style={{ width:10, height:10, borderRadius:'50%',
                         background: i < capturedCount ? '#22c55e' : i === capturedCount ? '#0176D3' : 'rgba(255,255,255,0.3)',
                         border:'2px solid rgba(255,255,255,0.7)', transition:'all 0.2s',
@@ -528,11 +561,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 </div>
 
                 {/* Pose instruction */}
-                {livenessOk && capturedCount < LOGIN_POSES.length && (
+                {livenessOk && capturedCount < loginPoses.length && (
                   <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.3)',
                     borderRadius:10, padding:'7px 14px', textAlign:'center', fontSize:12, fontWeight:700, color:'#4ade80' }}>
-                    <span style={{ fontSize:16, marginRight:6 }}>{LOGIN_POSES[capturedCount].icon}</span>
-                    {LOGIN_POSES[capturedCount].label}
+                    <span style={{ fontSize:16, marginRight:6 }}>{loginPoses[capturedCount].icon}</span>
+                    {loginPoses[capturedCount].label}
                     {countdown !== null && <span style={{ marginLeft:8, color:'#fbbf24' }}>capturing in {countdown}…</span>}
                   </div>
                 )}
@@ -542,7 +575,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                   color: liveResult ? '#4ade80' : '#6b7280' }}>
                   {modelLoading ? '⏳ Loading AI models…'
                     : !liveResult ? '❌ No face detected — face the camera in good light'
-                    : `✅ Face detected — ${capturedCount}/${LOGIN_POSES.length} poses captured`}
+                    : `✅ Face detected — ${capturedCount}/${loginPoses.length} poses captured`}
                 </div>
 
                 <button style={{ ...btnS }} onClick={() => { stopAll(); onClose(); }}>Cancel</button>
