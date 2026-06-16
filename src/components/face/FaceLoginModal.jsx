@@ -21,7 +21,6 @@ import { api } from '../../api/api.js';
 import {
   loadFaceApi,
   detectFaceRaw,
-  detectFaceEnhanced,
   drawFaceMesh,
   captureEnhancedFrame,
   scoreFaceQuality,
@@ -35,12 +34,13 @@ const overlay = {
   position:'fixed', inset:0, zIndex:99999,
   background:'rgba(0,0,0,0.82)',
   display:'flex', alignItems:'center', justifyContent:'center',
-  animation:'fadeIn 0.2s ease',
+  animation:'faceLoginFadeIn 0.2s ease',
 };
 const card = {
   background:'#0d1b2d', border:'1px solid rgba(255,255,255,0.1)',
   borderRadius:20, padding:'28px 24px', width:'100%', maxWidth:420,
   display:'flex', flexDirection:'column', gap:16, boxShadow:'0 24px 80px rgba(0,0,0,0.6)',
+  animation:'faceLoginFadeIn 0.25s ease',
 };
 const title = { color:'#fff', fontSize:18, fontWeight:800, margin:0, display:'flex', alignItems:'center', gap:8 };
 const sub   = { color:'rgba(255,255,255,0.45)', fontSize:12, marginTop:3 };
@@ -58,7 +58,7 @@ function Spin() {
   return (
     <div style={{ width:18, height:18, border:'2.5px solid rgba(255,255,255,0.2)',
       borderTop:'2.5px solid #fff', borderRadius:'50%',
-      animation:'spin 0.8s linear infinite', display:'inline-block', verticalAlign:'middle', marginRight:6 }} />
+      animation:'faceLoginSpin 0.8s linear infinite', display:'inline-block', verticalAlign:'middle', marginRight:6 }} />
   );
 }
 
@@ -211,11 +211,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
       setSubmitting(true);
       setStep('submitting');
       try {
-        // Detect one more time on enhanced canvas for the final descriptor
-        const fapiRef = faceapi;
-        let finalDescs = nd;
-        // Re-detect on last frame (already enhanced)
-        const result = await api.faceLogin({ email: email.trim().toLowerCase(), descriptor: averageDescriptors(finalDescs) });
+        const result = await api.faceLogin({ email: email.trim().toLowerCase(), descriptor: averageDescriptors(nd) });
         onSuccess(result.user, result.token);
       } catch (e) {
         setServerError(e.message || 'Face not recognised. Please try again or use password login.');
@@ -236,6 +232,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      {/* Self-contained keyframes — no dependency on global CSS */}
+      <style>{`
+        @keyframes faceLoginFadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+        @keyframes faceLoginSpin   { to { transform:rotate(360deg); } }
+      `}</style>
       <div style={card}>
         {/* Header */}
         <div>

@@ -10,15 +10,13 @@
  *
  * Uses shared faceUtils.js for all AI operations.
  */
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
 import {
   loadFaceApi,
   detectFaceRaw,
-  detectFaceEnhanced,
   drawFaceMesh,
   captureEnhancedFrame,
-  captureRawFrame,
   scoreFaceQuality,
   getEAR,
   BLINK_THRESHOLD,
