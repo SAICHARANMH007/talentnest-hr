@@ -434,8 +434,10 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 <div style={{ position:'relative', borderRadius:14, overflow:'hidden',
                   border: qualityWarn ? '2px solid #ef4444' : livenessOk ? '2px solid rgba(34,197,94,0.6)' : '2px solid rgba(1,118,211,0.4)' }}>
                   <video ref={videoRef} autoPlay playsInline muted
+                    {...{'webkit-playsinline': 'true'}}
                     onLoadedMetadata={e => e.target.play().catch(() => {})}
                     onCanPlay={e => e.target.play().catch(() => {})}
+                    onPlaying={() => {}}
                     style={{ width:'100%', display:'block', transform:'scaleX(-1)', borderRadius:12 }} />
                   <canvas ref={canvasRef}
                     style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%',

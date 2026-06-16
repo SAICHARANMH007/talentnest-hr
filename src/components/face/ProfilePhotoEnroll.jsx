@@ -488,6 +488,7 @@ function FaceCamera({ stream, onDone, onCancel }) {
         border: qualityWarn ? '2.5px solid #ef4444' : livenessOk ? '2.5px solid #22c55e' : '2.5px solid #f59e0b' }}>
 
         <video ref={videoRef} autoPlay playsInline muted
+          {...{'webkit-playsinline': 'true'}}
           onLoadedMetadata={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
           onCanPlay={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
           onPlaying={() => setCameraReady(true)}

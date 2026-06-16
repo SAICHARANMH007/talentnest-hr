@@ -72,6 +72,9 @@ export async function loadFaceApi(onProgress) {
  * Returns MediaStream or throws a user-friendly Error.
  */
 export async function openFrontCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Camera not available. Please open this page over HTTPS in Chrome or Safari.');
+  }
   const constraintChain = [
     // Ideal: front-facing, 640×480 — works on most modern phones
     { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },

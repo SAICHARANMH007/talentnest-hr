@@ -331,7 +331,14 @@ function VideoResumeSection({ candidateId, existingUrl, onSaved }) {
           <video src={existingUrl} controls style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#000' }} />
         </div>
       )}
-      <video ref={videoRef} style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#1e293b', display: ['recording','preview'].includes(phase) ? 'block' : 'none', marginBottom: 12 }} playsInline muted={phase === 'recording'} controls={phase === 'preview'} />
+      <video ref={videoRef}
+        autoPlay playsInline
+        {...{'webkit-playsinline': 'true'}}
+        muted={phase === 'recording'}
+        controls={phase === 'preview'}
+        onLoadedMetadata={e => { if (phase === 'recording') e.target.play().catch(() => {}); }}
+        onCanPlay={e => { if (phase === 'recording') e.target.play().catch(() => {}); }}
+        style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#1e293b', display: ['recording','preview'].includes(phase) ? 'block' : 'none', marginBottom: 12 }} />
       {phase === 'recording' && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, background: '#fff', borderRadius: '50%', animation: 'pulse 1s infinite' }}/>REC</span>
@@ -404,6 +411,26 @@ export default function CandidateProfile({ user }) {
       .finally(() => setLoad(false));
   }, [user.id]);
 
+  // Live sync: when a work entry is marked current, auto-fill title/company in Personal Info
+  useEffect(() => {
+    const currentJob = workHistory.find(e => e.current);
+    if (!currentJob) return;
+    setForm(prev => ({
+      ...prev,
+      title:          prev.title          || currentJob.title   || '',
+      currentCompany: prev.currentCompany || currentJob.company || '',
+    }));
+  }, [workHistory]);
+
+  // Live sync: when education entries change, auto-fill college if blank
+  useEffect(() => {
+    if (!eduList.length) return;
+    const sorted = [...eduList].sort((a, b) => (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0));
+    const latest = sorted[0];
+    if (!latest?.institution) return;
+    setForm(prev => ({ ...prev, college: prev.college || latest.institution }));
+  }, [eduList]);
+
   useEffect(() => {
     if (tab !== 'posts' || myPosts !== null) return;
     setPostsLoading(true);
@@ -466,13 +493,16 @@ export default function CandidateProfile({ user }) {
       const res = await api.updateProfile(profilePayload);
       const d = res?.data || res;
       setProfile(d);
-      // Reflect server-confirmed values back into form (title, company, college may have been auto-synced)
+      // Reflect server-confirmed values back into form
       setForm(prev => ({
         ...prev,
         title:          d.title          || prev.title,
         currentCompany: d.currentCompany || prev.currentCompany,
         college:        d.college        || prev.college,
         photoUrl:       d.photoUrl       || d.avatarUrl || prev.photoUrl,
+        // Normalize server arrays → comma-separated strings for form inputs
+        skills:    Array.isArray(d.skills)    ? d.skills.join(', ')    : (d.skills    || prev.skills),
+        languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages || prev.languages),
       }));
       // Keep tn_user in sessionStorage/localStorage in sync so PublicApplyModal
       // auto-populates industry, department and other profile fields correctly.
@@ -497,7 +527,18 @@ export default function CandidateProfile({ user }) {
     setSaving(false);
   };
 
-  const resumeData = { ...form, experience: parseInt(form.experience) || 0, workHistory, educationList: eduList, certifications: certList };
+  const resumeData = {
+    ...form,
+    // ResumeCard uses c.linkedin (not c.linkedinUrl) — map the field
+    linkedin: form.linkedinUrl,
+    // Convert comma-separated tag strings → arrays for ResumeCard rendering
+    skills: parseTags(form.skills),
+    languages: parseTags(form.languages),
+    experience: parseInt(form.experience) || 0,
+    workHistory,
+    educationList: eduList,
+    certifications: certList,
+  };
 
   if (loading) return <div style={{ color:'#706E6B', padding:40, display:'flex', gap:10 }}><Spinner/> Loading...</div>;
 
