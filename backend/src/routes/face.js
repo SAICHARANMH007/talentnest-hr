@@ -791,7 +791,11 @@ router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
   } else {
     throw new AppError('A valid email or face token is required.', 400);
   }
-  const record = await Otp.findOne({ email: emailLower, purpose: 'login_2fa' }).sort({ createdAt: -1 }).lean();
+  const record = await Otp.findOne({
+    email     : emailLower,
+    purpose   : 'login_2fa',
+    expiresAt : { $gt: new Date() },
+  }).sort({ createdAt: -1 }).lean();
 
   if (!record || record.otp !== String(otp).trim()) {
     throw new AppError('Invalid or expired verification code. Please try again.', 401);

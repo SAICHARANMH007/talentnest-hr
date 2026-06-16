@@ -237,7 +237,7 @@ class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     await Otp.findOneAndUpdate(
-      { email: user.email },
+      { email: user.email, purpose: 'login_2fa' },
       { otp, expiresAt },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
