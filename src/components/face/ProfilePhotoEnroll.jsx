@@ -46,6 +46,14 @@ function Spinner() {
   );
 }
 
+// Inject keyframes for pulse animation (done once, idempotent)
+if (typeof document !== 'undefined' && !document.getElementById('frs-keyframes')) {
+  const st = document.createElement('style');
+  st.id = 'frs-keyframes';
+  st.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.65}}';
+  document.head.appendChild(st);
+}
+
 // ── Crop Modal ─────────────────────────────────────────────────────────────────
 function CropModal({ src, onConfirm, onCancel }) {
   const CROP_SIZE = 280;
@@ -128,7 +136,7 @@ const PROMPTS = [
   { label:'Lower your chin slightly',       icon:'⬇️' },
 ];
 
-const MIN_QUALITY = 0.45; // reject frames below this quality score
+const MIN_QUALITY = 0.30; // reject frames below this quality score (0.30 is mobile-friendly)
 
 // ── Panel A — Profile Photo ────────────────────────────────────────────────────
 function PhotoPanel({ photoUrl, onPhotoUpdated }) {
@@ -211,10 +219,12 @@ function FaceCamera({ stream, onDone, onCancel }) {
   const [qualityWarn, setQualityWarn] = useState(false);
   const [toast, setToast]             = useState({ msg:'', ok:true });
 
-  const videoRef  = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const rafRef    = useRef(null);
+  const videoRef      = useRef(null);
+  const canvasRef     = useRef(null);
+  const streamRef     = useRef(null);
+  const rafRef        = useRef(null);
+  const liveResultRef = useRef(null);  // always holds the freshest detection result
+  const clearFaceRef  = useRef(null);  // debounce timer for face-lost state
 
   const flash = (msg, ok=true) => setToast({ msg, ok });
 
@@ -254,7 +264,22 @@ function FaceCamera({ stream, onDone, onCancel }) {
         try {
           const r = await detectFaceRaw(faceapi, videoRef.current);
           if (active) {
-            setLiveResult(r || null);
+            if (r) {
+              // Face detected — update ref + state immediately; cancel any pending face-lost timer
+              liveResultRef.current = r;
+              setLiveResult(r);
+              if (clearFaceRef.current) { clearTimeout(clearFaceRef.current); clearFaceRef.current = null; }
+            } else {
+              // Face lost — clear ref immediately but debounce state 600ms
+              // so brief detection gaps (head turns, slow frames) don't disable the button
+              liveResultRef.current = null;
+              if (!clearFaceRef.current) {
+                clearFaceRef.current = setTimeout(() => {
+                  setLiveResult(null);
+                  clearFaceRef.current = null;
+                }, 600);
+              }
+            }
             if (canvasRef.current && videoRef.current) {
               drawFaceMesh(canvasRef.current, videoRef.current, r?.landmarks);
             }
@@ -286,28 +311,38 @@ function FaceCamera({ stream, onDone, onCancel }) {
 
   const stopCamera = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (clearFaceRef.current) { clearTimeout(clearFaceRef.current); clearFaceRef.current = null; }
+    liveResultRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   };
 
   const capture = async () => {
-    if (!videoRef.current || !liveResult) {
-      flash('No face detected — look at the camera.', false);
+    if (!videoRef.current) { flash('Camera not ready.', false); return; }
+
+    // Use ref first (always fresh) — state may lag by one render cycle
+    let result = liveResultRef.current;
+    // Fallback: run a fresh detection if ref is momentarily null
+    if (!result && faceapi) {
+      try { result = await detectFaceRaw(faceapi, videoRef.current); } catch { /* ignore */ }
+    }
+    if (!result) {
+      flash('No face detected — look straight at the camera.', false);
       return;
     }
 
-    // Quality gate
-    const quality = scoreFaceQuality(liveResult, videoRef.current);
+    // Quality gate (lowered threshold for mobile friendliness)
+    const quality = scoreFaceQuality(result, videoRef.current);
     if (quality < MIN_QUALITY) {
       setQualityWarn(true);
-      flash('Frame quality too low — check your lighting and face the camera directly.', false);
+      flash('Frame quality too low — check lighting and face the camera directly.', false);
       setTimeout(() => setQualityWarn(false), 2500);
       return;
     }
 
     const frame = captureEnhancedFrame(videoRef.current); // low-light enhanced
-    const desc  = Array.from(liveResult.descriptor);
-    const lmPts = liveResult.landmarks.positions.flatMap(p => [p.x, p.y]);
+    const desc  = Array.from(result.descriptor);
+    const lmPts = result.landmarks.positions.flatMap(p => [p.x, p.y]);
 
     const nf = [...frames, frame];
     const nd = [...descs, desc];
@@ -316,20 +351,20 @@ function FaceCamera({ stream, onDone, onCancel }) {
 
     if (nf.length < PROMPTS.length) {
       setPromptIdx(nf.length);
-      flash(`✅ Frame ${nf.length}/${PROMPTS.length} captured!`, true);
+      flash(`✅ Frame ${nf.length}/${PROMPTS.length} captured! Follow the next pose.`, true);
     } else {
       stopCamera();
       setSubmitting(true);
       flash('Uploading face data…', true);
       try {
-        const result = await api.enrollFace({
+        const enrollResult = await api.enrollFace({
           descriptor     : averageDescriptors(nd),
           landmarks      : averageLandmarks(nl),
           photos         : nf,
           bestPhotoIndex : 0,
           consent        : true,
         });
-        onDone(result?.photoUrl || result?.data?.photoUrl);
+        onDone(enrollResult?.photoUrl || enrollResult?.data?.photoUrl);
       } catch (e) {
         flash('Enrollment failed: ' + (e.message || 'Unknown error'), false);
         setSubmitting(false);
@@ -354,6 +389,14 @@ function FaceCamera({ stream, onDone, onCancel }) {
         <div style={{ background:'#dcfce7', border:'1.5px solid #22c55e', borderRadius:10, padding:'6px 14px',
           fontSize:12, fontWeight:700, color:'#15803d', textAlign:'center' }}>
           ✅ Liveness confirmed — now capture your face poses
+        </div>
+      )}
+      {/* Prominent "Tap Capture" call-to-action — shown once liveness passes and face is in frame */}
+      {livenessConfirmed && liveResult && frames.length < PROMPTS.length && !submitting && (
+        <div style={{ background:'#0176D3', borderRadius:10, padding:'8px 14px', textAlign:'center',
+          color:'#fff', fontWeight:800, fontSize:13, letterSpacing:0.3,
+          boxShadow:'0 2px 10px rgba(1,118,211,0.35)', animation:'pulse 1.5s ease-in-out infinite' }}>
+          👆 Face ready! Tap "Capture {frames.length+1}/{PROMPTS.length}" below
         </div>
       )}
 
@@ -415,8 +458,8 @@ function FaceCamera({ stream, onDone, onCancel }) {
         </button>
         <button
           onClick={capture}
-          disabled={!modelReady || !liveResult || submitting || !livenessConfirmed}
-          style={{ ...S.btnPri, flex:2, opacity:(!modelReady||!liveResult||submitting||!livenessConfirmed)?0.45:1 }}>
+          disabled={!modelReady || submitting || !livenessConfirmed}
+          style={{ ...S.btnPri, flex:2, opacity:(!modelReady||submitting||!livenessConfirmed)?0.45:1 }}>
           {submitting
             ? <><Spinner />Uploading…</>
             : `📸 Capture ${frames.length+1}/${PROMPTS.length}`}
