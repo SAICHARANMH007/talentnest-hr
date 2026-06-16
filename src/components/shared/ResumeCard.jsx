@@ -19,7 +19,13 @@ const PRINT_CSS = `
   a { color: #0369a1; text-decoration: none; }
 `;
 
-function Avatar({ name, size = 68 }) {
+function Avatar({ name, photoUrl, size = 68 }) {
+  if (photoUrl) {
+    return (
+      <img src={photoUrl} alt={name || 'Profile'}
+        style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:'3px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(1,118,211,0.4)' }} />
+    );
+  }
   const initials = (name || '?').split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:'linear-gradient(135deg,#0176D3,#014486)', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:size*0.32, fontWeight:800, letterSpacing:1, flexShrink:0, border:'3px solid rgba(255,255,255,0.3)', boxShadow:'0 4px 16px rgba(1,118,211,0.4)' }}>
@@ -158,7 +164,7 @@ export default function ResumeCard({ candidate: c }) {
       {/* ── HEADER ── */}
       <div style={{ background:'linear-gradient(135deg, #032D60 0%, #014486 100%)', padding:'28px 36px 22px', display:'flex', alignItems:'center', gap:22, position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-30, right:-30, width:180, height:180, borderRadius:'50%', background:'rgba(1,118,211,0.06)', pointerEvents:'none' }}/>
-        <Avatar name={c.name} size={66}/>
+        <Avatar name={c.name} photoUrl={c.photoUrl} size={66}/>
         <div style={{ flex:1, minWidth:0 }}>
           <h1 style={{ color:'#f8fafc', fontSize:24, fontWeight:800, letterSpacing:0.3, margin:0 }}>{c.name || 'Your Name'}</h1>
           {c.title && <p style={{ color:'#38bdf8', fontSize:13, fontWeight:500, margin:'3px 0 0' }}>{c.title}{c.currentCompany ? ` · ${c.currentCompany}` : ''}</p>}

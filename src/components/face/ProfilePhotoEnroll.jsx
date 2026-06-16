@@ -46,6 +46,79 @@ function Spinner() {
   );
 }
 
+// ── Crop Modal ─────────────────────────────────────────────────────────────────
+function CropModal({ src, onConfirm, onCancel }) {
+  const CROP_SIZE = 280;
+  const [pos, setPos]         = useState({ x: 0, y: 0 });
+  const [imgSize, setImgSize] = useState({ w: CROP_SIZE, h: CROP_SIZE });
+  const [dragging, setDrag]   = useState(false);
+  const lastRef = useRef({ x: 0, y: 0 });
+  const imgRef  = useRef(null);
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const getXY  = (e) => { const t = e.touches?.[0] || e; return { x: t.clientX, y: t.clientY }; };
+
+  const onLoad = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    const r = img.naturalWidth / img.naturalHeight;
+    const w = r >= 1 ? CROP_SIZE * r : CROP_SIZE;
+    const h = r >= 1 ? CROP_SIZE : CROP_SIZE / r;
+    setImgSize({ w, h });
+    setPos({ x: -(w - CROP_SIZE) / 2, y: -(h - CROP_SIZE) / 2 });
+  };
+
+  const startDrag = (e) => { e.preventDefault(); lastRef.current = getXY(e); setDrag(true); };
+  const moveDrag  = (e) => {
+    if (!dragging) return;
+    const cur = getXY(e);
+    const dx = cur.x - lastRef.current.x;
+    const dy = cur.y - lastRef.current.y;
+    lastRef.current = cur;
+    setPos(p => ({
+      x: clamp(p.x + dx, CROP_SIZE - imgSize.w, 0),
+      y: clamp(p.y + dy, CROP_SIZE - imgSize.h, 0),
+    }));
+  };
+  const stopDrag = () => setDrag(false);
+
+  const confirm = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    const sx = img.naturalWidth  / imgSize.w;
+    const sy = img.naturalHeight / imgSize.h;
+    const c  = document.createElement('canvas');
+    c.width = 512; c.height = 512;
+    c.getContext('2d').drawImage(img, (-pos.x) * sx, (-pos.y) * sy, CROP_SIZE * sx, CROP_SIZE * sy, 0, 0, 512, 512);
+    onConfirm(c.toDataURL('image/jpeg', 0.92));
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:99999, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:14, padding:'20px 20px 16px', maxWidth:360, width:'100%', display:'flex', flexDirection:'column', gap:12 }}>
+        <div style={{ fontWeight:800, fontSize:14, color:'#0f172a' }}>📷 Position Your Photo</div>
+        <div style={{ fontSize:12, color:'#64748b', lineHeight:1.5 }}>Drag to center your face inside the circle, then tap <strong>Use Photo</strong>.</div>
+        {/* Circular crop viewport */}
+        <div
+          style={{ width:CROP_SIZE, height:CROP_SIZE, borderRadius:'50%', overflow:'hidden', border:'3px solid #0176D3', position:'relative', margin:'0 auto', cursor:dragging?'grabbing':'grab', userSelect:'none', touchAction:'none', boxShadow:'0 4px 20px rgba(1,118,211,0.25)' }}
+          onMouseDown={startDrag} onMouseMove={moveDrag} onMouseUp={stopDrag} onMouseLeave={stopDrag}
+          onTouchStart={startDrag} onTouchMove={moveDrag} onTouchEnd={stopDrag}>
+          <img
+            ref={imgRef} src={src} alt="crop" draggable={false}
+            style={{ position:'absolute', left:pos.x, top:pos.y, width:imgSize.w, height:imgSize.h, maxWidth:'none', display:'block', pointerEvents:'none' }}
+            onLoad={onLoad}
+          />
+        </div>
+        <div style={{ fontSize:11, color:'#94a3b8', textAlign:'center' }}>Drag to reposition · Uploads as 512×512 px</div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onCancel} style={{ ...S.btnSec, flex:1 }}>Cancel</button>
+          <button onClick={confirm}  style={{ ...S.btnPri, flex:2 }}>✅ Use Photo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Enrollment prompts — 5 angles for maximum descriptor stability
 const PROMPTS = [
   { label:'Look straight at the camera',    icon:'👁️' },
@@ -61,21 +134,26 @@ const MIN_QUALITY = 0.45; // reject frames below this quality score
 function PhotoPanel({ photoUrl, onPhotoUpdated }) {
   const [uploading, setUploading] = useState(false);
   const [toast, setToast]         = useState({ msg:'', ok:true });
+  const [cropSrc, setCropSrc]     = useState(null);
   const fileRef = useRef(null);
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 4000); };
 
-  const handleFile = async (e) => {
+  // Step 1: file selected → show crop modal
+  const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setCropSrc(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = ''; // allow re-selecting the same file
+  };
+
+  // Step 2: crop confirmed → upload to Cloudinary
+  const doUpload = async (base64) => {
+    setCropSrc(null);
     setUploading(true);
     try {
-      const base64 = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = ev => res(ev.target.result);
-        r.onerror = rej;
-        r.readAsDataURL(file);
-      });
       const result = await api.uploadPhoto({ photo: base64 });
       const url = result?.photoUrl || result?.data?.photoUrl;
       onPhotoUpdated?.(url);
@@ -84,30 +162,33 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
       flash('Upload failed: ' + (err.message || 'Unknown error'), false);
     }
     setUploading(false);
-    e.target.value = '';
   };
 
   return (
-    <div style={S.card}>
-      <div style={S.cardTitle}><span style={{ fontSize:16 }}>📷</span><span>Profile Photo</span></div>
-      <div style={S.divider} />
-      <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-        {photoUrl
-          ? <img src={photoUrl} alt="Profile" style={S.avatar} />
-          : <div style={S.initials}>?</div>}
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:12, color:'#64748b', marginBottom:8, lineHeight:1.5 }}>
-            Upload a clear photo of yourself. Appears on your profile, applications, and recruiter view.
+    <>
+      {cropSrc && <CropModal src={cropSrc} onConfirm={doUpload} onCancel={() => setCropSrc(null)} />}
+      <div style={S.card}>
+        <div style={S.cardTitle}><span style={{ fontSize:16 }}>📷</span><span>Profile Photo</span></div>
+        <div style={S.divider} />
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          {photoUrl
+            ? <img src={photoUrl} alt="Profile" style={S.avatar} />
+            : <div style={S.initials}>?</div>}
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:8, lineHeight:1.5 }}>
+              Upload a clear photo from your gallery or take a new one. Appears on your profile, resume, and recruiter view.
+            </div>
+            {/* No capture attr — lets user choose camera or gallery */}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
+            <button style={{ ...S.btnPri, opacity: uploading ? 0.6 : 1 }} disabled={uploading}
+              onClick={() => fileRef.current?.click()}>
+              {uploading ? <><Spinner />Uploading…</> : '📷 Change Photo'}
+            </button>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" capture="user" style={{ display:'none' }} onChange={handleFile} />
-          <button style={{ ...S.btnPri, opacity: uploading ? 0.6 : 1 }} disabled={uploading}
-            onClick={() => fileRef.current?.click()}>
-            {uploading ? <><Spinner />Uploading…</> : '📷 Change Photo'}
-          </button>
         </div>
+        {toast.msg && <div style={S.toast(toast.ok)}>{toast.msg}</div>}
       </div>
-      {toast.msg && <div style={S.toast(toast.ok)}>{toast.msg}</div>}
-    </div>
+    </>
   );
 }
 
