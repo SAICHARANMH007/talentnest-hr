@@ -1742,10 +1742,14 @@ function CollegeForm({ onAuth, onBack, onForgot, navigate, prefill }) {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-export default function AuthScreen({ onAuth }) {
+export default function AuthScreen({ onAuth, initialScreen = 'entry' }) {
   const navigate = useNavigate();
-  const [screen, setScreen] = useState('entry'); // entry | candidate | employer | forgot | reset
-  const [lastAuthScreen, setLastAuthScreen] = useState('candidate');
+  const [screen, setScreen] = useState(initialScreen);
+  const [lastAuthScreen, setLastAuthScreen] = useState(
+    initialScreen !== 'entry' && initialScreen !== 'forgot' && initialScreen !== 'reset'
+      ? initialScreen
+      : 'candidate'
+  );
   const [prefill, setPrefill] = useState(null);
   const [resetParams, setResetParams] = useState({ token: '', email: '' });
 
@@ -1761,19 +1765,20 @@ export default function AuthScreen({ onAuth }) {
       setScreen('reset');
       window.history.replaceState({}, '', window.location.pathname);
     } else if (ref === 'career_apply' && email) {
-      // Career page applicant → go to candidate registration with email + name prefilled
       setPrefill({ email, name: pName || '', mode: 'register' });
       setScreen('candidate');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
-  const handleSelect = (type, pf = null) => {
-    setPrefill(pf);
-    const next = type === 'candidate' ? 'candidate' : type === 'college' ? 'college' : 'employer';
-    setLastAuthScreen(next);
-    setScreen(next);
+  // Navigate to dedicated URL — causes router to mount fresh AuthScreen with correct initialScreen
+  const handleSelect = (type) => {
+    const urlMap = { candidate: '/login/job-seeker', employer: '/login/employer', college: '/login/college' };
+    navigate(urlMap[type] || '/login');
   };
+
+  // Back from any form → always go to entry (via URL so browser history works correctly)
+  const goToEntry = () => navigate('/login', { replace: true });
 
   const openForgot = (from) => {
     setLastAuthScreen(from);
@@ -1782,8 +1787,8 @@ export default function AuthScreen({ onAuth }) {
 
   if (screen === 'forgot') return <ForgotPasswordForm onBack={() => setScreen(lastAuthScreen)} />;
   if (screen === 'reset')  return <ResetPasswordForm token={resetParams.token} email={resetParams.email} onBack={() => setScreen('candidate')} />;
-  if (screen === 'candidate') return <CandidateForm onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('candidate')} navigate={navigate} prefill={prefill} />;
-  if (screen === 'employer')  return <EmployerForm  onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('employer')} navigate={navigate} prefill={prefill} />;
-  if (screen === 'college')   return <CollegeForm   onAuth={onAuth} onBack={() => setScreen('entry')} onForgot={() => openForgot('college')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'candidate') return <CandidateForm onAuth={onAuth} onBack={goToEntry} onForgot={() => openForgot('candidate')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'employer')  return <EmployerForm  onAuth={onAuth} onBack={goToEntry} onForgot={() => openForgot('employer')} navigate={navigate} prefill={prefill} />;
+  if (screen === 'college')   return <CollegeForm   onAuth={onAuth} onBack={goToEntry} onForgot={() => openForgot('college')} navigate={navigate} prefill={prefill} />;
   return <EntryScreen onSelect={handleSelect} navigate={navigate} />;
 }

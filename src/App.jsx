@@ -597,6 +597,9 @@ export default function App() {
 
       {/* ── HR Portal ── */}
       <Route path="/login" element={authRedirect} />
+      <Route path="/login/job-seeker" element={user ? <Navigate to="/app" replace /> : <Suspense fallback={<PageLoader />}><AuthScreen onAuth={auth} initialScreen="candidate" /></Suspense>} />
+      <Route path="/login/employer"   element={user ? <Navigate to="/app" replace /> : <Suspense fallback={<PageLoader />}><AuthScreen onAuth={auth} initialScreen="employer" /></Suspense>} />
+      <Route path="/login/college"    element={user ? <Navigate to="/app" replace /> : <Suspense fallback={<PageLoader />}><AuthScreen onAuth={auth} initialScreen="college" /></Suspense>} />
       <Route path="/auth"  element={authRedirect} />
       <Route path="/set-password" element={<Suspense fallback={<PageLoader />}><SetPasswordPage /></Suspense>} />
 

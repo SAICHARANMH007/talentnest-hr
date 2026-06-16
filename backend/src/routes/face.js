@@ -727,8 +727,8 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
 
   if (user) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
-    await Otp.create({ email: emailLower, otp, purpose: 'login_2fa' });
+    await Otp.deleteMany({ email: emailLower, purpose: 'face_login' });
+    await Otp.create({ email: emailLower, otp, purpose: 'face_login', expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff">
@@ -793,7 +793,7 @@ router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
   }
   const record = await Otp.findOne({
     email     : emailLower,
-    purpose   : 'login_2fa',
+    purpose   : 'face_login',
     expiresAt : { $gt: new Date() },
   }).sort({ createdAt: -1 }).lean();
 
@@ -801,7 +801,7 @@ router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
     throw new AppError('Invalid or expired verification code. Please try again.', 401);
   }
 
-  await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
+  await Otp.deleteMany({ email: emailLower, purpose: 'face_login' });
 
   const user = await User.findOne({
     email: emailLower,
