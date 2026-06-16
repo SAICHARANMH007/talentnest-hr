@@ -33,41 +33,38 @@ const POST_TYPE_ACCENT = {
 function PostTypeBanner({ post }) {
   const type = post?.postType;
   if (!type || type === 'update') return null;
-  const content = post.content || '';
-  const isUrgent    = type === 'announcement' && content.startsWith('🚨');
-  const isImportant = type === 'announcement' && content.startsWith('⚡');
-  const starMatch   = type === 'feedback' ? content.match(/^(⭐+)/) : null;
-  const starCount   = starMatch ? Math.min(starMatch[1].length, 5) : 0;
-  const jobTitle    = post.jobDetails?.title   || null;
-  const jobCompany  = post.jobDetails?.company || null;
-  const pollQ       = post.poll?.question       || null;
-  const optCount    = post.poll?.options?.length || 0;
+  const content    = post.content || '';
+  const isUrgent   = type === 'announcement' && content.startsWith('🚨');
+  const isImportant= type === 'announcement' && content.startsWith('⚡');
+  const starMatch  = type === 'feedback' ? content.match(/^(⭐+)/) : null;
+  const starCount  = starMatch ? Math.min(starMatch[1].length, 5) : 0;
+  const STAR_LABEL = ['','Poor','Fair','Good','Great','Excellent'];
+  const jobTitle   = post.jobDetails?.title;
+  const jobCompany = post.jobDetails?.company;
+  const pollQ      = post.poll?.question;
+  const optCount   = post.poll?.options?.length || 0;
 
-  const CONFIGS = {
-    hiring:      { gradient: 'linear-gradient(135deg,#059669 0%,#047857 100%)', icon:'💼', label:'Job Opening',       sub: jobTitle ? `${jobTitle}${jobCompany?` · ${jobCompany}`:''}` : "We're hiring!",            badge: <span style={{ background:'rgba(255,255,255,0.22)',color:'#fff',fontSize:10,fontWeight:800,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>HIRING</span> },
-    tip:         { gradient: 'linear-gradient(135deg,#F59E0B 0%,#D97706 100%)', icon:'💡', label:'Pro Tip',            sub:'Career insight worth bookmarking',                                                          badge: <span style={{ background:'rgba(255,255,255,0.25)',color:'#78350F',fontSize:10,fontWeight:900,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>🔥 HOT TIP</span> },
-    question:    { gradient: 'linear-gradient(135deg,#8B5CF6 0%,#7C3AED 100%)', icon:'❓', label:'Asking the Community',sub:'Share your experience & thoughts',                                                         badge: <span style={{ background:'rgba(255,255,255,0.2)',color:'#fff',fontSize:10,fontWeight:800,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>REPLY</span> },
-    achievement: { gradient: 'linear-gradient(135deg,#F59E0B 0%,#B45309 100%)', icon:'🏆', label:'Celebrating a Win!', sub:'🎉 A milestone worth sharing',                                                              badge: <span style={{ background:'rgba(255,255,255,0.22)',color:'#78350F',fontSize:10,fontWeight:900,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>🚀 WIN</span> },
-    feedback:    { gradient: 'linear-gradient(135deg,#EC4899 0%,#DB2777 100%)', icon:'⭐', label:'Feedback & Review',   sub: starCount>0 ? '★'.repeat(starCount)+'☆'.repeat(5-starCount)+'  '+['','Poor','Fair','Good','Great','Excellent'][starCount] : 'Honest community feedback', badge: null },
-    resource:    { gradient: 'linear-gradient(135deg,#06B6D4 0%,#0891B2 100%)', icon:'📎', label:'Sharing a Resource',  sub:'Useful content for your career',                                                           badge: <span style={{ background:'rgba(255,255,255,0.22)',color:'#fff',fontSize:10,fontWeight:800,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>📚 READ</span> },
-    milestone:   { gradient: 'linear-gradient(135deg,#EF4444 0%,#DC2626 100%)', icon:'🎯', label:'Milestone Reached',   sub:'Career achievement unlocked ✨',                                                           badge: <span style={{ background:'rgba(255,255,255,0.22)',color:'#fff',fontSize:10,fontWeight:800,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>NEW</span> },
-    announcement:{ gradient: isUrgent ? 'linear-gradient(135deg,#EF4444 0%,#DC2626 100%)' : isImportant ? 'linear-gradient(135deg,#F59E0B 0%,#D97706 100%)' : 'linear-gradient(135deg,#3B82F6 0%,#2563EB 100%)', icon: isUrgent?'🚨':isImportant?'⚡':'📢', label:'Announcement', sub: isUrgent?'Urgent — action required':isImportant?'Important community update':'Community update & news', badge: isUrgent ? <span style={{ background:'#fff',color:'#DC2626',fontSize:10,fontWeight:900,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>🚨 URGENT</span> : isImportant ? <span style={{ background:'rgba(255,255,255,0.25)',color:'#78350F',fontSize:10,fontWeight:900,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>⚡ IMPORTANT</span> : null },
-    poll:        { gradient: 'linear-gradient(135deg,#8B5CF6 0%,#5B21B6 100%)',  icon:'🗳️',label:'Community Poll',      sub: pollQ||'Cast your vote below!',                                                            badge: <span style={{ background:'rgba(255,255,255,0.2)',color:'#fff',fontSize:10,fontWeight:800,borderRadius:20,padding:'2px 8px',flexShrink:0 }}>{optCount>0?`${optCount} options`:'VOTE NOW'}</span> },
+  const CFG = {
+    hiring:      { gradient:'linear-gradient(135deg,#10B981 0%,#059669 100%)', icon:'💼', title:'Job Opening',        sub: jobTitle?`${jobTitle}${jobCompany?` · ${jobCompany}`:''}` :"Hiring now — see details below", pill:'HIRING' },
+    tip:         { gradient:'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)', icon:'💡', title:'Share a Pro Tip',    sub:'Career insight worth bookmarking',              pill:'🔥 HOT TIP' },
+    question:    { gradient:'linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%)', icon:'❓', title:'Ask the Community',   sub:'Get advice from your network',                  pill:null },
+    achievement: { gradient:'linear-gradient(135deg,#FBBF24 0%,#B45309 100%)', icon:'🏆', title:'Celebrate a Win',    sub:"Share something you're proud of",                pill:'🎉 WIN' },
+    feedback:    { gradient:'linear-gradient(135deg,#F472B6 0%,#DB2777 100%)', icon:'⭐', title:'Feedback & Review',   sub: starCount>0?`Rated ${starCount}/5 — ${STAR_LABEL[starCount]}`:'Honest community feedback', pill:null },
+    resource:    { gradient:'linear-gradient(135deg,#22D3EE 0%,#0891B2 100%)', icon:'📎', title:'Sharing a Resource', sub:'Useful content for your career',                 pill:'📚 READ' },
+    milestone:   { gradient:'linear-gradient(135deg,#F87171 0%,#DC2626 100%)', icon:'🎯', title:'Share a Milestone',  sub:'Career achievement unlocked ✨',                  pill:'🏅 NEW' },
+    announcement:{ gradient: isUrgent?'linear-gradient(135deg,#F87171 0%,#DC2626 100%)':isImportant?'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)':'linear-gradient(135deg,#60A5FA 0%,#2563EB 100%)', icon:isUrgent?'🚨':isImportant?'⚡':'📢', title:'Announcement', sub:isUrgent?'Urgent — action required':isImportant?'Important community update':'Community update & news', pill:isUrgent?'🚨 URGENT':isImportant?'⚡ IMPORTANT':null },
+    poll:        { gradient:'linear-gradient(135deg,#A78BFA 0%,#5B21B6 100%)', icon:'🗳️',title:'Community Poll',     sub: pollQ?(pollQ.length>55?pollQ.slice(0,55)+'…':pollQ):'Cast your vote below!', pill:optCount>0?`${optCount} options`:'VOTE NOW' },
   };
-  const cfg = CONFIGS[type];
+  const cfg = CFG[type];
   if (!cfg) return null;
   return (
-    <div style={{ background: cfg.gradient, borderRadius: 12, padding: '13px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position:'absolute', right:-20, top:-20, width:80, height:80, borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', right:30, bottom:-30, width:60, height:60, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }} />
-      <div style={{ width:42, height:42, borderRadius:11, flexShrink:0, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, lineHeight:1 }}>{cfg.icon}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <span style={{ fontSize:13, fontWeight:900, color:'#fff', letterSpacing:'0.04em', textTransform:'uppercase', lineHeight:1.2 }}>{cfg.label}</span>
-          {cfg.badge}
-        </div>
-        <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cfg.sub}</div>
+    <div style={{ background: cfg.gradient, borderRadius: '14px 14px 0 0', padding: '16px 18px', marginLeft: -18, marginRight: -18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+      <span style={{ fontSize: 30, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}>{cfg.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{cfg.title}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.88)', marginTop: 3, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cfg.sub}</div>
       </div>
+      {cfg.pill && <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', letterSpacing: '0.04em', flexShrink: 0, whiteSpace: 'nowrap' }}>{cfg.pill}</span>}
     </div>
   );
 }
@@ -126,7 +123,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   const myReaction = post.reactions?.find(r => String(r.userId) === String(userId));
   const totalReactions = post.reactions?.length || 0;
   const totalComments  = post.comments?.length  || 0;
-  const typeAccent = post.postType && post.postType !== 'update' ? POST_TYPE_ACCENT[post.postType] : null;
+  const hasBanner  = !!(post.postType && post.postType !== 'update' && POST_TYPE_ACCENT[post.postType]);
 
   const handleReply = (c) => {
     const mention = `@${c.userName} `;
@@ -167,9 +164,9 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
   };
 
   return (
-    <div style={{ ...card, padding: '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', borderTop: typeAccent ? `3px solid ${typeAccent}` : post.isPinned ? '3px solid #93C5FD' : undefined, position: 'relative' }}>
-      {/* Post type banner */}
-      <PostTypeBanner post={post} />
+    <div style={{ ...card, padding: hasBanner ? '0 18px 16px' : '16px 18px', marginBottom: 10, borderRadius: 14, border: post.isPinned ? '1px solid #BFDBFE' : '1px solid #F1F5F9', position: 'relative' }}>
+      {/* Post type banner — flush to card top */}
+      {hasBanner && <PostTypeBanner post={post} />}
 
       {post.isPinned && <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 8 }}>📌 Pinned</div>}
 
@@ -209,7 +206,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
             <span style={{ fontWeight: 800, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{post.authorName || 'Member'}</span>
             <RoleBadge role={post.authorRole} />
-            {typeAccent && <span style={{ fontSize: 10, fontWeight: 700, background: typeAccent + '18', color: typeAccent, borderRadius: 10, padding: '2px 8px' }}>{post.postType}</span>}
+            {hasBanner && POST_TYPE_ACCENT[post.postType] && <span style={{ fontSize: 10, fontWeight: 700, background: POST_TYPE_ACCENT[post.postType] + '18', color: POST_TYPE_ACCENT[post.postType], borderRadius: 10, padding: '2px 8px' }}>{post.postType}</span>}
           </div>
           <div style={{ fontSize: 11, color: '#9CA3AF' }}>
             {post.authorTitle && <span>{post.authorTitle} · </span>}
