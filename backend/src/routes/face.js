@@ -10,6 +10,8 @@
 const express    = require('express');
 const router     = express.Router();
 const rateLimit  = require('express-rate-limit');
+const jwt        = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 const User       = require('../models/User');
 const Candidate  = require('../models/Candidate');
 const Organization = require('../models/Organization');
@@ -36,6 +38,15 @@ const faceLoginLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.ip,
   message: { success: false, error: 'Too many face login attempts. Please try again in 15 minutes.' },
+});
+
+// Rate limiter for face-identify (global search) — strict: 3 per IP per minute
+const faceIdentifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many face scan attempts. Please wait a minute and try again.' },
 });
 
 // Rate limiter for OTP send — 3 requests per 15 min per IP
@@ -470,6 +481,74 @@ router.get('/admin/duplicates/count', ...guard,
   })
 );
 
+// ── POST /api/face/identify — scan face to discover linked account (no auth)
+//
+// New login flow: face → find account → masked email shown → OTP → login
+// OTP is the security gate, so identify threshold is loose (0.74).
+// Returns a short-lived signed faceToken instead of the real email to prevent enumeration.
+//
+// Body: { descriptor: number[], frames?: number[][] }
+// Response: { found: bool, maskedEmail?: string, faceToken?: string (5-min JWT) }
+router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
+  const { descriptor, frames } = req.body;
+  if (!Array.isArray(descriptor) || descriptor.length < 64)
+    throw new AppError('Invalid face descriptor.', 400);
+
+  // Pull all enrolled users — O(n) comparison (fine for HR platform scale)
+  const enrolled = await User.find({
+    faceEnrolled: true,
+    isActive    : { $ne: false },
+    deletedAt   : null,
+  }).select('_id email faceDescriptor faceDescriptors').lean();
+
+  const IDENTIFY_THRESHOLD = 0.74; // loose — OTP is the actual security gate
+  const FRAME_THRESHOLD    = 0.72; // per-frame k-NN threshold for identify
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const u of enrolled) {
+    if (!u.faceDescriptor?.length) continue;
+    const gallery     = Array.isArray(u.faceDescriptors) && u.faceDescriptors.length >= 2 ? u.faceDescriptors : null;
+    const loginFrames = Array.isArray(frames) && frames.length >= 2 ? frames : null;
+    let score;
+
+    if (gallery && loginFrames) {
+      const frameScores = loginFrames.map(f => {
+        const fd = Array.isArray(f) ? f : [];
+        if (fd.length < 64) return 0;
+        return Math.max(...gallery.map(g => faceSimilarity(fd, g)));
+      });
+      const avgScore  = faceSimilarity(descriptor, u.faceDescriptor);
+      const passCount = frameScores.filter(s => s >= FRAME_THRESHOLD).length;
+      score = passCount >= Math.ceil(loginFrames.length * 2 / 3) ? avgScore : avgScore * 0.85;
+    } else {
+      score = faceSimilarity(descriptor, u.faceDescriptor);
+    }
+
+    if (score > bestScore) { bestScore = score; bestMatch = u; }
+  }
+
+  if (!bestMatch || bestScore < IDENTIFY_THRESHOLD) {
+    logger.info('Face identify: no match', { ip: req.ip, topScore: Math.round(bestScore * 100) });
+    return res.json({ success: true, found: false });
+  }
+
+  // Issue 5-min signed token encoding the userId — client never gets the real email
+  const faceToken = jwt.sign(
+    { userId: String(bestMatch._id), purpose: 'face_identify', score: Math.round(bestScore * 100) },
+    JWT_SECRET,
+    { expiresIn: '5m' }
+  );
+
+  // Mask email: first char + *** + @domain  (e.g. "j***@gmail.com")
+  const [local, domain] = bestMatch.email.split('@');
+  const maskedEmail = local[0] + '*'.repeat(Math.max(2, local.length - 1)) + '@' + domain;
+
+  logger.info('Face identify: match', { userId: bestMatch._id, score: Math.round(bestScore * 100), ip: req.ip });
+  res.json({ success: true, found: true, maskedEmail, faceToken });
+}));
+
 // ── POST /api/face/login — NO authMiddleware — email-scoped face authentication
 //
 // Security model:
@@ -619,11 +698,26 @@ router.post('/check-enrolled', asyncHandler(async (req, res) => {
   res.json({ success: true, enrolled: !!user });
 }));
 
-// ── POST /api/face/send-otp — face login fallback: send OTP to email
+// ── POST /api/face/send-otp — send login OTP (accepts faceToken from /identify OR plain email)
 router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  if (!email || !email.includes('@')) throw new AppError('Invalid email.', 400);
-  const emailLower = email.toLowerCase().trim();
+  const { email, faceToken } = req.body;
+
+  let emailLower;
+  if (faceToken) {
+    // New identify flow: decode the short-lived face token to get the real email
+    let decoded;
+    try { decoded = jwt.verify(faceToken, JWT_SECRET); } catch {
+      throw new AppError('Face session expired. Please scan your face again.', 400);
+    }
+    if (decoded.purpose !== 'face_identify') throw new AppError('Invalid face token.', 400);
+    const u = await User.findById(decoded.userId).select('email').lean();
+    if (!u) throw new AppError('Account not found.', 404);
+    emailLower = u.email.toLowerCase();
+  } else if (email && email.includes('@')) {
+    emailLower = email.toLowerCase().trim();
+  } else {
+    throw new AppError('A valid email or face token is required.', 400);
+  }
 
   const user = await User.findOne({
     email: emailLower,
@@ -640,7 +734,7 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff">
         <div style="text-align:center;margin-bottom:20px">
           <h2 style="color:#0176D3;margin:0;font-size:22px">🔐 TalentNest Login Verification</h2>
-          <p style="color:#6B7280;font-size:13px;margin-top:6px">Your face was not recognised. Use this one-time code to sign in.</p>
+          <p style="color:#6B7280;font-size:13px;margin-top:6px">Use this one-time code to complete your sign-in.</p>
         </div>
         <div style="background:#F0F9FF;border:2px solid #BAE6FD;border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">
           <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#0176D3;display:block">${otp}</span>
@@ -677,11 +771,26 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/face/verify-otp — verify OTP and issue login token
+// Accepts { faceToken, otp } (new flow) or { email, otp } (legacy fallback)
 router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) throw new AppError('Email and verification code are required.', 400);
+  const { email, faceToken, otp } = req.body;
+  if (!otp) throw new AppError('Verification code is required.', 400);
 
-  const emailLower = email.toLowerCase().trim();
+  let emailLower;
+  if (faceToken) {
+    let decoded;
+    try { decoded = jwt.verify(faceToken, JWT_SECRET); } catch {
+      throw new AppError('Face session expired. Please scan your face again.', 400);
+    }
+    if (decoded.purpose !== 'face_identify') throw new AppError('Invalid face token.', 400);
+    const u = await User.findById(decoded.userId).select('email').lean();
+    if (!u) throw new AppError('Account not found.', 404);
+    emailLower = u.email.toLowerCase();
+  } else if (email?.includes('@')) {
+    emailLower = email.toLowerCase().trim();
+  } else {
+    throw new AppError('A valid email or face token is required.', 400);
+  }
   const record = await Otp.findOne({ email: emailLower, purpose: 'login_2fa' }).sort({ createdAt: -1 }).lean();
 
   if (!record || record.otp !== String(otp).trim()) {

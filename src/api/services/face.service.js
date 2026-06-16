@@ -9,6 +9,7 @@ export const faceService = {
   proctorCheck:  (body)         => req('POST', '/face/proctor-check', body),
 
   // Public — no auth token needed (user is not logged in yet)
+  identifyFace:     (body)  => req('POST', '/face/identify',       body, false),
   faceLogin:        (body)  => req('POST', '/face/login',          body, false),
   checkEnrollment:  (body)  => req('POST', '/face/check-enrolled', body, false),
   sendFaceOtp:      (body)  => req('POST', '/face/send-otp',       body, false),

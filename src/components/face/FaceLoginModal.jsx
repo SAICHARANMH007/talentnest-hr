@@ -1,13 +1,16 @@
 /**
- * FaceLoginModal — Secure face-based login
+ * FaceLoginModal — Face-first login: scan face → find account → OTP → in
  *
  * Flow:
- *   Step 1: User enters their registered email
- *   Step 2: Camera opens; stable-frame liveness (15 consecutive good frames)
- *   Step 3: Auto 3-2-1 countdown per pose → 3 poses auto-captured
- *   Step 4: Averaged descriptor POSTed to /api/face/login
- *   Step 5a: Match → onSuccess(user, token)
- *   Step 5b: No match → OTP sent to email → user enters OTP → login
+ *   Step 1: Camera opens; blink liveness + 3 random poses captured
+ *   Step 2: Descriptor sent to /face/identify → finds linked account
+ *   Step 3a: Match found → show masked email → user confirms → OTP sent
+ *   Step 3b: No match → prompt to use password login
+ *   Step 4: User enters OTP from email → logged in
+ *
+ * Security: OTP is the auth gate. FRS identifies (not authenticates), so
+ * threshold is loose (0.74). Even a wrong match cannot login without
+ * receiving the OTP from that person's email.
  */
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
@@ -74,9 +77,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const loginPoses    = loginPosesRef.current;
 
   // ── Step state ───────────────────────────────────────────────────────────────
-  const [step, setStep]         = useState('email'); // email|camera|submitting|otp|error
-  const [email, setEmail]       = useState(prefillEmail);
-  const [emailError, setEmailError] = useState('');
+  const [step, setStep]         = useState('camera'); // camera|submitting|found|not_found|otp|error
+
+  // ── Identify result ───────────────────────────────────────────────────────────
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [faceToken, setFaceToken]     = useState(''); // short-lived JWT linking to matched userId
 
   // ── Camera state ─────────────────────────────────────────────────────────────
   const [modelReady, setModelReady]   = useState(false);
@@ -283,26 +288,27 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setStep('submitting');
     try {
       const avgDesc = averageDescriptors(descsRef.current);
-      const result  = await api.faceLogin({
-        email      : email.trim().toLowerCase(),
+      const result  = await api.identifyFace({
         descriptor : avgDesc,
-        frames     : descsRef.current, // individual pose captures for k-NN gallery matching
+        frames     : descsRef.current,
       });
-      onSuccess(result.user, result.token);
-    } catch (e) {
-      // Face didn't match → send OTP fallback
-      if (e?.status === 401 || (e?.message || '').toLowerCase().includes('not recogni')) {
-        await sendOtpFallback();
+      if (result.found) {
+        setMaskedEmail(result.maskedEmail);
+        setFaceToken(result.faceToken);
+        setStep('found');
       } else {
-        setServerError(e?.message || 'Face verification failed. Please try again.');
-        setStep('error');
+        setStep('not_found');
       }
+    } catch (e) {
+      setServerError(e?.message || 'Face scan failed. Please try again.');
+      setStep('error');
     }
   };
 
-  const sendOtpFallback = async () => {
+  const confirmIdentity = async () => {
+    setStep('submitting');
     try {
-      await api.sendFaceOtp({ email: email.trim().toLowerCase() });
+      await api.sendFaceOtp({ faceToken });
       setStep('otp');
     } catch (e) {
       setServerError(e?.message || 'Could not send verification code. Please try password login.');
@@ -316,7 +322,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setOtpSubmitting(true);
     setOtpError('');
     try {
-      const result = await api.verifyFaceOtp({ email: email.trim().toLowerCase(), otp: code });
+      const result = await api.verifyFaceOtp({ faceToken, otp: code });
       onSuccess(result.user, result.token);
     } catch (e) {
       setOtpError(e?.message || 'Invalid or expired code. Please try again.');
@@ -329,7 +335,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setOtpError('');
     setOtpResent(false);
     try {
-      await api.sendFaceOtp({ email: email.trim().toLowerCase() });
+      await api.sendFaceOtp({ faceToken });
       setOtpResent(true);
       setTimeout(() => setOtpResent(false), 4000);
     } catch (e) {
@@ -372,25 +378,6 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
   };
 
-  const proceedToCamera = async () => {
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) { setEmailError('Enter a valid email address.'); return; }
-    if (!modelReady) { setEmailError('AI models are still loading. Please wait a moment.'); return; }
-    setEmailError('Checking…');
-    try {
-      const { enrolled } = await api.checkEnrollment({ email: trimmed });
-      if (!enrolled) {
-        setEmailError('Face ID is not set up for this account. Please use password login or enroll your face first from My Profile.');
-        return;
-      }
-    } catch {
-      // Network error — don't block; backend will reject if not enrolled
-    }
-    setEmailError('');
-    setEmail(trimmed);
-    setStep('camera');
-  };
-
   const retryCamera = () => {
     stopAll();
     streamRef.current = null;
@@ -402,6 +389,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     blinkCountRef.current = 0; inBlinkRef.current = false;
     setCapturedCount(0); descsRef.current = [];
     isCapturingRef.current = false;
+    setMaskedEmail(''); setFaceToken('');
     setServerError(''); setCamError('');
     setStep('camera');
   };
@@ -417,54 +405,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
       <div style={{ ...card, animation:'flFade 0.22s ease' }}>
         {/* Header */}
         <div>
-          <h2 style={titleStyle}>🔐 Face Login</h2>
-          <p style={sub}>Enter your email, then verify your face to sign in securely.</p>
+          <h2 style={titleStyle}>🔐 Face Sign In</h2>
+          <p style={sub}>Scan your face to find your account — no password needed.</p>
         </div>
-
-        {/* ── Step 1: Email ──────────────────────────────────────────────────── */}
-        {step === 'email' && (
-          <>
-            <div>
-              <label style={{ color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700, display:'block', marginBottom:6, letterSpacing:0.5 }}>
-                REGISTERED EMAIL
-              </label>
-              <input
-                value={email}
-                onChange={e => { setEmail(e.target.value); setEmailError(''); }}
-                onKeyDown={e => e.key === 'Enter' && proceedToCamera()}
-                placeholder="you@example.com"
-                type="email"
-                autoFocus
-                autoComplete="email"
-                style={{ ...inp, borderColor: emailError ? '#ef4444' : undefined }}
-              />
-              {emailError && <div style={{ color:'#ef4444', fontSize:11, marginTop:4 }}>{emailError}</div>}
-            </div>
-            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
-              ✅ Face login uses AI to verify your identity with enhanced mesh detection.<br />
-              ✅ If face recognition fails, a backup OTP will be sent to your email.
-            </div>
-            {/* AI model pre-load progress shown while user types email */}
-            {!modelReady && (
-              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>
-                    <Spin /> Loading AI models… ({modelPct}%)
-                  </span>
-                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>one-time</span>
-                </div>
-                <div style={{ height:3, background:'rgba(255,255,255,0.08)', borderRadius:3 }}>
-                  <div style={{ height:'100%', borderRadius:3, width:`${modelPct}%`,
-                    background:'#0176D3', transition:'width 0.4s ease' }} />
-                </div>
-              </div>
-            )}
-            <button style={{ ...btnP, opacity: (!modelReady && modelPct < 100) ? 0.6 : 1 }} onClick={proceedToCamera}>
-              {modelReady ? 'Continue →' : `Loading… ${modelPct}%`}
-            </button>
-            <button style={btnS} onClick={onClose}>Cancel</button>
-          </>
-        )}
 
         {/* ── Step 2: Camera ────────────────────────────────────────────────── */}
         {step === 'camera' && (
@@ -477,7 +420,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                   </div>
                 ) : (
                   <div style={{ color:'rgba(255,255,255,0.5)', fontSize:13, lineHeight:1.6 }}>
-                    Tap below to open your camera.<br />Allow camera access when prompted.
+                    Tap below to open your camera.<br />
+                    Allow camera access when prompted.<br />
+                    <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                      Enrolled Face ID required — use password login if not enrolled.
+                    </span>
                   </div>
                 )}
                 <button style={{ ...btnP, opacity: openingCamera ? 0.7 : 1 }}
@@ -584,31 +531,69 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
           </>
         )}
 
-        {/* ── Step 3: Submitting ────────────────────────────────────────────── */}
+        {/* ── Submitting ───────────────────────────────────────────────────── */}
         {step === 'submitting' && (
           <div style={{ textAlign:'center', padding:'20px 0' }}>
             <Spin />
             <div style={{ color:'rgba(255,255,255,0.7)', fontSize:14, fontWeight:600, marginTop:12 }}>
-              Verifying your face…
+              Searching for your account…
             </div>
             <div style={{ color:'rgba(255,255,255,0.35)', fontSize:12, marginTop:6 }}>
-              Comparing against your enrolled Face ID
+              Matching face against enrolled accounts
             </div>
           </div>
         )}
 
-        {/* ── Step 4: OTP Fallback ──────────────────────────────────────────── */}
+        {/* ── Account Found ────────────────────────────────────────────────── */}
+        {step === 'found' && (
+          <>
+            <div style={{ textAlign:'center', padding:'8px 0' }}>
+              <div style={{ fontSize:48, marginBottom:8 }}>👤</div>
+              <div style={{ color:'#4ade80', fontSize:16, fontWeight:800, marginBottom:4 }}>Account Found!</div>
+              <div style={{ color:'rgba(255,255,255,0.55)', fontSize:12, lineHeight:1.5 }}>
+                We found an account linked to this face.
+              </div>
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.07)', borderRadius:12, padding:'16px', textAlign:'center' }}>
+              <div style={{ color:'rgba(255,255,255,0.4)', fontSize:10, fontWeight:700, marginBottom:6, letterSpacing:1 }}>LINKED EMAIL</div>
+              <div style={{ color:'#fff', fontSize:18, fontWeight:800, letterSpacing:2 }}>{maskedEmail}</div>
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:9, padding:'9px 12px', fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.6 }}>
+              🔐 For your security, we'll send a one-time code to confirm it's really you.
+            </div>
+            <button style={btnP} onClick={confirmIdentity}>✉️ Send me a verification code</button>
+            <button style={btnS} onClick={retryCamera}>↩ Not me — scan again</button>
+          </>
+        )}
+
+        {/* ── Face Not Found ────────────────────────────────────────────────── */}
+        {step === 'not_found' && (
+          <>
+            <div style={{ textAlign:'center', padding:'8px 0' }}>
+              <div style={{ fontSize:48, marginBottom:8 }}>🤷</div>
+              <div style={{ color:'#fbbf24', fontSize:16, fontWeight:800, marginBottom:4 }}>Face Not Recognised</div>
+              <div style={{ color:'rgba(255,255,255,0.55)', fontSize:12, lineHeight:1.6 }}>
+                We couldn't find an account linked to this face.<br />
+                You may not have enrolled Face ID yet.
+              </div>
+            </div>
+            <button style={btnP} onClick={retryCamera}>📸 Try Again</button>
+            <button style={btnS} onClick={onClose}>Use Password Login Instead</button>
+          </>
+        )}
+
+        {/* ── OTP Verification ─────────────────────────────────────────────── */}
         {step === 'otp' && (
           <>
-            <div style={{ background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)',
+            <div style={{ background:'rgba(1,118,211,0.12)', border:'1px solid rgba(1,118,211,0.35)',
               borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
-              <div style={{ fontSize:24, marginBottom:6 }}>📧</div>
-              <div style={{ color:'#fbbf24', fontSize:13, fontWeight:700, marginBottom:4 }}>
-                Face not recognised
+              <div style={{ fontSize:28, marginBottom:6 }}>📧</div>
+              <div style={{ color:'#60a5fa', fontSize:13, fontWeight:700, marginBottom:4 }}>
+                Verification Code Sent
               </div>
               <div style={{ color:'rgba(255,255,255,0.6)', fontSize:12, lineHeight:1.5 }}>
-                A 6-digit verification code has been sent to<br />
-                <strong style={{ color:'#fff' }}>{email}</strong>
+                A 6-digit code has been sent to<br />
+                <strong style={{ color:'#fff' }}>{maskedEmail}</strong>
               </div>
             </div>
 
