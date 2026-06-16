@@ -23,12 +23,11 @@ function toId(v) {
 const toObjId = id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
 
 // ─── GET /api/connections — accepted connections list ─────────────────────────
+// No tenantId filter — connections can span organisations (platform-wide networking)
 router.get('/', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const connections = await Connection.find({
-    tenantId,
     status: 'accepted',
     $or: [{ fromUserId: uid }, { toUserId: uid }],
   }).lean();
@@ -39,7 +38,6 @@ router.get('/', asyncHandler(async (req, res) => {
 
   const users = await User.find({
     _id      : { $in: peerIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
 
@@ -47,12 +45,11 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /api/connections/pending — incoming pending requests ─────────────────
+// No tenantId filter — allows cross-tenant connection requests
 router.get('/pending', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const requests = await Connection.find({
-    tenantId,
     toUserId: uid,
     status  : 'pending',
   }).lean();
@@ -62,7 +59,6 @@ router.get('/pending', asyncHandler(async (req, res) => {
   const senderMap = {};
   const senders   = await User.find({
     _id      : { $in: senderIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
   senders.forEach(u => { senderMap[String(u._id)] = u; });
@@ -77,12 +73,11 @@ router.get('/pending', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /api/connections/sent — outgoing pending requests ───────────────────
+// No tenantId filter — allows cross-tenant connection requests
 router.get('/sent', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const requests = await Connection.find({
-    tenantId,
     fromUserId: uid,
     status    : 'pending',
   }).lean();
@@ -92,7 +87,6 @@ router.get('/sent', asyncHandler(async (req, res) => {
   const recipientMap = {};
   const recipients   = await User.find({
     _id      : { $in: recipientIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
   recipients.forEach(u => { recipientMap[String(u._id)] = u; });
@@ -453,6 +447,8 @@ router.post('/sync-contacts', asyncHandler(async (req, res) => {
 }));
 
 // ─── POST /api/connections/request/:userId — send connection request ──────────
+// Platform-wide: candidates from any org can connect with each other.
+// Connection is stored under the requester's tenantId (required by schema).
 router.post('/request/:userId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
@@ -460,11 +456,12 @@ router.post('/request/:userId', asyncHandler(async (req, res) => {
 
   if (String(userId) === uid) throw new AppError('You cannot connect with yourself.', 400);
 
-  const target = await User.findOne({ _id: userId, tenantId, deletedAt: null }).lean();
+  // Find target user platform-wide (no tenantId filter)
+  const target = await User.findOne({ _id: userId, deletedAt: null }).lean();
   if (!target) throw new AppError('User not found.', 404);
 
+  // Duplicate check without tenantId — cross-tenant connections must also be unique
   const existing = await Connection.findOne({
-    tenantId,
     $or: [
       { fromUserId: uid,    toUserId: userId },
       { fromUserId: userId, toUserId: uid    },
@@ -476,7 +473,7 @@ router.post('/request/:userId', asyncHandler(async (req, res) => {
   }
 
   const connection = await Connection.create({
-    tenantId,
+    tenantId,   // stored under requester's tenant (schema requires it)
     fromUserId: uid,
     toUserId  : userId,
     status    : 'pending',
@@ -535,14 +532,13 @@ router.post('/accept/:requestId', asyncHandler(async (req, res) => {
 }));
 
 // ─── POST /api/connections/reject/:requestId — reject incoming request ─────────
+// No tenantId filter — cross-tenant requests must also be rejectable
 router.post('/reject/:requestId', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const connection = await Connection.findOne({
-    _id     : req.params.requestId,
-    tenantId,
-    status  : 'pending',
+    _id   : req.params.requestId,
+    status: 'pending',
   });
 
   if (!connection) throw new AppError('Connection request not found.', 404);
@@ -556,13 +552,12 @@ router.post('/reject/:requestId', asyncHandler(async (req, res) => {
 }));
 
 // ─── DELETE /api/connections/remove/:userId — remove accepted connection ──────
+// No tenantId filter — cross-tenant connections must also be removable
 router.delete('/remove/:userId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
   const { userId } = req.params;
 
   const connection = await Connection.findOne({
-    tenantId,
     status: 'accepted',
     $or: [
       { fromUserId: uid,    toUserId: userId },
@@ -582,9 +577,9 @@ router.delete('/cancel/:requestId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
 
+  // No tenantId filter — cross-tenant requests must also be cancellable
   const connection = await Connection.findOne({
     _id       : req.params.requestId,
-    tenantId,
     fromUserId: uid,
     status    : 'pending',
   });
