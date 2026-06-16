@@ -137,16 +137,24 @@ function FaceCamera({ onDone, onCancel }) {
 
   // Start camera
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video:{ width:{ ideal:640 }, height:{ ideal:480 }, facingMode:'user' }
+          video:{ facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
         });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
-      } catch { flash('Camera access denied. Please allow camera permissions.', false); }
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Fire play() but never await — autoPlay attr handles it; awaiting throws on Android
+          videoRef.current.play().catch(() => {});
+        }
+      } catch {
+        if (!cancelled) flash('Camera access denied. Please allow camera permissions.', false);
+      }
     })();
-    return () => stopCamera();
+    return () => { cancelled = true; stopCamera(); };
   }, []);
 
   // Load models
@@ -167,7 +175,8 @@ function FaceCamera({ onDone, onCancel }) {
 
     const loop = async () => {
       if (!active) return;
-      if (videoRef.current?.readyState >= 2) {
+      const vid = videoRef.current;
+      if (vid && (vid.readyState >= 2 || vid.videoWidth > 0)) {
         try {
           const r = await detectFaceRaw(faceapi, videoRef.current);
           if (active) {

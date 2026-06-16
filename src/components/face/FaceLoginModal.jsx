@@ -105,18 +105,24 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   // ── Start camera when entering step 'camera' ────────────────────────────────
   useEffect(() => {
     if (step !== 'camera') return;
+    let cancelled = false;
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video:{ width:{ ideal:640 }, height:{ ideal:480 }, facingMode:'user' }
+          video:{ facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
         });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Fire play() but never await — autoPlay attr handles it; awaiting throws on Android
+          videoRef.current.play().catch(() => {});
+        }
       } catch (e) {
-        setCamError('Camera access denied. Please allow camera and try again.');
+        if (!cancelled) setCamError('Camera access denied. Please allow camera and try again.');
       }
     })();
-    return () => stopCamera();
+    return () => { cancelled = true; stopCamera(); };
   }, [step]);
 
   // ── Load face-api models when camera starts ─────────────────────────────────
@@ -136,7 +142,8 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
 
     const loop = async () => {
       if (!active) return;
-      if (videoRef.current?.readyState >= 2) {
+      const vid = videoRef.current;
+      if (vid && (vid.readyState >= 2 || vid.videoWidth > 0)) {
         try {
           const r = await detectFaceRaw(faceapi, videoRef.current);
           if (!active) return;

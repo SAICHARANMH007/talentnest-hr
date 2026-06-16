@@ -111,7 +111,7 @@ export function captureEnhancedFrame(videoEl, quality = 0.92) {
 export async function detectFaceEnhanced(faceapi, videoEl) {
   const canvas = enhanceFrameForLowLight(videoEl);
   return faceapi
-    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 }))
+    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
 }
@@ -119,7 +119,7 @@ export async function detectFaceEnhanced(faceapi, videoEl) {
 /** Detect on raw video — faster, used during live overlay */
 export async function detectFaceRaw(faceapi, videoEl) {
   return faceapi
-    .detectSingleFace(videoEl, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 }))
+    .detectSingleFace(videoEl, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
 }
