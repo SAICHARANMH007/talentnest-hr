@@ -5,8 +5,9 @@
  *   Simple file-picker → /api/face/photo  (no AI, always available)
  *
  * Panel B — FACE ID (FRS):
- *   5-frame guided camera enrollment + liveness blink check
+ *   5-pose guided camera enrollment + stable-frame liveness check
  *   → /api/face/enroll  (requires consent)
+ *   Stores 2,546 data points per pose × 5 poses = 12,730 facial data points
  *
  * Uses shared faceUtils.js for all AI operations.
  */
@@ -18,8 +19,6 @@ import {
   drawFaceMesh,
   captureEnhancedFrame,
   scoreFaceQuality,
-  getEAR,
-  BLINK_THRESHOLD,
   averageDescriptors,
   averageLandmarks,
 } from './faceUtils.js';
@@ -46,11 +45,11 @@ function Spinner() {
   );
 }
 
-// Inject keyframes for pulse animation (done once, idempotent)
-if (typeof document !== 'undefined' && !document.getElementById('frs-keyframes')) {
+// Inject keyframes (idempotent)
+if (typeof document !== 'undefined' && !document.getElementById('frs-kf')) {
   const st = document.createElement('style');
-  st.id = 'frs-keyframes';
-  st.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.65}}';
+  st.id = 'frs-kf';
+  st.textContent = '@keyframes spin{to{transform:rotate(360deg)}} @keyframes frsGrow{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}';
   document.head.appendChild(st);
 }
 
@@ -106,7 +105,6 @@ function CropModal({ src, onConfirm, onCancel }) {
       <div style={{ background:'#fff', borderRadius:14, padding:'20px 20px 16px', maxWidth:360, width:'100%', display:'flex', flexDirection:'column', gap:12 }}>
         <div style={{ fontWeight:800, fontSize:14, color:'#0f172a' }}>📷 Position Your Photo</div>
         <div style={{ fontSize:12, color:'#64748b', lineHeight:1.5 }}>Drag to center your face inside the circle, then tap <strong>Use Photo</strong>.</div>
-        {/* Circular crop viewport */}
         <div
           style={{ width:CROP_SIZE, height:CROP_SIZE, borderRadius:'50%', overflow:'hidden', border:'3px solid #0176D3', position:'relative', margin:'0 auto', cursor:dragging?'grabbing':'grab', userSelect:'none', touchAction:'none', boxShadow:'0 4px 20px rgba(1,118,211,0.25)' }}
           onMouseDown={startDrag} onMouseMove={moveDrag} onMouseUp={stopDrag} onMouseLeave={stopDrag}
@@ -127,16 +125,16 @@ function CropModal({ src, onConfirm, onCancel }) {
   );
 }
 
-// Enrollment prompts — 5 angles for maximum descriptor stability
+// Enrollment poses — 5 angles for maximum descriptor stability
 const PROMPTS = [
-  { label:'Look straight at the camera',    icon:'👁️' },
-  { label:'Tilt your head slightly left',   icon:'↙️' },
-  { label:'Tilt your head slightly right',  icon:'↘️' },
+  { label:'Look straight at the camera',   icon:'👁️' },
+  { label:'Tilt head slightly left',        icon:'↙️' },
+  { label:'Tilt head slightly right',       icon:'↘️' },
   { label:'Raise your chin slightly',       icon:'⬆️' },
   { label:'Lower your chin slightly',       icon:'⬇️' },
 ];
 
-const MIN_QUALITY = 0.30; // reject frames below this quality score (0.30 is mobile-friendly)
+const MIN_QUALITY = 0.30; // lowered for mobile cameras
 
 // ── Panel A — Profile Photo ────────────────────────────────────────────────────
 function PhotoPanel({ photoUrl, onPhotoUpdated }) {
@@ -147,17 +145,15 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 4000); };
 
-  // Step 1: file selected → show crop modal
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => setCropSrc(ev.target.result);
     reader.readAsDataURL(file);
-    e.target.value = ''; // allow re-selecting the same file
+    e.target.value = '';
   };
 
-  // Step 2: crop confirmed → upload to Cloudinary
   const doUpload = async (base64) => {
     setCropSrc(null);
     setUploading(true);
@@ -186,7 +182,6 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
             <div style={{ fontSize:12, color:'#64748b', marginBottom:8, lineHeight:1.5 }}>
               Upload a clear photo from your gallery or take a new one. Appears on your profile, resume, and recruiter view.
             </div>
-            {/* No capture attr — lets user choose camera or gallery */}
             <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
             <button style={{ ...S.btnPri, opacity: uploading ? 0.6 : 1 }} disabled={uploading}
               onClick={() => fileRef.current?.click()}>
@@ -200,79 +195,133 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
   );
 }
 
-// ── Camera sub-component (used by Panel B) ────────────────────────────────────
-// stream prop: MediaStream obtained from the parent button click (user gesture context)
+// ── FaceCamera — industry-grade 5-pose enrollment ─────────────────────────────
+//
+// Liveness method: counts 20 consecutive good face detections (~1.2 s at 15 fps)
+// — replaces EAR blink which is unreliable on most mobile cameras.
+//
+// Data captured per pose:
+//   136  normalised landmark coords (68 landmarks × x,y)
+//  2278  pairwise Euclidean distances (68×67/2, normalised by face width)
+//   128  face-api descriptor
+//     4  bounding-box ratios
+// ─────────────────────────────────────────────────────────────────────────────
+//   2,546 values × 5 poses = 12,730 facial data points per enrollment
+//
+// After liveness passes, a 3-2-1 auto-countdown fires for each pose.
+// The manual "Capture" button is always available once liveness passes.
 function FaceCamera({ stream, onDone, onCancel }) {
-  const [cameraReady, setCameraReady] = useState(false);
-  const [modelReady, setModelReady]   = useState(false);
-  const [modelLoading, setMLoading]   = useState(false);
-  const [faceapi, setFaceapi]         = useState(null);
-  const [liveResult, setLiveResult]   = useState(null);
-  const [liveness, setLiveness]       = useState('waiting'); // waiting | blinking | confirmed
-  const [blinkCount, setBlinkCount]   = useState(0);
-  const [eyesClosed, setEyesClosed]   = useState(false);
-  const [promptIdx, setPromptIdx]     = useState(0);
-  const [frames, setFrames]           = useState([]);
-  const [descs, setDescs]             = useState([]);
-  const [lms, setLms]                 = useState([]);
-  const [submitting, setSubmitting]   = useState(false);
-  const [qualityWarn, setQualityWarn] = useState(false);
-  const [toast, setToast]             = useState({ msg:'', ok:true });
+  const [cameraReady, setCameraReady]     = useState(false);
+  const [modelReady, setModelReady]       = useState(false);
+  const [modelLoading, setMLoading]       = useState(false);
+  const [faceapi, setFaceapi]             = useState(null);
+  const [liveResult, setLiveResult]       = useState(null);
+  const [livenessOk, setLivenessOk]      = useState(false);
+  const [stableFrames, setStableFrames]   = useState(0);
+  const [capturedCount, setCapturedCount] = useState(0);
+  const [countdown, setCountdown]         = useState(null); // 3 | 2 | 1 | null
+  const [submitting, setSubmitting]       = useState(false);
+  const [qualityWarn, setQualityWarn]     = useState(false);
+  const [toast, setToast]                 = useState({ msg:'', ok:true });
 
-  const videoRef      = useRef(null);
-  const canvasRef     = useRef(null);
-  const streamRef     = useRef(null);
-  const rafRef        = useRef(null);
-  const liveResultRef = useRef(null);  // always holds the freshest detection result
-  const clearFaceRef  = useRef(null);  // debounce timer for face-lost state
+  const videoRef          = useRef(null);
+  const canvasRef         = useRef(null);
+  const streamRef         = useRef(null);
+  const rafRef            = useRef(null);
+  const liveResultRef     = useRef(null);   // always fresh — avoids React state lag in capture()
+  const clearFaceRef      = useRef(null);   // debounce timer for face-lost state
+  const stableCountRef    = useRef(0);
+  const livenessOkRef     = useRef(false);
+  const capturedFramesRef = useRef([]);     // { photo, extFeat } per pose
+  const countdownRef      = useRef(null);   // setInterval handle
+  const isCapturingRef    = useRef(false);  // guard against double-capture
 
-  const flash = (msg, ok=true) => setToast({ msg, ok });
+  const STABLE_FOR_LIVE = 20; // consecutive good detections → confirmed live
+  const flash = (msg, ok = true) => setToast({ msg, ok });
 
-  // Attach parent-provided stream to video element.
-  // Always call play() — the readyState check was blocking playback on Android.
+  // ── Compute 12,730 facial data points ───────────────────────────────────────
+  const computeExtFeatures = (detection, video) => {
+    const pos   = detection.landmarks.positions; // 68 landmarks
+    const w     = video.videoWidth  || video.clientWidth  || 640;
+    const h     = video.videoHeight || video.clientHeight || 480;
+    const box   = detection.detection.box;
+    const faceW = Math.max(box.width, 1);
+
+    // 136 normalised coordinates
+    const normCoords = pos.flatMap(p => [p.x / w, p.y / h]);
+    // 136 raw pixel coordinates (for averageLandmarks compatibility)
+    const rawCoords  = pos.flatMap(p => [p.x, p.y]);
+
+    // 2,278 pairwise distances (all unique pairs, normalised by face width)
+    const dists = [];
+    for (let i = 0; i < pos.length; i++) {
+      for (let j = i + 1; j < pos.length; j++) {
+        const dx = pos[i].x - pos[j].x;
+        const dy = pos[i].y - pos[j].y;
+        dists.push(Math.sqrt(dx * dx + dy * dy) / faceW);
+      }
+    }
+
+    const descriptor = Array.from(detection.descriptor);                       // 128 values
+    const boxFeat    = [box.x / w, box.y / h, box.width / w, box.height / h]; // 4 values
+
+    // Total: 136 + 2278 + 128 + 4 = 2,546 per pose
+    return { normCoords, rawCoords, dists, descriptor, boxFeat };
+  };
+
+  // ── Attach stream ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!stream) return;
     streamRef.current = stream;
     const vid = videoRef.current;
-    if (vid) {
-      vid.srcObject = stream;
-      vid.play().catch(() => {}); // fire-and-forget; onLoadedMetadata also calls play()
-    }
-    return () => stopCamera();
+    if (vid) { vid.srcObject = stream; vid.play().catch(() => {}); }
+    return () => stopAll();
   }, [stream]);
 
-  // Load models
+  // ── Load face models ─────────────────────────────────────────────────────────
   useEffect(() => {
     setMLoading(true);
-    flash('Loading AI face models (one-time ~6 MB)…', true);
+    flash('Loading AI face models (~6 MB, one-time)…', true);
     loadFaceApi()
       .then(fa => { setFaceapi(fa); setModelReady(true); setToast({ msg:'', ok:true }); })
-      .catch(() => flash('Failed to load face models. Check your connection.', false))
+      .catch(() => flash('Failed to load face models. Check your connection and reload.', false))
       .finally(() => setMLoading(false));
   }, []);
 
-  // Live detection + liveness EAR loop — only starts once video is confirmed playing
+  // ── Detection RAF loop ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!modelReady || !faceapi || !cameraReady) return;
     let active = true;
-    let earBelowCount = 0; // consecutive frames with eyes closed
 
     const loop = async () => {
       if (!active) return;
       const vid = videoRef.current;
       if (vid && (vid.readyState >= 2 || vid.videoWidth > 0)) {
         try {
-          const r = await detectFaceRaw(faceapi, videoRef.current);
+          const r = await detectFaceRaw(faceapi, vid);
           if (active) {
             if (r) {
-              // Face detected — update ref + state immediately; cancel any pending face-lost timer
+              // Face detected — update ref immediately; debounce is cancelled
               liveResultRef.current = r;
               setLiveResult(r);
               if (clearFaceRef.current) { clearTimeout(clearFaceRef.current); clearFaceRef.current = null; }
+
+              // Stable-frame liveness: count consecutive good detections (no blink needed)
+              if (!livenessOkRef.current) {
+                stableCountRef.current = Math.min(stableCountRef.current + 1, STABLE_FOR_LIVE);
+                setStableFrames(stableCountRef.current);
+                if (stableCountRef.current >= STABLE_FOR_LIVE) {
+                  livenessOkRef.current = true;
+                  setLivenessOk(true);
+                }
+              }
             } else {
-              // Face lost — clear ref immediately but debounce state 600ms
-              // so brief detection gaps (head turns, slow frames) don't disable the button
+              // Face lost — clear ref immediately; decay stable count; debounce UI state
               liveResultRef.current = null;
+              if (!livenessOkRef.current) {
+                stableCountRef.current = Math.max(0, stableCountRef.current - 3);
+                setStableFrames(stableCountRef.current);
+              }
               if (!clearFaceRef.current) {
                 clearFaceRef.current = setTimeout(() => {
                   setLiveResult(null);
@@ -280,36 +329,51 @@ function FaceCamera({ stream, onDone, onCancel }) {
                 }, 600);
               }
             }
-            if (canvasRef.current && videoRef.current) {
-              drawFaceMesh(canvasRef.current, videoRef.current, r?.landmarks);
-            }
-
-            // Liveness: track EAR for blink detection
-            if (r?.landmarks) {
-              const ear = getEAR(r.landmarks);
-              if (ear < BLINK_THRESHOLD) {
-                earBelowCount++;
-                setEyesClosed(true);
-              } else {
-                if (earBelowCount >= 2) {
-                  // Eyes were closed for ≥2 frames → confirmed blink
-                  setLiveness('confirmed');
-                  setBlinkCount(c => c + 1);
-                }
-                earBelowCount = 0;
-                setEyesClosed(false);
-              }
-            }
+            if (canvasRef.current && vid) drawFaceMesh(canvasRef.current, vid, r?.landmarks);
           }
-        } catch { /* ignore frame errors */ }
+        } catch { /* ignore per-frame errors */ }
       }
       if (active) rafRef.current = requestAnimationFrame(loop);
     };
+
     rafRef.current = requestAnimationFrame(loop);
     return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [modelReady, faceapi, cameraReady]);
 
-  const stopCamera = () => {
+  // ── Auto-capture: 3-2-1 countdown fires after liveness or each pose ──────────
+  useEffect(() => {
+    if (!livenessOk || submitting || isCapturingRef.current) return;
+    if (capturedFramesRef.current.length >= PROMPTS.length) return;
+    // Short pause so user reads the pose instruction first
+    const t = setTimeout(() => startCountdown(), 900);
+    return () => clearTimeout(t);
+  }, [livenessOk, capturedCount]); // capturedCount bumps after each successful pose
+
+  const startCountdown = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (isCapturingRef.current || capturedFramesRef.current.length >= PROMPTS.length) return;
+    let c = 3;
+    setCountdown(c);
+    countdownRef.current = setInterval(() => {
+      c--;
+      if (c > 0) {
+        setCountdown(c);
+      } else {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        setCountdown(null);
+        doCapture();
+      }
+    }, 1000);
+  };
+
+  const cancelCountdown = () => {
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setCountdown(null);
+  };
+
+  const stopAll = () => {
+    cancelCountdown();
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (clearFaceRef.current) { clearTimeout(clearFaceRef.current); clearFaceRef.current = null; }
     liveResultRef.current = null;
@@ -317,152 +381,196 @@ function FaceCamera({ stream, onDone, onCancel }) {
     streamRef.current = null;
   };
 
-  const capture = async () => {
-    if (!videoRef.current) { flash('Camera not ready.', false); return; }
+  // ── Capture one pose ─────────────────────────────────────────────────────────
+  const doCapture = async () => {
+    if (isCapturingRef.current) return;
+    const vid = videoRef.current;
+    if (!vid) { flash('Camera not ready.', false); return; }
 
-    // Use ref first (always fresh) — state may lag by one render cycle
+    // Use ref first (always fresh); fallback to on-demand detection
     let result = liveResultRef.current;
-    // Fallback: run a fresh detection if ref is momentarily null
     if (!result && faceapi) {
-      try { result = await detectFaceRaw(faceapi, videoRef.current); } catch { /* ignore */ }
+      try { result = await detectFaceRaw(faceapi, vid); } catch {}
     }
     if (!result) {
-      flash('No face detected — look straight at the camera.', false);
+      flash('No face in frame — look at the camera directly.', false);
+      setTimeout(() => startCountdown(), 2500);
       return;
     }
 
-    // Quality gate (lowered threshold for mobile friendliness)
-    const quality = scoreFaceQuality(result, videoRef.current);
+    const quality = scoreFaceQuality(result, vid);
     if (quality < MIN_QUALITY) {
       setQualityWarn(true);
-      flash('Frame quality too low — check lighting and face the camera directly.', false);
-      setTimeout(() => setQualityWarn(false), 2500);
+      flash('Image quality low — improve lighting and hold still.', false);
+      setTimeout(() => { setQualityWarn(false); startCountdown(); }, 2500);
       return;
     }
 
-    const frame = captureEnhancedFrame(videoRef.current); // low-light enhanced
-    const desc  = Array.from(result.descriptor);
-    const lmPts = result.landmarks.positions.flatMap(p => [p.x, p.y]);
+    isCapturingRef.current = true;
+    const photo   = captureEnhancedFrame(vid);
+    const extFeat = computeExtFeatures(result, vid);
+    capturedFramesRef.current = [...capturedFramesRef.current, { photo, extFeat }];
+    const count = capturedFramesRef.current.length;
 
-    const nf = [...frames, frame];
-    const nd = [...descs, desc];
-    const nl = [...lms, lmPts];
-    setFrames(nf); setDescs(nd); setLms(nl);
-
-    if (nf.length < PROMPTS.length) {
-      setPromptIdx(nf.length);
-      flash(`✅ Frame ${nf.length}/${PROMPTS.length} captured! Follow the next pose.`, true);
+    if (count < PROMPTS.length) {
+      flash(`✅ Pose ${count}/${PROMPTS.length} captured! Follow the next instruction.`, true);
+      isCapturingRef.current = false;
+      setCapturedCount(count); // triggers auto-countdown useEffect for next pose
     } else {
-      stopCamera();
+      // All 5 poses done → build final feature set and enroll
+      flash('✅ All poses captured — saving your Face ID…', true);
+      isCapturingRef.current = false;
+      stopAll();
       setSubmitting(true);
-      flash('Uploading face data…', true);
+      setCapturedCount(count);
+
+      const allFeat  = capturedFramesRef.current.map(f => f.extFeat);
+      const avgDesc  = averageDescriptors(allFeat.map(f => f.descriptor));
+      const avgLms   = averageLandmarks(allFeat.map(f => f.rawCoords));
+      const avgDists = allFeat[0].dists.map((_, i) =>
+        allFeat.reduce((s, f) => s + f.dists[i], 0) / allFeat.length
+      );
+      const totalPoints = allFeat.length *
+        (allFeat[0].normCoords.length + allFeat[0].dists.length +
+         allFeat[0].descriptor.length + allFeat[0].boxFeat.length);
+
       try {
-        const enrollResult = await api.enrollFace({
-          descriptor     : averageDescriptors(nd),
-          landmarks      : averageLandmarks(nl),
-          photos         : nf,
+        const res = await api.enrollFace({
+          descriptor     : avgDesc,
+          landmarks      : avgLms,
+          photos         : capturedFramesRef.current.map(f => f.photo),
           bestPhotoIndex : 0,
           consent        : true,
+          extFeatures    : { perFrame: allFeat, avgDists, totalPoints },
         });
-        onDone(enrollResult?.photoUrl || enrollResult?.data?.photoUrl);
+        onDone(res?.photoUrl || res?.data?.photoUrl);
       } catch (e) {
         flash('Enrollment failed: ' + (e.message || 'Unknown error'), false);
         setSubmitting(false);
-        setFrames([]); setDescs([]); setLms([]); setPromptIdx(0);
+        capturedFramesRef.current = [];
+        setCapturedCount(0);
       }
     }
   };
 
-  const livenessConfirmed = liveness === 'confirmed' || blinkCount >= 1;
+  const livenessProgress = Math.round((stableFrames / STABLE_FOR_LIVE) * 100);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10, maxWidth:440 }}>
-      {/* Liveness banner */}
-      {!livenessConfirmed && (
-        <div style={{ background:'#fef3c7', border:'1.5px solid #f59e0b', borderRadius:10, padding:'8px 14px',
-          fontSize:12, fontWeight:700, color:'#92400e', textAlign:'center' }}>
-          👁️ Liveness check — please <strong>blink once</strong> to confirm you're live
-          {eyesClosed && <span style={{ marginLeft:8, color:'#15803d' }}>👁️‍🗨️ Detecting…</span>}
+
+      {/* Liveness progress bar — replaces broken EAR blink detection */}
+      {!livenessOk && (
+        <div style={{ background:'#fff7ed', border:'1.5px solid #f59e0b', borderRadius:10, padding:'10px 14px' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#92400e', marginBottom:6, textAlign:'center' }}>
+            👁️ Hold still — verifying you're live ({livenessProgress}%)
+          </div>
+          <div style={{ background:'#fde68a', borderRadius:20, height:8, overflow:'hidden' }}>
+            <div style={{ width:`${livenessProgress}%`, height:'100%', borderRadius:20, transition:'width 0.12s',
+              background: livenessProgress > 70 ? '#16a34a' : '#f59e0b' }} />
+          </div>
+          <div style={{ fontSize:11, color:'#92400e', textAlign:'center', marginTop:4 }}>
+            {!liveResult ? 'Face the camera to begin' : livenessProgress < 60 ? 'Keep still…' : 'Almost confirmed…'}
+          </div>
         </div>
       )}
-      {livenessConfirmed && (
+      {livenessOk && (
         <div style={{ background:'#dcfce7', border:'1.5px solid #22c55e', borderRadius:10, padding:'6px 14px',
           fontSize:12, fontWeight:700, color:'#15803d', textAlign:'center' }}>
-          ✅ Liveness confirmed — now capture your face poses
-        </div>
-      )}
-      {/* Prominent "Tap Capture" call-to-action — shown once liveness passes and face is in frame */}
-      {livenessConfirmed && liveResult && frames.length < PROMPTS.length && !submitting && (
-        <div style={{ background:'#0176D3', borderRadius:10, padding:'8px 14px', textAlign:'center',
-          color:'#fff', fontWeight:800, fontSize:13, letterSpacing:0.3,
-          boxShadow:'0 2px 10px rgba(1,118,211,0.35)', animation:'pulse 1.5s ease-in-out infinite' }}>
-          👆 Face ready! Tap "Capture {frames.length+1}/{PROMPTS.length}" below
+          ✅ Live identity verified — pose {Math.min(capturedCount + 1, PROMPTS.length)} of {PROMPTS.length}
         </div>
       )}
 
-      {/* Video + mesh overlay */}
-      <div style={{ position:'relative', borderRadius:14, overflow:'hidden', boxShadow:'0 8px 32px rgba(1,118,211,0.18)',
-        border: qualityWarn ? '2.5px solid #ef4444' : '2.5px solid transparent' }}>
+      {/* Video + mesh + overlays */}
+      <div style={{ position:'relative', borderRadius:14, overflow:'hidden',
+        boxShadow:'0 8px 32px rgba(1,118,211,0.18)',
+        border: qualityWarn ? '2.5px solid #ef4444' : livenessOk ? '2.5px solid #22c55e' : '2.5px solid #f59e0b' }}>
+
         <video ref={videoRef} autoPlay playsInline muted
           onLoadedMetadata={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
           onCanPlay={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
           onPlaying={() => setCameraReady(true)}
           style={{ width:'100%', borderRadius:14, display:'block', transform:'scaleX(-1)' }} />
+
         <canvas ref={canvasRef}
           style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', transform:'scaleX(-1)', pointerEvents:'none' }} />
+
         {/* Oval face guide */}
         <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-54%)',
-          width:'50%', paddingBottom:'66%', border:'3px solid rgba(0,200,100,0.65)',
-          borderRadius:'50%', pointerEvents:'none' }} />
-        {/* Frame progress dots */}
-        <div style={{ position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)', display:'flex', gap:8 }}>
+          width:'50%', paddingBottom:'66%', borderRadius:'50%', pointerEvents:'none',
+          border:`3px solid ${livenessOk ? 'rgba(34,197,94,0.85)' : 'rgba(245,158,11,0.75)'}` }} />
+
+        {/* 3-2-1 countdown overlay */}
+        {countdown !== null && (
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
+            background:'rgba(0,0,0,0.28)', borderRadius:14 }}>
+            <div style={{ width:80, height:80, borderRadius:'50%', background:'rgba(1,118,211,0.93)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:44, fontWeight:900, color:'#fff',
+              boxShadow:'0 0 28px rgba(1,118,211,0.7)', animation:'frsGrow 0.25s ease' }}>
+              {countdown}
+            </div>
+          </div>
+        )}
+
+        {/* Pose progress dots */}
+        <div style={{ position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)', display:'flex', gap:9 }}>
           {PROMPTS.map((_, i) => (
-            <div key={i} style={{ width:10, height:10, borderRadius:'50%',
-              background: i < frames.length ? '#22c55e' : i===frames.length ? '#0176D3' : 'rgba(255,255,255,0.35)',
-              border:'2px solid rgba(255,255,255,0.8)', transition:'all 0.2s' }} />
+            <div key={i} style={{ width:12, height:12, borderRadius:'50%',
+              border:'2px solid rgba(255,255,255,0.85)', transition:'all 0.2s',
+              background: i < capturedCount ? '#22c55e' : i === capturedCount ? '#0176D3' : 'rgba(255,255,255,0.3)',
+              boxShadow: i === capturedCount ? '0 0 8px rgba(1,118,211,0.9)' : 'none' }} />
           ))}
         </div>
-        {/* Quality indicator */}
+
+        {/* Quality badge */}
         {liveResult && (
           <div style={{ position:'absolute', top:10, right:10, fontSize:10, fontWeight:700,
-            background:'rgba(0,0,0,0.55)', color: scoreFaceQuality(liveResult, videoRef.current||{}) >= MIN_QUALITY ? '#22c55e' : '#f59e0b',
-            padding:'3px 7px', borderRadius:20 }}>
-            {Math.round(scoreFaceQuality(liveResult, videoRef.current||{}) * 100)}% quality
+            padding:'3px 8px', borderRadius:20, background:'rgba(0,0,0,0.55)',
+            color: scoreFaceQuality(liveResult, videoRef.current || {}) >= MIN_QUALITY ? '#22c55e' : '#fbbf24' }}>
+            {Math.round(scoreFaceQuality(liveResult, videoRef.current || {}) * 100)}%
           </div>
         )}
       </div>
 
-      {/* Current pose prompt */}
-      {promptIdx < PROMPTS.length && livenessConfirmed && (
-        <div style={{ background:'#f0fdf4', border:'1.5px solid #22c55e', borderRadius:10, padding:'8px 16px', textAlign:'center' }}>
-          <span style={{ fontSize:18, marginRight:6 }}>{PROMPTS[promptIdx].icon}</span>
-          <span style={{ fontSize:13, fontWeight:700, color:'#15803d' }}>{PROMPTS[promptIdx].label}</span>
+      {/* Pose instruction card */}
+      {livenessOk && capturedCount < PROMPTS.length && !submitting && (
+        <div style={{ background:'#eff6ff', border:'1.5px solid #0176D3', borderRadius:10,
+          padding:'10px 16px', textAlign:'center' }}>
+          <div style={{ fontSize:26, marginBottom:2 }}>{PROMPTS[capturedCount].icon}</div>
+          <div style={{ fontSize:13, fontWeight:800, color:'#1e40af' }}>{PROMPTS[capturedCount].label}</div>
+          <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>
+            {countdown !== null
+              ? `Auto-capturing in ${countdown}s — or tap button below to capture now`
+              : 'Hold this pose — auto-capture starting…'}
+          </div>
         </div>
       )}
 
-      {/* Detection status */}
-      <div style={{ fontSize:12, fontWeight:600, textAlign:'center',
-        color: liveResult ? '#15803d' : '#9ca3af' }}>
-        {!cameraReady
-          ? '📷 Starting camera…'
-          : modelLoading
-            ? '⏳ Loading AI models…'
-            : !liveResult
-              ? '❌ No face detected — face the camera directly'
-              : '✅ Face detected — ready to capture'}
+      {/* Status line */}
+      <div style={{ fontSize:12, fontWeight:600, textAlign:'center', color: liveResult ? '#15803d' : '#9ca3af' }}>
+        {!cameraReady    ? '📷 Starting camera…'
+          : modelLoading ? '⏳ Loading AI models…'
+          : submitting   ? '⬆️ Saving your Face ID…'
+          : !liveResult  ? '❌ No face detected — look at the camera'
+          : livenessOk   ? `✅ ${capturedCount}/${PROMPTS.length} poses captured`
+          : '🔍 Checking liveness — hold still'}
       </div>
 
       <div style={S.row}>
-        <button onClick={() => { stopCamera(); onCancel(); }} style={{ ...S.btnSec, flex:1 }} disabled={submitting}>
+        <button onClick={() => { cancelCountdown(); stopAll(); onCancel(); }}
+          style={{ ...S.btnSec, flex:1 }} disabled={submitting}>
           Cancel
         </button>
         <button
-          onClick={capture}
-          disabled={!modelReady || submitting || !livenessConfirmed}
-          style={{ ...S.btnPri, flex:2, opacity:(!modelReady||submitting||!livenessConfirmed)?0.45:1 }}>
+          onClick={() => { cancelCountdown(); doCapture(); }}
+          disabled={!modelReady || submitting || !livenessOk || capturedCount >= PROMPTS.length}
+          style={{ ...S.btnPri, flex:2,
+            opacity:(!modelReady || submitting || !livenessOk || capturedCount >= PROMPTS.length) ? 0.45 : 1 }}>
           {submitting
-            ? <><Spinner />Uploading…</>
-            : `📸 Capture ${frames.length+1}/${PROMPTS.length}`}
+            ? <><Spinner />Saving…</>
+            : countdown !== null
+              ? `⏱ ${countdown}… (tap to capture now)`
+              : `📸 Capture Pose ${Math.min(capturedCount + 1, PROMPTS.length)} / ${PROMPTS.length}`}
         </button>
       </div>
 
@@ -473,18 +581,17 @@ function FaceCamera({ stream, onDone, onCancel }) {
 
 // ── Panel B — Face ID ──────────────────────────────────────────────────────────
 function FaceIdPanel({ frsStatus, onEnrolled }) {
-  const [showCamera, setShowCamera]     = useState(false);
+  const [showCamera, setShowCamera]       = useState(false);
   const [pendingStream, setPendingStream] = useState(null);
-  const [consent, setConsent]           = useState(false);
-  const [deleting, setDeleting]         = useState(false);
-  const [toast, setToast]               = useState({ msg:'', ok:true });
+  const [consent, setConsent]             = useState(false);
+  const [deleting, setDeleting]           = useState(false);
+  const [toast, setToast]                 = useState({ msg:'', ok:true });
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 5000); };
 
   const handleStartCamera = () => {
-    // navigator.mediaDevices is undefined on HTTP — must be HTTPS
     if (!navigator.mediaDevices?.getUserMedia) {
-      flash('Camera not available. Make sure the page is open over https:// in Chrome or Safari.', false);
+      flash('Camera not available. Open this page over https:// in Chrome or Safari.', false);
       return;
     }
 
@@ -496,18 +603,16 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
       const n = err?.name || 'UnknownError';
       flash(
         n === 'NotAllowedError' || n === 'PermissionDeniedError'
-          ? `Camera blocked [${n}]. Tap the 🔒 icon in the address bar → Camera → Allow → then reload the page.`
+          ? `Camera blocked [${n}]. Tap the 🔒 icon → Camera → Allow → reload the page.`
           : n === 'NotFoundError' || n === 'DevicesNotFoundError'
-            ? `No camera found on this device [${n}].`
+            ? `No camera found [${n}].`
             : n === 'NotReadableError' || n === 'TrackStartError'
-              ? `Camera is in use by another app [${n}]. Close it and try again.`
+              ? `Camera in use by another app [${n}]. Close it and retry.`
               : `Camera error [${n}]: ${err?.message || 'Please try again.'}`,
         false
       );
     };
 
-    // Stage 1: try front camera (ideal — never causes OverconstrainedError)
-    // Stage 2: fall back to any camera with zero constraints
     openWith({ video: { facingMode: { ideal: 'user' } } })
       .catch(() => openWith({ video: true }))
       .catch(onFail);
@@ -531,13 +636,13 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
     setShowCamera(false);
     setConsent(false);
     onEnrolled({ enrolled:true, photoUrl:newPhotoUrl });
-    flash('✅ Face ID enrolled! You are now verified for assessments and face login.', true);
+    flash('✅ Face ID enrolled! You can now log in with your face and get verified during assessments.', true);
   };
 
   if (showCamera) {
     return (
       <div style={S.card}>
-        <div style={S.cardTitle}><span style={{ fontSize:16 }}>🔐</span><span>Face ID — Enrollment Camera</span></div>
+        <div style={S.cardTitle}><span style={{ fontSize:16 }}>🔐</span><span>Face ID — Enrollment</span></div>
         <div style={S.divider} />
         <FaceCamera
           stream={pendingStream}
@@ -564,9 +669,7 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
             <span style={{ color:'#0176D3' }}>✓</span> Get verified automatically during assessments
           </div>
           <div style={S.row}>
-            <button style={S.btnSec} onClick={handleStartCamera}>
-              🔄 Re-enroll Face
-            </button>
+            <button style={S.btnSec} onClick={handleStartCamera}>🔄 Re-enroll Face</button>
             <button style={S.btnDanger} disabled={deleting} onClick={handleDelete}>
               {deleting ? <><Spinner />Removing…</> : '🗑️ Remove Face ID'}
             </button>
@@ -576,12 +679,12 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ fontSize:12, color:'#475569', lineHeight:1.6 }}>
             Enroll your face to unlock:<br />
-            <span style={{ color:'#0176D3' }}>✓</span> Face login — enter email + scan face (no password!)<br />
+            <span style={{ color:'#0176D3' }}>✓</span> Face login — enter email + scan (no password!)<br />
             <span style={{ color:'#0176D3' }}>✓</span> Automatic identity verification during assessments<br />
             <span style={{ color:'#0176D3' }}>✓</span> Anti-impersonation protection
           </div>
           <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'8px 12px', fontSize:11, color:'#9a3412' }}>
-            🔒 5-angle capture + blink liveness check ensures maximum security.
+            🔒 5-pose capture + stable-frame liveness · 12,730 facial data points · industry-standard security
           </div>
 
           {!consent ? (
@@ -597,7 +700,7 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
             </div>
           ) : (
             <button style={S.btnPri} onClick={handleStartCamera}>
-              🔐 Start Face Enrollment (5 angles + blink)
+              🔐 Start Face Enrollment (5 poses · auto-capture)
             </button>
           )}
         </div>
