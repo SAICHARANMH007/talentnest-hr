@@ -319,6 +319,7 @@ function CreateCommunityPost({ user, community, onCreate }) {
   const bg = community?.coverColor || '#0176D3';
 
   const [uploadError, setUploadError] = useState('');
+  const [postError,   setPostError]   = useState('');
 
   const handleImagePick = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -360,8 +361,9 @@ function CreateCommunityPost({ user, community, onCreate }) {
       setImages([]);
       setExpanded(false);
       setPostType('update');
+      setPostError('');
       onCreate && onCreate();
-    } catch (e) { alert(e?.message || 'Failed to post'); }
+    } catch (e) { setPostError(e?.message || 'Failed to post. Please check your connection and try again.'); }
     setSubmitting(false);
   };
 
@@ -403,6 +405,10 @@ function CreateCommunityPost({ user, community, onCreate }) {
             <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '6px 10px' }}>⚠️ {uploadError}</div>
           )}
 
+          {postError && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {postError}</div>
+          )}
+
           {expanded && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -421,7 +427,7 @@ function CreateCommunityPost({ user, community, onCreate }) {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); }}
+                <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); setPostError(''); }}
                   style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
