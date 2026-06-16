@@ -96,6 +96,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const [qualityWarn, setQualityWarn] = useState(false);
   const [camError, setCamError]       = useState('');
   const [serverError, setServerError] = useState('');
+  const [openingCamera, setOpeningCamera] = useState(false);
 
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -103,13 +104,13 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const rafRef    = useRef(null);
   const earRef    = useRef({ belowCount:0 }); // track consecutive closed frames
 
-  // Attach stream to video after streamReady is set (stream already obtained via button click)
+  // Attach stream to video after streamReady triggers re-render (video element enters DOM)
   useEffect(() => {
     if (!streamReady || !streamRef.current) return;
     const vid = videoRef.current;
     if (!vid) return;
     vid.srcObject = streamRef.current;
-    if (vid.readyState >= 1) vid.play().catch(() => {});
+    vid.play().catch(() => {}); // always call play — no readyState check needed
   }, [streamReady]);
 
   // Cleanup on unmount
@@ -182,21 +183,49 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setStep('camera');
   };
 
-  // ── Open camera — called DIRECTLY from button onClick, zero async before getUserMedia ──
-  const openCamera = async () => {
+  // ── Open camera — called DIRECTLY from button onClick ──────────────────────────
+  // Uses promise chain (no async/await) to keep getUserMedia as close to the tap as possible.
+  // facingMode is *ideal* to avoid OverconstrainedError on single-camera Android devices.
+  const openCamera = () => {
     setCamError('');
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } }
-      });
+    setOpeningCamera(true);
+
+    const attachStream = s => {
       streamRef.current = s;
       setStreamReady(true);
-      // Also attach immediately in case the useEffect already ran (first render race)
-      const vid = videoRef.current;
-      if (vid) { vid.srcObject = s; if (vid.readyState >= 1) vid.play().catch(() => {}); }
-    } catch (e) {
-      setCamError(`Camera error (${e?.name || 'unknown'}): ${e?.message || 'Check permissions and try again.'}`);
-    }
+      setOpeningCamera(false);
+      // Attach immediately if video element is already in DOM
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    const handleErr = (err, isRetry) => {
+      if (!isRetry && (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError')) {
+        // Retry with minimal constraints — some Android cameras reject facingMode
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(attachStream)
+          .catch(err2 => handleErr(err2, true));
+        return;
+      }
+      setOpeningCamera(false);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCamError('Camera blocked — open browser Settings → Site Settings → Camera → set to Allow, then reload.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCamError('No camera found on this device.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCamError('Camera is busy. Close other apps using the camera and try again.');
+      } else {
+        setCamError(`Camera error (${err.name || 'unknown'}): ${err.message || 'Please try again.'}`);
+      }
+    };
+
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } }
+    })
+      .then(attachStream)
+      .catch(err => handleErr(err, false));
   };
 
   // ── Capture one frame ────────────────────────────────────────────────────────
@@ -239,6 +268,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     stopCamera();
     streamRef.current = null;
     setStreamReady(false);
+    setOpeningCamera(false);
     setServerError(''); setCamError('');
     setFrames([]); setDescs([]); setPromptIdx(0);
     setLiveness(false); earRef.current.belowCount = 0;
@@ -307,8 +337,9 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                     Allow camera access when prompted.
                   </div>
                 )}
-                <button style={btnP} onClick={openCamera}>
-                  📸 {camError ? 'Try Again' : 'Open Camera'}
+                <button style={{ ...btnP, opacity: openingCamera ? 0.7 : 1 }}
+                  disabled={openingCamera} onClick={openCamera}>
+                  {openingCamera ? <><Spin /> Opening…</> : camError ? '🔄 Try Again' : '📸 Open Camera'}
                 </button>
                 <button style={btnS} onClick={onClose}>Cancel</button>
               </div>
