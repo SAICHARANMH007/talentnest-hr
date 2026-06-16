@@ -9,27 +9,9 @@
  * Only activates when the candidate has face enrolled. If not enrolled, renders
  * nothing and the existing behaviour-based anti-cheat runs as before.
  */
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { api } from '../../api/api.js';
-
-const MODEL_CDN = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-
-let _faceapi   = null;
-let _modelsOk  = false;
-
-async function loadFaceApi() {
-  if (_faceapi && _modelsOk) return _faceapi;
-  if (!_faceapi) _faceapi = await import('@vladmandic/face-api');
-  if (!_modelsOk) {
-    await Promise.all([
-      _faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_CDN),
-      _faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_CDN),
-      _faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_CDN),
-    ]);
-    _modelsOk = true;
-  }
-  return _faceapi;
-}
+import { loadFaceApi, openFrontCamera } from './faceUtils.js';
 
 function captureBase64(videoEl) {
   const c = document.createElement('canvas');
@@ -76,13 +58,13 @@ export default function FaceVerificationWidget({
 
   const initCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width:160, height:120, facingMode:'user' } });
+      const stream = await openFrontCamera(); // robust cross-browser fallback
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        await videoRef.current.play().catch(() => {});
       }
-      const faceapi = await loadFaceApi();
+      const faceapi = await loadFaceApi(); // shared singleton — already cached if FRS was used
       faceapiRef.current = faceapi;
       setReady(true);
       setStatus('active');
@@ -100,8 +82,8 @@ export default function FaceVerificationWidget({
       try {
         const faceapi = faceapiRef.current;
         const result  = await faceapi
-          .detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-          .withFaceLandmarks()
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+          .withFaceLandmarks(true)   // true = tiny landmark net
           .withFaceDescriptor();
 
         let anomaly = null;

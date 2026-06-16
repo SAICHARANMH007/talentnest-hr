@@ -442,15 +442,18 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const isOwn = req.params.id === (req.user._id || req.user.id).toString();
   const isAdmin = ['admin','super_admin'].includes(req.user.role);
 
-  const user = await User.findById(req.params.id).select('-password').lean();
+  const user = await User.findById(req.params.id)
+    .select('-password -passwordHash -resetPasswordToken -resetPasswordExpires').lean();
   if (!user) throw new AppError('User not found.', 404);
 
-  // Same-tenant users can view each other's profiles (My Network, connections).
-  // Super admins can view any profile cross-tenant; regular users restricted to own tenant.
-  if (!isOwn && !isAdmin) {
-    if (String(user.tenantId) !== String(req.user.tenantId)) {
-      throw new AppError('Access denied.', 403);
-    }
+  // Own profile / admin → full normalized data.
+  // Cross-tenant (networking feature) → public fields only, no private data.
+  if (!isOwn && !isAdmin && String(user.tenantId) !== String(req.user.tenantId)) {
+    const PUB = ['_id','name','role','title','avatarUrl','photoUrl','location',
+                 'department','summary','skills','experience','createdAt'];
+    const pub = {};
+    PUB.forEach(f => { if (user[f] !== undefined) pub[f] = user[f]; });
+    return res.json({ success: true, data: pub, isPublic: true });
   }
 
   res.json({ success: true, data: userService.normalize(user) });

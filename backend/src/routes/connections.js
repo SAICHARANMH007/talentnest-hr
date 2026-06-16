@@ -23,12 +23,11 @@ function toId(v) {
 const toObjId = id => mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
 
 // ─── GET /api/connections — accepted connections list ─────────────────────────
+// No tenantId filter — connections can span organisations (platform-wide networking)
 router.get('/', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const connections = await Connection.find({
-    tenantId,
     status: 'accepted',
     $or: [{ fromUserId: uid }, { toUserId: uid }],
   }).lean();
@@ -39,7 +38,6 @@ router.get('/', asyncHandler(async (req, res) => {
 
   const users = await User.find({
     _id      : { $in: peerIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
 
@@ -47,12 +45,11 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /api/connections/pending — incoming pending requests ─────────────────
+// No tenantId filter — allows cross-tenant connection requests
 router.get('/pending', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const requests = await Connection.find({
-    tenantId,
     toUserId: uid,
     status  : 'pending',
   }).lean();
@@ -62,7 +59,6 @@ router.get('/pending', asyncHandler(async (req, res) => {
   const senderMap = {};
   const senders   = await User.find({
     _id      : { $in: senderIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
   senders.forEach(u => { senderMap[String(u._id)] = u; });
@@ -77,12 +73,11 @@ router.get('/pending', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /api/connections/sent — outgoing pending requests ───────────────────
+// No tenantId filter — allows cross-tenant connection requests
 router.get('/sent', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const requests = await Connection.find({
-    tenantId,
     fromUserId: uid,
     status    : 'pending',
   }).lean();
@@ -92,7 +87,6 @@ router.get('/sent', asyncHandler(async (req, res) => {
   const recipientMap = {};
   const recipients   = await User.find({
     _id      : { $in: recipientIds },
-    tenantId,
     deletedAt: null,
   }).select(USER_PUBLIC_FIELDS).lean();
   recipients.forEach(u => { recipientMap[String(u._id)] = u; });
@@ -107,13 +101,12 @@ router.get('/sent', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /api/connections/suggestions — smart scored people you may know ──────
+// Platform-wide: no tenantId filter — users discover anyone on TalentNest.
 router.get('/suggestions', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   // ── Step 1: exclude already-connected / pending / rejected users ─────────────
   const existing = await Connection.find({
-    tenantId,
     $or: [{ fromUserId: uid }, { toUserId: uid }],
   }).select('fromUserId toUserId').lean();
 
@@ -129,7 +122,7 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
 
   // ── Step 3: mutual connections (friends-of-friends) ───────────────────────────
   const myAccepted = await Connection.find({
-    tenantId, status: 'accepted',
+    status: 'accepted',
     $or: [{ fromUserId: uid }, { toUserId: uid }],
   }).select('fromUserId toUserId').lean();
 
@@ -140,7 +133,7 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
   const mutualMap = {}; // peerId → count of mutual connections
   if (myFriendIds.length) {
     const friendsLinks = await Connection.find({
-      tenantId, status: 'accepted',
+      status: 'accepted',
       $or: [
         { fromUserId: { $in: myFriendIds } },
         { toUserId:   { $in: myFriendIds } },
@@ -150,7 +143,6 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
     const myFriendSet = new Set(myFriendIds);
     friendsLinks.forEach(c => {
       const a = String(c.fromUserId), b = String(c.toUserId);
-      // If one side is a friend of mine and the other is NOT me and NOT my friend
       if (myFriendSet.has(a) && !myFriendSet.has(b) && b !== uid) {
         mutualMap[b] = (mutualMap[b] || 0) + 1;
       }
@@ -163,9 +155,8 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
   // ── Step 4: same-job applicants (candidates only) ────────────────────────────
   const sameJobUserIdSet = new Set();
   if (me?.role === 'candidate') {
-    const myCandidate = await Candidate.findOne({
-      userId: uid, tenantId,
-    }).select('_id').lean();
+    // Find by userId only — don't restrict by tenantId (candidates may have no tenant)
+    const myCandidate = await Candidate.findOne({ userId: uid }).select('_id').lean();
 
     if (myCandidate) {
       const myApps = await Application.find({
@@ -182,9 +173,9 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
         }).select('candidateId').limit(100).lean();
 
         const peerCandIds = [...new Set(peerApps.map(a => String(a.candidateId)))];
-        const peerCands   = await Candidate.find({
-          _id: { $in: peerCandIds.map(toObjId) },
-          tenantId,
+        // No tenantId filter — peer candidates can be from any org
+        const peerCands = await Candidate.find({
+          _id   : { $in: peerCandIds.map(toObjId) },
           userId: { $exists: true, $ne: null },
         }).select('userId').lean();
 
@@ -193,13 +184,12 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
     }
   }
 
-  // ── Step 5: fetch candidate pool (larger than final result) ──────────────────
+  // ── Step 5: fetch candidate pool platform-wide ────────────────────────────────
   const pool = await User.find({
-    tenantId,
     deletedAt: null,
     isActive : true,
     _id      : { $nin: [...excludedIds].map(toObjId) },
-  }).select(USER_PUBLIC_FIELDS + ' skills department invitedBy').limit(150).lean();
+  }).select(USER_PUBLIC_FIELDS + ' skills department invitedBy').limit(300).lean();
 
   // ── Step 6: score each candidate ─────────────────────────────────────────────
   const scored = pool.map(u => {
@@ -272,26 +262,29 @@ function deriveSuggestionLabel(reasons, sharedSkills) {
   return 'On TalentNest';
 }
 
-// ─── GET /api/connections/search?q= — search users by name/email ─────────────
+// ─── GET /api/connections/search?q= — search users by name/email/phone ───────
+// Platform-wide search: no tenantId filter so every active user is discoverable
+// regardless of which organisation they belong to (or whether they have one).
 router.get('/search', asyncHandler(async (req, res) => {
   const { q = '' } = req.query;
   if (q.trim().length < 2) throw new AppError('Search query must be at least 2 characters.', 400);
 
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
-  const regex    = new RegExp(q.trim(), 'i');
+  const uid = toId(req.user);
+  // Escape regex metacharacters from user input to prevent ReDoS
+  const safe  = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(safe, 'i');
 
+  // Search across ALL users on the platform (name, email, or phone)
+  // 50-result cap — high enough that real matches always surface
   const users = await User.find({
-    tenantId,
     deletedAt: null,
     _id      : { $ne: uid },
     $or      : [{ name: regex }, { email: regex }, { phone: regex }],
-  }).select(USER_PUBLIC_FIELDS + ' email').limit(20).lean();
+  }).select(USER_PUBLIC_FIELDS + ' email phone').limit(50).lean();
 
-  // Fetch all connections involving the current user for status resolution
+  // Connection status lookup — cross-tenant connections are allowed
   const userIds = users.map(u => u._id);
   const connections = await Connection.find({
-    tenantId,
     $or: [
       { fromUserId: uid, toUserId: { $in: userIds } },
       { toUserId: uid,   fromUserId: { $in: userIds } },
@@ -454,6 +447,8 @@ router.post('/sync-contacts', asyncHandler(async (req, res) => {
 }));
 
 // ─── POST /api/connections/request/:userId — send connection request ──────────
+// Platform-wide: candidates from any org can connect with each other.
+// Connection is stored under the requester's tenantId (required by schema).
 router.post('/request/:userId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
@@ -461,11 +456,12 @@ router.post('/request/:userId', asyncHandler(async (req, res) => {
 
   if (String(userId) === uid) throw new AppError('You cannot connect with yourself.', 400);
 
-  const target = await User.findOne({ _id: userId, tenantId, deletedAt: null }).lean();
+  // Find target user platform-wide (no tenantId filter)
+  const target = await User.findOne({ _id: userId, deletedAt: null }).lean();
   if (!target) throw new AppError('User not found.', 404);
 
+  // Duplicate check without tenantId — cross-tenant connections must also be unique
   const existing = await Connection.findOne({
-    tenantId,
     $or: [
       { fromUserId: uid,    toUserId: userId },
       { fromUserId: userId, toUserId: uid    },
@@ -477,7 +473,7 @@ router.post('/request/:userId', asyncHandler(async (req, res) => {
   }
 
   const connection = await Connection.create({
-    tenantId,
+    tenantId,   // stored under requester's tenant (schema requires it)
     fromUserId: uid,
     toUserId  : userId,
     status    : 'pending',
@@ -536,14 +532,13 @@ router.post('/accept/:requestId', asyncHandler(async (req, res) => {
 }));
 
 // ─── POST /api/connections/reject/:requestId — reject incoming request ─────────
+// No tenantId filter — cross-tenant requests must also be rejectable
 router.post('/reject/:requestId', asyncHandler(async (req, res) => {
-  const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
+  const uid = toId(req.user);
 
   const connection = await Connection.findOne({
-    _id     : req.params.requestId,
-    tenantId,
-    status  : 'pending',
+    _id   : req.params.requestId,
+    status: 'pending',
   });
 
   if (!connection) throw new AppError('Connection request not found.', 404);
@@ -557,13 +552,12 @@ router.post('/reject/:requestId', asyncHandler(async (req, res) => {
 }));
 
 // ─── DELETE /api/connections/remove/:userId — remove accepted connection ──────
+// No tenantId filter — cross-tenant connections must also be removable
 router.delete('/remove/:userId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
-  const tenantId = req.user.tenantId;
   const { userId } = req.params;
 
   const connection = await Connection.findOne({
-    tenantId,
     status: 'accepted',
     $or: [
       { fromUserId: uid,    toUserId: userId },
@@ -583,9 +577,9 @@ router.delete('/cancel/:requestId', asyncHandler(async (req, res) => {
   const uid      = toId(req.user);
   const tenantId = req.user.tenantId;
 
+  // No tenantId filter — cross-tenant requests must also be cancellable
   const connection = await Connection.findOne({
     _id       : req.params.requestId,
-    tenantId,
     fromUserId: uid,
     status    : 'pending',
   });

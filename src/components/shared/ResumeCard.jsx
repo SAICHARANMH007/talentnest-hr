@@ -127,13 +127,15 @@ function CertCard({ entry }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function ResumeCard({ candidate: c }) {
+export default function ResumeCard({ candidate: raw }) {
   const ref = useRef();
-  if (!c) return null;
+  if (!raw) return null;
+  // Normalize field aliases so the card works regardless of caller
+  const c = { ...raw, linkedin: raw.linkedin || raw.linkedinUrl || '' };
 
-  const skills     = Array.isArray(c.skills) ? c.skills : (c.skills || '').split(',').map(s=>s.trim()).filter(Boolean);
-  const languages  = Array.isArray(c.languages) ? c.languages : (c.languages || '').split(',').map(s=>s.trim()).filter(Boolean);
-  const culture    = Array.isArray(c.culture) ? c.culture : (c.culture || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const skills     = Array.isArray(c.skills) ? c.skills : (c.skills || '').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);
+  const languages  = Array.isArray(c.languages) ? c.languages : (c.languages || '').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);
+  const culture    = Array.isArray(c.culture) ? c.culture : (c.culture || '').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);
   const workList   = parseJ(c.workHistory);
   const eduList    = parseJ(c.educationList);
   const certList   = parseJ(c.certifications);

@@ -34,4 +34,7 @@ export const connectionService = {
   async syncContacts(contacts) {
     return req('POST', '/connections/sync-contacts', { contacts });
   },
+  async getPublicProfile(userId) {
+    return req('GET', `/users/${userId}`);
+  },
 };

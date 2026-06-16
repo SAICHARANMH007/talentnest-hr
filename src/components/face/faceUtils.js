@@ -11,30 +11,130 @@
  *  • Multi-frame descriptor averaging for higher accuracy
  */
 
-const MODEL_CDN = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+// CDN list tried in order — first success wins (handles CDN outages / slow regions)
+const MODEL_CDNS = [
+  'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model',
+  'https://unpkg.com/@vladmandic/face-api/model',
+];
 
 // ── Singleton loader ──────────────────────────────────────────────────────────
 let _faceapi = null;
 let _modelsReady = false;
 let _loadPromise = null;
 
-export async function loadFaceApi() {
-  if (_faceapi && _modelsReady) return _faceapi;
+// Try loading a model from each CDN in order until one succeeds
+async function loadModelWithFallback(net, name) {
+  for (let i = 0; i < MODEL_CDNS.length; i++) {
+    try {
+      await net.loadFromUri(MODEL_CDNS[i]);
+      return;
+    } catch (e) {
+      if (i === MODEL_CDNS.length - 1) throw new Error(`Failed to load ${name} model from all CDNs.`);
+    }
+  }
+}
+
+/**
+ * Load face-api.js and AI models.
+ * Models used (total ~6.5 MB vs old ~12 MB):
+ *   • tinyFaceDetector      190 KB  — fast face detection (replaces ssdMobilenetv1 5.4 MB)
+ *   • faceLandmark68TinyNet  80 KB  — 68-point landmarks (replaces full 350 KB net)
+ *   • faceRecognitionNet    6.2 MB  — 128-d recognition descriptor (required, unchanged)
+ *
+ * onProgress(pct: 0-100) called as each model finishes.
+ */
+export async function loadFaceApi(onProgress) {
+  if (_faceapi && _modelsReady) { onProgress?.(100); return _faceapi; }
   if (_loadPromise) return _loadPromise; // deduplicate concurrent calls
   _loadPromise = (async () => {
     if (!_faceapi) _faceapi = await import('@vladmandic/face-api');
     if (!_modelsReady) {
-      await Promise.all([
-        _faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_CDN),
-        _faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_CDN),
-        _faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_CDN),
-      ]);
+      // Load sequentially so we can report progress; tinyFaceDetector first (smallest)
+      onProgress?.(5);
+      await loadModelWithFallback(_faceapi.nets.tinyFaceDetector,      'tinyFaceDetector');
+      onProgress?.(15);
+      await loadModelWithFallback(_faceapi.nets.faceLandmark68TinyNet,  'faceLandmark68Tiny');
+      onProgress?.(25);
+      await loadModelWithFallback(_faceapi.nets.faceRecognitionNet,     'faceRecognition');
+      onProgress?.(100);
       _modelsReady = true;
     }
     _loadPromise = null;
     return _faceapi;
   })();
   return _loadPromise;
+}
+
+// ── Cross-browser camera helper ───────────────────────────────────────────────
+/**
+ * Open the front camera with a robust fallback constraint chain + legacy polyfill.
+ * Works on: Android Chrome/Samsung Internet/Tecno WebView, iOS Safari, desktop browsers.
+ * Also handles very old Android (pre-Chrome 47) that only have webkitGetUserMedia.
+ * Returns MediaStream or throws a user-friendly Error.
+ */
+export async function openFrontCamera() {
+  // ── Modern API (Chrome 47+, Firefox 36+, Safari 11+, most Android 2016+) ──
+  if (navigator.mediaDevices?.getUserMedia) {
+    const constraintChain = [
+      // Ideal: front-facing, 640×480 — works on most modern phones
+      { video: { facingMode: { ideal: 'user' }, width: { ideal: 640 }, height: { ideal: 480 } } },
+      // Fallback 1: front-facing without resolution hint (Android may need this)
+      { video: { facingMode: 'user' } },
+      // Fallback 2: any front-facing (ideal, not strict)
+      { video: { facingMode: { ideal: 'user' } } },
+      // Fallback 3: any camera (last resort — may open rear camera)
+      { video: true },
+    ];
+
+    let lastErr;
+    for (const constraints of constraintChain) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        lastErr = err;
+        // Permission / device errors are terminal — don't retry
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+        }
+        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          throw new Error('No camera found on this device.');
+        }
+        if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          throw new Error('Camera is being used by another app. Please close it and try again.');
+        }
+        // OverconstrainedError or anything else → try next constraint set
+      }
+    }
+    throw new Error(lastErr?.message || 'Could not open camera. Please check your browser settings.');
+  }
+
+  // ── Legacy API polyfill (very old Android WebViews, Tecno, Firefox < 36) ──
+  // These browsers expose getUserMedia directly on navigator rather than mediaDevices.
+  const legacyGUM = (
+    navigator.getUserMedia ||
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia ||
+    navigator.msGetUserMedia
+  );
+  if (legacyGUM) {
+    const legacyGet = (constraints) =>
+      new Promise((resolve, reject) => legacyGUM.call(navigator, constraints, resolve, reject));
+    try {
+      return await legacyGet({ video: { facingMode: 'user' } });
+    } catch (_) {
+      // front-camera constraint not supported → fall back to any camera
+      try {
+        return await legacyGet({ video: true });
+      } catch (err) {
+        if (err.name === 'PermissionDeniedError' || err.name === 'NotAllowedError') {
+          throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+        }
+        throw new Error(err.message || 'Could not open camera on this device.');
+      }
+    }
+  }
+
+  throw new Error('Camera not available. Please open this page over HTTPS in Chrome or Safari.');
 }
 
 // ── Low-light enhancement ─────────────────────────────────────────────────────
@@ -111,16 +211,16 @@ export function captureEnhancedFrame(videoEl, quality = 0.92) {
 export async function detectFaceEnhanced(faceapi, videoEl) {
   const canvas = enhanceFrameForLowLight(videoEl);
   return faceapi
-    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
-    .withFaceLandmarks()
+    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }))
+    .withFaceLandmarks(true)   // true = use tiny landmark net
     .withFaceDescriptor();
 }
 
 /** Detect on raw video — faster, used during live overlay */
 export async function detectFaceRaw(faceapi, videoEl) {
   return faceapi
-    .detectSingleFace(videoEl, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
-    .withFaceLandmarks()
+    .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 }))
+    .withFaceLandmarks(true)   // true = use tiny landmark net
     .withFaceDescriptor();
 }
 
@@ -189,36 +289,138 @@ export function averageLandmarks(arrays) {
 }
 
 // ── Landmark overlay drawing ──────────────────────────────────────────────────
-/** Draw 68-point mesh overlay on a canvas positioned over the video */
+/** Draw 68-point basic mesh overlay (original) */
 export function drawFaceMesh(canvas, videoEl, landmarks) {
-  const ctx = canvas.getContext('2d');
-  canvas.width  = videoEl.videoWidth  || videoEl.clientWidth;
-  canvas.height = videoEl.videoHeight || videoEl.clientHeight;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!landmarks?.positions) return;
+  drawEnhancedFaceMesh(canvas, videoEl, landmarks);
+}
 
-  const pts = landmarks.positions;
-  ctx.fillStyle = 'rgba(0,200,100,0.85)';
-  pts.forEach(pt => {
+/**
+ * Draw an enhanced face mesh with colour-coded zones and cross-connection triangulation.
+ *
+ * Key fixes vs. the naive version:
+ *  1. Canvas internal size = display CSS pixels × devicePixelRatio → sharp on retina/AMOLED
+ *  2. Landmark coordinates (video-pixel space) are scaled to display CSS pixel space,
+ *     so the mesh fills 100% of the visible canvas regardless of phone resolution
+ *  3. Works correctly even when video stream resolution ≠ CSS display size (e.g. 1080p
+ *     stream displayed in a 360px container on Tecno/Samsung)
+ */
+export function drawEnhancedFaceMesh(canvas, videoEl, landmarks) {
+  const ctx = canvas.getContext('2d');
+
+  // ── Display dimensions (CSS pixels = what user actually sees) ────────────────
+  const dpr      = window.devicePixelRatio || 1;
+  const displayW = canvas.offsetWidth  || canvas.clientWidth  || videoEl.offsetWidth  || videoEl.clientWidth  || 640;
+  const displayH = canvas.offsetHeight || canvas.clientHeight || videoEl.offsetHeight || videoEl.clientHeight || 480;
+
+  // Physical canvas pixel size = CSS size × DPR for crisp rendering on high-DPI screens
+  // Setting canvas.width also clears the canvas and resets the 2D context transform.
+  canvas.width  = Math.round(displayW * dpr);
+  canvas.height = Math.round(displayH * dpr);
+
+  // Scale the drawing context so all coordinates below are in CSS pixels (1 unit = 1 visible px)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (!landmarks?.positions) return;
+  const positions = landmarks.positions;
+
+  // ── face-api returns landmark positions in video-pixel space ─────────────────
+  const videoW = videoEl.videoWidth  || videoEl.clientWidth  || displayW;
+  const videoH = videoEl.videoHeight || videoEl.clientHeight || displayH;
+
+  // Scale factors: convert video-pixel coordinate → CSS display pixel
+  const sx = displayW / videoW;
+  const sy = displayH / videoH;
+
+  // Helpers — map landmark index to display CSS pixel coordinates
+  const px = (i) => positions[i].x * sx;
+  const py = (i) => positions[i].y * sy;
+
+  // ── 1. Dense cross-connections (triangulation mesh) ──
+  const meshLines = [
+    // Jaw to cheek connections
+    [0,36],[1,36],[2,31],[3,31],[4,48],[5,48],[6,57],[7,57],[8,57],
+    [9,57],[10,54],[11,54],[12,54],[13,35],[14,35],[15,45],[16,45],
+    // Brow to eye connections
+    [17,36],[18,37],[19,38],[20,39],[21,39],[22,42],[23,43],[24,44],[25,45],[26,45],
+    // Brow to nose bridge
+    [17,27],[21,27],[22,27],[26,27],[19,28],[24,28],
+    // Nose to eyes
+    [31,36],[31,40],[35,45],[35,47],
+    [27,39],[27,42],[28,38],[28,43],[29,37],[29,44],
+    // Nose to mouth
+    [31,48],[35,54],[33,51],[30,57],
+    // Cheek diagonals
+    [1,17],[15,26],[2,17],[14,26],[0,1],[15,16],
+    [1,36],[15,45],[3,36],[13,45],[5,48],[11,54],
+    [36,37],[45,44],[40,41],[46,47],
+    // Forehead triangulation
+    [17,18],[18,19],[19,20],[20,21],[22,23],[23,24],[24,25],[25,26],
+    [17,22],[18,23],[19,24],[20,25],[21,26],
+    // Eye triangulation
+    [36,39],[37,40],[38,41],[42,45],[43,46],[44,47],
+    [36,41],[37,41],[38,40],[42,47],[43,47],[44,46],
+    // Nose triangulation
+    [27,28],[28,29],[29,30],[30,31],[30,35],[31,32],[32,33],[33,34],[34,35],
+    [27,30],[28,31],[28,35],[29,32],[29,34],
+    // Mouth triangulation
+    [48,54],[49,53],[50,52],[60,64],[61,63],[62,66],
+    [48,60],[54,64],[50,62],[52,62],[51,61],[57,66],
+    [48,49],[49,50],[50,51],[51,52],[52,53],[53,54],
+    [54,55],[55,56],[56,57],[57,58],[58,59],[59,48],
+    // Cross-face
+    [36,27],[45,27],[39,30],[42,30],[36,31],[45,35],
+    [0,36],[16,45],[0,17],[16,26],
+    [4,5],[11,12],[5,6],[10,11],
+  ];
+
+  ctx.lineWidth = 0.7;
+  meshLines.forEach(([a, b]) => {
+    if (!positions[a] || !positions[b]) return;
     ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,210,120,0.2)';
+    ctx.moveTo(px(a), py(a));
+    ctx.lineTo(px(b), py(b));
+    ctx.stroke();
   });
 
-  const line = (idxs, closed = false) => {
-    ctx.strokeStyle = 'rgba(0,200,100,0.4)';
-    ctx.lineWidth = 1;
+  // ── 2. Primary contour lines (brighter) ──
+  const contours = [
+    { path: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], closed: false },
+    { path: [17,18,19,20,21], closed: false },
+    { path: [22,23,24,25,26], closed: false },
+    { path: [27,28,29,30], closed: false },
+    { path: [30,31,32,33,34,35,30], closed: false },
+    { path: [36,37,38,39,40,41], closed: true },
+    { path: [42,43,44,45,46,47], closed: true },
+    { path: [48,49,50,51,52,53,54,55,56,57,58,59], closed: true },
+    { path: [60,61,62,63,64,65,66,67], closed: true },
+  ];
+
+  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = 'rgba(0,220,130,0.5)';
+  contours.forEach(({ path, closed }) => {
     ctx.beginPath();
-    idxs.forEach((i, n) => n === 0 ? ctx.moveTo(pts[i].x, pts[i].y) : ctx.lineTo(pts[i].x, pts[i].y));
+    path.forEach((i, n) => (n === 0 ? ctx.moveTo(px(i), py(i)) : ctx.lineTo(px(i), py(i))));
     if (closed) ctx.closePath();
     ctx.stroke();
-  };
+  });
 
-  line([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]); // jaw
-  line([17,18,19,20,21]); line([22,23,24,25,26]);      // brows
-  line([27,28,29,30]); line([30,31,32,33,34,35,30]);   // nose
-  line([36,37,38,39,40,41], true);                     // left eye
-  line([42,43,44,45,46,47], true);                     // right eye
-  line([48,49,50,51,52,53,54,55,56,57,58,59], true);  // outer mouth
-  line([60,61,62,63,64,65,66,67], true);               // inner mouth
+  // ── 3. Colour-coded landmark dots by facial zone ──
+  const zones = [
+    { idxs: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16], color: '#a78bfa', r: 2.2 }, // jaw
+    { idxs: [17,18,19,20,21,22,23,24,25,26],             color: '#60a5fa', r: 2.5 }, // brows
+    { idxs: [27,28,29,30,31,32,33,34,35],                color: '#34d399', r: 2.5 }, // nose
+    { idxs: [36,37,38,39,40,41,42,43,44,45,46,47],       color: '#22d3ee', r: 2.8 }, // eyes
+    { idxs: [48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67], color: '#fb923c', r: 2.2 }, // mouth
+  ];
+
+  zones.forEach(({ idxs, color, r }) => {
+    ctx.fillStyle = color;
+    idxs.forEach(i => {
+      if (!positions[i]) return;
+      ctx.beginPath();
+      ctx.arc(px(i), py(i), r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
 }

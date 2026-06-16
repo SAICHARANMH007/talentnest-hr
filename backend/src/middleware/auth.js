@@ -46,8 +46,10 @@ const authMiddleware = async (req, res, next) => {
     if (!user)       return res.status(401).json({ success: false, error: 'User no longer exists' });
     if (!user.isActive) return res.status(403).json({ success: false, error: 'Account is deactivated' });
 
-    // Attach clean payload — tenantId from JWT (fast) falls back to user document
-    const resolvedTenantId = (decoded.tenantId || user.tenantId || user.orgId || '').toString();
+    // Attach clean payload — tenantId from JWT (fast) falls back to user document.
+    // Resolve to null (not '') when absent so Mongoose ObjectId casts never throw CastError.
+    const rawTenantId = decoded.tenantId || user.tenantId || user.orgId || null;
+    const resolvedTenantId = rawTenantId ? rawTenantId.toString() : null;
     req.user = {
       ...user,
       id      : user._id.toString(),

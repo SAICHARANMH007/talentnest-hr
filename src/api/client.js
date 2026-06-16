@@ -231,7 +231,11 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || data.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

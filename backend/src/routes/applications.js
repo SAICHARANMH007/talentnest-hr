@@ -532,19 +532,24 @@ router.post('/', ...guardOrCandidate, asyncHandler(async (req, res) => {
   // Self-apply: candidate users have a User record but may not have a Candidate record.
   // Auto-create one linked by email so applications are trackable in the recruiter pipeline.
   if (req.user.role === 'candidate') {
-    // Search by email across ALL tenants — a recruiter may have created the Candidate
-    // record under the employer's tenantId, not the candidate's own tenantId.
+    // Normalize tenantId — empty string can't be cast to ObjectId by Mongoose
+    // and causes "Invalid technical identity" CastError. Use null for unset tenantIds.
+    const candidateTenantId = req.user.tenantId && req.user.tenantId !== '' ? req.user.tenantId : null;
     const emailRegex = new RegExp(`^${req.user.email.toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     // Do NOT filter by deletedAt — a recruiter may have archived the profile, but
     // we still want to reuse the same Candidate record so /mine shows the full history.
     let selfCandidate = await Candidate.findOne({ email: emailRegex });
     if (!selfCandidate) {
-      // Use findOneAndUpdate (upsert) so concurrent requests don't race into E11000
+      // Use findOneAndUpdate (upsert) so concurrent requests don't race into E11000.
+      // Only include tenantId in the filter if it's a valid value; omitting it when
+      // null prevents CastError and still ensures the email-keyed upsert is unique.
+      const upsertFilter = { email: req.user.email.toLowerCase().trim() };
+      if (candidateTenantId) upsertFilter.tenantId = candidateTenantId;
       selfCandidate = await Candidate.findOneAndUpdate(
-        { email: req.user.email.toLowerCase().trim(), tenantId: req.user.tenantId },
+        upsertFilter,
         {
           $setOnInsert: {
-            tenantId: req.user.tenantId,
+            ...(candidateTenantId ? { tenantId: candidateTenantId } : {}),
             name: req.user.name,
             email: req.user.email.toLowerCase().trim(),
             phone: req.user.phone || '',

@@ -25,6 +25,8 @@ const { uploadBuffer }   = require('../utils/cloudinaryUpload');
 const { syncProfile }    = require('../utils/syncProfile');
 const authService        = require('../services/auth.service');
 const logger             = require('../middleware/logger');
+const Otp                = require('../models/Otp');
+const { sendEmailWithRetry } = require('../utils/email');
 
 // Rate limiter for face login — 5 attempts per IP per 15 min (mirrors password login)
 const faceLoginLimiter = rateLimit({
@@ -34,6 +36,15 @@ const faceLoginLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.ip,
   message: { success: false, error: 'Too many face login attempts. Please try again in 15 minutes.' },
+});
+
+// Rate limiter for OTP send — 3 requests per 15 min per IP
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many OTP requests. Please try again in 15 minutes.' },
 });
 
 const guard = [authMiddleware];
@@ -275,15 +286,13 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
 // DELETE /api/face/enroll — remove face data (GDPR delete)
 router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
   const uid = String(req.user.id);
-  const unset = {
-    faceEnrolled: false, faceDescriptor: 1, faceLandmarks: 1,
-    faceEnrollmentPhotos: 1, faceEnrolledAt: 1,
-  };
-  await User.findByIdAndUpdate(uid, { $unset: unset, $set: { faceEnrolled: false } });
+  // $unset removes face data fields; $set marks enrolled=false (can't $unset + $set same field)
+  const unsetFields = { faceDescriptor: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
+  await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: { faceEnrolled: false } });
   if (req.user.email && req.user.tenantId) {
     await Candidate.updateMany(
       { email: req.user.email, tenantId: req.user.tenantId, deletedAt: null },
-      { $unset: unset, $set: { faceEnrolled: false } }
+      { $unset: unsetFields, $set: { faceEnrolled: false } }
     );
   }
   logger.audit('Face data deleted', uid, req.user.tenantId, {});
@@ -475,14 +484,18 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
 
   if (!matched) {
     if (user) {
-      const attempts = (user.failedLoginAttempts || 0) + 1;
-      const updateData = { failedLoginAttempts: attempts };
-      if (attempts >= 5) {
-        updateData.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-        updateData.failedLoginAttempts = 0;
+      // Atomic increment to avoid race conditions on concurrent login attempts
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { $inc: { failedLoginAttempts: 1 } },
+        { new: true }
+      ).select('failedLoginAttempts').lean();
+      if ((updatedUser?.failedLoginAttempts || 0) >= 5) {
+        await User.findByIdAndUpdate(user._id, {
+          $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000), failedLoginAttempts: 0 },
+        });
         logger.warn('Face login: account locked after 5 failures', { email: emailLower, ip: req.ip });
       }
-      await User.findByIdAndUpdate(user._id, { $set: updateData });
     }
     logger.info('Face login: no match', {
       email   : emailLower,
@@ -519,6 +532,97 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   const fullUser = await User.findById(user._id);
   const result   = await authService.issueTokens(res, fullUser, req);
 
+  res.json({ success: true, ...result });
+}));
+
+// ── POST /api/face/check-enrolled — check if email has face enrolled (no auth, no info leak)
+router.post('/check-enrolled', asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) throw new AppError('Invalid email.', 400);
+  const emailLower = email.toLowerCase().trim();
+  const user = await User.findOne({
+    email: emailLower,
+    faceEnrolled: true,
+    deletedAt: null,
+    isActive: { $ne: false },
+  }).select('_id').lean();
+  res.json({ success: true, enrolled: !!user });
+}));
+
+// ── POST /api/face/send-otp — face login fallback: send OTP to email
+router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) throw new AppError('Invalid email.', 400);
+  const emailLower = email.toLowerCase().trim();
+
+  const user = await User.findOne({
+    email: emailLower,
+    deletedAt: null,
+    isActive: { $ne: false },
+  }).select('_id name email tenantId').lean();
+
+  if (user) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
+    await Otp.create({ email: emailLower, otp, purpose: 'login_2fa' });
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff">
+        <div style="text-align:center;margin-bottom:20px">
+          <h2 style="color:#0176D3;margin:0;font-size:22px">🔐 TalentNest Login Verification</h2>
+          <p style="color:#6B7280;font-size:13px;margin-top:6px">Your face was not recognised. Use this one-time code to sign in.</p>
+        </div>
+        <div style="background:#F0F9FF;border:2px solid #BAE6FD;border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">
+          <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#0176D3;display:block">${otp}</span>
+          <span style="font-size:12px;color:#6B7280;display:block;margin-top:8px">Valid for 10 minutes</span>
+        </div>
+        <p style="color:#6B7280;font-size:12px;text-align:center;margin:0">If you didn't request this, please ignore this email and your account remains secure.</p>
+      </div>`;
+
+    try {
+      await sendEmailWithRetry(emailLower, 'TalentNest — Login Verification Code', html);
+    } catch (err) {
+      logger.warn('Face OTP email failed', { email: emailLower, error: err.message });
+    }
+  }
+
+  // Always return success to prevent email enumeration
+  res.json({ success: true, message: 'If your email is registered, you will receive a verification code.' });
+}));
+
+// ── POST /api/face/verify-otp — verify OTP and issue login token
+router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) throw new AppError('Email and verification code are required.', 400);
+
+  const emailLower = email.toLowerCase().trim();
+  const record = await Otp.findOne({ email: emailLower, purpose: 'login_2fa' }).sort({ createdAt: -1 }).lean();
+
+  if (!record || record.otp !== String(otp).trim()) {
+    throw new AppError('Invalid or expired verification code. Please try again.', 401);
+  }
+
+  await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
+
+  const user = await User.findOne({
+    email: emailLower,
+    deletedAt: null,
+    isActive: { $ne: false },
+  });
+  if (!user) throw new AppError('Account not found.', 404);
+
+  if (user.role !== 'super_admin') {
+    const [org, tenant] = await Promise.all([
+      Organization.findById(user.tenantId).lean(),
+      Tenant.findById(user.tenantId).lean(),
+    ]);
+    const activeOrg = org || tenant;
+    if (activeOrg) authService.checkOrgAccess(activeOrg);
+  }
+
+  logger.audit('Face OTP login success', user._id, user.tenantId, { ip: req.ip, ua: req.headers['user-agent'] || '' });
+
+  const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
 }));
 

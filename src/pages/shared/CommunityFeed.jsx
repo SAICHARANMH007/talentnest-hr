@@ -883,6 +883,7 @@ function CreatePost({ user, onCreate, isMobile }) {
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [audioErr,     setAudioErr]      = useState('');
   const [mentions,   setMentions]   = useState([]); // [{ userId, name }]
+  const [submitError, setSubmitError] = useState('');
 
   // Category-specific fields
   const [jobTitle,     setJobTitle]     = useState('');
@@ -995,7 +996,7 @@ function CreatePost({ user, onCreate, isMobile }) {
   };
 
   const resetForm = () => {
-    setText(''); setPostType('update'); setImages([]); setMentions([]); setUploadErr(''); mentionAc.close();
+    setText(''); setPostType('update'); setImages([]); setMentions([]); setUploadErr(''); setSubmitError(''); mentionAc.close();
     setVideo(''); setVideoErr(''); setAudioUrl(''); setAudioErr('');
     setJobTitle(''); setCompany(''); setJobLocation(''); setApplyLink('');
     setResourceTitle(''); setResourceLink(''); setMilestoneDate('');
@@ -1016,6 +1017,7 @@ function CreatePost({ user, onCreate, isMobile }) {
   const submit = async () => {
     if (!canSubmit() || submitting) return;
     setSubmitting(true);
+    setSubmitError('');
     try {
       const activeMentionIds = mentions
         .filter(m => text.includes(`@[${m.name}](${m.userId})`))
@@ -1066,6 +1068,8 @@ function CreatePost({ user, onCreate, isMobile }) {
       payload.content = finalContent;
       await onCreate(payload);
       closeModal();
+    } catch (e) {
+      setSubmitError(e?.message || 'Failed to post. Please check your connection and try again.');
     } finally { setSubmitting(false); }
   };
 
@@ -1341,6 +1345,11 @@ function CreatePost({ user, onCreate, isMobile }) {
             </div>
 
             {/* Footer */}
+            {submitError && (
+              <div style={{ margin: '0 20px 8px', padding: '9px 14px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: 12, fontWeight: 600, lineHeight: 1.4 }}>
+                ⚠️ {submitError}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 20px', borderTop: '1px solid #F1F5F9', flexShrink: 0 }}>
               <span style={{ fontSize: 11, color: charLeft < 200 ? '#EF4444' : '#9CA3AF' }}>{charLeft < 500 ? `${charLeft} left` : ''}</span>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1606,7 +1615,11 @@ export default function CommunityFeed({ user }) {
   useEffect(() => { if (tab === 'saved') loadSavedPosts(); }, [tab, loadSavedPosts]);
 
   const handleCreate = async (data) => {
-    await api.createPost(data);
+    const result = await api.createPost(data);
+    // Optimistic: prepend the new post immediately so user sees it without waiting for a reload
+    if (result?.data || result?._id) {
+      setPosts(prev => [result.data || result, ...prev]);
+    }
     loadPosts(1, filter);
   };
 

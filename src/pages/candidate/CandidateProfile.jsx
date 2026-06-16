@@ -17,6 +17,30 @@ import { DEGREES, BRANCHES_BY_DEGREE, DEFAULT_BRANCHES } from '../../constants/e
 const parseJ = (s, fallback = []) => { if (Array.isArray(s)) return s; try { return JSON.parse(s || '[]'); } catch { return fallback; } };
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+/** Normalize a free-text month+year date: "Jan/2020" → "Jan 2020", "01-2020" → "Jan 2020" */
+function normDate(v) {
+  if (!v) return v;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let s = String(v).trim();
+  // "Jan/2020" or "jan-2020" → "Jan 2020"
+  s = s.replace(/([A-Za-z]{3,})[\/\-](\d{4})/, (_, m, y) => {
+    const mi = MONTHS.findIndex(mn => mn.toLowerCase() === m.slice(0,3).toLowerCase());
+    return mi >= 0 ? `${MONTHS[mi]} ${y}` : `${m} ${y}`;
+  });
+  // "01/2020" → "Jan 2020"
+  s = s.replace(/^(\d{1,2})[\/\-](\d{4})$/, (_, m, y) => {
+    const idx = parseInt(m, 10) - 1;
+    return MONTHS[idx] ? `${MONTHS[idx]} ${y}` : s;
+  });
+  return s.trim();
+}
+
+/** Split tags by comma, semicolon, or pipe — flexible separator support */
+function parseTags(str) {
+  if (Array.isArray(str)) return str.filter(Boolean);
+  return (str || '').split(/[,;|]+/).map(s => s.trim()).filter(Boolean);
+}
+
 function useIsMobile() {
   const [m, setM] = useState(() => window.innerWidth < 640);
   useEffect(() => {
@@ -307,7 +331,14 @@ function VideoResumeSection({ candidateId, existingUrl, onSaved }) {
           <video src={existingUrl} controls style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#000' }} />
         </div>
       )}
-      <video ref={videoRef} style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#1e293b', display: ['recording','preview'].includes(phase) ? 'block' : 'none', marginBottom: 12 }} playsInline muted={phase === 'recording'} controls={phase === 'preview'} />
+      <video ref={videoRef}
+        autoPlay playsInline
+        {...{'webkit-playsinline': 'true'}}
+        muted={phase === 'recording'}
+        controls={phase === 'preview'}
+        onLoadedMetadata={e => { if (phase === 'recording') e.target.play().catch(() => {}); }}
+        onCanPlay={e => { if (phase === 'recording') e.target.play().catch(() => {}); }}
+        style={{ width: '100%', maxWidth: 480, borderRadius: 10, background: '#1e293b', display: ['recording','preview'].includes(phase) ? 'block' : 'none', marginBottom: 12 }} />
       {phase === 'recording' && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, background: '#fff', borderRadius: '50%', animation: 'pulse 1s infinite' }}/>REC</span>
@@ -346,7 +377,7 @@ export default function CandidateProfile({ user }) {
     availability:'Immediate', summary:'', skills:'', languages:'', industry:'', department:'',
     experience:'', isFresher:false, college:'', currentCompany:'', culture:'', projects:'', achievements:'', volunteering:'',
     relevantExperience:'', preferredLocation:'', currentCTC:'', expectedCTC:'',
-    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'',
+    source:'', dateAdded:'', candidateStatus:'', additionalDetails:'', gender:'', photoUrl:'',
   });
   const [workHistory, setWork]  = useState([]);
   const [eduList, setEdu]       = useState([]);
@@ -370,7 +401,7 @@ export default function CandidateProfile({ user }) {
           currentCTC: d.currentCTC||'', expectedCTC: d.expectedCTC||'',
           source: d.source||'', dateAdded: d.dateAdded||'',
           candidateStatus: d.candidateStatus||'', additionalDetails: d.additionalDetails||'',
-          gender: d.gender||'',
+          gender: d.gender||'', photoUrl: d.photoUrl||d.avatarUrl||'',
         });
         setWork(parseJ(d.workHistory));
         setEdu(parseJ(d.educationList));
@@ -379,6 +410,26 @@ export default function CandidateProfile({ user }) {
       .catch(e => setToast(`Failed to load: ${e.message}`))
       .finally(() => setLoad(false));
   }, [user.id]);
+
+  // Live sync: when a work entry is marked current, auto-fill title/company in Personal Info
+  useEffect(() => {
+    const currentJob = workHistory.find(e => e.current);
+    if (!currentJob) return;
+    setForm(prev => ({
+      ...prev,
+      title:          prev.title          || currentJob.title   || '',
+      currentCompany: prev.currentCompany || currentJob.company || '',
+    }));
+  }, [workHistory]);
+
+  // Live sync: when education entries change, auto-fill college if blank
+  useEffect(() => {
+    if (!eduList.length) return;
+    const sorted = [...eduList].sort((a, b) => (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0));
+    const latest = sorted[0];
+    if (!latest?.institution) return;
+    setForm(prev => ({ ...prev, college: prev.college || latest.institution }));
+  }, [eduList]);
 
   useEffect(() => {
     if (tab !== 'posts' || myPosts !== null) return;
@@ -409,19 +460,50 @@ export default function CandidateProfile({ user }) {
     }
     setSaving(true);
     try {
-      const skills = typeof form.skills === 'string' ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.skills) ? form.skills : []);
-      const languages = typeof form.languages === 'string' ? form.languages.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(form.languages) ? form.languages : []);
-      const res = await api.updateProfile({
+      const skills = parseTags(form.skills);
+      const languages = parseTags(form.languages);
+
+      // Normalize work-history dates
+      const normalizedWork = workHistory.map(e => ({ ...e, from: normDate(e.from) || e.from, to: e.current ? '' : (normDate(e.to) || e.to) }));
+
+      // Auto-sync: pull title + currentCompany from the most recent "current" job
+      const currentJob = normalizedWork.find(e => e.current) || null;
+      const syncedTitle   = form.title   || (currentJob?.title   || '');
+      const syncedCompany = form.currentCompany || (currentJob?.company || '');
+
+      // Auto-sync: pull college from the most recent education entry (by year) if field is blank
+      const sortedEdu = [...eduList].sort((a, b) => (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0));
+      const latestEdu = sortedEdu[0] || null;
+      const syncedCollege = form.college || (latestEdu?.institution || '');
+
+      const profilePayload = {
         ...form,
         phone: (form.phone || '').replace(/\s+/g, ''),
         skills, languages,
+        title: syncedTitle,
+        currentCompany: syncedCompany,
+        college: syncedCollege,
         experience: form.isFresher ? 0 : (parseInt(form.experience) || 0),
-        workHistory: JSON.stringify(workHistory),
+        workHistory: JSON.stringify(normalizedWork),
         educationList: JSON.stringify(eduList),
         certifications: JSON.stringify(certList),
-      });
+      };
+      // Never wipe photoUrl with an empty string — photo is managed by the dedicated upload panel
+      if (!profilePayload.photoUrl) delete profilePayload.photoUrl;
+      const res = await api.updateProfile(profilePayload);
       const d = res?.data || res;
       setProfile(d);
+      // Reflect server-confirmed values back into form
+      setForm(prev => ({
+        ...prev,
+        title:          d.title          || prev.title,
+        currentCompany: d.currentCompany || prev.currentCompany,
+        college:        d.college        || prev.college,
+        photoUrl:       d.photoUrl       || d.avatarUrl || prev.photoUrl,
+        // Normalize server arrays → comma-separated strings for form inputs
+        skills:    Array.isArray(d.skills)    ? d.skills.join(', ')    : (d.skills    || prev.skills),
+        languages: Array.isArray(d.languages) ? d.languages.join(', ') : (d.languages || prev.languages),
+      }));
       // Keep tn_user in sessionStorage/localStorage in sync so PublicApplyModal
       // auto-populates industry, department and other profile fields correctly.
       try {
@@ -435,6 +517,7 @@ export default function CandidateProfile({ user }) {
           industry: d.industry || stored.industry,
           department: d.department || stored.department,
           phone: d.phone || stored.phone,
+          photoUrl: d.photoUrl || d.avatarUrl || stored.photoUrl,
         });
         sessionStorage.setItem('tn_user', updated);
         localStorage.setItem('tn_user', updated);
@@ -444,7 +527,18 @@ export default function CandidateProfile({ user }) {
     setSaving(false);
   };
 
-  const resumeData = { ...form, experience: parseInt(form.experience) || 0, workHistory, educationList: eduList, certifications: certList };
+  const resumeData = {
+    ...form,
+    // ResumeCard uses c.linkedin (not c.linkedinUrl) — map the field
+    linkedin: form.linkedinUrl,
+    // Convert comma-separated tag strings → arrays for ResumeCard rendering
+    skills: parseTags(form.skills),
+    languages: parseTags(form.languages),
+    experience: parseInt(form.experience) || 0,
+    workHistory,
+    educationList: eduList,
+    certifications: certList,
+  };
 
   if (loading) return <div style={{ color:'#706E6B', padding:40, display:'flex', gap:10 }}><Spinner/> Loading...</div>;
 
@@ -554,6 +648,9 @@ export default function CandidateProfile({ user }) {
           </Section>
 
           <Section title="💼 CURRENT ROLE">
+            <div style={{ background:'rgba(1,118,211,0.06)', border:'1px solid rgba(1,118,211,0.18)', borderRadius:8, padding:'8px 12px', marginBottom:14, fontSize:11, color:'#475569', lineHeight:1.6 }}>
+              💡 <b>Auto-sync tip:</b> Save after adding your work experience in the <b>Experience</b> tab — your current job title and company will auto-fill here. Similarly, your latest institution from <b>Education</b> will fill the college field below.
+            </div>
             <div className="form-grid-2">
               <label style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 8, gridColumn: '1 / -1', width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: `1px solid ${form.isFresher ? '#10B981' : '#D1D5DB'}`, background: form.isFresher ? 'rgba(16,185,129,0.08)' : '#fff', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.isFresher} onChange={e => {
@@ -644,10 +741,10 @@ export default function CandidateProfile({ user }) {
           </p>
           <Field label="Professional Summary *" value={form.summary} onChange={v=>sf('summary',v)} rows={6} placeholder="Results-driven Software Engineer with 5+ years of experience..."/>
           <div style={{ marginTop:14 }}>
-            <Field label="Culture / Work Style Tags (comma-separated)" value={form.culture} onChange={v=>sf('culture',v)} placeholder="collaborative, remote-friendly, agile, data-driven"/>
+            <Field label="Culture / Work Style Tags (comma, semicolon, or pipe separated)" value={form.culture} onChange={v=>sf('culture',v)} placeholder="collaborative, remote-friendly, agile, data-driven"/>
             {form.culture && (
               <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                {(Array.isArray(form.culture) ? form.culture : (form.culture||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#A07E00"/>)}
+                {parseTags(form.culture).map(s=><Badge key={s} label={s} color="#A07E00"/>)}
               </div>
             )}
           </div>
@@ -714,7 +811,7 @@ export default function CandidateProfile({ user }) {
               <Field label="Technical Skills (comma-separated)" value={form.skills} onChange={v=>sf('skills',v)} placeholder="React, Node.js, Python, AWS, Docker, MongoDB..."/>
               {form.skills && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                  {(Array.isArray(form.skills)?form.skills:(form.skills||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#0176D3"/>)}
+                  {parseTags(form.skills).map(s=><Badge key={s} label={s} color="#0176D3"/>)}
                 </div>
               )}
             </div>
@@ -722,7 +819,7 @@ export default function CandidateProfile({ user }) {
               <Field label="Languages Known (comma-separated)" value={form.languages} onChange={v=>sf('languages',v)} placeholder="English (Fluent), Hindi (Native), Telugu (Native)"/>
               {form.languages && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
-                  {(Array.isArray(form.languages)?form.languages:(form.languages||'').split(',').map(s=>s.trim()).filter(Boolean)).map(s=><Badge key={s} label={s} color="#10b981"/>)}
+                  {parseTags(form.languages).map(s=><Badge key={s} label={s} color="#10b981"/>)}
                 </div>
               )}
             </div>
