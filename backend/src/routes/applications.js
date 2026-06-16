@@ -526,7 +526,9 @@ router.post('/', ...guard, asyncHandler(async (req, res) => {
     // Search by email across ALL tenants — a recruiter may have created the Candidate
     // record under the employer's tenantId, not the candidate's own tenantId.
     const emailRegex = new RegExp(`^${req.user.email.toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-    let selfCandidate = await Candidate.findOne({ email: emailRegex, deletedAt: null });
+    // Do NOT filter by deletedAt — a recruiter may have archived the profile, but
+    // we still want to reuse the same Candidate record so /mine shows the full history.
+    let selfCandidate = await Candidate.findOne({ email: emailRegex });
     if (!selfCandidate) {
       // Use findOneAndUpdate (upsert) so concurrent requests don't race into E11000
       selfCandidate = await Candidate.findOneAndUpdate(
@@ -804,25 +806,36 @@ router.get('/locations', ...guard,
 );
 
 // GET /api/applications/mine — candidate's own applications
-// Searches ALL Candidate docs by email (across tenants) so admin-assigned applications
-// from any org are visible to the candidate. Uses the union of candidateIds found.
+// Searches ALL Candidate docs by email (across tenants, including soft-deleted ones)
+// so applications remain visible even if a recruiter archived the Candidate record.
 router.get('/mine', ...guard,
   allowRoles('candidate'),
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = getPagination(req);
-    // Find ALL Candidate documents that match this user's email (any tenant) - case insensitive
+    // Find ALL Candidate documents that match this user's email (any tenant) -
+    // intentionally NOT filtering deletedAt so recruiter-archived profiles don't
+    // hide the candidate's own application history.
     const emailRegex = new RegExp(`^${req.user.email.toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-    const candidateDocs = await Candidate.find({
-      email: emailRegex,
-      deletedAt: null,
-    }).select('_id').lean();
-    if (!candidateDocs.length) return res.json(paginatedResponse([], 0, limit, page));
+    const candidateDocs = await Candidate.find({ email: emailRegex }).select('_id').lean();
     const candidateIds = candidateDocs.map(c => c._id);
+
+    // Fallback: also include any applications where candidateId directly equals
+    // the user's own _id (edge case when application was created against User._id).
+    const userObjId = req.user._id || req.user.id;
+
+    // Build the candidateId filter — union of all candidate IDs + the user's own ID
+    const idSet = candidateIds.map(id => id.toString());
+    if (userObjId && !idSet.includes(userObjId.toString())) {
+      idSet.push(userObjId.toString());
+    }
+
+    if (!idSet.length) return res.json(paginatedResponse([], 0, limit, page));
+
     // Include withdrawn apps (soft-deleted with status='withdrawn') so candidates
     // can see "You withdrew this application" in their history — but exclude
     // hard-archived apps with other statuses that were purged by admins.
     const filter = {
-      candidateId: { $in: candidateIds },
+      candidateId: { $in: idSet },
       $or: [{ deletedAt: null }, { status: 'withdrawn' }],
     };
     const [apps, total] = await Promise.all([
