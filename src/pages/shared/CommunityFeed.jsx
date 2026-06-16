@@ -1463,25 +1463,66 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
 
   if (!people.length) return null;
   return (
-    <div className="tn-sidecard" style={{ ...card, padding: '14px 16px', borderRadius: 16, border: '1px solid #F1F5F9' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🌱 Grow Your Network</div>
-      {people.map(p => (
-        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0 }}>
-            <Avatar name={p.name} src={p.avatar} size={34} role={p.role} />
+    <div className="tn-sidecard" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8F0FE', overflow: 'hidden', boxShadow: '0 2px 16px rgba(1,118,211,0.07)' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 16px 10px', background: 'linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)', borderBottom: '1px solid #E8F0FE' }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginBottom: 1 }}>👥 People You May Know</div>
+        <div style={{ fontSize: 11, color: '#64748B' }}>Active members in your feed</div>
+      </div>
+
+      {/* People list */}
+      <div>
+        {people.map((p, idx) => (
+          <div
+            key={p.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 16px',
+              borderBottom: idx < people.length - 1 ? '1px solid #F8FAFC' : 'none',
+              cursor: 'default',
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            {/* Avatar */}
+            <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
+              <Avatar name={p.name} src={p.avatar} size={42} role={p.role} />
+              {/* Online-style accent dot */}
+              <div style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: '#22C55E', border: '2px solid #fff' }} />
+            </div>
+
+            {/* Name + title */}
+            <div onClick={() => onViewProfile?.(p.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{p.name || 'Member'}</div>
+              <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
+            </div>
+
+            {/* Connect button */}
+            <button
+              onClick={() => onConnect(p.id)}
+              disabled={pendingIds.has(p.id)}
+              style={{
+                padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                flexShrink: 0, transition: 'all 0.15s',
+                cursor: pendingIds.has(p.id) ? 'default' : 'pointer',
+                border: pendingIds.has(p.id) ? 'none' : '1.5px solid #0176D3',
+                background: pendingIds.has(p.id) ? '#F0FDF4' : '#EFF6FF',
+                color: pendingIds.has(p.id) ? '#16A34A' : '#0176D3',
+              }}
+              onMouseEnter={e => { if (!pendingIds.has(p.id)) { e.currentTarget.style.background = '#0176D3'; e.currentTarget.style.color = '#fff'; } }}
+              onMouseLeave={e => { if (!pendingIds.has(p.id)) { e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.color = '#0176D3'; } }}
+            >
+              {pendingIds.has(p.id) ? '✓ Sent' : '+ Connect'}
+            </button>
           </div>
-          <div onClick={() => onViewProfile?.(p.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || 'Member'}</div>
-            <div style={{ fontSize: 10, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
-          </div>
-          <button
-            onClick={() => onConnect(p.id)}
-            disabled={pendingIds.has(p.id)}
-            style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${pendingIds.has(p.id) ? '#D1D5DB' : '#0176D3'}`, background: 'transparent', color: pendingIds.has(p.id) ? '#9CA3AF' : '#0176D3', fontSize: 11, fontWeight: 700, cursor: pendingIds.has(p.id) ? 'default' : 'pointer', flexShrink: 0 }}>
-            {pendingIds.has(p.id) ? '✓' : '+'}
-          </button>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '8px 16px 10px', background: '#FAFBFF', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
+        <div style={{ fontSize: 11, color: '#94A3B8' }}>Connect to see their posts & profile</div>
+      </div>
     </div>
   );
 }

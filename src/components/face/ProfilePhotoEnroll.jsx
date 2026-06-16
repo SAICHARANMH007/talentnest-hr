@@ -441,6 +441,7 @@ function FaceCamera({ stream, onDone, onCancel }) {
       try {
         const res = await api.enrollFace({
           descriptor     : avgDesc,
+          descriptors    : allFeat.map(f => Array.from(f.descriptor)), // per-pose gallery for k-NN login
           landmarks      : avgLms,
           photos         : capturedFramesRef.current.map(f => f.photo),
           bestPhotoIndex : 0,

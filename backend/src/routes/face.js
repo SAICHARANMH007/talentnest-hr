@@ -10,6 +10,8 @@
 const express    = require('express');
 const router     = express.Router();
 const rateLimit  = require('express-rate-limit');
+const jwt        = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 const User       = require('../models/User');
 const Candidate  = require('../models/Candidate');
 const Organization = require('../models/Organization');
@@ -36,6 +38,15 @@ const faceLoginLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.ip,
   message: { success: false, error: 'Too many face login attempts. Please try again in 15 minutes.' },
+});
+
+// Rate limiter for face-identify (global search) — strict: 3 per IP per minute
+const faceIdentifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many face scan attempts. Please wait a minute and try again.' },
 });
 
 // Rate limiter for OTP send — 3 requests per 15 min per IP
@@ -207,15 +218,34 @@ router.get('/status', ...guard, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/face/enroll — store face descriptor + upload best photo to Cloudinary
-// Body: { descriptor: number[], landmarks?: number[], photos: string[] (base64), bestPhotoIndex?: number, consent: true }
+// Body: { descriptor: number[], descriptors?: number[][], landmarks?: number[], photos: string[] (base64), bestPhotoIndex?: number, consent: true }
 router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
-  const { descriptor, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
+  const { descriptor, descriptors, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
 
   if (!consent) throw new AppError('Face enrollment requires explicit consent.', 400);
   if (!Array.isArray(descriptor) || descriptor.length < 64)
     throw new AppError('Invalid face descriptor. Please retake the enrollment photos.', 400);
   if (!Array.isArray(photos) || photos.length === 0)
     throw new AppError('At least one enrollment photo is required.', 400);
+
+  // Anti-spoofing variance check: all frames suspiciously identical → static photo or screen capture
+  if (Array.isArray(descriptors) && descriptors.length >= 3) {
+    const validDescs = descriptors.filter(d => Array.isArray(d) && d.length >= 64);
+    if (validDescs.length >= 3) {
+      const distances = [];
+      for (let i = 0; i < validDescs.length; i++) {
+        for (let j = i + 1; j < validDescs.length; j++) {
+          distances.push(euclideanDistance(validDescs[i], validDescs[j]));
+        }
+      }
+      const avgDist = distances.reduce((s, d) => s + d, 0) / distances.length;
+      if (avgDist < 0.08) {
+        const uid = String(req.user.id);
+        logger.warn('Face enrollment rejected: descriptors too similar', { uid, avgDist });
+        throw new AppError('Enrollment failed: all face captures appear identical — this suggests a static image was used instead of a live face. Please move naturally between poses and try again.', 400);
+      }
+    }
+  }
 
   // Upload all enrollment frames to Cloudinary
   const uid = String(req.user.id);
@@ -239,6 +269,10 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
     faceConsentAt       : now,
     faceEnrolledAt      : now,
     faceDescriptor      : descriptor,
+    // k-NN gallery: individual per-pose descriptors (up to 5) for per-frame matching at login
+    ...(Array.isArray(descriptors) && descriptors.length >= 2
+      ? { faceDescriptors: descriptors.slice(0, 5).map(d => Array.from(d)) }
+      : {}),
     faceEnrollmentPhotos: uploadedUrls,
     photoUrl            : bestUrl,
     ...(Array.isArray(landmarks) && landmarks.length > 0 ? { faceLandmarks: landmarks } : {}),
@@ -302,7 +336,7 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
 router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
   const uid = String(req.user.id);
   // $unset removes face data fields; $set marks enrolled=false (can't $unset + $set same field)
-  const unsetFields = { faceDescriptor: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
+  const unsetFields = { faceDescriptor: 1, faceDescriptors: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
   await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: { faceEnrolled: false } });
   if (req.user.email && req.user.tenantId) {
     await Candidate.updateMany(
@@ -447,6 +481,74 @@ router.get('/admin/duplicates/count', ...guard,
   })
 );
 
+// ── POST /api/face/identify — scan face to discover linked account (no auth)
+//
+// New login flow: face → find account → masked email shown → OTP → login
+// OTP is the security gate, so identify threshold is loose (0.74).
+// Returns a short-lived signed faceToken instead of the real email to prevent enumeration.
+//
+// Body: { descriptor: number[], frames?: number[][] }
+// Response: { found: bool, maskedEmail?: string, faceToken?: string (5-min JWT) }
+router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
+  const { descriptor, frames } = req.body;
+  if (!Array.isArray(descriptor) || descriptor.length < 64)
+    throw new AppError('Invalid face descriptor.', 400);
+
+  // Pull all enrolled users — O(n) comparison (fine for HR platform scale)
+  const enrolled = await User.find({
+    faceEnrolled: true,
+    isActive    : { $ne: false },
+    deletedAt   : null,
+  }).select('_id email faceDescriptor faceDescriptors').lean();
+
+  const IDENTIFY_THRESHOLD = 0.74; // loose — OTP is the actual security gate
+  const FRAME_THRESHOLD    = 0.72; // per-frame k-NN threshold for identify
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const u of enrolled) {
+    if (!u.faceDescriptor?.length) continue;
+    const gallery     = Array.isArray(u.faceDescriptors) && u.faceDescriptors.length >= 2 ? u.faceDescriptors : null;
+    const loginFrames = Array.isArray(frames) && frames.length >= 2 ? frames : null;
+    let score;
+
+    if (gallery && loginFrames) {
+      const frameScores = loginFrames.map(f => {
+        const fd = Array.isArray(f) ? f : [];
+        if (fd.length < 64) return 0;
+        return Math.max(...gallery.map(g => faceSimilarity(fd, g)));
+      });
+      const avgScore  = faceSimilarity(descriptor, u.faceDescriptor);
+      const passCount = frameScores.filter(s => s >= FRAME_THRESHOLD).length;
+      score = passCount >= Math.ceil(loginFrames.length * 2 / 3) ? avgScore : avgScore * 0.85;
+    } else {
+      score = faceSimilarity(descriptor, u.faceDescriptor);
+    }
+
+    if (score > bestScore) { bestScore = score; bestMatch = u; }
+  }
+
+  if (!bestMatch || bestScore < IDENTIFY_THRESHOLD) {
+    logger.info('Face identify: no match', { ip: req.ip, topScore: Math.round(bestScore * 100) });
+    return res.json({ success: true, found: false });
+  }
+
+  // Issue 5-min signed token encoding the userId — client never gets the real email
+  const faceToken = jwt.sign(
+    { userId: String(bestMatch._id), purpose: 'face_identify', score: Math.round(bestScore * 100) },
+    JWT_SECRET,
+    { expiresIn: '5m' }
+  );
+
+  // Mask email: first char + *** + @domain  (e.g. "j***@gmail.com")
+  const [local, domain] = bestMatch.email.split('@');
+  const maskedEmail = local[0] + '*'.repeat(Math.max(2, local.length - 1)) + '@' + domain;
+
+  logger.info('Face identify: match', { userId: bestMatch._id, score: Math.round(bestScore * 100), ip: req.ip });
+  res.json({ success: true, found: true, maskedEmail, faceToken });
+}));
+
 // ── POST /api/face/login — NO authMiddleware — email-scoped face authentication
 //
 // Security model:
@@ -476,7 +578,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
     faceEnrolled: true,
     isActive  : { $ne: false },
     deletedAt : null,
-  }).select('_id name email role tenantId tenantType faceDescriptor faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
+  }).select('_id name email role tenantId tenantType faceDescriptor faceDescriptors faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
 
   // Account lockout check (before any comparison to prevent timing oracle)
   if (user?.lockUntil && new Date(user.lockUntil) > new Date()) {
@@ -490,17 +592,44 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   const DUMMY_DESC = new Array(descriptor.length).fill(0.01);
   const storedDesc = user?.faceDescriptor?.length >= 64 ? user.faceDescriptor : DUMMY_DESC;
 
+  // Always compute averaged-descriptor score (used as guard + for logging)
   const score = faceSimilarity(descriptor, storedDesc);
 
-  // Threshold: 0.85 — high-confidence same-person requirement.
-  // With the recalibrated faceSimilarity formula (euc/3.0 normalisation):
-  //   Same person, good lighting     → score 0.88-0.93  → PASSES
-  //   Same person, moderate lighting → score 0.83-0.87  → OTP fallback
-  //   Similar-looking different people → score 0.76-0.80 → REJECTED
-  //   Clearly different people         → score 0.58-0.72 → REJECTED
-  // This enforces ≥85% same-person confidence before issuing a session token.
-  const FACE_LOGIN_THRESHOLD = 0.85;
-  const matched = !!user && score >= FACE_LOGIN_THRESHOLD;
+  // Thresholds — recalibrated formula (cos 0.5 + euc/3.0 × 0.5):
+  //   Same person, good lighting       → 0.88-0.93 → PASSES
+  //   Same person, moderate lighting   → 0.83-0.87 → OTP fallback
+  //   Similar-looking different people → 0.76-0.80 → REJECTED
+  //   Clearly different people         → 0.58-0.72 → REJECTED
+  const FACE_LOGIN_THRESHOLD = 0.85; // averaged-descriptor guard
+  const FRAME_KNN_THRESHOLD  = 0.83; // per-frame k-NN threshold (slightly more lenient for pose variance)
+
+  // k-NN gallery matching (preferred when client sends individual frames + server has gallery)
+  // Each live capture frame is scored against every enrolled frame; best match wins.
+  // Majority rule: 2-of-3 frames must independently pass before login is granted.
+  const gallery = Array.isArray(user?.faceDescriptors) && user.faceDescriptors.length >= 2
+    ? user.faceDescriptors : null;
+  const frames  = Array.isArray(req.body.frames) && req.body.frames.length >= 2
+    ? req.body.frames : null;
+
+  let matched;
+  if (gallery && frames) {
+    const frameScores = frames.map(frame => {
+      const fd = Array.isArray(frame) ? frame : [];
+      if (fd.length < 64) return 0;
+      return Math.max(...gallery.map(g => faceSimilarity(fd, g)));
+    });
+    const passCount   = frameScores.filter(s => s >= FRAME_KNN_THRESHOLD).length;
+    const minRequired = Math.ceil(frames.length * 2 / 3); // majority: 2-of-3
+    matched = !!user && passCount >= minRequired && score >= FACE_LOGIN_THRESHOLD;
+    logger.info('Face login k-NN', {
+      email: emailLower, ip: req.ip,
+      frameScores: frameScores.map(s => Math.round(s * 100)),
+      passCount, minRequired, avgScore: Math.round(score * 100), matched,
+    });
+  } else {
+    // Fallback: averaged descriptor only (enrolled users without gallery yet)
+    matched = !!user && score >= FACE_LOGIN_THRESHOLD;
+  }
 
   if (!matched) {
     if (user) {
@@ -569,11 +698,26 @@ router.post('/check-enrolled', asyncHandler(async (req, res) => {
   res.json({ success: true, enrolled: !!user });
 }));
 
-// ── POST /api/face/send-otp — face login fallback: send OTP to email
+// ── POST /api/face/send-otp — send login OTP (accepts faceToken from /identify OR plain email)
 router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  if (!email || !email.includes('@')) throw new AppError('Invalid email.', 400);
-  const emailLower = email.toLowerCase().trim();
+  const { email, faceToken } = req.body;
+
+  let emailLower;
+  if (faceToken) {
+    // New identify flow: decode the short-lived face token to get the real email
+    let decoded;
+    try { decoded = jwt.verify(faceToken, JWT_SECRET); } catch {
+      throw new AppError('Face session expired. Please scan your face again.', 400);
+    }
+    if (decoded.purpose !== 'face_identify') throw new AppError('Invalid face token.', 400);
+    const u = await User.findById(decoded.userId).select('email').lean();
+    if (!u) throw new AppError('Account not found.', 404);
+    emailLower = u.email.toLowerCase();
+  } else if (email && email.includes('@')) {
+    emailLower = email.toLowerCase().trim();
+  } else {
+    throw new AppError('A valid email or face token is required.', 400);
+  }
 
   const user = await User.findOne({
     email: emailLower,
@@ -583,14 +727,14 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
 
   if (user) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
-    await Otp.create({ email: emailLower, otp, purpose: 'login_2fa' });
+    await Otp.deleteMany({ email: emailLower, purpose: 'face_login' });
+    await Otp.create({ email: emailLower, otp, purpose: 'face_login', expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff">
         <div style="text-align:center;margin-bottom:20px">
           <h2 style="color:#0176D3;margin:0;font-size:22px">🔐 TalentNest Login Verification</h2>
-          <p style="color:#6B7280;font-size:13px;margin-top:6px">Your face was not recognised. Use this one-time code to sign in.</p>
+          <p style="color:#6B7280;font-size:13px;margin-top:6px">Use this one-time code to complete your sign-in.</p>
         </div>
         <div style="background:#F0F9FF;border:2px solid #BAE6FD;border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">
           <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#0176D3;display:block">${otp}</span>
@@ -627,18 +771,37 @@ router.post('/send-otp', otpLimiter, asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/face/verify-otp — verify OTP and issue login token
+// Accepts { faceToken, otp } (new flow) or { email, otp } (legacy fallback)
 router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) throw new AppError('Email and verification code are required.', 400);
+  const { email, faceToken, otp } = req.body;
+  if (!otp) throw new AppError('Verification code is required.', 400);
 
-  const emailLower = email.toLowerCase().trim();
-  const record = await Otp.findOne({ email: emailLower, purpose: 'login_2fa' }).sort({ createdAt: -1 }).lean();
+  let emailLower;
+  if (faceToken) {
+    let decoded;
+    try { decoded = jwt.verify(faceToken, JWT_SECRET); } catch {
+      throw new AppError('Face session expired. Please scan your face again.', 400);
+    }
+    if (decoded.purpose !== 'face_identify') throw new AppError('Invalid face token.', 400);
+    const u = await User.findById(decoded.userId).select('email').lean();
+    if (!u) throw new AppError('Account not found.', 404);
+    emailLower = u.email.toLowerCase();
+  } else if (email?.includes('@')) {
+    emailLower = email.toLowerCase().trim();
+  } else {
+    throw new AppError('A valid email or face token is required.', 400);
+  }
+  const record = await Otp.findOne({
+    email     : emailLower,
+    purpose   : 'face_login',
+    expiresAt : { $gt: new Date() },
+  }).sort({ createdAt: -1 }).lean();
 
   if (!record || record.otp !== String(otp).trim()) {
     throw new AppError('Invalid or expired verification code. Please try again.', 401);
   }
 
-  await Otp.deleteMany({ email: emailLower, purpose: 'login_2fa' });
+  await Otp.deleteMany({ email: emailLower, purpose: 'face_login' });
 
   const user = await User.findOne({
     email: emailLower,

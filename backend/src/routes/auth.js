@@ -131,6 +131,10 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     throw new AppError(role === 'recruiter' ? 'name, email, password, and a verified company domain are required.' : 'name, email, password, and companyName are required.', 400);
   if (password.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(password))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(password))
+    throw new AppError('Password must contain at least one number.', 400);
   if (await User.findOne({ email: email.toLowerCase().trim() }))
     throw new AppError('Email already registered.', 400);
 

@@ -69,7 +69,8 @@ const userSchema = new mongoose.Schema({
   faceConsentGiven     : { type: Boolean, default: false },
   faceConsentAt        : { type: Date,    default: null },
   faceEnrolledAt       : { type: Date,    default: null },
-  faceDescriptor       : { type: [Number], default: undefined }, // 128-d FaceNet embedding (averaged across enrollment frames)
+  faceDescriptor       : { type: [Number], default: undefined }, // averaged 128-d embedding (backward compat)
+  faceDescriptors      : { type: mongoose.Schema.Types.Mixed, default: null }, // gallery: Array<number[]> — up to 5 individual 128-d embeddings for k-NN matching
   faceLandmarks        : { type: [Number], default: undefined }, // 136 values (68 landmarks × x,y)
   faceEnrollmentPhotos : { type: [String], default: undefined }, // up to 5 Cloudinary URLs
 

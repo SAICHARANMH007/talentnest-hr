@@ -103,13 +103,12 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
             {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 20, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(6px)' }}>✓ Connected</div>}
           </div>
 
-          <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {/* Profile photo overlapping header */}
-          <div style={{ marginTop: -44, marginBottom: 14, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+          {/* Avatar row — direct flex child of modal card (NOT inside scroll) to prevent clipping */}
+          <div style={{ marginTop: -44, padding: '0 20px', marginBottom: 4, display: 'flex', alignItems: 'flex-end', gap: 12, flexShrink: 0, position: 'relative', zIndex: 2 }}>
             <div style={{ position: 'relative' }}>
               {(person.avatarUrl || person.photoUrl) ? (
                 <img src={person.avatarUrl || person.photoUrl} alt={person.name}
-                  style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 16px ${bg}44` }} />
+                  style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 16px ${bg}44`, display: 'block' }} />
               ) : (
                 <div style={{ width: 88, height: 88, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 34, border: '4px solid #fff', boxShadow: `0 4px 16px ${bg}44` }}>
                   {(person.name || '?')[0].toUpperCase()}
@@ -118,6 +117,7 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
             </div>
           </div>
 
+          <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontWeight: 900, fontSize: 22, color: '#0A1628', marginBottom: 6, lineHeight: 1.2 }}>{person.name || 'Member'}</div>
             <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 6, padding: '3px 10px', display: 'inline-block' }}>
