@@ -26,6 +26,16 @@ const candidateSchema = new mongoose.Schema({
   linkedinUrl    : { type: String, trim: true },
   resumeUrl      : { type: String },
   videoResumeUrl : { type: String },
+  photoUrl       : { type: String },
+
+  // ── Facial Recognition System (FRS) ─────────────────────────────────────────
+  faceEnrolled         : { type: Boolean, default: false },
+  faceConsentGiven     : { type: Boolean, default: false },
+  faceConsentAt        : { type: Date,    default: null },
+  faceEnrolledAt       : { type: Date,    default: null },
+  faceDescriptor       : { type: [Number], default: undefined },
+  faceLandmarks        : { type: [Number], default: undefined },
+  faceEnrollmentPhotos : { type: [String], default: undefined },
 
   // ── HR placement fields ─────────────────────────────────────────────────────
   currentCompany     : { type: String, trim: true },

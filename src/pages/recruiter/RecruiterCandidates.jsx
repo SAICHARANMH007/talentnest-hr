@@ -98,9 +98,12 @@ function CandidateCard({ c, jobs, onAddPipeline, onViewResume, onReachOut, onInv
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, background: 'linear-gradient(135deg,#0176D3 0%,#014486 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 18 : 22, boxShadow: '0 4px 12px rgba(1,118,211,0.25)' }}>
-              {(c.name || '?')[0].toUpperCase()}
-            </div>
+            {c.photoUrl
+              ? <img src={c.photoUrl} alt={c.name} style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, objectFit:'cover', boxShadow:'0 4px 12px rgba(1,118,211,0.25)', border:'2px solid #e2e8f0' }} />
+              : <div style={{ width: isMobile ? 44 : 52, height: isMobile ? 44 : 52, borderRadius: 16, background: 'linear-gradient(135deg,#0176D3 0%,#014486 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? 18 : 22, boxShadow: '0 4px 12px rgba(1,118,211,0.25)' }}>
+                  {(c.name || '?')[0].toUpperCase()}
+                </div>}
+            {c.faceEnrolled && <div title="Face Verified" style={{ position:'absolute', bottom:-2, right:-2, width:14, height:14, borderRadius:'50%', background:'#22c55e', border:'2px solid #fff', fontSize:8, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>🔒</div>}
           </div>
 
           {/* Identity */}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import Spinner from '../../components/ui/Spinner.jsx';
+import FaceVerificationWidget from '../../components/face/FaceVerificationWidget.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Anti-cheat constants
@@ -472,6 +473,20 @@ export default function CandidateAssessment({ user, onBack }) {
             </div>
           </div>
         </div>
+
+        {/* ── FRS Proctoring Widget ── */}
+        <FaceVerificationWidget
+          submissionId={submission?.id || submission?._id}
+          enabled={!!assessment?.antiCheatEnabled}
+          intervalSecs={60}
+          maxFailures={2}
+          onViolation={() => {
+            violationsRef.current += 1;
+            if (violationsRef.current >= MAX_VIOLATIONS) {
+              handleSubmit(true);
+            }
+          }}
+        />
 
         {/* ── Violation Warning Overlay ── */}
         {violationWarning && (

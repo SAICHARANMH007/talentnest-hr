@@ -826,6 +826,7 @@ app.get('/robots.txt',  (req, res) => res.redirect('/api/feed/robots.txt'));
 // ── Calls REST
 app.use('/api/calls', require('./src/routes/calls'));
 app.use('/api/bgv',   require('./src/routes/bgv'));
+app.use('/api/face',  require('./src/routes/face'));
 
 // ── 404 handler (Wrap in AppError for API)
 app.all('*', (req, res, next) => {

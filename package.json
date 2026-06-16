@@ -11,6 +11,7 @@
     "start": "cd backend && node server.js"
   },
   "dependencies": {
+    "@vladmandic/face-api": "^1.7.15",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "pdfjs-dist": "^5.5.207",

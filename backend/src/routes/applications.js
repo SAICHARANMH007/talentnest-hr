@@ -903,7 +903,7 @@ router.get('/', ...guard, asyncHandler(async (req, res) => {
   const [apps, total] = await Promise.all([
     Application.find(filter)
       .populate('jobId', 'title company companyName location department')
-      .populate('candidateId', 'name email phone title skills experience isFresher summary location source videoResumeUrl currentCompany currentCTC expectedCTC relevantExperience candidateStatus linkedinUrl availability workHistory educationList certifications client ta clientSpoc addedBy')
+      .populate('candidateId', 'name email phone title skills experience isFresher summary location source videoResumeUrl currentCompany currentCTC expectedCTC relevantExperience candidateStatus linkedinUrl availability workHistory educationList certifications client ta clientSpoc addedBy photoUrl faceEnrolled')
       .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Application.countDocuments(filter),
   ]);

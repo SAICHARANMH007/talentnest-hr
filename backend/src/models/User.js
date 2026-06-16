@@ -63,6 +63,16 @@ const userSchema = new mongoose.Schema({
 
   // ── Profile ───────────────────────────────────────────────
   photoUrl    : { type: String },
+
+  // ── Facial Recognition System (FRS) ─────────────────────
+  faceEnrolled         : { type: Boolean, default: false },
+  faceConsentGiven     : { type: Boolean, default: false },
+  faceConsentAt        : { type: Date,    default: null },
+  faceEnrolledAt       : { type: Date,    default: null },
+  faceDescriptor       : { type: [Number], default: undefined }, // 128-d FaceNet embedding (averaged across enrollment frames)
+  faceLandmarks        : { type: [Number], default: undefined }, // 136 values (68 landmarks × x,y)
+  faceEnrollmentPhotos : { type: [String], default: undefined }, // up to 5 Cloudinary URLs
+
   phone       : { type: String, trim: true },
   title       : { type: String, trim: true },
   location    : { type: String, trim: true },

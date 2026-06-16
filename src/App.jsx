@@ -79,6 +79,7 @@ const OrgSettings = lazy(() => import('./pages/admin/OrgSettings.jsx'));
 const AdminJobApproval = lazy(() => import('./pages/admin/AdminJobApproval.jsx'));
 const OutreachTracker = lazy(() => import('./pages/admin/OutreachTracker.jsx'));
 const ContactLeads = lazy(() => import('./pages/admin/ContactLeads.jsx'));
+const FaceAdminReview = lazy(() => import('./pages/admin/FaceAdminReview.jsx'));
 // EmailLogsPage merged into OutreachTracker (tab 2)
 
 const BillingPage = lazy(() => import('./pages/billing/BillingPage.jsx'));
@@ -699,6 +700,7 @@ export default function App() {
             <Route path="custom-stages" element={<CustomHiringStages />} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
+            <Route path="face-duplicates" element={<FaceAdminReview />} />
             {/* Recruiter can submit candidate requests (same component as admin) */}
             {rk === 'recruiter' && <Route path="candidate-requests" element={<AdminCandidateRequest user={user} />} />}
 

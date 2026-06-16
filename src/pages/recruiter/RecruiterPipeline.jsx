@@ -340,9 +340,12 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
             onChange={() => onSelect(app.id)}
             style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#0176D3', flexShrink: 0, borderRadius: 6 }}
           />
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)' }}>
-            {(c?.name || '?')[0].toUpperCase()}
-          </div>
+          {c?.photoUrl
+            ? <img src={c.photoUrl} alt={c.name} style={{ width:48, height:48, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:'0 4px 12px rgba(1,118,211,0.2)', border:'2px solid #e2e8f0' }} />
+            : <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(1,118,211,0.2)', position:'relative' }}>
+                {(c?.name || '?')[0].toUpperCase()}
+                {c?.faceEnrolled && <div style={{ position:'absolute', bottom:-3, right:-3, width:14, height:14, borderRadius:'50%', background:'#22c55e', border:'2px solid #fff', fontSize:7, display:'flex', alignItems:'center', justifyContent:'center' }}>🔒</div>}
+              </div>}
           <div>
             <div style={{ color: '#0F172A', fontWeight: 800, fontSize: 16, letterSpacing: '-0.3px' }}>{c?.name}</div>
             <div style={{ color: '#0176D3', fontSize: 13, fontWeight: 700 }}>{c?.title} · {c?.isFresher ? 'Fresher' : `${c?.experience || 0}y exp`}</div>

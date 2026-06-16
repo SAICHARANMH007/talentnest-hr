@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
+import ProfilePhotoEnroll from '../../components/face/ProfilePhotoEnroll.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -522,6 +523,18 @@ export default function CandidateProfile({ user }) {
       {/* ── PERSONAL INFO ── */}
       {tab === 'personal' && (
         <>
+          <Section title="🖼️ PROFILE PHOTO & FACE ID">
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'4px 0' }}>
+              <ProfilePhotoEnroll
+                user={{ name: form.name, photoUrl: form.photoUrl }}
+                onPhotoUpdated={url => sf('photoUrl', url)}
+              />
+              <p style={{ fontSize:11, color:'#94a3b8', textAlign:'center', maxWidth:320, margin:0 }}>
+                Your photo is visible to recruiters on your profile and pipeline card. Enroll your face to enable identity verification during assessments.
+              </p>
+            </div>
+          </Section>
+
           <Section title="👤 PERSONAL INFORMATION">
             <div className="form-grid-2">
               <Field label="Full Name *" value={form.name} onChange={v=>sf('name',v)} placeholder="Jane Smith"/>
