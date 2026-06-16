@@ -207,9 +207,9 @@ router.get('/status', ...guard, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/face/enroll — store face descriptor + upload best photo to Cloudinary
-// Body: { descriptor: number[], landmarks?: number[], photos: string[] (base64), bestPhotoIndex?: number, consent: true }
+// Body: { descriptor: number[], descriptors?: number[][], landmarks?: number[], photos: string[] (base64), bestPhotoIndex?: number, consent: true }
 router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
-  const { descriptor, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
+  const { descriptor, descriptors, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
 
   if (!consent) throw new AppError('Face enrollment requires explicit consent.', 400);
   if (!Array.isArray(descriptor) || descriptor.length < 64)
@@ -239,6 +239,10 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
     faceConsentAt       : now,
     faceEnrolledAt      : now,
     faceDescriptor      : descriptor,
+    // k-NN gallery: individual per-pose descriptors (up to 5) for per-frame matching at login
+    ...(Array.isArray(descriptors) && descriptors.length >= 2
+      ? { faceDescriptors: descriptors.slice(0, 5).map(d => Array.from(d)) }
+      : {}),
     faceEnrollmentPhotos: uploadedUrls,
     photoUrl            : bestUrl,
     ...(Array.isArray(landmarks) && landmarks.length > 0 ? { faceLandmarks: landmarks } : {}),
@@ -302,7 +306,7 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
 router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
   const uid = String(req.user.id);
   // $unset removes face data fields; $set marks enrolled=false (can't $unset + $set same field)
-  const unsetFields = { faceDescriptor: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
+  const unsetFields = { faceDescriptor: 1, faceDescriptors: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
   await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: { faceEnrolled: false } });
   if (req.user.email && req.user.tenantId) {
     await Candidate.updateMany(
@@ -476,7 +480,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
     faceEnrolled: true,
     isActive  : { $ne: false },
     deletedAt : null,
-  }).select('_id name email role tenantId tenantType faceDescriptor faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
+  }).select('_id name email role tenantId tenantType faceDescriptor faceDescriptors faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
 
   // Account lockout check (before any comparison to prevent timing oracle)
   if (user?.lockUntil && new Date(user.lockUntil) > new Date()) {
@@ -490,17 +494,44 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   const DUMMY_DESC = new Array(descriptor.length).fill(0.01);
   const storedDesc = user?.faceDescriptor?.length >= 64 ? user.faceDescriptor : DUMMY_DESC;
 
+  // Always compute averaged-descriptor score (used as guard + for logging)
   const score = faceSimilarity(descriptor, storedDesc);
 
-  // Threshold: 0.85 — high-confidence same-person requirement.
-  // With the recalibrated faceSimilarity formula (euc/3.0 normalisation):
-  //   Same person, good lighting     → score 0.88-0.93  → PASSES
-  //   Same person, moderate lighting → score 0.83-0.87  → OTP fallback
-  //   Similar-looking different people → score 0.76-0.80 → REJECTED
-  //   Clearly different people         → score 0.58-0.72 → REJECTED
-  // This enforces ≥85% same-person confidence before issuing a session token.
-  const FACE_LOGIN_THRESHOLD = 0.85;
-  const matched = !!user && score >= FACE_LOGIN_THRESHOLD;
+  // Thresholds — recalibrated formula (cos 0.5 + euc/3.0 × 0.5):
+  //   Same person, good lighting       → 0.88-0.93 → PASSES
+  //   Same person, moderate lighting   → 0.83-0.87 → OTP fallback
+  //   Similar-looking different people → 0.76-0.80 → REJECTED
+  //   Clearly different people         → 0.58-0.72 → REJECTED
+  const FACE_LOGIN_THRESHOLD = 0.85; // averaged-descriptor guard
+  const FRAME_KNN_THRESHOLD  = 0.83; // per-frame k-NN threshold (slightly more lenient for pose variance)
+
+  // k-NN gallery matching (preferred when client sends individual frames + server has gallery)
+  // Each live capture frame is scored against every enrolled frame; best match wins.
+  // Majority rule: 2-of-3 frames must independently pass before login is granted.
+  const gallery = Array.isArray(user?.faceDescriptors) && user.faceDescriptors.length >= 2
+    ? user.faceDescriptors : null;
+  const frames  = Array.isArray(req.body.frames) && req.body.frames.length >= 2
+    ? req.body.frames : null;
+
+  let matched;
+  if (gallery && frames) {
+    const frameScores = frames.map(frame => {
+      const fd = Array.isArray(frame) ? frame : [];
+      if (fd.length < 64) return 0;
+      return Math.max(...gallery.map(g => faceSimilarity(fd, g)));
+    });
+    const passCount   = frameScores.filter(s => s >= FRAME_KNN_THRESHOLD).length;
+    const minRequired = Math.ceil(frames.length * 2 / 3); // majority: 2-of-3
+    matched = !!user && passCount >= minRequired && score >= FACE_LOGIN_THRESHOLD;
+    logger.info('Face login k-NN', {
+      email: emailLower, ip: req.ip,
+      frameScores: frameScores.map(s => Math.round(s * 100)),
+      passCount, minRequired, avgScore: Math.round(score * 100), matched,
+    });
+  } else {
+    // Fallback: averaged descriptor only (enrolled users without gallery yet)
+    matched = !!user && score >= FACE_LOGIN_THRESHOLD;
+  }
 
   if (!matched) {
     if (user) {

@@ -254,7 +254,11 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setStep('submitting');
     try {
       const avgDesc = averageDescriptors(descsRef.current);
-      const result  = await api.faceLogin({ email: email.trim().toLowerCase(), descriptor: avgDesc });
+      const result  = await api.faceLogin({
+        email      : email.trim().toLowerCase(),
+        descriptor : avgDesc,
+        frames     : descsRef.current, // individual pose captures for k-NN gallery matching
+      });
       onSuccess(result.user, result.token);
     } catch (e) {
       // Face didn't match → send OTP fallback
