@@ -108,7 +108,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video:{ width:640, height:480, facingMode:'user', aspectRatio:4/3 }
+          video:{ width:{ ideal:640 }, height:{ ideal:480 }, facingMode:'user' }
         });
         streamRef.current = stream;
         if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }

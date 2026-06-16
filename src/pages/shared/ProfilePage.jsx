@@ -3,6 +3,7 @@ import { api } from '../../api/api.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import SecuritySettings from '../../components/shared/SecuritySettings.jsx';
+import ProfilePhotoEnroll from '../../components/face/ProfilePhotoEnroll.jsx';
 
 const fieldStyle = {
   width: '100%', boxSizing: 'border-box',
@@ -18,6 +19,7 @@ const labelStyle = {
 };
 
 export default function ProfilePage({ user, onUserUpdate }) {
+  const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -94,10 +96,13 @@ export default function ProfilePage({ user, onUserUpdate }) {
     <div style={{maxWidth: 720, margin: '0 auto'}}>
       <PageHeader title="My Profile" subtitle="Manage your personal information and account settings" />
 
-      <div style={{background:'white',borderRadius:12,padding:24,marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:20}}>
-        <div style={{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#0176D3,#00C2CB)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:800,fontSize:28,flexShrink:0}}>
-          {(user?.name||'U').charAt(0).toUpperCase()}
-        </div>
+      {/* Profile header — shows name, role badge and live photo */}
+      <div style={{background:'white',borderRadius:12,padding:24,marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:20,flexWrap:'wrap'}}>
+        {photoUrl
+          ? <img src={photoUrl} alt={user?.name||'Profile'} style={{width:72,height:72,borderRadius:'50%',objectFit:'cover',border:'3px solid #0176D3',flexShrink:0}} />
+          : <div style={{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#0176D3,#00C2CB)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:800,fontSize:28,flexShrink:0}}>
+              {(user?.name||'U').charAt(0).toUpperCase()}
+            </div>}
         <div>
           <div style={{fontWeight:700,fontSize:18,color:'#0A1628'}}>{user?.name||'User'}</div>
           <div style={{color:'#64748B',fontSize:13,marginTop:2}}>{user?.email}</div>
@@ -105,6 +110,18 @@ export default function ProfilePage({ user, onUserUpdate }) {
             {(user?.role||'user').replace('_',' ')}
           </div>
         </div>
+      </div>
+
+      {/* ── Profile Photo & Face ID (available to all roles) ─── */}
+      <div style={{background:'white',borderRadius:12,padding:24,marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <h3 style={{fontWeight:700,color:'#0A1628',marginBottom:16,fontSize:15}}>🖼️ Profile Photo &amp; Face ID</h3>
+        <ProfilePhotoEnroll
+          user={{ name: user?.name, photoUrl: photoUrl || user?.photoUrl }}
+          onPhotoUpdated={url => {
+            setPhotoUrl(url);
+            if (onUserUpdate) onUserUpdate({ ...user, photoUrl: url });
+          }}
+        />
       </div>
 
       <div style={{background:'white',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
