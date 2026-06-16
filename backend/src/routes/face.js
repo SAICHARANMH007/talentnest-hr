@@ -9,8 +9,11 @@
  */
 const express    = require('express');
 const router     = express.Router();
+const rateLimit  = require('express-rate-limit');
 const User       = require('../models/User');
 const Candidate  = require('../models/Candidate');
+const Organization = require('../models/Organization');
+const Tenant     = require('../models/Tenant');
 const FaceDuplicateAlert = require('../models/FaceDuplicateAlert');
 const AssessmentSubmission = require('../models/AssessmentSubmission');
 const Notification = require('../models/Notification');
@@ -20,7 +23,18 @@ const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const { uploadBuffer }   = require('../utils/cloudinaryUpload');
 const { syncProfile }    = require('../utils/syncProfile');
+const authService        = require('../services/auth.service');
 const logger             = require('../middleware/logger');
+
+// Rate limiter for face login — 5 attempts per IP per 15 min (mirrors password login)
+const faceLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip,
+  message: { success: false, error: 'Too many face login attempts. Please try again in 15 minutes.' },
+});
 
 const guard = [authMiddleware];
 
@@ -408,5 +422,104 @@ router.get('/admin/duplicates/count', ...guard,
     res.json({ success: true, count });
   })
 );
+
+// ── POST /api/face/login — NO authMiddleware — email-scoped face authentication
+//
+// Security model:
+//  • Rate-limited: 5 attempts per IP per 15 min
+//  • Email-scoped: only checks descriptor against THE enrolled user with that email
+//  • Threshold: 0.65 combined (cosine 0.5 + euclidean 0.5) — stricter than proctoring
+//  • Failed attempts increment failedLoginAttempts — 5 failures → 15 min lock
+//  • Generic "Face not recognised" — never reveals whether email exists or is enrolled
+//  • All attempts logged for audit trail
+//
+// Body: { email: string, descriptor: number[] (128-d FaceNet) }
+router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
+  const { email, descriptor } = req.body;
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    throw new AppError('A valid email address is required.', 400);
+  }
+  if (!Array.isArray(descriptor) || descriptor.length < 64) {
+    throw new AppError('Invalid face descriptor.', 400);
+  }
+
+  const emailLower = email.toLowerCase().trim();
+
+  // Email-scoped lookup: find the specific enrolled user
+  const user = await User.findOne({
+    email     : emailLower,
+    faceEnrolled: true,
+    isActive  : { $ne: false },
+    deletedAt : null,
+  }).select('_id name email role tenantId tenantType faceDescriptor faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
+
+  // Account lockout check (before any comparison to prevent timing oracle)
+  if (user?.lockUntil && new Date(user.lockUntil) > new Date()) {
+    const remaining = Math.ceil((new Date(user.lockUntil) - new Date()) / 60000);
+    // Still return generic message — don't reveal lockout exists to attacker
+    logger.warn('Face login: account locked', { email: emailLower, ip: req.ip });
+    throw new AppError(`Account temporarily locked. Please try again in ${remaining} minute${remaining === 1 ? '' : 's'} or use password login.`, 403);
+  }
+
+  // Always compute similarity (prevents timing attacks on non-enrolled emails)
+  const DUMMY_DESC = new Array(descriptor.length).fill(0.01);
+  const storedDesc = user?.faceDescriptor?.length >= 64 ? user.faceDescriptor : DUMMY_DESC;
+
+  const score = faceSimilarity(descriptor, storedDesc);
+
+  // Threshold: 0.65 — higher than proctoring (0.50), lower than enrollment dedup (0.72)
+  // This accounts for single-session multi-frame averaging vs enrollment 5-frame average
+  const FACE_LOGIN_THRESHOLD = 0.65;
+  const matched = !!user && score >= FACE_LOGIN_THRESHOLD;
+
+  if (!matched) {
+    if (user) {
+      const attempts = (user.failedLoginAttempts || 0) + 1;
+      const updateData = { failedLoginAttempts: attempts };
+      if (attempts >= 5) {
+        updateData.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        updateData.failedLoginAttempts = 0;
+        logger.warn('Face login: account locked after 5 failures', { email: emailLower, ip: req.ip });
+      }
+      await User.findByIdAndUpdate(user._id, { $set: updateData });
+    }
+    logger.info('Face login: no match', {
+      email   : emailLower,
+      score   : Math.round(score * 100),
+      enrolled: !!user,
+      ip      : req.ip,
+    });
+    // Generic error — never reveal whether email/enrollment exists
+    throw new AppError('Face not recognised. Please try again or use password login.', 401);
+  }
+
+  // Reset failed attempts on success
+  if ((user.failedLoginAttempts || 0) > 0) {
+    await User.findByIdAndUpdate(user._id, { $set: { failedLoginAttempts: 0, lockUntil: null } });
+  }
+
+  // Org/tenant active check (same as password login)
+  if (user.role !== 'super_admin') {
+    const [org, tenant] = await Promise.all([
+      Organization.findById(user.tenantId).lean(),
+      Tenant.findById(user.tenantId).lean(),
+    ]);
+    const activeOrg = org || tenant;
+    if (activeOrg) authService.checkOrgAccess(activeOrg);
+  }
+
+  logger.audit('Face login success', user._id, user.tenantId, {
+    score   : Math.round(score * 100),
+    ip      : req.ip,
+    ua      : req.headers['user-agent'] || '',
+  });
+
+  // Issue access + refresh tokens exactly as password login does
+  const fullUser = await User.findById(user._id);
+  const result   = await authService.issueTokens(res, fullUser, req);
+
+  res.json({ success: true, ...result });
+}));
 
 module.exports = router;

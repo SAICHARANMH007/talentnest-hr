@@ -8,6 +8,9 @@ export const faceService = {
   deleteFace:    ()             => req('DELETE','/face/enroll'),
   proctorCheck:  (body)         => req('POST', '/face/proctor-check', body),
 
+  // Public — no auth token needed (user is not logged in yet)
+  faceLogin:     (body)         => req('POST', '/face/login',   body, false),
+
   // Admin
   getDuplicateAlerts: (status)  => req('GET',  `/face/admin/duplicates${status ? `?status=${status}` : ''}`),
   getDuplicateCount:  ()        => req('GET',  '/face/admin/duplicates/count'),
