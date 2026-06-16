@@ -75,9 +75,17 @@ function normalizeApp(app) {
   // Always expose both names so the frontend never has to guess which field
   // the server returned. `stage` is the canonical frontend ID used in STAGES,
   // SM, and NEXT; `currentStage` is the DB value kept for backward compat.
-  if (!a.stage && a.currentStage) {
-    a.stage = DB_STAGE_TO_FRONTEND[a.currentStage]
-      || a.currentStage.toLowerCase().replace(/\s+/g, '_');
+  // Status overrides take priority: 'withdrawn' and 'rejected' have their own
+  // frontend stage IDs that the CandidateApplications stepper renders specially.
+  if (!a.stage) {
+    if (a.status === 'withdrawn') {
+      a.stage = 'withdrawn';
+    } else if (a.status === 'rejected') {
+      a.stage = DB_STAGE_TO_FRONTEND['Rejected'] || 'rejected';
+    } else if (a.currentStage) {
+      a.stage = DB_STAGE_TO_FRONTEND[a.currentStage]
+        || a.currentStage.toLowerCase().replace(/\s+/g, '_');
+    }
   }
   // Add `stageId` (frontend lowercase ID) to each stageHistory entry so the
   // CandidateApplications stepper can match visited stages against stage.id
@@ -810,7 +818,13 @@ router.get('/mine', ...guard,
     }).select('_id').lean();
     if (!candidateDocs.length) return res.json(paginatedResponse([], 0, limit, page));
     const candidateIds = candidateDocs.map(c => c._id);
-    const filter = { candidateId: { $in: candidateIds }, deletedAt: null };
+    // Include withdrawn apps (soft-deleted with status='withdrawn') so candidates
+    // can see "You withdrew this application" in their history — but exclude
+    // hard-archived apps with other statuses that were purged by admins.
+    const filter = {
+      candidateId: { $in: candidateIds },
+      $or: [{ deletedAt: null }, { status: 'withdrawn' }],
+    };
     const [apps, total] = await Promise.all([
       Application.find(filter)
         .populate({
@@ -1193,10 +1207,14 @@ router.patch('/:id/stage', ...guard,
           app.status = 'hired';
           // Senior Optimization: Update job counts INSIDE the transaction to prevent sync drift
           await Job.findByIdAndUpdate(app.jobId, { $inc: { hiredCount: 1 } }).session(session);
-        }
-        if (stage === 'Rejected') {
+        } else if (stage === 'Rejected') {
           app.status = 'rejected';
           if (req.body.rejectionReason) app.rejectionReason = req.body.rejectionReason;
+        } else if (app.status !== 'active') {
+          // If the app was parked (or any other non-active status) and is now
+          // being moved to an in-progress stage, reset to active so it reappears
+          // in the pipeline's default view instead of staying invisible.
+          app.status = 'active';
         }
         await app.save({ session });
 

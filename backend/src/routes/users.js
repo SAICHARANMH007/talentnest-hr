@@ -193,15 +193,51 @@ router.get('/candidates', authenticate, allowRoles('admin','super_admin','recrui
   // Availability filter
   if (req.query.availability) filter.availability = req.query.availability;
 
-  const [candidates, total] = await Promise.all([
+  const [userDocs, total] = await Promise.all([
     User.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     User.countDocuments(filter)
   ]);
 
-  const normalized = candidates.map(userService.normalize);
+  // Dual-source merge: fetch matching Candidate records by email so any fields
+  // that were updated in the Candidate collection (e.g. via career-page apply or
+  // parsedProfile import) but not yet reflected in User are filled in.
+  // This is a read-path enhancement — no writes, no risk of breaking anything.
+  const CANDIDATE_MERGE_FIELDS = [
+    'title', 'experience', 'isFresher', 'currentCompany', 'skills', 'location',
+    'availability', 'industry', 'department', 'educationList', 'workHistory',
+    'linkedinUrl', 'resumeUrl', 'videoResumeUrl', 'college', 'candidateStatus',
+    'currentCTC', 'expectedCTC', 'noticePeriodDays', 'summary', 'certifications',
+  ];
+  let candidateMap = {};
+  if (userDocs.length > 0) {
+    const emails = userDocs.map(u => u.email?.toLowerCase?.()).filter(Boolean);
+    const tenantFilter = req.user.role === 'super_admin'
+      ? { email: { $in: emails }, deletedAt: null }
+      : { email: { $in: emails }, tenantId: req.user.tenantId, deletedAt: null };
+    const candDocs = await Candidate.find(tenantFilter)
+      .select(CANDIDATE_MERGE_FIELDS.join(' ') + ' email')
+      .lean();
+    candDocs.forEach(c => { if (c.email) candidateMap[c.email.toLowerCase()] = c; });
+  }
+
+  const merged = userDocs.map(u => {
+    const cand = candidateMap[u.email?.toLowerCase?.() || ''];
+    if (!cand) return u;
+    const patch = {};
+    for (const f of CANDIDATE_MERGE_FIELDS) {
+      const uv = u[f];
+      const cv = cand[f];
+      const userEmpty = uv === null || uv === undefined || uv === '' || (Array.isArray(uv) && uv.length === 0);
+      const candHas   = cv !== null && cv !== undefined && cv !== '' && !(Array.isArray(cv) && cv.length === 0);
+      if (userEmpty && candHas) patch[f] = cv;
+    }
+    return Object.keys(patch).length ? { ...u, ...patch } : u;
+  });
+
+  const normalized = merged.map(userService.normalize);
   const response = paginatedResponse(normalized, total, limit, page);
-  
-  res.json({ 
+
+  res.json({
     ...response,
     candidates: normalized // Keep for backward compatibility
   });
