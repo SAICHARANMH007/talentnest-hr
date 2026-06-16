@@ -33,38 +33,42 @@ const POST_TYPE_ACCENT = {
 function PostTypeBanner({ post }) {
   const type = post?.postType;
   if (!type || type === 'update') return null;
-  const content    = post.content || '';
-  const isUrgent   = type === 'announcement' && content.startsWith('🚨');
-  const isImportant= type === 'announcement' && content.startsWith('⚡');
-  const starMatch  = type === 'feedback' ? content.match(/^(⭐+)/) : null;
-  const starCount  = starMatch ? Math.min(starMatch[1].length, 5) : 0;
-  const STAR_LABEL = ['','Poor','Fair','Good','Great','Excellent'];
-  const jobTitle   = post.jobDetails?.title;
-  const jobCompany = post.jobDetails?.company;
-  const pollQ      = post.poll?.question;
-  const optCount   = post.poll?.options?.length || 0;
+  const content     = post.content || '';
+  const isUrgent    = type === 'announcement' && content.startsWith('🚨');
+  const isImportant = type === 'announcement' && content.startsWith('⚡');
+  const starMatch   = type === 'feedback' ? content.match(/^(⭐+)/) : null;
+  const starCount   = starMatch ? Math.min(starMatch[1].length, 5) : 0;
+  const STAR_LABEL  = ['','Poor','Fair','Good','Great','Excellent'];
+  const STAR_COLOR  = ['','#DC2626','#D97706','#059669','#0176D3','#7C3AED'];
+  const jobTitle    = post.jobDetails?.title;
+  const jobCompany  = post.jobDetails?.company;
+  const jobLocation = post.jobDetails?.location;
+  const pollQ       = post.poll?.question;
+  const optCount    = post.poll?.options?.length || 0;
+  const firstLine   = content.split('\n').map(l => l.trim()).find(l => l.length > 3 && !l.startsWith('#')) || '';
+  const shortFirst  = (s, max = 60) => s.length > max ? s.slice(0, max).trimEnd() + '…' : s;
 
   const CFG = {
-    hiring:      { gradient:'linear-gradient(135deg,#10B981 0%,#059669 100%)', icon:'💼', title:'Job Opening',        sub: jobTitle?`${jobTitle}${jobCompany?` · ${jobCompany}`:''}` :"Hiring now — see details below", pill:'HIRING' },
-    tip:         { gradient:'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)', icon:'💡', title:'Share a Pro Tip',    sub:'Career insight worth bookmarking',              pill:'🔥 HOT TIP' },
-    question:    { gradient:'linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%)', icon:'❓', title:'Ask the Community',   sub:'Get advice from your network',                  pill:null },
-    achievement: { gradient:'linear-gradient(135deg,#FBBF24 0%,#B45309 100%)', icon:'🏆', title:'Celebrate a Win',    sub:"Share something you're proud of",                pill:'🎉 WIN' },
-    feedback:    { gradient:'linear-gradient(135deg,#F472B6 0%,#DB2777 100%)', icon:'⭐', title:'Feedback & Review',   sub: starCount>0?`Rated ${starCount}/5 — ${STAR_LABEL[starCount]}`:'Honest community feedback', pill:null },
-    resource:    { gradient:'linear-gradient(135deg,#22D3EE 0%,#0891B2 100%)', icon:'📎', title:'Sharing a Resource', sub:'Useful content for your career',                 pill:'📚 READ' },
-    milestone:   { gradient:'linear-gradient(135deg,#F87171 0%,#DC2626 100%)', icon:'🎯', title:'Share a Milestone',  sub:'Career achievement unlocked ✨',                  pill:'🏅 NEW' },
-    announcement:{ gradient: isUrgent?'linear-gradient(135deg,#F87171 0%,#DC2626 100%)':isImportant?'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)':'linear-gradient(135deg,#60A5FA 0%,#2563EB 100%)', icon:isUrgent?'🚨':isImportant?'⚡':'📢', title:'Announcement', sub:isUrgent?'Urgent — action required':isImportant?'Important community update':'Community update & news', pill:isUrgent?'🚨 URGENT':isImportant?'⚡ IMPORTANT':null },
-    poll:        { gradient:'linear-gradient(135deg,#A78BFA 0%,#5B21B6 100%)', icon:'🗳️',title:'Community Poll',     sub: pollQ?(pollQ.length>55?pollQ.slice(0,55)+'…':pollQ):'Cast your vote below!', pill:optCount>0?`${optCount} options`:'VOTE NOW' },
+    hiring:      { gradient:'linear-gradient(135deg,#10B981 0%,#059669 100%)', icon:'🚀', title:"We're Hiring!", sub: jobTitle?`${jobTitle}${jobCompany?` · ${jobCompany}`:''}${jobLocation?` · 📍 ${jobLocation}`:''}` :'Your next big move is right here.', pill:'💼 HIRING' },
+    tip:         { gradient:'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)', icon:'💡', title:'Pro Tip',          sub: firstLine?shortFirst(firstLine):'Bookmark this. Your career will thank you.', pill:'🔥 HOT TIP' },
+    question:    { gradient:'linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%)', icon:'🤔', title:'Got a Question?',  sub: firstLine?shortFirst(firstLine):'Drop your wisdom in the comments ↓', pill:'💬 ASK' },
+    achievement: { gradient:'linear-gradient(135deg,#FBBF24 0%,#B45309 100%)', icon:'🏆', title:'Big W!',           sub: firstLine?shortFirst(firstLine):'This one deserves the spotlight.', pill:'🎉 WIN' },
+    feedback:    { gradient: starCount>0?`linear-gradient(135deg,${STAR_COLOR[starCount]}99 0%,${STAR_COLOR[starCount]} 100%)`:'linear-gradient(135deg,#F472B6 0%,#DB2777 100%)', icon:'⭐', title: starCount>0?`${starCount}/5 — ${STAR_LABEL[starCount]}`:'Honest Review', sub: starCount>0?'Real talk. Straight from the community.':'No filters. No fluff. Just facts.', pill: starCount>0?'★'.repeat(starCount):null },
+    resource:    { gradient:'linear-gradient(135deg,#22D3EE 0%,#0891B2 100%)', icon:'🔥', title:'Resource Drop',    sub: firstLine?shortFirst(firstLine):"Save this. It's worth your time.", pill:'📚 READ' },
+    milestone:   { gradient:'linear-gradient(135deg,#F87171 0%,#DC2626 100%)', icon:'🎯', title:'Milestone Alert!', sub: firstLine?shortFirst(firstLine):'Level unlocked. This is huge. 🔓', pill:'🏅 NEW' },
+    announcement:{ gradient: isUrgent?'linear-gradient(135deg,#F87171 0%,#DC2626 100%)':isImportant?'linear-gradient(135deg,#FBBF24 0%,#D97706 100%)':'linear-gradient(135deg,#60A5FA 0%,#2563EB 100%)', icon:isUrgent?'🚨':isImportant?'⚡':'📣', title:isUrgent?'Urgent!':isImportant?'Important':'Heads Up!', sub:isUrgent?'Action required — read this now.':isImportant?'Read before you scroll past.':(firstLine?shortFirst(firstLine):"Don't miss this community update."), pill:isUrgent?'🚨 URGENT':isImportant?'⚡ MUST READ':'📣 NEWS' },
+    poll:        { gradient:'linear-gradient(135deg,#A78BFA 0%,#5B21B6 100%)', icon:'🗳️',title:'Have Your Say',    sub: pollQ?(pollQ.length>65?pollQ.slice(0,65)+'…':pollQ):'The community wants your take.', pill:optCount>0?`${optCount} options`:'VOTE NOW' },
   };
   const cfg = CFG[type];
   if (!cfg) return null;
   return (
-    <div style={{ background: cfg.gradient, borderRadius: '14px 14px 0 0', padding: '16px 18px', marginLeft: -18, marginRight: -18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <span style={{ fontSize: 30, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}>{cfg.icon}</span>
+    <div style={{ background: cfg.gradient, borderRadius: '14px 14px 0 0', padding: '18px 18px', marginLeft: -18, marginRight: -18, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+      <span style={{ fontSize: 34, lineHeight: 1, flexShrink: 0, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.22))' }}>{cfg.icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{cfg.title}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.88)', marginTop: 3, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cfg.sub}</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>{cfg.title}</div>
+        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{cfg.sub}</div>
       </div>
-      {cfg.pill && <span style={{ fontSize: 10, fontWeight: 800, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', letterSpacing: '0.04em', flexShrink: 0, whiteSpace: 'nowrap' }}>{cfg.pill}</span>}
+      {cfg.pill && <span style={{ fontSize: 10.5, fontWeight: 800, background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 20, padding: '4px 11px', letterSpacing: '0.05em', flexShrink: 0, whiteSpace: 'nowrap', border: '1px solid rgba(255,255,255,0.3)' }}>{cfg.pill}</span>}
     </div>
   );
 }
