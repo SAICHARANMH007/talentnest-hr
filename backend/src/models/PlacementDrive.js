@@ -40,6 +40,10 @@ const placementDriveSchema = new mongoose.Schema({
   },
   status: { type: String, enum: ['upcoming', 'ongoing', 'completed', 'cancelled'], default: 'upcoming' },
   registrations: { type: [registrationSchema], default: [] },
+  // Candidates explicitly notified by PO override eligibility — they can always register
+  notifiedCandidateIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' }],
+  // Who can see and register for this opportunity
+  targetAudience: { type: String, enum: ['students', 'alumni', 'experienced', 'all'], default: 'students' },
   createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   // When a recruiter/company requests a campus drive from a college, the
   // drive is created with requestStatus 'pending' and is hidden from the

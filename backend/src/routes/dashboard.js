@@ -1343,6 +1343,12 @@ router.post('/college/placement-drives/:id/notify', authenticate, allowRoles('ad
     metadata: { kind: 'placement_drive_notify', driveId: String(drive._id) },
   })));
 
+  // Save notified candidate IDs so they can always register regardless of eligibility
+  const notifiedIds = recipients.map(c => c._id);
+  await PlacementDrive.findByIdAndUpdate(drive._id, {
+    $addToSet: { notifiedCandidateIds: { $each: notifiedIds } }
+  });
+
   try {
     const { emitToTenant } = require('../socket/platformSocket');
     const socketRegistry   = require('../socket/index');
@@ -1706,15 +1712,12 @@ router.delete('/college/training-resources/:id', authenticate, allowRoles('admin
 
 /* GET /api/dashboard/candidate/opportunities — placement/internship/exam
    opportunities posted by the candidate's college, with eligibility +
-   registration status for the current candidate. */
+   registration status for the current candidate. Also includes drives the
+   candidate was personally notified about (regardless of college match) and
+   drives with targetAudience='all' or 'alumni' for placed candidates. */
 router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
   const candidate = await Candidate.findOne({ email: req.user.email }).lean();
   const collegeName = (candidate?.college || req.user.college || '').trim();
-  if (!collegeName) return res.json({ success: true, data: [] });
-
-  const collegeRegex = new RegExp('^' + escapeRegex(collegeName) + '$', 'i');
-  const drives = await PlacementDrive.find({ collegeName: collegeRegex, deletedAt: null, status: { $ne: 'cancelled' }, requestStatus: { $ne: 'pending' } })
-    .sort({ driveDate: -1 }).lean();
 
   const education = parseJsonArray(candidate?.educationList);
   const latest = getLatestEducation(education);
@@ -1724,26 +1727,129 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
   const candidateGrade = parseFloat(latest?.grade);
   const candidateSkills = (candidate?.skills || []).map(s => String(s).toLowerCase());
 
+  // Determine if candidate has been placed (alumni)
+  const isPlaced = candidate?.candidateStatus === 'placed' || candidate?.candidateStatus === 'hired';
+
+  // Build a set of drive IDs we've already included to avoid duplicates
+  const seenIds = new Set();
+  let drives = [];
+
+  // 1. Drives from candidate's college
+  if (collegeName) {
+    const collegeRegex = new RegExp('^' + escapeRegex(collegeName) + '$', 'i');
+    const collegeDrives = await PlacementDrive.find({
+      collegeName: collegeRegex,
+      deletedAt: null,
+      status: { $ne: 'cancelled' },
+      requestStatus: { $ne: 'pending' },
+    }).sort({ driveDate: -1 }).lean();
+    collegeDrives.forEach(d => {
+      seenIds.add(String(d._id));
+      drives.push(d);
+    });
+  }
+
+  // 2. Drives where this candidate was explicitly notified (override — any college)
+  if (candidate?._id) {
+    const notifiedDrives = await PlacementDrive.find({
+      notifiedCandidateIds: candidate._id,
+      deletedAt: null,
+      status: { $ne: 'cancelled' },
+      requestStatus: { $ne: 'pending' },
+    }).sort({ driveDate: -1 }).lean();
+    notifiedDrives.forEach(d => {
+      if (!seenIds.has(String(d._id))) {
+        seenIds.add(String(d._id));
+        drives.push(d);
+      }
+    });
+  }
+
+  // 3. Drives with targetAudience='all' or 'alumni' (for placed/alumni candidates)
+  if (isPlaced) {
+    const audienceDrives = await PlacementDrive.find({
+      targetAudience: { $in: ['all', 'alumni'] },
+      deletedAt: null,
+      status: { $ne: 'cancelled' },
+      requestStatus: { $ne: 'pending' },
+    }).sort({ driveDate: -1 }).lean();
+    audienceDrives.forEach(d => {
+      if (!seenIds.has(String(d._id))) {
+        seenIds.add(String(d._id));
+        drives.push(d);
+      }
+    });
+  }
+
+  // 4. Drives with targetAudience='all' (visible to everyone)
+  {
+    const allAudienceDrives = await PlacementDrive.find({
+      targetAudience: 'all',
+      deletedAt: null,
+      status: { $ne: 'cancelled' },
+      requestStatus: { $ne: 'pending' },
+    }).sort({ driveDate: -1 }).lean();
+    allAudienceDrives.forEach(d => {
+      if (!seenIds.has(String(d._id))) {
+        seenIds.add(String(d._id));
+        drives.push(d);
+      }
+    });
+  }
+
+  const now = new Date();
+
   const data = drives.map(d => {
     const elig = d.eligibility || {};
+
+    // Check if candidate was explicitly notified for this drive
+    const notifiedIds = (d.notifiedCandidateIds || []).map(id => String(id));
+    const notifiedOverride = candidate ? notifiedIds.includes(String(candidate._id)) : false;
+
+    // Per-criterion eligibility details (null = criterion not set on drive, bool = pass/fail)
+    const eligibilityDetails = {
+      degree: null,
+      branch: null,
+      year: null,
+      cgpa: null,
+      skills: null,
+    };
+
     let isEligible = true;
+
     if (Array.isArray(elig.degrees) && elig.degrees.length) {
-      isEligible = isEligible && elig.degrees.some(deg => candidateDegree.toLowerCase().includes(String(deg).toLowerCase()) || degreeTextMatches(candidateDegree, deg));
+      const pass = elig.degrees.some(deg => candidateDegree.toLowerCase().includes(String(deg).toLowerCase()) || degreeTextMatches(candidateDegree, deg));
+      eligibilityDetails.degree = pass;
+      isEligible = isEligible && pass;
     }
     if (Array.isArray(elig.branches) && elig.branches.length) {
-      isEligible = isEligible && elig.branches.some(b => candidateBranch.toLowerCase().includes(String(b).toLowerCase()) || degreeTextMatches(candidateBranch, b));
+      const pass = elig.branches.some(b => candidateBranch.toLowerCase().includes(String(b).toLowerCase()) || degreeTextMatches(candidateBranch, b));
+      eligibilityDetails.branch = pass;
+      isEligible = isEligible && pass;
     }
     if (Array.isArray(elig.passingYears) && elig.passingYears.length) {
-      isEligible = isEligible && Number.isFinite(candidateYear) && elig.passingYears.includes(candidateYear);
+      const pass = Number.isFinite(candidateYear) && elig.passingYears.includes(candidateYear);
+      eligibilityDetails.year = pass;
+      isEligible = isEligible && pass;
     }
     if (elig.minCGPA != null) {
-      isEligible = isEligible && Number.isFinite(candidateGrade) && candidateGrade >= Number(elig.minCGPA);
+      const pass = Number.isFinite(candidateGrade) && candidateGrade >= Number(elig.minCGPA);
+      eligibilityDetails.cgpa = pass;
+      isEligible = isEligible && pass;
     }
     if (Array.isArray(elig.skills) && elig.skills.length) {
-      isEligible = isEligible && elig.skills.some(s => candidateSkills.includes(String(s).toLowerCase()));
+      const pass = elig.skills.some(s => candidateSkills.includes(String(s).toLowerCase()));
+      eligibilityDetails.skills = pass;
+      isEligible = isEligible && pass;
     }
 
+    // notifiedOverride means we show it as eligible even if criteria don't match
+    if (notifiedOverride) isEligible = true;
+
     const myRegistration = candidate ? (d.registrations || []).find(r => String(r.candidateId) === String(candidate._id)) : null;
+    const registeredCount = (d.registrations || []).length;
+    const deadlinePassed = d.registrationDeadline ? now > new Date(d.registrationDeadline) : false;
+    const daysUntilDrive = Math.ceil((new Date(d.driveDate) - now) / (1000 * 60 * 60 * 24));
 
     return {
       id: String(d._id),
@@ -1753,7 +1859,7 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
       mode: d.mode,
       location: d.location || '',
       driveDate: d.driveDate,
-      registrationDeadline: d.registrationDeadline,
+      registrationDeadline: d.registrationDeadline || null,
       opportunityType: d.opportunityType || 'placement',
       examProvider: d.examProvider || '',
       registrationLink: d.registrationLink || '',
@@ -1761,8 +1867,23 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
       eligibility: elig,
       status: d.status,
       isEligible,
+      notifiedOverride,
       myStatus: myRegistration?.status || null,
+      eligibilityDetails,
+      registeredCount,
+      deadlinePassed,
+      daysUntilDrive,
+      targetAudience: d.targetAudience || 'students',
     };
+  });
+
+  // Sort: upcoming first, then by driveDate descending
+  data.sort((a, b) => {
+    const order = { upcoming: 0, ongoing: 1, completed: 2, cancelled: 3 };
+    const ao = order[a.status] ?? 4;
+    const bo = order[b.status] ?? 4;
+    if (ao !== bo) return ao - bo;
+    return new Date(b.driveDate) - new Date(a.driveDate);
   });
 
   res.json({ success: true, data });
@@ -1778,9 +1899,18 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
   const drive = await PlacementDrive.findOne({ _id: req.params.id, deletedAt: null });
   if (!drive) throw new AppError('Opportunity not found.', 404);
 
-  const collegeName = (candidate.college || '').trim().toLowerCase();
-  if (!collegeName || (drive.collegeName || '').trim().toLowerCase() !== collegeName) {
-    throw new AppError('This opportunity is not available for your college.', 403);
+  // Check registration deadline
+  if (drive.registrationDeadline && new Date() > new Date(drive.registrationDeadline)) {
+    throw new AppError('Registration deadline has passed.', 400);
+  }
+
+  // Check college match — but allow if candidate was explicitly notified (notifiedOverride)
+  const isNotified = (drive.notifiedCandidateIds || []).some(id => String(id) === String(candidate._id));
+  if (!isNotified) {
+    const collegeName = (candidate.college || '').trim().toLowerCase();
+    if (!collegeName || (drive.collegeName || '').trim().toLowerCase() !== collegeName) {
+      throw new AppError('This opportunity is not available for your college.', 403);
+    }
   }
 
   const existing = drive.registrations.find(r => String(r.candidateId) === String(candidate._id));
@@ -1896,6 +2026,57 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
   } catch {}
 
   res.json({ success: true, data: { status: 'registered', application: pipelineApplication } });
+}));
+
+/* DELETE /api/dashboard/candidate/opportunities/:id/register — candidate
+   withdraws their registration from a drive, unless already shortlisted/selected. */
+router.delete('/candidate/opportunities/:id/register', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email });
+  if (!candidate) throw new AppError('Candidate profile not found.', 404);
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, deletedAt: null });
+  if (!drive) throw new AppError('Opportunity not found.', 404);
+
+  const idx = drive.registrations.findIndex(r => String(r.candidateId) === String(candidate._id));
+  if (idx === -1) return res.json({ success: true, message: 'Not registered.' });
+
+  const reg = drive.registrations[idx];
+  if (['shortlisted', 'selected'].includes(reg.status)) {
+    throw new AppError('Cannot withdraw — you have been shortlisted or selected. Contact your placement office.', 400);
+  }
+
+  drive.registrations.splice(idx, 1);
+  await drive.save();
+
+  // Notify placement officers (best-effort)
+  try {
+    const Notification = require('../models/Notification');
+    const officers = await User.find({ tenantId: drive.tenantId, role: { $in: ['admin', 'placement_officer'] }, deletedAt: null }).select('_id').lean();
+    if (officers.length) {
+      await Notification.insertMany(officers.map(o => ({
+        userId: o._id,
+        tenantId: drive.tenantId,
+        type: 'system',
+        title: `Registration withdrawn: ${drive.title}`,
+        message: `${candidate.name || candidate.email} withdrew their registration for "${drive.title}".`,
+        link: '/app/drives',
+        metadata: { kind: 'placement_drive_withdraw', driveId: String(drive._id), candidateId: String(candidate._id) },
+      })));
+    }
+  } catch {}
+
+  // Real-time broadcast
+  try {
+    const { emitToTenant } = require('../socket/platformSocket');
+    const socketRegistry   = require('../socket/index');
+    emitToTenant(socketRegistry.getIO(), drive.tenantId, 'drive:registrationChanged', {
+      driveId: String(drive._id),
+      candidateId: String(candidate._id),
+      status: 'withdrawn',
+    });
+  } catch {}
+
+  res.json({ success: true });
 }));
 
 /* GET /api/dashboard/candidate/training-resources — resources curated by the
