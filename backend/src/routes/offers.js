@@ -196,8 +196,9 @@ async function generateOfferPDF(offer, candidate, job, orgTpl = {}) {
 
 // ── GET /api/offers/mine — candidate gets own offer letters (across tenants) ──
 router.get('/mine', authMiddleware, asyncHandler(async (req, res) => {
-  // Find candidate doc(s) matching the logged-in user's email
-  const candidateDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
+  // Find candidate doc(s) matching the logged-in user's email.
+  // No deletedAt filter: recruiter-archived profiles must not hide the candidate's own offers.
+  const candidateDocs = await Candidate.find({ email: req.user.email }).select('_id').lean();
   if (!candidateDocs.length) return res.json({ success: true, data: [] });
 
   const candidateIds = candidateDocs.map(c => c._id);
