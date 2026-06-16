@@ -1708,7 +1708,7 @@ router.delete('/college/training-resources/:id', authenticate, allowRoles('admin
    opportunities posted by the candidate's college, with eligibility +
    registration status for the current candidate. */
 router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).lean();
+  const candidate = await Candidate.findOne({ email: req.user.email }).lean();
   const collegeName = (candidate?.college || req.user.college || '').trim();
   if (!collegeName) return res.json({ success: true, data: [] });
 
@@ -1771,7 +1771,8 @@ router.get('/candidate/opportunities', authenticate, allowRoles('candidate'), as
 /* POST /api/dashboard/candidate/opportunities/:id/register — candidate
    self-registers interest in a placement/internship/exam opportunity. */
 router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null });
+  // No deletedAt filter: archived profile must not block the candidate from registering.
+  const candidate = await Candidate.findOne({ email: req.user.email });
   if (!candidate) throw new AppError('Candidate profile not found.', 404);
 
   const drive = await PlacementDrive.findOne({ _id: req.params.id, deletedAt: null });
@@ -1900,7 +1901,7 @@ router.post('/candidate/opportunities/:id/register', authenticate, allowRoles('c
 /* GET /api/dashboard/candidate/training-resources — resources curated by the
    candidate's college placement cell. */
 router.get('/candidate/training-resources', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).select('college').lean();
+  const candidate = await Candidate.findOne({ email: req.user.email }).select('college').lean();
   const collegeName = (candidate?.college || req.user.college || '').trim();
   if (!collegeName) return res.json({ success: true, data: [] });
 
@@ -1918,7 +1919,7 @@ router.get('/candidate/training-resources', authenticate, allowRoles('candidate'
    don't yet have, with suggested courses to close the gap and how many
    active jobs want each skill. */
 router.get('/candidate/skill-recommendations', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
-  const candidate = await Candidate.findOne({ email: req.user.email, deletedAt: null }).select('skills').lean();
+  const candidate = await Candidate.findOne({ email: req.user.email }).select('skills').lean();
 
   const activeJobs = await Job.find({ status: 'active', isPublic: true, deletedAt: null }).select('skills').limit(200).lean();
   const demandCounts = new Map();

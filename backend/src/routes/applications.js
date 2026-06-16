@@ -1992,10 +1992,18 @@ router.delete('/:id', ...guard, asyncHandler(async (req, res) => {
   let filter = { _id: req.params.id, deletedAt: null };
 
   if (req.user.role === 'candidate') {
-    // Find Candidate doc(s) matching this user's email — handles multi-tenant applications
-    const candidateDocs = await Candidate.find({ email: req.user.email, deletedAt: null }).select('_id').lean();
-    if (!candidateDocs.length) throw new AppError('Application not found.', 404);
-    filter.candidateId = { $in: candidateDocs.map(c => c._id) };
+    // Find Candidate doc(s) matching this user's email — handles multi-tenant applications.
+    // No deletedAt filter: a recruiter archiving the profile must not block the candidate
+    // from withdrawing their own applications.
+    const candidateDocs = await Candidate.find({ email: req.user.email }).select('_id').lean();
+    const candidateIds = candidateDocs.map(c => c._id);
+    // Also allow withdrawal when the application was stored with the user's own _id
+    const userObjId = req.user._id || req.user.id;
+    if (userObjId && !candidateIds.some(id => id.toString() === userObjId.toString())) {
+      candidateIds.push(userObjId);
+    }
+    if (!candidateIds.length) throw new AppError('Application not found.', 404);
+    filter.candidateId = { $in: candidateIds };
     // No tenantId restriction — candidate's application may be under the employer's tenant
   } else {
     filter.tenantId = req.user.tenantId;
