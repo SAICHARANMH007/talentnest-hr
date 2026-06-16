@@ -193,7 +193,9 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
 }
 
 // ── Camera sub-component (used by Panel B) ────────────────────────────────────
-function FaceCamera({ onDone, onCancel }) {
+// stream prop: MediaStream obtained from the parent button click (user gesture context)
+function FaceCamera({ stream, onDone, onCancel }) {
+  const [cameraReady, setCameraReady] = useState(false);
   const [modelReady, setModelReady]   = useState(false);
   const [modelLoading, setMLoading]   = useState(false);
   const [faceapi, setFaceapi]         = useState(null);
@@ -216,27 +218,17 @@ function FaceCamera({ onDone, onCancel }) {
 
   const flash = (msg, ok=true) => setToast({ msg, ok });
 
-  // Start camera
+  // Attach parent-provided stream to video element
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video:{ facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
-        });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // Fire play() but never await — autoPlay attr handles it; awaiting throws on Android
-          videoRef.current.play().catch(() => {});
-        }
-      } catch {
-        if (!cancelled) flash('Camera access denied. Please allow camera permissions.', false);
-      }
-    })();
-    return () => { cancelled = true; stopCamera(); };
-  }, []);
+    if (!stream) return;
+    streamRef.current = stream;
+    const vid = videoRef.current;
+    if (vid) {
+      vid.srcObject = stream;
+      if (vid.readyState >= 1) vid.play().catch(() => {});
+    }
+    return () => stopCamera();
+  }, [stream]);
 
   // Load models
   useEffect(() => {
@@ -248,9 +240,9 @@ function FaceCamera({ onDone, onCancel }) {
       .finally(() => setMLoading(false));
   }, []);
 
-  // Live detection + liveness EAR loop
+  // Live detection + liveness EAR loop — only starts once video is confirmed playing
   useEffect(() => {
-    if (!modelReady || !faceapi || !videoRef.current) return;
+    if (!modelReady || !faceapi || !cameraReady) return;
     let active = true;
     let earBelowCount = 0; // consecutive frames with eyes closed
 
@@ -289,7 +281,7 @@ function FaceCamera({ onDone, onCancel }) {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [modelReady, faceapi]);
+  }, [modelReady, faceapi, cameraReady]);
 
   const stopCamera = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -368,6 +360,8 @@ function FaceCamera({ onDone, onCancel }) {
       <div style={{ position:'relative', borderRadius:14, overflow:'hidden', boxShadow:'0 8px 32px rgba(1,118,211,0.18)',
         border: qualityWarn ? '2.5px solid #ef4444' : '2.5px solid transparent' }}>
         <video ref={videoRef} autoPlay playsInline muted
+          onLoadedMetadata={e => { e.target.play().catch(() => {}); setCameraReady(true); }}
+          onPlaying={() => setCameraReady(true)}
           style={{ width:'100%', borderRadius:14, display:'block', transform:'scaleX(-1)' }} />
         <canvas ref={canvasRef}
           style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', transform:'scaleX(-1)', pointerEvents:'none' }} />
@@ -404,11 +398,13 @@ function FaceCamera({ onDone, onCancel }) {
       {/* Detection status */}
       <div style={{ fontSize:12, fontWeight:600, textAlign:'center',
         color: liveResult ? '#15803d' : '#9ca3af' }}>
-        {modelLoading
-          ? '⏳ Loading AI models…'
-          : !liveResult
-            ? '❌ No face detected — face the camera directly'
-            : '✅ Face detected — ready to capture'}
+        {!cameraReady
+          ? '📷 Starting camera…'
+          : modelLoading
+            ? '⏳ Loading AI models…'
+            : !liveResult
+              ? '❌ No face detected — face the camera directly'
+              : '✅ Face detected — ready to capture'}
       </div>
 
       <div style={S.row}>
@@ -432,12 +428,26 @@ function FaceCamera({ onDone, onCancel }) {
 
 // ── Panel B — Face ID ──────────────────────────────────────────────────────────
 function FaceIdPanel({ frsStatus, onEnrolled }) {
-  const [showCamera, setShowCamera] = useState(false);
-  const [consent, setConsent]       = useState(false);
-  const [deleting, setDeleting]     = useState(false);
-  const [toast, setToast]           = useState({ msg:'', ok:true });
+  const [showCamera, setShowCamera]     = useState(false);
+  const [pendingStream, setPendingStream] = useState(null);
+  const [consent, setConsent]           = useState(false);
+  const [deleting, setDeleting]         = useState(false);
+  const [toast, setToast]               = useState({ msg:'', ok:true });
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 5000); };
+
+  // Acquire camera in user gesture context, then show FaceCamera
+  const handleStartCamera = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      setPendingStream(s);
+      setShowCamera(true);
+    } catch {
+      flash('Camera access denied. Please allow camera permissions in your browser.', false);
+    }
+  };
 
   const enrolled   = !!frsStatus?.enrolled;
   const enrolledAt = frsStatus?.enrolledAt ? new Date(frsStatus.enrolledAt).toLocaleDateString() : null;
@@ -465,7 +475,11 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
       <div style={S.card}>
         <div style={S.cardTitle}><span style={{ fontSize:16 }}>🔐</span><span>Face ID — Enrollment Camera</span></div>
         <div style={S.divider} />
-        <FaceCamera onDone={handleDone} onCancel={() => setShowCamera(false)} />
+        <FaceCamera
+          stream={pendingStream}
+          onDone={handleDone}
+          onCancel={() => { setPendingStream(null); setShowCamera(false); }}
+        />
       </div>
     );
   }
@@ -486,7 +500,7 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
             <span style={{ color:'#0176D3' }}>✓</span> Get verified automatically during assessments
           </div>
           <div style={S.row}>
-            <button style={S.btnSec} onClick={() => { setConsent(true); setShowCamera(true); }}>
+            <button style={S.btnSec} onClick={handleStartCamera}>
               🔄 Re-enroll Face
             </button>
             <button style={S.btnDanger} disabled={deleting} onClick={handleDelete}>
@@ -518,7 +532,7 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
               </label>
             </div>
           ) : (
-            <button style={S.btnPri} onClick={() => setShowCamera(true)}>
+            <button style={S.btnPri} onClick={handleStartCamera}>
               🔐 Start Face Enrollment (5 angles + blink)
             </button>
           )}

@@ -102,27 +102,15 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
   const rafRef    = useRef(null);
   const earRef    = useRef({ belowCount:0 }); // track consecutive closed frames
 
-  // ── Start camera when entering step 'camera' ────────────────────────────────
+  // Attach stream to video after step='camera' renders the video element.
+  // Stream is acquired directly in proceedToCamera / retryCamera (user gesture context).
   useEffect(() => {
-    if (step !== 'camera') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video:{ facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
-        });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // Fire play() but never await — autoPlay attr handles it; awaiting throws on Android
-          videoRef.current.play().catch(() => {});
-        }
-      } catch (e) {
-        if (!cancelled) setCamError('Camera access denied. Please allow camera and try again.');
-      }
-    })();
-    return () => { cancelled = true; stopCamera(); };
+    if (step !== 'camera' || !streamRef.current) return;
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.srcObject = streamRef.current;
+    if (vid.readyState >= 1) vid.play().catch(() => {});
+    return () => stopCamera();
   }, [step]);
 
   // ── Load face-api models when camera starts ─────────────────────────────────
@@ -180,8 +168,8 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     streamRef.current = null;
   };
 
-  // ── Email validation ─────────────────────────────────────────────────────────
-  const proceedToCamera = () => {
+  // ── Email validation + camera start (must happen in user gesture context) ────
+  const proceedToCamera = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/\S+@\S+\.\S+/.test(trimmed)) {
       setEmailError('Enter a valid email address.');
@@ -189,6 +177,15 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
     setEmailError('');
     setEmail(trimmed);
+    // Get camera HERE before rendering camera step — keeps us in user gesture context
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      streamRef.current = s;
+    } catch {
+      setCamError('Camera access denied. Please allow camera and try again.');
+    }
     setStep('camera');
   };
 
@@ -228,11 +225,24 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     }
   };
 
-  const retryCamera = () => {
-    setServerError('');
+  const retryCamera = async () => {
+    stopCamera();
+    streamRef.current = null;
+    setServerError(''); setCamError('');
     setFrames([]); setDescs([]); setPromptIdx(0);
     setLiveness(false); earRef.current.belowCount = 0;
     setLiveResult(null);
+    // Re-acquire camera in user gesture context
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      streamRef.current = s;
+      const vid = videoRef.current;
+      if (vid) { vid.srcObject = s; if (vid.readyState >= 1) vid.play().catch(() => {}); }
+    } catch {
+      setCamError('Camera access denied. Please allow camera and try again.');
+    }
     setStep('camera');
   };
 
@@ -307,6 +317,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                 <div style={{ position:'relative', borderRadius:14, overflow:'hidden',
                   border: qualityWarn ? '2px solid #ef4444' : '2px solid rgba(1,118,211,0.4)' }}>
                   <video ref={videoRef} autoPlay playsInline muted
+                    onLoadedMetadata={e => e.target.play().catch(() => {})}
                     style={{ width:'100%', display:'block', transform:'scaleX(-1)', borderRadius:12 }} />
                   <canvas ref={canvasRef}
                     style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%',
