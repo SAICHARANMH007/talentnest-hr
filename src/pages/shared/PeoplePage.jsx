@@ -83,15 +83,27 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000 }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 420, background: '#fff', zIndex: 1001, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 32px rgba(0,0,0,0.18)' }}>
-        {/* Hero header with gradient */}
-        <div style={{ height: 110, background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 60%, ${bg}88 100%)`, position: 'relative', flexShrink: 0 }}>
-          <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>×</button>
-          {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 20, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '3px 10px', backdropFilter: 'blur(4px)' }}>✓ Connected</div>}
-        </div>
+      {/* Blurred backdrop — click closes */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+      >
+        {/* Modal card — click inside doesn't close */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ background: '#fff', width: '100%', maxWidth: 460, maxHeight: '92vh', borderRadius: 24, display: 'flex', flexDirection: 'column', boxShadow: '0 28px 90px rgba(0,0,0,0.4)', overflow: 'hidden', animation: 'ppSlide 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
+        >
+          <style>{`@keyframes ppSlide{from{opacity:0;transform:scale(0.94) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+          {/* Hero header with gradient */}
+          <div style={{ height: 110, background: `linear-gradient(140deg, ${bg} 0%, ${bg}dd 55%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
+            {/* Decorative glow */}
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 30%, rgba(255,255,255,0.18) 0%, transparent 55%)', pointerEvents: 'none' }} />
+            {/* Close button — prominent ✕ */}
+            <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.22)', border: '1.5px solid rgba(255,255,255,0.45)', color: '#fff', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', fontSize: 18, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, lineHeight: 1 }}>✕</button>
+            {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 20, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(6px)' }}>✓ Connected</div>}
+          </div>
 
-        <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <div style={{ padding: '0 20px 24px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {/* Profile photo overlapping header */}
           <div style={{ marginTop: -44, marginBottom: 14, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
             <div style={{ position: 'relative' }}>
@@ -236,6 +248,7 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {showInfoModal && (
@@ -319,10 +332,10 @@ function ConnectionButton({ person, onAction, loading }) {
 
   return (
     <button onClick={() => onAction('connect', person)} disabled={loading}
-      style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #0176D3', background: '#EFF6FF', color: '#1D4ED8', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ width: '100%', padding: '7px 16px', borderRadius: 10, border: '1.5px solid #0176D3', background: 'transparent', color: '#0176D3', fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.15s', opacity: loading ? 0.6 : 1 }}
       onMouseEnter={e => { e.currentTarget.style.background = '#0176D3'; e.currentTarget.style.color = '#fff'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.color = '#1D4ED8'; }}>
-      + Connect
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0176D3'; }}>
+      {loading ? '…' : '+ Connect'}
     </button>
   );
 }
@@ -394,7 +407,7 @@ function ReasonChip({ reason }) {
   );
 }
 
-// ── Person Grid Card (for suggestions) — LinkedIn-style ───────────────────────
+// ── Person Grid Card (for suggestions) — modern trendy design ─────────────────
 function PersonGridCard({ person, onAction, loading, onCardClick }) {
   const bg = ROLE_COLOR[person.role] || '#0176D3';
   const hasPhoto = !!(person.avatarUrl || person.photoUrl);
@@ -402,55 +415,60 @@ function PersonGridCard({ person, onAction, loading, onCardClick }) {
     <div
       onClick={onCardClick}
       style={{
-        borderRadius: 16, overflow: 'hidden', background: '#fff',
-        border: '1px solid #E5E7EB', boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+        borderRadius: 20, overflow: 'hidden', background: '#fff',
+        border: '1px solid #E8EEF6',
+        boxShadow: '0 2px 14px rgba(0,0,0,0.07)',
         display: 'flex', flexDirection: 'column',
         cursor: onCardClick ? 'pointer' : 'default',
-        transition: 'transform 0.15s, box-shadow 0.15s',
+        transition: 'transform 0.18s ease, box-shadow 0.18s ease',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.14)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.06)'; }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 14px 40px ${bg}28`; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 14px rgba(0,0,0,0.07)'; }}
     >
-      {/* Gradient header strip */}
-      <div style={{ height: 58, background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 55%, ${bg}77 100%)`, flexShrink: 0, position: 'relative' }}>
+      {/* Gradient header — taller, with light burst */}
+      <div style={{ height: 72, background: `linear-gradient(140deg, ${bg} 0%, ${bg}ee 50%, ${bg}99 100%)`, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 6, left: -10, width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
         {person.mutualConnections > 0 && (
-          <div style={{ position: 'absolute', bottom: 6, right: 8, fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 10, padding: '2px 6px', backdropFilter: 'blur(4px)' }}>
-            🤝 {person.mutualConnections} mutual
+          <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, padding: '3px 7px', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.25)' }}>
+            🤝 {person.mutualConnections}
           </div>
         )}
       </div>
 
       {/* Body */}
       <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: 1 }}>
-        {/* Profile photo overlapping header */}
-        <div style={{ marginTop: -34, marginBottom: 8, position: 'relative' }}>
+        {/* Avatar overlapping header */}
+        <div style={{ marginTop: -40, marginBottom: 9, position: 'relative' }}>
           {hasPhoto ? (
             <img src={person.avatarUrl || person.photoUrl} alt={person.name}
-              style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover',
-                border: '3px solid #fff', boxShadow: `0 4px 14px ${bg}44` }} />
+              style={{ width: 78, height: 78, borderRadius: '50%', objectFit: 'cover',
+                border: '3.5px solid #fff', boxShadow: `0 5px 18px ${bg}55` }} />
           ) : (
-            <div style={{ width: 68, height: 68, borderRadius: '50%', background: bg, color: '#fff',
+            <div style={{ width: 78, height: 78, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${bg} 30%, ${bg}bb 100%)`, color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 26, fontWeight: 800, border: '3px solid #fff',
-              boxShadow: `0 4px 14px ${bg}44` }}>
+              fontSize: 30, fontWeight: 900, border: '3.5px solid #fff',
+              boxShadow: `0 5px 18px ${bg}55`, letterSpacing: '-0.5px' }}>
               {(person.name || '?')[0].toUpperCase()}
             </div>
           )}
         </div>
 
-        <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 4, lineHeight: 1.2 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 5, lineHeight: 1.2,
+          maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
           {person.name || 'Member'}
         </div>
         <RoleBadge role={person.role} />
 
         {person.title && (
-          <div style={{ fontSize: 12, color: '#374151', marginTop: 5, fontWeight: 500, lineHeight: 1.3,
+          <div style={{ fontSize: 11.5, color: '#4B5563', marginTop: 5, fontWeight: 500, lineHeight: 1.35,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {person.title}
           </div>
         )}
         {person.location && (
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>
+          <div style={{ fontSize: 10.5, color: '#9CA3AF', marginTop: 3 }}>📍 {person.location}</div>
         )}
         {!person.title && !person.location && person.summary && (
           <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4,
@@ -460,31 +478,32 @@ function PersonGridCard({ person, onAction, loading, onCardClick }) {
         )}
 
         {Array.isArray(person.skills) && person.skills.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 4, marginTop: 7, flexWrap: 'wrap', justifyContent: 'center' }}>
             {person.skills.slice(0, 2).map((s, i) => (
-              <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 10, padding: '2px 6px', border: '1px solid #E5E7EB' }}>{s}</span>
+              <span key={i} style={{ fontSize: 10, fontWeight: 600, color: bg, background: bg + '12', borderRadius: 10, padding: '2px 7px', border: `1px solid ${bg}25` }}>{s}</span>
             ))}
             {person.skills.length > 2 && (
-              <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 3px' }}>+{person.skills.length - 2}</span>
+              <span style={{ fontSize: 10, color: '#9CA3AF', padding: '2px 2px' }}>+{person.skills.length - 2}</span>
             )}
           </div>
         )}
 
         <ReasonChip reason={person.suggestionReason} />
 
-        {/* View profile link */}
-        {onCardClick && (
-          <button
-            onClick={e => { e.stopPropagation(); onCardClick(); }}
-            style={{ marginTop: 8, marginBottom: 6, fontSize: 11, color: bg, background: 'transparent', border: `1px solid ${bg}`, borderRadius: 8, padding: '4px 14px', cursor: 'pointer', fontWeight: 700, transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = bg; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = bg; }}>
-            View Profile
-          </button>
-        )}
-
-        <div onClick={e => e.stopPropagation()}>
-          <ConnectionButton person={person} onAction={onAction} loading={loading} />
+        {/* Action buttons */}
+        <div style={{ width: '100%', marginTop: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {onCardClick && (
+            <button
+              onClick={e => { e.stopPropagation(); onCardClick(); }}
+              style={{ width: '100%', fontSize: 12, color: '#fff', background: bg, border: `none`, borderRadius: 10, padding: '8px 0', cursor: 'pointer', fontWeight: 700, transition: 'all 0.15s', boxShadow: `0 2px 8px ${bg}40` }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
+              View Profile
+            </button>
+          )}
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%' }}>
+            <ConnectionButton person={person} onAction={onAction} loading={loading} />
+          </div>
         </div>
       </div>
     </div>
