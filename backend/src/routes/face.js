@@ -315,6 +315,16 @@ router.post('/photo', ...guard, asyncHandler(async (req, res) => {
   res.json({ success: true, photoUrl: url });
 }));
 
+// DELETE /api/face/photo — remove profile photo only (does NOT touch face enrollment)
+router.delete('/photo', ...guard, asyncHandler(async (req, res) => {
+  const uid = String(req.user.id);
+  await User.findByIdAndUpdate(uid, { $set: { photoUrl: '' } });
+  if (req.user.email && req.user.tenantId) {
+    await syncProfile(req.user.email, { photoUrl: '' }, req.user.tenantId);
+  }
+  res.json({ success: true, message: 'Profile photo removed.' });
+}));
+
 // POST /api/face/verify — single-frame verification against enrolled descriptor
 // Body: { descriptor: number[] }
 router.post('/verify', ...guard, asyncHandler(async (req, res) => {

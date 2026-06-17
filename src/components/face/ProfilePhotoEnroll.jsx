@@ -139,9 +139,10 @@ const MIN_QUALITY = 0.30; // lowered for mobile cameras
 
 // ── Panel A — Profile Photo ────────────────────────────────────────────────────
 function PhotoPanel({ photoUrl, onPhotoUpdated }) {
-  const [uploading, setUploading] = useState(false);
-  const [toast, setToast]         = useState({ msg:'', ok:true });
-  const [cropSrc, setCropSrc]     = useState(null);
+  const [uploading, setUploading]   = useState(false);
+  const [removing, setRemoving]     = useState(false);
+  const [toast, setToast]           = useState({ msg:'', ok:true });
+  const [cropSrc, setCropSrc]       = useState(null);
   const fileRef = useRef(null);
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 4000); };
@@ -169,6 +170,19 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
     setUploading(false);
   };
 
+  const doRemove = async () => {
+    if (!window.confirm('Remove your profile photo? This cannot be undone.')) return;
+    setRemoving(true);
+    try {
+      await api.removePhoto();
+      onPhotoUpdated?.('');
+      flash('🗑️ Photo removed.');
+    } catch (err) {
+      flash('Remove failed: ' + (err.message || 'Unknown error'), false);
+    }
+    setRemoving(false);
+  };
+
   return (
     <>
       {cropSrc && <CropModal src={cropSrc} onConfirm={doUpload} onCancel={() => setCropSrc(null)} />}
@@ -184,10 +198,20 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
               Upload a clear photo from your gallery or take a new one. Appears on your profile, resume, and recruiter view.
             </div>
             <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
-            <button style={{ ...S.btnPri, opacity: uploading ? 0.6 : 1 }} disabled={uploading}
-              onClick={() => fileRef.current?.click()}>
-              {uploading ? <><Spinner />Uploading…</> : '📷 Change Photo'}
-            </button>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <button style={{ ...S.btnPri, opacity: uploading ? 0.6 : 1 }} disabled={uploading || removing}
+                onClick={() => fileRef.current?.click()}>
+                {uploading ? <><Spinner />Uploading…</> : '📷 Change Photo'}
+              </button>
+              {photoUrl ? (
+                <button
+                  style={{ ...S.btnPri, background:'transparent', color:'#EF4444', border:'1.5px solid #EF4444', opacity: removing ? 0.6 : 1 }}
+                  disabled={removing || uploading}
+                  onClick={doRemove}>
+                  {removing ? <><Spinner />Removing…</> : '🗑️ Remove Photo'}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
         {toast.msg && <div style={S.toast(toast.ok)}>{toast.msg}</div>}

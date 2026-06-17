@@ -5,6 +5,7 @@ export const faceService = {
   enrollFace:    (body)         => req('POST', '/face/enroll',  body),
   uploadPhoto:   (body)         => req('POST', '/face/photo',   body),
   verifyFace:    (body)         => req('POST', '/face/verify',  body),
+  removePhoto:   ()             => req('DELETE','/face/photo'),
   deleteFace:    ()             => req('DELETE','/face/enroll'),
   proctorCheck:  (body)         => req('POST', '/face/proctor-check', body),
 
