@@ -174,7 +174,7 @@ function PostTypeBanner({ post, isMobile }) {
       background: cfg.gradient,
       borderRadius: `${topRad}px ${topRad}px 0 0`,
       padding: `${isMobile ? 16 : 20}px ${hPad}px`,
-      marginLeft: -hPad, marginRight: -hPad, marginBottom: 16,
+      marginLeft: -hPad, width: `calc(100% + ${hPad * 2}px)`, marginBottom: 16,
       display: 'flex', alignItems: 'center', gap: 14,
       position: 'relative', overflow: 'hidden',
     }}>
@@ -2140,7 +2140,7 @@ export default function CommunityFeed({ user }) {
 
   return (
     <div
-      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}
+      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -2305,9 +2305,9 @@ export default function CommunityFeed({ user }) {
         .tn-composer-btn:hover { background: #F1F5F9; border-color: #D1D5DB; }
         .tn-filter-chip { transition: transform 0.1s, box-shadow 0.1s; }
         .tn-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
-        /* Remove .tn-main-content horizontal padding on mobile so post cards can go truly edge-to-edge */
+        /* Remove .tn-main-content horizontal padding on mobile so post cards go edge-to-edge */
         @media (max-width: 1099px) {
-          .tn-main-content { padding-left: 0 !important; padding-right: 0 !important; }
+          .tn-main-content { padding-left: 0 !important; padding-right: 0 !important; overflow-x: hidden !important; }
         }
       `}</style>
     </div>
