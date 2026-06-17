@@ -1340,7 +1340,7 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   return (
     <>
-      <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9' }}>
+      <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9', overflow: 'hidden' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
           <button onClick={() => openModal('update')} className="tn-composer-btn"
