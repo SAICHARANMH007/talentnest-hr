@@ -422,7 +422,7 @@ function Lightbox({ images, index, onClose }) {
   );
 }
 
-function ImageGrid({ images }) {
+function ImageGrid({ images, bleed = 0 }) {
   const [lightbox, setLightbox] = useState(null);
   if (!images?.length) return null;
   const n = images.length;
@@ -433,11 +433,11 @@ function ImageGrid({ images }) {
 
   return (
     <>
-      <div style={{ display: 'grid', gap: 3, marginTop: 12, borderRadius: 16, overflow: 'hidden', ...gridStyle }}>
+      <div style={{ display: 'grid', gap: 3, marginTop: 12, marginLeft: -bleed, marginRight: -bleed, borderRadius: bleed > 0 ? 0 : 16, overflow: 'hidden', ...gridStyle }}>
         {images.slice(0, 4).map((img, i) => (
           <div key={i} style={{ position: 'relative', ...(n === 3 && i === 0 ? { gridColumn: '1 / -1' } : {}) }}>
             <img src={img} alt="" onClick={() => setLightbox(i)}
-              style={{ width: '100%', height: n === 1 ? 380 : 200, objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
+              style={{ width: '100%', height: n === 1 ? 'auto' : 200, objectFit: n === 1 ? 'fill' : 'cover', cursor: 'pointer', display: 'block', maxWidth: '100%' }} />
             {i === 3 && images.length > 4 && (
               <div onClick={() => setLightbox(3)}
                 style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -989,7 +989,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
         </div>
       )}
 
-      <ImageGrid images={post.images} />
+      <ImageGrid images={post.images} bleed={isMobile ? 14 : 0} />
 
       {post.videos?.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', maxHeight: 420, borderRadius: 12, marginTop: 12, background: '#000', overflow: 'hidden' }}>
@@ -1348,7 +1348,7 @@ function CreatePost({ user, onCreate, isMobile }) {
             Start a post, {user?.name?.split(' ')[0] || 'there'}…
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', flexWrap: 'nowrap', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
           {[
             { type: 'update',       icon: '🖼️', label: 'Photo',    color: '#0176D3' },
             { type: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706' },
@@ -2176,7 +2176,7 @@ export default function CommunityFeed({ user }) {
       {tab === 'feed' && (
         <>
           {/* Filters row */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
             {/* My Network chip */}
             <button
               onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }} className="tn-filter-chip"
