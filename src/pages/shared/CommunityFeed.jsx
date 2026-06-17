@@ -167,14 +167,14 @@ function PostTypeBanner({ post, isMobile }) {
   if (!cfg) return null;
 
   const hPad   = isMobile ? 14 : 20;
-  const topRad = 14;
+  const topRad = isMobile ? 14 : 20;
 
   return (
     <div style={{
       background: cfg.gradient,
       borderRadius: `${topRad}px ${topRad}px 0 0`,
       padding: `${isMobile ? 16 : 20}px ${hPad}px`,
-      marginLeft: -hPad, width: `calc(100% + ${hPad * 2}px)`, marginBottom: 16,
+      marginLeft: -hPad, marginRight: -hPad, marginBottom: 16,
       display: 'flex', alignItems: 'center', gap: 14,
       position: 'relative', overflow: 'hidden',
     }}>
