@@ -1795,18 +1795,35 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
 }
 
 // ── Search Bar ─────────────────────────────────────────────────────────────────
-function SearchBar({ value, onChange }) {
+function SearchBar({ value, onChange, isMobile }) {
   return (
     <div style={{ position: 'relative', marginBottom: 12 }}>
-      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
-      <input value={value} onChange={e => onChange(e.target.value)}
+      <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
         placeholder="Search posts, people, hashtags…"
-        style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
-        onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
-        onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
+        style={{
+          width: '100%',
+          padding: isMobile ? '12px 40px 12px 40px' : '9px 36px 9px 36px',
+          borderRadius: isMobile ? 24 : 10,
+          border: '1.5px solid #E5E7EB',
+          fontSize: 14,
+          outline: 'none',
+          background: isMobile ? '#F1F5F9' : '#F8FAFC',
+          boxSizing: 'border-box',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+          fontFamily: 'inherit',
+          color: '#0A1628',
+        }}
+        onFocus={e => { e.currentTarget.style.borderColor = '#0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.12)'; }}
+        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
+      />
       {value && (
-        <button onClick={() => onChange('')}
-          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+        <button
+          onClick={() => onChange('')}
+          style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.08)', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: 13, lineHeight: 1, borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
+        >×</button>
       )}
     </div>
   );
@@ -1842,6 +1859,8 @@ export default function CommunityFeed({ user }) {
   const [loadingMore,  setLoadingMore]  = useState(false);
   const [page,         setPage]         = useState(1);
   const [hasMore,      setHasMore]      = useState(true);
+  const [pendingPosts, setPendingPosts] = useState([]); // buffered new posts while user reads
+  const sentinelRef = useRef(null); // bottom sentinel for IntersectionObserver infinite scroll
   const [filter,       setFilter]       = useState('all');
   const [networkOnly,  setNetworkOnly]  = useState(false); // "My Network" filter
   const [search,       setSearch]       = useState('');
@@ -1888,8 +1907,8 @@ export default function CommunityFeed({ user }) {
     }
   }, [networkOnly]);
 
-  useEffect(() => { loadPosts(1, filter); }, [filter, loadPosts]);
-  useEffect(() => { setActiveHash(null); setSearch(''); }, [filter]);
+  useEffect(() => { loadPosts(1, filter); setPendingPosts([]); }, [filter, loadPosts]);
+  useEffect(() => { setActiveHash(null); setSearch(''); setPendingPosts([]); }, [filter]);
 
   const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
@@ -2019,10 +2038,20 @@ export default function CommunityFeed({ user }) {
   usePlatformEvents({
     'post:created': (post) => {
       if (String(post.authorId) === String(uid)) return;
-      setPosts(prev => {
-        if (prev.some(p => String(p._id) === String(post._id))) return prev;
-        return [post, ...prev]; // instant — appears at top immediately
-      });
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      if (scrollY < 120) {
+        // User is at the top — show immediately
+        setPosts(prev => {
+          if (prev.some(p => String(p._id) === String(post._id))) return prev;
+          return [post, ...prev];
+        });
+      } else {
+        // User is reading — queue as pending, show notification banner
+        setPendingPosts(prev => {
+          if (prev.some(p => String(p._id) === String(post._id))) return prev;
+          return [post, ...prev];
+        });
+      }
     },
     'post:reacted': ({ postId, reactions }) => {
       setPosts(prev => prev.map(p => String(p._id) === String(postId) ? { ...p, reactions } : p));
@@ -2091,6 +2120,23 @@ export default function CommunityFeed({ user }) {
   const myPosts     = useMemo(() => posts.filter(p => String(p.authorId) === String(uid)), [posts, uid]);
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
 
+  // Infinite scroll — auto-load more when the sentinel div near the bottom enters the viewport.
+  // Only active when there are more pages and no client-side filter is active.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || isFiltered) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !loadingMore) {
+          loadPosts(page + 1, filter, true);
+        }
+      },
+      { rootMargin: '400px' } // start fetching 400px before the bottom — feels instant
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, filter, isFiltered, loadPosts]);
+
   // Pull-to-refresh (mobile only)
   const pullStartY  = useRef(0);
   const [pullDist,  setPullDist]  = useState(0);
@@ -2151,6 +2197,36 @@ export default function CommunityFeed({ user }) {
           <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: refreshing || pullDist >= PULL_THRESHOLD ? 'tn-spin 0.7s linear infinite' : 'none', transform: refreshing ? 'none' : `rotate(${pullDist * 2.8}deg)`, opacity: Math.min(1, pullDist / PULL_THRESHOLD) }} />
         </div>
       )}
+
+      {/* New posts available floating banner — shows when new posts arrive while user is scrolled down */}
+      {pendingPosts.length > 0 && tab === 'feed' && !isFiltered && (
+        <div
+          onClick={() => {
+            setPosts(prev => {
+              const existingIds = new Set(prev.map(p => String(p._id)));
+              const fresh = pendingPosts.filter(p => !existingIds.has(String(p._id)));
+              return fresh.length ? [...fresh, ...prev] : prev;
+            });
+            setPendingPosts([]);
+            const scrollEl = document.querySelector('.tn-main-content');
+            if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+            else window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          style={{
+            position: 'fixed', top: isMobile ? 64 : 72, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 1200, background: 'linear-gradient(135deg, #0176D3 0%, #0D47A1 100%)',
+            color: '#fff', borderRadius: 28, padding: isMobile ? '10px 22px' : '11px 26px',
+            fontSize: isMobile ? 13 : 14, fontWeight: 700, cursor: 'pointer',
+            boxShadow: '0 4px 24px rgba(1,118,211,0.45)', display: 'flex', alignItems: 'center',
+            gap: 8, userSelect: 'none', whiteSpace: 'nowrap',
+            animation: 'tnBannerIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+          }}
+        >
+          <span style={{ fontSize: 16 }}>↑</span>
+          {pendingPosts.length} new post{pendingPosts.length > 1 ? 's' : ''} — tap to see
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: isMobile ? '0 12px' : 0, flexWrap: 'wrap', gap: 10 }}>
         <div>
@@ -2166,7 +2242,7 @@ export default function CommunityFeed({ user }) {
           { id: 'feed',  label: 'Feed' },
           { id: 'saved', label: `★ Saved (${savedCount})` },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+          <button key={t.id} onClick={() => { setTab(t.id); setPendingPosts([]); }}
             style={{ padding: '8px 20px', border: 'none', background: tab === t.id ? '#fff' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 800 : 600, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderRadius: 9, transition: 'all 0.15s', boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
             {t.label}
           </button>
@@ -2179,12 +2255,12 @@ export default function CommunityFeed({ user }) {
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
             {/* My Network chip */}
             <button
-              onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); }} className="tn-filter-chip"
+              onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); setPendingPosts([]); }} className="tn-filter-chip"
               style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${networkOnly ? '#059669' : '#D1D5DB'}`, background: networkOnly ? '#D1FAE5' : '#fff', color: networkOnly ? '#065F46' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               🤝 My Network {networkOnly && connections.length > 0 && <span style={{ background: '#059669', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>{connections.length}</span>}
             </button>
             {FILTERS.map(f => (
-              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); }} className="tn-filter-chip"
+              <button key={f.value} onClick={() => { setFilter(f.value); setActiveHash(null); setNetworkOnly(false); setPendingPosts([]); }} className="tn-filter-chip"
                 style={{ padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${filter === f.value && !activeHash && !networkOnly ? '#0176D3' : '#D1D5DB'}`, background: filter === f.value && !activeHash && !networkOnly ? '#EFF6FF' : '#fff', color: filter === f.value && !activeHash && !networkOnly ? '#1D4ED8' : '#374151', fontSize: 12, fontWeight: filter === f.value && !activeHash && !networkOnly ? 700 : 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.12s', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 {f.label}
               </button>
@@ -2226,7 +2302,7 @@ export default function CommunityFeed({ user }) {
         <div style={{ padding: isMobile ? '0 6px' : 0 }}>
           {tab === 'feed' && (
             <>
-              <SearchBar value={search} onChange={setSearch} />
+              <SearchBar value={search} onChange={setSearch} isMobile={isMobile} />
               <CreatePost user={user} onCreate={handleCreate} isMobile={isMobile} />
 
               {loading ? (
@@ -2259,13 +2335,16 @@ export default function CommunityFeed({ user }) {
                   {visiblePosts.map(post => (
                     <PostCard key={post._id} post={post} {...sharedPostProps} />
                   ))}
+                  {/* Infinite scroll sentinel — IntersectionObserver triggers next page load */}
                   {hasMore && !isFiltered && (
-                    <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
-                      <button onClick={() => loadPosts(page + 1, filter, true)} disabled={loadingMore}
-                        style={{ ...btnG, padding: '10px 28px', fontSize: 13 }}>
-                        {loadingMore ? 'Loading…' : 'Load more'}
-                      </button>
-                    </div>
+                    <>
+                      <div ref={sentinelRef} style={{ height: 1, marginBottom: 8 }} />
+                      {loadingMore && (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0 24px' }}>
+                          <div style={{ width: 26, height: 26, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -2297,6 +2376,7 @@ export default function CommunityFeed({ user }) {
 
       <style>{`
         @keyframes tn-spin { to { transform: rotate(360deg); } }
+        @keyframes tnBannerIn { from { opacity:0; transform:translateX(-50%) translateY(-16px) scale(0.92); } to { opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
         .tn-postcard { transition: box-shadow 0.15s, border-color 0.15s; }
         .tn-postcard:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); border-color: #E5E7EB; }
         .tn-sidecard { transition: box-shadow 0.15s, transform 0.15s; }

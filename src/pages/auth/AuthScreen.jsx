@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LOGO_PATH } from '../../config/logo.js';
 import Logo from '../../components/Logo.jsx';
@@ -9,8 +9,6 @@ import { api } from '../../api/api.js';
 import { API_BASE_URL } from '../../api/config.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
 import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
-
-const FaceLoginModal = lazy(() => import('../../components/face/FaceLoginModal.jsx'));
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -451,8 +449,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
   const [confirmPw, setConfirmPw]     = useState('');
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [pending2FA, setPending2FA] = useState(null); // { email }
-  const [showFaceLogin, setShowFaceLogin] = useState(false);
-
   // ── OTP Login (passwordless) ───────────────────────────────────────────────
   const [otpMode, setOtpMode]       = useState(false);   // toggle OTP vs password login
   const [otpStep, setOtpStep]       = useState('email'); // 'email' | 'otp' | 'no-account'
@@ -946,17 +942,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
               📱 Login with OTP instead
             </button>
           )}
-          {mode === 'login' && (
-            <button
-              type="button"
-              onClick={() => setShowFaceLogin(true)}
-              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%', padding: '11px 0', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(1,118,211,0.5)'; e.currentTarget.style.color = '#0176D3'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
-            >
-              🔐 Login with Face
-            </button>
-          )}
         </div>
 
         {GOOGLE_CLIENT_ID && (
@@ -985,15 +970,6 @@ function CandidateForm({ onAuth, onBack, onForgot, navigate, prefill }) {
           </span>
         </p>
       </div>
-      {showFaceLogin && (
-        <Suspense fallback={null}>
-          <FaceLoginModal
-            prefillEmail={email}
-            onSuccess={(user, token) => { setShowFaceLogin(false); onAuth(user, token); }}
-            onClose={() => setShowFaceLogin(false)}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }
