@@ -1137,7 +1137,7 @@ export default function Layout({ user, onLogout }) {
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', overflowX: 'hidden' }}>
         {/* Desktop Sidebar — fixed position via CSS */}
         <div className="tn-sidebar"><SidebarContent {...sidebarProps} /></div>
 
@@ -1153,7 +1153,7 @@ export default function Layout({ user, onLogout }) {
         </div>
 
         {/* Main Content */}
-        <div className="tn-main-content" style={{ flex: 1, overflow: 'auto', padding: '24px', background: 'var(--app-bg, #F3F2F2)', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
+        <div className="tn-main-content" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', padding: '24px', background: 'var(--app-bg, #F3F2F2)', minWidth: 0, paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', minHeight: '100dvh', boxSizing: 'border-box' }}>
           {/* Mobile Hamburger Header */}
           <div className="tn-hamburger" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, background: 'var(--app-hamburger-bg, #032D60)', borderRadius: 12, padding: '10px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, width: '100%' }}>

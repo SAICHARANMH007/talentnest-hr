@@ -1194,7 +1194,7 @@ textarea:focus-visible {
 /* ── Mobile (<768px): hamburger + slide-in drawer ── */
 @media (max-width: 767px) {
   .tn-sidebar { display: none !important; }
-  .tn-main-content { margin-left: 0 !important; }
+  .tn-main-content { margin-left: 0 !important; overflow-x: hidden !important; }
 
   /* Hamburger bar — always visible at top of page */
   .tn-hamburger { display: flex !important; }
