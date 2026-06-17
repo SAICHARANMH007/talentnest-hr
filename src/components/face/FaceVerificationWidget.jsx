@@ -25,7 +25,7 @@ export default function FaceVerificationWidget({
   submissionId,
   enabled = true,           // false = skip (anti-cheat disabled or user not enrolled)
   intervalSecs = 60,        // how often to check
-  maxFailures  = 2,         // consecutive failures before calling onViolation
+  maxFailures  = 3,         // consecutive failures before calling onViolation (3 = more tolerant)
   onViolation,              // () => void — called when identity check fails repeatedly
 }) {
   const [ready,   setReady]   = useState(false);
@@ -104,12 +104,34 @@ export default function FaceVerificationWidget({
         setScore(Math.round(score * 100));
 
         if (!passed) {
-          const newFail = failRef.current + 1;
-          failRef.current = newFail;
-          setFail(newFail);
-          if (newFail >= maxFailures) {
+          // Retry once after 5s before counting as a real failure (reduces false positives
+          // from brief movement, lighting changes, or single bad frame)
+          await new Promise(r => setTimeout(r, 5000));
+          if (!videoRef.current || videoRef.current.readyState < 2) return;
+          const retryResult = await faceapi
+            .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+            .withFaceLandmarks(true)
+            .withFaceDescriptor()
+            .catch(() => null);
+          const retryDesc = retryResult ? Array.from(retryResult.descriptor) : null;
+          const retryRes = await api.proctorCheck({
+            submissionId,
+            descriptor: retryDesc || [],
+            snapshot: !retryResult ? captureBase64(videoRef.current) : undefined,
+            anomaly: !retryResult ? 'no_face' : null,
+          }).catch(() => null);
+          if (retryRes?.passed) {
+            // Retry passed — face found, do not count as failure
             failRef.current = 0;
-            onViolation?.();
+            setFail(0);
+          } else {
+            const newFail = failRef.current + 1;
+            failRef.current = newFail;
+            setFail(newFail);
+            if (newFail >= maxFailures) {
+              failRef.current = 0;
+              onViolation?.();
+            }
           }
         } else {
           failRef.current = 0;

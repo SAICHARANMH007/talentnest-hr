@@ -516,6 +516,7 @@ router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
 
   let bestMatch = null;
   let bestScore = 0;
+  let secondBestScore = 0; // track runner-up to enforce margin check
 
   for (const u of enrolled) {
     if (!u.faceDescriptor?.length) continue;
@@ -536,11 +537,23 @@ router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
       score = faceSimilarity(descriptor, u.faceDescriptor);
     }
 
-    if (score > bestScore) { bestScore = score; bestMatch = u; }
+    if (score > bestScore) {
+      secondBestScore = bestScore;
+      bestScore = score;
+      bestMatch = u;
+    } else if (score > secondBestScore) {
+      secondBestScore = score;
+    }
   }
 
-  if (!bestMatch || bestScore < IDENTIFY_THRESHOLD) {
-    logger.info('Face identify: no match', { ip: req.ip, topScore: Math.round(bestScore * 100) });
+  // Require best match to be clearly ahead of the second-best candidate (margin ≥ 4%).
+  // This prevents ambiguous identification when two enrolled users have similar-looking faces.
+  const MARGIN_REQUIRED = 0.04;
+  const margin = bestScore - secondBestScore;
+  const ambiguous = enrolled.length > 1 && margin < MARGIN_REQUIRED;
+
+  if (!bestMatch || bestScore < IDENTIFY_THRESHOLD || ambiguous) {
+    logger.info('Face identify: no match', { ip: req.ip, topScore: Math.round(bestScore * 100), margin: Math.round(margin * 100), ambiguous });
     return res.json({ success: true, found: false });
   }
 

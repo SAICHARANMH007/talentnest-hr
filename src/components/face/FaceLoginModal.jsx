@@ -143,7 +143,7 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
     setMLoading(true); setModelPct(0);
     loadFaceApi(pct => setModelPct(pct))
       .then(fa => { setFaceapi(fa); faceapiRef.current = fa; setModelReady(true); })
-      .catch(() => { /* model load failure shown only when user tries to proceed */ })
+      .catch(() => { setCamError('Failed to load face recognition models. Check your internet connection and reload.'); })
       .finally(() => setMLoading(false));
   }, []); // run once on mount
 
@@ -446,8 +446,18 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
             {!streamReady ? (
               <div style={{ display:'flex', flexDirection:'column', gap:14, textAlign:'center' }}>
                 {camError ? (
-                  <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:12, lineHeight:1.5 }}>
-                    ⚠️ {camError}
+                  <div>
+                    <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:12, lineHeight:1.5 }}>
+                      ⚠️ {camError}
+                    </div>
+                    {(camError.toLowerCase().includes('permission') || camError.toLowerCase().includes('denied')) && (
+                      <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'10px 14px', marginTop:8, fontSize:11, color:'rgba(255,255,255,0.55)', lineHeight:1.8 }}>
+                        <b style={{ color:'rgba(255,255,255,0.75)', display:'block', marginBottom:4 }}>How to re-enable camera access:</b>
+                        🌐 <b style={{ color:'rgba(255,255,255,0.65)' }}>Chrome (Android/Desktop):</b> Tap the 🔒 lock icon in the address bar → Site settings → Camera → Allow<br/>
+                        🍎 <b style={{ color:'rgba(255,255,255,0.65)' }}>Safari (iPhone/iPad):</b> Settings app → Safari → Camera → Allow<br/>
+                        🦊 <b style={{ color:'rgba(255,255,255,0.65)' }}>Firefox:</b> Click the camera icon in the address bar → unblock camera → reload page
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ color:'rgba(255,255,255,0.5)', fontSize:13, lineHeight:1.6 }}>
@@ -458,9 +468,14 @@ export default function FaceLoginModal({ prefillEmail = '', onSuccess, onClose }
                     </span>
                   </div>
                 )}
-                <button style={{ ...btnP, opacity: openingCamera ? 0.7 : 1 }}
-                  disabled={openingCamera} onClick={openCamera}>
-                  {openingCamera ? <><Spin /> Opening…</> : camError ? '🔄 Try Again' : '📸 Open Camera'}
+                <button style={{ ...btnP, opacity: (openingCamera || modelLoading) ? 0.7 : 1 }}
+                  disabled={openingCamera || modelLoading} onClick={openCamera}>
+                  {modelLoading
+                    ? <><Spin /> Loading AI{modelPct > 0 ? ` ${modelPct}%` : '…'}</>
+                    : openingCamera
+                      ? <><Spin /> Opening…</>
+                      : camError ? '🔄 Try Again'
+                      : '📸 Open Camera'}
                 </button>
                 <button style={btnS} onClick={onClose}>Cancel</button>
               </div>
