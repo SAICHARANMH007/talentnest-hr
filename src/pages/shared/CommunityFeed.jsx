@@ -884,8 +884,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 0, marginLeft: -24, marginRight: -24, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: `6px solid ${accentColor ? accentColor + '20' : 'var(--app-bg, #F3F2F2)'}`, position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
-      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px 20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 0, marginLeft: -12, marginRight: -12, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: `6px solid ${accentColor ? accentColor + '20' : 'var(--app-bg, #F3F2F2)'}`, position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
+      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -1348,16 +1348,20 @@ function CreatePost({ user, onCreate, isMobile }) {
             Start a post, {user?.name?.split(' ')[0] || 'there'}…
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', flexWrap: 'nowrap', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
           {[
-            { type: 'update',  icon: '🖼️', label: 'Photo',  color: '#0176D3' },
-            { type: 'hiring',  icon: '💼', label: 'Hiring', color: '#059669' },
-            { type: 'poll',    icon: '🗳️', label: 'Poll',   color: '#5B21B6' },
-            { type: 'tip',     icon: '💡', label: 'Tip',    color: '#D97706' },
+            { type: 'update',       icon: '🖼️', label: 'Photo',    color: '#0176D3' },
+            { type: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706' },
+            { type: 'hiring',       icon: '💼', label: 'Hiring',   color: '#059669' },
+            { type: 'poll',         icon: '🗳️', label: 'Poll',     color: '#5B21B6' },
+            { type: 'question',     icon: '❓', label: 'Question', color: '#7C3AED' },
+            { type: 'achievement',  icon: '🏆', label: 'Win',      color: '#B45309' },
+            { type: 'feedback',     icon: '⭐', label: 'Feedback', color: '#DB2777' },
+            { type: 'announcement', icon: '📢', label: 'News',     color: '#1D4ED8' },
           ].map(a => (
             <button key={a.type} onClick={() => openModal(a.type)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid #E5E7EB', background: '#F9FAFB', color: a.color, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-              <span style={{ fontSize: 15 }}>{a.icon}</span> {a.label}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 20, border: `1.5px solid ${a.color}25`, background: `${a.color}0d`, color: a.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s' }}>
+              <span style={{ fontSize: 14 }}>{a.icon}</span> {a.label}
             </button>
           ))}
         </div>
@@ -1869,8 +1873,9 @@ export default function CommunityFeed({ user }) {
   const loadPosts = useCallback(async (p = 1, type = 'all', append = false) => {
     if (p === 1) setLoading(true); else setLoadingMore(true);
     try {
-      const limit = networkOnly ? 50 : 15; // load more when filtering to network
-      const r = await api.getPosts({ page: p, limit, ...(type !== 'all' ? { type } : {}) });
+      const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 15);
+      const apiType = type === 'trending' ? 'all' : type;
+      const r = await api.getPosts({ page: p, limit, ...(apiType !== 'all' ? { type: apiType } : {}) });
       const items = r?.data || [];
       setPosts(prev => append ? [...prev, ...items] : items);
       setHasMore(r?.hasMore ?? false);
@@ -2049,6 +2054,7 @@ export default function CommunityFeed({ user }) {
 
   const FILTERS = [
     { value: 'all',          label: 'All' },
+    { value: 'trending',     label: '🔥 Trending' },
     { value: 'hiring',       label: '💼 Hiring' },
     { value: 'tip',          label: '💡 Tips' },
     { value: 'question',     label: '❓ Questions' },
@@ -2073,8 +2079,14 @@ export default function CommunityFeed({ user }) {
         (p.hashtags || []).some(h => h.includes(q))
       );
     }
+    if (filter === 'trending') {
+      list = [...list].sort((a, b) =>
+        ((b.reactions?.length || 0) + (b.comments?.length || 0)) -
+        ((a.reactions?.length || 0) + (a.comments?.length || 0))
+      );
+    }
     return list;
-  }, [posts, networkOnly, activeHash, search, uid, connectionIds]);
+  }, [posts, networkOnly, activeHash, search, uid, connectionIds, filter]);
 
   const myPosts     = useMemo(() => posts.filter(p => String(p.authorId) === String(uid)), [posts, uid]);
   const myReactions = useMemo(() => posts.reduce((s, p) => s + (p.reactions?.filter(r => String(r.userId) === String(uid)).length || 0), 0), [posts, uid]);
@@ -2128,7 +2140,7 @@ export default function CommunityFeed({ user }) {
 
   return (
     <div
-      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden' }}
+      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -2179,6 +2191,17 @@ export default function CommunityFeed({ user }) {
             ))}
           </div>
 
+          {/* Trending banner */}
+          {filter === 'trending' && !activeHash && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '1px solid #FCD34D', borderRadius: 10, padding: '10px 14px', marginBottom: 14, marginLeft: isMobile ? 12 : 0, marginRight: isMobile ? 12 : 0 }}>
+              <span style={{ fontSize: 18 }}>🔥</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#92400E' }}>Trending Now</div>
+                <div style={{ fontSize: 11, color: '#B45309', marginTop: 1 }}>Posts sorted by most reactions & comments</div>
+              </div>
+            </div>
+          )}
+
           {/* Active hashtag banner */}
           {activeHash && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '8px 14px', marginBottom: 14, marginLeft: isMobile ? 12 : 0, marginRight: isMobile ? 12 : 0 }}>
@@ -2207,7 +2230,7 @@ export default function CommunityFeed({ user }) {
               <CreatePost user={user} onCreate={handleCreate} isMobile={isMobile} />
 
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
+                <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF', minHeight: 320 }}>
                   <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
                   Loading feed…
                 </div>
@@ -2282,6 +2305,10 @@ export default function CommunityFeed({ user }) {
         .tn-composer-btn:hover { background: #F1F5F9; border-color: #D1D5DB; }
         .tn-filter-chip { transition: transform 0.1s, box-shadow 0.1s; }
         .tn-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
+        /* Remove .tn-main-content horizontal padding on mobile so post cards can go truly edge-to-edge */
+        @media (max-width: 1099px) {
+          .tn-main-content { padding-left: 0 !important; padding-right: 0 !important; }
+        }
       `}</style>
     </div>
   );
