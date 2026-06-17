@@ -15,11 +15,18 @@ Allow: /hrms
 Allow: /contact
 Allow: /companies
 Disallow: /app/
+# Allow job feed endpoints so aggregators can reach live job data
+Allow: /api/feed/xml
+Allow: /api/feed/json
+Allow: /api/feed/sitemap.xml
+Allow: /api/feed/employer/
 Disallow: /api/
 
 # Sitemaps
 Sitemap: https://www.talentnesthr.com/sitemap.xml
 Sitemap: https://www.talentnesthr.com/sitemap-jobs.xml
+# Dynamic sitemap — always reflects current active jobs
+Sitemap: https://www.talentnesthr.com/api/feed/sitemap.xml
 
 # ── AI & LLM Crawlers — Explicitly Allowed ──────────────────────────────
 User-agent: GPTBot

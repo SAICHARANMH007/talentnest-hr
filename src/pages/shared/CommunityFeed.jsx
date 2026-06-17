@@ -167,7 +167,7 @@ function PostTypeBanner({ post, isMobile }) {
   if (!cfg) return null;
 
   const hPad   = isMobile ? 14 : 20;
-  const topRad = isMobile ? 0  : 14;
+  const topRad = 14;
 
   return (
     <div style={{
@@ -884,7 +884,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 0, marginLeft: -12, marginRight: -12, borderRadius: 0, border: 'none', boxShadow: 'none', borderBottom: `6px solid ${accentColor ? accentColor + '20' : 'var(--app-bg, #F3F2F2)'}`, position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
       : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
@@ -2223,7 +2223,7 @@ export default function CommunityFeed({ user }) {
         {!isMobile && tab === 'saved' && <div />}
 
         {/* Feed */}
-        <div style={{ padding: isMobile ? '0 12px' : 0 }}>
+        <div style={{ padding: isMobile ? '0 6px' : 0 }}>
           {tab === 'feed' && (
             <>
               <SearchBar value={search} onChange={setSearch} />

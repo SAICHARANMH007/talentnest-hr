@@ -5,9 +5,14 @@
     <loc>https://www.talentnesthr.com/sitemap-pages.xml</loc>
     <lastmod>2025-05-07</lastmod>
   </sitemap>
-  <!-- Job board and career pages -->
+  <!-- Job board and career pages (static seed) -->
   <sitemap>
     <loc>https://www.talentnesthr.com/sitemap-jobs.xml</loc>
     <lastmod>2025-05-07</lastmod>
+  </sitemap>
+  <!-- Dynamic sitemap — all currently active jobs, refreshed every hour -->
+  <sitemap>
+    <loc>https://www.talentnesthr.com/api/feed/sitemap.xml</loc>
+    <lastmod>2026-06-17</lastmod>
   </sitemap>
 </sitemapindex>
