@@ -440,6 +440,12 @@ const MAINTENANCE_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 // completes in one or two sync passes.
 const MAX_NEW_COMMUNITIES_PER_PASS = 200;
 
+// Cached base community list — avoids a full Community.find() on every request.
+// Invalidated on create/merge so new communities appear immediately.
+let baseListCache = null;
+let baseListCacheAt = 0;
+const BASE_LIST_CACHE_MS = 30 * 1000; // 30 seconds
+
 // Cached fallback tenant id, used when the triggering user (e.g. a
 // super_admin) has no tenantId of their own — auto-created college/company
 // communities still need *some* tenantId to satisfy the schema.
@@ -701,6 +707,7 @@ router.post('/merge-duplicates', asyncHandler(async (req, res) => {
     }
   }
 
+  baseListCache = null; // invalidate so next GET reflects merged state
   res.json({ success: true, message: `Merged ${mergedGroups} duplicate group(s), deleted ${deletedDocs} duplicate document(s).`, mergedGroups, deletedDocs });
 }));
 
@@ -736,6 +743,7 @@ router.post('/', asyncHandler(async (req, res) => {
     createdBy: req.user._id || req.user.id,
   });
 
+  baseListCache = null; // invalidate so the new community appears immediately
   res.status(201).json({ success: true, data: community });
 }));
 
@@ -746,9 +754,10 @@ router.get('/', asyncHandler(async (req, res) => {
   // Upsert each default by slug only — one canonical community per slug, shared across all tenants
   const createdBy = req.user._id || req.user.id;
   const now = Date.now();
+  // All maintenance is background — never block the user request.
   if (now - lastDefaultsSync >= MAINTENANCE_SYNC_INTERVAL_MS) {
     lastDefaultsSync = now;
-    await Promise.all(
+    Promise.all(
       DEFAULTS.map(d =>
         Community.findOneAndUpdate(
           { slug: d.slug },
@@ -756,29 +765,30 @@ router.get('/', asyncHandler(async (req, res) => {
           { upsert: true }
         )
       )
-    );
+    ).then(() => { baseListCache = null; }).catch(() => {}); // invalidate cache after upserts
   }
-
-  // Auto-create one community per College/Campus tenant (e.g. "Sree Vidyanikethan Community")
   if (now - lastCollegeTenantSync >= MAINTENANCE_SYNC_INTERVAL_MS) {
     lastCollegeTenantSync = now;
-    await ensureCollegeCommunities(createdBy);
+    ensureCollegeCommunities(createdBy).then(() => { baseListCache = null; }).catch(() => {});
   }
-  // Auto-create communities for any other colleges/companies discovered from
-  // candidate profiles (College/School Name, education history, Current Company).
-  // Run in the background so this request isn't blocked on a full candidate scan.
   ensureCollegeCommunitiesFromCandidates(createdBy, req.user.tenantId).catch(() => {});
   ensureCompanyCommunities(createdBy, req.user.tenantId).catch(() => {});
 
-  const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
-
-  // Deduplicate by slug — DB may have stale duplicates from before upsert logic was added
-  const seenSlugs = new Set();
-  const unique = allCommunities.filter(c => {
-    if (seenSlugs.has(c.slug)) return false;
-    seenSlugs.add(c.slug);
-    return true;
-  });
+  // Serve from cache when fresh; otherwise fetch and cache the full list.
+  let unique;
+  if (baseListCache && Date.now() - baseListCacheAt < BASE_LIST_CACHE_MS) {
+    unique = baseListCache;
+  } else {
+    const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
+    const seenSlugs = new Set();
+    unique = allCommunities.filter(c => {
+      if (seenSlugs.has(c.slug)) return false;
+      seenSlugs.add(c.slug);
+      return true;
+    });
+    baseListCache = unique;
+    baseListCacheAt = Date.now();
+  }
 
   // Students/alumni whose college matches a community's collegeName are automatically
   // members — no explicit join required. Determine if the requesting user qualifies.

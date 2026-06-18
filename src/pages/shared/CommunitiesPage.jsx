@@ -194,10 +194,35 @@ export default function CommunitiesPage({ user }) {
   }, []);
 
   const load = useCallback(async () => {
+    // Stale-while-revalidate: show cached data instantly, refresh silently in background
+    const CACHE_KEY = 'tn_communities_v1';
+    const CACHE_TTL = 60_000; // 60 seconds
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached?.data?.length && Date.now() - (cached.at || 0) < CACHE_TTL) {
+          setCommunities(cached.data);
+          setLoading(false);
+          // Refresh in background — no spinner, no blocking
+          api.getCommunities()
+            .then(r => {
+              const fresh = r?.data || [];
+              setCommunities(fresh);
+              sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: fresh, at: Date.now() }));
+            })
+            .catch(() => {});
+          return;
+        }
+      }
+    } catch {}
+    // First visit or expired cache — normal load with spinner
     setLoading(true);
     try {
       const r = await api.getCommunities();
-      setCommunities(r?.data || []);
+      const data = r?.data || [];
+      setCommunities(data);
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, at: Date.now() })); } catch {}
     } catch { setCommunities([]); }
     finally { setLoading(false); }
   }, []);
