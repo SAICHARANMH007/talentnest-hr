@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
@@ -82,7 +83,7 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
   };
 
   const isMob = window.innerWidth <= 767;
-  return (
+  return createPortal(
     <>
       {/* Backdrop — zIndex 2100 puts it above the fixed mobile header (1500) */}
       <div
@@ -264,7 +265,8 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
           onClose={() => setShowInfoModal(false)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -682,7 +684,7 @@ export default function PeoplePage({ user }) {
     { id: 'connections', label: `Network (${connections.length})` },
     { id: 'pending',     label: `Requests (${pending.length})` },
     { id: 'sent',        label: `Sent (${sent.length})` },
-    { id: 'infoRequests', label: `Info Requests (${infoRequests.length})` },
+    { id: 'infoRequests', label: isMobile ? `Info (${infoRequests.length})` : `Info Requests (${infoRequests.length})` },
   ];
 
   const runSync = async (contacts) => {
@@ -927,10 +929,10 @@ export default function PeoplePage({ user }) {
       {/* Tabs (only shown when not searching) */}
       {!searchQuery.trim() && (
         <>
-          <div style={{ display: 'flex', gap: 2, marginBottom: 16, padding: isMobile ? '0 12px' : 0, borderBottom: '2px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', gap: 0, marginBottom: 16, padding: isMobile ? '0 8px' : 0, borderBottom: '2px solid #F1F5F9', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                style={{ padding: '8px 16px', border: 'none', background: 'none', fontSize: 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                style={{ flexShrink: 0, padding: isMobile ? '8px 10px' : '8px 16px', border: 'none', background: 'none', fontSize: isMobile ? 12 : 13, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#0176D3' : '#6B7280', cursor: 'pointer', borderBottom: tab === t.id ? '2px solid #0176D3' : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
                 {t.label}
               </button>
             ))}
