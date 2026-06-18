@@ -753,10 +753,12 @@ button, a, [role="button"] {
   .tn-main-content {
     padding-top: 0 !important;
   }
-  /* Remove rounded corners and tighten gap below header */
+  /* Remove rounded corners, flush header edge-to-edge, tighten gap below */
   .tn-hamburger {
     border-radius: 0 !important;
     margin-bottom: 4px !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
   }
   /* Spread icon buttons evenly across the full row width on all pages */
   .tn-hamburger > div:last-child {
