@@ -865,14 +865,6 @@ button, a, [role="button"] {
    Eliminates scroll jank, reduces paint cost, GPU-accelerates the feed
    ════════════════════════════════ */
 
-/* ── Feed scroll container: promote to its own GPU layer for buttery scroll ── */
-@media (max-width: 767px) {
-  .tn-main-content {
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: scroll-position;
-  }
-}
 
 /* ── Post cards: font smoothing for crisp text ── */
 .tn-postcard {
