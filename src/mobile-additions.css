@@ -745,7 +745,7 @@ button, a, [role="button"] {
 }
 
 /* ════════════════════════════════
-   MOBILE HEADER — Remove white gap + tighten icon button row
+   MOBILE HEADER — Remove white gap + even icon button distribution
    Must come AFTER @media (max-width: 1280px) rule above to win cascade
    ════════════════════════════════ */
 @media (max-width: 767px) {
@@ -753,15 +753,14 @@ button, a, [role="button"] {
   .tn-main-content {
     padding-top: 0 !important;
   }
-  /* Tighten gap between header and page content */
+  /* Remove rounded corners and tighten gap below header */
   .tn-hamburger {
+    border-radius: 0 !important;
     margin-bottom: 4px !important;
   }
-  /* Stretch icon buttons to fill the full row width */
+  /* Spread icon buttons evenly across the full row width on all pages */
   .tn-hamburger > div:last-child {
-    gap: 6px !important;
-  }
-  .tn-hamburger > div:last-child > button {
-    flex: 1 !important;
+    justify-content: space-evenly !important;
+    gap: 0 !important;
   }
 }
