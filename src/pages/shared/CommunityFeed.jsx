@@ -803,6 +803,28 @@ function PollWidget({ post, userId }) {
   );
 }
 
+function SkeletonCard({ isMobile }) {
+  return (
+    <div style={{ background: 'var(--app-card-bg, #fff)', borderRadius: isMobile ? 14 : 20, padding: isMobile ? '16px 14px 18px' : '20px', marginBottom: isMobile ? 8 : 12, border: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <div className="tn-skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="tn-skeleton" style={{ height: 13, borderRadius: 6, marginBottom: 8, width: '55%' }} />
+          <div className="tn-skeleton" style={{ height: 11, borderRadius: 6, width: '35%' }} />
+        </div>
+      </div>
+      <div className="tn-skeleton" style={{ height: 13, borderRadius: 6, marginBottom: 8 }} />
+      <div className="tn-skeleton" style={{ height: 13, borderRadius: 6, marginBottom: 8, width: '92%' }} />
+      <div className="tn-skeleton" style={{ height: 13, borderRadius: 6, width: '70%', marginBottom: 16 }} />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div className="tn-skeleton" style={{ height: 32, borderRadius: 20, width: 80 }} />
+        <div className="tn-skeleton" style={{ height: 32, borderRadius: 20, width: 80 }} />
+        <div className="tn-skeleton" style={{ height: 32, borderRadius: 20, width: 64 }} />
+      </div>
+    </div>
+  );
+}
+
 function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
@@ -1270,6 +1292,13 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   const openModal = (type) => { setPostType(type || 'update'); setModalOpen(true); };
   const closeModal = () => { if (submitting) return; setModalOpen(false); resetForm(); };
+
+  // Listen for FAB click from outside the component
+  useEffect(() => {
+    const h = () => openModal('update');
+    window.addEventListener('tn_open_compose', h);
+    return () => window.removeEventListener('tn_open_compose', h);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSubmit = () => {
     if (postType === 'poll') return pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2;
@@ -2270,7 +2299,7 @@ export default function CommunityFeed({ user }) {
       {tab === 'feed' && (
         <>
           {/* Filters row */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'nowrap', overflowX: 'auto', padding: isMobile ? '0 12px 4px' : '0 0 4px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {/* My Network chip */}
             <button
               onClick={() => { setNetworkOnly(v => !v); setActiveHash(null); setSearch(''); setPendingPosts([]); }} className="tn-filter-chip"
@@ -2324,9 +2353,8 @@ export default function CommunityFeed({ user }) {
               <CreatePost user={user} onCreate={handleCreate} isMobile={isMobile} />
 
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF', minHeight: 320 }}>
-                  <div style={{ width: 32, height: 32, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-                  Loading feed…
+                <div>
+                  {[1,2,3].map(i => <SkeletonCard key={i} isMobile={isMobile} />)}
                 </div>
               ) : visiblePosts.length === 0 ? (
                 <div style={{ ...card, textAlign: 'center', padding: '48px 24px', borderRadius: 16, border: '1px solid #F1F5F9' }}>
@@ -2392,9 +2420,40 @@ export default function CommunityFeed({ user }) {
         )}
       </div>
 
+      {/* Floating compose FAB — mobile only */}
+      {isMobile && tab === 'feed' && (
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('tn_open_compose'))}
+          aria-label="Create post"
+          style={{
+            position: 'fixed',
+            bottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
+            right: 20,
+            zIndex: 1400,
+            width: 54,
+            height: 54,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #0176D3 0%, #7C3AED 100%)',
+            border: 'none',
+            color: '#fff',
+            fontSize: 26,
+            fontWeight: 300,
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(1,118,211,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+          }}
+        >＋</button>
+      )}
+
       <style>{`
         @keyframes tn-spin { to { transform: rotate(360deg); } }
         @keyframes tnBannerIn { from { opacity:0; transform:translateX(-50%) translateY(-16px) scale(0.92); } to { opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
+        @keyframes tn-fab-in { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+        @keyframes tn-skeleton-wave { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .tn-skeleton { background: linear-gradient(90deg,#F1F5F9 25%,#E2EAF4 50%,#F1F5F9 75%); background-size:200% 100%; animation:tn-skeleton-wave 1.4s ease-in-out infinite; }
         .tn-postcard { transition: box-shadow 0.15s, border-color 0.15s; }
         .tn-postcard:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.06); border-color: #E5E7EB; }
         .tn-sidecard { transition: box-shadow 0.15s, transform 0.15s; }
