@@ -745,25 +745,36 @@ button, a, [role="button"] {
 }
 
 /* ════════════════════════════════
-   MOBILE HEADER — Remove white gap + even icon button distribution
+   MOBILE HEADER — Edge-to-edge fixed header
+   position:fixed escapes the overflowX:hidden ancestor (Layout.jsx line 1140)
+   that clips in-flow children at viewport_width - safe-area-inset-right
    Must come AFTER @media (max-width: 1280px) rule above to win cascade
    ════════════════════════════════ */
 @media (max-width: 767px) {
-  /* Remove top padding so hamburger sits flush at top — no white gap */
+  /* Remove top padding — header is now fixed so no gap needed at top */
   .tn-main-content {
     padding-top: 0 !important;
   }
-  /* Full-width header: explicit width calc overrides any box-model ambiguity */
+  /* Fixed header spans true viewport edge-to-edge, unaffected by any ancestor overflow */
   .tn-hamburger {
+    position: fixed !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1500 !important;
     border-radius: 0 !important;
-    margin-bottom: 4px !important;
-    margin-left: -16px !important;
-    width: calc(100% + 32px) !important;
+    margin: 0 !important;
+    padding-left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+    padding-right: calc(14px + env(safe-area-inset-right, 0px)) !important;
     box-sizing: border-box !important;
   }
   /* Spread icon buttons evenly across the full row width on all pages */
   .tn-hamburger > div:last-child {
     justify-content: space-evenly !important;
     gap: 0 !important;
+  }
+  /* Push page content below the fixed header (108px tall + 12px buffer) */
+  .tn-page-transition {
+    padding-top: 120px !important;
   }
 }
