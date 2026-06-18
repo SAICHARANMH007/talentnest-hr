@@ -747,6 +747,7 @@ button, a, [role="button"] {
 /* ════════════════════════════════
    MOBILE HEADER — Edge-to-edge fixed header + scroll collapse
    position:fixed escapes the overflowX:hidden ancestor (Layout.jsx line 1140)
+   body.tn-header-collapsed toggled by src/mobile-header-scroll.js (module-level)
    Must come AFTER @media (max-width: 1280px) rule above to win cascade
    ════════════════════════════════ */
 @media (max-width: 767px) {
@@ -755,7 +756,7 @@ button, a, [role="button"] {
     padding-top: 0 !important;
   }
 
-  /* Fixed header: true viewport edge-to-edge, compact padding */
+  /* Fixed header: true viewport edge-to-edge */
   .tn-hamburger {
     position: fixed !important;
     top: env(safe-area-inset-top, 0px) !important;
@@ -767,41 +768,36 @@ button, a, [role="button"] {
     padding: 8px calc(14px + env(safe-area-inset-right, 0px)) 8px calc(14px + env(safe-area-inset-left, 0px)) !important;
     box-sizing: border-box !important;
     gap: 6px !important;
-    transition: padding 0.2s ease !important;
   }
 
-  /* Icon buttons row: smooth collapse on scroll */
+  /* Icon buttons row — default visible state */
   .tn-hamburger > div:last-child {
     justify-content: space-evenly !important;
     gap: 0 !important;
     overflow: hidden !important;
-    max-height: 56px !important;
+    height: auto !important;
     opacity: 1 !important;
-    transition: max-height 0.22s ease, opacity 0.18s ease, margin 0.22s ease !important;
-    margin-top: 0 !important;
+    pointer-events: auto !important;
+    transition: height 0.2s ease, opacity 0.15s ease !important;
   }
 
-  /* Push page content below the full header (~96px) */
+  /* Push page content below full header */
   .tn-page-transition {
     padding-top: 100px !important;
-    transition: padding-top 0.22s ease !important;
   }
 
-  /* ── COLLAPSED STATE (when user scrolls down >20px) ──
-     body.tn-header-collapsed toggled by App.jsx capture-phase scroll listener */
+  /* ── COLLAPSED: only hamburger + logo row visible while scrolled ── */
   body.tn-header-collapsed .tn-hamburger {
     padding-top: 6px !important;
     padding-bottom: 6px !important;
     gap: 0 !important;
   }
-  /* Slide icon buttons row out of view */
   body.tn-header-collapsed .tn-hamburger > div:last-child {
-    max-height: 0 !important;
+    height: 0 !important;
     opacity: 0 !important;
-    margin-top: -4px !important;
+    pointer-events: none !important;
   }
-  /* Reduce page top padding to match slim header (~52px) */
   body.tn-header-collapsed .tn-page-transition {
-    padding-top: 70px !important;
+    padding-top: 60px !important;
   }
 }
