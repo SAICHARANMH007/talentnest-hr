@@ -804,7 +804,7 @@ function PollWidget({ post, userId }) {
   );
 }
 
-const SkeletonCard = React.memo(function SkeletonCard({ isMobile }) {
+function SkeletonCard({ isMobile }) {
   return (
     <div style={{ background: 'var(--app-card-bg, #fff)', borderRadius: isMobile ? 14 : 20, padding: isMobile ? '16px 14px 18px' : '20px', marginBottom: isMobile ? 8 : 12, border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
@@ -824,9 +824,9 @@ const SkeletonCard = React.memo(function SkeletonCard({ isMobile }) {
       </div>
     </div>
   );
-});
+}
 
-const PostCard = React.memo(function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, onViewProfile, isMobile }) {
+function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, onViewProfile, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
   const [showReport,    setShowReport]    = useState(false);
@@ -1088,7 +1088,7 @@ const PostCard = React.memo(function PostCard({ post, userId, userRole, currentU
       )}
     </div>
   );
-});
+}
 
 // ── Post Categories ──────────────────────────────────────────────────────────────
 const CATEGORIES = [
