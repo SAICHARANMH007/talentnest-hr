@@ -825,7 +825,7 @@ function SkeletonCard({ isMobile }) {
   );
 }
 
-function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, isMobile }) {
+function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, onViewProfile, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
   const [showReport,    setShowReport]    = useState(false);
@@ -947,7 +947,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12, marginTop: hasBanner ? 14 : 0 }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div onClick={() => onViewProfile?.(post.authorId)} style={{ position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
           <Avatar name={post.authorName} src={post.authorAvatar} size={44} role={post.authorRole} />
           {isVerified && (
             <span title="Verified member" style={{ position: 'absolute', bottom: -1, right: -1, width: 16, height: 16, borderRadius: '50%', background: '#059669', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#fff', fontWeight: 800, lineHeight: 1 }}>✓</span>
@@ -957,7 +957,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{post.authorName || 'Member'}</span>
+                <span onClick={() => onViewProfile?.(post.authorId)} style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', cursor: 'pointer' }}>{post.authorName || 'Member'}</span>
                 {isConnected && <ConnectionDegree />}
                 <RoleBadge role={post.authorRole} />
               </div>
@@ -1377,7 +1377,7 @@ function CreatePost({ user, onCreate, isMobile }) {
             Start a post, {user?.name?.split(' ')[0] || 'there'}…
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 4, marginRight: -4 }}>
           {[
             { type: 'update',       icon: '🖼️', label: 'Photo',    color: '#0176D3' },
             { type: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706' },
@@ -1771,32 +1771,32 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
         {people.map((p, idx) => (
           <div
             key={p.id}
+            onClick={() => onViewProfile?.(p.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px',
               borderBottom: idx < people.length - 1 ? '1px solid #F8FAFC' : 'none',
-              cursor: 'default',
+              cursor: 'pointer',
               transition: 'background 0.12s',
             }}
             onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             {/* Avatar */}
-            <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
+            <div style={{ flexShrink: 0, position: 'relative' }}>
               <Avatar name={p.name} src={p.avatar} size={42} role={p.role} />
-              {/* Online-style accent dot */}
               <div style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: '#22C55E', border: '2px solid #fff' }} />
             </div>
 
             {/* Name + title */}
-            <div onClick={() => onViewProfile?.(p.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{p.name || 'Member'}</div>
               <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
             </div>
 
-            {/* Connect button */}
+            {/* Connect button — stopPropagation so tapping it doesn't navigate */}
             <button
-              onClick={() => onConnect(p.id)}
+              onClick={e => { e.stopPropagation(); onConnect(p.id); }}
               disabled={pendingIds.has(p.id)}
               style={{
                 padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -1817,7 +1817,7 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
 
       {/* Footer */}
       <div style={{ padding: '8px 16px 10px', background: '#FAFBFF', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: '#94A3B8' }}>Connect to see their posts & profile</div>
+        <div style={{ fontSize: 11, color: '#94A3B8' }}>Tap a person to view their full profile</div>
       </div>
     </div>
   );
@@ -1904,6 +1904,7 @@ export default function CommunityFeed({ user }) {
   const [seeding,      setSeeding]      = useState(false);
   const [seedMsg,      setSeedMsg]      = useState('');
   const [isMobile,     setMobile]       = useState(() => window.innerWidth < 1100);
+  const lastRefreshRef = useRef(Date.now()); // tracks last full-page-1 reload time
 
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 1100);
@@ -1919,9 +1920,10 @@ export default function CommunityFeed({ user }) {
   const connectionIds = useMemo(() => new Set((connections || []).map(c => String(c._id || c.id))), [connections]);
 
   const loadPosts = useCallback(async (p = 1, type = 'all', append = false) => {
-    if (p === 1) setLoading(true); else setLoadingMore(true);
+    if (p === 1) { setLoading(true); lastRefreshRef.current = Date.now(); }
+    else setLoadingMore(true);
     try {
-      const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 15);
+      const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 25);
       const apiType = type === 'trending' ? 'all' : type;
       const r = await api.getPosts({ page: p, limit, ...(apiType !== 'all' ? { type: apiType } : {}) });
       const items = r?.data || [];
@@ -1947,10 +1949,13 @@ export default function CommunityFeed({ user }) {
     return Math.max(window.scrollY || 0, el ? el.scrollTop : 0);
   }, []);
 
-  // Refresh feed when user returns to the tab after being away
+  // Refresh feed when user returns to the tab — but only if away ≥5 minutes and near the top.
+  // Prevents jarring reloads on every tab switch / phone lock.
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+      if (document.visibilityState !== 'visible' || tab !== 'feed' || isFiltered) return;
+      const awayMs = Date.now() - lastRefreshRef.current;
+      if (awayMs >= 5 * 60 * 1000) {
         loadPosts(1, filter);
         setPendingPosts([]);
       }
@@ -2178,7 +2183,7 @@ export default function CommunityFeed({ user }) {
           loadPosts(page + 1, filter, true);
         }
       },
-      { rootMargin: '400px' } // start fetching 400px before the bottom — feels instant
+      { rootMargin: '1200px' } // trigger ~2 posts before the bottom so next batch arrives invisibly
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -2228,6 +2233,7 @@ export default function CommunityFeed({ user }) {
     onConnect: handleConnect,
     onToggleBookmark: handleToggleBookmark,
     onHashtagClick: handleHashtagClick,
+    onViewProfile: handleViewProfile,
     isMobile,
   };
 
