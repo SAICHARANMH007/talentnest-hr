@@ -755,7 +755,7 @@ button, a, [role="button"] {
     padding-top: 0 !important;
   }
 
-  /* Fixed header: true viewport edge-to-edge */
+  /* Fixed header: true viewport edge-to-edge, compact padding */
   .tn-hamburger {
     position: fixed !important;
     top: env(safe-area-inset-top, 0px) !important;
@@ -764,41 +764,43 @@ button, a, [role="button"] {
     z-index: 1500 !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    padding-left: calc(14px + env(safe-area-inset-left, 0px)) !important;
-    padding-right: calc(14px + env(safe-area-inset-right, 0px)) !important;
+    padding: 8px calc(14px + env(safe-area-inset-right, 0px)) 8px calc(14px + env(safe-area-inset-left, 0px)) !important;
     box-sizing: border-box !important;
-    /* Smooth transition when collapsing on scroll */
-    transition: padding 0.25s ease !important;
+    gap: 6px !important;
+    transition: padding 0.2s ease !important;
   }
 
-  /* Icon buttons row: smooth slide-up when scrolling */
+  /* Icon buttons row: smooth collapse on scroll */
   .tn-hamburger > div:last-child {
     justify-content: space-evenly !important;
     gap: 0 !important;
     overflow: hidden !important;
-    max-height: 60px !important;
+    max-height: 56px !important;
     opacity: 1 !important;
-    transition: max-height 0.25s ease, opacity 0.2s ease !important;
+    transition: max-height 0.22s ease, opacity 0.18s ease, margin 0.22s ease !important;
+    margin-top: 0 !important;
   }
 
-  /* Push page content below the full header (108px + 12px buffer) */
+  /* Push page content below the full header (~96px) */
   .tn-page-transition {
-    padding-top: 120px !important;
-    transition: padding-top 0.25s ease !important;
+    padding-top: 100px !important;
+    transition: padding-top 0.22s ease !important;
   }
 
-  /* ── COLLAPSED STATE (when user scrolls down) ──
-     body.tn-header-collapsed is toggled by App.jsx scroll listener */
+  /* ── COLLAPSED STATE (when user scrolls down >20px) ──
+     body.tn-header-collapsed toggled by App.jsx capture-phase scroll listener */
   body.tn-header-collapsed .tn-hamburger {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    gap: 0 !important;
   }
-  /* Hide icon buttons row when scrolled */
+  /* Slide icon buttons row out of view */
   body.tn-header-collapsed .tn-hamburger > div:last-child {
     max-height: 0 !important;
     opacity: 0 !important;
+    margin-top: -4px !important;
   }
-  /* Reduce page content top padding to match collapsed header (~56px) */
+  /* Reduce page top padding to match slim header (~52px) */
   body.tn-header-collapsed .tn-page-transition {
     padding-top: 70px !important;
   }
