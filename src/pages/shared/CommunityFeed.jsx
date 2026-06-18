@@ -1880,6 +1880,161 @@ function SavedPostsView({ savedPosts, loadingSaved, ...props }) {
   return <>{savedPosts.map(post => <PostCard key={post._id} post={post} {...props} />)}</>;
 }
 
+// ── Feed Profile Drawer ───────────────────────────────────────────────────────
+// Bottom-sheet on mobile, centered modal on desktop. Matches the connections page UX.
+function FeedProfileDrawer({ userId, currentUser, connectionIds, pendingIds, onConnect, onClose }) {
+  const navigate = useNavigate();
+  const [person, setPerson] = useState(null);
+  const [posts,  setPosts]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const isMob = window.innerWidth <= 767;
+  const uid = String(userId);
+
+  useEffect(() => {
+    if (!uid) return;
+    setLoading(true);
+    Promise.all([
+      api.getUser(uid).catch(() => null),
+      api.getUserPosts(uid).catch(() => []),
+    ]).then(([personRes, postsRes]) => {
+      setPerson(personRes?.data || personRes);
+      const rawPosts = postsRes?.data || postsRes;
+      setPosts(Array.isArray(rawPosts) ? rawPosts.slice(0, 3) : []);
+      setLoading(false);
+    });
+  }, [uid]);
+
+  const isConnected = connectionIds?.has(uid) || person?.connectionStatus === 'accepted';
+  const isPending = pendingIds?.has(uid);
+  const isSelf = String(currentUser?.id || currentUser?._id) === uid;
+  const bg = ROLE_COLOR[person?.role] || '#0176D3';
+
+  const goFull = () => { onClose(); navigate(`/app/profile/${uid}`); };
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: isMob ? 'flex-end' : 'center', justifyContent: 'center', padding: isMob ? 0 : 16 }}
+    >
+      <style>{`
+        @keyframes fpSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fpScale { from { opacity:0; transform:scale(0.94) translateY(14px); } to { opacity:1; transform:scale(1) translateY(0); } }
+      `}</style>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', width: '100%', maxWidth: isMob ? '100%' : 480, maxHeight: isMob ? '92dvh' : '88vh', borderRadius: isMob ? '22px 22px 0 0' : 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 48px rgba(0,0,0,0.28)', animation: isMob ? 'fpSlideUp 0.28s cubic-bezier(0.32,0.72,0,1)' : 'fpScale 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
+      >
+        {/* Drag handle — mobile only */}
+        {isMob && <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '10px auto 0', flexShrink: 0 }} />}
+
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 220, flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+          </div>
+        ) : !person ? (
+          <div style={{ padding: 32, textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>😕</div>
+            <p style={{ color: '#6B7280', fontSize: 14 }}>Profile not found</p>
+            <button onClick={onClose} style={{ marginTop: 14, padding: '9px 24px', borderRadius: 10, background: '#0176D3', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Close</button>
+          </div>
+        ) : (
+          <>
+            {/* Hero gradient header */}
+            <div style={{ height: isMob ? 90 : 110, background: `linear-gradient(140deg, ${bg} 0%, ${bg}dd 55%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 30%, rgba(255,255,255,0.18) 0%, transparent 55%)', pointerEvents: 'none' }} />
+              <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.22)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, lineHeight: 1, flexShrink: 0 }}>✕</button>
+              {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 18, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', border: '1px solid rgba(255,255,255,0.3)' }}>✓ Connected</div>}
+            </div>
+
+            {/* Avatar — overlaps hero bottom */}
+            <div style={{ marginTop: -38, padding: '0 18px', marginBottom: 2, display: 'flex', alignItems: 'flex-end', gap: 12, flexShrink: 0, position: 'relative', zIndex: 2 }}>
+              {(person.avatarUrl || person.photoUrl)
+                ? <img src={person.avatarUrl || person.photoUrl} alt={person.name} style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44`, display: 'block' }} />
+                : <div style={{ width: 76, height: 76, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 28, border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44` }}>{(person.name || '?')[0].toUpperCase()}</div>
+              }
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 18px 32px', minHeight: 0 }}>
+              {/* Name / title */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', lineHeight: 1.2, marginBottom: 4 }}>{person.name || 'Member'}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 6, padding: '3px 10px' }}>{ROLE_LABEL[person.role] || person.role || 'Member'}</span>
+                {person.title      && <div style={{ fontSize: 14, color: '#374151', fontWeight: 600, marginTop: 7, lineHeight: 1.4 }}>{person.title}</div>}
+                {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>🏢 {person.department}</div>}
+                {person.location   && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>📍 {person.location}</div>}
+                {person.experience > 0 && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>⏱ {person.experience} yr{person.experience !== 1 ? 's' : ''} exp</div>}
+              </div>
+
+              {/* Action buttons */}
+              {!isSelf && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  {!isConnected ? (
+                    <button
+                      onClick={() => onConnect(uid)}
+                      disabled={isPending}
+                      style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: isPending ? '#F0FDF4' : bg, color: isPending ? '#16A34A' : '#fff', border: isPending ? '1.5px solid #BBF7D0' : 'none', fontWeight: 700, fontSize: 13, cursor: isPending ? 'default' : 'pointer', transition: 'opacity 0.15s' }}
+                    >
+                      {isPending ? '✓ Request Sent' : '+ Connect'}
+                    </button>
+                  ) : (
+                    <div style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#F0FDF4', color: '#16A34A', border: '1.5px solid #BBF7D0', fontWeight: 700, fontSize: 13, textAlign: 'center' }}>✓ Connected</div>
+                  )}
+                  <button
+                    onClick={goFull}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                  >View Full Profile →</button>
+                </div>
+              )}
+              {isSelf && (
+                <button onClick={goFull} style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>
+                  View My Profile →
+                </button>
+              )}
+
+              {/* Bio */}
+              {person.summary && (
+                <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: '1px solid #E5E7EB' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
+                  <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{person.summary}</div>
+                </div>
+              )}
+
+              {/* Skills */}
+              {Array.isArray(person.skills) && person.skills.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Skills</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {person.skills.slice(0, 12).map((s, i) => (
+                      <span key={i} style={{ fontSize: 12, fontWeight: 600, color: bg, background: bg + '12', borderRadius: 20, padding: '4px 10px', border: `1px solid ${bg}22` }}>{s}</span>
+                    ))}
+                    {person.skills.length > 12 && <span style={{ fontSize: 12, color: '#9CA3AF', borderRadius: 20, padding: '4px 10px', border: '1px solid #E5E7EB' }}>+{person.skills.length - 12} more</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent posts */}
+              {posts.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Posts</div>
+                  {posts.map(p => (
+                    <div key={String(p._id)} style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px', marginBottom: 8, border: '1px solid #E5E7EB' }}>
+                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {p.content || '—'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function CommunityFeed({ user }) {
@@ -1905,6 +2060,7 @@ export default function CommunityFeed({ user }) {
   const [seeding,      setSeeding]      = useState(false);
   const [seedMsg,      setSeedMsg]      = useState('');
   const [isMobile,     setMobile]       = useState(() => window.innerWidth < 1100);
+  const [profileUserId, setProfileUserId] = useState(null); // opens FeedProfileDrawer when set
   const lastRefreshRef = useRef(Date.now()); // tracks last full-page-1 reload time
 
   useEffect(() => {
@@ -1920,8 +2076,9 @@ export default function CommunityFeed({ user }) {
 
   const connectionIds = useMemo(() => new Set((connections || []).map(c => String(c._id || c.id))), [connections]);
 
-  const loadPosts = useCallback(async (p = 1, type = 'all', append = false) => {
-    if (p === 1) { setLoading(true); lastRefreshRef.current = Date.now(); }
+  const loadPosts = useCallback(async (p = 1, type = 'all', append = false, silent = false) => {
+    // silent=true: keep existing posts visible (used for background/pull refreshes)
+    if (p === 1) { if (!silent) setLoading(true); lastRefreshRef.current = Date.now(); }
     else setLoadingMore(true);
     try {
       const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 25);
@@ -1957,7 +2114,7 @@ export default function CommunityFeed({ user }) {
       if (document.visibilityState !== 'visible' || tab !== 'feed' || isFiltered) return;
       const awayMs = Date.now() - lastRefreshRef.current;
       if (awayMs >= 5 * 60 * 1000) {
-        loadPosts(1, filter);
+        loadPosts(1, filter, false, true); // silent — keep posts visible while refreshing
         setPendingPosts([]);
       }
     };
@@ -1970,7 +2127,7 @@ export default function CommunityFeed({ user }) {
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered && getFeedScrollY() < 80) {
-        loadPosts(1, filter);
+        loadPosts(1, filter, false, true); // silent background refresh
       }
     }, 60_000);
     return () => clearInterval(id);
@@ -2058,8 +2215,8 @@ export default function CommunityFeed({ user }) {
   const handleHashtagClick = useCallback((tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); }, []);
 
   const handleViewProfile = useCallback((userId) => {
-    navigate(`/app/profile/${userId}`);
-  }, [navigate]);
+    setProfileUserId(String(userId));
+  }, []);
 
   // Inline connect from post card or people panel
   const handleConnect = useCallback(async (authorId) => {
@@ -2212,7 +2369,7 @@ export default function CommunityFeed({ user }) {
     if (pullDist >= PULL_THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullDist(0);
-      await loadPosts(1, filter);
+      await loadPosts(1, filter, false, true); // silent — pull indicator IS the visual
       setRefreshing(false);
     } else {
       setPullDist(0);
@@ -2452,6 +2609,18 @@ export default function CommunityFeed({ user }) {
             lineHeight: 1,
           }}
         >＋</button>
+      )}
+
+      {/* Profile drawer — slides up from bottom on mobile, centered modal on desktop */}
+      {profileUserId && (
+        <FeedProfileDrawer
+          userId={profileUserId}
+          currentUser={user}
+          connectionIds={connectionIds}
+          pendingIds={pendingIds}
+          onConnect={handleConnect}
+          onClose={() => setProfileUserId(null)}
+        />
       )}
 
       <style>{`

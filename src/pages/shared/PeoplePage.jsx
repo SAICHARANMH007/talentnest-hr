@@ -81,19 +81,25 @@ function UserProfileDrawer({ person, onClose, onRemove, onAction, currentUserId 
     setRequesting(false);
   };
 
+  const isMob = window.innerWidth <= 767;
   return (
     <>
-      {/* Blurred backdrop — click closes */}
+      {/* Backdrop — zIndex 2100 puts it above the fixed mobile header (1500) */}
       <div
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: isMob ? 'flex-end' : 'center', justifyContent: 'center', padding: isMob ? 0 : '16px' }}
       >
-        {/* Modal card — click inside doesn't close */}
+        {/* Modal / bottom-sheet card */}
         <div
           onClick={e => e.stopPropagation()}
-          style={{ background: '#fff', width: '100%', maxWidth: 460, maxHeight: '92vh', borderRadius: 24, display: 'flex', flexDirection: 'column', boxShadow: '0 28px 90px rgba(0,0,0,0.4)', overflow: 'hidden', animation: 'ppSlide 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
+          style={{ background: '#fff', width: '100%', maxWidth: isMob ? '100%' : 460, maxHeight: isMob ? '92dvh' : '92vh', borderRadius: isMob ? '22px 22px 0 0' : 24, display: 'flex', flexDirection: 'column', boxShadow: isMob ? '0 -8px 48px rgba(0,0,0,0.28)' : '0 28px 90px rgba(0,0,0,0.4)', overflow: 'hidden', animation: isMob ? 'ppSlideUp 0.28s cubic-bezier(0.32,0.72,0,1)' : 'ppSlide 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
         >
-          <style>{`@keyframes ppSlide{from{opacity:0;transform:scale(0.94) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+          <style>{`
+            @keyframes ppSlide{from{opacity:0;transform:scale(0.94) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+            @keyframes ppSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+          `}</style>
+          {/* Drag handle — mobile only */}
+          {isMob && <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '10px auto 0', flexShrink: 0 }} />}
           {/* Hero header with gradient */}
           <div style={{ height: 110, background: `linear-gradient(140deg, ${bg} 0%, ${bg}dd 55%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
             {/* Decorative glow */}
