@@ -15,8 +15,14 @@ const STATUS_COLORS = {
 };
 
 const REQUEST_STATUS_COLORS = {
-  pending: { bg: 'rgba(245,158,11,0.12)', color: '#B45309', label: '⏳ Pending approval' },
+  pending: { bg: 'rgba(245,158,11,0.12)', color: '#B45309', label: '⏳ Pending college approval' },
   rejected: { bg: 'rgba(186,5,23,0.08)', color: '#BA0517', label: '❌ Declined by college' },
+};
+
+const INTERNAL_STATUS = {
+  pending:  { bg: 'rgba(124,58,237,0.1)', color: '#7C3AED', label: '🔒 Awaiting org approval' },
+  rejected: { bg: 'rgba(186,5,23,0.08)', color: '#BA0517', label: '❌ Declined by org admin' },
+  approved: { bg: 'rgba(1,118,211,0.1)', color: '#0176D3', label: '✅ Org approved — at college' },
 };
 
 const OPPORTUNITY_TYPE_LABELS = {
@@ -233,9 +239,26 @@ export default function CompanyCollegeDrives() {
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'rgba(1,118,211,0.08)', borderRadius: 999, padding: '2px 10px' }}>
                       {OPPORTUNITY_TYPE_LABELS[d.opportunityType] || OPPORTUNITY_TYPE_LABELS.placement}
                     </span>
-                    {(d.requestStatus === 'pending' || d.requestStatus === 'rejected') && (
+                    {/* Show internal org approval status for recruiter-created drives */}
+                    {d.internalApprovalStatus === 'pending' && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: INTERNAL_STATUS.pending.color, background: INTERNAL_STATUS.pending.bg, borderRadius: 999, padding: '2px 10px' }}>
+                        {INTERNAL_STATUS.pending.label}
+                      </span>
+                    )}
+                    {d.internalApprovalStatus === 'rejected' && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: INTERNAL_STATUS.rejected.color, background: INTERNAL_STATUS.rejected.bg, borderRadius: 999, padding: '2px 10px' }}>
+                        {INTERNAL_STATUS.rejected.label}
+                      </span>
+                    )}
+                    {/* Show college approval status only once internal is approved or not required */}
+                    {(d.internalApprovalStatus === 'not_required' || d.internalApprovalStatus === 'approved') && (d.requestStatus === 'pending' || d.requestStatus === 'rejected') && (
                       <span style={{ fontSize: 11, fontWeight: 700, color: REQUEST_STATUS_COLORS[d.requestStatus].color, background: REQUEST_STATUS_COLORS[d.requestStatus].bg, borderRadius: 999, padding: '2px 10px' }}>
                         {REQUEST_STATUS_COLORS[d.requestStatus].label}
+                      </span>
+                    )}
+                    {d.isAssignedToMe && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', background: 'rgba(5,150,105,0.1)', borderRadius: 999, padding: '2px 10px' }}>
+                        🎯 Assigned to you
                       </span>
                     )}
                     {d.examProvider && (

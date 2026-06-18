@@ -45,6 +45,20 @@ const placementDriveSchema = new mongoose.Schema({
   // Who can see and register for this opportunity
   targetAudience: { type: String, enum: ['students', 'alumni', 'experienced', 'all'], default: 'students' },
   createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // Internal approval — when a recruiter (not admin) requests a drive, the
+  // company's org admin must approve it before it is forwarded to the college.
+  // 'not_required' = created by admin (skips this step).
+  // 'pending'      = waiting for org admin to approve.
+  // 'approved'     = org admin approved; request has been forwarded to college.
+  // 'rejected'     = org admin rejected the request.
+  internalApprovalStatus: {
+    type: String,
+    enum: ['not_required', 'pending', 'approved', 'rejected'],
+    default: 'not_required',
+  },
+  // Recruiter assigned to this drive by an org admin (optional).
+  assignedRecruiterId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  assignedRecruiterName: { type: String, trim: true, default: '' },
   // When a recruiter/company requests a campus drive from a college, the
   // drive is created with requestStatus 'pending' and is hidden from the
   // college's main drive list until a placement officer approves it (which

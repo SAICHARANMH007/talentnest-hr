@@ -41,6 +41,12 @@ export const dashboardService = {
   async getDriveRequests()               { return req('GET', '/dashboard/college/drive-requests'); },
   async approveDriveRequest(id)          { return req('POST', `/dashboard/college/drive-requests/${id}/approve`); },
   async rejectDriveRequest(id)           { return req('POST', `/dashboard/college/drive-requests/${id}/reject`); },
+  // Internal drive approvals (admin approves recruiter-submitted drive requests)
+  async getAdminDriveApprovals()         { return req('GET', '/dashboard/admin/drive-approvals'); },
+  async approveInternalDriveRequest(id)  { return req('POST', `/dashboard/admin/drive-approvals/${id}/approve`); },
+  async rejectInternalDriveRequest(id)   { return req('POST', `/dashboard/admin/drive-approvals/${id}/reject`); },
+  // Admin creates a drive and optionally assigns it to a recruiter
+  async adminCreateDrive(payload)        { return req('POST', '/dashboard/admin/drives', payload); },
   async getCollegeAssessments()          { return req('GET', '/dashboard/college/assessments'); },
   async getTrainingResources()           { return req('GET', '/dashboard/college/training-resources'); },
   async createTrainingResource(payload)  { return req('POST', '/dashboard/college/training-resources', payload); },
