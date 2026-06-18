@@ -165,4 +165,10 @@ export const dashboardService = {
   async getCompanyCollegeDrive(id) {
     return req('GET', `/dashboard/company/college-drives/${id}`);
   },
+  async updateDriveRegistrationStatus(driveId, candidateId, payload) {
+    return req('PATCH', `/dashboard/company/college-drives/${driveId}/registrations/${candidateId}`, payload);
+  },
+  async getMyDriveRegistrations() {
+    return req('GET', '/dashboard/candidate/my-drive-registrations');
+  },
 };

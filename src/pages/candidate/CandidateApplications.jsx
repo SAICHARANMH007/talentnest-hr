@@ -122,6 +122,16 @@ export default function CandidateApplications({ user }) {
   const [activeTab, setActiveTab]     = useState('applications');
 
   const [myOffers, setMyOffers] = useState([]);
+  const [driveRegs, setDriveRegs] = useState([]);
+  const [driveRegsLoading, setDriveRegsLoading] = useState(false);
+
+  useEffect(() => {
+    setDriveRegsLoading(true);
+    api.getMyDriveRegistrations()
+      .then(r => setDriveRegs(Array.isArray(r) ? r : (r?.data || [])))
+      .catch(() => setDriveRegs([]))
+      .finally(() => setDriveRegsLoading(false));
+  }, [user.id]);
 
   useEffect(() => {
     const loadApplications = (silent = false) => {
@@ -216,6 +226,8 @@ export default function CandidateApplications({ user }) {
         title="My Applications & Invitations"
         subtitle={activeTab === 'applications'
           ? `${apps.length} application${apps.length !== 1 ? 's' : ''}`
+          : activeTab === 'drives'
+          ? `${driveRegs.length} campus drive${driveRegs.length !== 1 ? 's' : ''}`
           : `${invites.length} invitation${invites.length !== 1 ? 's' : ''}`}
       />
       {toast && (
@@ -232,6 +244,7 @@ export default function CandidateApplications({ user }) {
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DDDBDA', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
         {[
           { id: 'applications', label: '📋 Applications', count: apps.length },
+          { id: 'drives',       label: '🏫 Campus Drives', count: driveRegs.length },
           { id: 'invites',      label: '📧 Invitations',  count: invites.length, badge: pendingInvites.length },
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
@@ -248,6 +261,129 @@ export default function CandidateApplications({ user }) {
           </button>
         ))}
       </div>
+
+      {/* ── CAMPUS DRIVES TAB ── */}
+      {activeTab === 'drives' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {driveRegsLoading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}><Spinner /></div>
+          ) : driveRegs.length === 0 ? (
+            <div style={{ ...card, textAlign: 'center', padding: '48px 20px' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🏫</div>
+              <p style={{ color: '#706E6B', fontSize: 14, margin: 0 }}>No campus drive registrations yet.</p>
+              <p style={{ color: '#0176D3', fontSize: 13, marginTop: 6 }}>Register for placement drives from the Opportunities section!</p>
+            </div>
+          ) : (
+            driveRegs.map(reg => {
+              const DRIVE_STATUS = {
+                registered:  { color: '#0176D3', bg: 'rgba(1,118,211,0.08)',   label: '📋 Registered',   icon: '📋', step: 0 },
+                shortlisted: { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  label: '⭐ Shortlisted',  icon: '⭐', step: 1 },
+                selected:    { color: '#2E844A', bg: 'rgba(46,132,74,0.08)',   label: '🏆 Selected',     icon: '🏆', step: 2 },
+                rejected:    { color: '#BA0517', bg: 'rgba(186,5,23,0.08)',    label: '❌ Not Selected', icon: '❌', step: -1 },
+              };
+              const STEPS = [
+                { id: 'registered',  label: 'Registered',  icon: '📋' },
+                { id: 'shortlisted', label: 'Shortlisted', icon: '⭐' },
+                { id: 'selected',    label: 'Selected',    icon: '🏆' },
+              ];
+              const st = DRIVE_STATUS[reg.myStatus] || DRIVE_STATUS.registered;
+              const isRejected = reg.myStatus === 'rejected';
+              const currentStep = isRejected ? -1 : st.step;
+
+              const driveDate = reg.driveDate ? new Date(reg.driveDate) : null;
+
+              return (
+                <div key={reg.driveId} style={{ ...card, borderLeft: `4px solid ${st.color}`, overflow: 'hidden' }}>
+                  {/* Status header */}
+                  <div style={{ background: st.bg, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 18 }}>{st.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: st.color }}>{st.label}</div>
+                        {reg.statusUpdatedAt && (
+                          <div style={{ fontSize: 11, color: '#374151' }}>
+                            Updated {new Date(reg.statusUpdatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {reg.driveType && (
+                      <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>
+                        {reg.driveType === 'placement' ? '🎓 Placement' : reg.driveType === 'internship' ? '💼 Internship' : reg.driveType}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '0 4px' }}>
+                    {/* Drive info */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
+                      <div style={{ color: '#0176D3', fontSize: 12, marginTop: 3 }}>{reg.companyName}</div>
+                      <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {reg.collegeName && <span>🏛 {reg.collegeName}</span>}
+                        {driveDate && <span>📅 {driveDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                      </div>
+                    </div>
+
+                    {/* Status stepper */}
+                    {isRejected ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#BA0517', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✕</div>
+                        <span style={{ color: '#fca5a5', fontSize: 12, fontWeight: 600 }}>Not selected for this drive</span>
+                      </div>
+                    ) : (
+                      <nav aria-label="Drive status" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 10 }}>
+                        <ol role="list" style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', gap: 0, listStyle: 'none', margin: 0, padding: '0 0 4px' }}>
+                          {STEPS.map((step, i) => {
+                            const done = i < currentStep;
+                            const active = i === currentStep;
+                            const lineColor = done ? '#0176D3' : '#DDDBDA';
+                            let dotBg = '#F3F2F2', dotBorder = '2px solid #DDDBDA', dotFg = '#C9C7C5', labelColor = '#9E9D9B';
+                            if (done)   { dotBg = '#0176D3'; dotBorder = '2px solid #0176D3'; dotFg = '#fff'; labelColor = '#0176D3'; }
+                            if (active) { dotBg = '#fff'; dotBorder = '2.5px solid #0176D3'; dotFg = '#0176D3'; labelColor = '#0176D3'; }
+                            return (
+                              <React.Fragment key={step.id}>
+                                {i > 0 && <div aria-hidden="true" style={{ width: 32, height: 2, background: lineColor, flexShrink: 0 }} />}
+                                <li style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                  <div style={{
+                                    width: 30, height: 30, borderRadius: '50%',
+                                    background: dotBg, border: dotBorder,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: active ? 14 : 13, color: dotFg, fontWeight: 700, flexShrink: 0,
+                                    ...(active ? { boxShadow: '0 0 0 4px rgba(1,118,211,0.15)' } : {}),
+                                  }}>
+                                    {active ? step.icon : done ? '✓' : step.icon}
+                                  </div>
+                                  <span style={{ color: labelColor, fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{step.label}</span>
+                                </li>
+                              </React.Fragment>
+                            );
+                          })}
+                        </ol>
+                      </nav>
+                    )}
+
+                    {/* Recruiter notes */}
+                    {reg.notes && (
+                      <div style={{ padding: '8px 12px', background: 'rgba(1,118,211,0.04)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.12)', marginTop: 4 }}>
+                        <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 2px' }}>Recruiter Notes</p>
+                        <p style={{ color: '#706E6B', fontSize: 12, margin: 0 }}>{reg.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Selected congratulations */}
+                    {reg.myStatus === 'selected' && (
+                      <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
+                        <p style={{ color: '#2E844A', fontSize: 12, fontWeight: 700, margin: 0 }}>🎉 Congratulations! You have been selected through this campus drive. The recruiter will reach out with next steps.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* ── INVITATIONS TAB ── */}
       {activeTab === 'invites' && (

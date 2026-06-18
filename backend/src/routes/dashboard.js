@@ -1885,6 +1885,103 @@ router.get('/company/college-drives/:id', authenticate, allowRoles('admin', 'rec
   });
 }));
 
+/* PATCH /api/dashboard/company/college-drives/:id/registrations/:candidateId
+   — recruiter/admin updates a candidate's pipeline status in a drive they
+   created, were assigned to, or whose company matches theirs. */
+router.patch('/company/college-drives/:id/registrations/:candidateId', authenticate, allowRoles('admin', 'recruiter'), asyncHandler(async (req, res) => {
+  if (req.user.tenantType === 'college') throw new AppError('Not available for college accounts.', 403);
+
+  const userId = req.user._id || req.user.id;
+  const tenant = await Tenant.findById(req.user.tenantId).select('name').lean();
+  const companyName = normalizeCompanyName(tenant?.name) || tenant?.name || '';
+
+  const accessClauses = [
+    { createdBy: userId },
+    { assignedRecruiterId: userId },
+  ];
+  if (companyName) {
+    const variants = companyNameVariants(companyName);
+    const pattern = '^(' + variants.map(escapeRegex).join('|') + ')$';
+    accessClauses.push({ companyName: new RegExp(pattern, 'i') });
+  }
+
+  const drive = await PlacementDrive.findOne({ _id: req.params.id, $or: accessClauses, deletedAt: null });
+  if (!drive) throw new AppError('Drive not found.', 404);
+
+  const { status, notes } = req.body;
+  if (status !== undefined && !['registered', 'shortlisted', 'selected', 'rejected'].includes(status)) {
+    throw new AppError('Invalid status.', 400);
+  }
+
+  const reg = drive.registrations.find(r => String(r.candidateId) === req.params.candidateId);
+  if (!reg) throw new AppError('Candidate not found in this drive.', 404);
+
+  const statusChanged = status !== undefined && status !== reg.status;
+  if (status !== undefined) reg.status = status;
+  if (notes !== undefined) reg.notes = String(notes).trim().slice(0, 500);
+  reg.updatedAt = new Date();
+  await drive.save();
+
+  if (statusChanged) {
+    try {
+      const Notification = require('../models/Notification');
+      const candidate = await Candidate.findById(req.params.candidateId).select('userId name email').lean();
+      if (candidate?.userId) {
+        await Notification.create({
+          userId: candidate.userId,
+          tenantId: drive.tenantId,
+          type: 'system',
+          title: `Drive update: ${drive.title}`,
+          message: `Your status for "${drive.title}" has been updated to "${status}".`,
+          link: '/app/applications',
+          metadata: { kind: 'placement_drive_status', driveId: String(drive._id), status },
+        });
+      }
+      const { emitToTenant } = require('../socket/platformSocket');
+      const socketRegistry   = require('../socket/index');
+      emitToTenant(socketRegistry.getIO(), drive.tenantId, 'drive:registrationChanged', {
+        driveId: String(drive._id), candidateId: String(req.params.candidateId), status,
+      });
+    } catch {}
+  }
+
+  res.json({ success: true });
+}));
+
+/* GET /api/dashboard/candidate/my-drive-registrations — list all placement
+   drives this candidate has registered for, with their current status. Used
+   by the "My Applications" page under "Campus Drives" tab. */
+router.get('/candidate/my-drive-registrations', authenticate, allowRoles('candidate'), asyncHandler(async (req, res) => {
+  const candidate = await Candidate.findOne({ email: req.user.email }).lean();
+  if (!candidate) return res.json({ success: true, data: [] });
+
+  const drives = await PlacementDrive.find({
+    'registrations.candidateId': candidate._id,
+    deletedAt: null,
+  }).sort({ driveDate: -1 }).lean();
+
+  const data = drives.map(d => {
+    const reg = (d.registrations || []).find(r => String(r.candidateId) === String(candidate._id));
+    return {
+      id: String(d._id),
+      title: d.title,
+      companyName: d.companyName || '',
+      collegeName: d.collegeName || '',
+      description: d.description || '',
+      mode: d.mode,
+      location: d.location || '',
+      driveDate: d.driveDate,
+      opportunityType: d.opportunityType || 'placement',
+      status: d.status,
+      myStatus: reg?.status || 'registered',
+      notes: reg?.notes || '',
+      statusUpdatedAt: reg?.updatedAt || d.createdAt,
+    };
+  });
+
+  res.json({ success: true, data });
+}));
+
 /* GET /api/dashboard/college/assessments — list this college tenant's
    assessments for linking to an exam-type opportunity. */
 router.get('/college/assessments', authenticate, allowRoles('admin', 'placement_officer'), asyncHandler(async (req, res) => {
