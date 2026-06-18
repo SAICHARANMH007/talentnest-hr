@@ -743,3 +743,26 @@ button, a, [role="button"] {
     font-size: 12px !important;
   }
 }
+
+/* ════════════════════════════════
+   MOBILE HEADER — Remove white gap + flush hamburger to screen edges
+   Must come AFTER @media (max-width: 1280px) rule above to win cascade
+   ════════════════════════════════ */
+@media (max-width: 767px) {
+  /* Remove top padding so hamburger sits flush at top — no white gap */
+  .tn-main-content {
+    padding-top: 0 !important;
+  }
+  /* Flush hamburger full-width to screen edges, reduce bottom gap */
+  .tn-hamburger {
+    margin-bottom: 8px !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    border-radius: 0 0 12px 12px !important;
+  }
+  /* Spread icon buttons evenly, no visible navy gaps between them */
+  .tn-hamburger > div:last-child {
+    gap: 4px !important;
+    justify-content: space-between !important;
+  }
+}

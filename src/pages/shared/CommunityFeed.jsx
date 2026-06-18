@@ -2186,7 +2186,7 @@ export default function CommunityFeed({ user }) {
 
   return (
     <div
-      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden', width: '100%', minWidth: 0, boxSizing: 'border-box' }}
+      style={{ padding: isMobile ? '0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden', width: '100%', minWidth: 0, boxSizing: 'border-box' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
