@@ -803,7 +803,8 @@ router.get('/', asyncHandler(async (req, res) => {
   // community — fall back to the same resolved company name (current/most
   // recent work-experience entry) used for company-community member lists.
   let userCompany = normalizeCompanyName(req.user.currentCompany);
-  if (!userCompany && req.user.email) {
+  // Only read candidate-derived company from cache — never trigger a cold scan here.
+  if (!userCompany && req.user.email && resolvedCandidatesCache && Date.now() - resolvedCandidatesCacheAt < RESOLVED_CANDIDATES_CACHE_MS) {
     try {
       const resolved = await getResolvedCandidates();
       const mine = resolved.find(r => (r.candidate.email || '').toLowerCase().trim() === req.user.email.toLowerCase().trim());
@@ -831,14 +832,21 @@ router.get('/', asyncHandler(async (req, res) => {
   // college/company name, to fold into the member counts below.
   const candidateCollegeCounts = new Map();
   const candidateCompanyCounts = new Map();
-  try {
-    const [collegeNameCounts, companyNameCounts] = await Promise.all([
-      getCollegeNameCounts(),
-      getCompanyNameCounts(),
-    ]);
-    collegeNameCounts.forEach((v, key) => candidateCollegeCounts.set(key, v.count));
-    companyNameCounts.forEach((v, key) => candidateCompanyCounts.set(key, v.count));
-  } catch {}
+  if (resolvedCandidatesCache && Date.now() - resolvedCandidatesCacheAt < RESOLVED_CANDIDATES_CACHE_MS) {
+    // Cache warm — fetch live candidate counts without delay
+    try {
+      const [collegeNameCounts, companyNameCounts] = await Promise.all([
+        getCollegeNameCounts(),
+        getCompanyNameCounts(),
+      ]);
+      collegeNameCounts.forEach((v, key) => candidateCollegeCounts.set(key, v.count));
+      companyNameCounts.forEach((v, key) => candidateCompanyCounts.set(key, v.count));
+    } catch {}
+  } else {
+    // Cache cold — respond immediately with stored memberCount; warm cache in background
+    // so the NEXT request gets live counts without waiting.
+    getResolvedCandidates().catch(() => {});
+  }
 
   const data = unique.map(c => {
     const isCollegeMember = !!c.collegeName && userCollege && normalizeCollegeName(c.collegeName) === userCollege;
