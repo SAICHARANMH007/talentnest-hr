@@ -884,7 +884,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)' }
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box' }
       : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
@@ -1340,7 +1340,7 @@ function CreatePost({ user, onCreate, isMobile }) {
 
   return (
     <>
-      <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9', overflow: 'hidden' }}>
+      <div style={{ ...card, padding: '14px 18px', marginBottom: 12, borderRadius: 16, border: '1px solid #F1F5F9', overflow: 'hidden', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
           <button onClick={() => openModal('update')} className="tn-composer-btn"
@@ -2186,7 +2186,7 @@ export default function CommunityFeed({ user }) {
 
   return (
     <div
-      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden' }}
+      style={{ padding: isMobile ? '12px 0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden', width: '100%', minWidth: 0, boxSizing: 'border-box' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -2288,7 +2288,7 @@ export default function CommunityFeed({ user }) {
         </>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr 260px', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr 260px', gap: 16, alignItems: 'start', minWidth: 0 }}>
         {/* Left sidebar */}
         {!isMobile && tab === 'feed' && (
           <div style={{ position: 'sticky', top: 16 }}>
@@ -2299,7 +2299,7 @@ export default function CommunityFeed({ user }) {
         {!isMobile && tab === 'saved' && <div />}
 
         {/* Feed */}
-        <div style={{ padding: isMobile ? '0 6px' : 0 }}>
+        <div style={{ padding: isMobile ? '0 6px' : 0, minWidth: 0 }}>
           {tab === 'feed' && (
             <>
               <SearchBar value={search} onChange={setSearch} isMobile={isMobile} />
