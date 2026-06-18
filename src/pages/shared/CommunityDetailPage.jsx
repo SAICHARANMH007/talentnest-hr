@@ -284,7 +284,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
             {totalComments > 0 && <span style={{ cursor: 'pointer' }} onClick={() => setShowComments(v => !v)}>{totalComments} comment{totalComments !== 1 ? 's' : ''}</span>}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 2 }}>
+        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           {REACTIONS.map(r => (
             <button key={r.type} onClick={() => onReact(post._id, r.type)}
               style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: myReaction?.type === r.type ? `1px solid ${r.color || '#1D4ED8'}33` : '1px solid transparent', background: myReaction?.type === r.type ? '#EFF6FF' : 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, fontWeight: myReaction?.type === r.type ? 700 : 500, color: myReaction?.type === r.type ? (r.color || '#1D4ED8') : '#374151', transition: 'all 0.12s' }}>
@@ -1036,7 +1036,7 @@ export default function CommunityDetailPage({ user }) {
   }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: isMobile ? '0 0 40px' : '20px 0 40px' }}>
+    <div style={{ maxWidth: 860, margin: '0 auto', padding: isMobile ? '0 0 40px' : '20px 0 40px', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Super Admin: Edit Community Modal */}
