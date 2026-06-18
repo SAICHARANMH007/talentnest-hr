@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
@@ -29,6 +30,124 @@ const POST_TYPE_ACCENT = {
   feedback: '#DB2777', resource: '#0891B2', milestone: '#DC2626',
   announcement: '#2563EB', poll: '#5B21B6',
 };
+
+const FEED_FILTERS = [
+  { value: 'all',          label: 'All' },
+  { value: 'hiring',       label: '💼 Hiring' },
+  { value: 'tip',          label: '💡 Tips' },
+  { value: 'question',     label: '❓ Questions' },
+  { value: 'achievement',  label: '🏆 Wins' },
+  { value: 'resource',     label: '📎 Resources' },
+  { value: 'announcement', label: '📢 News' },
+];
+
+// ── Community Profile Drawer ───────────────────────────────────────────────────
+function CommunityProfileDrawer({ userId, currentUser, onClose }) {
+  const navigate = useNavigate();
+  const [person,  setPerson]  = useState(null);
+  const [posts,   setPosts]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const isMob = window.innerWidth <= 767;
+  const uid = String(userId);
+
+  useEffect(() => {
+    if (!uid) return;
+    setLoading(true);
+    Promise.all([
+      api.getUser(uid).catch(() => null),
+      api.getUserPosts(uid).catch(() => []),
+    ]).then(([personRes, postsRes]) => {
+      setPerson(personRes?.data || personRes);
+      const rawPosts = postsRes?.data || postsRes;
+      setPosts(Array.isArray(rawPosts) ? rawPosts.slice(0, 3) : []);
+      setLoading(false);
+    });
+  }, [uid]);
+
+  const isSelf = String(currentUser?.id || currentUser?._id) === uid;
+  const bg = ROLE_COLOR[person?.role] || '#0176D3';
+  const goFull = () => { onClose(); navigate(`/app/profile/${uid}`); };
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: isMob ? 'flex-end' : 'center', justifyContent: 'center', padding: isMob ? 0 : 16 }}
+    >
+      <style>{`
+        @keyframes cdpSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes cdpScale { from { opacity:0; transform:scale(0.94) translateY(14px); } to { opacity:1; transform:scale(1) translateY(0); } }
+      `}</style>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', width: '100%', maxWidth: isMob ? '100%' : 480, maxHeight: isMob ? '92dvh' : '88vh', borderRadius: isMob ? '22px 22px 0 0' : 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 48px rgba(0,0,0,0.28)', animation: isMob ? 'cdpSlideUp 0.28s cubic-bezier(0.32,0.72,0,1)' : 'cdpScale 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
+      >
+        {isMob && <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '10px auto 0', flexShrink: 0 }} />}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 220 }}>
+            <div style={{ width: 30, height: 30, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+          </div>
+        ) : !person ? (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>😕</div>
+            <p style={{ color: '#6B7280', fontSize: 14 }}>Profile not found</p>
+            <button onClick={onClose} style={{ marginTop: 14, padding: '9px 24px', borderRadius: 10, background: '#0176D3', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ height: isMob ? 90 : 110, background: `linear-gradient(140deg, ${bg} 0%, ${bg}dd 55%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
+              <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.22)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>✕</button>
+            </div>
+            <div style={{ marginTop: -38, padding: '0 18px', marginBottom: 2, display: 'flex', alignItems: 'flex-end', gap: 12, flexShrink: 0, position: 'relative', zIndex: 2 }}>
+              {(person.avatarUrl || person.photoUrl)
+                ? <img src={person.avatarUrl || person.photoUrl} alt={person.name} style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44` }} />
+                : <div style={{ width: 76, height: 76, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 28, border: '4px solid #fff' }}>{(person.name || '?')[0].toUpperCase()}</div>
+              }
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 18px 32px', minHeight: 0 }}>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', lineHeight: 1.2, marginBottom: 4 }}>{person.name || 'Member'}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 6, padding: '3px 10px' }}>{ROLE_LABEL[person.role] || person.role || 'Member'}</span>
+                {person.title      && <div style={{ fontSize: 14, color: '#374151', fontWeight: 600, marginTop: 7 }}>{person.title}</div>}
+                {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>🏢 {person.department}</div>}
+                {person.location   && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>📍 {person.location}</div>}
+              </div>
+              <button onClick={goFull} style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: isSelf ? '#F1F5F9' : '#0176D3', color: isSelf ? '#0A1628' : '#fff', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>
+                {isSelf ? 'View My Profile →' : 'View Full Profile →'}
+              </button>
+              {person.summary && (
+                <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: '1px solid #E5E7EB' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
+                  <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{person.summary}</div>
+                </div>
+              )}
+              {Array.isArray(person.skills) && person.skills.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Skills</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {person.skills.slice(0, 12).map((s, i) => (
+                      <span key={i} style={{ fontSize: 12, fontWeight: 600, color: bg, background: bg + '12', borderRadius: 20, padding: '4px 10px', border: `1px solid ${bg}22` }}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {posts.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Posts</div>
+                  {posts.map(p => (
+                    <div key={String(p._id)} style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px', marginBottom: 8, border: '1px solid #E5E7EB' }}>
+                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.content || '—'}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 function PostTypeBanner({ post }) {
   const type = post?.postType;
@@ -111,7 +230,7 @@ const REPORT_REASONS = [
 ];
 
 // ── Post Card (community-specific, lightweight) ────────────────────────────────
-function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
+function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewProfile }) {
   const [showComments, setShowComments] = useState(false);
   const [comment,      setComment]      = useState('');
   const [submitting,   setSubmitting]   = useState(false);
@@ -207,10 +326,12 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-        <Avatar name={post.authorName} src={post.authorAvatar} size={38} role={post.authorRole} />
+        <div onClick={() => onViewProfile?.(post.authorId)} style={{ cursor: 'pointer', flexShrink: 0 }}>
+          <Avatar name={post.authorName} src={post.authorAvatar} size={38} role={post.authorRole} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-            <span style={{ fontWeight: 800, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{post.authorName || 'Member'}</span>
+            <span onClick={() => onViewProfile?.(post.authorId)} style={{ fontWeight: 800, fontSize: 13, color: '#0A1628', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160, cursor: 'pointer' }}>{post.authorName || 'Member'}</span>
             <RoleBadge role={post.authorRole} />
             {hasBanner && POST_TYPE_ACCENT[post.postType] && <span style={{ fontSize: 10, fontWeight: 700, background: POST_TYPE_ACCENT[post.postType] + '18', color: POST_TYPE_ACCENT[post.postType], borderRadius: 10, padding: '2px 8px' }}>{post.postType}</span>}
           </div>
@@ -292,8 +413,17 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete }) {
             </button>
           ))}
           <button onClick={() => setShowComments(v => !v)}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
             💬 Comment
+          </button>
+          <button
+            onClick={() => {
+              const url = window.location.href;
+              if (navigator.share) { navigator.share({ title: post.authorName, text: (post.content || '').slice(0, 100), url }).catch(() => {}); }
+              else { navigator.clipboard?.writeText(url).catch(() => {}); }
+            }}
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
+            ↗ Share
           </button>
         </div>
 
@@ -824,6 +954,9 @@ export default function CommunityDetailPage({ user }) {
   const [editForm,  setEditForm]  = useState({});
   const [editSaving,setEditSaving]= useState(false);
   const [editErr,   setEditErr]   = useState('');
+  const [postFilter,   setPostFilter]   = useState('all');
+  const [postSearch,   setPostSearch]   = useState('');
+  const [profileUserId, setProfileUserId] = useState(null);
   const isSuperAdmin = ['super_admin', 'superadmin'].includes(user?.role);
   const uid = String(user?.id || user?._id || '');
   // Auto-membership communities (e.g. "<College> Community") can't be left —
@@ -1199,20 +1332,61 @@ export default function CommunityDetailPage({ user }) {
                 </div>
               )}
 
+            {/* Search bar */}
+            <div style={{ position: 'relative', marginBottom: 10 }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
+              <input
+                value={postSearch}
+                onChange={e => setPostSearch(e.target.value)}
+                placeholder="Search posts…"
+                style={{ width: '100%', padding: '9px 14px 9px 36px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC', boxSizing: 'border-box', color: '#374151' }}
+              />
+              {postSearch && (
+                <button onClick={() => setPostSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 15 }}>✕</button>
+              )}
+            </div>
+
+            {/* Filter pills */}
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', marginBottom: 14, paddingBottom: 2 }}>
+              {FEED_FILTERS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setPostFilter(f.value)}
+                  style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: postFilter === f.value ? `1.5px solid ${bg}` : '1.5px solid #E5E7EB', background: postFilter === f.value ? bg : '#fff', color: postFilter === f.value ? '#fff' : '#374151', fontSize: 12, fontWeight: postFilter === f.value ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.13s' }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {/* Posts — always visible to everyone (no membership gate) */}
             {postsLoading ? (
               <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
                 <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />
                 Loading posts…
               </div>
-            ) : posts.length === 0 ? (
-              <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>✍️</div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No posts yet</div>
-                <div style={{ fontSize: 13, color: '#9CA3AF' }}>Be the first to share something with this community!</div>
-              </div>
-            ) : (
-              posts.map(post => (
+            ) : (() => {
+              const filteredPosts = posts.filter(p => {
+                const matchFilter = postFilter === 'all' || p.postType === postFilter;
+                const q = postSearch.trim().toLowerCase();
+                const matchSearch = !q || (p.content || '').toLowerCase().includes(q) || (p.authorName || '').toLowerCase().includes(q);
+                return matchFilter && matchSearch;
+              });
+              if (posts.length === 0) return (
+                <div style={{ ...card, textAlign: 'center', padding: '40px 24px', borderRadius: 14 }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>✍️</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#374151', marginBottom: 6 }}>No posts yet</div>
+                  <div style={{ fontSize: 13, color: '#9CA3AF' }}>Be the first to share something with this community!</div>
+                </div>
+              );
+              if (filteredPosts.length === 0) return (
+                <div style={{ ...card, textAlign: 'center', padding: '32px 24px', borderRadius: 14 }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginBottom: 4 }}>No matching posts</div>
+                  <div style={{ fontSize: 12, color: '#9CA3AF' }}>Try a different filter or search term.</div>
+                </div>
+              );
+              return filteredPosts.map(post => (
                 <CommunityPostCard
                   key={post._id}
                   post={post}
@@ -1220,9 +1394,10 @@ export default function CommunityDetailPage({ user }) {
                   userRole={user?.role}
                   onReact={handleReact}
                   onDelete={handleDelete}
+                  onViewProfile={(authorId) => setProfileUserId(String(authorId))}
                 />
-              ))
-            )}
+              ));
+            })()}
           </>
         )}
 
@@ -1232,6 +1407,15 @@ export default function CommunityDetailPage({ user }) {
         {tab === 'reviews' && community?.companyName && <ReviewsTab user={user} companyName={community.companyName} />}
         {tab === 'about' && <AboutTab community={community} />}
       </div>
+
+      {/* Profile drawer */}
+      {profileUserId && (
+        <CommunityProfileDrawer
+          userId={profileUserId}
+          currentUser={user}
+          onClose={() => setProfileUserId(null)}
+        />
+      )}
     </div>
   );
 }
