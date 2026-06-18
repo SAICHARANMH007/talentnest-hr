@@ -781,9 +781,9 @@ button, a, [role="button"] {
     transition: height 0.2s ease, opacity 0.15s ease !important;
   }
 
-  /* Push page content below full header */
+  /* Push page content below full header (8px top padding + 40px row1 + 6px gap + 40px row2 + 8px bottom = 102px + 14px buffer) */
   .tn-page-transition {
-    padding-top: 100px !important;
+    padding-top: 116px !important;
   }
 
   /* ── COLLAPSED: only hamburger + logo row visible while scrolled ── */
