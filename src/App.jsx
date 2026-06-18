@@ -487,6 +487,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Collapse mobile header when scrolling down, expand when back at top
+  useEffect(() => {
+    if (window.innerWidth > 767) return;
+    const el = document.querySelector('.tn-main-content');
+    if (!el) return;
+    const onScroll = () => {
+      document.body.classList.toggle('tn-header-collapsed', el.scrollTop > 20);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      document.body.classList.remove('tn-header-collapsed');
+    };
+  }, [location.pathname]);
+
   // Show clean loader while silent refresh is in-flight — but never block public marketing pages
   if (authLoading && !isPublicRoute) {
     return (

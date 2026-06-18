@@ -745,17 +745,17 @@ button, a, [role="button"] {
 }
 
 /* ════════════════════════════════
-   MOBILE HEADER — Edge-to-edge fixed header
+   MOBILE HEADER — Edge-to-edge fixed header + scroll collapse
    position:fixed escapes the overflowX:hidden ancestor (Layout.jsx line 1140)
-   that clips in-flow children at viewport_width - safe-area-inset-right
    Must come AFTER @media (max-width: 1280px) rule above to win cascade
    ════════════════════════════════ */
 @media (max-width: 767px) {
-  /* Remove top padding — header is now fixed so no gap needed at top */
+  /* Remove top padding — header is now fixed */
   .tn-main-content {
     padding-top: 0 !important;
   }
-  /* Fixed header spans true viewport edge-to-edge, unaffected by any ancestor overflow */
+
+  /* Fixed header: true viewport edge-to-edge */
   .tn-hamburger {
     position: fixed !important;
     top: env(safe-area-inset-top, 0px) !important;
@@ -767,14 +767,39 @@ button, a, [role="button"] {
     padding-left: calc(14px + env(safe-area-inset-left, 0px)) !important;
     padding-right: calc(14px + env(safe-area-inset-right, 0px)) !important;
     box-sizing: border-box !important;
+    /* Smooth transition when collapsing on scroll */
+    transition: padding 0.25s ease !important;
   }
-  /* Spread icon buttons evenly across the full row width on all pages */
+
+  /* Icon buttons row: smooth slide-up when scrolling */
   .tn-hamburger > div:last-child {
     justify-content: space-evenly !important;
     gap: 0 !important;
+    overflow: hidden !important;
+    max-height: 60px !important;
+    opacity: 1 !important;
+    transition: max-height 0.25s ease, opacity 0.2s ease !important;
   }
-  /* Push page content below the fixed header (108px tall + 12px buffer) */
+
+  /* Push page content below the full header (108px + 12px buffer) */
   .tn-page-transition {
     padding-top: 120px !important;
+    transition: padding-top 0.25s ease !important;
+  }
+
+  /* ── COLLAPSED STATE (when user scrolls down) ──
+     body.tn-header-collapsed is toggled by App.jsx scroll listener */
+  body.tn-header-collapsed .tn-hamburger {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  /* Hide icon buttons row when scrolled */
+  body.tn-header-collapsed .tn-hamburger > div:last-child {
+    max-height: 0 !important;
+    opacity: 0 !important;
+  }
+  /* Reduce page content top padding to match collapsed header (~56px) */
+  body.tn-header-collapsed .tn-page-transition {
+    padding-top: 70px !important;
   }
 }
