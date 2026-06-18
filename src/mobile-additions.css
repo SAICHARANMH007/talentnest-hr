@@ -786,6 +786,7 @@ button, a, [role="button"] {
     padding-top: 116px !important;
   }
 
+
   /* ── COLLAPSED: only hamburger + logo row visible while scrolled ── */
   body.tn-header-collapsed .tn-hamburger {
     padding-top: 6px !important;
@@ -798,5 +799,63 @@ button, a, [role="button"] {
   }
   body.tn-header-collapsed .tn-page-transition {
     padding-top: 60px !important;
+  }
+}
+
+/* ════════════════════════════════
+   COMMUNITY FEED — Mobile v2 Industry Standards
+   ════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ── Feed page wrapper: remove extra horizontal padding ── */
+  .tn-page-transition [style*="padding"][style*="1240"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* ── Post cards: full-width, better shadow, rounded corners ── */
+  [style*="borderRadius"][style*="border: 1px solid"] {
+    border-radius: 12px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+  }
+
+  /* ── Reaction row: always visible on mobile (no hover needed) ── */
+  /* Reactions should be tap-friendly, not hover-dependent */
+  [style*="reaction"] button,
+  [aria-label*="React"],
+  [aria-label*="Like"],
+  [aria-label*="react"] {
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+
+  /* ── Feed filter chips: larger tap targets ── */
+  [style*="border-radius: 20px"],
+  [style*="borderRadius: 20"] {
+    min-height: 34px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  /* ── New posts banner: proper positioning below fixed header ── */
+  [style*="position: fixed"][style*="zIndex: 1200"],
+  [style*="position:fixed"][style*="z-index:1200"] {
+    top: 66px !important;
+  }
+
+  /* ── Compose box: full width, comfortable on mobile ── */
+  [placeholder*="Start a post"] {
+    font-size: 15px !important;
+  }
+
+  /* ── Comment input: proper sizing on mobile ── */
+  [placeholder*="Add a comment"] {
+    font-size: 14px !important;
+    min-height: 40px !important;
+  }
+
+  /* ── Pull-to-refresh indicator: below fixed header ── */
+  [style*="pullY"] {
+    top: 70px !important;
   }
 }
