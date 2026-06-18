@@ -28,7 +28,6 @@ function Avatar({ name, src, size = 40, role }) {
   const bg = ROLE_COLOR[role] || '#0176D3';
   if (src) return (
     <img src={src} alt={name}
-      loading="lazy"
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${bg}22` }}
       onError={e => { e.currentTarget.style.display = 'none'; }}
     />
@@ -437,7 +436,7 @@ function ImageGrid({ images, bleed = 0 }) {
       <div style={{ display: 'grid', gap: 3, marginTop: 12, marginLeft: -bleed, marginRight: -bleed, borderRadius: bleed > 0 ? 0 : 16, overflow: 'hidden', ...gridStyle }}>
         {images.slice(0, 4).map((img, i) => (
           <div key={i} style={{ position: 'relative', ...(n === 3 && i === 0 ? { gridColumn: '1 / -1' } : {}) }}>
-            <img src={img} alt="" loading="lazy" onClick={() => setLightbox(i)}
+            <img src={img} alt="" onClick={() => setLightbox(i)}
               style={{ width: '100%', height: n === 1 ? 'auto' : 200, objectFit: n === 1 ? 'fill' : 'cover', cursor: 'pointer', display: 'block', maxWidth: '100%' }} />
             {i === 3 && images.length > 4 && (
               <div onClick={() => setLightbox(3)}
@@ -907,8 +906,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box', contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }
-      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)', contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}>
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box' }
+      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -1378,7 +1377,7 @@ function CreatePost({ user, onCreate, isMobile }) {
             Start a post, {user?.name?.split(' ')[0] || 'there'}…
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 4, marginRight: -4 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: isMobile ? 'wrap' : 'nowrap', overflowX: isMobile ? 'visible' : 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
           {[
             { type: 'update',       icon: '🖼️', label: 'Photo',    color: '#0176D3' },
             { type: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706' },
@@ -1772,32 +1771,32 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
         {people.map((p, idx) => (
           <div
             key={p.id}
-            onClick={() => onViewProfile?.(p.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px',
               borderBottom: idx < people.length - 1 ? '1px solid #F8FAFC' : 'none',
-              cursor: 'pointer',
+              cursor: 'default',
               transition: 'background 0.12s',
             }}
             onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
             {/* Avatar */}
-            <div style={{ flexShrink: 0, position: 'relative' }}>
+            <div onClick={() => onViewProfile?.(p.id)} style={{ cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
               <Avatar name={p.name} src={p.avatar} size={42} role={p.role} />
+              {/* Online-style accent dot */}
               <div style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: '#22C55E', border: '2px solid #fff' }} />
             </div>
 
             {/* Name + title */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div onClick={() => onViewProfile?.(p.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{p.name || 'Member'}</div>
               <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{p.title || ROLE_LABEL[p.role] || 'Member'}</div>
             </div>
 
-            {/* Connect button — stopPropagation so tapping it doesn't navigate */}
+            {/* Connect button */}
             <button
-              onClick={e => { e.stopPropagation(); onConnect(p.id); }}
+              onClick={() => onConnect(p.id)}
               disabled={pendingIds.has(p.id)}
               style={{
                 padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -1818,7 +1817,7 @@ function PeoplePanel({ posts, connectionIds, pendingIds, currentUserId, onConnec
 
       {/* Footer */}
       <div style={{ padding: '8px 16px 10px', background: '#FAFBFF', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: '#94A3B8' }}>Tap a person to view their full profile</div>
+        <div style={{ fontSize: 11, color: '#94A3B8' }}>Connect to see their posts & profile</div>
       </div>
     </div>
   );
@@ -1881,7 +1880,7 @@ function SavedPostsView({ savedPosts, loadingSaved, ...props }) {
 }
 
 // ── Feed Profile Drawer ───────────────────────────────────────────────────────
-// Bottom-sheet on mobile, centered modal on desktop. Matches the connections page UX.
+// Bottom-sheet on mobile, centered modal on desktop.
 function FeedProfileDrawer({ userId, currentUser, connectionIds, pendingIds, onConnect, onClose }) {
   const navigate = useNavigate();
   const [person, setPerson] = useState(null);
@@ -1924,83 +1923,57 @@ function FeedProfileDrawer({ userId, currentUser, connectionIds, pendingIds, onC
         onClick={e => e.stopPropagation()}
         style={{ background: '#fff', width: '100%', maxWidth: isMob ? '100%' : 480, maxHeight: isMob ? '92dvh' : '88vh', borderRadius: isMob ? '22px 22px 0 0' : 24, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 48px rgba(0,0,0,0.28)', animation: isMob ? 'fpSlideUp 0.28s cubic-bezier(0.32,0.72,0,1)' : 'fpScale 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
       >
-        {/* Drag handle — mobile only */}
         {isMob && <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '10px auto 0', flexShrink: 0 }} />}
 
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 220, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 220 }}>
             <div style={{ width: 30, height: 30, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
           </div>
         ) : !person ? (
-          <div style={{ padding: 32, textAlign: 'center', flexShrink: 0 }}>
+          <div style={{ padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>😕</div>
             <p style={{ color: '#6B7280', fontSize: 14 }}>Profile not found</p>
             <button onClick={onClose} style={{ marginTop: 14, padding: '9px 24px', borderRadius: 10, background: '#0176D3', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Close</button>
           </div>
         ) : (
           <>
-            {/* Hero gradient header */}
             <div style={{ height: isMob ? 90 : 110, background: `linear-gradient(140deg, ${bg} 0%, ${bg}dd 55%, ${bg}99 100%)`, position: 'relative', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 30%, rgba(255,255,255,0.18) 0%, transparent 55%)', pointerEvents: 'none' }} />
-              <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.22)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, lineHeight: 1, flexShrink: 0 }}>✕</button>
+              <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.22)', border: '1.5px solid rgba(255,255,255,0.4)', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>✕</button>
               {isConnected && <div style={{ position: 'absolute', bottom: 10, left: 18, fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '3px 10px', border: '1px solid rgba(255,255,255,0.3)' }}>✓ Connected</div>}
             </div>
-
-            {/* Avatar — overlaps hero bottom */}
             <div style={{ marginTop: -38, padding: '0 18px', marginBottom: 2, display: 'flex', alignItems: 'flex-end', gap: 12, flexShrink: 0, position: 'relative', zIndex: 2 }}>
               {(person.avatarUrl || person.photoUrl)
-                ? <img src={person.avatarUrl || person.photoUrl} alt={person.name} style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44`, display: 'block' }} />
-                : <div style={{ width: 76, height: 76, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 28, border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44` }}>{(person.name || '?')[0].toUpperCase()}</div>
+                ? <img src={person.avatarUrl || person.photoUrl} alt={person.name} style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', border: '4px solid #fff', boxShadow: `0 4px 14px ${bg}44` }} />
+                : <div style={{ width: 76, height: 76, borderRadius: '50%', background: `linear-gradient(135deg, ${bg}, ${bg}bb)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 28, border: '4px solid #fff' }}>{(person.name || '?')[0].toUpperCase()}</div>
               }
             </div>
-
-            {/* Scrollable body */}
             <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 18px 32px', minHeight: 0 }}>
-              {/* Name / title */}
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontWeight: 900, fontSize: 20, color: '#0A1628', lineHeight: 1.2, marginBottom: 4 }}>{person.name || 'Member'}</div>
                 <span style={{ fontSize: 11, fontWeight: 700, background: bg + '18', color: bg, borderRadius: 6, padding: '3px 10px' }}>{ROLE_LABEL[person.role] || person.role || 'Member'}</span>
-                {person.title      && <div style={{ fontSize: 14, color: '#374151', fontWeight: 600, marginTop: 7, lineHeight: 1.4 }}>{person.title}</div>}
+                {person.title      && <div style={{ fontSize: 14, color: '#374151', fontWeight: 600, marginTop: 7 }}>{person.title}</div>}
                 {person.department && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>🏢 {person.department}</div>}
                 {person.location   && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>📍 {person.location}</div>}
-                {person.experience > 0 && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>⏱ {person.experience} yr{person.experience !== 1 ? 's' : ''} exp</div>}
               </div>
-
-              {/* Action buttons */}
               {!isSelf && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                   {!isConnected ? (
-                    <button
-                      onClick={() => onConnect(uid)}
-                      disabled={isPending}
-                      style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: isPending ? '#F0FDF4' : bg, color: isPending ? '#16A34A' : '#fff', border: isPending ? '1.5px solid #BBF7D0' : 'none', fontWeight: 700, fontSize: 13, cursor: isPending ? 'default' : 'pointer', transition: 'opacity 0.15s' }}
-                    >
+                    <button onClick={() => onConnect(uid)} disabled={isPending} style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: isPending ? '#F0FDF4' : bg, color: isPending ? '#16A34A' : '#fff', border: isPending ? '1.5px solid #BBF7D0' : 'none', fontWeight: 700, fontSize: 13, cursor: isPending ? 'default' : 'pointer' }}>
                       {isPending ? '✓ Request Sent' : '+ Connect'}
                     </button>
                   ) : (
                     <div style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#F0FDF4', color: '#16A34A', border: '1.5px solid #BBF7D0', fontWeight: 700, fontSize: 13, textAlign: 'center' }}>✓ Connected</div>
                   )}
-                  <button
-                    onClick={goFull}
-                    style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-                  >View Full Profile →</button>
+                  <button onClick={goFull} style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>View Full Profile →</button>
                 </div>
               )}
-              {isSelf && (
-                <button onClick={goFull} style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>
-                  View My Profile →
-                </button>
-              )}
-
-              {/* Bio */}
+              {isSelf && <button onClick={goFull} style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: '#F1F5F9', color: '#0A1628', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 16 }}>View My Profile →</button>}
               {person.summary && (
                 <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: '1px solid #E5E7EB' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>About</div>
                   <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.65 }}>{person.summary}</div>
                 </div>
               )}
-
-              {/* Skills */}
               {Array.isArray(person.skills) && person.skills.length > 0 && (
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Skills</div>
@@ -2008,20 +1981,15 @@ function FeedProfileDrawer({ userId, currentUser, connectionIds, pendingIds, onC
                     {person.skills.slice(0, 12).map((s, i) => (
                       <span key={i} style={{ fontSize: 12, fontWeight: 600, color: bg, background: bg + '12', borderRadius: 20, padding: '4px 10px', border: `1px solid ${bg}22` }}>{s}</span>
                     ))}
-                    {person.skills.length > 12 && <span style={{ fontSize: 12, color: '#9CA3AF', borderRadius: 20, padding: '4px 10px', border: '1px solid #E5E7EB' }}>+{person.skills.length - 12} more</span>}
                   </div>
                 </div>
               )}
-
-              {/* Recent posts */}
               {posts.length > 0 && (
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent Posts</div>
                   {posts.map(p => (
                     <div key={String(p._id)} style={{ background: '#F8FAFC', borderRadius: 10, padding: '10px 14px', marginBottom: 8, border: '1px solid #E5E7EB' }}>
-                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                        {p.content || '—'}
-                      </div>
+                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.content || '—'}</div>
                     </div>
                   ))}
                 </div>
@@ -2054,14 +2022,13 @@ export default function CommunityFeed({ user }) {
   const [savedPosts,   setSavedPosts]   = useState([]);
   const [savedCount,   setSavedCount]   = useState(0);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [profileUserId, setProfileUserId] = useState(null);
   // Connections
   const [connections,  setConnections]  = useState([]);
   const [pendingIds,   setPendingIds]   = useState(new Set());
   const [seeding,      setSeeding]      = useState(false);
   const [seedMsg,      setSeedMsg]      = useState('');
   const [isMobile,     setMobile]       = useState(() => window.innerWidth < 1100);
-  const [profileUserId, setProfileUserId] = useState(null); // opens FeedProfileDrawer when set
-  const lastRefreshRef = useRef(Date.now()); // tracks last full-page-1 reload time
 
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 1100);
@@ -2076,12 +2043,10 @@ export default function CommunityFeed({ user }) {
 
   const connectionIds = useMemo(() => new Set((connections || []).map(c => String(c._id || c.id))), [connections]);
 
-  const loadPosts = useCallback(async (p = 1, type = 'all', append = false, silent = false) => {
-    // silent=true: keep existing posts visible (used for background/pull refreshes)
-    if (p === 1) { if (!silent) setLoading(true); lastRefreshRef.current = Date.now(); }
-    else setLoadingMore(true);
+  const loadPosts = useCallback(async (p = 1, type = 'all', append = false) => {
+    if (p === 1) setLoading(true); else setLoadingMore(true);
     try {
-      const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 25);
+      const limit = networkOnly ? 50 : (type === 'trending' ? 50 : 15);
       const apiType = type === 'trending' ? 'all' : type;
       const r = await api.getPosts({ page: p, limit, ...(apiType !== 'all' ? { type: apiType } : {}) });
       const items = r?.data || [];
@@ -2107,14 +2072,11 @@ export default function CommunityFeed({ user }) {
     return Math.max(window.scrollY || 0, el ? el.scrollTop : 0);
   }, []);
 
-  // Refresh feed when user returns to the tab — but only if away ≥5 minutes and near the top.
-  // Prevents jarring reloads on every tab switch / phone lock.
+  // Refresh feed when user returns to the tab after being away
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState !== 'visible' || tab !== 'feed' || isFiltered) return;
-      const awayMs = Date.now() - lastRefreshRef.current;
-      if (awayMs >= 5 * 60 * 1000) {
-        loadPosts(1, filter, false, true); // silent — keep posts visible while refreshing
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+        loadPosts(1, filter);
         setPendingPosts([]);
       }
     };
@@ -2127,7 +2089,7 @@ export default function CommunityFeed({ user }) {
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered && getFeedScrollY() < 80) {
-        loadPosts(1, filter, false, true); // silent background refresh
+        loadPosts(1, filter);
       }
     }, 60_000);
     return () => clearInterval(id);
@@ -2161,10 +2123,11 @@ export default function CommunityFeed({ user }) {
     loadPosts(1, filter);
   };
 
-  const handleDelete = useCallback(async (postId) => {
+  const handleDelete = async (postId) => {
     if (!window.confirm('Delete this post?')) return;
     await api.deletePost(postId);
     setPosts(prev => prev.filter(p => p._id !== postId));
+    // Also clean from saved posts
     const strId = String(postId);
     setSavedPosts(prev => {
       if (!prev.some(p => String(p._id) === strId)) return prev;
@@ -2172,24 +2135,24 @@ export default function CommunityFeed({ user }) {
       setSavedCount(next.length);
       return next;
     });
-  }, []);
+  };
 
-  const handleReact = useCallback(async (postId, type) => {
+  const handleReact = async (postId, type) => {
     const r = await api.reactToPost(postId, type);
     if (r?.reactions) setPosts(prev => prev.map(p => p._id === postId ? { ...p, reactions: r.reactions } : p));
-  }, []);
+  };
 
-  const handleAddComment = useCallback(async (postId, content, mentions) => {
+  const handleAddComment = async (postId, content, mentions) => {
     const r = await api.addComment(postId, content, mentions);
     if (r?.comment) setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: [...(p.comments || []), r.comment] } : p));
-  }, []);
+  };
 
-  const handleDeleteComment = useCallback(async (postId, commentId) => {
+  const handleDeleteComment = async (postId, commentId) => {
     await api.deleteComment(postId, commentId);
     setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: (p.comments || []).filter(c => String(c._id) !== commentId) } : p));
-  }, []);
+  };
 
-  const handleToggleBookmark = useCallback(async (postId) => {
+  const handleToggleBookmark = async (postId) => {
     const r = await api.toggleSavePost(postId);
     if (!r) return;
     const myUid = String(uid);
@@ -2210,16 +2173,16 @@ export default function CommunityFeed({ user }) {
         return next;
       });
     }
-  }, [uid, loadSavedPosts]);
+  };
 
-  const handleHashtagClick = useCallback((tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); }, []);
+  const handleHashtagClick = (tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); };
 
-  const handleViewProfile = useCallback((userId) => {
+  const handleViewProfile = (userId) => {
     setProfileUserId(String(userId));
-  }, []);
+  };
 
   // Inline connect from post card or people panel
-  const handleConnect = useCallback(async (authorId) => {
+  const handleConnect = async (authorId) => {
     const id = String(authorId);
     setPendingIds(prev => new Set([...prev, id]));
     try {
@@ -2227,7 +2190,7 @@ export default function CommunityFeed({ user }) {
     } catch {
       setPendingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
-  }, []);
+  };
 
   const handleSeed = async () => {
     setSeeding(true); setSeedMsg('');
@@ -2340,7 +2303,7 @@ export default function CommunityFeed({ user }) {
           loadPosts(page + 1, filter, true);
         }
       },
-      { rootMargin: '1200px' } // trigger ~2 posts before the bottom so next batch arrives invisibly
+      { rootMargin: '400px' } // start fetching 400px before the bottom — feels instant
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -2369,7 +2332,7 @@ export default function CommunityFeed({ user }) {
     if (pullDist >= PULL_THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullDist(0);
-      await loadPosts(1, filter, false, true); // silent — pull indicator IS the visual
+      await loadPosts(1, filter);
       setRefreshing(false);
     } else {
       setPullDist(0);
@@ -2377,7 +2340,7 @@ export default function CommunityFeed({ user }) {
     pullStartY.current = 0;
   };
 
-  const sharedPostProps = useMemo(() => ({
+  const sharedPostProps = {
     userId: uid,
     userRole: user?.role,
     currentUser: user,
@@ -2392,9 +2355,10 @@ export default function CommunityFeed({ user }) {
     onHashtagClick: handleHashtagClick,
     onViewProfile: handleViewProfile,
     isMobile,
-  }), [uid, user, connectionIds, pendingIds, handleReact, handleAddComment, handleDeleteComment, handleDelete, handleConnect, handleToggleBookmark, handleHashtagClick, handleViewProfile, isMobile]);
+  };
 
   return (
+    <>
     <div
       style={{ padding: isMobile ? '0' : '20px clamp(12px,3vw,24px)', maxWidth: 1240, margin: '0 auto', overflowX: 'hidden', width: '100%', minWidth: 0, boxSizing: 'border-box' }}
       onTouchStart={handleTouchStart}
@@ -2611,18 +2575,6 @@ export default function CommunityFeed({ user }) {
         >＋</button>
       )}
 
-      {/* Profile drawer — slides up from bottom on mobile, centered modal on desktop */}
-      {profileUserId && (
-        <FeedProfileDrawer
-          userId={profileUserId}
-          currentUser={user}
-          connectionIds={connectionIds}
-          pendingIds={pendingIds}
-          onConnect={handleConnect}
-          onClose={() => setProfileUserId(null)}
-        />
-      )}
-
       <style>{`
         @keyframes tn-spin { to { transform: rotate(360deg); } }
         @keyframes tnBannerIn { from { opacity:0; transform:translateX(-50%) translateY(-16px) scale(0.92); } to { opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
@@ -2643,5 +2595,16 @@ export default function CommunityFeed({ user }) {
         }
       `}</style>
     </div>
+    {profileUserId && (
+      <FeedProfileDrawer
+        userId={profileUserId}
+        currentUser={user}
+        connectionIds={connectionIds}
+        pendingIds={pendingIds}
+        onConnect={handleConnect}
+        onClose={() => setProfileUserId(null)}
+      />
+    )}
+    </>
   );
 }
