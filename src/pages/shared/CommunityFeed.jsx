@@ -1912,11 +1912,29 @@ export default function CommunityFeed({ user }) {
 
   const isFiltered  = !!activeHash || !!search.trim() || networkOnly;
 
+  // Helper: get scroll position from either window or .tn-main-content (whichever is the scroller)
+  const getFeedScrollY = useCallback(() => {
+    const el = document.querySelector('.tn-main-content');
+    return Math.max(window.scrollY || 0, el ? el.scrollTop : 0);
+  }, []);
+
+  // Refresh feed when user returns to the tab after being away
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered) {
+        loadPosts(1, filter);
+        setPendingPosts([]);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [filter, tab, isFiltered, loadPosts]);
+
   // Silent background refresh every 60s — catches any events missed by the socket.
   // Skip while the user has scrolled down reading, so new posts don't shift their place.
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered && window.scrollY < 80) {
+      if (document.visibilityState === 'visible' && tab === 'feed' && !isFiltered && getFeedScrollY() < 80) {
         loadPosts(1, filter);
       }
     }, 60_000);
@@ -2038,7 +2056,7 @@ export default function CommunityFeed({ user }) {
   usePlatformEvents({
     'post:created': (post) => {
       if (String(post.authorId) === String(uid)) return;
-      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      const scrollY = getFeedScrollY();
       if (scrollY < 120) {
         // User is at the top — show immediately
         setPosts(prev => {
@@ -2144,7 +2162,7 @@ export default function CommunityFeed({ user }) {
   const PULL_THRESHOLD = 64;
 
   const handleTouchStart = (e) => {
-    if (!isMobile || window.scrollY > 0) return;
+    if (!isMobile || getFeedScrollY() > 0) return;
     // Don't treat taps on buttons/links/inputs (reactions, comments, etc.) as the
     // start of a pull-to-refresh gesture — incidental finger movement during a tap
     // was triggering a full feed reload.
@@ -2152,7 +2170,7 @@ export default function CommunityFeed({ user }) {
     pullStartY.current = e.touches[0].clientY;
   };
   const handleTouchMove = (e) => {
-    if (!isMobile || window.scrollY > 0 || pullStartY.current === 0) return;
+    if (!isMobile || getFeedScrollY() > 0 || pullStartY.current === 0) return;
     const dist = Math.max(0, Math.min(120, e.touches[0].clientY - pullStartY.current));
     if (dist > 8) setPullDist(dist);
   };
@@ -2213,7 +2231,7 @@ export default function CommunityFeed({ user }) {
             else window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           style={{
-            position: 'fixed', top: isMobile ? 64 : 72, left: '50%', transform: 'translateX(-50%)',
+            position: 'fixed', top: isMobile ? 'calc(var(--tn-header-height, 116px) + 8px)' : 72, left: '50%', transform: 'translateX(-50%)',
             zIndex: 1200, background: 'linear-gradient(135deg, #0176D3 0%, #0D47A1 100%)',
             color: '#fff', borderRadius: 28, padding: isMobile ? '10px 22px' : '11px 26px',
             fontSize: isMobile ? 13 : 14, fontWeight: 700, cursor: 'pointer',
