@@ -487,16 +487,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Collapse mobile header when scrolling down, expand when back at top
-  // Uses capture phase on document so it catches scroll on any element (scroll doesn't bubble)
+  // Collapse mobile header icon row when scrolling, show it again at top
+  // Checks both window.scrollY (body scroll) and el.scrollTop (element scroll)
+  // because different pages use different scrolling containers
   useEffect(() => {
     if (window.innerWidth > 767) return;
     const onScroll = () => {
       const el = document.querySelector('.tn-main-content');
-      if (el) document.body.classList.toggle('tn-header-collapsed', el.scrollTop > 20);
+      const scrolled = (window.scrollY > 20) || (el ? el.scrollTop > 20 : false);
+      document.body.classList.toggle('tn-header-collapsed', scrolled);
     };
+    window.addEventListener('scroll', onScroll, { passive: true });
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     return () => {
+      window.removeEventListener('scroll', onScroll);
       document.removeEventListener('scroll', onScroll, { capture: true });
       document.body.classList.remove('tn-header-collapsed');
     };
