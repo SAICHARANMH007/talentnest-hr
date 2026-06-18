@@ -792,10 +792,9 @@ button, a, [role="button"] {
     padding-bottom: 6px !important;
     gap: 0 !important;
   }
+  /* display:none is the only guaranteed way to hide flex children with fixed heights */
   body.tn-header-collapsed .tn-hamburger > div:last-child {
-    height: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+    display: none !important;
   }
   body.tn-header-collapsed .tn-page-transition {
     padding-top: 60px !important;

@@ -1,22 +1,28 @@
-// Module-level scroll listener — runs once when the JS bundle loads.
-// Completely independent of React lifecycle.
-// On mobile: adds body.tn-header-collapsed when scrolled >20px,
-// removes it when back at top. CSS in mobile-additions.css hides the
-// icon buttons row when this class is present.
+// Mobile header collapse — runs at module load, independent of React.
+// Polls every 100ms + listens to all scroll events.
+// Adds body.tn-header-collapsed when user scrolls down, removes at top.
 
 if (window.innerWidth <= 767) {
-  const update = () => {
+  const update = (e) => {
+    // Check every possible scroll container:
+    // 1. window (body scroll)
+    // 2. event target (whichever element fired the scroll event)
+    // 3. .tn-main-content directly
+    const target = e && e.target !== document ? e.target : null;
     const el = document.querySelector('.tn-main-content');
-    const scrolled = window.scrollY > 20 || (el ? el.scrollTop > 20 : false);
-    document.body.classList.toggle('tn-header-collapsed', scrolled);
+    const scrolled =
+      window.scrollY > 10 ||
+      (target && target.scrollTop > 10) ||
+      (el && el.scrollTop > 10);
+    document.body.classList.toggle('tn-header-collapsed', !!scrolled);
   };
 
-  // window scroll covers body/page scroll
   window.addEventListener('scroll', update, { passive: true });
-  // capture phase covers scroll on inner elements (doesn't bubble)
   document.addEventListener('scroll', update, { capture: true, passive: true });
 
-  // Remove class if device rotates to wide screen
+  // Fallback poll every 100ms — catches any scroll container we might miss
+  setInterval(update, 100);
+
   window.addEventListener('resize', () => {
     if (window.innerWidth > 767) document.body.classList.remove('tn-header-collapsed');
   }, { passive: true });
