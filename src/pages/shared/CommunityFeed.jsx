@@ -374,10 +374,10 @@ function InlineConnectButton({ authorId, authorName, pendingIds, onConnect }) {
     <button
       onClick={() => onConnect(authorId)}
       disabled={isPending}
-      style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${isPending ? '#D1D5DB' : '#0176D3'}`, background: isPending ? '#F9FAFB' : '#EFF6FF', color: isPending ? '#9CA3AF' : '#1D4ED8', fontSize: 11, fontWeight: 700, cursor: isPending ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s' }}
+      style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${isPending ? '#D1D5DB' : '#0176D3'}`, background: isPending ? '#F9FAFB' : '#0176D3', color: isPending ? '#9CA3AF' : '#fff', fontSize: 11, fontWeight: 700, cursor: isPending ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s' }}
       title={isPending ? 'Request sent' : `Connect with ${authorName}`}
-      onMouseEnter={e => { if (!isPending) { e.currentTarget.style.background = '#0176D3'; e.currentTarget.style.color = '#fff'; } }}
-      onMouseLeave={e => { if (!isPending) { e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.color = '#1D4ED8'; } }}>
+      onMouseEnter={e => { if (!isPending) { e.currentTarget.style.background = '#0056A3'; } }}
+      onMouseLeave={e => { if (!isPending) { e.currentTarget.style.background = '#0176D3'; } }}>
       {isPending ? '✓ Sent' : '+ Connect'}
     </button>
   );
@@ -855,10 +855,9 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
   };
 
   // Bookmark + ⋯ always live on the RIGHT of the name row — even on mobile.
-  // On mobile the Connect button moves to a compact chip below the name instead.
   const rightActions = (
     <div style={{ display: 'flex', gap: 2, alignItems: 'center', flexShrink: 0 }}>
-      {!isMobile && showConnect && (
+      {showConnect && (
         <InlineConnectButton
           authorId={post.authorId}
           authorName={post.authorName}
@@ -966,17 +965,6 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
                 {post.authorTitle && <span> · </span>}
                 {timeAgo(post.createdAt)}
               </div>
-              {/* Mobile: Connect button below name as a compact chip — keeps name row clean */}
-              {isMobile && showConnect && (
-                <div style={{ marginTop: 5 }}>
-                  <InlineConnectButton
-                    authorId={post.authorId}
-                    authorName={post.authorName}
-                    pendingIds={pendingIds}
-                    onConnect={onConnect}
-                  />
-                </div>
-              )}
             </div>
             {/* Bookmark + ⋯ always on the right edge (both mobile & desktop) */}
             {rightActions}
