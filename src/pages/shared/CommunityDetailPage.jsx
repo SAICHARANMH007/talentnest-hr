@@ -452,33 +452,43 @@ function CreateCommunityPost({ user, community, onCreate }) {
             <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {postError}</div>
           )}
 
+          {/* Post type pills — always visible, matching career community style */}
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImagePick} />
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+            {[
+              { value: 'photo',        icon: '🖼️', label: 'Photo',    color: '#0176D3', bgc: '#EFF6FF' },
+              { value: 'update',       icon: '💬', label: 'Update',   color: '#374151', bgc: '#F3F4F6' },
+              { value: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706', bgc: '#FEF3C7' },
+              { value: 'hiring',       icon: '💼', label: 'Hiring',   color: '#059669', bgc: '#DCFCE7' },
+              { value: 'question',     icon: '❓', label: 'Question', color: '#7C3AED', bgc: '#F3E8FF' },
+              { value: 'achievement',  icon: '🏆', label: 'Win',      color: '#B45309', bgc: '#FEF3C7' },
+              { value: 'resource',     icon: '📎', label: 'Resource', color: '#0891B2', bgc: '#E0F2FE' },
+              { value: 'announcement', icon: '📢', label: 'News',     color: '#1D4ED8', bgc: '#EFF6FF' },
+            ].map(pt => {
+              const isActive = pt.value !== 'photo' && postType === pt.value;
+              return (
+                <button key={pt.value} onClick={() => {
+                  setExpanded(true);
+                  if (pt.value === 'photo') { if (images.length < 4) fileRef.current?.click(); }
+                  else setPostType(pt.value);
+                }} disabled={pt.value === 'photo' && uploading}
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 20, border: `1px solid ${isActive ? pt.color + '55' : '#E5E7EB'}`, background: isActive ? pt.bgc : '#F9FAFB', color: isActive ? pt.color : '#374151', fontSize: 12, fontWeight: isActive ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s' }}>
+                  {pt.icon} {pt.label}
+                </button>
+              );
+            })}
+          </div>
+
           {expanded && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <select value={postType} onChange={e => setPostType(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12, outline: 'none', background: '#F9FAFB', cursor: 'pointer' }}>
-                  {POST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                {images.length < 4 && (
-                  <>
-                    <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImagePick} />
-                    <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {uploading ? '⏳' : '🖼️'} Photo
-                    </button>
-                  </>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); setPostError(''); }}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  Cancel
-                </button>
-                <button onClick={handleSubmit} disabled={!text.trim() || submitting}
-                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: text.trim() ? bg : '#E5E7EB', color: text.trim() ? '#fff' : '#9CA3AF', fontSize: 12, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
-                  {submitting ? 'Posting…' : 'Post'}
-                </button>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); setPostError(''); }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleSubmit} disabled={!text.trim() || submitting}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: text.trim() ? bg : '#E5E7EB', color: text.trim() ? '#fff' : '#9CA3AF', fontSize: 12, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
+                {submitting ? 'Posting…' : 'Post'}
+              </button>
             </div>
           )}
         </div>
@@ -841,7 +851,7 @@ export default function CommunityDetailPage({ user }) {
   const loadPosts = useCallback(async () => {
     setPostsLoading(true);
     try {
-      const r = await api.getCommunityFeed(slug, { limit: 200 });
+      const r = await api.getCommunityFeed(slug, { limit: 25 });
       setPosts(r?.data || []);
     } catch {}
     setPostsLoading(false);
@@ -868,7 +878,7 @@ export default function CommunityDetailPage({ user }) {
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
     try {
-      const r = await api.getCommunityMembers(slug, { limit: 200 });
+      const r = await api.getCommunityMembers(slug, { limit: 50 });
       setMembers(r?.data || []);
       setTotalMembers(r?.total || 0);
     } catch {}
@@ -1163,10 +1173,10 @@ export default function CommunityDetailPage({ user }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${bg}22`, marginBottom: 16, padding: isMobile ? '0 12px' : 0, overflowX: 'auto', scrollbarWidth: 'none', background: '#fff', borderRadius: isMobile ? 0 : '0 0 12px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${bg}22`, marginBottom: 16, padding: isMobile ? '0 8px' : 0, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', background: '#fff', borderRadius: isMobile ? 0 : '0 0 12px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ padding: '13px 20px', border: 'none', background: tab === t.id ? bg + '10' : 'transparent', fontSize: 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? bg : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? `2px solid ${bg}` : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s', letterSpacing: '0.01em' }}>
+            style={{ flexShrink: 0, padding: isMobile ? '11px 14px' : '13px 20px', border: 'none', background: tab === t.id ? bg + '10' : 'transparent', fontSize: isMobile ? 12 : 13, fontWeight: tab === t.id ? 700 : 600, color: tab === t.id ? bg : '#374151', cursor: 'pointer', borderBottom: tab === t.id ? `2px solid ${bg}` : '2px solid transparent', marginBottom: -2, whiteSpace: 'nowrap', transition: 'all 0.15s', letterSpacing: '0.01em' }}>
             {t.label}
           </button>
         ))}
