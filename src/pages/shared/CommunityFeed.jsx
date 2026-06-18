@@ -28,6 +28,7 @@ function Avatar({ name, src, size = 40, role }) {
   const bg = ROLE_COLOR[role] || '#0176D3';
   if (src) return (
     <img src={src} alt={name}
+      loading="lazy"
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${bg}22` }}
       onError={e => { e.currentTarget.style.display = 'none'; }}
     />
@@ -436,7 +437,7 @@ function ImageGrid({ images, bleed = 0 }) {
       <div style={{ display: 'grid', gap: 3, marginTop: 12, marginLeft: -bleed, marginRight: -bleed, borderRadius: bleed > 0 ? 0 : 16, overflow: 'hidden', ...gridStyle }}>
         {images.slice(0, 4).map((img, i) => (
           <div key={i} style={{ position: 'relative', ...(n === 3 && i === 0 ? { gridColumn: '1 / -1' } : {}) }}>
-            <img src={img} alt="" onClick={() => setLightbox(i)}
+            <img src={img} alt="" loading="lazy" onClick={() => setLightbox(i)}
               style={{ width: '100%', height: n === 1 ? 'auto' : 200, objectFit: n === 1 ? 'fill' : 'cover', cursor: 'pointer', display: 'block', maxWidth: '100%' }} />
             {i === 3 && images.length > 4 && (
               <div onClick={() => setLightbox(3)}
@@ -803,7 +804,7 @@ function PollWidget({ post, userId }) {
   );
 }
 
-function SkeletonCard({ isMobile }) {
+const SkeletonCard = React.memo(function SkeletonCard({ isMobile }) {
   return (
     <div style={{ background: 'var(--app-card-bg, #fff)', borderRadius: isMobile ? 14 : 20, padding: isMobile ? '16px 14px 18px' : '20px', marginBottom: isMobile ? 8 : 12, border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
@@ -823,9 +824,9 @@ function SkeletonCard({ isMobile }) {
       </div>
     </div>
   );
-}
+});
 
-function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, onViewProfile, isMobile }) {
+const PostCard = React.memo(function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingIds, onReact, onAddComment, onDeleteComment, onDelete, onConnect, onToggleBookmark, onHashtagClick, onViewProfile, isMobile }) {
   const [showComments,  setShowComments]  = useState(false);
   const [showMenu,      setShowMenu]      = useState(false);
   const [showReport,    setShowReport]    = useState(false);
@@ -906,8 +907,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box' }
-      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
+      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box', contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }
+      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)', contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -1087,7 +1088,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
       )}
     </div>
   );
-}
+});
 
 // ── Post Categories ──────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -2003,11 +2004,10 @@ export default function CommunityFeed({ user }) {
     loadPosts(1, filter);
   };
 
-  const handleDelete = async (postId) => {
+  const handleDelete = useCallback(async (postId) => {
     if (!window.confirm('Delete this post?')) return;
     await api.deletePost(postId);
     setPosts(prev => prev.filter(p => p._id !== postId));
-    // Also clean from saved posts
     const strId = String(postId);
     setSavedPosts(prev => {
       if (!prev.some(p => String(p._id) === strId)) return prev;
@@ -2015,24 +2015,24 @@ export default function CommunityFeed({ user }) {
       setSavedCount(next.length);
       return next;
     });
-  };
+  }, []);
 
-  const handleReact = async (postId, type) => {
+  const handleReact = useCallback(async (postId, type) => {
     const r = await api.reactToPost(postId, type);
     if (r?.reactions) setPosts(prev => prev.map(p => p._id === postId ? { ...p, reactions: r.reactions } : p));
-  };
+  }, []);
 
-  const handleAddComment = async (postId, content, mentions) => {
+  const handleAddComment = useCallback(async (postId, content, mentions) => {
     const r = await api.addComment(postId, content, mentions);
     if (r?.comment) setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: [...(p.comments || []), r.comment] } : p));
-  };
+  }, []);
 
-  const handleDeleteComment = async (postId, commentId) => {
+  const handleDeleteComment = useCallback(async (postId, commentId) => {
     await api.deleteComment(postId, commentId);
     setPosts(prev => prev.map(p => p._id === postId ? { ...p, comments: (p.comments || []).filter(c => String(c._id) !== commentId) } : p));
-  };
+  }, []);
 
-  const handleToggleBookmark = async (postId) => {
+  const handleToggleBookmark = useCallback(async (postId) => {
     const r = await api.toggleSavePost(postId);
     if (!r) return;
     const myUid = String(uid);
@@ -2053,16 +2053,16 @@ export default function CommunityFeed({ user }) {
         return next;
       });
     }
-  };
+  }, [uid, loadSavedPosts]);
 
-  const handleHashtagClick = (tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); };
+  const handleHashtagClick = useCallback((tag) => { setActiveHash(tag); setFilter('all'); setSearch(''); setNetworkOnly(false); }, []);
 
-  const handleViewProfile = (userId) => {
+  const handleViewProfile = useCallback((userId) => {
     navigate(`/app/profile/${userId}`);
-  };
+  }, [navigate]);
 
   // Inline connect from post card or people panel
-  const handleConnect = async (authorId) => {
+  const handleConnect = useCallback(async (authorId) => {
     const id = String(authorId);
     setPendingIds(prev => new Set([...prev, id]));
     try {
@@ -2070,7 +2070,7 @@ export default function CommunityFeed({ user }) {
     } catch {
       setPendingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
-  };
+  }, []);
 
   const handleSeed = async () => {
     setSeeding(true); setSeedMsg('');
@@ -2220,7 +2220,7 @@ export default function CommunityFeed({ user }) {
     pullStartY.current = 0;
   };
 
-  const sharedPostProps = {
+  const sharedPostProps = useMemo(() => ({
     userId: uid,
     userRole: user?.role,
     currentUser: user,
@@ -2235,7 +2235,7 @@ export default function CommunityFeed({ user }) {
     onHashtagClick: handleHashtagClick,
     onViewProfile: handleViewProfile,
     isMobile,
-  };
+  }), [uid, user, connectionIds, pendingIds, handleReact, handleAddComment, handleDeleteComment, handleDelete, handleConnect, handleToggleBookmark, handleHashtagClick, handleViewProfile, isMobile]);
 
   return (
     <div

@@ -859,3 +859,93 @@ button, a, [role="button"] {
     top: 70px !important;
   }
 }
+
+/* ════════════════════════════════
+   COMMUNITY FEED — Performance & Mobile Polish v3
+   Eliminates scroll jank, reduces paint cost, GPU-accelerates the feed
+   ════════════════════════════════ */
+
+/* ── Feed scroll container: promote to its own GPU layer for buttery scroll ── */
+@media (max-width: 767px) {
+  .tn-main-content {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: scroll-position;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* ── Post cards: font smoothing for crisp text ── */
+.tn-postcard {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Post type banner gradients: hardware-accelerate on mobile ── */
+@media (max-width: 767px) {
+  [style*="PostTypeBanner"],
+  [style*="linear-gradient(135deg"][style*="borderRadius: 14"] {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  /* Disable expensive backdrop-filter in the reaction picker on mobile
+     (blur is GPU-heavy and causes frame drops on mid-range Android) */
+  [style*="backdropFilter: blur"],
+  [style*="backdrop-filter: blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255,255,255,0.97) !important;
+  }
+
+  /* Feed filter chips: hide scrollbar, enable momentum scroll */
+  [style*="overflowX: auto"][style*="flexWrap: nowrap"] {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  [style*="overflowX: auto"][style*="flexWrap: nowrap"]::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Post images: fit properly, never overflow card */
+  [style*="objectFit: cover"] {
+    max-width: 100% !important;
+  }
+
+  /* Composer button: full-width feel, easy tap target */
+  .tn-composer-btn {
+    min-height: 44px !important;
+  }
+
+  /* Reaction buttons: large tap targets, no hover jank */
+  [style*="borderRadius: 20"][style*="border: 1.5px"],
+  [style*="borderTopColor"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ── Floating FAB: smooth shadow pulse to draw attention ── */
+@media (max-width: 767px) {
+  [aria-label="Create post"] {
+    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease !important;
+  }
+  [aria-label="Create post"]:active {
+    transform: scale(0.93) !important;
+  }
+}
+
+/* ── People panel rows: tap feedback ── */
+@media (max-width: 767px) {
+  [style*="People"][style*="cursor: pointer"]:active,
+  [style*="padding: 10px 16px"]:active {
+    background: #F1F5F9 !important;
+  }
+}
+
+/* ── Post card mobile tap feedback (replaces JS hover handlers) ── */
+@media (max-width: 767px) {
+  [id][style*="borderRadius: 14"]:active {
+    opacity: 0.97;
+  }
+}
