@@ -368,30 +368,32 @@ export default function CommunitiesPage({ user }) {
           {filter !== 'all' && <button onClick={() => { setFilter('all'); setSearch(''); }} style={btnP}>View All Communities</button>}
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isSmallPhone ? '1fr' : isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 16,
-          padding: isMobile ? '0 12px' : 0,
-        }}>
-          {visible.slice(0, visibleCount).map(c => (
-            <CommunityCard
-              key={c.slug}
-              community={c}
-              userCollege={user?.college}
-              onJoin={handleJoin}
-              onLeave={handleLeave}
-              loading={actionSlug === c.slug}
-              onNavigate={(slug) => navigate(slug)}
-            />
-          ))}
-        </div>
-        {/* Sentinel — triggers loading the next batch when scrolled into view */}
-        {visibleCount < visible.length && (
-          <div ref={sentinelRef} style={{ padding: '24px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallPhone ? '1fr' : isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 16,
+            padding: isMobile ? '0 12px' : 0,
+          }}>
+            {visible.slice(0, visibleCount).map(c => (
+              <CommunityCard
+                key={c.slug}
+                community={c}
+                userCollege={user?.college}
+                onJoin={handleJoin}
+                onLeave={handleLeave}
+                loading={actionSlug === c.slug}
+                onNavigate={(slug) => navigate(slug)}
+              />
+            ))}
           </div>
-        )}
+          {/* Sentinel — triggers loading the next batch when scrolled into view */}
+          {visibleCount < visible.length && (
+            <div ref={sentinelRef} style={{ padding: '24px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+            </div>
+          )}
+        </>
       )}
 
       <style>{`@keyframes tn-spin { to { transform: rotate(360deg); } }`}</style>
