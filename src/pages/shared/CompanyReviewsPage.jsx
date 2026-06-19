@@ -7,13 +7,22 @@ const STARS = [1, 2, 3, 4, 5];
 export function StarRating({ value, onChange, size = 24 }) {
   const [hovered, setHovered] = useState(0);
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div style={{ display: 'flex', gap: 2 }}>
       {STARS.map(s => (
         <span key={s}
           onMouseEnter={() => onChange && setHovered(s)}
           onMouseLeave={() => onChange && setHovered(0)}
           onClick={() => onChange && onChange(s)}
-          style={{ fontSize: size, cursor: onChange ? 'pointer' : 'default', color: s <= (hovered || value) ? '#F59E0B' : '#E5E7EB', transition: 'color 0.1s', lineHeight: 1 }}>★</span>
+          style={{
+            fontSize: size,
+            cursor: onChange ? 'pointer' : 'default',
+            color: s <= (hovered || value) ? '#F59E0B' : '#E5E7EB',
+            transition: 'color 0.1s',
+            lineHeight: 1,
+            padding: onChange ? '4px' : '0',
+            WebkitTapHighlightColor: 'transparent',
+            userSelect: 'none',
+          }}>★</span>
       ))}
     </div>
   );
@@ -21,32 +30,37 @@ export function StarRating({ value, onChange, size = 24 }) {
 
 export function ReviewCard({ review }) {
   return (
-    <div style={{ ...card, padding: '18px 20px', borderRadius: 14, marginBottom: 10, border: '1px solid #F1F5F9' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-        <div>
-          <StarRating value={review.rating} size={16} />
-          {review.title && <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginTop: 4 }}>{review.title}</div>}
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+    <div style={{ ...card, padding: '16px 18px', borderRadius: 14, marginBottom: 10, border: '1px solid #F1F5F9' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <StarRating value={review.rating} size={15} />
+          {review.title && <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginTop: 5, wordBreak: 'break-word' }}>{review.title}</div>}
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3, wordBreak: 'break-word' }}>
             {review.isAnonymous ? 'Anonymous' : (review.reviewerName || 'Member')}
             {review.role ? ` · ${review.role}` : ''}
             {review.companyName ? ` · ${review.companyName}` : ''}
             {' · '}{review.createdAt ? new Date(review.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : ''}
           </div>
         </div>
-        <div style={{ background: review.rating >= 4 ? '#D1FAE5' : review.rating >= 3 ? '#FEF3C7' : '#FEE2E2', color: review.rating >= 4 ? '#065F46' : review.rating >= 3 ? '#92400E' : '#991B1B', borderRadius: 20, padding: '4px 12px', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+        <div style={{
+          background: review.rating >= 4 ? '#D1FAE5' : review.rating >= 3 ? '#FEF3C7' : '#FEE2E2',
+          color: review.rating >= 4 ? '#065F46' : review.rating >= 3 ? '#92400E' : '#991B1B',
+          borderRadius: 20, padding: '4px 12px', fontWeight: 800, fontSize: 13, flexShrink: 0,
+          alignSelf: 'flex-start',
+        }}>
           {review.rating}/5
         </div>
       </div>
       {review.pros && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#059669', marginBottom: 2 }}>✅ Pros</div>
-          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{review.pros}</div>
+        <div style={{ marginBottom: 8, background: '#F0FDF4', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#059669', marginBottom: 3 }}>✅ Pros</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, wordBreak: 'break-word' }}>{review.pros}</div>
         </div>
       )}
       {review.cons && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', marginBottom: 2 }}>⚠️ Cons</div>
-          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{review.cons}</div>
+        <div style={{ background: '#FFF1F2', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', marginBottom: 3 }}>⚠️ Cons</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, wordBreak: 'break-word' }}>{review.cons}</div>
         </div>
       )}
     </div>
@@ -56,12 +70,12 @@ export function ReviewCard({ review }) {
 const EMPTY_FORM = { companyName: '', rating: 0, title: '', pros: '', cons: '', role: '', isAnonymous: false };
 
 export function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany }) {
-  const [form, setForm]           = useState({ ...EMPTY_FORM, companyName: prefilledCompany || '' });
+  const [form, setForm]             = useState({ ...EMPTY_FORM, companyName: prefilledCompany || '' });
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone]           = useState(false);
-  const [err, setErr]             = useState('');
-  const [search, setSearch]       = useState(prefilledCompany || '');
-  const [showDrop, setShowDrop]   = useState(false);
+  const [done, setDone]             = useState(false);
+  const [err, setErr]               = useState('');
+  const [search, setSearch]         = useState(prefilledCompany || '');
+  const [showDrop, setShowDrop]     = useState(false);
   const inp = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#F9FAFB' };
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -92,7 +106,7 @@ export function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany 
   );
 
   return (
-    <div style={{ ...card, padding: '22px 24px', borderRadius: 14, border: '1px solid #E5E7EB' }}>
+    <div style={{ ...card, padding: 'clamp(14px, 3vw, 22px)', borderRadius: 14, border: '1px solid #E5E7EB' }}>
       <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 800, color: '#0A1628' }}>✍️ Write a Review</h3>
       {err && <div style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 8, padding: '9px 14px', marginBottom: 14, fontSize: 13 }}>{err}</div>}
 
@@ -127,7 +141,8 @@ export function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany 
         <StarRating value={form.rating} onChange={v => set('rating', v)} size={32} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      {/* Responsive 2-col grid that stacks on narrow screens */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Review Title</label>
           <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Great place to grow" style={inp} />
@@ -165,18 +180,24 @@ export function SubmitReviewForm({ user, companies, onSuccess, prefilledCompany 
   );
 }
 
+const SORT_OPTIONS = [
+  { value: 'newest',  label: 'Newest First' },
+  { value: 'highest', label: 'Highest Rated' },
+  { value: 'lowest',  label: 'Lowest Rated' },
+];
+
 export default function CompanyReviewsPage({ user }) {
-  const [allReviews,   setAllReviews]   = useState([]);
-  const [companies,    setCompanies]    = useState([]); // all company names for autocomplete
-  const [loading,      setLoading]      = useState(true);
-  const [showForm,     setShowForm]     = useState(false);
-  const [searchCompany,setSearchCompany]= useState('');
-  const [selectedCo,   setSelectedCo]  = useState('');
+  const [allReviews,    setAllReviews]    = useState([]);
+  const [companies,     setCompanies]     = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showForm,      setShowForm]      = useState(false);
+  const [searchCompany, setSearchCompany] = useState('');
+  const [selectedCo,    setSelectedCo]   = useState('');
+  const [sortBy,        setSortBy]        = useState('newest');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Load reviews + public jobs (to extract company names)
       const [reviewRes, jobsRes] = await Promise.allSettled([
         api.getMyOrgReviews(),
         api.getPublicJobs(),
@@ -184,7 +205,6 @@ export default function CompanyReviewsPage({ user }) {
       const revData = reviewRes.status === 'fulfilled' ? reviewRes.value : null;
       setAllReviews(revData?.data || []);
 
-      // Extract unique company names from jobs for autocomplete (case-insensitive dedup)
       if (jobsRes.status === 'fulfilled') {
         const jobs = Array.isArray(jobsRes.value) ? jobsRes.value : (Array.isArray(jobsRes.value?.data) ? jobsRes.value.data : []);
         const byLower = new Map();
@@ -200,14 +220,22 @@ export default function CompanyReviewsPage({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Filter reviews by selected/searched company
   const filteredReviews = useMemo(() => {
-    if (!selectedCo && !searchCompany.trim()) return allReviews;
-    const q = (selectedCo || searchCompany).toLowerCase();
-    return allReviews.filter(r => (r.companyName || '').toLowerCase().includes(q));
-  }, [allReviews, selectedCo, searchCompany]);
+    let list = allReviews;
+    if (selectedCo || searchCompany.trim()) {
+      const q = (selectedCo || searchCompany).toLowerCase();
+      list = list.filter(r => (r.companyName || '').toLowerCase().includes(q));
+    }
+    if (sortBy === 'newest') {
+      list = [...list].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else if (sortBy === 'highest') {
+      list = [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'lowest') {
+      list = [...list].sort((a, b) => (a.rating || 0) - (b.rating || 0));
+    }
+    return list;
+  }, [allReviews, selectedCo, searchCompany, sortBy]);
 
-  // Group reviews by company for the company list
   const companyGroups = useMemo(() => {
     const map = {};
     allReviews.forEach(r => {
@@ -232,12 +260,12 @@ export default function CompanyReviewsPage({ user }) {
   }));
 
   return (
-    <div style={{ padding: 'clamp(16px,3vw,32px)', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(14px, 3vw, 32px)', maxWidth: 900, margin: '0 auto' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0A1628' }}>⭐ Company Reviews</h1>
+          <h1 style={{ margin: 0, fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 900, color: '#0A1628' }}>⭐ Company Reviews</h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Honest feedback from candidates and employees across all companies</p>
         </div>
         <button onClick={() => setShowForm(v => !v)} style={showForm ? btnG : btnP}>
@@ -258,13 +286,13 @@ export default function CompanyReviewsPage({ user }) {
       )}
 
       {/* Company Search Bar */}
-      <div style={{ position: 'relative', marginBottom: 20 }}>
+      <div style={{ position: 'relative', marginBottom: 16 }}>
         <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
         <input
           value={searchCompany}
           onChange={e => { setSearchCompany(e.target.value); setSelectedCo(''); }}
-          placeholder="Search reviews by company name… e.g. Infosys, TCS, Wipro"
-          style={{ width: '100%', padding: '12px 40px 12px 40px', borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none', background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
+          placeholder="Search reviews by company name…"
+          style={{ width: '100%', padding: '11px 40px 11px 40px', borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none', background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
           onFocus={e => { e.currentTarget.style.border = '1px solid #0176D3'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(1,118,211,0.1)'; }}
           onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; }}
         />
@@ -281,14 +309,14 @@ export default function CompanyReviewsPage({ user }) {
         </div>
       ) : (
         <>
-          {/* Company pills — quick filter */}
+          {/* Company pills */}
           {companyGroups.length > 0 && !searchCompany && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
               <button onClick={() => setSelectedCo('')}
                 style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${!selectedCo ? '#0176D3' : '#E5E7EB'}`, background: !selectedCo ? '#EFF6FF' : '#F9FAFB', color: !selectedCo ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 All ({allReviews.length})
               </button>
-              {companyGroups.slice(0, 8).map(g => (
+              {companyGroups.map(g => (
                 <button key={g.name} onClick={() => setSelectedCo(g.name === selectedCo ? '' : g.name)}
                   style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${selectedCo === g.name ? '#0176D3' : '#E5E7EB'}`, background: selectedCo === g.name ? '#EFF6FF' : '#F9FAFB', color: selectedCo === g.name ? '#1D4ED8' : '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                   🏢 {g.name}
@@ -300,34 +328,53 @@ export default function CompanyReviewsPage({ user }) {
 
           {/* Rating summary */}
           {filteredReviews.length > 0 && (
-            <div style={{ ...card, padding: '20px 24px', borderRadius: 14, marginBottom: 20, display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'center', border: '1px solid #FEF3C7', background: '#FFFBEB' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 52, fontWeight: 900, color: '#F59E0B', lineHeight: 1 }}>{displayedAvg}</div>
+            <div style={{ ...card, padding: 'clamp(14px, 3vw, 20px)', borderRadius: 14, marginBottom: 16, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', border: '1px solid #FEF3C7', background: '#FFFBEB' }}>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 48, fontWeight: 900, color: '#F59E0B', lineHeight: 1 }}>{displayedAvg}</div>
                 <StarRating value={Math.round(parseFloat(displayedAvg || 0))} size={18} />
                 <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{filteredReviews.length} review{filteredReviews.length !== 1 ? 's' : ''}{selectedCo ? ` for ${selectedCo}` : ''}</div>
               </div>
-              <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ flex: 1, minWidth: 160 }}>
                 {ratingDist.map(({ star, count, pct }) => (
                   <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                     <span style={{ fontSize: 12, color: '#374151', width: 36, flexShrink: 0 }}>{star} ★</span>
                     <div style={{ flex: 1, background: '#F3F4F6', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: '#F59E0B', borderRadius: 4 }} />
+                      <div style={{ width: `${pct}%`, height: '100%', background: '#F59E0B', borderRadius: 4, transition: 'width 0.4s' }} />
                     </div>
                     <span style={{ fontSize: 11, color: '#9CA3AF', width: 24, textAlign: 'right', flexShrink: 0 }}>{count}</span>
                   </div>
                 ))}
               </div>
               {selectedCo && (
-                <button onClick={() => setShowForm(true)} style={{ ...btnP, fontSize: 12, padding: '8px 16px' }}>
+                <button onClick={() => setShowForm(true)} style={{ ...btnP, fontSize: 12, padding: '8px 16px', flexShrink: 0 }}>
                   ✍️ Review {selectedCo}
                 </button>
               )}
             </div>
           )}
 
+          {/* Sort control */}
+          {filteredReviews.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600 }}>Sort:</span>
+              {SORT_OPTIONS.map(opt => (
+                <button key={opt.value} onClick={() => setSortBy(opt.value)}
+                  style={{
+                    padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${sortBy === opt.value ? '#0176D3' : '#E5E7EB'}`,
+                    background: sortBy === opt.value ? '#EFF6FF' : '#F9FAFB',
+                    color: sortBy === opt.value ? '#1D4ED8' : '#6B7280',
+                    transition: 'all 0.15s',
+                  }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Reviews list */}
           {filteredReviews.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: '48px 32px', borderRadius: 14 }}>
+            <div style={{ ...card, textAlign: 'center', padding: 'clamp(32px, 6vw, 48px) 24px', borderRadius: 14 }}>
               <div style={{ fontSize: 44, marginBottom: 12 }}>💬</div>
               <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', marginBottom: 8 }}>
                 {searchCompany || selectedCo ? `No reviews for "${searchCompany || selectedCo}" yet` : 'No reviews yet'}

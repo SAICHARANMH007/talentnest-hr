@@ -170,6 +170,9 @@ const CHECKLIST = [
   { id: 'reviews',  text: 'Read company reviews on TalentNest and Glassdoor / AmbitionBox' },
 ];
 
+// Module-level cache so reviews are not re-fetched across renders
+const reviewsCache = new Map();
+
 export default function OfferComparison({ user }) {
   const [offers, setOffers]         = useState([]);
   const [selected, setSelected]     = useState([]);
@@ -178,6 +181,8 @@ export default function OfferComparison({ user }) {
   const [manualJoin, setManualJoin] = useState({});
   const [editingCtc, setEditingCtc] = useState(null);
   const [checkedItems, setCheckedItems] = useState([]);
+  const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 768);
+  const [companyReviews, setCompanyReviews] = useState({});
 
   useEffect(() => {
     Promise.allSettled([
@@ -204,6 +209,12 @@ export default function OfferComparison({ user }) {
       setOffers([...formalOffers, ...appOffers]);
       setLoading(false);
     });
+  }, []);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
   }, []);
 
   const toggle = (id) => {
@@ -234,15 +245,40 @@ export default function OfferComparison({ user }) {
     return (manualCtc[id] ? parseCtcString(manualCtc[id]) : (o.ctc || 0)) === maxCtc;
   })?._id || '') : '';
 
+  // Fetch reviews for all offer companies (background, no spinner)
+  const offersCompanyKey = offers.map(o => o.company || '').sort().join('|');
+  useEffect(() => {
+    if (offers.length === 0) return;
+    const companies = [...new Set(offers.map(o => o.company).filter(c => c && c !== '—'))];
+    companies.forEach(async (name) => {
+      if (reviewsCache.has(name)) {
+        setCompanyReviews(prev => ({ ...prev, [name]: reviewsCache.get(name) }));
+        return;
+      }
+      try {
+        const res = await api.getCompanyReviewsByName(name);
+        const data = {
+          avgRating: res?.avgRating || 0,
+          total: res?.total || 0,
+          topReviews: (res?.data || []).slice(0, 2),
+        };
+        reviewsCache.set(name, data);
+        setCompanyReviews(prev => ({ ...prev, [name]: data }));
+      } catch {}
+    });
+  }, [offersCompanyKey]);
+
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Loading offers…</div>;
 
+  const rootPad = isMobile ? '14px' : '24px';
+
   return (
-    <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: rootPad, maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 900, color: '#0A1628', margin: '0 0 4px' }}>🎯 Offer Comparison</h1>
-        <p style={{ color: '#6B7280', fontSize: 14, margin: 0 }}>Compare up to 3 offers side-by-side and make your best career decision</p>
+      <div style={{ marginBottom: isMobile ? 20 : 28 }}>
+        <h1 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', margin: '0 0 4px' }}>🎯 Offer Comparison</h1>
+        <p style={{ color: '#6B7280', fontSize: 13, margin: 0 }}>Compare up to 3 offers side-by-side and make your best career decision</p>
       </div>
 
       {offers.length === 0 ? (
@@ -255,11 +291,11 @@ export default function OfferComparison({ user }) {
         <>
           {/* ── Offer Selection Cards ── */}
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#374151', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#374151', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               Select 2–3 offers to compare
               <span style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 8px', borderRadius: 20 }}>{selected.length}/3 selected</span>
             </div>
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {offers.map(o => {
                 const id = String(o._id || o.id);
                 const sel = selected.includes(id);
@@ -267,26 +303,36 @@ export default function OfferComparison({ user }) {
                 const ctcVal = manualCtc[id] ? parseCtcString(manualCtc[id]) : o.ctc;
                 const ctcDisplay = ctcVal ? fmtSalary({ ctc: ctcVal, ctcRaw: manualCtc[id] || o.ctcRaw }) : (o.ctcRaw || null);
                 const isBest = sel && id === bestOfferId && compared.length > 1 && maxCtc > 0;
+                const rev = companyReviews[o.company];
                 return (
                   <button key={id} onClick={() => toggle(id)} style={{
                     border: sel ? `2px solid ${isBest ? '#059669' : '#4F46E5'}` : '1.5px solid #E2E8F0',
-                    borderRadius: 16, padding: '16px 18px',
+                    borderRadius: 16, padding: '14px 16px',
                     background: sel
                       ? (isBest ? 'linear-gradient(145deg,#F0FDF4,#DCFCE7)' : 'linear-gradient(145deg,#EEF2FF,#E0E7FF)')
                       : '#fff',
-                    cursor: 'pointer', textAlign: 'left', minWidth: 196,
+                    cursor: 'pointer', textAlign: 'left',
+                    minWidth: isMobile ? 'calc(50% - 6px)' : 196,
+                    maxWidth: isMobile ? 'calc(50% - 6px)' : 'none',
                     boxShadow: sel ? (isBest ? '0 0 0 3px rgba(5,150,105,0.15)' : '0 0 0 3px rgba(79,70,229,0.12)') : '0 1px 4px rgba(0,0,0,0.06)',
                     transition: 'all 0.2s',
                     position: 'relative',
                     overflow: 'hidden',
+                    boxSizing: 'border-box',
                   }}>
                     {isBest && <div style={{ position: 'absolute', top: 0, right: 0, background: '#059669', color: '#fff', fontSize: 9, fontWeight: 800, padding: '3px 9px', borderRadius: '0 16px 0 8px' }}>TOP PICK</div>}
-                    <div style={{ fontWeight: 800, fontSize: 14, color: '#0A1628', marginBottom: 2, paddingRight: isBest ? 64 : 0 }}>{o.jobTitle || 'Offer'}</div>
+                    <div style={{ fontWeight: 800, fontSize: isMobile ? 13 : 14, color: '#0A1628', marginBottom: 2, paddingRight: isBest ? 56 : 0 }}>{o.jobTitle || 'Offer'}</div>
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{o.company || 'Company'}</div>
-                    {ctcDisplay && <div style={{ fontSize: 15, fontWeight: 900, color: '#4F46E5', marginBottom: 4 }}>{ctcDisplay}</div>}
-                    <div style={{ fontSize: 11, fontWeight: 700, color: (o.status === 'Hired' || o.status === 'signed') ? '#059669' : '#0176D3', marginBottom: score !== null ? 10 : 0 }}>
+                    {ctcDisplay && <div style={{ fontSize: isMobile ? 13 : 15, fontWeight: 900, color: '#4F46E5', marginBottom: 4 }}>{ctcDisplay}</div>}
+                    <div style={{ fontSize: 11, fontWeight: 700, color: (o.status === 'Hired' || o.status === 'signed') ? '#059669' : '#0176D3', marginBottom: rev?.avgRating > 0 || score !== null ? 6 : 0 }}>
                       {o.status === 'Hired' ? '🏆 Hired' : o.status === 'signed' ? '✅ Signed' : '📨 Offer Sent'}
                     </div>
+                    {rev?.avgRating > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: score !== null ? 8 : 0 }}>
+                        <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 800 }}>★ {rev.avgRating.toFixed(1)}</span>
+                        <span style={{ fontSize: 10, color: '#9CA3AF' }}>({rev.total})</span>
+                      </div>
+                    )}
                     {score !== null && (
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
@@ -312,116 +358,227 @@ export default function OfferComparison({ user }) {
 
           {compared.length >= 2 && (
             <>
-              {/* ── Comparison Table ── */}
-              <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: '16px 18px', background: '#F8FAFC', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9CA3AF', borderBottom: '2px solid #E2E8F0', width: 150, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Field</th>
-                      {compared.map((o, i) => {
-                        const id = String(o._id || o.id);
-                        const isBest = id === bestOfferId && maxCtc > 0;
-                        const score = scores[id];
-                        return (
-                          <th key={i} style={{ padding: '16px 18px', background: isBest ? '#F0FDF4' : '#F8FAFC', textAlign: 'center', borderBottom: `2px solid ${isBest ? '#86EFAC' : '#E2E8F0'}`, minWidth: 210 }}>
-                            <div style={{ fontWeight: 900, fontSize: 15, color: '#0A1628' }}>{o.jobTitle || `Offer ${i + 1}`}</div>
-                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{o.company || ''}</div>
-                            {score !== undefined && compared.length > 1 && (
-                              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                                <div style={{ height: 4, width: 90, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden' }}>
-                                  <div style={{ width: `${score}%`, height: '100%', background: getScoreColor(score), borderRadius: 2, transition: 'width 0.6s' }} />
-                                </div>
-                                <span style={{ fontSize: 12, fontWeight: 900, color: getScoreColor(score) }}>{score}</span>
+              {/* ── Comparison: mobile cards or desktop table ── */}
+              {isMobile ? (
+                <div style={{ marginBottom: 20 }}>
+                  {compared.map((o, i) => {
+                    const id = String(o._id || o.id);
+                    const isBest = id === bestOfferId && maxCtc > 0;
+                    const score = scores[id];
+                    const effectiveOffer = {
+                      ...o,
+                      ctc: manualCtc[id] ? parseCtcString(manualCtc[id]) : o.ctc,
+                      ctcRaw: manualCtc[id] || o.ctcRaw,
+                      joiningDate: manualJoin[id] || o.joiningDate,
+                    };
+                    const maxEffCtc = compared.reduce((m, x) => {
+                      const xId = String(x._id || x.id);
+                      return Math.max(m, manualCtc[xId] ? parseCtcString(manualCtc[xId]) : (x.ctc || 0));
+                    }, 0);
+                    return (
+                      <div key={id} style={{
+                        background: isBest ? 'linear-gradient(145deg,#F0FDF4,#fff)' : '#fff',
+                        border: `2px solid ${isBest ? '#86EFAC' : '#E2E8F0'}`,
+                        borderRadius: 16,
+                        marginBottom: 14,
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                      }}>
+                        <div style={{
+                          background: isBest ? 'rgba(5,150,105,0.07)' : '#F8FAFC',
+                          padding: '12px 14px',
+                          borderBottom: `1px solid ${isBest ? '#BBF7D0' : '#E2E8F0'}`,
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 900, fontSize: 15, color: '#0A1628' }}>{o.jobTitle || `Offer ${i + 1}`}</div>
+                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>{o.company || ''}</div>
+                            </div>
+                            {isBest && <span style={{ background: '#059669', color: '#fff', fontSize: 9, fontWeight: 800, padding: '3px 10px', borderRadius: 20, flexShrink: 0 }}>TOP PICK</span>}
+                          </div>
+                          {score !== undefined && compared.length > 1 && (
+                            <div style={{ marginTop: 10 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>Decision Score</span>
+                                <span style={{ fontSize: 12, fontWeight: 900, color: getScoreColor(score) }}>{score}/100 — {getScoreLabel(score)}</span>
                               </div>
-                            )}
-                            {isBest && <div style={{ fontSize: 10, fontWeight: 800, color: '#059669', marginTop: 6 }}>⭐ Highest CTC</div>}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ROW_LABELS.map((row, ri) => (
-                      <tr key={row.key} style={{ background: ri % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                        <td style={{ padding: '13px 18px', fontSize: 13, fontWeight: 700, color: '#6B7280', borderBottom: '1px solid #F1F5F9' }}>{row.label}</td>
-                        {compared.map((o, ci) => {
+                              <div style={{ height: 5, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${score}%`, height: '100%', background: getScoreColor(score), borderRadius: 3, transition: 'width 0.6s' }} />
+                              </div>
+                            </div>
+                          )}
+                          {isBest && <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', marginTop: 6 }}>⭐ Highest CTC</div>}
+                        </div>
+                        <div>
+                          {ROW_LABELS.map((row, ri) => {
+                            const isCtc = row.key === 'ctc';
+                            const isJoin = row.key === 'joiningDate';
+                            const val = row.fn(effectiveOffer);
+                            const ctcVal = isCtc ? (effectiveOffer.ctc || 0) : 0;
+                            const isBestCtc = isCtc && ctcVal === maxEffCtc && ctcVal > 0;
+                            const isStatus = row.key === 'status';
+                            const statusGood = isStatus && (o.status === 'signed' || o.status === 'Hired');
+                            return (
+                              <div key={row.key} style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '10px 14px',
+                                borderBottom: ri < ROW_LABELS.length - 1 ? '1px solid #F1F5F9' : 'none',
+                                background: ri % 2 === 0 ? '#fff' : '#FAFAFA',
+                                gap: 8,
+                              }}>
+                                <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600, flexShrink: 0 }}>{row.label}</span>
+                                <span style={{ fontSize: 13, fontWeight: (isBestCtc || statusGood) ? 800 : 600, color: (isBestCtc || statusGood) ? '#059669' : '#0A1628', textAlign: 'right', minWidth: 0 }}>
+                                  {isCtc && val === '—' ? (
+                                    editingCtc === id + '_ctc' ? (
+                                      <input autoFocus defaultValue={manualCtc[id] || ''}
+                                        onBlur={e => { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
+                                        onKeyDown={e => { if (e.key === 'Enter') { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
+                                        placeholder="e.g. 8L"
+                                        style={{ width: 80, padding: '4px 7px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, outline: 'none', textAlign: 'center' }}
+                                      />
+                                    ) : (
+                                      <button onClick={() => setEditingCtc(id + '_ctc')}
+                                        style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                                        + Add CTC
+                                      </button>
+                                    )
+                                  ) : isJoin && val === '—' ? (
+                                    editingCtc === id + '_join' ? (
+                                      <input autoFocus type="date" defaultValue={manualJoin[id] || ''}
+                                        onBlur={e => { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
+                                        onKeyDown={e => { if (e.key === 'Enter') { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
+                                        style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, outline: 'none' }}
+                                      />
+                                    ) : (
+                                      <button onClick={() => setEditingCtc(id + '_join')}
+                                        style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                                        + Add Date
+                                      </button>
+                                    )
+                                  ) : val}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── Desktop Comparison Table ── */
+                <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E2E8F0', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ padding: '16px 18px', background: '#F8FAFC', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9CA3AF', borderBottom: '2px solid #E2E8F0', width: 150, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Field</th>
+                        {compared.map((o, i) => {
                           const id = String(o._id || o.id);
-                          const isCtc = row.key === 'ctc';
-                          const isJoin = row.key === 'joiningDate';
-                          const isStatus = row.key === 'status';
-                          const effectiveOffer = {
-                            ...o,
-                            ctc: manualCtc[id] ? parseCtcString(manualCtc[id]) : o.ctc,
-                            ctcRaw: manualCtc[id] || o.ctcRaw,
-                            joiningDate: manualJoin[id] || o.joiningDate,
-                          };
-                          const val = row.fn(effectiveOffer);
-                          const ctcVal = isCtc ? (effectiveOffer.ctc || 0) : 0;
-                          const maxEffCtc = compared.reduce((m, x) => {
-                            const xId = String(x._id || x.id);
-                            return Math.max(m, manualCtc[xId] ? parseCtcString(manualCtc[xId]) : (x.ctc || 0));
-                          }, 0);
-                          const isBestCtc = isCtc && ctcVal === maxEffCtc && ctcVal > 0;
-                          const statusGood = isStatus && (o.status === 'signed' || o.status === 'Hired');
+                          const isBest = id === bestOfferId && maxCtc > 0;
+                          const score = scores[id];
                           return (
-                            <td key={ci} style={{
-                              padding: '13px 18px',
-                              fontSize: 14,
-                              textAlign: 'center',
-                              borderBottom: '1px solid #F1F5F9',
-                              color: isBestCtc ? '#059669' : statusGood ? '#059669' : '#0A1628',
-                              fontWeight: (isBestCtc || statusGood) ? 800 : 400,
-                              verticalAlign: 'middle',
-                              background: isBestCtc ? 'rgba(5,150,105,0.05)' : statusGood ? 'rgba(5,150,105,0.03)' : 'transparent',
-                            }}>
-                              {isCtc && val === '—' ? (
-                                editingCtc === id + '_ctc' ? (
-                                  <input
-                                    autoFocus
-                                    defaultValue={manualCtc[id] || ''}
-                                    onBlur={e => { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
-                                    onKeyDown={e => { if (e.key === 'Enter') { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
-                                    placeholder="e.g. 8L or 800000"
-                                    style={{ width: 110, padding: '5px 8px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, textAlign: 'center', outline: 'none' }}
-                                  />
-                                ) : (
-                                  <button onClick={() => setEditingCtc(id + '_ctc')}
-                                    style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
-                                    + Add CTC
-                                  </button>
-                                )
-                              ) : isJoin && val === '—' ? (
-                                editingCtc === id + '_join' ? (
-                                  <input
-                                    autoFocus type="date"
-                                    defaultValue={manualJoin[id] || ''}
-                                    onBlur={e => { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
-                                    onKeyDown={e => { if (e.key === 'Enter') { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
-                                    style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, outline: 'none' }}
-                                  />
-                                ) : (
-                                  <button onClick={() => setEditingCtc(id + '_join')}
-                                    style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
-                                    + Add Date
-                                  </button>
-                                )
-                              ) : val}
-                              {isCtc && ctcVal > 0 && (
-                                <ScoreBar value={ctcVal} max={maxEffCtc} color={isBestCtc ? '#10B981' : '#6366F1'} />
+                            <th key={i} style={{ padding: '16px 18px', background: isBest ? '#F0FDF4' : '#F8FAFC', textAlign: 'center', borderBottom: `2px solid ${isBest ? '#86EFAC' : '#E2E8F0'}`, minWidth: 210 }}>
+                              <div style={{ fontWeight: 900, fontSize: 15, color: '#0A1628' }}>{o.jobTitle || `Offer ${i + 1}`}</div>
+                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{o.company || ''}</div>
+                              {score !== undefined && compared.length > 1 && (
+                                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                                  <div style={{ height: 4, width: 90, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden' }}>
+                                    <div style={{ width: `${score}%`, height: '100%', background: getScoreColor(score), borderRadius: 2, transition: 'width 0.6s' }} />
+                                  </div>
+                                  <span style={{ fontSize: 12, fontWeight: 900, color: getScoreColor(score) }}>{score}</span>
+                                </div>
                               )}
-                              {isBestCtc && <div style={{ fontSize: 11, color: '#059669', fontWeight: 700, marginTop: 2 }}>★ Best CTC</div>}
-                            </td>
+                              {isBest && <div style={{ fontSize: 10, fontWeight: 800, color: '#059669', marginTop: 6 }}>⭐ Highest CTC</div>}
+                            </th>
                           );
                         })}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {ROW_LABELS.map((row, ri) => (
+                        <tr key={row.key} style={{ background: ri % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                          <td style={{ padding: '13px 18px', fontSize: 13, fontWeight: 700, color: '#6B7280', borderBottom: '1px solid #F1F5F9' }}>{row.label}</td>
+                          {compared.map((o, ci) => {
+                            const id = String(o._id || o.id);
+                            const isCtc = row.key === 'ctc';
+                            const isJoin = row.key === 'joiningDate';
+                            const isStatus = row.key === 'status';
+                            const effectiveOffer = {
+                              ...o,
+                              ctc: manualCtc[id] ? parseCtcString(manualCtc[id]) : o.ctc,
+                              ctcRaw: manualCtc[id] || o.ctcRaw,
+                              joiningDate: manualJoin[id] || o.joiningDate,
+                            };
+                            const val = row.fn(effectiveOffer);
+                            const ctcVal = isCtc ? (effectiveOffer.ctc || 0) : 0;
+                            const maxEffCtc = compared.reduce((m, x) => {
+                              const xId = String(x._id || x.id);
+                              return Math.max(m, manualCtc[xId] ? parseCtcString(manualCtc[xId]) : (x.ctc || 0));
+                            }, 0);
+                            const isBestCtc = isCtc && ctcVal === maxEffCtc && ctcVal > 0;
+                            const statusGood = isStatus && (o.status === 'signed' || o.status === 'Hired');
+                            return (
+                              <td key={ci} style={{
+                                padding: '13px 18px',
+                                fontSize: 14,
+                                textAlign: 'center',
+                                borderBottom: '1px solid #F1F5F9',
+                                color: isBestCtc ? '#059669' : statusGood ? '#059669' : '#0A1628',
+                                fontWeight: (isBestCtc || statusGood) ? 800 : 400,
+                                verticalAlign: 'middle',
+                                background: isBestCtc ? 'rgba(5,150,105,0.05)' : statusGood ? 'rgba(5,150,105,0.03)' : 'transparent',
+                              }}>
+                                {isCtc && val === '—' ? (
+                                  editingCtc === id + '_ctc' ? (
+                                    <input
+                                      autoFocus
+                                      defaultValue={manualCtc[id] || ''}
+                                      onBlur={e => { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
+                                      onKeyDown={e => { if (e.key === 'Enter') { setManualCtc(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
+                                      placeholder="e.g. 8L or 800000"
+                                      style={{ width: 110, padding: '5px 8px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, textAlign: 'center', outline: 'none' }}
+                                    />
+                                  ) : (
+                                    <button onClick={() => setEditingCtc(id + '_ctc')}
+                                      style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                                      + Add CTC
+                                    </button>
+                                  )
+                                ) : isJoin && val === '—' ? (
+                                  editingCtc === id + '_join' ? (
+                                    <input
+                                      autoFocus type="date"
+                                      defaultValue={manualJoin[id] || ''}
+                                      onBlur={e => { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); }}
+                                      onKeyDown={e => { if (e.key === 'Enter') { setManualJoin(p => ({ ...p, [id]: e.target.value })); setEditingCtc(null); } }}
+                                      style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #0176D3', fontSize: 12, outline: 'none' }}
+                                    />
+                                  ) : (
+                                    <button onClick={() => setEditingCtc(id + '_join')}
+                                      style={{ background: '#F0F9FF', border: '1px dashed #0176D3', color: '#0176D3', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                                      + Add Date
+                                    </button>
+                                  )
+                                ) : val}
+                                {isCtc && ctcVal > 0 && (
+                                  <ScoreBar value={ctcVal} max={maxEffCtc} color={isBestCtc ? '#10B981' : '#6366F1'} />
+                                )}
+                                {isBestCtc && <div style={{ fontSize: 11, color: '#059669', fontWeight: 700, marginTop: 2 }}>★ Best CTC</div>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* ── Smart Insights ── */}
               {insights.length > 0 && (
-                <div style={{ background: 'linear-gradient(135deg,#F0F9FF,#EEF2FF)', border: '1px solid #BFDBFE', borderRadius: 16, padding: '20px 24px', marginBottom: 18 }}>
+                <div style={{ background: 'linear-gradient(135deg,#F0F9FF,#EEF2FF)', border: '1px solid #BFDBFE', borderRadius: 16, padding: isMobile ? '16px' : '20px 24px', marginBottom: 18 }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#1E40AF', marginBottom: 14 }}>💡 Smart Insights</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {insights.map((ins, i) => (
@@ -442,10 +599,10 @@ export default function OfferComparison({ user }) {
                 });
                 const bestCtcDisplay = best ? fmtSalary({ ctc: maxCtc, ctcRaw: manualCtc[String(best._id || best.id)] || best.ctcRaw }) : '';
                 return (
-                  <div style={{ background: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)', border: '1px solid #86EFAC', borderRadius: 16, padding: '20px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 52, height: 52, background: '#059669', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🏆</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, color: '#065F46', fontSize: 16, marginBottom: 4 }}>
+                  <div style={{ background: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)', border: '1px solid #86EFAC', borderRadius: 16, padding: isMobile ? '14px' : '20px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ width: 48, height: 48, background: '#059669', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏆</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: '#065F46', fontSize: isMobile ? 14 : 16, marginBottom: 4 }}>
                         Highest CTC: {best?.jobTitle || 'Offer'} at {best?.company || ''} — {bestCtcDisplay}
                       </div>
                       <div style={{ color: '#059669', fontSize: 13 }}>
@@ -456,8 +613,51 @@ export default function OfferComparison({ user }) {
                 );
               })()}
 
+              {/* ── Company Reviews Section ── */}
+              {compared.some(o => companyReviews[o.company]?.total > 0) && (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>⭐ Company Reviews</div>
+                  <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 14 }}>Real experiences from TalentNest community members</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${Math.min(compared.length, 3)}, 1fr)`, gap: 12 }}>
+                    {compared.map(o => {
+                      const rev = companyReviews[o.company];
+                      if (!rev) return null;
+                      return (
+                        <div key={String(o._id || o.id)} style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 14, padding: '16px', overflow: 'hidden' }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, color: '#0A1628', marginBottom: 8 }}>{o.company}</div>
+                          {rev.avgRating > 0 ? (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                <span style={{ fontSize: 28, fontWeight: 900, color: '#F59E0B', lineHeight: 1 }}>{rev.avgRating.toFixed(1)}</span>
+                                <div>
+                                  <div style={{ display: 'flex', gap: 1 }}>
+                                    {[1, 2, 3, 4, 5].map(s => (
+                                      <span key={s} style={{ fontSize: 14, color: s <= Math.round(rev.avgRating) ? '#F59E0B' : '#E5E7EB' }}>★</span>
+                                    ))}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{rev.total} review{rev.total !== 1 ? 's' : ''}</div>
+                                </div>
+                              </div>
+                              {rev.topReviews.slice(0, 1).map((r, ri) => (
+                                <div key={ri} style={{ background: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '10px 12px', fontSize: 12, lineHeight: 1.6 }}>
+                                  {r.title && <div style={{ fontWeight: 700, color: '#374151', marginBottom: 5 }}>{r.title}</div>}
+                                  {r.pros && <div style={{ color: '#065F46', marginBottom: r.cons ? 4 : 0, wordBreak: 'break-word' }}>✅ {r.pros.length > 110 ? r.pros.slice(0, 110) + '…' : r.pros}</div>}
+                                  {r.cons && <div style={{ color: '#991B1B', wordBreak: 'break-word' }}>⚠️ {r.cons.length > 110 ? r.cons.slice(0, 110) + '…' : r.cons}</div>}
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <div style={{ fontSize: 12, color: '#9CA3AF', padding: '8px 0' }}>No reviews yet for this company</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* ── Pre-Decision Checklist ── */}
-              <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: '22px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: isMobile ? '16px' : '22px 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#0A1628', marginBottom: 4 }}>📋 Pre-Decision Checklist</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 18 }}>Verify these before making your final call — tick each off as you confirm</div>
                 <div style={{ display: 'grid', gap: 10 }}>
