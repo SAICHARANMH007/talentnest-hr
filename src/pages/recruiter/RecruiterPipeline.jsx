@@ -872,7 +872,9 @@ export default function RecruiterPipeline({ user }) {
     }
   };
 
-  const stageCounts = STAGES.reduce((acc, s) => { acc[s.id] = apps.filter(a => a.stage === s.id).length; return acc; }, {});
+  const _stageCountMap = {};
+  for (const a of apps) { _stageCountMap[a.stage] = (_stageCountMap[a.stage] || 0) + 1; }
+  const stageCounts = STAGES.reduce((acc, s) => { acc[s.id] = _stageCountMap[s.id] || 0; return acc; }, {});
   const BENCHMARK_STAGES = new Set(['shortlisted', 'interview_round_1', 'interview_round_2', 'offer_extended', 'selected']);
   const benchmarkCount = apps.filter(a => BENCHMARK_STAGES.has(a.stage)).length;
   const totalApplicants = apps.length;

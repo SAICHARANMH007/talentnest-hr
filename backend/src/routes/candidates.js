@@ -7,6 +7,7 @@ const XLSX           = require('xlsx');
 const Candidate      = require('../models/Candidate');
 const User           = require('../models/User');
 const Application    = require('../models/Application');
+const AuditLog       = require('../models/AuditLog');
 const { authMiddleware } = require('../middleware/auth');
 const { tenantGuard } = require('../middleware/tenantGuard');
 const { allowRoles } = require('../middleware/rbac');
@@ -187,6 +188,20 @@ router.get('/:id', ...guard,
     }
 
     if (!candidate) throw new AppError('Candidate not found.', 404);
+
+    AuditLog.create({
+      tenantId: req.user.tenantId,
+      userId  : req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action  : 'VIEW_CANDIDATE_PII',
+      entity  : 'Candidate',
+      entityId: String(candidate._id),
+      details : { candidateName: candidate.name, candidateEmail: candidate.email },
+      ip      : req.ip,
+      userAgent: req.get('user-agent'),
+    }).catch(() => {});
+
     res.json({ success: true, data: { ...candidate, id: candidate._id?.toString() } });
   })
 );

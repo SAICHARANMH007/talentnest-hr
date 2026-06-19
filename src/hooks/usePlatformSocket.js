@@ -23,11 +23,14 @@ export function usePlatformSocket(onStageChanged) {
       reconnectionDelay: 2000,
     });
 
+    socket.on('connect', () => { window.__tnPlatformWsConnected = true; });
+    socket.on('disconnect', () => { window.__tnPlatformWsConnected = false; });
     socket.on('application:stageChanged', data => {
       cbRef.current?.(data);
     });
 
     return () => {
+      window.__tnPlatformWsConnected = false;
       socket.off('application:stageChanged');
       socket.disconnect();
     };

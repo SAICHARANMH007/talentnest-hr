@@ -202,7 +202,7 @@ function NotificationBell({ userRole, compact = false }) {
 
   React.useEffect(() => {
     load();
-    const iv = setInterval(load, 30000);
+    const iv = setInterval(() => { if (!window.__tnPlatformWsConnected) load(); }, 30000);
     return () => clearInterval(iv);
   }, [load]);
 
