@@ -239,30 +239,37 @@ export default function CandidateApplications({ user }) {
       )}
 
       {/* Main tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DDDBDA', overflowX: 'auto', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
+      <div style={{ background: '#F1F5F9', borderRadius: 16, padding: 5, marginBottom: 20, display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
         {[
-          { id: 'applications', label: '📋 Applications', count: apps.length },
-          { id: 'drives',       label: '🏫 Campus Drives', count: driveRegs.length },
-          { id: 'invites',      label: '📧 Invitations',  count: invites.length, badge: pendingInvites.length },
+          { id: 'applications', emoji: '📋', label: 'Applications', count: apps.length },
+          { id: 'drives',       emoji: '🏫', label: 'Campus Drives', count: driveRegs.length },
+          { id: 'invites',      emoji: '📧', label: 'Invitations',  count: invites.length, badge: pendingInvites.length },
         ].map(t => {
           const isActive = activeTab === t.id;
           return (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-              whiteSpace: 'nowrap', flexShrink: 0, padding: '12px 18px',
-              border: 'none', cursor: 'pointer', fontSize: 13,
-              fontWeight: isActive ? 700 : 500,
-              background: 'transparent',
+              flex: 1, minWidth: 'fit-content', whiteSpace: 'nowrap', flexShrink: 0,
+              padding: '10px 14px', border: 'none', cursor: 'pointer', borderRadius: 12,
+              fontSize: 12, fontWeight: isActive ? 800 : 600,
+              background: isActive ? '#fff' : 'transparent',
               color: isActive ? '#0176D3' : '#706E6B',
-              borderBottom: isActive ? '2.5px solid #0176D3' : '2.5px solid transparent',
-              marginBottom: -2, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.10)' : 'none',
+              transition: 'all 0.18s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
             }}>
-              {t.label}
+              <span style={{ fontSize: 14 }}>{t.emoji}</span>
+              <span>{t.label}</span>
               <span style={{
-                background: isActive ? '#0176D3' : '#F1F5F9',
-                color: isActive ? '#fff' : '#64748B',
-                borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700
+                background: isActive ? '#0176D3' : '#CBD5E1',
+                color: '#fff',
+                borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 800,
+                lineHeight: '16px',
               }}>{t.count}</span>
-              {t.badge > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 800 }}>{t.badge} new</span>}
+              {t.badge > 0 && (
+                <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '1px 6px', fontSize: 10, fontWeight: 800, lineHeight: '16px' }}>
+                  {t.badge}
+                </span>
+              )}
             </button>
           );
         })}
