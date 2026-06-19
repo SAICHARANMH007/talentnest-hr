@@ -1,6 +1,6 @@
 'use strict';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
@@ -174,11 +174,12 @@ const isSuperAdmin = (role) => ['super_admin', 'superadmin'].includes(role);
 
 export default function CommunitiesPage({ user }) {
   const navigate     = useNavigate();
+  const [searchParams] = useSearchParams();
   const [communities, setCommunities] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [actionSlug,  setActionSlug]  = useState(null);
-  const [filter,      setFilter]      = useState('all'); // all | joined | tech | hr | business | design
-  const [search,      setSearch]      = useState('');
+  const [filter,      setFilter]      = useState(() => searchParams.get('filter') || 'all');
+  const [search,      setSearch]      = useState(() => searchParams.get('search') || '');
   const [showCreate,  setShowCreate]  = useState(false);
   const [isMobile,    setMobile]      = useState(() => window.innerWidth < 768);
   const [isSmallPhone, setSmallPhone] = useState(() => window.innerWidth < 500);
