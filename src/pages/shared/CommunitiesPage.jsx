@@ -1,5 +1,5 @@
 'use strict';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
@@ -185,8 +185,6 @@ export default function CommunitiesPage({ user }) {
   const [isSmallPhone, setSmallPhone] = useState(() => window.innerWidth < 500);
   const [merging,     setMerging]     = useState(false);
   const [mergeMsg,    setMergeMsg]    = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
-  const sentinelRef = useRef(null);
 
   useEffect(() => {
     const h = () => { setMobile(window.innerWidth < 768); setSmallPhone(window.innerWidth < 500); };
@@ -230,19 +228,6 @@ export default function CommunitiesPage({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Reset to first 10 whenever the filtered list changes (filter chip or search)
-  useEffect(() => { setVisibleCount(10); }, [filter, search]);
-
-  // Infinite scroll — observe a sentinel div; when it enters the viewport load 10 more
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setVisibleCount(c => c + 10);
-    }, { rootMargin: '400px' });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [sentinelRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleJoin = async (slug) => {
     setActionSlug(slug);
@@ -281,7 +266,11 @@ export default function CommunitiesPage({ user }) {
     if (!['all', 'joined', 'college', 'company'].includes(filter) && c.category !== filter) return false;
     if (search.trim().length >= 2) {
       const q = search.toLowerCase();
-      return c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
+      const searchable = [c.name, c.description, c.companyName, c.collegeName]
+        .filter(Boolean).map(s => s.toLowerCase()).join(' ');
+      // Full phrase match OR any individual word (min 2 chars) — "Siemens India" finds "Siemens Community"
+      const words = q.split(/\s+/).filter(w => w.length >= 2);
+      return searchable.includes(q) || words.some(w => searchable.includes(w));
     }
     return true;
   });
@@ -376,7 +365,7 @@ export default function CommunitiesPage({ user }) {
             gap: 16,
             padding: isMobile ? '0 12px' : 0,
           }}>
-            {visible.slice(0, visibleCount).map(c => (
+            {visible.map(c => (
               <CommunityCard
                 key={c.slug}
                 community={c}
@@ -388,12 +377,6 @@ export default function CommunitiesPage({ user }) {
               />
             ))}
           </div>
-          {/* Sentinel — triggers loading the next batch when scrolled into view */}
-          {visibleCount < visible.length && (
-            <div ref={sentinelRef} style={{ padding: '24px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-            </div>
-          )}
         </>
       )}
 
