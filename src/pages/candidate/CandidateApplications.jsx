@@ -106,6 +106,27 @@ function ApplicationStepper({ app }) {
   );
 }
 
+async function goToCompanyCommunity(companyName, navigate) {
+  try {
+    const r = await api.getCommunities();
+    const list = r?.data || [];
+    const q = companyName.trim().toLowerCase();
+    const match = list.find(c =>
+      (c.companyName && c.companyName.toLowerCase() === q) ||
+      c.name.toLowerCase() === q ||
+      c.name.toLowerCase().includes(q) ||
+      q.includes(c.name.toLowerCase())
+    );
+    if (match?.slug) {
+      navigate(`/app/communities/${match.slug}`);
+    } else {
+      navigate(`/app/communities?search=${encodeURIComponent(companyName)}&filter=company`);
+    }
+  } catch {
+    navigate(`/app/communities?search=${encodeURIComponent(companyName)}&filter=company`);
+  }
+}
+
 export default function CandidateApplications({ user }) {
   const navigate = useNavigate();
   const [apps, setApps]           = useState([]);
@@ -424,7 +445,7 @@ export default function CandidateApplications({ user }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: '#0A1628', lineHeight: 1.25, marginBottom: 3 }}>{jobTitle}</div>
-            <div style={{ fontSize: 13, color: '#0176D3', fontWeight: 600 }}><span onClick={() => navigate(`/app/communities?search=${encodeURIComponent(jobCompany)}&filter=company`)} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}>{jobCompany}</span>{jobLocation ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {jobLocation}</span> : ''}</div>
+            <div style={{ fontSize: 13, color: '#0176D3', fontWeight: 600 }}><span onClick={() => goToCompanyCommunity(jobCompany, navigate)} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}>{jobCompany}</span>{jobLocation ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {jobLocation}</span> : ''}</div>
           </div>
         </div>
         {stageMsg && (
@@ -866,7 +887,7 @@ export default function CandidateApplications({ user }) {
                             </span>
                           </div>
                           <div style={{ fontSize: 12, color: '#0176D3', marginTop: 3, fontWeight: 600 }}>
-                            <span onClick={e => { e.stopPropagation(); navigate(`/app/communities?search=${encodeURIComponent(jobCompany)}&filter=company`); }} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}>{jobCompany}</span>{jobLocation ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {jobLocation}</span> : ''}
+                            <span onClick={e => { e.stopPropagation(); goToCompanyCommunity(jobCompany, navigate); }} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}>{jobCompany}</span>{jobLocation ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {jobLocation}</span> : ''}
                           </div>
                         </div>
 
