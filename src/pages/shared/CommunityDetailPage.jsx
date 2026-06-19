@@ -299,7 +299,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
       {showReport && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => setShowReport(false)}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: '24px', maxWidth: 420, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
+          <div style={{ background: '#fff', borderRadius: 16, padding: '24px', maxWidth: 420, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)', maxHeight: '90dvh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 800, color: '#0A1628' }}>Report Post</h3>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280' }}>Help us keep the community safe. Select a reason:</p>
@@ -405,26 +405,32 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
             {totalComments > 0 && <span style={{ cursor: 'pointer' }} onClick={() => setShowComments(v => !v)}>{totalComments} comment{totalComments !== 1 ? 's' : ''}</span>}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {REACTIONS.map(r => (
-            <button key={r.type} onClick={() => onReact(post._id, r.type)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: myReaction?.type === r.type ? `1px solid ${r.color || '#1D4ED8'}33` : '1px solid transparent', background: myReaction?.type === r.type ? '#EFF6FF' : 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, fontWeight: myReaction?.type === r.type ? 700 : 500, color: myReaction?.type === r.type ? (r.color || '#1D4ED8') : '#374151', transition: 'all 0.12s' }}>
-              {r.emoji} <span style={{ display: window.innerWidth < 500 ? 'none' : 'inline' }}>{r.label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+          {/* Reactions — scrollable on mobile */}
+          <div style={{ display: 'flex', gap: 2, flex: 1, minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            {REACTIONS.map(r => (
+              <button key={r.type} onClick={() => onReact(post._id, r.type)}
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: 8, border: myReaction?.type === r.type ? `1px solid ${r.color || '#1D4ED8'}33` : '1px solid transparent', background: myReaction?.type === r.type ? '#EFF6FF' : 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, fontWeight: myReaction?.type === r.type ? 700 : 500, color: myReaction?.type === r.type ? (r.color || '#1D4ED8') : '#374151', transition: 'all 0.12s', whiteSpace: 'nowrap' }}>
+                {r.emoji}<span style={{ display: window.innerWidth < 500 ? 'none' : 'inline', fontSize: 12, marginLeft: 4 }}>{r.label}</span>
+              </button>
+            ))}
+          </div>
+          {/* Comment + Share — fixed right, never wrap */}
+          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+            <button onClick={() => setShowComments(v => !v)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: 8, border: '1px solid transparent', background: showComments ? 'rgba(1,118,211,0.08)' : 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: showComments ? '#0176D3' : '#374151', fontWeight: showComments ? 700 : 500, whiteSpace: 'nowrap' }}>
+              💬<span style={{ display: window.innerWidth < 500 ? 'none' : 'inline', fontSize: 12, marginLeft: 4 }}>Comment</span>
             </button>
-          ))}
-          <button onClick={() => setShowComments(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
-            💬 Comment
-          </button>
-          <button
-            onClick={() => {
-              const url = window.location.href;
-              if (navigator.share) { navigator.share({ title: post.authorName, text: (post.content || '').slice(0, 100), url }).catch(() => {}); }
-              else { navigator.clipboard?.writeText(url).catch(() => {}); }
-            }}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500 }}>
-            ↗ Share
-          </button>
+            <button
+              onClick={() => {
+                const url = window.location.href;
+                if (navigator.share) { navigator.share({ title: post.authorName, text: (post.content || '').slice(0, 100), url }).catch(() => {}); }
+                else { navigator.clipboard?.writeText(url).catch(() => {}); }
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: 8, border: '1px solid transparent', background: 'rgba(0,0,0,0.03)', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>
+              ↗<span style={{ display: window.innerWidth < 500 ? 'none' : 'inline', fontSize: 12, marginLeft: 4 }}>Share</span>
+            </button>
+          </div>
         </div>
 
         {showComments && (
@@ -432,10 +438,10 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
             {post.comments?.map(c => (
               <div key={String(c._id)} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 <Avatar name={c.userName} size={28} role={c.userRole || 'candidate'} />
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 3 }}>{c.userName || 'Member'}</div>
-                    <div style={{ fontSize: 13, color: '#374151' }}>
+                    <div style={{ fontSize: 13, color: '#374151', wordBreak: 'break-word' }}>
                       {c.content.startsWith('@') ? (
                         <>
                           <span style={{ color: '#0176D3', fontWeight: 700 }}>{c.content.split(' ')[0]}</span>
@@ -454,7 +460,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Avatar name="Me" size={28} role="candidate" />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {replyingTo && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
                     <span>Replying to <strong style={{ color: '#0176D3' }}>@{replyingTo.userName}</strong></span>
@@ -465,7 +471,7 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
                   <input ref={commentInputRef} value={comment} onChange={e => setComment(e.target.value)}
                     placeholder={replyingTo ? `Reply to @${replyingTo.userName}…` : 'Write a comment…'}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }}}
-                    style={{ flex: 1, padding: '8px 14px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
+                    style={{ flex: 1, minWidth: 0, padding: '8px 12px', borderRadius: 20, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', background: '#F8FAFC' }} />
                   <button onClick={handleSubmitComment} disabled={submitting || !comment.trim()}
                     style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: '#0176D3', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: comment.trim() ? 1 : 0.5 }}>
                     {submitting ? '…' : 'Post'}
@@ -523,7 +529,7 @@ function CreateCommunityPost({ user, community, onCreate }) {
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await api.createPost({
+      const result = await api.createPost({
         content      : text.trim(),
         postType,
         images,
@@ -535,16 +541,16 @@ function CreateCommunityPost({ user, community, onCreate }) {
       setExpanded(false);
       setPostType('update');
       setPostError('');
-      onCreate && onCreate();
+      onCreate && onCreate(result?.data || result);
     } catch (e) { setPostError(e?.message || 'Failed to post. Please check your connection and try again.'); }
     setSubmitting(false);
   };
 
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 14, borderRadius: 14, border: `1px solid ${bg}22` }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+    <div style={{ ...card, padding: '14px 16px', marginBottom: 14, borderRadius: 14, border: `1px solid ${bg}22`, overflow: 'hidden', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
         <Avatar name={user?.name} src={user?.avatarUrl} size={38} role={user?.role} />
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -981,13 +987,13 @@ export default function CommunityDetailPage({ user }) {
     setLoading(false);
   }, [slug]);
 
-  const loadPosts = useCallback(async () => {
-    setPostsLoading(true);
+  const loadPosts = useCallback(async (silent = false) => {
+    if (!silent) setPostsLoading(true);
     try {
       const r = await api.getCommunityFeed(slug, { limit: 25 });
       setPosts(r?.data || []);
     } catch {}
-    setPostsLoading(false);
+    if (!silent) setPostsLoading(false);
   }, [slug]);
 
   const loadJobs = useCallback(async () => {
@@ -1321,7 +1327,13 @@ export default function CommunityDetailPage({ user }) {
           <>
             {/* Create post — members only; non-members see a join nudge */}
             {(isMember || ['admin','super_admin','superadmin'].includes(user?.role))
-              ? <CreateCommunityPost user={user} community={community} onCreate={loadPosts} />
+              ? <CreateCommunityPost user={user} community={community} onCreate={(newPost) => {
+                if (newPost?._id) {
+                  const full = { reactions: [], comments: [], ...newPost, authorName: newPost.authorName || user?.name, authorAvatar: newPost.authorAvatar || user?.avatarUrl, authorRole: newPost.authorRole || user?.role };
+                  setPosts(prev => prev.some(p => String(p._id) === String(newPost._id)) ? prev : [full, ...prev]);
+                }
+                loadPosts(true);
+              }} />
               : (
                 <div style={{ ...card, padding: '12px 16px', marginBottom: 14, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, border: `1.5px dashed ${bg}55` }}>
                   <span style={{ fontSize: 22 }}>✍️</span>
