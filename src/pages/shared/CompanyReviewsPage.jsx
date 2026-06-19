@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
 
@@ -191,8 +192,9 @@ export default function CompanyReviewsPage({ user }) {
   const [companies,     setCompanies]     = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [showForm,      setShowForm]      = useState(false);
-  const [searchCompany, setSearchCompany] = useState('');
-  const [selectedCo,    setSelectedCo]   = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchCompany, setSearchCompany] = useState(() => searchParams.get('company') || '');
+  const [selectedCo,    setSelectedCo]   = useState(() => searchParams.get('company') || '');
   const [sortBy,        setSortBy]        = useState('newest');
 
   const load = useCallback(async () => {
