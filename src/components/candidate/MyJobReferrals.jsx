@@ -62,36 +62,46 @@ export default function MyJobReferrals() {
           const meta = STATUS_META[r.status] || STATUS_META.pending;
           const id = String(r.id || r._id);
           return (
-            <div key={id} style={{ padding: '14px 20px', borderBottom: '1px solid #F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#0A1628' }}>
-                  {r.jobId?.title || 'Job opening'}
-                </div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+            <div key={id} style={{ padding: '14px 16px', borderBottom: '1px solid #F8FAFC' }}>
+              {/* Title — full width, never squished */}
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 3, wordBreak: 'break-word', lineHeight: 1.4 }}>
+                {r.jobId?.title || 'Job opening'}
+              </div>
+
+              {/* Company / referred name */}
+              {(r.jobId?.companyName || r.jobId?.company || r.candidateId?.name) && (
+                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 3 }}>
                   {r.jobId?.companyName || r.jobId?.company || ''}
                   {r.candidateId?.name ? ` · Referred: ${r.candidateId.name}` : ''}
                 </div>
-                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 4 }}>
-                  Created {new Date(r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </div>
+              )}
+
+              {/* Date */}
+              <div style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 10 }}>
+                Created {new Date(r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                {r.rewardAmount > 0 && (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: r.status === 'hired' ? '#15803D' : '#92400E' }}>₹{r.rewardAmount.toLocaleString('en-IN')}</div>
-                    {r.status === 'hired' && (
-                      <div style={{ fontSize: 9, fontWeight: 700, color: r.rewardPaid ? '#15803D' : '#92400E' }}>{r.rewardPaid ? 'Paid' : 'Processing'}</div>
-                    )}
-                  </div>
-                )}
-                <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '4px 10px', color: meta.color, background: meta.bg, whiteSpace: 'nowrap' }}>
-                  {meta.label}
-                </span>
+              {/* Actions row — status + reward + copy */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '4px 10px', color: meta.color, background: meta.bg, whiteSpace: 'nowrap' }}>
+                    {meta.label}
+                  </span>
+                  {r.rewardAmount > 0 && (
+                    <span style={{ fontSize: 13, fontWeight: 800, color: r.status === 'hired' ? '#15803D' : '#92400E' }}>
+                      ₹{r.rewardAmount.toLocaleString('en-IN')}
+                      {r.status === 'hired' && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: r.rewardPaid ? '#15803D' : '#92400E', marginLeft: 4 }}>
+                          {r.rewardPaid ? '✓ Paid' : 'Processing'}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
                 {r.link && r.status === 'pending' && (
                   <button
                     onClick={() => copy(id, r.link)}
-                    style={{ background: copiedId === id ? '#16A34A' : '#0176D3', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ background: copiedId === id ? '#16A34A' : '#0176D3', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     {copiedId === id ? '✓ Copied' : '📋 Copy Link'}
                   </button>
