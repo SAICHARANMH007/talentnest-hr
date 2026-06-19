@@ -248,9 +248,9 @@ export default function CandidateApplications({ user }) {
           { id: 'invites',      label: '📧 Invitations',  count: invites.length, badge: pendingInvites.length },
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-            padding: '10px 20px', border: 'none', cursor: 'pointer', fontSize: 13,
+            padding: '10px 16px', border: 'none', cursor: 'pointer', fontSize: 13,
             fontWeight: activeTab === t.id ? 700 : 500,
-            background: 'transparent',
+            background: 'transparent', whiteSpace: 'nowrap', flexShrink: 0,
             color: activeTab === t.id ? '#0176D3' : '#706E6B',
             borderBottom: activeTab === t.id ? '2px solid #0176D3' : '2px solid transparent',
             marginBottom: -2, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
