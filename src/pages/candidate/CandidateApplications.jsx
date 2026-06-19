@@ -404,9 +404,26 @@ export default function CandidateApplications({ user }) {
             </div>
           )}
 
-          {/* Stage filter pills */}
+          {/* Stats summary */}
           {!loading && apps.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {[
+                { label: 'Total',       count: apps.length,                                                                                             color: '#0176D3', icon: '📋' },
+                { label: 'Active',      count: apps.filter(a => !['rejected','withdrawn'].includes(a.stage)).length,                                    color: '#059669', icon: '🔄' },
+                { label: 'Shortlisted', count: apps.filter(a => ['shortlisted','interview_scheduled','interview_completed','offer_extended'].includes(a.stage)).length, color: '#F59E0B', icon: '⭐' },
+                { label: 'Hired',       count: apps.filter(a => a.stage === 'selected').length,                                                         color: '#2E844A', icon: '🏆' },
+              ].map(stat => (
+                <div key={stat.label} style={{ flex: 1, background: '#fff', borderRadius: 12, border: `1px solid ${stat.color}22`, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: stat.color, lineHeight: 1 }}>{stat.count}</div>
+                  <div style={{ fontSize: 10, color: '#64748B', fontWeight: 600, marginTop: 3 }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Stage filter pills — horizontally scrollable */}
+          {!loading && apps.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4, scrollbarWidth: 'none', marginBottom: 14 }}>
               {STAGE_TABS.map(({ id, label, color }) => {
                 const cnt = id === 'all' ? apps.length : apps.filter(a => a.stage === id).length;
                 if (id !== 'all' && cnt === 0) return null;
@@ -414,11 +431,13 @@ export default function CandidateApplications({ user }) {
                 return (
                   <button key={id} onClick={() => setStageFilter(id)} style={{
                     padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                    border: `1px solid ${active ? (color || '#0176D3') : '#DDDBDA'}`,
-                    background: active ? `${(color || '#0176D3')}18` : 'transparent',
+                    flexShrink: 0, whiteSpace: 'nowrap',
+                    border: `1px solid ${active ? (color || '#0176D3') : '#E8ECF0'}`,
+                    background: active ? `${(color || '#0176D3')}15` : '#F9FAFB',
                     color: active ? (color || '#0176D3') : '#706E6B',
+                    transition: 'all 0.15s',
                   }}>
-                    {label} <span style={{ fontWeight: 700 }}>({cnt})</span>
+                    {label} <span style={{ fontWeight: 800 }}>({cnt})</span>
                   </button>
                 );
               })}
@@ -475,55 +494,103 @@ export default function CandidateApplications({ user }) {
                 const jobLocation = getJobField(a, 'location');
                 const appId       = a.id || a._id;
                 const isRejectedApp = a.stage === 'rejected' || a.stage === 'withdrawn';
+                const initials    = jobCompany.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                const avatarGrad  = isRejectedApp
+                  ? 'linear-gradient(135deg,#94A3B8,#64748B)'
+                  : `linear-gradient(135deg,${s.color},${s.color}cc)`;
+                const sc = a.talentMatchScore ?? 0;
+                const hasMScore = a.talentMatchScore != null;
+                const mc = sc >= 75 ? '#059669' : sc >= 50 ? '#D97706' : '#DC2626';
+                const ml = sc >= 75 ? 'Strong' : sc >= 50 ? 'Good' : 'Partial';
 
                 return (
-                  <div key={appId} onClick={() => setSelectedApp(a)} style={{ background: '#fff', borderRadius: 16, border: `1.5px solid ${s.color}22`, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', cursor: 'pointer', marginBottom: 0 }}>
-                    {/* Stage header strip */}
-                    <div style={{ background: `linear-gradient(135deg,${s.color}14,${s.color}06)`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${s.color}18` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 16 }}>{s.icon}</span>
-                        <span style={{ fontWeight: 700, fontSize: 12, color: s.color }}>{s.label}</span>
-                        {a.source === 'admin_assign' && <span style={{ background: 'rgba(1,118,211,0.12)', color: '#0176D3', borderRadius: 20, padding: '1px 8px', fontSize: 9, fontWeight: 800 }}>🎯 HR Added</span>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, color: '#94A3B8' }}>{fmtD(a.createdAt)}</span>
-                        <span style={{ color: '#CBD5E1', fontSize: 18, lineHeight: 1 }}>›</span>
-                      </div>
-                    </div>
-                    {/* Body */}
-                    <div style={{ padding: '12px 16px 14px' }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 3, lineHeight: 1.3 }}>{jobTitle}</div>
-                      <div style={{ fontSize: 12, color: '#0176D3', marginBottom: 10 }}>{jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}</div>
-                      {/* Mini progress bar (7 segments) */}
-                      {!isRejectedApp && (
-                        <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
-                          {STEPPER_STAGES.map((stage, i) => {
-                            const ci = STEPPER_STAGES.findIndex(st => st.id === a.stage);
-                            const active = i === ci, past = i < ci;
-                            return <div key={stage.id} style={{ flex: 1, height: 3, borderRadius: 2, background: (active || past) ? s.color : '#E8ECF0', opacity: active ? 1 : past ? 0.6 : 0.3, transition: 'all 0.3s' }} />;
-                          })}
+                  <div key={appId} onClick={() => setSelectedApp(a)} style={{ background: '#fff', borderRadius: 16, border: `1.5px solid ${isRejectedApp ? '#E8ECF0' : s.color + '30'}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.1s', active: false }}>
+
+                    {/* Top accent line */}
+                    <div style={{ height: 3, background: isRejectedApp ? '#E2E8F0' : `linear-gradient(90deg,${s.color},${s.color}88)` }} />
+
+                    <div style={{ padding: '14px 16px 14px' }}>
+                      {/* Row 1: Avatar + Title/Badge + Chevron */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        {/* Company avatar */}
+                        <div style={{ width: 46, height: 46, borderRadius: 12, background: avatarGrad, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 15, flexShrink: 0, letterSpacing: '-0.5px', boxShadow: `0 4px 12px ${isRejectedApp ? '#94A3B833' : s.color + '44'}` }}>
+                          {initials || '?'}
                         </div>
-                      )}
-                      {isRejectedApp && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#BA0517', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700, flexShrink: 0 }}>✕</div>
-                          <span style={{ fontSize: 11, color: '#fca5a5', fontWeight: 600 }}>{a.stage === 'withdrawn' ? 'You withdrew this application' : 'Application not progressed'}</span>
-                        </div>
-                      )}
-                      {/* Match score mini badge */}
-                      {a.talentMatchScore != null && (() => {
-                        const sc = a.talentMatchScore ?? 0;
-                        const mc = sc >= 75 ? '#059669' : sc >= 50 ? '#D97706' : '#DC2626';
-                        const ml = sc >= 75 ? 'Strong Match' : sc >= 50 ? 'Good Match' : 'Partial Match';
-                        return (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '6px 10px', background: `${mc}0d`, borderRadius: 8, border: `1px solid ${mc}22` }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: mc }}>🎯 Resume Match — {ml}</span>
-                            <span style={{ fontSize: 13, fontWeight: 900, color: mc }}>{Math.round(sc)}%</span>
+
+                        {/* Middle: title + company */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                            <div style={{ fontWeight: 800, fontSize: 14, color: isRejectedApp ? '#94A3B8' : '#0A1628', lineHeight: 1.3, flex: 1, minWidth: 0 }}>{jobTitle}</div>
+                            {/* Stage badge */}
+                            <span style={{ flexShrink: 0, background: isRejectedApp ? '#F1F5F9' : `${s.color}15`, color: isRejectedApp ? '#94A3B8' : s.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap', border: `1px solid ${isRejectedApp ? '#E2E8F0' : s.color + '30'}` }}>
+                              {s.icon} {s.label}
+                            </span>
                           </div>
-                        );
-                      })()}
-                      {!a.talentMatchScore && (
-                        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Tap to view full details</div>
+                          <div style={{ fontSize: 12, color: '#0176D3', marginTop: 3, fontWeight: 600 }}>
+                            {jobCompany}{jobLocation ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {jobLocation}</span> : ''}
+                          </div>
+                        </div>
+
+                        {/* Chevron */}
+                        <div style={{ color: '#CBD5E1', fontSize: 20, lineHeight: 1, flexShrink: 0, alignSelf: 'center' }}>›</div>
+                      </div>
+
+                      {/* Row 2: Tags (date, source) */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, color: '#94A3B8', background: '#F8FAFC', border: '1px solid #E8ECF0', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                          Applied {fmtD(a.createdAt)}
+                        </span>
+                        {a.source === 'admin_assign' && (
+                          <span style={{ fontSize: 10, color: '#0176D3', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>🎯 HR Added</span>
+                        )}
+                        {a.source === 'referral' && (
+                          <span style={{ fontSize: 10, color: '#7C3AED', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>👥 Referral</span>
+                        )}
+                        {(!a.source || a.source === 'career_page' || a.source === 'self_applied') && (
+                          <span style={{ fontSize: 10, color: '#059669', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>🌐 Career Page</span>
+                        )}
+                      </div>
+
+                      {/* Row 3: Progress bar or rejected state */}
+                      <div style={{ marginTop: 10 }}>
+                        {!isRejectedApp ? (
+                          <>
+                            <div style={{ display: 'flex', gap: 3 }}>
+                              {STEPPER_STAGES.map((stage, i) => {
+                                const ci = STEPPER_STAGES.findIndex(st => st.id === a.stage);
+                                const active = i === ci, past = i < ci;
+                                return (
+                                  <div key={stage.id} style={{ flex: 1, height: 4, borderRadius: 2, background: (active || past) ? s.color : '#E8ECF0', opacity: active ? 1 : past ? 0.7 : 0.25, transition: 'all 0.3s' }} />
+                                );
+                              })}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                              <span style={{ fontSize: 10, color: '#94A3B8' }}>Applied</span>
+                              <span style={{ fontSize: 10, color: s.color, fontWeight: 700 }}>{s.label}</span>
+                              <span style={{ fontSize: 10, color: '#94A3B8' }}>Hired</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#FFF5F5', borderRadius: 8, border: '1px solid #FECACA' }}>
+                            <span style={{ fontSize: 12 }}>⛔</span>
+                            <span style={{ fontSize: 11, color: '#BA0517', fontWeight: 600 }}>
+                              {a.stage === 'withdrawn' ? 'You withdrew this application' : 'Application not progressed'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Row 4: Match score inline bar */}
+                      {hasMScore && (
+                        <div style={{ marginTop: 10, padding: '8px 10px', background: `${mc}08`, borderRadius: 10, border: `1px solid ${mc}20` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: mc }}>🎯 Resume Match</span>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: mc }}>{ml} · {Math.round(sc)}%</span>
+                          </div>
+                          <div style={{ height: 5, borderRadius: 4, background: `${mc}20` }}>
+                            <div style={{ height: '100%', borderRadius: 4, background: `linear-gradient(90deg,${mc}88,${mc})`, width: `${Math.min(sc, 100)}%`, transition: 'width 0.6s ease' }} />
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
