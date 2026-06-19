@@ -655,8 +655,8 @@ function NotificationBell({ userRole, compact = false }) {
               </div>
             ) : (
               <>
-                {/* Stale notifications warning — shown when newest notification is > 14 days old */}
-                {(() => {
+                {/* Stale notifications warning — only shown to admin/super_admin, not to candidates */}
+                {isAdminOrSA && (() => {
                   const newest = notifs.reduce((latest, n) => {
                     const t = new Date(n.createdAt || 0).getTime();
                     return t > latest ? t : latest;
@@ -671,7 +671,7 @@ function NotificationBell({ userRole, compact = false }) {
                           Notifications are {daysOld} days old
                         </div>
                         <div style={{ fontSize: 11, color: '#B45309', lineHeight: 1.5 }}>
-                          Recent activity (stage changes, hires, interviews) is not appearing here. Your backend notification service may not be recording new events. Contact your system administrator.
+                          Recent activity may not be appearing here. The backend notification service may not be recording new events.
                         </div>
                       </div>
                     </div>
