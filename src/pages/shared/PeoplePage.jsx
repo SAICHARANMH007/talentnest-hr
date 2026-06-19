@@ -1053,7 +1053,7 @@ export default function PeoplePage({ user }) {
                         const person = item.to || {};
                         const pId = String(person._id || person.id || '');
                         return (
-                          <div key={String(item.requestId)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div key={String(item.requestId)} onClick={() => pId && openProfile(person)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, cursor: pId ? 'pointer' : 'default' }}>
                             <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{person.name || 'Member'}</div>
@@ -1066,7 +1066,7 @@ export default function PeoplePage({ user }) {
                               </div>
                             </div>
                             <button
-                              onClick={() => handleAction('cancel', { ...person, requestId: item.requestId })}
+                              onClick={e => { e.stopPropagation(); handleAction('cancel', { ...person, requestId: item.requestId }); }}
                               disabled={actionLoading === pId}
                               style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
                               onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
@@ -1096,7 +1096,7 @@ export default function PeoplePage({ user }) {
                         const person = item.from || {};
                         const pId = String(person._id || person.id || '');
                         return (
-                          <div key={String(item.requestId)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <div key={String(item.requestId)} onClick={() => pId && openProfile(person)} style={{ ...card, padding: '14px 16px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', cursor: pId ? 'pointer' : 'default' }}>
                             <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={48} role={person.role} />
                             <div style={{ flex: 1, minWidth: 160 }}>
                               <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{person.name || 'Member'}</div>
@@ -1108,7 +1108,7 @@ export default function PeoplePage({ user }) {
                                 Wants to view your contact details
                               </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                            <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                               <button
                                 onClick={() => handleInfoRequestAction('accept', item.requestId)}
                                 disabled={infoActionLoading === item.requestId}

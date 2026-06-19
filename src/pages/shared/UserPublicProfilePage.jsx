@@ -71,6 +71,7 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   const [compose, setCompose] = useState(false);
   const [sending, setSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [msgError, setMsgError] = useState('');
   const [infoStatus, setInfoStatus] = useState(null);
   const [infoContact, setInfoContact] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -102,10 +103,14 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   const sendMsg = async () => {
     if (!msgText.trim()) return;
     setSending(true);
+    setMsgError('');
     try {
       await api.sendMessage({ toUserId: userId, message: msgText.trim() });
-      setMsgSent(true); setMsgText(''); setCompose(false);
-    } catch {}
+      setMsgSent(true);
+      setMsgText('');
+    } catch {
+      setMsgError('Failed to send. Please try again.');
+    }
     setSending(false);
   };
 
@@ -148,28 +153,29 @@ export default function UserPublicProfilePage({ user: currentUser }) {
       </div>
 
       {/* Hero Banner */}
-      <div style={{
-        margin: '12px 16px 0',
-        borderRadius: 24,
-        overflow: 'hidden',
-        background: `linear-gradient(135deg, ${bg} 0%, ${bg}bb 50%, ${bg}88 100%)`,
-        position: 'relative',
-        boxShadow: `0 8px 40px ${bg}33`,
-      }}>
-        {/* Pattern overlay */}
+      <div style={{ margin: '12px 16px 0', position: 'relative' }}>
         <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 40%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{ height: 120, position: 'relative', zIndex: 1 }}>
-          <div style={{ position: 'absolute', bottom: -40, left: 24 }}>
-            <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={88} color={bg} />
+          borderRadius: 24,
+          overflow: 'hidden',
+          background: `linear-gradient(135deg, ${bg} 0%, ${bg}bb 50%, ${bg}88 100%)`,
+          position: 'relative',
+          boxShadow: `0 8px 40px ${bg}33`,
+        }}>
+          {/* Pattern overlay */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 40%)',
+            pointerEvents: 'none',
+          }} />
+          <div style={{ height: 120, position: 'relative', zIndex: 1 }} />
+          {/* Role badge in hero */}
+          <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(12px)', borderRadius: 20, padding: '4px 12px', border: '1px solid rgba(255,255,255,0.25)' }}>
+            <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>{ROLE_LABEL[person.role] || 'Member'}</span>
           </div>
         </div>
-        {/* Role badge in hero */}
-        <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(12px)', borderRadius: 20, padding: '4px 12px', border: '1px solid rgba(255,255,255,0.25)' }}>
-          <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>{ROLE_LABEL[person.role] || 'Member'}</span>
+        {/* Avatar sits outside overflow:hidden so it's never clipped */}
+        <div style={{ position: 'absolute', bottom: -40, left: 24, zIndex: 10 }}>
+          <Avatar name={person.name} src={person.avatarUrl || person.photoUrl} size={88} color={bg} />
         </div>
       </div>
 
@@ -208,20 +214,32 @@ export default function UserPublicProfilePage({ user: currentUser }) {
         {compose && (
           <div style={{ marginTop: 16, background: 'var(--app-input-bg, #F8FAFC)', border: '1px solid var(--app-input-border, #E5E7EB)', borderRadius: 14, padding: '14px 16px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--app-text, #181818)', marginBottom: 8 }}>Message {person.name?.split(' ')[0] || 'member'}</div>
-            {msgSent && <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '9px 12px', marginBottom: 10, fontSize: 13, color: '#166534', fontWeight: 600 }}>✅ Message sent!</div>}
-            <textarea
-              value={msgText} onChange={e => setMsgText(e.target.value)}
-              placeholder="Write your message…" rows={3}
-              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--app-input-border, #E5E7EB)', borderRadius: 10, fontSize: 13, resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--app-card-bg, #fff)', color: 'var(--app-text, #181818)' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, gap: 8 }}>
-              <button onClick={() => { setCompose(false); setMsgText(''); }}
-                style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid var(--app-card-border, #E5E7EB)', background: 'transparent', color: 'var(--app-text-sec, #706E6B)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={sendMsg} disabled={!msgText.trim() || sending}
-                style={{ padding: '8px 20px', borderRadius: 9, border: 'none', background: bg, color: '#fff', fontSize: 12, fontWeight: 700, cursor: !msgText.trim() || sending ? 'not-allowed' : 'pointer', opacity: !msgText.trim() || sending ? 0.6 : 1 }}>
-                {sending ? 'Sending…' : 'Send'}
-              </button>
-            </div>
+            {msgSent ? (
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#166534', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <span>✅ Message sent to {person.name?.split(' ')[0]}!</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setMsgSent(false); setCompose(false); }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #BBF7D0', background: 'transparent', color: '#166534', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+                  <button onClick={() => navigate('/app/messages')} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#059669', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Open Chat</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {msgError && <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: '#DC2626', fontWeight: 600 }}>{msgError}</div>}
+                <textarea
+                  value={msgText} onChange={e => setMsgText(e.target.value)}
+                  placeholder="Write your message…" rows={3}
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--app-input-border, #E5E7EB)', borderRadius: 10, fontSize: 13, resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--app-card-bg, #fff)', color: 'var(--app-text, #181818)' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8, gap: 8 }}>
+                  <button onClick={() => { setCompose(false); setMsgText(''); setMsgError(''); }}
+                    style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid var(--app-card-border, #E5E7EB)', background: 'transparent', color: 'var(--app-text-sec, #706E6B)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={sendMsg} disabled={!msgText.trim() || sending}
+                    style={{ padding: '8px 20px', borderRadius: 9, border: 'none', background: bg, color: '#fff', fontSize: 12, fontWeight: 700, cursor: !msgText.trim() || sending ? 'not-allowed' : 'pointer', opacity: !msgText.trim() || sending ? 0.6 : 1 }}>
+                    {sending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

@@ -181,6 +181,7 @@ function ContactItem({ contact, active, onClick, online }) {
 
 export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
   const [contacts, setContacts]         = useState([]);
+  const [newConnections, setNewConnections] = useState([]);
   const [active, setActive]             = useState(null);
   const [thread, setThread]             = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
@@ -212,8 +213,15 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
 
   const loadContacts = useCallback(async () => {
     try {
-      const r = await api.getMessageContacts();
-      setContacts(Array.isArray(r?.data) ? r.data : []);
+      const [msgRes, conRes] = await Promise.allSettled([
+        api.getMessageContacts(),
+        api.getConnections(),
+      ]);
+      const msgContacts = Array.isArray(msgRes.value?.data) ? msgRes.value.data : [];
+      setContacts(msgContacts);
+      const allConnections = Array.isArray(conRes.value?.data) ? conRes.value.data : [];
+      const existingIds = new Set(msgContacts.map(c => String(c.userId)));
+      setNewConnections(allConnections.filter(c => !existingIds.has(String(c._id || c.id))));
     } catch { setContacts([]); }
     setLoadingContacts(false);
   }, []);
@@ -512,22 +520,45 @@ export default function ChatPanel({ open, onClose, myUser, initialRecipient }) {
                   </div>
                 ))}
               </div>
-            ) : filteredContacts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
-                <div style={{ color: '#706E6B', fontSize: 12 }}>No conversations yet.</div>
-                <div style={{ color: '#9E9D9B', fontSize: 11, marginTop: 4 }}>Click ✎ to start a new chat</div>
-              </div>
             ) : (
-              filteredContacts.map(c => (
-                <ContactItem
-                  key={c.userId}
-                  contact={c}
-                  active={active?.userId === c.userId}
-                  onClick={() => selectContact(c)}
-                  online={onlineIds.has(c.userId)}
-                />
-              ))
+              <>
+                {/* New connections — show "Say hi" prompt like Messenger */}
+                {newConnections.length > 0 && (
+                  <div style={{ borderBottom: '1px solid #F3F2F2' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#9E9D9B', padding: '8px 14px 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>New Connections</div>
+                    {newConnections.map(c => (
+                      <div key={String(c._id || c.id)}
+                        onClick={() => startChat(c)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', cursor: 'pointer', transition: 'background 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F3F2F2'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <Avatar name={c.name} role={c.role} size={38} online={onlineIds.has(String(c._id || c.id))} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#181818', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 600 }}>Say hi! 👋</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {filteredContacts.length === 0 && newConnections.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40 }}>
+                    <div style={{ fontSize: 32, marginBottom: 6 }}>💬</div>
+                    <div style={{ color: '#706E6B', fontSize: 12 }}>No conversations yet.</div>
+                    <div style={{ color: '#9E9D9B', fontSize: 11, marginTop: 4 }}>Click ✎ to start a new chat</div>
+                  </div>
+                ) : (
+                  filteredContacts.map(c => (
+                    <ContactItem
+                      key={c.userId}
+                      contact={c}
+                      active={active?.userId === c.userId}
+                      onClick={() => selectContact(c)}
+                      online={onlineIds.has(c.userId)}
+                    />
+                  ))
+                )}
+              </>
             )}
           </div>
         </div>

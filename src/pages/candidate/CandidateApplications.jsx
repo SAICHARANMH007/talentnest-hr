@@ -106,22 +106,29 @@ function ApplicationStepper({ app }) {
   );
 }
 
+function communitScore(c, q) {
+  const cn = (c.companyName || '').toLowerCase();
+  const base = c.name.toLowerCase().replace(/\s+community$/i, '').trim();
+  if (cn === q || base === q) return 100;
+  if ((cn && q.startsWith(cn + ' ')) || q === cn) return 60 + cn.length;
+  if (q.startsWith(base + ' ') || q === base) return 50 + base.length;
+  // First word of query must match first word of base/cn — prevents "India" matching "Siemens India"
+  const qFirst = q.split(' ')[0];
+  if (cn && qFirst === cn.split(' ')[0]) return 20;
+  if (qFirst === base.split(' ')[0]) return 10;
+  return 0;
+}
+
 async function goToCompanyCommunity(companyName, navigate) {
   try {
     const r = await api.getCommunities();
     const list = r?.data || [];
     const q = companyName.trim().toLowerCase();
-    const match = list.find(c => {
-      const cn = (c.companyName || '').toLowerCase();
-      // strip " community" suffix to get base name e.g. "Siemens Community" → "siemens"
-      const base = c.name.toLowerCase().replace(/\s+community$/i, '').trim();
-      return (
-        (cn && (cn === q || q.includes(cn) || cn.includes(q))) ||
-        base === q ||
-        q.includes(base) ||
-        base.includes(q)
-      );
-    });
+    const scored = list
+      .map(c => ({ c, score: communitScore(c, q) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const match = scored[0]?.c;
     if (match?.slug) {
       navigate(`/app/communities/${match.slug}`);
     } else {
