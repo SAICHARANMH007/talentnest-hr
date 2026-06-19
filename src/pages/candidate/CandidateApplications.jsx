@@ -239,36 +239,40 @@ export default function CandidateApplications({ user }) {
       )}
 
       {/* Main tabs */}
-      <div style={{ background: '#F1F5F9', borderRadius: 16, padding: 5, marginBottom: 20, display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+      <div style={{ background: '#EEF2F7', borderRadius: 14, padding: 4, marginBottom: 20, display: 'flex', gap: 3, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
         {[
-          { id: 'applications', emoji: '📋', label: 'Applications', count: apps.length },
-          { id: 'drives',       emoji: '🏫', label: 'Campus Drives', count: driveRegs.length },
-          { id: 'invites',      emoji: '📧', label: 'Invitations',  count: invites.length, badge: pendingInvites.length },
+          { id: 'applications', label: 'Applications', count: apps.length },
+          { id: 'drives',       label: 'Campus Drives', count: driveRegs.length },
+          { id: 'invites',      label: 'Invitations',  count: invites.length, badge: pendingInvites.length },
         ].map(t => {
           const isActive = activeTab === t.id;
           return (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-              flex: 1, minWidth: 'fit-content', whiteSpace: 'nowrap', flexShrink: 0,
-              padding: '10px 14px', border: 'none', cursor: 'pointer', borderRadius: 12,
-              fontSize: 12, fontWeight: isActive ? 800 : 600,
+              flex: 1, minWidth: 0, whiteSpace: 'nowrap', flexShrink: 0,
+              padding: '9px 12px', border: 'none', cursor: 'pointer', borderRadius: 10,
+              fontSize: 12, fontWeight: isActive ? 700 : 500,
               background: isActive ? '#fff' : 'transparent',
-              color: isActive ? '#0176D3' : '#706E6B',
-              boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.10)' : 'none',
+              color: isActive ? '#0176D3' : '#8896A5',
+              boxShadow: isActive ? '0 1px 6px rgba(0,0,0,0.12)' : 'none',
               transition: 'all 0.18s',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              position: 'relative',
             }}>
-              <span style={{ fontSize: 14 }}>{t.emoji}</span>
-              <span>{t.label}</span>
-              <span style={{
-                background: isActive ? '#0176D3' : '#CBD5E1',
-                color: '#fff',
-                borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 800,
-                lineHeight: '16px',
-              }}>{t.count}</span>
+              <span style={{ letterSpacing: '-0.1px' }}>{t.label}</span>
+              {t.count > 0 && (
+                <span style={{
+                  background: isActive ? '#0176D3' : '#C8D0DA',
+                  color: '#fff',
+                  borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 700,
+                  lineHeight: '15px', minWidth: 18, textAlign: 'center',
+                }}>{t.count}</span>
+              )}
               {t.badge > 0 && (
-                <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '1px 6px', fontSize: 10, fontWeight: 800, lineHeight: '16px' }}>
-                  {t.badge}
-                </span>
+                <span style={{
+                  position: 'absolute', top: 5, right: 6,
+                  background: '#BA0517', width: 7, height: 7,
+                  borderRadius: '50%', border: '1.5px solid #EEF2F7',
+                }} />
               )}
             </button>
           );
