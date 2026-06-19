@@ -715,7 +715,7 @@ function DrivesTab({ drives, loading }) {
 }
 
 // ── Members Tab ───────────────────────────────────────────────────────────────
-function MembersTab({ members, loading, total }) {
+function MembersTab({ members, loading, total, onViewProfile }) {
   if (loading) return (
     <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0' }}>
       <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 10px' }} />
@@ -737,10 +737,10 @@ function MembersTab({ members, loading, total }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {members.map(m => (
-          <div key={String(m._id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, background: '#fff', border: '1px solid #F1F5F9', transition: 'box-shadow 0.15s', cursor: 'default' }}
+          <div key={String(m._id)} onClick={() => onViewProfile?.(String(m._id || m.id))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 12, background: '#fff', border: '1px solid #F1F5F9', transition: 'box-shadow 0.15s', cursor: onViewProfile ? 'pointer' : 'default' }}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.07)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-            <Avatar name={m.name} src={m.avatarUrl || m.photoUrl} size={46} role={m.role} />
+            <Avatar name={m.name} src={m.avatarUrl || m.photoUrl || m.avatar || m.photo} size={46} role={m.role} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name || 'Member'}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1415,7 +1415,7 @@ export default function CommunityDetailPage({ user }) {
 
         {tab === 'jobs' && <JobsTab jobs={jobs} loading={jobsLoading} />}
         {tab === 'drives' && <DrivesTab drives={drives} loading={drivesLoading} />}
-        {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} />}
+        {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} onViewProfile={(id) => setProfileUserId(id)} />}
         {tab === 'reviews' && community?.companyName && <ReviewsTab user={user} companyName={community.companyName} />}
         {tab === 'about' && <AboutTab community={community} />}
       </div>
