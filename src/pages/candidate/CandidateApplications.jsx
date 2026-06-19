@@ -643,24 +643,24 @@ export default function CandidateApplications({ user }) {
         const matchedOffer = myOffers.find(o => String(o.applicationId) === appIdStr);
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedApp(null); }}>
-            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Drag handle */}
-              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#fff', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Sticky top nav bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px 12px', borderBottom: '1px solid #F1F5F9', flexShrink: 0, background: '#fff' }}>
+                <button onClick={() => setSelectedApp(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: 10, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> Back
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobTitle}</div>
+                  <div style={{ fontSize: 12, color: '#0176D3', marginTop: 1 }}>{jobCompany}</div>
+                </div>
+                <span style={{ background: `${s.color}18`, color: s.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{s.label}</span>
               </div>
               {/* Scrollable body */}
               <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
-                {/* Header */}
-                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{jobTitle}</div>
-                      <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}</div>
-                      <span style={{ background: `${s.color}18`, color: s.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{s.icon} {s.label}</span>
-                    </div>
-                    <button onClick={() => setSelectedApp(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
-                  </div>
+                {/* Sub-header (location / stage badge) */}
+                <div style={{ padding: '12px 20px 0', borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                  {jobLocation && <div style={{ fontSize: 13, color: '#64748B', marginBottom: 6 }}>📍 {jobLocation}</div>}
                 </div>
                 <div style={{ padding: '16px 20px' }}>
                   {/* Stage message */}
@@ -897,24 +897,23 @@ export default function CandidateApplications({ user }) {
         const job = inv.jobId || inv.job;
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedInvite(null); }}>
-            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Drag handle */}
-              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#fff', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Sticky top nav bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px 12px', borderBottom: '1px solid #F1F5F9', flexShrink: 0, background: '#fff' }}>
+                <button onClick={() => setSelectedInvite(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: 10, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> Back
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
+                  {job && <div style={{ fontSize: 12, color: '#0176D3', marginTop: 1 }}>{job.companyName || job.company}</div>}
+                </div>
+                <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
               </div>
               {/* Scrollable body */}
               <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
-                {/* Header */}
-                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
-                      {job && <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
-                      <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{st.label}</span>
-                    </div>
-                    <button onClick={() => setSelectedInvite(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
-                  </div>
+                <div style={{ padding: '12px 20px 0', paddingBottom: 12 }}>
+                  {job?.location && <div style={{ fontSize: 13, color: '#64748B' }}>📍 {job.location}</div>}
                 </div>
                 <div style={{ padding: '16px 20px' }}>
                   {/* Talent match banner */}
@@ -989,25 +988,22 @@ export default function CandidateApplications({ user }) {
         const currentStep = isRejectedDrive ? -1 : st.step;
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedDrive(null); }}>
-            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Drag handle */}
-              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 20000, background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#fff', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Sticky top nav bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px 12px', borderBottom: '1px solid #F1F5F9', flexShrink: 0, background: '#fff' }}>
+                <button onClick={() => setSelectedDrive(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: 10, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> Back
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
+                  <div style={{ fontSize: 12, color: '#0176D3', marginTop: 1 }}>{reg.companyName}</div>
+                </div>
+                <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.icon} {st.label}</span>
               </div>
               {/* Scrollable body */}
               <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
-                {/* Header */}
-                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
-                      <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{reg.companyName}</div>
-                      <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{st.icon} {st.label}</span>
-                    </div>
-                    <button onClick={() => setSelectedDrive(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
-                  </div>
-                </div>
+                <div style={{ padding: '12px 20px 0', paddingBottom: 4 }} />
                 <div style={{ padding: '16px 20px' }}>
                   {/* Drive info */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
