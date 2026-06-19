@@ -111,12 +111,17 @@ async function goToCompanyCommunity(companyName, navigate) {
     const r = await api.getCommunities();
     const list = r?.data || [];
     const q = companyName.trim().toLowerCase();
-    const match = list.find(c =>
-      (c.companyName && c.companyName.toLowerCase() === q) ||
-      c.name.toLowerCase() === q ||
-      c.name.toLowerCase().includes(q) ||
-      q.includes(c.name.toLowerCase())
-    );
+    const match = list.find(c => {
+      const cn = (c.companyName || '').toLowerCase();
+      // strip " community" suffix to get base name e.g. "Siemens Community" → "siemens"
+      const base = c.name.toLowerCase().replace(/\s+community$/i, '').trim();
+      return (
+        (cn && (cn === q || q.includes(cn) || cn.includes(q))) ||
+        base === q ||
+        q.includes(base) ||
+        base.includes(q)
+      );
+    });
     if (match?.slug) {
       navigate(`/app/communities/${match.slug}`);
     } else {
