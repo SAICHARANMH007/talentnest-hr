@@ -8,10 +8,10 @@ import { card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-// Backend populates 'jobId' with job object — normalize normalizes it.
-// So app.jobId = { id, title, companyName, location, type, ... }
 const getJobField = (a, field) => a.jobId?.[field] || a.job?.[field] || '';
 const getJobId    = (a) => a.jobId?.id || a.jobId?._id?.toString?.() || (typeof a.jobId === 'string' ? a.jobId : '') || a.job?.id || '';
+
+const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 // Ordered pipeline stages for the stepper
 const STEPPER_STAGES = [
@@ -28,11 +28,10 @@ function ApplicationStepper({ app }) {
   const isRejected = app.stage === 'rejected' || app.stage === 'withdrawn';
   const currentIndex = isRejected ? -1 : STEPPER_STAGES.findIndex(s => s.id === app.stage);
 
-  // stageHistory uses changedAt (NOT date)
   const stageDates = {};
   if (Array.isArray(app.stageHistory)) {
     app.stageHistory.forEach(h => {
-      const key = h.stageId || h.stage; // stageId is the normalized frontend ID added by normalizeApp
+      const key = h.stageId || h.stage;
       if (key && (h.changedAt || h.movedAt || h.date)) {
         stageDates[key] = h.changedAt || h.movedAt || h.date;
       }
@@ -115,8 +114,8 @@ export default function CandidateApplications({ user }) {
   const [confirmId, setConfirm]   = useState(null);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [toast, setToast]         = useState('');
-  const [assessments, setAssessments] = useState({});  // jobId → assessment
-  const [mySubmissions, setMySubs]    = useState({});  // assessmentId → submission
+  const [assessments, setAssessments] = useState({});
+  const [mySubmissions, setMySubs]    = useState({});
   const [stageFilter, setStageFilter] = useState('all');
   const [invites, setInvites]         = useState([]);
   const [activeTab, setActiveTab]     = useState('applications');
@@ -124,6 +123,10 @@ export default function CandidateApplications({ user }) {
   const [myOffers, setMyOffers] = useState([]);
   const [driveRegs, setDriveRegs] = useState([]);
   const [driveRegsLoading, setDriveRegsLoading] = useState(false);
+
+  const [selectedApp,    setSelectedApp]    = useState(null);
+  const [selectedInvite, setSelectedInvite] = useState(null);
+  const [selectedDrive,  setSelectedDrive]  = useState(null);
 
   useEffect(() => {
     setDriveRegsLoading(true);
@@ -141,7 +144,6 @@ export default function CandidateApplications({ user }) {
           const appList = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
           setApps(appList);
 
-          // Load assessments for each job
           const jobIds = [...new Set(appList.map(getJobId).filter(Boolean))];
           Promise.all(
             jobIds.map(jid => api.getAssessmentForJob(jid).then(a => [jid, a]).catch(() => null))
@@ -151,7 +153,6 @@ export default function CandidateApplications({ user }) {
             setAssessments(map);
           });
 
-          // Load my submissions
           api.getMyAssessments().then(subs => {
             const map = {};
             const list = Array.isArray(subs) ? subs : (subs?.data || []);
@@ -162,7 +163,6 @@ export default function CandidateApplications({ user }) {
         .catch(() => { if (!silent) setApps([]); })
         .finally(() => { if (!silent) setLoad(false); });
 
-      // Load sent/signed offer letters so we can show "View Offer" button
       api.getMyOffers().then(r => {
         const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
         setMyOffers(list);
@@ -175,7 +175,6 @@ export default function CandidateApplications({ user }) {
 
     loadApplications();
 
-    // Live updates — silently refresh when a recruiter/admin moves this application's stage
     const handler = () => loadApplications(true);
     window.addEventListener('tn:stageChanged', handler);
     return () => window.removeEventListener('tn:stageChanged', handler);
@@ -189,7 +188,6 @@ export default function CandidateApplications({ user }) {
       setWithdrawReason('');
       setApps(prev => {
         const next = prev.filter(a => (a.id || a._id) !== appId);
-        // Reset filter if the current filtered view becomes empty
         if (stageFilter !== 'all' && next.filter(a => a.stage === stageFilter).length === 0) setStageFilter('all');
         return next;
       });
@@ -246,20 +244,28 @@ export default function CandidateApplications({ user }) {
           { id: 'applications', label: '📋 Applications', count: apps.length },
           { id: 'drives',       label: '🏫 Campus Drives', count: driveRegs.length },
           { id: 'invites',      label: '📧 Invitations',  count: invites.length, badge: pendingInvites.length },
-        ].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-            padding: '10px 16px', border: 'none', cursor: 'pointer', fontSize: 13,
-            fontWeight: activeTab === t.id ? 700 : 500,
-            background: 'transparent', whiteSpace: 'nowrap', flexShrink: 0,
-            color: activeTab === t.id ? '#0176D3' : '#706E6B',
-            borderBottom: activeTab === t.id ? '2px solid #0176D3' : '2px solid transparent',
-            marginBottom: -2, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            {t.label}
-            <span style={{ background: activeTab === t.id ? '#0176D3' : '#DDDBDA', color: activeTab === t.id ? '#fff' : '#706E6B', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{t.count}</span>
-            {t.badge > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 800 }}>{t.badge} new</span>}
-          </button>
-        ))}
+        ].map(t => {
+          const isActive = activeTab === t.id;
+          return (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+              whiteSpace: 'nowrap', flexShrink: 0, padding: '12px 18px',
+              border: 'none', cursor: 'pointer', fontSize: 13,
+              fontWeight: isActive ? 700 : 500,
+              background: 'transparent',
+              color: isActive ? '#0176D3' : '#706E6B',
+              borderBottom: isActive ? '2.5px solid #0176D3' : '2.5px solid transparent',
+              marginBottom: -2, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {t.label}
+              <span style={{
+                background: isActive ? '#0176D3' : '#F1F5F9',
+                color: isActive ? '#fff' : '#64748B',
+                borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700
+              }}>{t.count}</span>
+              {t.badge > 0 && <span style={{ background: '#BA0517', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 800 }}>{t.badge} new</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── CAMPUS DRIVES TAB ── */}
@@ -268,7 +274,7 @@ export default function CandidateApplications({ user }) {
           {driveRegsLoading ? (
             <div style={{ textAlign: 'center', padding: '48px 0' }}><Spinner /></div>
           ) : driveRegs.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: '48px 20px' }}>
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8ECF0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden', textAlign: 'center', padding: '48px 20px' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🏫</div>
               <p style={{ color: '#706E6B', fontSize: 14, margin: 0 }}>No campus drive registrations yet.</p>
               <p style={{ color: '#0176D3', fontSize: 13, marginTop: 6 }}>Register for placement drives from the Opportunities section!</p>
@@ -287,96 +293,41 @@ export default function CandidateApplications({ user }) {
                 { id: 'selected',    label: 'Selected',    icon: '🏆' },
               ];
               const st = DRIVE_STATUS[reg.myStatus] || DRIVE_STATUS.registered;
-              const isRejected = reg.myStatus === 'rejected';
-              const currentStep = isRejected ? -1 : st.step;
-
-              const driveDate = reg.driveDate ? new Date(reg.driveDate) : null;
+              const isRejectedDrive = reg.myStatus === 'rejected';
+              const currentStep = isRejectedDrive ? -1 : st.step;
 
               return (
-                <div key={reg.driveId} style={{ ...card, borderLeft: `4px solid ${st.color}`, overflow: 'hidden' }}>
-                  {/* Status header */}
-                  <div style={{ background: st.bg, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div key={reg.driveId} onClick={() => setSelectedDrive(reg)} style={{ background: '#fff', borderRadius: 16, border: `1.5px solid ${st.color}22`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
+                  {/* Top band */}
+                  <div style={{ background: `linear-gradient(135deg,${st.color}12,${st.color}05)`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${st.color}15` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 18 }}>{st.icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 13, color: st.color }}>{st.label}</div>
-                        {reg.statusUpdatedAt && (
-                          <div style={{ fontSize: 11, color: '#374151' }}>
-                            Updated {new Date(reg.statusUpdatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </div>
-                        )}
-                      </div>
+                      <span style={{ fontSize: 16 }}>{st.icon}</span>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: st.color }}>{st.label}</span>
                     </div>
-                    {reg.driveType && (
-                      <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>
-                        {reg.driveType === 'placement' ? '🎓 Placement' : reg.driveType === 'internship' ? '💼 Internship' : reg.driveType}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {reg.driveType && <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{reg.driveType === 'placement' ? '🎓 Placement' : reg.driveType === 'internship' ? '💼 Internship' : reg.driveType}</span>}
+                      <span style={{ color: '#CBD5E1', fontSize: 18 }}>›</span>
+                    </div>
                   </div>
-
-                  <div style={{ padding: '0 4px' }}>
-                    {/* Drive info */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
-                      <div style={{ color: '#0176D3', fontSize: 12, marginTop: 3 }}>{reg.companyName}</div>
-                      <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        {reg.collegeName && <span>🏛 {reg.collegeName}</span>}
-                        {driveDate && <span>📅 {driveDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                      </div>
+                  {/* Body */}
+                  <div style={{ padding: '12px 16px 14px' }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 3 }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
+                    <div style={{ fontSize: 12, color: '#0176D3', marginBottom: 6 }}>{reg.companyName}</div>
+                    <div style={{ fontSize: 11, color: '#64748B', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {reg.collegeName && <span>🏛 {reg.collegeName}</span>}
+                      {reg.driveDate && <span>📅 {fmtD(reg.driveDate)}</span>}
                     </div>
-
-                    {/* Status stepper */}
-                    {isRejected ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#BA0517', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✕</div>
-                        <span style={{ color: '#fca5a5', fontSize: 12, fontWeight: 600 }}>Not selected for this drive</span>
-                      </div>
-                    ) : (
-                      <nav aria-label="Drive status" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 10 }}>
-                        <ol role="list" style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', gap: 0, listStyle: 'none', margin: 0, padding: '0 0 4px' }}>
-                          {STEPS.map((step, i) => {
-                            const done = i < currentStep;
-                            const active = i === currentStep;
-                            const lineColor = done ? '#0176D3' : '#DDDBDA';
-                            let dotBg = '#F3F2F2', dotBorder = '2px solid #DDDBDA', dotFg = '#C9C7C5', labelColor = '#9E9D9B';
-                            if (done)   { dotBg = '#0176D3'; dotBorder = '2px solid #0176D3'; dotFg = '#fff'; labelColor = '#0176D3'; }
-                            if (active) { dotBg = '#fff'; dotBorder = '2.5px solid #0176D3'; dotFg = '#0176D3'; labelColor = '#0176D3'; }
-                            return (
-                              <React.Fragment key={step.id}>
-                                {i > 0 && <div aria-hidden="true" style={{ width: 32, height: 2, background: lineColor, flexShrink: 0 }} />}
-                                <li style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                  <div style={{
-                                    width: 30, height: 30, borderRadius: '50%',
-                                    background: dotBg, border: dotBorder,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: active ? 14 : 13, color: dotFg, fontWeight: 700, flexShrink: 0,
-                                    ...(active ? { boxShadow: '0 0 0 4px rgba(1,118,211,0.15)' } : {}),
-                                  }}>
-                                    {active ? step.icon : done ? '✓' : step.icon}
-                                  </div>
-                                  <span style={{ color: labelColor, fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{step.label}</span>
-                                </li>
-                              </React.Fragment>
-                            );
-                          })}
-                        </ol>
-                      </nav>
-                    )}
-
-                    {/* Recruiter notes */}
-                    {reg.notes && (
-                      <div style={{ padding: '8px 12px', background: 'rgba(1,118,211,0.04)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.12)', marginTop: 4 }}>
-                        <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 2px' }}>Recruiter Notes</p>
-                        <p style={{ color: '#706E6B', fontSize: 12, margin: 0 }}>{reg.notes}</p>
+                    {/* Mini 3-step bar */}
+                    {!isRejectedDrive && (
+                      <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
+                        {STEPS.map((step, i) => {
+                          const active = i === currentStep, past = i < currentStep;
+                          return <div key={step.id} style={{ flex: 1, height: 3, borderRadius: 2, background: (active || past) ? st.color : '#E8ECF0', opacity: active ? 1 : past ? 0.65 : 0.25 }} />;
+                        })}
                       </div>
                     )}
-
-                    {/* Selected congratulations */}
-                    {reg.myStatus === 'selected' && (
-                      <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
-                        <p style={{ color: '#2E844A', fontSize: 12, fontWeight: 700, margin: 0 }}>🎉 Congratulations! You have been selected through this campus drive. The recruiter will reach out with next steps.</p>
-                      </div>
-                    )}
+                    {isRejectedDrive && <div style={{ marginTop: 8, fontSize: 11, color: '#fca5a5', fontWeight: 600 }}>Not selected for this drive</div>}
+                    <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>Tap to view full details</div>
                   </div>
                 </div>
               );
@@ -404,44 +355,30 @@ export default function CandidateApplications({ user }) {
               failed:     { color: '#BA0517', bg: 'rgba(186,5,23,0.08)',   label: '🚫 Failed to Send' },
             };
             const st = INVITE_STATUS[inv.status] || INVITE_STATUS.sent;
-            const isShortlisted = inv.status === 'interested' || inv.type === 'talent_match';
-            // Invite has jobId populated as job data
             const job = inv.jobId || inv.job;
             return (
-              <div key={inv.id || inv._id} style={{ ...card, border: `1px solid ${st.color}33`, position: 'relative', overflow: 'hidden' }}>
-                {inv.type === 'talent_match' && (
-                  <div style={{ position: 'absolute', top: 0, right: 0, background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 10px', borderRadius: '0 0 0 10px', letterSpacing: '0.5px' }}>TALENT MATCH</div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#181818', fontWeight: 700, fontSize: 14 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
-                    {job && <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
-                    <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3 }}>{inv.type === 'talent_match' ? 'Matched' : 'Invited'} {inv.sentAt || inv.createdAt ? new Date(inv.sentAt || inv.createdAt).toLocaleDateString() : ''}</div>
-                    {inv.message && (
-                      <div style={{ color: '#374151', fontSize: 12, marginTop: 6, background: '#f0f7ff', borderLeft: '3px solid #0176D3', padding: '8px 12px', borderRadius: 4, fontStyle: 'italic' }}>
-                        "{inv.message}"
-                      </div>
-                    )}
+              <div key={inv.id || inv._id} onClick={() => setSelectedInvite(inv)} style={{ background: '#fff', borderRadius: 16, border: `1.5px solid ${st.color}22`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
+                {/* Top band */}
+                <div style={{ background: `linear-gradient(135deg,${st.color}12,${st.color}05)`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${st.color}15` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: st.color }}>{st.label}</span>
+                    {inv.type === 'talent_match' && <span style={{ background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', fontSize: 9, fontWeight: 900, padding: '2px 8px', borderRadius: 20, letterSpacing: '0.5px' }}>TALENT MATCH</span>}
                   </div>
-                  <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{st.label}</span>
+                  <span style={{ color: '#CBD5E1', fontSize: 18 }}>›</span>
                 </div>
-                <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid #F3F2F2' }}>
-                  {['sent', 'opened'].includes(inv.status) ? (
-                    <a
-                      href={`/invite/${inv.token}`}
-                      target="_blank" rel="noreferrer"
-                      style={{ flex: 1, textAlign: 'center', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', textDecoration: 'none', padding: '9px 0', borderRadius: 8, fontSize: 12, fontWeight: 700 }}
-                    >
-                      ✅ View & Respond
-                    </a>
-                  ) : (
-                    <button
-                      onClick={() => setActiveTab('applications')}
-                      style={{ flex: 1, background: 'rgba(46,132,74,0.1)', border: '1px solid rgba(46,132,74,0.3)', color: '#2E844A', padding: '9px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      📊 Track Application Progress
-                    </button>
+                {/* Body */}
+                <div style={{ padding: '12px 16px 14px' }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 3 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
+                  {job && <div style={{ fontSize: 12, color: '#0176D3', marginBottom: 6 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: inv.message ? 8 : 0 }}>
+                    {inv.type === 'talent_match' ? 'Matched' : 'Invited'} {inv.sentAt || inv.createdAt ? fmtD(inv.sentAt || inv.createdAt) : ''}
+                  </div>
+                  {inv.message && (
+                    <div style={{ fontSize: 12, color: '#475569', background: '#F0F7FF', borderLeft: '3px solid #0176D3', padding: '7px 10px', borderRadius: 4, fontStyle: 'italic', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      "{inv.message}"
+                    </div>
                   )}
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Tap to view job details &amp; respond</div>
                 </div>
               </div>
             );
@@ -454,20 +391,20 @@ export default function CandidateApplications({ user }) {
         <>
           {/* HR-assigned jobs alert banner */}
           {!loading && apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length > 0 && (
-            <div style={{ background:'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,68,134,0.04))', border:'1.5px solid rgba(1,118,211,0.3)', borderRadius:14, padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
-              <span style={{ fontSize:22, flexShrink:0 }}>🎯</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:13, color:'#032D60' }}>
+            <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,68,134,0.04))', border: '1.5px solid rgba(1,118,211,0.3)', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>🎯</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#032D60' }}>
                   HR added you to {apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length} job pipeline{apps.filter(a => a.source === 'admin_assign' && a.stage === 'applied').length > 1 ? 's' : ''}
                 </div>
-                <div style={{ fontSize:12, color:'#706E6B', marginTop:2 }}>
+                <div style={{ fontSize: 12, color: '#706E6B', marginTop: 2 }}>
                   These roles have been handpicked for you. Review and keep or withdraw.
                 </div>
               </div>
             </div>
           )}
 
-          {/* Stage filter tabs */}
+          {/* Stage filter pills */}
           {!loading && apps.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
               {STAGE_TABS.map(({ id, label, color }) => {
@@ -523,9 +460,9 @@ export default function CandidateApplications({ user }) {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '48px 0' }}><Spinner /></div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {apps.length === 0 && (
-                <div style={{ ...card, textAlign: 'center', padding: '48px 20px' }}>
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8ECF0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden', textAlign: 'center', padding: '48px 20px' }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
                   <p style={{ color: '#706E6B', fontSize: 14, margin: 0 }}>No applications yet.</p>
                   <p style={{ color: '#0176D3', fontSize: 13, marginTop: 6 }}>Explore jobs and apply to get started!</p>
@@ -533,284 +470,62 @@ export default function CandidateApplications({ user }) {
               )}
               {displayApps.map(a => {
                 const s = SM[a.stage] || { color: '#0176D3', label: a.stage, icon: '•' };
-                const jobTitle   = getJobField(a, 'title')      || 'Job';
-                const jobCompany = getJobField(a, 'companyName') || getJobField(a, 'company') || 'Company';
-                const jobLocation= getJobField(a, 'location');
-                const jobId      = getJobId(a);
-                const appId      = a.id || a._id;
-
-                // Interview details from interviewRounds[] array (NOT flat fields)
-                const iv = a.interviewRounds?.[0] || {};
-                const ivDate = iv.scheduledAt ? new Date(iv.scheduledAt) : null;
-
-                // Assessment for this job
-                const asmt = assessments[jobId];
-                const sub  = asmt ? (mySubmissions[asmt.id] || mySubmissions[asmt._id]) : null;
-
-                // Stage context message shown to candidate
-                const stageMsg = {
-                  applied:             '📬 Your application is under review.',
-                  screening:           '🔍 A recruiter is screening your profile.',
-                  shortlisted:         '⭐ Great news — you\'ve been shortlisted!',
-                  interview_scheduled: '📅 Interview scheduled. Prepare well!',
-                  interview_completed: '✅ Interview completed. Decision pending.',
-                  offer_extended:      '🎉 An offer has been extended to you!',
-                  selected:            '🏆 Congratulations — you\'ve been hired!',
-                  rejected:            '📩 This application did not progress further.',
-                  withdrawn:           '↩️ You withdrew this application.',
-                }[a.stage] || '';
+                const jobTitle    = getJobField(a, 'title')       || 'Job';
+                const jobCompany  = getJobField(a, 'companyName') || getJobField(a, 'company') || 'Company';
+                const jobLocation = getJobField(a, 'location');
+                const appId       = a.id || a._id;
+                const isRejectedApp = a.stage === 'rejected' || a.stage === 'withdrawn';
 
                 return (
-                  <div key={appId} style={{ ...card, borderLeft: `4px solid ${s.color}`, overflow: 'hidden' }}>
-                    {/* Coloured stage header strip */}
-                    <div style={{ background: `${s.color}0d`, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div key={appId} onClick={() => setSelectedApp(a)} style={{ background: '#fff', borderRadius: 16, border: `1.5px solid ${s.color}22`, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', cursor: 'pointer', marginBottom: 0 }}>
+                    {/* Stage header strip */}
+                    <div style={{ background: `linear-gradient(135deg,${s.color}14,${s.color}06)`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${s.color}18` }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 18 }}>{s.icon}</span>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: 13, color: s.color }}>{s.label}</div>
-                          {stageMsg && <div style={{ fontSize: 11, color: '#374151' }}>{stageMsg}</div>}
-                        </div>
+                        <span style={{ fontSize: 16 }}>{s.icon}</span>
+                        <span style={{ fontWeight: 700, fontSize: 12, color: s.color }}>{s.label}</span>
+                        {a.source === 'admin_assign' && <span style={{ background: 'rgba(1,118,211,0.12)', color: '#0176D3', borderRadius: 20, padding: '1px 8px', fontSize: 9, fontWeight: 800 }}>🎯 HR Added</span>}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {canWithdraw(a.stage) && (
-                          <button
-                            onClick={() => setConfirm(appId)}
-                            disabled={!!withdrawing[appId]}
-                            style={{ background: 'none', border: '1px solid rgba(186,5,23,0.3)', borderRadius: 8, color: '#FE5C4C', fontSize: 10, fontWeight: 600, padding: '4px 10px', cursor: 'pointer', opacity: withdrawing[appId] ? 0.5 : 1 }}
-                          >
-                            {withdrawing[appId] ? 'Withdrawing…' : '✕ Withdraw'}
-                          </button>
-                        )}
-                        <span style={{ fontSize: 11, color: '#94A3B8' }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : ''}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: '#94A3B8' }}>{fmtD(a.createdAt)}</span>
+                        <span style={{ color: '#CBD5E1', fontSize: 18, lineHeight: 1 }}>›</span>
                       </div>
                     </div>
-                    <div style={{ padding: '0 4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#181818', fontWeight: 700, fontSize: 15 }}>{jobTitle}</div>
-                        <div style={{ color: '#0176D3', fontSize: 12, marginTop: 2 }}>
-                          {jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}
+                    {/* Body */}
+                    <div style={{ padding: '12px 16px 14px' }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0A1628', marginBottom: 3, lineHeight: 1.3 }}>{jobTitle}</div>
+                      <div style={{ fontSize: 12, color: '#0176D3', marginBottom: 10 }}>{jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}</div>
+                      {/* Mini progress bar (7 segments) */}
+                      {!isRejectedApp && (
+                        <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
+                          {STEPPER_STAGES.map((stage, i) => {
+                            const ci = STEPPER_STAGES.findIndex(st => st.id === a.stage);
+                            const active = i === ci, past = i < ci;
+                            return <div key={stage.id} style={{ flex: 1, height: 3, borderRadius: 2, background: (active || past) ? s.color : '#E8ECF0', opacity: active ? 1 : past ? 0.6 : 0.3, transition: 'all 0.3s' }} />;
+                          })}
                         </div>
-                        <div style={{ color: '#706E6B', fontSize: 11, marginTop: 3, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                          <span>{a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
-                          {a.source === 'admin_assign' && (
-                            <span style={{ background:'rgba(1,118,211,0.1)', color:'#0176D3', border:'1px solid rgba(1,118,211,0.25)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>🎯 Added by HR</span>
-                          )}
-                          {a.source === 'career_page' && (
-                            <span style={{ background:'rgba(46,132,74,0.08)', color:'#2E844A', border:'1px solid rgba(46,132,74,0.2)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>🌐 Career Page</span>
-                          )}
-                          {a.source === 'referral' && (
-                            <span style={{ background:'rgba(245,158,11,0.08)', color:'#A07E00', border:'1px solid rgba(245,158,11,0.25)', borderRadius:20, padding:'1px 8px', fontSize:10, fontWeight:700 }}>👥 Referral</span>
-                          )}
+                      )}
+                      {isRejectedApp && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#BA0517', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700, flexShrink: 0 }}>✕</div>
+                          <span style={{ fontSize: 11, color: '#fca5a5', fontWeight: 600 }}>{a.stage === 'withdrawn' ? 'You withdrew this application' : 'Application not progressed'}</span>
                         </div>
-                      </div>
+                      )}
+                      {/* Match score mini badge */}
+                      {a.talentMatchScore != null && (() => {
+                        const sc = a.talentMatchScore ?? 0;
+                        const mc = sc >= 75 ? '#059669' : sc >= 50 ? '#D97706' : '#DC2626';
+                        const ml = sc >= 75 ? 'Strong Match' : sc >= 50 ? 'Good Match' : 'Partial Match';
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '6px 10px', background: `${mc}0d`, borderRadius: 8, border: `1px solid ${mc}22` }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: mc }}>🎯 Resume Match — {ml}</span>
+                            <span style={{ fontSize: 13, fontWeight: 900, color: mc }}>{Math.round(sc)}%</span>
+                          </div>
+                        );
+                      })()}
+                      {!a.talentMatchScore && (
+                        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 8 }}>Tap to view full details</div>
+                      )}
                     </div>
-
-                    {/* Pipeline Stepper */}
-                    <ApplicationStepper app={a} />
-
-                    {/* Resume Match Score Feedback */}
-                    {(a.talentMatchScore != null || a.matchBreakdown) && (() => {
-                      const score = a.talentMatchScore ?? 0;
-                      const bd    = a.matchBreakdown || {};
-                      const color = score >= 75 ? '#059669' : score >= 50 ? '#D97706' : '#DC2626';
-                      const label = score >= 75 ? 'Strong Match' : score >= 50 ? 'Good Match' : 'Partial Match';
-                      const items = [
-                        { k: 'Skills',     v: bd.skillScore },
-                        { k: 'Experience', v: bd.experienceScore },
-                        { k: 'Location',   v: bd.locationScore },
-                      ].filter(x => x.v != null);
-                      return (
-                        <div style={{ marginTop: 10, padding: '10px 14px', background: `${color}0d`, borderRadius: 10, border: `1px solid ${color}33` }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: items.length ? 8 : 0 }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color }}>🎯 Resume Match — {label}</span>
-                            <span style={{ fontSize: 18, fontWeight: 900, color }}>{Math.round(score)}%</span>
-                          </div>
-                          {items.length > 0 && (
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              {items.map(item => (
-                                <div key={item.k} style={{ flex: 1, minWidth: 70 }}>
-                                  <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 2 }}>{item.k}</div>
-                                  <div style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
-                                    <div style={{ width: `${Math.min(100, item.v)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.6s' }} />
-                                  </div>
-                                  <div style={{ fontSize: 10, color, fontWeight: 700, marginTop: 2 }}>{Math.round(item.v)}%</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Assigned Recruiter — shown when the job has a recruiter assigned */}
-                    {(() => {
-                      const recruiters = a.job?.assignedRecruiters || a.jobId?.assignedRecruiters || [];
-                      if (!recruiters.length || typeof recruiters[0] !== 'object') return null;
-                      const rec = recruiters[0];
-                      return (
-                        <div style={{ marginTop: 10, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,68,134,0.03))', borderRadius: 10, border: '1px solid rgba(1,118,211,0.18)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                            {(rec.name || '?')[0].toUpperCase()}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 120, overflow: 'hidden' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Your Recruiter</div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.name}</div>
-                            {rec.title && <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.title}</div>}
-                          </div>
-                          {rec.email && (
-                            <a href={`mailto:${rec.email}`} style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, textDecoration: 'none', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', flexShrink: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                              ✉ {rec.email}
-                            </a>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Interview Prep Tips */}
-                    {(a.stage === 'interview_scheduled') && (() => {
-                      const jobSkills = a.jobId?.skills || a.job?.skills || [];
-                      const tips = [
-                        `Review fundamentals of: ${jobSkills.slice(0, 3).join(', ') || 'your key skills'}`,
-                        'Research the company — values, products, recent news',
-                        'Prepare 2–3 examples using the STAR method (Situation, Task, Action, Result)',
-                        'Have questions ready to ask the interviewer',
-                        'Test your audio/video if it\'s a virtual interview',
-                      ];
-                      return (
-                        <div style={{ marginTop: 10, padding: '12px 14px', background: 'rgba(139,92,246,0.06)', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)' }}>
-                          <p style={{ color: '#7C3AED', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>💡 Interview Prep Tips</p>
-                          <ul style={{ margin: 0, paddingLeft: 16 }}>
-                            {tips.map((t, i) => (
-                              <li key={i} style={{ color: '#374151', fontSize: 12, marginBottom: 4, lineHeight: 1.5 }}>{t}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Interview details from interviews[] array */}
-                    {(a.stage === 'interview_scheduled' || a.stage === 'interview_completed') && iv.scheduledAt && (
-                      <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.3)' }}>
-                        <p style={{ color: '#F59E0B', fontSize: 12, margin: 0, fontWeight: 600 }}>
-                          📅 {ivDate?.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}{' '}
-                          at {ivDate?.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          {iv.type && ` · ${iv.type === 'video' ? '📹 Video' : iv.type === 'phone' ? '📞 Phone' : iv.type === 'technical' ? '💻 Technical' : '🏢 In-Person'}`}
-                        </p>
-                        {iv.meetLink && (
-                          <a href={iv.meetLink} target="_blank" rel="noreferrer"
-                            style={{ color: '#0176D3', fontSize: 12, display: 'inline-block', marginTop: 4 }}>
-                            🔗 Join Interview Link
-                          </a>
-                        )}
-                        {iv.notes && <p style={{ color: '#706E6B', fontSize: 11, margin: '4px 0 0' }}>💬 {iv.notes}</p>}
-                      </div>
-                    )}
-
-                    {/* Offer info — show link if we have a sent/signed offer */}
-                    {(a.stage === 'offer_extended' || a.stage === 'selected') && (() => {
-                      const appIdStr = String(a.id || a._id || '');
-                      const matchedOffer = myOffers.find(o => String(o.applicationId) === appIdStr);
-                      return (
-                        <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
-                          {matchedOffer ? (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                              <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>
-                                🎉 {matchedOffer.status === 'signed' ? 'You signed this offer!' : 'Your offer letter is ready to review & sign!'}
-                              </p>
-                              <button
-                                onClick={() => navigate(`/offer/${matchedOffer.id || matchedOffer._id}`)}
-                                style={{ background: '#2E844A', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                {matchedOffer.status === 'signed' ? '📄 View Signed Offer' : '✍️ View & Sign Offer'}
-                              </button>
-                            </div>
-                          ) : (
-                            <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>🎉 Offer Extended! Your offer letter will be emailed to you shortly.</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Rejection reason */}
-                    {a.stage === 'rejected' && a.rejectionReason && (
-                      <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(186,5,23,0.06)', borderRadius: 10 }}>
-                        <p style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>Feedback: {a.rejectionReason}</p>
-                      </div>
-                    )}
-
-                    {/* Recruiter feedback */}
-                    {a.feedback && (
-                      <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(1,118,211,0.05)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.15)' }}>
-                        <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 4px' }}>
-                          Interview Feedback — {'★'.repeat(a.feedback.rating || 0)}<span style={{ color: '#C9C7C5' }}>{'★'.repeat(5 - (a.feedback.rating || 0))}</span>
-                        </p>
-                        {a.feedback.strengths && <p style={{ color: '#706E6B', fontSize: 11, margin: 0 }}>Strengths: {a.feedback.strengths}</p>}
-                        <p style={{ color: a.feedback.recommendation ? '#34d399' : '#FE5C4C', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>
-                          {a.feedback.recommendation ? '✓ Recommended to move forward' : '✕ Not recommended'}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Notes from recruiter */}
-                    {a.notes && (
-                      <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(1,118,211,0.04)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.12)' }}>
-                        <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 2px' }}>Recruiter Notes</p>
-                        <p style={{ color: '#706E6B', fontSize: 12, margin: 0 }}>{a.notes}</p>
-                      </div>
-                    )}
-
-                    {/* Assessment CTA */}
-                    {asmt && asmt.isActive !== false && (() => {
-                      if (sub?.status === 'submitted') {
-                        const res = sub.result;
-                        const rc = res === 'pass' ? '#34d399' : res === 'fail' ? '#FE5C4C' : '#F59E0B';
-                        return (
-                          <div style={{ marginTop: 10, padding: '10px 14px', background: `${rc}10`, border: `1px solid ${rc}33`, borderRadius: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
-                            <span style={{ fontSize: 16 }}>{res === 'pass' ? '✅' : res === 'fail' ? '❌' : '⏳'}</span>
-                            <div>
-                              <p style={{ color: rc, fontSize: 12, fontWeight: 700, margin: 0 }}>Assessment {res === 'pass' ? 'Passed' : res === 'fail' ? 'Not Passed' : 'Under Review'}</p>
-                              {sub.percentage != null && <p style={{ color: '#706E6B', fontSize: 11, margin: '2px 0 0' }}>Score: {sub.percentage}%</p>}
-                              {sub.recruiterReview && <p style={{ color: '#706E6B', fontSize: 11, margin: '4px 0 0' }}>Feedback: {sub.recruiterReview}</p>}
-                            </div>
-                          </div>
-                        );
-                      }
-                      if (sub?.status === 'in_progress') {
-                        return (
-                          <div style={{ marginTop: 10 }}>
-                            <button
-                              onClick={() => navigate(`/app/assessment/${asmt.id || asmt._id}`)}
-                              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 10, color: '#F59E0B', padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              ⏱ Resume Assessment — In Progress
-                            </button>
-                          </div>
-                        );
-                      }
-                      if (sub?.status === 'expired') {
-                        return (
-                          <div style={{ marginTop: 10, padding: '8px 14px', background: 'rgba(186,5,23,0.08)', borderRadius: 10, border: '1px solid rgba(186,5,23,0.2)' }}>
-                            <p style={{ color: '#FE5C4C', fontSize: 12, margin: 0 }}>⌛ Assessment session expired. Contact the recruiter.</p>
-                          </div>
-                        );
-                      }
-                      // Not started
-                      return (
-                        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => navigate(`/app/assessment/${asmt.id || asmt._id}`)}
-                            style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.15),rgba(37,99,235,0.1))', border: '1px solid rgba(1,118,211,0.4)', borderRadius: 10, color: '#0176D3', padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                          >
-                            📝 Take Screening Assessment
-                          </button>
-                          <span style={{ color: '#C9C7C5', fontSize: 11 }}>
-                            {asmt.timeLimitMins > 0 ? `${asmt.timeLimitMins} min limit · ` : ''}{(asmt.questions || []).length} questions
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    </div>{/* end padding wrapper */}
                   </div>
                 );
               })}
@@ -821,7 +536,470 @@ export default function CandidateApplications({ user }) {
           )}
         </>
       )}
-      {/* pulse keyframes moved to index.css */}
+
+      {/* ── APPLICATION DETAIL DRAWER ── */}
+      {selectedApp && (() => {
+        const a = selectedApp;
+        const s = SM[a.stage] || { color: '#0176D3', label: a.stage, icon: '•' };
+        const jobTitle    = getJobField(a, 'title')       || 'Job';
+        const jobCompany  = getJobField(a, 'companyName') || getJobField(a, 'company') || 'Company';
+        const jobLocation = getJobField(a, 'location');
+        const jobId       = getJobId(a);
+        const appId       = a.id || a._id;
+        const iv          = a.interviewRounds?.[0] || {};
+        const ivDate      = iv.scheduledAt ? new Date(iv.scheduledAt) : null;
+        const asmt        = assessments[jobId];
+        const sub         = asmt ? (mySubmissions[asmt.id] || mySubmissions[asmt._id]) : null;
+        const stageMsg    = {
+          applied:             '📬 Your application is under review.',
+          screening:           '🔍 A recruiter is screening your profile.',
+          shortlisted:         '⭐ Great news — you\'ve been shortlisted!',
+          interview_scheduled: '📅 Interview scheduled. Prepare well!',
+          interview_completed: '✅ Interview completed. Decision pending.',
+          offer_extended:      '🎉 An offer has been extended to you!',
+          selected:            '🏆 Congratulations — you\'ve been hired!',
+          rejected:            '📩 This application did not progress further.',
+          withdrawn:           '↩️ You withdrew this application.',
+        }[a.stage] || '';
+        const appIdStr    = String(a.id || a._id || '');
+        const matchedOffer = myOffers.find(o => String(o.applicationId) === appIdStr);
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedApp(null); }}>
+            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Drag handle */}
+              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+              </div>
+              {/* Scrollable body */}
+              <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+                {/* Header */}
+                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{jobTitle}</div>
+                      <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{jobCompany}{jobLocation ? ` · ${jobLocation}` : ''}</div>
+                      <span style={{ background: `${s.color}18`, color: s.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{s.icon} {s.label}</span>
+                    </div>
+                    <button onClick={() => setSelectedApp(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
+                  </div>
+                </div>
+                <div style={{ padding: '16px 20px' }}>
+                  {/* Stage message */}
+                  {stageMsg && (
+                    <div style={{ background: `${s.color}0d`, border: `1px solid ${s.color}22`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: s.color, fontWeight: 600 }}>
+                      {stageMsg}
+                    </div>
+                  )}
+
+                  {/* Pipeline Stepper */}
+                  <ApplicationStepper app={a} />
+
+                  {/* Interview details */}
+                  {(a.stage === 'interview_scheduled' || a.stage === 'interview_completed') && iv.scheduledAt && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 10, border: '1px solid rgba(245,158,11,0.3)' }}>
+                      <p style={{ color: '#F59E0B', fontSize: 12, margin: 0, fontWeight: 600 }}>
+                        📅 {ivDate?.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}{' '}
+                        at {ivDate?.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        {iv.type && ` · ${iv.type === 'video' ? '📹 Video' : iv.type === 'phone' ? '📞 Phone' : iv.type === 'technical' ? '💻 Technical' : '🏢 In-Person'}`}
+                      </p>
+                      {iv.meetLink && (
+                        <a href={iv.meetLink} target="_blank" rel="noreferrer"
+                          style={{ color: '#0176D3', fontSize: 12, display: 'inline-block', marginTop: 4 }}>
+                          🔗 Join Interview Link
+                        </a>
+                      )}
+                      {iv.notes && <p style={{ color: '#706E6B', fontSize: 11, margin: '4px 0 0' }}>💬 {iv.notes}</p>}
+                    </div>
+                  )}
+
+                  {/* Interview Prep Tips */}
+                  {(a.stage === 'interview_scheduled') && (() => {
+                    const jobSkills = a.jobId?.skills || a.job?.skills || [];
+                    const tips = [
+                      `Review fundamentals of: ${jobSkills.slice(0, 3).join(', ') || 'your key skills'}`,
+                      'Research the company — values, products, recent news',
+                      'Prepare 2–3 examples using the STAR method (Situation, Task, Action, Result)',
+                      'Have questions ready to ask the interviewer',
+                      'Test your audio/video if it\'s a virtual interview',
+                    ];
+                    return (
+                      <div style={{ marginTop: 10, padding: '12px 14px', background: 'rgba(139,92,246,0.06)', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)' }}>
+                        <p style={{ color: '#7C3AED', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>💡 Interview Prep Tips</p>
+                        <ul style={{ margin: 0, paddingLeft: 16 }}>
+                          {tips.map((t, i) => (
+                            <li key={i} style={{ color: '#374151', fontSize: 12, marginBottom: 4, lineHeight: 1.5 }}>{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Resume Match Score Feedback */}
+                  {(a.talentMatchScore != null || a.matchBreakdown) && (() => {
+                    const score = a.talentMatchScore ?? 0;
+                    const bd    = a.matchBreakdown || {};
+                    const color = score >= 75 ? '#059669' : score >= 50 ? '#D97706' : '#DC2626';
+                    const label = score >= 75 ? 'Strong Match' : score >= 50 ? 'Good Match' : 'Partial Match';
+                    const items = [
+                      { k: 'Skills',     v: bd.skillScore },
+                      { k: 'Experience', v: bd.experienceScore },
+                      { k: 'Location',   v: bd.locationScore },
+                    ].filter(x => x.v != null);
+                    return (
+                      <div style={{ marginTop: 10, padding: '10px 14px', background: `${color}0d`, borderRadius: 10, border: `1px solid ${color}33` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: items.length ? 8 : 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color }}>🎯 Resume Match — {label}</span>
+                          <span style={{ fontSize: 18, fontWeight: 900, color }}>{Math.round(score)}%</span>
+                        </div>
+                        {items.length > 0 && (
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {items.map(item => (
+                              <div key={item.k} style={{ flex: 1, minWidth: 70 }}>
+                                <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 2 }}>{item.k}</div>
+                                <div style={{ height: 4, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                                  <div style={{ width: `${Math.min(100, item.v)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.6s' }} />
+                                </div>
+                                <div style={{ fontSize: 10, color, fontWeight: 700, marginTop: 2 }}>{Math.round(item.v)}%</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Assigned Recruiter */}
+                  {(() => {
+                    const recruiters = a.job?.assignedRecruiters || a.jobId?.assignedRecruiters || [];
+                    if (!recruiters.length || typeof recruiters[0] !== 'object') return null;
+                    const rec = recruiters[0];
+                    return (
+                      <div style={{ marginTop: 10, padding: '10px 14px', background: 'linear-gradient(135deg,rgba(1,118,211,0.05),rgba(1,68,134,0.03))', borderRadius: 10, border: '1px solid rgba(1,118,211,0.18)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#0176D3,#014486)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                          {(rec.name || '?')[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 120, overflow: 'hidden' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>Your Recruiter</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.name}</div>
+                          {rec.title && <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.title}</div>}
+                        </div>
+                        {rec.email && (
+                          <a href={`mailto:${rec.email}`} style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, textDecoration: 'none', background: 'rgba(1,118,211,0.08)', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 8, padding: '4px 10px', flexShrink: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            ✉ {rec.email}
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Offer info */}
+                  {(a.stage === 'offer_extended' || a.stage === 'selected') && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
+                      {matchedOffer ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                          <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>
+                            🎉 {matchedOffer.status === 'signed' ? 'You signed this offer!' : 'Your offer letter is ready to review & sign!'}
+                          </p>
+                          <button
+                            onClick={() => navigate(`/offer/${matchedOffer.id || matchedOffer._id}`)}
+                            style={{ background: '#2E844A', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {matchedOffer.status === 'signed' ? '📄 View Signed Offer' : '✍️ View & Sign Offer'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#2E844A', fontSize: 12, margin: 0, fontWeight: 600 }}>🎉 Offer Extended! Your offer letter will be emailed to you shortly.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Assessment CTA */}
+                  {asmt && asmt.isActive !== false && (() => {
+                    if (sub?.status === 'submitted') {
+                      const res = sub.result;
+                      const rc = res === 'pass' ? '#34d399' : res === 'fail' ? '#FE5C4C' : '#F59E0B';
+                      return (
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: `${rc}10`, border: `1px solid ${rc}33`, borderRadius: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <span style={{ fontSize: 16 }}>{res === 'pass' ? '✅' : res === 'fail' ? '❌' : '⏳'}</span>
+                          <div>
+                            <p style={{ color: rc, fontSize: 12, fontWeight: 700, margin: 0 }}>Assessment {res === 'pass' ? 'Passed' : res === 'fail' ? 'Not Passed' : 'Under Review'}</p>
+                            {sub.percentage != null && <p style={{ color: '#706E6B', fontSize: 11, margin: '2px 0 0' }}>Score: {sub.percentage}%</p>}
+                            {sub.recruiterReview && <p style={{ color: '#706E6B', fontSize: 11, margin: '4px 0 0' }}>Feedback: {sub.recruiterReview}</p>}
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (sub?.status === 'in_progress') {
+                      return (
+                        <div style={{ marginTop: 10 }}>
+                          <button
+                            onClick={() => navigate(`/app/assessment/${asmt.id || asmt._id}`)}
+                            style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 10, color: '#F59E0B', padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            ⏱ Resume Assessment — In Progress
+                          </button>
+                        </div>
+                      );
+                    }
+                    if (sub?.status === 'expired') {
+                      return (
+                        <div style={{ marginTop: 10, padding: '8px 14px', background: 'rgba(186,5,23,0.08)', borderRadius: 10, border: '1px solid rgba(186,5,23,0.2)' }}>
+                          <p style={{ color: '#FE5C4C', fontSize: 12, margin: 0 }}>⌛ Assessment session expired. Contact the recruiter.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => navigate(`/app/assessment/${asmt.id || asmt._id}`)}
+                          style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.15),rgba(37,99,235,0.1))', border: '1px solid rgba(1,118,211,0.4)', borderRadius: 10, color: '#0176D3', padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          📝 Take Screening Assessment
+                        </button>
+                        <span style={{ color: '#C9C7C5', fontSize: 11 }}>
+                          {asmt.timeLimitMins > 0 ? `${asmt.timeLimitMins} min limit · ` : ''}{(asmt.questions || []).length} questions
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Rejection reason */}
+                  {a.stage === 'rejected' && a.rejectionReason && (
+                    <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(186,5,23,0.06)', borderRadius: 10 }}>
+                      <p style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>Feedback: {a.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {/* Recruiter feedback */}
+                  {a.feedback && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(1,118,211,0.05)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.15)' }}>
+                      <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 4px' }}>
+                        Interview Feedback — {'★'.repeat(a.feedback.rating || 0)}<span style={{ color: '#C9C7C5' }}>{'★'.repeat(5 - (a.feedback.rating || 0))}</span>
+                      </p>
+                      {a.feedback.strengths && <p style={{ color: '#706E6B', fontSize: 11, margin: 0 }}>Strengths: {a.feedback.strengths}</p>}
+                      <p style={{ color: a.feedback.recommendation ? '#34d399' : '#FE5C4C', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>
+                        {a.feedback.recommendation ? '✓ Recommended to move forward' : '✕ Not recommended'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Recruiter notes */}
+                  {a.notes && (
+                    <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(1,118,211,0.04)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.12)' }}>
+                      <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 2px' }}>Recruiter Notes</p>
+                      <p style={{ color: '#706E6B', fontSize: 12, margin: 0 }}>{a.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Bottom action bar */}
+              <div style={{ padding: '12px 20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, flexShrink: 0 }}>
+                <button onClick={() => setSelectedApp(null)} style={{ flex: 1, background: '#F8FAFF', border: '1px solid #E2E8F0', borderRadius: 12, color: '#374151', fontSize: 13, fontWeight: 600, padding: '11px 0', cursor: 'pointer' }}>← Back</button>
+                {canWithdraw(a.stage) && (
+                  <button onClick={() => { setSelectedApp(null); setConfirm(appId); }} style={{ flex: 1, background: 'transparent', border: '1.5px solid rgba(186,5,23,0.4)', borderRadius: 12, color: '#BA0517', fontSize: 13, fontWeight: 700, padding: '11px 0', cursor: 'pointer' }}>✕ Withdraw</button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── INVITE DETAIL DRAWER ── */}
+      {selectedInvite && (() => {
+        const inv = selectedInvite;
+        const INVITE_STATUS = {
+          sent:       { color: '#0176D3', bg: 'rgba(1,118,211,0.08)',  label: '📨 Pending Response' },
+          opened:     { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', label: '👁 Opened' },
+          interested: { color: '#2E844A', bg: 'rgba(46,132,74,0.08)',  label: '⭐ Shortlisted / Interested' },
+          declined:   { color: '#6b7280', bg: 'rgba(107,114,128,0.08)', label: '👋 Declined' },
+          failed:     { color: '#BA0517', bg: 'rgba(186,5,23,0.08)',   label: '🚫 Failed to Send' },
+        };
+        const st = INVITE_STATUS[inv.status] || INVITE_STATUS.sent;
+        const job = inv.jobId || inv.job;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedInvite(null); }}>
+            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Drag handle */}
+              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+              </div>
+              {/* Scrollable body */}
+              <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+                {/* Header */}
+                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{job?.title || inv.jobTitle || 'Job Invitation'}</div>
+                      {job && <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{job.companyName || job.company}{job.location ? ` · ${job.location}` : ''}</div>}
+                      <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{st.label}</span>
+                    </div>
+                    <button onClick={() => setSelectedInvite(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
+                  </div>
+                </div>
+                <div style={{ padding: '16px 20px' }}>
+                  {/* Talent match banner */}
+                  {inv.type === 'talent_match' && (
+                    <div style={{ background: 'linear-gradient(135deg,rgba(1,118,211,0.08),rgba(1,68,134,0.04))', border: '1px solid rgba(1,118,211,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#0176D3', fontWeight: 600 }}>
+                      ⚡ You were matched to this role based on your profile
+                    </div>
+                  )}
+
+                  {/* Job details grid */}
+                  {job && (job.type || job.location || job.salary) && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                      {job.type && <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>💼 {job.type}</span>}
+                      {job.location && <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>📍 {job.location}</span>}
+                      {job.salary && <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>💰 {job.salary}</span>}
+                    </div>
+                  )}
+
+                  {/* Full invite message */}
+                  {inv.message && (
+                    <div style={{ fontSize: 13, color: '#475569', background: '#F0F7FF', borderLeft: '3px solid #0176D3', padding: '10px 14px', borderRadius: 4, fontStyle: 'italic', lineHeight: 1.6, marginBottom: 14 }}>
+                      "{inv.message}"
+                    </div>
+                  )}
+
+                  {/* Date info */}
+                  <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 6 }}>
+                    {inv.type === 'talent_match' ? 'Matched' : 'Invited'}: {fmtD(inv.sentAt || inv.createdAt)}
+                  </div>
+                </div>
+              </div>
+              {/* Bottom action bar */}
+              <div style={{ padding: '12px 20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, flexShrink: 0 }}>
+                {['sent', 'opened'].includes(inv.status) ? (
+                  <a
+                    href={`/invite/${inv.token}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ flex: 1, textAlign: 'center', background: 'linear-gradient(135deg,#0176D3,#014486)', color: '#fff', textDecoration: 'none', padding: '11px 0', borderRadius: 12, fontSize: 13, fontWeight: 700, display: 'block' }}
+                  >
+                    ✅ View &amp; Respond
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => { setSelectedInvite(null); setActiveTab('applications'); }}
+                    style={{ flex: 1, background: 'rgba(46,132,74,0.1)', border: '1px solid rgba(46,132,74,0.3)', color: '#2E844A', padding: '11px 0', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    📊 View Application Progress
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── DRIVE DETAIL DRAWER ── */}
+      {selectedDrive && (() => {
+        const reg = selectedDrive;
+        const DRIVE_STATUS = {
+          registered:  { color: '#0176D3', bg: 'rgba(1,118,211,0.08)',   label: '📋 Registered',   icon: '📋', step: 0 },
+          shortlisted: { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)',  label: '⭐ Shortlisted',  icon: '⭐', step: 1 },
+          selected:    { color: '#2E844A', bg: 'rgba(46,132,74,0.08)',   label: '🏆 Selected',     icon: '🏆', step: 2 },
+          rejected:    { color: '#BA0517', bg: 'rgba(186,5,23,0.08)',    label: '❌ Not Selected', icon: '❌', step: -1 },
+        };
+        const STEPS = [
+          { id: 'registered',  label: 'Registered',  icon: '📋' },
+          { id: 'shortlisted', label: 'Shortlisted', icon: '⭐' },
+          { id: 'selected',    label: 'Selected',    icon: '🏆' },
+        ];
+        const st = DRIVE_STATUS[reg.myStatus] || DRIVE_STATUS.registered;
+        const isRejectedDrive = reg.myStatus === 'rejected';
+        const currentStep = isRejectedDrive ? -1 : st.step;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) setSelectedDrive(null); }}>
+            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Drag handle */}
+              <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 40, height: 4, background: '#E2E8F0', borderRadius: 2 }} />
+              </div>
+              {/* Scrollable body */}
+              <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+                {/* Header */}
+                <div style={{ padding: '0 20px 16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: '#0A1628', lineHeight: 1.3, marginBottom: 3 }}>{reg.title || reg.driveName || 'Campus Drive'}</div>
+                      <div style={{ fontSize: 13, color: '#0176D3', marginBottom: 8 }}>{reg.companyName}</div>
+                      <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>{st.icon} {st.label}</span>
+                    </div>
+                    <button onClick={() => setSelectedDrive(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, color: '#64748B', flexShrink: 0 }}>×</button>
+                  </div>
+                </div>
+                <div style={{ padding: '16px 20px' }}>
+                  {/* Drive info */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {reg.driveType && <span style={{ background: 'rgba(1,118,211,0.1)', color: '#0176D3', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>{reg.driveType === 'placement' ? '🎓 Placement' : reg.driveType === 'internship' ? '💼 Internship' : reg.driveType}</span>}
+                    {reg.collegeName && <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>🏛 {reg.collegeName}</span>}
+                    {reg.driveDate && <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>📅 {fmtD(reg.driveDate)}</span>}
+                  </div>
+
+                  {/* 3-step stepper */}
+                  {isRejectedDrive ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#BA0517', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 800, flexShrink: 0 }}>✕</div>
+                      <span style={{ color: '#fca5a5', fontSize: 12, fontWeight: 600 }}>Not selected for this drive</span>
+                    </div>
+                  ) : (
+                    <nav aria-label="Drive status" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 10 }}>
+                      <ol role="list" style={{ display: 'flex', alignItems: 'center', minWidth: 'max-content', gap: 0, listStyle: 'none', margin: 0, padding: '0 0 4px' }}>
+                        {STEPS.map((step, i) => {
+                          const done = i < currentStep;
+                          const active = i === currentStep;
+                          const lineColor = done ? '#0176D3' : '#DDDBDA';
+                          let dotBg = '#F3F2F2', dotBorder = '2px solid #DDDBDA', dotFg = '#C9C7C5', labelColor = '#9E9D9B';
+                          if (done)   { dotBg = '#0176D3'; dotBorder = '2px solid #0176D3'; dotFg = '#fff'; labelColor = '#0176D3'; }
+                          if (active) { dotBg = '#fff'; dotBorder = '2.5px solid #0176D3'; dotFg = '#0176D3'; labelColor = '#0176D3'; }
+                          return (
+                            <React.Fragment key={step.id}>
+                              {i > 0 && <div aria-hidden="true" style={{ width: 32, height: 2, background: lineColor, flexShrink: 0 }} />}
+                              <li style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <div style={{
+                                  width: 30, height: 30, borderRadius: '50%',
+                                  background: dotBg, border: dotBorder,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: active ? 14 : 13, color: dotFg, fontWeight: 700, flexShrink: 0,
+                                  ...(active ? { boxShadow: '0 0 0 4px rgba(1,118,211,0.15)' } : {}),
+                                }}>
+                                  {active ? step.icon : done ? '✓' : step.icon}
+                                </div>
+                                <span style={{ color: labelColor, fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: 'nowrap' }}>{step.label}</span>
+                              </li>
+                            </React.Fragment>
+                          );
+                        })}
+                      </ol>
+                    </nav>
+                  )}
+
+                  {/* Recruiter notes */}
+                  {reg.notes && (
+                    <div style={{ padding: '8px 12px', background: 'rgba(1,118,211,0.04)', borderRadius: 10, border: '1px solid rgba(1,118,211,0.12)', marginTop: 4 }}>
+                      <p style={{ color: '#0176D3', fontSize: 11, fontWeight: 600, margin: '0 0 2px' }}>Recruiter Notes</p>
+                      <p style={{ color: '#706E6B', fontSize: 12, margin: 0 }}>{reg.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Selected congratulations */}
+                  {reg.myStatus === 'selected' && (
+                    <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(46,132,74,0.06)', borderRadius: 10, border: '1px solid rgba(46,132,74,0.3)' }}>
+                      <p style={{ color: '#2E844A', fontSize: 12, fontWeight: 700, margin: 0 }}>🎉 Congratulations! You have been selected through this campus drive. The recruiter will reach out with next steps.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Bottom action bar */}
+              <div style={{ padding: '12px 20px 24px', borderTop: '1px solid #F1F5F9', flexShrink: 0 }}>
+                <button onClick={() => setSelectedDrive(null)} style={{ width: '100%', background: '#F8FAFF', border: '1px solid #E2E8F0', borderRadius: 12, color: '#374151', fontSize: 13, fontWeight: 600, padding: '11px 0', cursor: 'pointer' }}>← Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
