@@ -41,8 +41,12 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(asyn
   const invalidEvents = (events || []).filter(e => !SUPPORTED_EVENTS.includes(e));
   if (invalidEvents.length) throw new AppError(`Invalid events: ${invalidEvents.join(', ')}`, 400);
 
+  // super_admin bypasses tenantGuard so req.tenantId is unset; require body.tenantId or fall back to user's own tenant
+  const tenantId = req.user?.role === 'super_admin' ? (req.body.tenantId || req.user.tenantId) : req.tenantId;
+  if (!tenantId) throw new AppError('tenantId is required when creating a webhook as super_admin.', 400);
+
   const hook = await Webhook.create({
-    tenantId: req.tenantId,
+    tenantId,
     name: name.trim(),
     url:  url.trim(),
     events: events || [],
@@ -58,7 +62,11 @@ router.get('/events', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
 
 // GET /api/webhooks/:id — single hook
 router.get('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const hook = await Webhook.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null }).lean();
+  const isSuperAdmin = req.user?.role === 'super_admin';
+  const filter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.tenantId, deletedAt: null };
+  const hook = await Webhook.findOne(filter).lean();
   if (!hook) throw new AppError('Webhook not found.', 404);
   res.json({ success: true, data: hook });
 }));
@@ -66,7 +74,11 @@ router.get('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(as
 // PUT /api/webhooks/:id — update
 router.put('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
   const { name, url, events, secret, isActive } = req.body;
-  const hook = await Webhook.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user?.role === 'super_admin';
+  const filter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.tenantId, deletedAt: null };
+  const hook = await Webhook.findOne(filter);
   if (!hook) throw new AppError('Webhook not found.', 404);
 
   if (url) {
@@ -89,7 +101,11 @@ router.put('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(as
 
 // DELETE /api/webhooks/:id — soft delete
 router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const hook = await Webhook.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
+  const isSuperAdmin = req.user?.role === 'super_admin';
+  const filter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.tenantId, deletedAt: null };
+  const hook = await Webhook.findOne(filter);
   if (!hook) throw new AppError('Webhook not found.', 404);
   hook.deletedAt = new Date();
   await hook.save();
@@ -98,7 +114,11 @@ router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler
 
 // POST /api/webhooks/:id/test — fire a test ping
 router.post('/:id/test', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const hook = await Webhook.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null }).lean();
+  const isSuperAdmin = req.user?.role === 'super_admin';
+  const filter = isSuperAdmin
+    ? { _id: req.params.id, deletedAt: null }
+    : { _id: req.params.id, tenantId: req.tenantId, deletedAt: null };
+  const hook = await Webhook.findOne(filter).lean();
   if (!hook) throw new AppError('Webhook not found.', 404);
 
   const testPayload = { event: 'test', payload: { message: 'TalentNest webhook test ping' }, timestamp: new Date().toISOString() };

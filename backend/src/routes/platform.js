@@ -72,7 +72,7 @@ router.get('/backup', auth, allowRoles('super_admin'), asyncHandler(async (req, 
   try { const Notification= require('../models/Notification');notifications  = await Notification.find({}).lean(); } catch(e) {}
 
   const [users, jobs, applications, orgs] = await Promise.all([
-    User.find({}).select('-password -resetPasswordToken').lean(),
+    User.find({}).select('-passwordHash -resetPasswordToken -resetPasswordExpires -twoFactorSecret -refreshTokens').lean(),
     Job.find({}).lean(),
     Application.find({}).lean(),
     Organization.find({ slug: { $ne: '__platform__' } }).lean(),

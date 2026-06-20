@@ -105,6 +105,14 @@ router.get('/mine', authenticate, asyncHandler(async (req, res) => {
 
 // ── Candidate: get own pre-boarding by candidateId (legacy) ──────────────────
 router.get('/mine/:candidateId', authenticate, asyncHandler(async (req, res) => {
+  // Candidate may only fetch their own records. Verify the candidateId belongs to the logged-in user.
+  if (req.user.role === 'candidate') {
+    const myCandidate = await Candidate.findOne({ email: req.user.email?.toLowerCase(), deletedAt: null }).select('_id').lean();
+    if (!myCandidate || String(myCandidate._id) !== String(req.params.candidateId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+  }
+
   let records = await PreBoarding.find({ candidateId: req.params.candidateId }).sort({ createdAt: -1 }).lean();
   if (records.length === 0 && req.user?.email) {
     records = await PreBoarding.find({ candidateEmail: req.user.email }).sort({ createdAt: -1 }).lean();
@@ -263,17 +271,21 @@ router.post('/:id/tasks', authenticate, tenantGuard, allowRoles('admin', 'super_
 // ── Complete a task (HR or Candidate) ────────────────────────────────────────
 router.patch('/:id/tasks/:taskId', authenticate, asyncHandler(async (req, res) => {
   const { completed, notes } = req.body;
-  const completedBy = ['admin', 'super_admin', 'recruiter'].includes(req.user.role) ? 'hr' : 'candidate';
+  const isHR = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const completedBy = isHR ? 'hr' : 'candidate';
 
   const update = completed
     ? { $set: { 'tasks.$.completedAt': new Date(), 'tasks.$.completedBy': completedBy, 'tasks.$.notes': notes || '' } }
     : { $set: { 'tasks.$.completedAt': null, 'tasks.$.completedBy': null } };
 
-  const record = await PreBoarding.findOneAndUpdate(
-    { _id: req.params.id, 'tasks._id': req.params.taskId },
-    update,
-    { new: true }
-  ).lean();
+  const filter = { _id: req.params.id, 'tasks._id': req.params.taskId };
+  if (isHR) {
+    if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+  } else {
+    filter.candidateEmail = req.user.email?.toLowerCase();
+  }
+
+  const record = await PreBoarding.findOneAndUpdate(filter, update, { new: true }).lean();
   if (!record) throw new AppError('Task not found.', 404);
 
   // Auto-update status to in_progress / completed
@@ -336,6 +348,13 @@ router.post('/:id/tasks/:taskId/upload', authenticate, upload.single('file'), as
 
   const pb = await PreBoarding.findOne({ _id: req.params.id, 'tasks._id': req.params.taskId });
   if (!pb) throw new AppError('Pre-boarding record or task not found.', 404);
+
+  const isHR = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const isOwner = pb.candidateEmail && pb.candidateEmail.toLowerCase() === req.user.email?.toLowerCase();
+  if (!isHR && !isOwner) throw new AppError('Not allowed.', 403);
+  if (isHR && req.user.role !== 'super_admin' && String(pb.tenantId) !== String(req.user.tenantId)) {
+    throw new AppError('Not allowed.', 403);
+  }
 
   // Store as base64 data URI — same approach as chat attachments.
   // No external storage needed; files are embedded in the DB document.

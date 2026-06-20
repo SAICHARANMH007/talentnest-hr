@@ -1156,6 +1156,9 @@ router.get('/:slug/drives', asyncHandler(async (req, res) => {
 
 // ─── POST /api/communities/:slug/seed-posts — seed posts using real platform users ─
 router.post('/:slug/seed-posts', asyncHandler(async (req, res) => {
+  if (!['admin', 'super_admin', 'recruiter'].includes(req.user.role)) {
+    throw new AppError('Only admins and recruiters can seed community posts.', 403);
+  }
   const tenantId  = req.user.tenantId;
   const community = await Community.findOne({ slug: req.params.slug });
   if (!community) throw new AppError('Community not found.', 404);

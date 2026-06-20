@@ -65,7 +65,7 @@ router.post('/:id/enroll', ...guard, canManage, asyncHandler(async (req, res) =>
   if (!seq.isActive) return res.status(400).json({ message: 'Sequence is not active' });
   if (!seq.steps.length) return res.status(400).json({ message: 'Sequence has no steps' });
 
-  const cand = await Candidate.findById(candidateId).lean();
+  const cand = await Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId }).lean();
   if (!cand) return res.status(404).json({ message: 'Candidate not found' });
 
   const alreadyEnrolled = seq.enrollments.some(e => String(e.candidateId) === String(candidateId) && !e.completed);

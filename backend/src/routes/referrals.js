@@ -115,7 +115,7 @@ router.get('/my', auth, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/referrals/track — called server-side when candidate applies (now handled in applications.js)
-router.post('/track', asyncHandler(async (req, res) => {
+router.post('/track', auth, asyncHandler(async (req, res) => {
   const { token, candidateId } = req.body;
   if (!token) return res.json({ success: false });
   await Referral.findOneAndUpdate(

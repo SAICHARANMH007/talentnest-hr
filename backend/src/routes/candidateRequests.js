@@ -21,7 +21,7 @@ function normalize(r) {
 }
 
 // GET /api/candidate-requests — list (superadmin=all, admin=own tenant)
-router.get('/', authMiddleware, asyncHandler(async (req, res) => {
+router.get('/', authMiddleware, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const filter = {};
   if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;

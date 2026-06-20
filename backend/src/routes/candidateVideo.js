@@ -32,6 +32,10 @@ router.post('/', ...guard, upload.single('video'), asyncHandler(async (req, res)
   const candidate = await Candidate.findOne({ _id: req.params.id, tenantId: req.user.tenantId });
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
+  const isStaff = ['admin', 'super_admin', 'recruiter'].includes(req.user.role);
+  const isOwner = candidate.userId && String(candidate.userId) === String(req.user._id || req.user.id);
+  if (!isStaff && !isOwner) throw new AppError('Not allowed.', 403);
+
   // Upload to Cloudinary video folder
   const uploadResult = await uploadBuffer(req.file.buffer, { folder: 'candidate-videos', resource_type: 'video' });
 
