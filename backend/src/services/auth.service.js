@@ -9,7 +9,7 @@ const Tenant       = require('../models/Tenant');
 const AppError = require('../utils/AppError');
 const normalize = require('../utils/normalize');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
+const { JWT_SECRET } = require('../middleware/auth');
 
 /**
  * AuthService — Enterprise Business Logic for IAM

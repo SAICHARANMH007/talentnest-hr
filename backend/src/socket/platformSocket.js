@@ -1,5 +1,6 @@
 'use strict';
 const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../middleware/auth');
 
 /**
  * /platform namespace — lightweight real-time channel for pipeline events.
@@ -13,7 +14,7 @@ function setupPlatformSocket(io) {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
       if (!token) return next(new Error('AUTH_REQUIRED'));
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret');
+      const decoded = jwt.verify(token, JWT_SECRET);
       socket.data.userId   = String(decoded.userId || decoded.id || '');
       socket.data.tenantId = String(decoded.tenantId || decoded.orgId || '');
       next();

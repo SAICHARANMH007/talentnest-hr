@@ -17,7 +17,7 @@ const asyncHandler   = require('../utils/asyncHandler');
 const AppError       = require('../utils/AppError');
 const logger         = require('../middleware/logger');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'talentnest_jwt_secret';
+const { JWT_SECRET } = require('../middleware/auth');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 function verifyToken(token) {
