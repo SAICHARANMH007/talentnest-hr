@@ -54,14 +54,8 @@ const applicationSchema = new mongoose.Schema({
     videoLink       : { type: String },
     location        : { type: String },
     feedback: {
-      // Original fields
-      communication   : { type: Number },
-      technical       : { type: Number },
-      cultureFit      : { type: Number },
-      overall         : { type: Number },
       recommendation  : { type: String, enum: ['hire', 'no_hire', 'maybe', 'next_round', 'hold'] },
       notes           : { type: String },
-      // Scorecard route fields
       rating              : { type: Number },
       technicalScore      : { type: Number },
       communicationScore  : { type: Number },
