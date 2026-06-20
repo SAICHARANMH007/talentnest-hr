@@ -475,6 +475,10 @@ router.post('/reset-password/:token', asyncHandler(async (req, res) => {
     throw new AppError('token, email and newPassword are required.', 400);
   if (newPassword.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(newPassword))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))
+    throw new AppError('Password must contain at least one number.', 400);
 
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
   const user = await User.findOne({
@@ -509,7 +513,7 @@ router.post('/set-password/:inviteToken', asyncHandler(async (req, res) => {
   const user = await User.findOne({
     email: email.toLowerCase().trim(),
     $or: [
-      { inviteToken: tokenHash },
+      { inviteToken: tokenHash, inviteTokenExpiry: { $gt: new Date() } },
       { resetPasswordToken: tokenHash, resetPasswordExpires: { $gt: new Date() } },
     ],
   });
@@ -658,12 +662,6 @@ router.post('/impersonate', authMiddleware, asyncHandler(async (req, res) => {
 
   // Clear Super Admin's dashboard cache so they don't see their own stats while starting to impersonate
   clearCacheForUser(req.user._id);
-
-  // Ensure target is activated so impersonation doesn't immediately fail on the next API call
-  if (!target.isActive) {
-    target.isActive = true;
-    await target.save();
-  }
 
   const result = await authService.issueTokens(res, target, req, req.user._id);
   res.json({ success: true, ...result, impersonating: true, originalUserId: req.user._id });
@@ -862,6 +860,10 @@ router.post('/reset-password', asyncHandler(async (req, res) => {
     throw new AppError('token, email and newPassword are required.', 400);
   if (newPassword.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(newPassword))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))
+    throw new AppError('Password must contain at least one number.', 400);
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const user = await User.findOne({
