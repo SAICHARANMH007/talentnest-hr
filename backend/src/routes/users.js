@@ -437,18 +437,86 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
   res.send(buf);
 }));
 
+// GET /api/users/unsubscribe — MUST be before /:id or Express shadows it
+router.get('/unsubscribe', asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).send('Email is required.');
+
+  await Candidate.updateMany({ email: email.toLowerCase().trim() }, { $set: { interestStatus: 'not_interested' } });
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Unsubscribed</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+        h1 { color: #032D60; font-size: 24px; margin-bottom: 10px; }
+        p { color: #64748B; font-size: 15px; margin-bottom: 0; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Unsubscribed Successfully</h1>
+        <p>You will no longer receive marketing emails from TalentNest HR.</p>
+      </div>
+    </body>
+    </html>
+  `);
+}));
+
+// GET /api/users/platform-signals — MUST be before /:id or Express shadows it
+router.get('/platform-signals', asyncHandler(async (req, res) => {
+  const { ids } = req.query;
+  if (!ids) return res.json({ success: true, data: [] });
+  const Application = require('../models/Application');
+  const Candidate   = require('../models/Candidate');
+
+  const idList = String(ids).split(',').slice(0, 100).map(id => id.trim()).filter(Boolean);
+  if (!idList.length) return res.json({ success: true, data: [] });
+
+  const validIds = idList.map(id => { try { return new mongoose.Types.ObjectId(id); } catch { return null; } }).filter(Boolean);
+  if (!validIds.length) return res.json({ success: true, data: [] });
+
+  const stats = await Application.aggregate([
+    { $match: { candidateId: { $in: validIds }, deletedAt: null } },
+    { $group: {
+        _id: '$candidateId',
+        totalApps     : { $sum: 1 },
+        shortlisted   : { $sum: { $cond: [{ $in: ['$currentStage', ['Shortlisted','Interview Round 1','Interview Round 2','Offer','Hired']] }, 1, 0] } },
+        interviewCleared: { $sum: { $cond: [{ $in: ['$currentStage', ['Interview Round 2','Offer','Hired']] }, 1, 0] } },
+        hired         : { $sum: { $cond: [{ $eq: ['$currentStage','Hired'] }, 1, 0] } },
+        lastActive    : { $max: '$updatedAt' },
+    }},
+  ]);
+
+  const data = stats.map(s => ({
+    candidateId     : s._id.toString(),
+    totalApps       : s.totalApps,
+    shortlisted     : s.shortlisted,
+    interviewCleared: s.interviewCleared,
+    hired           : s.hired,
+    lastActive      : s.lastActive,
+  }));
+
+  res.json({ success: true, data });
+}));
+
 // GET /api/users/:id — Detailed user
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
-  const isOwn = req.params.id === (req.user._id || req.user.id).toString();
-  const isAdmin = ['admin','super_admin'].includes(req.user.role);
+  const isOwn       = req.params.id === (req.user._id || req.user.id).toString();
+  // Only super_admin may read full profiles across tenants.
+  // A regular admin is scoped to their own tenant like any other role.
+  const isSuperAdmin = req.user.role === 'super_admin';
 
   const user = await User.findById(req.params.id)
     .select('-password -passwordHash -resetPasswordToken -resetPasswordExpires').lean();
   if (!user) throw new AppError('User not found.', 404);
 
-  // Own profile / admin → full normalized data.
+  // Own profile / super_admin / same-tenant admin → full normalized data.
   // Cross-tenant (networking feature) → public fields only, no private data.
-  if (!isOwn && !isAdmin && String(user.tenantId) !== String(req.user.tenantId)) {
+  if (!isOwn && !isSuperAdmin && String(user.tenantId) !== String(req.user.tenantId)) {
     const PUB = ['_id','name','role','title','avatarUrl','photoUrl','location',
                  'department','summary','skills','experience','createdAt'];
     const pub = {};
@@ -554,11 +622,19 @@ router.patch('/:id/change-password', authenticate, asyncHandler(async (req, res)
   const isSuperAdmin = req.user.role === 'super_admin';
   if (!isSelf && !isSuperAdmin) throw new AppError('Unauthorized', 403);
 
-  const { newPassword } = req.body;
+  const { newPassword, currentPassword } = req.body;
   if (!newPassword || newPassword.length < 8) throw new AppError('New password must be at least 8 chars', 400);
+  if (!/[A-Z]/.test(newPassword)) throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))  throw new AppError('Password must contain at least one number.', 400);
 
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found', 404);
+
+  if (isSelf) {
+    if (!currentPassword) throw new AppError('Current password is required.', 400);
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) throw new AppError('Current password is incorrect.', 401);
+  }
 
   user.passwordHash = bcrypt.hashSync(newPassword, 10);
   await user.save();
@@ -945,80 +1021,6 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
     : `✅ ${results.sent} invite email${results.sent !== 1 ? 's' : ''} sent successfully!`;
 
   res.json({ success: true, message: msg, results });
-}));
-
-// GET /api/users/unsubscribe — One-click unsubscribe from marketing emails
-router.get('/unsubscribe', asyncHandler(async (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).send('Email is required.');
-
-  // Update both User and Candidate models to reflect unsubscription
-  // Assuming we use interestStatus: 'not_interested' or a new field 'unsubscribed'
-  // For safety, let's just mark interestStatus = 'not_interested' on Candidate.
-  await Candidate.updateMany({ email: email.toLowerCase().trim() }, { $set: { interestStatus: 'not_interested' } });
-  
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Unsubscribed</title>
-      <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
-        h1 { color: #032D60; font-size: 24px; margin-bottom: 10px; }
-        p { color: #64748B; font-size: 15px; margin-bottom: 0; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h1>Unsubscribed Successfully</h1>
-        <p>You will no longer receive marketing emails from TalentNest HR.</p>
-      </div>
-    </body>
-    </html>
-  `);
-}));
-
-// GET /api/users/platform-signals?ids=id1,id2,...
-// Returns aggregated platform stats for a list of candidate IDs.
-// Used by the matching engine to inject behavioral signals into scoring.
-// No auth required for public candidate records — results contain no PII.
-router.get('/platform-signals', asyncHandler(async (req, res) => {
-  const { ids } = req.query;
-  if (!ids) return res.json({ success: true, data: [] });
-  const Application = require('../models/Application');
-  const Candidate   = require('../models/Candidate');
-
-  const idList = String(ids).split(',').slice(0, 100).map(id => id.trim()).filter(Boolean);
-  if (!idList.length) return res.json({ success: true, data: [] });
-
-  // Try matching by User ID → find linked Candidate records → aggregate Applications
-  const validIds = idList.map(id => { try { return new mongoose.Types.ObjectId(id); } catch { return null; } }).filter(Boolean);
-  if (!validIds.length) return res.json({ success: true, data: [] });
-
-  // Aggregate application stats per candidateId
-  const stats = await Application.aggregate([
-    { $match: { candidateId: { $in: validIds }, deletedAt: null } },
-    { $group: {
-        _id: '$candidateId',
-        totalApps     : { $sum: 1 },
-        shortlisted   : { $sum: { $cond: [{ $in: ['$currentStage', ['Shortlisted','Interview Round 1','Interview Round 2','Offer','Hired']] }, 1, 0] } },
-        interviewCleared: { $sum: { $cond: [{ $in: ['$currentStage', ['Interview Round 2','Offer','Hired']] }, 1, 0] } },
-        hired         : { $sum: { $cond: [{ $eq: ['$currentStage','Hired'] }, 1, 0] } },
-        lastActive    : { $max: '$updatedAt' },
-    }},
-  ]);
-
-  const data = stats.map(s => ({
-    candidateId     : s._id.toString(),
-    totalApps       : s.totalApps,
-    shortlisted     : s.shortlisted,
-    interviewCleared: s.interviewCleared,
-    hired           : s.hired,
-    lastActive      : s.lastActive,
-  }));
-
-  res.json({ success: true, data });
 }));
 
 module.exports = router;
