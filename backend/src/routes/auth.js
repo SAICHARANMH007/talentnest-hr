@@ -506,6 +506,10 @@ router.post('/set-password/:inviteToken', asyncHandler(async (req, res) => {
     throw new AppError('inviteToken, email and newPassword are required.', 400);
   if (newPassword.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(newPassword))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))
+    throw new AppError('Password must contain at least one number.', 400);
 
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
