@@ -159,6 +159,110 @@ router.post('/parse-resume', ...guard,
   })
 );
 
+// GET /api/candidates/search — MUST be before /:id or Express shadows it
+router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req, { limit: 50 });
+  const andClauses = [{ deletedAt: null }];
+
+  if (req.query.skills) {
+    const skills = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (skills.length) {
+      andClauses.push({ skills: { $in: skills.map(s => new RegExp(escRe(s), 'i')) } });
+    }
+  }
+
+  if (req.query.experienceLevel) {
+    const lvlMap = { fresher: [0,1], junior: [1,3], mid: [3,6], senior: [6,12], lead: [10,60] };
+    const range = lvlMap[req.query.experienceLevel.toLowerCase()];
+    if (range) andClauses.push({ experience: { $gte: range[0], $lte: range[1] } });
+  }
+
+  if (req.query.minExperience || req.query.maxExperience) {
+    const expFilter = {};
+    if (req.query.minExperience) expFilter.$gte = Number(req.query.minExperience);
+    if (req.query.maxExperience) expFilter.$lte = Number(req.query.maxExperience);
+    andClauses.push({ experience: expFilter });
+  }
+
+  if (req.query.location) {
+    andClauses.push({ location: { $regex: escRe(req.query.location.trim()), $options: 'i' } });
+  }
+
+  if (req.query.noticePeriod) {
+    const npMap = { immediate: [0,3], '15days': [1,15], '30days': [15,35], '60days': [35,65], '90days': [65,95] };
+    const range = npMap[req.query.noticePeriod];
+    if (range) andClauses.push({ noticePeriodDays: { $gte: range[0], $lte: range[1] } });
+  }
+
+  if (req.query.jobType) {
+    const jt = escRe(req.query.jobType);
+    andClauses.push({ $or: [
+      { availability: { $regex: jt, $options: 'i' } },
+      { candidateStatus: { $regex: jt, $options: 'i' } },
+      { additionalDetails: { $regex: jt, $options: 'i' } },
+    ]});
+  }
+
+  if (req.query.keyword) {
+    const kw = new RegExp(escRe(req.query.keyword.trim()), 'i');
+    andClauses.push({ $or: [
+      { name: kw }, { title: kw }, { currentCompany: kw },
+      { skills: kw }, { summary: kw }, { email: kw },
+    ]});
+  }
+
+  const filter = andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
+
+  const [data, total] = await Promise.all([
+    Candidate.find(filter)
+      .select('_id name email phone title currentCompany skills experience location noticePeriodDays availability candidateStatus resumeUrl photoUrl')
+      .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Candidate.countDocuments(filter),
+  ]);
+  const normalized = data.map(c => ({
+    ...c,
+    id          : c._id?.toString(),
+    skills      : Array.isArray(c.skills) ? c.skills : [],
+    noticePeriod: c.noticePeriodDays ? `${c.noticePeriodDays} days` : (c.availability || ''),
+  }));
+  res.json(paginatedResponse(normalized, total, limit, page));
+}));
+
+// GET /api/candidates/find-duplicates — MUST be before /:id or Express shadows it
+router.get('/find-duplicates', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const tenantId = req.user.tenantId;
+  const emailGroups = await Candidate.aggregate([
+    { $match: { tenantId, deletedAt: null, email: { $exists: true, $ne: null, $ne: '' } } },
+    { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+    { $match: { count: { $gt: 1 } } },
+  ]);
+
+  const phoneGroups = await Candidate.aggregate([
+    { $match: { tenantId, deletedAt: null, phone: { $exists: true, $ne: null, $ne: '' } } },
+    { $group: { _id: { name: { $toLower: '$name' }, phone: '$phone' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+    { $match: { count: { $gt: 1 } } },
+  ]);
+
+  const allIdSets = [...emailGroups, ...phoneGroups].map(g => g.ids.map(String));
+  const merged = [];
+  const seen = new Set();
+  for (const set of allIdSets) {
+    const key = set.slice().sort().join(',');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(set);
+  }
+
+  const groups = await Promise.all(merged.slice(0, 50).map(async (ids) => {
+    const candidates = await Candidate.find({ _id: { $in: ids } })
+      .select('name email phone title location currentCompany resumeUrl photoUrl createdAt parsedProfile')
+      .lean();
+    return candidates;
+  }));
+
+  res.json({ success: true, data: groups.filter(g => g.length > 1) });
+}));
+
 // GET /api/candidates/:id — single candidate
 router.get('/:id', ...guard,
   allowRoles('admin', 'super_admin', 'recruiter'),
@@ -459,128 +563,17 @@ router.post('/upload-my-resume', authMiddleware, tenantGuard, upload.single('res
   res.json({ success: true, data: { resumeUrl } });
 }));
 
-// GET /api/candidates/search — advanced candidate search (super_admin only)
-router.get('/search', authMiddleware, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPagination(req, { limit: 50 });
-  const andClauses = [{ deletedAt: null }];
-
-  // Skills filter — $in array of regex patterns
-  if (req.query.skills) {
-    const skills = String(req.query.skills).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (skills.length) {
-      andClauses.push({ skills: { $in: skills.map(s => new RegExp(escRe(s), 'i')) } });
-    }
-  }
-
-  // Experience level: frontend sends 'fresher','junior','mid','senior','lead'
-  // Map these to numeric ranges on the Candidate.experience (years) field
-  if (req.query.experienceLevel) {
-    const lvlMap = { fresher: [0,1], junior: [1,3], mid: [3,6], senior: [6,12], lead: [10,60] };
-    const range = lvlMap[req.query.experienceLevel.toLowerCase()];
-    if (range) andClauses.push({ experience: { $gte: range[0], $lte: range[1] } });
-  }
-
-  // Numeric experience range (explicit min/max)
-  if (req.query.minExperience || req.query.maxExperience) {
-    const expFilter = {};
-    if (req.query.minExperience) expFilter.$gte = Number(req.query.minExperience);
-    if (req.query.maxExperience) expFilter.$lte = Number(req.query.maxExperience);
-    andClauses.push({ experience: expFilter });
-  }
-
-  if (req.query.location) {
-    andClauses.push({ location: { $regex: escRe(req.query.location.trim()), $options: 'i' } });
-  }
-
-  // noticePeriod: frontend sends strings like 'immediate','15days','30days','60days','90days'
-  // Map to noticePeriodDays range
-  if (req.query.noticePeriod) {
-    const npMap = { immediate: [0,3], '15days': [1,15], '30days': [15,35], '60days': [35,65], '90days': [65,95] };
-    const range = npMap[req.query.noticePeriod];
-    if (range) andClauses.push({ noticePeriodDays: { $gte: range[0], $lte: range[1] } });
-    // Also try string matching on availability field
-  }
-
-  // jobType: match against availability/candidateStatus text (Candidate has no jobTypePreference field)
-  if (req.query.jobType) {
-    const jt = escRe(req.query.jobType);
-    andClauses.push({ $or: [
-      { availability: { $regex: jt, $options: 'i' } },
-      { candidateStatus: { $regex: jt, $options: 'i' } },
-      { additionalDetails: { $regex: jt, $options: 'i' } },
-    ]});
-  }
-
-  // Keyword: name, title, company, skills, summary
-  if (req.query.keyword) {
-    const kw = new RegExp(escRe(req.query.keyword.trim()), 'i');
-    andClauses.push({ $or: [
-      { name: kw }, { title: kw }, { currentCompany: kw },
-      { skills: kw }, { summary: kw }, { email: kw },
-    ]});
-  }
-
-  const filter = andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
-
-  const [data, total] = await Promise.all([
-    Candidate.find(filter)
-      .select('_id name email phone title currentCompany skills experience location noticePeriodDays availability candidateStatus resumeUrl photoUrl')
-      .sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Candidate.countDocuments(filter),
-  ]);
-  const normalized = data.map(c => ({
-    ...c,
-    id          : c._id?.toString(),
-    skills      : Array.isArray(c.skills) ? c.skills : [],
-    noticePeriod: c.noticePeriodDays ? `${c.noticePeriodDays} days` : (c.availability || ''),
-  }));
-  res.json(paginatedResponse(normalized, total, limit, page));
-}));
-
-// GET /api/candidates/find-duplicates — detect likely duplicate candidate records
-router.get('/find-duplicates', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
-  const tenantId = req.user.tenantId;
-  // Group by normalized email — most reliable duplicate signal
-  const emailGroups = await Candidate.aggregate([
-    { $match: { tenantId, deletedAt: null, email: { $exists: true, $ne: null, $ne: '' } } },
-    { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
-    { $match: { count: { $gt: 1 } } },
-  ]);
-
-  // Group by name+phone for nameless-email duplicates
-  const phoneGroups = await Candidate.aggregate([
-    { $match: { tenantId, deletedAt: null, phone: { $exists: true, $ne: null, $ne: '' } } },
-    { $group: { _id: { name: { $toLower: '$name' }, phone: '$phone' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
-    { $match: { count: { $gt: 1 } } },
-  ]);
-
-  const allIdSets = [...emailGroups, ...phoneGroups].map(g => g.ids.map(String));
-  // Deduplicate sets that share any common id
-  const merged = [];
-  const seen = new Set();
-  for (const set of allIdSets) {
-    const key = set.slice().sort().join(',');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(set);
-  }
-
-  const groups = await Promise.all(merged.slice(0, 50).map(async (ids) => {
-    const candidates = await Candidate.find({ _id: { $in: ids } })
-      .select('name email phone title location currentCompany resumeUrl photoUrl createdAt parsedProfile')
-      .lean();
-    return candidates;
-  }));
-
-  res.json({ success: true, data: groups.filter(g => g.length > 1) });
-}));
 
 // POST /api/candidates/merge — merge multiple candidates into one primary
 router.post('/merge', ...guard,
   allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
-    const { primaryId, duplicateIds, fieldOverrides = {} } = req.body;
+    const { primaryId, duplicateIds, fieldOverrides: rawOverrides = {} } = req.body;
     if (!primaryId || !duplicateIds?.length) throw new AppError('primaryId and duplicateIds are required.', 400);
+    const FORBIDDEN_OVERRIDE_FIELDS = ['_id', 'tenantId', 'deletedAt', 'mergedInto', '__v'];
+    const fieldOverrides = Object.fromEntries(
+      Object.entries(rawOverrides).filter(([k]) => !FORBIDDEN_OVERRIDE_FIELDS.includes(k))
+    );
 
     const primary = await Candidate.findOne({ _id: primaryId, tenantId: req.user.tenantId, deletedAt: null });
     if (!primary) throw new AppError('Primary candidate not found.', 404);
@@ -656,7 +649,9 @@ router.get('/:id/full-timeline', ...guard, asyncHandler(async (req, res) => {
   const candId = req.params.id;
   const tenantId = req.user.tenantId;
 
-  const candidate = await Candidate.findOne({ _id: candId, deletedAt: null }).select('name email phone tags source createdAt').lean();
+  const candLookup = { _id: candId, deletedAt: null };
+  if (req.user.role !== 'super_admin') candLookup.tenantId = tenantId;
+  const candidate = await Candidate.findOne(candLookup).select('name email phone tags source createdAt').lean();
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
   // Super admins can see the full cross-tenant history; other roles only see
