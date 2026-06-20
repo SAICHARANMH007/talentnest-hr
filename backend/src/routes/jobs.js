@@ -902,7 +902,7 @@ router.post('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recru
   const multer     = require('multer');
   const { uploadBuffer } = require('../utils/cloudinaryUpload');
 
-  const job = await Job.findOne({ _id: req.params.id, tenantId: req.tenantId, deletedAt: null });
+  const job = await Job.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
   if (!job) throw new AppError('Job not found.', 404);
 
   // Parse the multipart form
@@ -941,7 +941,7 @@ router.patch('/:id/custom-stages', ...guard, allowRoles('admin', 'super_admin', 
 // ── DELETE /api/jobs/:id/video-jd — remove video JD
 router.delete('/:id/video-jd', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
   const job = await Job.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.tenantId, deletedAt: null },
+    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
     { $set: { videoJdUrl: '' } }, { new: true }
   );
   if (!job) throw new AppError('Job not found.', 404);
