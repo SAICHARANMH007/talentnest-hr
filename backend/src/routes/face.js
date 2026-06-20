@@ -223,7 +223,7 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
   const { descriptor, descriptors, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
 
   if (!consent) throw new AppError('Face enrollment requires explicit consent.', 400);
-  if (!Array.isArray(descriptor) || descriptor.length < 64)
+  if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid face descriptor. Please retake the enrollment photos.', 400);
   if (!Array.isArray(photos) || photos.length === 0)
     throw new AppError('At least one enrollment photo is required.', 400);
@@ -501,7 +501,7 @@ router.get('/admin/duplicates/count', ...guard,
 // Response: { found: bool, maskedEmail?: string, faceToken?: string (5-min JWT) }
 router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
   const { descriptor, frames } = req.body;
-  if (!Array.isArray(descriptor) || descriptor.length < 64)
+  if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid face descriptor.', 400);
 
   // Pull all enrolled users — O(n) comparison (fine for HR platform scale)
@@ -589,7 +589,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     throw new AppError('A valid email address is required.', 400);
   }
-  if (!Array.isArray(descriptor) || descriptor.length < 64) {
+  if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512) {
     throw new AppError('Invalid face descriptor.', 400);
   }
 
@@ -708,7 +708,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
 }));
 
 // ── POST /api/face/check-enrolled — check if email has face enrolled (no auth, no info leak)
-router.post('/check-enrolled', asyncHandler(async (req, res) => {
+router.post('/check-enrolled', faceLoginLimiter, asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email || !email.includes('@')) throw new AppError('Invalid email.', 400);
   const emailLower = email.toLowerCase().trim();
