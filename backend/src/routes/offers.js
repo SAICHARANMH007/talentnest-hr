@@ -379,7 +379,7 @@ router.post('/:id/sign', authMiddleware, asyncHandler(async (req, res) => {
 
   // Verify the authenticated user is the intended candidate (match by email)
   const signerCandidate = await Candidate.findById(offer.candidateId).select('email').lean();
-  if (!signerCandidate || signerCandidate.email !== req.user.email) {
+  if (!signerCandidate || signerCandidate.email.toLowerCase() !== req.user.email.toLowerCase()) {
     throw new AppError('You are not authorized to sign this offer.', 403);
   }
 
@@ -535,8 +535,11 @@ router.get('/:id/pdf', authMiddleware, asyncHandler(async (req, res) => {
   const offer = await OfferLetter.findById(req.params.id);
   if (!offer) throw new AppError('Offer not found.', 404);
 
-  // Tenant check for non-super-admin
-  if (req.user.role !== 'super_admin' && String(offer.tenantId) !== String(req.user.tenantId)) {
+  if (req.user.role === 'candidate') {
+    const cand = await Candidate.findById(offer.candidateId).select('email').lean();
+    if (!cand || cand.email.toLowerCase() !== req.user.email.toLowerCase())
+      throw new AppError('Access denied.', 403);
+  } else if (req.user.role !== 'super_admin' && String(offer.tenantId) !== String(req.user.tenantId)) {
     throw new AppError('Access denied.', 403);
   }
 
@@ -609,7 +612,7 @@ router.get('/share/:shareToken', asyncHandler(async (req, res) => {
       : null,
   ]);
 
-  res.json({ success: true, data: { ...require('./offers.js').normalizeOffer?.(offer) || offer.toObject(), candidateName: candidate?.name, jobTitle: job?.title } });
+  res.json({ success: true, data: { ...normalizeOffer(offer), candidateName: candidate?.name, jobTitle: job?.title } });
 }));
 
 // ── POST /api/offers/:id/generate-share-link — create shareable token ────────
