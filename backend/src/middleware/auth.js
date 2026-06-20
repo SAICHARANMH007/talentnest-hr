@@ -44,7 +44,10 @@ const authMiddleware = async (req, res, next) => {
     }
 
     if (!user)       return res.status(401).json({ success: false, error: 'User no longer exists' });
-    if (!user.isActive) return res.status(403).json({ success: false, error: 'Account is deactivated' });
+    // Allow impersonation of inactive accounts (super_admin audit use-case).
+    // Impersonation tokens carry originalUserId; normal sessions never do.
+    if (!user.isActive && !decoded.originalUserId)
+      return res.status(403).json({ success: false, error: 'Account is deactivated' });
 
     // Attach clean payload — tenantId from JWT (fast) falls back to user document.
     // Resolve to null (not '') when absent so Mongoose ObjectId casts never throw CastError.
