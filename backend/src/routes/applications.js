@@ -1166,6 +1166,46 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
   res.send(buf);
 }));
 
+// GET /api/applications/scorecards?jobId=xxx — list all scorecard summaries for a job
+// MUST be before /:id to avoid Express matching 'scorecards' as the :id param.
+router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { jobId } = req.query;
+  if (!jobId) return res.status(400).json({ message: 'jobId required' });
+
+  const apps = await Application.find({ tenantId: req.user.tenantId, jobId, deletedAt: null })
+    .populate('candidateId', 'firstName lastName email')
+    .select('candidateId currentStage interviewRounds')
+    .lean();
+
+  const results = apps.map(app => ({
+    applicationId: app._id,
+    candidate: app.candidateId
+      ? `${app.candidateId.firstName || ''} ${app.candidateId.lastName || ''}`.trim() || app.candidateId.email
+      : 'Unknown',
+    currentStage: app.currentStage,
+    rounds: (app.interviewRounds || []).map((r, i) => ({
+      index          : i,
+      scheduledAt    : r.scheduledAt,
+      format         : r.format,
+      interviewerName: r.interviewerName,
+      hasFeedback    : !!(r.feedback?.submittedAt),
+      feedback       : r.feedback?.submittedAt ? {
+        rating              : r.feedback.rating,
+        technicalScore      : r.feedback.technicalScore,
+        communicationScore  : r.feedback.communicationScore,
+        problemSolvingScore : r.feedback.problemSolvingScore,
+        cultureFitScore     : r.feedback.cultureFitScore,
+        strengths           : r.feedback.strengths,
+        weaknesses          : r.feedback.weaknesses,
+        recommendation      : r.feedback.recommendation,
+        submittedAt         : r.feedback.submittedAt,
+      } : null,
+    })),
+  }));
+
+  res.json({ success: true, data: results });
+}));
+
 // GET /api/applications/:id — single application
 router.get('/:id', ...guard, asyncHandler(async (req, res) => {
   const isSuperAdmin = req.user.role === 'super_admin';
@@ -1696,6 +1736,7 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
     roundLabel = `Interview Round ${roundIndex + 1}`;
   } else {
     scheduledAt = new Date(`${date}T${time}`);
+    if (isNaN(scheduledAt.getTime())) throw new AppError('Invalid date or time.', 400);
     endAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000); // +1 hour
     roundIndex = app.interviewRounds.length; // 0-based index of this new round
     roundLabel = `Interview Round ${roundIndex + 1}`;
@@ -1848,45 +1889,6 @@ router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
 
   logger.audit('Interview scheduled', req.user.id, req.user.tenantId, { appId: app._id, date, roundLabel });
   res.json({ success: true, data: normalizeApp(app) });
-}));
-
-// GET /api/applications/scorecards?jobId=xxx — list all scorecard summaries for a job
-router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const { jobId } = req.query;
-  if (!jobId) return res.status(400).json({ message: 'jobId required' });
-
-  const apps = await Application.find({ tenantId: req.user.tenantId, jobId, deletedAt: null })
-    .populate('candidateId', 'firstName lastName email')
-    .select('candidateId currentStage interviewRounds')
-    .lean();
-
-  const results = apps.map(app => ({
-    applicationId: app._id,
-    candidate: app.candidateId
-      ? `${app.candidateId.firstName || ''} ${app.candidateId.lastName || ''}`.trim() || app.candidateId.email
-      : 'Unknown',
-    currentStage: app.currentStage,
-    rounds: (app.interviewRounds || []).map((r, i) => ({
-      index          : i,
-      scheduledAt    : r.scheduledAt,
-      format         : r.format,
-      interviewerName: r.interviewerName,
-      hasFeedback    : !!(r.feedback?.submittedAt),
-      feedback       : r.feedback?.submittedAt ? {
-        rating              : r.feedback.rating,
-        technicalScore      : r.feedback.technicalScore,
-        communicationScore  : r.feedback.communicationScore,
-        problemSolvingScore : r.feedback.problemSolvingScore,
-        cultureFitScore     : r.feedback.cultureFitScore,
-        strengths           : r.feedback.strengths,
-        weaknesses          : r.feedback.weaknesses,
-        recommendation      : r.feedback.recommendation,
-        submittedAt         : r.feedback.submittedAt,
-      } : null,
-    })),
-  }));
-
-  res.json({ success: true, data: results });
 }));
 
 // POST /api/applications/:id/interview/:roundIndex/scorecard — submit interview scorecard
