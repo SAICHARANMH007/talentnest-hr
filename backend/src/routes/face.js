@@ -329,7 +329,7 @@ router.delete('/photo', ...guard, asyncHandler(async (req, res) => {
 // Body: { descriptor: number[] }
 router.post('/verify', ...guard, asyncHandler(async (req, res) => {
   const { descriptor } = req.body;
-  if (!Array.isArray(descriptor) || descriptor.length < 64)
+  if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid descriptor.', 400);
 
   const user = await User.findById(req.user.id).select('faceEnrolled faceDescriptor').lean();
@@ -363,6 +363,8 @@ router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
 router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
   const { submissionId, descriptor, snapshot, anomaly } = req.body;
   if (!submissionId) throw new AppError('submissionId is required.', 400);
+  if (Array.isArray(descriptor) && descriptor.length > 512)
+    throw new AppError('Invalid descriptor.', 400);
 
   const submission = await AssessmentSubmission.findOne({
     _id: submissionId,
