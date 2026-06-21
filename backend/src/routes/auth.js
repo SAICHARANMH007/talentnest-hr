@@ -544,6 +544,10 @@ router.post('/set-password', asyncHandler(async (req, res) => {
     throw new AppError('token, email and newPassword are required.', 400);
   if (newPassword.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(newPassword))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))
+    throw new AppError('Password must contain at least one number.', 400);
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const user = await User.findOne({
@@ -573,6 +577,10 @@ router.post('/change-password', authMiddleware, asyncHandler(async (req, res) =>
     throw new AppError('currentPassword and newPassword are required.', 400);
   if (newPassword.length < 8)
     throw new AppError('Password must be at least 8 characters.', 400);
+  if (!/[A-Z]/.test(newPassword))
+    throw new AppError('Password must contain at least one uppercase letter.', 400);
+  if (!/[0-9]/.test(newPassword))
+    throw new AppError('Password must contain at least one number.', 400);
 
   const user = await User.findById(req.user._id || req.user.id);
   if (!user) throw new AppError('User not found.', 404);
@@ -713,7 +721,7 @@ router.get('/verify-invite', asyncHandler(async (req, res) => {
   const user = await User.findOne({
     email: email.toLowerCase().trim(),
     $or: [
-      { inviteToken: tokenHash },
+      { inviteToken: tokenHash, inviteTokenExpiry: { $gt: new Date() } },
       { resetPasswordToken: tokenHash, resetPasswordExpires: { $gt: new Date() } },
     ],
   }).select('name email role').lean();

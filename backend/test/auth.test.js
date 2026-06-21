@@ -472,6 +472,74 @@ describe('GET /me', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SET-PASSWORD (legacy body token) — password policy per-path tests
+// ─────────────────────────────────────────────────────────────────────────────
+describe('set-password (legacy body token) — password policy', () => {
+  function mockValidUser() {
+    const raw  = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    vi.spyOn(User, 'findOne').mockResolvedValue(makeUser({
+      resetPasswordToken: hash,
+      resetPasswordExpires: new Date(Date.now() + 3_600_000),
+    }));
+    return raw;
+  }
+
+  it('rejects password shorter than 8 chars', async () => {
+    const token = mockValidUser();
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, email: 'alice@acmecorp.com', newPassword: 'Ab1' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/8 characters/i);
+  });
+
+  it('rejects password with no uppercase letter', async () => {
+    const token = mockValidUser();
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, email: 'alice@acmecorp.com', newPassword: 'newpass1' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/uppercase/i);
+  });
+
+  it('rejects password with no number', async () => {
+    const token = mockValidUser();
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, email: 'alice@acmecorp.com', newPassword: 'NewPassXX' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/number/i);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VERIFY-INVITE — expiry gap per-path test
+// ─────────────────────────────────────────────────────────────────────────────
+describe('GET /verify-invite — invite token expiry', () => {
+  it('rejects an inviteToken with no expiry (expired or never set)', async () => {
+    const raw  = crypto.randomBytes(32).toString('hex');
+    const findOneSpy = vi.spyOn(User, 'findOne').mockReturnValue(queryOf(null));
+
+    const res = await request(app)
+      .get('/api/auth/verify-invite')
+      .query({ token: raw, email: 'alice@acmecorp.com' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid or has expired/i);
+
+    // Verify the fix: inviteToken branch must include expiry condition
+    expect(findOneSpy).toHaveBeenCalledWith(expect.objectContaining({
+      $or: expect.arrayContaining([
+        expect.objectContaining({
+          inviteTokenExpiry: expect.objectContaining({ $gt: expect.any(Date) }),
+        }),
+      ]),
+    }));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CHANGE-PASSWORD
 // ─────────────────────────────────────────────────────────────────────────────
 describe('change-password', () => {
@@ -510,5 +578,50 @@ describe('change-password', () => {
 
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/incorrect/i);
+  });
+
+  it('rejects new password shorter than 8 chars', async () => {
+    const userId   = new mongoose.Types.ObjectId();
+    const tenantId = new mongoose.Types.ObjectId();
+    const user     = makeUser({ _id: userId, tenantId });
+    vi.spyOn(User, 'findById').mockReturnValueOnce(queryOf(user));
+
+    const res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${makeToken('admin', userId, tenantId)}`)
+      .send({ currentPassword: 'SecurePass1', newPassword: 'Ab1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/8 characters/i);
+  });
+
+  it('rejects new password with no uppercase letter', async () => {
+    const userId   = new mongoose.Types.ObjectId();
+    const tenantId = new mongoose.Types.ObjectId();
+    const user     = makeUser({ _id: userId, tenantId });
+    vi.spyOn(User, 'findById').mockReturnValueOnce(queryOf(user));
+
+    const res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${makeToken('admin', userId, tenantId)}`)
+      .send({ currentPassword: 'SecurePass1', newPassword: 'newpass1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/uppercase/i);
+  });
+
+  it('rejects new password with no number', async () => {
+    const userId   = new mongoose.Types.ObjectId();
+    const tenantId = new mongoose.Types.ObjectId();
+    const user     = makeUser({ _id: userId, tenantId });
+    vi.spyOn(User, 'findById').mockReturnValueOnce(queryOf(user));
+
+    const res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${makeToken('admin', userId, tenantId)}`)
+      .send({ currentPassword: 'SecurePass1', newPassword: 'NewPassXX' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/number/i);
   });
 });
