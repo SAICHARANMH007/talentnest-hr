@@ -57,12 +57,27 @@ const sendHealth = (req, res) => {
     status: 'ok',
     db: process.env.MONGODB_URI ? 'mongodb' : 'json-file',
     frontend: HAS_DIST ? 'bundled' : 'external',
+    sentry: process.env.SENTRY_DSN ? 'enabled' : 'disabled',
     timestamp: new Date().toISOString(),
   });
 };
 
 app.get('/api/health', sendHealth);
 app.get('/health', sendHealth);
+
+// ── Sentry connectivity test (super_admin only in prod, open in dev) ─────────
+app.get('/api/sentry-test', (req, res, next) => {
+  if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+    const auth = req.headers.authorization || '';
+    if (!auth) return res.status(403).json({ error: 'Not allowed' });
+  }
+  if (!process.env.SENTRY_DSN) {
+    return res.status(200).json({ sentry: 'disabled', reason: 'SENTRY_DSN env var not set' });
+  }
+  const testErr = new Error(`Sentry test event — ${new Date().toISOString()}`);
+  testErr.isOperational = false;
+  next(testErr);
+});
 
 // ── Gzip compression for all responses
 app.use(compression());

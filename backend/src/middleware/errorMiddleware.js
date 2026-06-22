@@ -2,13 +2,6 @@
 
 const { safeError } = require('./safeError');
 
-/**
- * Global Error Handling Middleware — Enterprise Standard
- * 
- * This is the final catch-all middleware in the Express app.
- * It formats errors, hides stack traces in production, 
- * and ensures the server never crashes on unknown exceptions.
- */
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
@@ -16,7 +9,6 @@ module.exports = (err, req, res, next) => {
   const isProd = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
 
   if (!isProd) {
-    // Development Environment: Send full details for debugging
     res.status(err.statusCode).json({
       status: err.status,
       error: err,
@@ -24,10 +16,8 @@ module.exports = (err, req, res, next) => {
       stack: err.stack
     });
   } else {
-    // Production Environment: Hide internal details, send client-safe messages
     let message = err.message;
 
-    // ── Mongoose Error Specialization (Industry Standard) ────────────────
     if (err.name === 'CastError') {
       err.statusCode = 400;
       message = `Invalid technical identity: ${err.value} at ${err.path}`;
@@ -44,9 +34,15 @@ module.exports = (err, req, res, next) => {
       err.isOperational = true;
     }
 
-    // If it's NOT an operational error (e.g., a bug in code), hide it with safeError logic
     if (!err.isOperational) {
       console.error('CRITICAL PROGRAMMING ERROR', err);
+      // Belt-and-suspenders: capture directly in case Sentry express handler missed it
+      if (process.env.SENTRY_DSN) {
+        try {
+          const Sentry = require('@sentry/node');
+          Sentry.captureException(err);
+        } catch (_) {}
+      }
       message = safeError(err);
     }
 
