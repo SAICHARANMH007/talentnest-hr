@@ -37,4 +37,10 @@ const schema = new mongoose.Schema({
     flagged      : { type: Boolean, default: false },
   },
 }, { timestamps: true, toJSON: { virtuals: true } });
+
+schema.index({ candidateId: 1, jobId: 1 });
+schema.index({ assessmentId: 1 });
+schema.index({ applicationId: 1 });
+schema.index({ tenantId: 1, candidateId: 1 });
+
 module.exports = mongoose.model('AssessmentSubmission', schema);

@@ -566,7 +566,7 @@ function CreateCommunityPost({ user, community, onCreate }) {
           {images.length > 0 && (
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               {images.map((url, i) => (
-                <div key={i} style={{ position: 'relative', width: 80, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+                <div key={url} style={{ position: 'relative', width: 80, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
                   <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <button onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
                     style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 18, height: 18, borderRadius: '50%', cursor: 'pointer', fontSize: 11, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -1045,7 +1045,7 @@ export default function CommunityDetailPage({ user }) {
   useEffect(() => {
     if (tab === 'jobs'   && !jobs.length)   loadJobs();
     if (tab === 'drives' && !drives.length) loadDrives();
-  }, [tab]);
+  }, [tab, loadJobs, loadDrives]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Infinite scroll — posts
   useEffect(() => {

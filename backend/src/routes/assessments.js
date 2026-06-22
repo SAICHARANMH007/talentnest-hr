@@ -214,7 +214,7 @@ router.post('/', auth, allowRoles('recruiter','admin','super_admin'), async (req
     });
 
     // Notify all existing applicants for this job
-    const apps = await Application.find({ jobId: String(jobId) });
+    const apps = await Application.find({ jobId: String(jobId), deletedAt: null });
     for (const app of (Array.isArray(apps) ? apps : [])) {
       const a = app.toJSON ? app.toJSON() : app;
       await notify(a.candidateId, req.user.tenantId, 'assessment',
@@ -230,7 +230,10 @@ router.post('/', auth, allowRoles('recruiter','admin','super_admin'), async (req
 // ── GET /api/assessments/job/:jobId ──────────────────────────────────────────
 router.get('/job/:jobId', auth, async (req, res) => {
   try {
-    const assessment = await Assessment.findOne({ jobId: String(req.params.jobId) });
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const asmtFilter = { jobId: String(req.params.jobId) };
+    if (!isSuperAdmin) asmtFilter.tenantId = req.user.tenantId;
+    const assessment = await Assessment.findOne(asmtFilter);
     if (!assessment) return res.status(200).json(null);
     const parsed = parseQ(assessment);
     // Candidates see sanitized questions (no isCorrect)

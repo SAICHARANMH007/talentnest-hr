@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const schema = new mongoose.Schema({
   tenantId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
-  candidateId: { type: mongoose.Schema.Types.ObjectId },
+  candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' },
   direction:   { type: String, enum: ['outbound', 'inbound'], required: true },
   from:        { type: String },
   to:          { type: String },

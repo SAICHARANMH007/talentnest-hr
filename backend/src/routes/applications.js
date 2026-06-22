@@ -966,14 +966,14 @@ router.get('/pipeline-smart-match/:jobId',
     const maxResults = parseInt(req.query.limit) || 50;
 
     const isSuperAdmin = req.user.role === 'super_admin';
-    const jobQuery = isSuperAdmin ? { _id: jobId } : { _id: jobId, tenantId: req.tenantId };
+    const jobQuery = isSuperAdmin ? { _id: jobId } : { _id: jobId, tenantId: req.user.tenantId };
     const job = await Job.findOne(jobQuery).lean();
     if (!job) throw new AppError('Job not found', 404);
 
     const CANDIDATE_POP = 'name title skills experience isFresher currentCompany availability location parsedProfile workHistory educationList summary avatarUrl photoUrl resumeUrl';
     const appsQuery = isSuperAdmin
       ? { jobId, status: { $nin: ['withdrawn'] }, deletedAt: null }
-      : { jobId, tenantId: req.tenantId, status: { $nin: ['withdrawn'] }, deletedAt: null };
+      : { jobId, tenantId: req.user.tenantId, status: { $nin: ['withdrawn'] }, deletedAt: null };
     const apps = await Application.find(appsQuery)
       .populate('candidateId', CANDIDATE_POP)
       .lean();

@@ -4130,7 +4130,7 @@ router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super
 
 /* GET /api/dashboard/hiring-funnel */
 router.get('/hiring-funnel', authenticate, allowRoles('recruiter'), asyncHandler(async (req, res) => {
-  const ids = (await Job.find({ assignedRecruiters: req.user._id }).select('_id').lean()).map(j => j._id);
+  const ids = (await Job.find({ assignedRecruiters: req.user._id, tenantId: req.user.tenantId }).select('_id').lean()).map(j => j._id);
   const raw = await Application.aggregate([
     { $match: { jobId: { $in: ids } } },
     { $group: { _id: '$currentStage', count: { $sum: 1 } } },
@@ -4155,7 +4155,7 @@ router.get('/hiring-funnel', authenticate, allowRoles('recruiter'), asyncHandler
 
 /* GET /api/dashboard/job-performance */
 router.get('/job-performance', authenticate, allowRoles('recruiter'), asyncHandler(async (req, res) => {
-  const myJobs = await Job.find({ assignedRecruiters: req.user._id }).lean();
+  const myJobs = await Job.find({ assignedRecruiters: req.user._id, tenantId: req.user.tenantId }).lean();
   const rows = await Promise.all(myJobs.map(async job => {
     const [total, shortlisted, interviewed, hired] = await Promise.all([
       Application.countDocuments({ jobId: job._id, deletedAt: null }),

@@ -170,10 +170,12 @@ export default function CandidateApplications({ user }) {
   }, [user.id]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadApplications = (silent = false) => {
       if (!silent) setLoad(true);
       api.getMyApplications()
         .then(raw => {
+          if (cancelled) return;
           const appList = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
           setApps(appList);
 
@@ -181,28 +183,31 @@ export default function CandidateApplications({ user }) {
           Promise.all(
             jobIds.map(jid => api.getAssessmentForJob(jid).then(a => [jid, a]).catch(() => null))
           ).then(results => {
+            if (cancelled) return;
             const map = {};
             results.forEach(r => { if (r && r[1]) map[r[0]] = r[1]; });
             setAssessments(map);
           });
 
           api.getMyAssessments().then(subs => {
+            if (cancelled) return;
             const map = {};
             const list = Array.isArray(subs) ? subs : (subs?.data || []);
             list.forEach(s => { map[s.assessmentId || s.assessment?.id] = s; });
             setMySubs(map);
           }).catch(() => {});
         })
-        .catch(() => { if (!silent) setApps([]); })
-        .finally(() => { if (!silent) setLoad(false); });
+        .catch(() => { if (!cancelled && !silent) setApps([]); })
+        .finally(() => { if (!cancelled && !silent) setLoad(false); });
 
       api.getMyOffers().then(r => {
+        if (cancelled) return;
         const list = Array.isArray(r) ? r : (Array.isArray(r?.data) ? r.data : []);
         setMyOffers(list);
       }).catch(() => {});
 
       api.getMyInvites()
-        .then(data => setInvites(Array.isArray(data) ? data : (data?.data || [])))
+        .then(data => { if (!cancelled) setInvites(Array.isArray(data) ? data : (data?.data || [])); })
         .catch(() => {});
     };
 
@@ -210,7 +215,10 @@ export default function CandidateApplications({ user }) {
 
     const handler = () => loadApplications(true);
     window.addEventListener('tn:stageChanged', handler);
-    return () => window.removeEventListener('tn:stageChanged', handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('tn:stageChanged', handler);
+    };
   }, [user.id]);
 
   const handleWithdraw = async (appId) => {

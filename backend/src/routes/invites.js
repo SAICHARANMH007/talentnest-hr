@@ -416,7 +416,7 @@ router.patch('/:token/respond', async (req, res) => {
     // Interested → auto-create pipeline application + notify recruiter
     if (response === 'interested') {
       const inviteJob = await Job.findById(inv.jobId).lean();
-      const existing = await Application.findOne({ jobId: inv.jobId, candidateId: inv.candidateId });
+      const existing = await Application.findOne({ jobId: inv.jobId, candidateId: inv.candidateId, deletedAt: null });
       if (!existing && inviteJob) {
         await Application.create({
           jobId: inviteJob._id,

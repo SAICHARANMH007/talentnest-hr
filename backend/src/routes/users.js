@@ -25,6 +25,7 @@ const { resolveCollegeName } = require('../utils/collegeDirectory');
 const logger       = require('../middleware/logger');
 const bcrypt       = require('bcryptjs');
 const crypto       = require('crypto');
+const mongoose     = require('mongoose');
 
 // POST /api/users — Create/Invite Recruiter or Candidate
 router.post('/', authenticate, allowRoles('admin','super_admin','recruiter'), checkPlanLimits('recruiters'), asyncHandler(async (req, res) => {
@@ -685,8 +686,10 @@ router.post('/:id/resend-invite', authenticate, allowRoles('admin', 'super_admin
 // PATCH /api/users/:id/reach-out — Log contact/outreach attempt
 router.patch('/:id/reach-out', authenticate, allowRoles('admin','super_admin','recruiter'), asyncHandler(async (req, res) => {
   const { note } = req.body;
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
+  const reachFilter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') reachFilter.tenantId = req.user.tenantId;
+  const user = await User.findOneAndUpdate(
+    reachFilter,
     {
       $push: { contactLog: { note: note || 'Reached out', date: new Date(), by: req.user._id } },
       $set: { lastReachedOutAt: new Date(), reachOutNote: note || 'Reached out' },

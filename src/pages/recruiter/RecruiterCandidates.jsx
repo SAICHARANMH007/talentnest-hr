@@ -436,7 +436,7 @@ export default function RecruiterCandidates({ user }) {
     if (targetId) {
       const u = allCandidates.find(x => String(x.id || x._id) === String(targetId));
       if (u) {
-        setDetailUser(u);
+        setDrawerCandidate({ role: 'candidate', ...u, id: u.id || u._id?.toString() });
         sessionStorage.removeItem('tn_open_candidate_id');
       }
     }

@@ -617,7 +617,9 @@ router.get('/share/:shareToken', asyncHandler(async (req, res) => {
 
 // ── POST /api/offers/:id/generate-share-link — create shareable token ────────
 router.post('/:id/generate-share-link', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
-  const offer = await OfferLetter.findById(req.params.id);
+  const shareLinkFilter = { _id: req.params.id };
+  if (req.user.role !== 'super_admin') shareLinkFilter.tenantId = req.user.tenantId;
+  const offer = await OfferLetter.findOne(shareLinkFilter);
   if (!offer) throw new AppError('Offer not found.', 404);
 
   // Generate or reuse share token
@@ -636,7 +638,9 @@ router.post('/standalone', ...guard, allowRoles('admin', 'super_admin', 'recruit
   const { candidateId, designation, joiningDate, salary, companyName, signatoryName, signatoryDesignation } = req.body;
   if (!candidateId) throw new AppError('candidateId required', 400);
 
-  const candidate = await Candidate.findOne({ _id: candidateId, deletedAt: null }).lean();
+  const standaloneFilter = { _id: candidateId, deletedAt: null };
+  if (req.user.role !== 'super_admin') standaloneFilter.tenantId = req.user.tenantId;
+  const candidate = await Candidate.findOne(standaloneFilter).lean();
   if (!candidate) throw new AppError('Candidate not found', 404);
 
   const offer = await OfferLetter.create({

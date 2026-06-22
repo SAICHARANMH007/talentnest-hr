@@ -142,4 +142,17 @@ const tenantGuard = async (req, res, next) => {
   }
 };
 
-module.exports = { tenantGuard };
+/** Evict a single tenant from the identity cache (call after status/suspension changes). */
+function clearTenantCache(tenantId) {
+  if (tenantId) {
+    identityCache.delete(String(tenantId));
+    identityCache.delete(`children:${tenantId}`);
+  }
+}
+
+/** Flush the entire identity cache — for test isolation only. */
+function clearAllTenantCache() {
+  identityCache.clear();
+}
+
+module.exports = { tenantGuard, clearTenantCache, clearAllTenantCache };

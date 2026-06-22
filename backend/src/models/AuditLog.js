@@ -7,9 +7,9 @@ const auditSchema = new mongoose.Schema({
 
   userName: { type: String },
   userRole: { type: String },
-  action  : { type: String },
-  entity  : { type: String },
-  entityId: { type: String },
+  action  : { type: String, required: true },
+  entity  : { type: String, required: true },
+  entityId: { type: String, required: true },
 
   details  : { type: mongoose.Schema.Types.Mixed },
   ip       : { type: String },

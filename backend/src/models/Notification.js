@@ -21,5 +21,6 @@ notiSchema.set('toObject', { virtuals: true });
 
 notiSchema.index({ userId: 1, read: 1 });
 notiSchema.index({ userId: 1, createdAt: -1 });
+notiSchema.index({ tenantId: 1, userId: 1, read: 1 });
 
 module.exports = mongoose.model('Notification', notiSchema);

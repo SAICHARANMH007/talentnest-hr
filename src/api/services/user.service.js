@@ -2,7 +2,7 @@ import { req } from '../client.js';
 
 export const userService = {
   // Presence
-  async sendHeartbeat()         { return req('POST', '/presence/heartbeat', {}, false); },
+  async sendHeartbeat()         { return req('POST', '/presence/heartbeat', {}); },
   async getOnlineUsers()        { return req('GET', '/presence/online'); },
 
   async getProfile()            { return req('GET', '/users/me'); },

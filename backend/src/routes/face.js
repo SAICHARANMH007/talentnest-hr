@@ -11,7 +11,7 @@ const express    = require('express');
 const router     = express.Router();
 const rateLimit  = require('express-rate-limit');
 const jwt        = require('jsonwebtoken');
-const { JWT_SECRET } = require('../middleware/auth');
+const { JWT_SECRET, clearUserAuthCache } = require('../middleware/auth');
 const User       = require('../models/User');
 const Candidate  = require('../models/Candidate');
 const Organization = require('../models/Organization');
@@ -472,6 +472,7 @@ router.patch('/admin/duplicates/:id', ...guard,
       const validId = [String(alert.userId1), String(alert.userId2)].includes(String(disableUserId));
       if (!validId) throw new AppError('disableUserId must be one of the two users in this alert.', 400);
       await User.findByIdAndUpdate(disableUserId, { $set: { isActive: false } });
+      clearUserAuthCache(disableUserId);
       logger.audit('Account disabled — confirmed face duplicate', req.user.id, req.user.tenantId, {
         alertId: alert._id, disabledUserId: disableUserId,
       });

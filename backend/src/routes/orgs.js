@@ -8,6 +8,7 @@ const { allowRoles } = require('../middleware/rbac');
 const { safeError }         = require('../middleware/safeError');
 const normalize             = require('../utils/normalize');
 const logger                = require('../middleware/logger');
+const { clearTenantCache }  = require('../middleware/tenantGuard');
 const Org = Organization; // Alias for cleaner code
 const router      = express.Router();
 
@@ -291,6 +292,9 @@ router.patch('/:id', auth, async (req, res) => {
     const org = await Model.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
     if (!org) return res.status(404).json({ error: 'Organisation not found.' });
 
+    // Evict from tenant guard cache so status/plan changes take effect immediately
+    if (updates.status !== undefined) clearTenantCache(req.params.id);
+
     // ── Sync Name to Associated Users ──────────────────────────────────────────
     // If name changed, propagate to recruiter/admin 'organisation' and 'currentCompany' fields
     if (updates.name) {
@@ -352,7 +356,10 @@ router.patch('/:id/plan', auth, allowRoles('super_admin'), async (req, res) => {
     if (trialEndsAt) updates.trialEndsAt = trialEndsAt;
 
     const updated = await Org.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
-    
+
+    // Evict from tenant guard cache so plan/status changes take effect immediately
+    clearTenantCache(req.params.id);
+
     logger.audit('Organization plan updated', req.user.id, updated._id, { plan: updates.plan, status: updates.status });
     res.json(normalize(updated));
   } catch (e) { res.status(500).json({ error: safeError(e) }); }

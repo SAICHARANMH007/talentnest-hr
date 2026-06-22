@@ -626,7 +626,7 @@ router.post('/:id/assign-candidates', ...guard, allowRoles('admin', 'super_admin
   const results = { created: 0, skipped: 0, errors: 0 };
   for (const uid of candidateIds) {
     try {
-      const user = await User.findOne({ _id: uid, role: 'candidate' }).lean();
+      const user = await User.findOne({ _id: uid, role: 'candidate', deletedAt: null }).lean();
       if (!user) { results.errors++; continue; }
       let candidate = await Candidate.findOne({ email: user.email, tenantId: job.tenantId, deletedAt: null });
       if (!candidate) {
@@ -665,8 +665,10 @@ router.get('/:id/candidates', ...guard, asyncHandler(async (req, res) => {
 }));
 
 router.delete('/:id', ...guard, allowRoles('admin', 'super_admin'), asyncHandler(async (req, res) => {
+  const delFilter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') delFilter.tenantId = req.user.tenantId;
   const job = await Job.findOneAndUpdate(
-    { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
+    delFilter,
     { $set: { deletedAt: new Date(), status: 'closed' } }, { new: true }
   );
   if (!job) throw new AppError('Job not found.', 404);
