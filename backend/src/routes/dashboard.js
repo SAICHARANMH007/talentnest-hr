@@ -4767,7 +4767,8 @@ router.get('/recruiter-performance/export', authenticate, allowRoles('admin', 's
   const { startDate, endDate } = req.query;
   const dateRange = buildDateRange(startDate, endDate);
 
-  const recruiters = await User.find({ ...tf, role: 'recruiter', isActive: true }).lean();
+  // Cap at 500 recruiters per export to prevent OOM on large tenants
+  const recruiters = await User.find({ ...tf, role: 'recruiter', isActive: true }).limit(500).lean();
   const rows = await Promise.all(recruiters.map(async (r) => {
     const myJobIds = (await Job.find({ assignedRecruiters: r._id, ...tf }).select('_id').lean()).map(j => j._id);
     const [candidatesAdded, shortlisted, offers, hired] = await Promise.all([

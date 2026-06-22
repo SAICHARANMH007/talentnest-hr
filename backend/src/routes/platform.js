@@ -58,38 +58,70 @@ router.patch('/flags', auth, allowRoles('super_admin'), asyncHandler(async (req,
   res.json({ success: true });
 }));
 
-// GET /api/platform/backup — full data export (super_admin only)
+// GET /api/platform/backup — paginated data export (super_admin only)
+// ?since=YYYY-MM-DD  narrows to docs created after that date (recommended for large DBs)
+// ?page=N            fetches page N of each collection (default: 1)
+// ?limit=N           docs per collection per page (max 10 000, default 1 000)
 router.get('/backup', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
-  const User        = require('../models/User');
-  const Job         = require('../models/Job');
-  const Application = require('../models/Application');
+  const { EXPORT_LIMIT, parsePage } = require('../utils/pagination');
+
+  const User         = require('../models/User');
+  const Job          = require('../models/Job');
+  const Application  = require('../models/Application');
   const Organization = require('../models/Organization');
 
-  let leads = [], assessments = [], emailLogs = [], notifications = [];
-  try { const Lead        = require('../models/Lead');         leads         = await Lead.find({}).lean(); }         catch(e) {}
-  try { const Assessment  = require('../models/Assessment');   assessments   = await Assessment.find({}).lean(); }   catch(e) {}
-  try { const EmailLog    = require('../models/EmailLog');     emailLogs     = await EmailLog.find({}).lean(); }     catch(e) {}
-  try { const Notification= require('../models/Notification');notifications  = await Notification.find({}).lean(); } catch(e) {}
+  // Build an optional date filter from ?since= query param
+  const dateFilter = req.query.since ? { createdAt: { $gte: new Date(req.query.since) } } : {};
 
-  const [users, jobs, applications, orgs] = await Promise.all([
-    User.find({}).select('-passwordHash -resetPasswordToken -resetPasswordExpires -twoFactorSecret -refreshTokens').lean(),
-    Job.find({}).lean(),
-    Application.find({}).lean(),
-    Organization.find({ slug: { $ne: '__platform__' } }).lean(),
-  ]);
+  // Honour pagination with a hard safety cap of EXPORT_LIMIT (10 000) per collection
+  const { page, limit, skip } = parsePage(req.query, 1_000, EXPORT_LIMIT);
+
+  const safeFetch = async (Model, extraFilter = {}, projection = null) => {
+    const filter = { ...dateFilter, ...extraFilter };
+    let q = Model.find(filter).sort({ _id: 1 }).skip(skip).limit(limit);
+    if (projection) q = q.select(projection);
+    const [docs, total] = await Promise.all([q.lean(), Model.countDocuments(filter)]);
+    return { docs, total, truncated: total > skip + limit };
+  };
+
+  let leadRes = { docs: [], total: 0 }, assessRes = { docs: [], total: 0 };
+  let logRes  = { docs: [], total: 0 }, notifRes  = { docs: [], total: 0 };
+
+  try { const Lead        = require('../models/Lead');         leadRes   = await safeFetch(Lead); }         catch(e) {}
+  try { const Assessment  = require('../models/Assessment');   assessRes = await safeFetch(Assessment); }   catch(e) {}
+  try { const EmailLog    = require('../models/EmailLog');     logRes    = await safeFetch(EmailLog); }     catch(e) {}
+  try { const Notification= require('../models/Notification'); notifRes  = await safeFetch(Notification); } catch(e) {}
+
+  const userRes = await safeFetch(User, {}, '-passwordHash -resetPasswordToken -resetPasswordExpires -twoFactorSecret -refreshTokens');
+  const jobRes  = await safeFetch(Job);
+  const appRes  = await safeFetch(Application);
+  const orgRes  = await safeFetch(Organization, { slug: { $ne: '__platform__' } });
+
+  const truncated = [userRes, jobRes, appRes, orgRes, leadRes, assessRes, logRes, notifRes].some(r => r.truncated);
 
   const backup = {
     exportedAt: new Date().toISOString(),
     exportedBy: req.user.email || req.user._id,
-    version: '2.0 (Consolidated)',
-    data: { users, jobs, applications, orgs, leads, assessments, emailLogs, notifications },
+    version: '2.1 (Paginated)',
+    pagination: { page, limit, note: truncated ? 'Results truncated — use ?page=N to retrieve more' : 'All results fit in this page' },
+    data: {
+      users:         userRes.docs,
+      jobs:          jobRes.docs,
+      applications:  appRes.docs,
+      orgs:          orgRes.docs,
+      leads:         leadRes.docs,
+      assessments:   assessRes.docs,
+      emailLogs:     logRes.docs,
+      notifications: notifRes.docs,
+    },
     counts: {
-      users: users.length, jobs: jobs.length, applications: applications.length,
-      orgs: orgs.length, leads: leads.length, assessments: assessments.length,
+      users: userRes.total, jobs: jobRes.total, applications: appRes.total,
+      orgs: orgRes.total, leads: leadRes.total, assessments: assessRes.total,
+      emailLogs: logRes.total, notifications: notifRes.total,
     },
   };
 
-  const filename = `talentnest-backup-${new Date().toISOString().split('T')[0]}.json`;
+  const filename = `talentnest-backup-${new Date().toISOString().split('T')[0]}-p${page}.json`;
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.json(backup);
@@ -170,58 +202,76 @@ router.patch('/raw/:model/:id', auth, allowRoles('super_admin'), asyncHandler(as
 }));
 
 // ── GET /api/platform/revenue ────────────────────────────────────────────────
+// Uses MongoDB aggregation for totals; loads at most EXPORT_LIMIT records for
+// in-memory trend/plan breakdowns so a large payment history cannot OOM the server.
 router.get('/revenue', auth, allowRoles('super_admin'), asyncHandler(async (req, res) => {
+  const { EXPORT_LIMIT } = require('../utils/pagination');
   const PaymentRecord = require('../models/PaymentRecord');
   const Tenant        = require('../models/Tenant');
 
-  const [payments, tenants] = await Promise.all([
-    PaymentRecord.find({ status: 'captured' }).sort({ createdAt: -1 }).lean(),
-    Tenant.find({}).select('name plan subscriptionStatus createdAt').lean(),
+  // Aggregate totals + plan breakdown in the DB — no full load required
+  const [aggResult, tenants, recent] = await Promise.all([
+    PaymentRecord.aggregate([
+      { $match: { status: 'captured' } },
+      { $group: {
+        _id:          '$plan',
+        totalRevenue: { $sum: '$amountINR' },
+        count:        { $sum: 1 },
+      }},
+    ]),
+    Tenant.find({}).select('name plan subscriptionStatus createdAt').limit(EXPORT_LIMIT).lean(),
+    PaymentRecord.find({ status: 'captured' }).sort({ createdAt: -1 }).limit(10).lean(),
   ]);
 
-  const totalRevenue = payments.reduce((s, p) => s + (p.amountINR || 0), 0);
-  const now = Date.now();
+  const totalRevenue = aggResult.reduce((s, r) => s + r.totalRevenue, 0);
+  const totalPayments = aggResult.reduce((s, r) => s + r.count, 0);
+  const planRevenue = Object.fromEntries(aggResult.map(r => [r._id || 'unknown', r.totalRevenue]));
+
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const mrr = payments
-    .filter(p => new Date(p.createdAt) >= monthStart)
-    .reduce((s, p) => s + (p.amountINR || 0), 0);
-
-  // Revenue by plan
-  const planRevenue = {};
-  payments.forEach(p => {
-    const key = p.plan || 'unknown';
-    planRevenue[key] = (planRevenue[key] || 0) + (p.amountINR || 0);
-  });
-
-  // Plan distribution from tenants
   const planDist = {};
   tenants.forEach(t => { planDist[t.plan || 'free'] = (planDist[t.plan || 'free'] || 0) + 1; });
 
-  // Last 6 months revenue trend
+  // Monthly trend — aggregate per calendar month for the last 6 months
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const trendAgg = await PaymentRecord.aggregate([
+    { $match: { status: 'captured', createdAt: { $gte: sixMonthsAgo } } },
+    { $group: {
+      _id:   { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+      value: { $sum: '$amountINR' },
+    }},
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  const trendMap = new Map(trendAgg.map(r => [`${r._id.year}-${r._id.month}`, r.value]));
   const monthlyTrend = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
     const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-    const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
-    const mEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const val    = payments.filter(p => {
-      const cd = new Date(p.createdAt);
-      return cd >= mStart && cd <= mEnd;
-    }).reduce((s, p) => s + (p.amountINR || 0), 0);
-    monthlyTrend.push({ label, value: val });
+    const key   = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    monthlyTrend.push({ label, value: trendMap.get(key) || 0 });
   }
 
-  // Recent payments
-  const recent = payments.slice(0, 10).map(p => ({
+  // MRR = this month's captured payments (from aggregate)
+  const mrr = trendAgg.find(r => {
+    const now = new Date();
+    return r._id.year === now.getFullYear() && r._id.month === now.getMonth() + 1;
+  })?.value || 0;
+
+  const recentMapped = recent.map(p => ({
     id: p._id, amount: p.amountINR, plan: p.plan, createdAt: p.createdAt,
     orgId: p.tenantId || p.orgId,
   }));
 
   res.json({ success: true, data: {
-    totalRevenue, mrr, planRevenue, planDist, monthlyTrend, recent,
-    totalPayments: payments.length,
-    avgPayment: payments.length > 0 ? Math.round(totalRevenue / payments.length) : 0,
+    totalRevenue, mrr, planRevenue, planDist, monthlyTrend,
+    recent: recentMapped,
+    totalPayments,
+    avgPayment: totalPayments > 0 ? Math.round(totalRevenue / totalPayments) : 0,
   }});
 }));
 

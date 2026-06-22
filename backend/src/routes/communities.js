@@ -622,7 +622,8 @@ const DEFAULTS = [
 router.post('/merge-duplicates', asyncHandler(async (req, res) => {
   if (req.user.role !== 'super_admin') throw new AppError('Only super admins can merge communities.', 403);
 
-  const all = await Community.find({}).sort({ createdAt: 1 }).lean();
+  // Admin merge-duplicates: cap at 10 000 communities to prevent OOM
+  const all = await Community.find({}).sort({ createdAt: 1 }).limit(10_000).lean();
 
   // Group by slug
   const bySlug = {};
@@ -779,7 +780,8 @@ router.get('/', asyncHandler(async (req, res) => {
   if (baseListCache && Date.now() - baseListCacheAt < BASE_LIST_CACHE_MS) {
     unique = baseListCache;
   } else {
-    const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).lean();
+    // Cap at 5 000; the result is cached for 5 min so DB hits are infrequent
+    const allCommunities = await Community.find({}).sort({ memberCount: -1, name: 1 }).limit(5_000).lean();
     const seenSlugs = new Set();
     unique = allCommunities.filter(c => {
       if (seenSlugs.has(c.slug)) return false;

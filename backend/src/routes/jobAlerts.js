@@ -72,18 +72,21 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 
 /**
  * notifyMatchingAlerts — called by jobs.js after a job goes active.
- * Finds all active alerts that match the job and sends instant email notifications.
+ * Iterates active alerts in batches of 500 so a large alert list cannot OOM the server.
  * Fire-and-forget: errors are swallowed so they never affect the job creation response.
  */
+const ALERT_BATCH_SIZE = 500;
+
 async function notifyMatchingAlerts(job) {
   try {
-    const alerts = await JobAlert.find({ isActive: true }).lean();
+    const { batchProcess } = require('../utils/pagination');
     const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
     const jobSkills    = (job.skills || []).map(s => s.toLowerCase());
     const jobExpMin    = parseExpMin(job.experience);
     const jobExpMax    = parseExpMax(job.experience);
     const jobText      = `${job.title} ${job.description || ''} ${jobSkills.join(' ')}`.toLowerCase();
 
+    await batchProcess(JobAlert, { isActive: true }, async (alerts) => {
     for (const alert of alerts) {
       if (!alert.email) continue;
       if (!matchesAlert(alert, job, jobSkills, jobText, jobExpMin, jobExpMax)) continue;
@@ -130,6 +133,7 @@ async function notifyMatchingAlerts(job) {
         $addToSet: { lastJobIds: job._id },
       }).catch(() => {});
     }
+    }, { batchSize: ALERT_BATCH_SIZE });
   } catch { /* never crash the caller */ }
 }
 
