@@ -1,6 +1,17 @@
 require('dotenv').config();
 // v3.5 — email triggers, audit log DB, duplicate detection, time-to-hire
 'use strict';
+
+// ── Sentry error monitoring (off unless SENTRY_DSN is set) ──────────────────
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV === 'production' || process.env.RENDER ? 'production' : 'development',
+    tracesSampleRate: 0,   // no performance tracing — errors only
+  });
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -836,6 +847,9 @@ app.all('*', (req, res, next) => {
   next();
 });
 
+// ── Sentry must capture the error before errorMiddleware sends the response
+if (process.env.SENTRY_DSN) app.use(Sentry.expressErrorHandler());
+
 // ── Global error handler (Industry Standard)
 app.use(errorMiddleware);
 
@@ -974,3 +988,14 @@ connectDB()
 
   })
   .catch(err => console.error('❌  DB connection failed:', err.message));
+
+// ── Process-level safety net — catch anything that slips past Express ────────
+process.on('unhandledRejection', (reason) => {
+  if (process.env.SENTRY_DSN) Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
+  console.error('⚠️  Unhandled Promise Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  if (process.env.SENTRY_DSN) Sentry.captureException(err);
+  console.error('💥  Uncaught Exception:', err);
+  process.exit(1);
+});

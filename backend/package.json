@@ -16,6 +16,7 @@
     "refresh-job-dates": "node src/db/refreshJobDates.js"
   },
   "dependencies": {
+    "@sentry/node": "^10.59.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.9.0",
     "compression": "^1.8.1",
