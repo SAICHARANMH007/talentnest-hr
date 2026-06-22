@@ -174,7 +174,7 @@ function PostTypeBanner({ post, isMobile }) {
       background: cfg.gradient,
       borderRadius: `${topRad}px ${topRad}px 0 0`,
       padding: `${isMobile ? 16 : 20}px ${hPad}px`,
-      marginLeft: -hPad, marginRight: -hPad, marginBottom: 16,
+      marginBottom: 16,
       display: 'flex', alignItems: 'center', gap: 14,
       position: 'relative', overflow: 'hidden',
     }}>
@@ -905,8 +905,8 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
 
   return (
     <div id={post._id} className={isMobile ? undefined : 'tn-postcard'} style={isMobile
-      ? { ...card, padding: hasBanner ? '0 14px 18px' : '16px 14px 18px', marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box' }
-      : { ...card, padding: hasBanner ? '0 20px 20px' : '20px', marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
+      ? { ...card, padding: 0, marginBottom: 8, borderRadius: 14, border: accentColor ? `1.5px solid ${accentColor}30` : '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '08' : 'var(--app-card-bg, #fff)', width: '100%', minWidth: 0, boxSizing: 'border-box' }
+      : { ...card, padding: 0, marginBottom: 12, borderRadius: 20, border: post.isPinned ? '1.5px solid #BFDBFE' : accentColor ? `1.5px solid ${accentColor}35` : '1px solid rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden', background: accentColor ? accentColor + '06' : 'var(--app-card-bg, #fff)', boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08)' }}>
       {/* Report modal */}
       {showReport && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
@@ -937,8 +937,13 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
         document.body
       )}
 
-      {/* Post type banner — flush to card top edge */}
+      {/* Post type banner — flush to card top edge, fills full width since outer padding is 0 */}
       {hasBanner && <PostTypeBanner post={post} isMobile={isMobile} />}
+
+      {/* Inner content wrapper carries all the padding so banner can be edge-to-edge */}
+      <div style={{ padding: isMobile
+        ? (hasBanner ? '0 14px 18px' : '16px 14px 18px')
+        : (hasBanner ? '0 20px 20px' : '20px') }}>
 
       {post.isPinned && (
         <div style={{ fontSize: 11, color: '#0176D3', fontWeight: 700, marginBottom: 10 }}>📌 Pinned post</div>
@@ -1073,6 +1078,7 @@ function PostCard({ post, userId, userRole, currentUser, connectionIds, pendingI
           autoFocus={false}
         />
       )}
+      </div>{/* end inner content wrapper */}
     </div>
   );
 }
