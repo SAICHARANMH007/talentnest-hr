@@ -1172,7 +1172,9 @@ router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruite
   const { jobId } = req.query;
   if (!jobId) return res.status(400).json({ message: 'jobId required' });
 
-  const apps = await Application.find({ tenantId: req.user.tenantId, jobId, deletedAt: null })
+  const scoreFilter = { jobId, deletedAt: null };
+  if (req.user.role !== 'super_admin') scoreFilter.tenantId = req.user.tenantId;
+  const apps = await Application.find(scoreFilter)
     .populate('candidateId', 'firstName lastName email')
     .select('candidateId currentStage interviewRounds')
     .lean();
@@ -1608,11 +1610,23 @@ router.patch('/:id/stage', ...guard,
   })
 );
 
+// Shared recruiter-scope guard for mutation endpoints that assertScopedAccess
+// doesn't cover (it only checks client and hiring_manager).
+async function assertRecruiterJobAccess(req, existing) {
+  if (req.user.role === 'recruiter') {
+    const assignedJob = await Job.findOne({
+      _id: existing.jobId, tenantId: req.user.tenantId, assignedRecruiters: req.user.id,
+    }).select('_id').lean();
+    if (!assignedJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
+  }
+}
+
 // PATCH /api/applications/:id/notes
 router.patch('/:id/notes', ...guard, asyncHandler(async (req, res) => {
   const { notes } = req.body;
   const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
   if (!existing) throw new AppError('Application not found.', 404);
+  await assertRecruiterJobAccess(req, existing);
   await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
@@ -1629,6 +1643,7 @@ router.patch('/:id/tags', ...guard, asyncHandler(async (req, res) => {
   if (!Array.isArray(tags)) throw new AppError('tags must be an array.', 400);
   const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
   if (!existing) throw new AppError('Application not found.', 404);
+  await assertRecruiterJobAccess(req, existing);
   await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },
@@ -1644,6 +1659,7 @@ router.patch('/:id/feedback', ...guard, asyncHandler(async (req, res) => {
   const { rating, strengths, weaknesses, recommendation, comment } = req.body;
   const existing = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null }).select('jobId').lean();
   if (!existing) throw new AppError('Application not found.', 404);
+  await assertRecruiterJobAccess(req, existing);
   await assertScopedAccess(req, existing);
   const app = await Application.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null },

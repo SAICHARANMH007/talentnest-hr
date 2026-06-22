@@ -78,4 +78,9 @@ function clearUserAuthCache(userId) {
   if (userId) userCache.delete(String(userId));
 }
 
-module.exports = { authMiddleware, authenticate, signToken, JWT_SECRET, clearUserAuthCache };
+/** Flush the entire auth user cache — for test isolation only. */
+function clearAllUserAuthCache() {
+  userCache.clear();
+}
+
+module.exports = { authMiddleware, authenticate, signToken, JWT_SECRET, clearUserAuthCache, clearAllUserAuthCache };
