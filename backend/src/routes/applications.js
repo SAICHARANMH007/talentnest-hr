@@ -720,17 +720,19 @@ router.post('/invite', ...guard,
     const { candidateId, jobId, message } = req.body;
     if (!candidateId || !jobId) throw new AppError('candidateId and jobId are required.', 400);
 
+    const inviteTenantMatch = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
     const [job, candidate] = await Promise.all([
-      Job.findOne({ _id: jobId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
-      Candidate.findOne({ _id: candidateId, tenantId: req.user.tenantId, deletedAt: null }).lean(),
+      Job.findOne({ _id: jobId, ...inviteTenantMatch, deletedAt: null }).lean(),
+      Candidate.findOne({ _id: candidateId, ...inviteTenantMatch, deletedAt: null }).lean(),
     ]);
     if (!job)       throw new AppError('Job not found.', 404);
     if (!candidate) throw new AppError('Candidate not found.', 404);
+    const inviteTenantId = req.user.role === 'super_admin' ? String(job.tenantId) : req.user.tenantId;
 
     const inviteToken = crypto.randomBytes(32).toString('hex');
     const { score, breakdown } = calculateTalentMatchScore(job, candidate);
 
-    let app = await Application.findOne({ jobId, candidateId, tenantId: req.user.tenantId, deletedAt: null });
+    let app = await Application.findOne({ jobId, candidateId, tenantId: inviteTenantId, deletedAt: null });
     if (app) {
       app.inviteToken  = inviteToken;
       app.inviteStatus = 'sent';
@@ -738,7 +740,7 @@ router.post('/invite', ...guard,
       await app.save();
     } else {
       app = await Application.create({
-        tenantId: req.user.tenantId,
+        tenantId: inviteTenantId,
         jobId,
         candidateId,
         createdBy: req.user.id,
@@ -771,7 +773,7 @@ router.post('/invite', ...guard,
       }
     }
 
-    logger.audit('Invite sent', req.user.id, req.user.tenantId, { appId: app._id, candidateId });
+    logger.audit('Invite sent', req.user.id, inviteTenantId, { appId: app._id, candidateId });
     res.status(201).json({ success: true, message: 'Invitation sent.', data: normalizeApp(app) });
   })
 );
@@ -1552,7 +1554,7 @@ router.patch('/:id/stage', ...guard,
     const jobForWf = await Job.findById(app.jobId).select('title assignedRecruiters').lean();
     const wfBase = {
       applicationId : app._id.toString(),
-      tenantId      : req.user.tenantId,
+      tenantId      : String(app.tenantId),
       stage,
       previousStage : (app.stageHistory[app.stageHistory.length - 2]?.stage) || '',
       candidateEmail: candidateForWf?.email || '',
@@ -1731,8 +1733,11 @@ async function sendWhatsApp(to, body) {
 router.patch('/:id/interview', ...guard, asyncHandler(async (req, res) => {
   const { date, time, format, interviewerName, interviewerEmail, videoLink, notes, roundIndex: bodyRoundIndex } = req.body;
 
-  const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  const ivScheduleFilter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') ivScheduleFilter.tenantId = req.user.tenantId;
+  const app = await Application.findOne(ivScheduleFilter);
   if (!app) throw new AppError('Application not found.', 404);
+  await assertRecruiterJobAccess(req, app);
 
   // "+ Create Room" on an already-scheduled round sends roundIndex to UPDATE that
   // round in place (e.g. to attach a video link) instead of scheduling a new one.
@@ -1914,8 +1919,11 @@ router.post('/:id/interview/:roundIndex/scorecard', ...guard,
     const { roundIndex } = req.params;
     const { rating, technicalScore, communicationScore, problemSolvingScore, cultureFitScore, strengths, weaknesses, recommendation, notes } = req.body;
 
-    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    const scFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') scFilter.tenantId = req.user.tenantId;
+    const app = await Application.findOne(scFilter);
     if (!app) throw new AppError('Application not found.', 404);
+    await assertRecruiterJobAccess(req, app);
     await assertScopedAccess(req, app);
 
     const idx = parseInt(roundIndex, 10);
@@ -1958,8 +1966,11 @@ router.patch('/:id/interview/:roundIndex/reschedule', ...guard,
     const { date, time, notes } = req.body;
     if (!date || !time) throw new AppError('date and time are required.', 400);
 
-    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    const rsFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') rsFilter.tenantId = req.user.tenantId;
+    const app = await Application.findOne(rsFilter);
     if (!app) throw new AppError('Application not found.', 404);
+    await assertRecruiterJobAccess(req, app);
     await assertScopedAccess(req, app);
 
     const idx = parseInt(req.params.roundIndex, 10);
@@ -1987,8 +1998,11 @@ router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
     const { kitScores } = req.body;
     if (!Array.isArray(kitScores)) throw new AppError('kitScores array is required', 400);
 
-    const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+    const ksFilter = { _id: req.params.id, deletedAt: null };
+    if (req.user.role !== 'super_admin') ksFilter.tenantId = req.user.tenantId;
+    const app = await Application.findOne(ksFilter);
     if (!app) throw new AppError('Application not found.', 404);
+    await assertRecruiterJobAccess(req, app);
 
     const idx = parseInt(req.params.roundIndex, 10);
     if (isNaN(idx) || idx < 0 || idx >= app.interviewRounds.length) {
@@ -2004,7 +2018,9 @@ router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
 
 // PATCH /api/applications/:id/park — toggle talent pool parking
 router.patch('/:id/park', ...guard, asyncHandler(async (req, res) => {
-  const app = await Application.findOne({ _id: req.params.id, tenantId: req.user.tenantId, deletedAt: null });
+  const parkFilter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') parkFilter.tenantId = req.user.tenantId;
+  const app = await Application.findOne(parkFilter);
   if (!app) throw new AppError('Application not found.', 404);
   const nowParked = app.status !== 'parked';
   app.status = nowParked ? 'parked' : 'active';
@@ -2037,7 +2053,7 @@ router.delete('/:id', ...guardOrCandidate, asyncHandler(async (req, res) => {
     if (!candidateIds.length) throw new AppError('Application not found.', 404);
     filter.candidateId = { $in: candidateIds };
     // No tenantId restriction — candidate's application may be under the employer's tenant
-  } else {
+  } else if (req.user.role !== 'super_admin') {
     filter.tenantId = req.user.tenantId;
   }
 
