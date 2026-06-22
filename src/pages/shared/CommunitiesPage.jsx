@@ -1,5 +1,5 @@
 'use strict';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
@@ -29,10 +29,6 @@ function CommunityCard({ community, userCollege, onJoin, onLeave, loading, onNav
   const color    = community.coverColor || CATEGORY_COLOR[community.category] || '#0176D3';
   const [btnHover, setBtnHover] = useState(false);
 
-  // Auto-membership communities (e.g. "<College> Community") can't be left —
-  // every student/alumnus whose college matches is automatically a member.
-  // `isOwnCollege` is computed server-side (also covers college admins, who
-  // don't have a `college` field of their own but match via their tenant).
   const isAutoMember = community.isOwnCollege || (!!community.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(userCollege));
 
   const btnLabel = loading ? '…' : isMember ? (btnHover ? 'Leave' : 'Joined') : 'Join';
@@ -172,6 +168,54 @@ function CreateCommunityModal({ onClose, onCreate }) {
 
 const isSuperAdmin = (role) => ['super_admin', 'superadmin'].includes(role);
 
+// ── Google-style Search Suggestions ──────────────────────────────────────────
+function SearchSuggestions({ communities, search, onSelect, selectedIndex }) {
+  if (!search.trim() || search.trim().length < 1) return null;
+  const q = search.toLowerCase();
+  const words = q.split(/\s+/).filter(w => w.length >= 1);
+  const suggestions = communities
+    .filter(c => {
+      const hay = [c.name, c.description, c.companyName, c.collegeName]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q) || words.some(w => hay.includes(w));
+    })
+    .slice(0, 8);
+
+  if (!suggestions.length) return (
+    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 200, padding: '10px 14px', fontSize: 13, color: '#9CA3AF' }}>
+      No communities found for "{search}"
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 200, overflow: 'hidden' }}>
+      {suggestions.map((c, i) => {
+        const color = c.coverColor || CATEGORY_COLOR[c.category] || '#0176D3';
+        const isActive = i === selectedIndex;
+        const badge = c.companyName ? '🏢 Company' : c.collegeName ? '🎓 College' : CATEGORY_LABEL[c.category] || 'Community';
+        return (
+          <div key={c.slug} onMouseDown={() => onSelect(c)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', cursor: 'pointer', background: isActive ? '#F0F7FF' : '#fff', borderBottom: i < suggestions.length - 1 ? '1px solid #F5F7FA' : 'none', transition: 'background 0.1s' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+              {c.icon || '💬'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color, background: color + '18', borderRadius: 20, padding: '1px 7px' }}>{badge}</span>
+                <span style={{ fontSize: 11, color: '#9CA3AF' }}>👥 {c.memberCount || 0}</span>
+                {c.isMember && <span style={{ fontSize: 11, color: '#059669', fontWeight: 700 }}>✓ Joined</span>}
+              </div>
+            </div>
+            <span style={{ fontSize: 13, color: '#C7D2FE', flexShrink: 0 }}>↵</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Page Component ────────────────────────────────────────────────────────────
 export default function CommunitiesPage({ user }) {
   const navigate     = useNavigate();
   const [searchParams] = useSearchParams();
@@ -185,6 +229,13 @@ export default function CommunitiesPage({ user }) {
   const [isSmallPhone, setSmallPhone] = useState(() => window.innerWidth < 500);
   const [merging,     setMerging]     = useState(false);
   const [mergeMsg,    setMergeMsg]    = useState('');
+  // Search suggestions
+  const [showSugg,    setShowSugg]    = useState(false);
+  const [suggIndex,   setSuggIndex]   = useState(-1);
+  const searchWrapRef                 = useRef(null);
+  // Infinite scroll
+  const [visibleCount, setVisibleCount] = useState(24);
+  const sentinelRef                   = useRef(null);
 
   useEffect(() => {
     const h = () => { setMobile(window.innerWidth < 768); setSmallPhone(window.innerWidth < 500); };
@@ -193,9 +244,8 @@ export default function CommunitiesPage({ user }) {
   }, []);
 
   const load = useCallback(async () => {
-    // Stale-while-revalidate: show cached data instantly, refresh silently in background
     const CACHE_KEY = 'tn_communities_v1';
-    const CACHE_TTL = 60_000; // 60 seconds
+    const CACHE_TTL = 60_000;
     try {
       const raw = sessionStorage.getItem(CACHE_KEY);
       if (raw) {
@@ -203,7 +253,6 @@ export default function CommunitiesPage({ user }) {
         if (cached?.data?.length && Date.now() - (cached.at || 0) < CACHE_TTL) {
           setCommunities(cached.data);
           setLoading(false);
-          // Refresh in background — no spinner, no blocking
           api.getCommunities()
             .then(r => {
               const fresh = r?.data || [];
@@ -215,7 +264,6 @@ export default function CommunitiesPage({ user }) {
         }
       }
     } catch {}
-    // First visit or expired cache — normal load with spinner
     setLoading(true);
     try {
       const r = await api.getCommunities();
@@ -228,6 +276,31 @@ export default function CommunitiesPage({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Reset visible count when filter/search changes
+  useEffect(() => { setVisibleCount(24); }, [filter, search]);
+
+  // Infinite scroll — reveal next 24 cards when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) setVisibleCount(c => c + 24);
+    }, { rootMargin: '200px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading]);
+
+  // Close suggestions when clicking outside the search wrapper
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setShowSugg(false);
+        setSuggIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleJoin = async (slug) => {
     setActionSlug(slug);
@@ -247,6 +320,43 @@ export default function CommunitiesPage({ user }) {
     finally { setActionSlug(null); }
   };
 
+  const handleSelectSuggestion = (community) => {
+    setShowSugg(false);
+    setSuggIndex(-1);
+    navigate(community.slug);
+  };
+
+  // Build the current suggestions list (for keyboard nav)
+  const suggestionList = (() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    const words = q.split(/\s+/).filter(w => w.length >= 1);
+    return communities.filter(c => {
+      const hay = [c.name, c.description, c.companyName, c.collegeName]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q) || words.some(w => hay.includes(w));
+    }).slice(0, 8);
+  })();
+
+  const handleKeyDown = (e) => {
+    if (!showSugg || !suggestionList.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSuggIndex(i => Math.min(i + 1, suggestionList.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSuggIndex(i => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (suggIndex >= 0 && suggestionList[suggIndex]) {
+        handleSelectSuggestion(suggestionList[suggIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSugg(false);
+      setSuggIndex(-1);
+    }
+  };
+
   const FILTERS = [
     { id: 'all',      label: 'All' },
     { id: 'joined',   label: '✓ Joined' },
@@ -259,23 +369,40 @@ export default function CommunitiesPage({ user }) {
     { id: 'other',    label: '🌍 Other' },
   ];
 
-  const visible = communities.filter(c => {
+  // Build filtered + deduplicated list
+  // For the company filter: keep only one community per company name (highest memberCount)
+  let visible = communities.filter(c => {
     if (filter === 'joined' && !c.isMember) return false;
     if (filter === 'college' && !c.collegeName) return false;
     if (filter === 'company' && !c.companyName) return false;
     if (!['all', 'joined', 'college', 'company'].includes(filter) && c.category !== filter) return false;
-    if (search.trim().length >= 2) {
+    if (search.trim().length >= 1) {
       const q = search.toLowerCase();
       const searchable = [c.name, c.description, c.companyName, c.collegeName]
         .filter(Boolean).map(s => s.toLowerCase()).join(' ');
-      // Full phrase match OR any individual word (min 2 chars) — "Siemens India" finds "Siemens Community"
-      const words = q.split(/\s+/).filter(w => w.length >= 2);
+      const words = q.split(/\s+/).filter(w => w.length >= 1);
       return searchable.includes(q) || words.some(w => searchable.includes(w));
     }
     return true;
   });
 
+  // Deduplicate companies: one community per companyName
+  if (filter === 'company') {
+    const seen = new Map();
+    visible = visible.filter(c => {
+      const key = (c.companyName || '').toLowerCase().trim();
+      if (!key) return true;
+      const existing = seen.get(key);
+      if (!existing || (c.memberCount || 0) > (existing.memberCount || 0)) {
+        seen.set(key, c);
+        return true;
+      }
+      return false;
+    });
+  }
+
   const myCount = communities.filter(c => c.isMember).length;
+  const totalCount = communities.length;
 
   const handleMergeDuplicates = async () => {
     setMerging(true); setMergeMsg('');
@@ -295,7 +422,7 @@ export default function CommunitiesPage({ user }) {
         <div>
           <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0A1628', letterSpacing: '-0.02em' }}>Communities</h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9CA3AF' }}>
-            Join communities of professionals with shared skills and interests
+            {totalCount > 0 ? `${totalCount} communities` : 'Join communities of professionals with shared skills and interests'}
             {myCount > 0 && <span style={{ color: '#0176D3', fontWeight: 600 }}> · {myCount} joined</span>}
           </p>
         </div>
@@ -319,15 +446,31 @@ export default function CommunitiesPage({ user }) {
         )}
       </div>
 
-      {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 14, padding: isMobile ? '0 12px' : 0 }}>
-        <span style={{ position: 'absolute', left: isMobile ? 24 : 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }}>🔍</span>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search communities…"
-          style={{ width: '100%', padding: '10px 14px 10px 36px', borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 14, outline: 'none', background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s' }}
-          onFocus={e => e.currentTarget.style.border = '1px solid #0176D3'}
-          onBlur={e => e.currentTarget.style.border = '1px solid #E5E7EB'} />
-        {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: isMobile ? 22 : 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18 }}>×</button>}
+      {/* Search — Google-style with suggestions dropdown */}
+      <div ref={searchWrapRef} style={{ position: 'relative', marginBottom: 14, padding: isMobile ? '0 12px' : 0 }}>
+        <span style={{ position: 'absolute', left: isMobile ? 24 : 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none', zIndex: 1 }}>🔍</span>
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setShowSugg(true); setSuggIndex(-1); }}
+          onFocus={() => { if (search.trim()) setShowSugg(true); }}
+          onKeyDown={handleKeyDown}
+          placeholder="Search communities, companies, colleges…"
+          autoComplete="off"
+          style={{ width: '100%', padding: '11px 40px 11px 36px', borderRadius: showSugg && suggestionList.length ? '12px 12px 0 0' : 12, border: showSugg ? '1px solid #0176D3' : '1px solid #E5E7EB', fontSize: 14, outline: 'none', background: '#FAFBFC', boxSizing: 'border-box', transition: 'border 0.15s, border-radius 0.15s', boxShadow: showSugg ? '0 0 0 3px #0176D315' : 'none' }}
+        />
+        {search && (
+          <button onClick={() => { setSearch(''); setShowSugg(false); setSuggIndex(-1); }}
+            style={{ position: 'absolute', right: isMobile ? 22 : 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 18, zIndex: 1 }}>×</button>
+        )}
+        {/* Suggestions dropdown */}
+        {showSugg && search.trim() && (
+          <SearchSuggestions
+            communities={communities}
+            search={search}
+            onSelect={handleSelectSuggestion}
+            selectedIndex={suggIndex}
+          />
+        )}
       </div>
 
       {/* Filter chips */}
@@ -340,7 +483,7 @@ export default function CommunitiesPage({ user }) {
         ))}
       </div>
 
-      {/* Grid */}
+      {/* Grid with infinite scroll */}
       {loading ? (
         <div style={{ textAlign: 'center', color: '#9CA3AF', padding: isMobile ? '0 12px' : '60px 24px' }}>
           <div style={{ width: 36, height: 36, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite', margin: '0 auto 12px' }} />
@@ -365,7 +508,7 @@ export default function CommunitiesPage({ user }) {
             gap: 16,
             padding: isMobile ? '0 12px' : 0,
           }}>
-            {visible.map(c => (
+            {visible.slice(0, visibleCount).map(c => (
               <CommunityCard
                 key={c.slug}
                 community={c}
@@ -377,6 +520,19 @@ export default function CommunitiesPage({ user }) {
               />
             ))}
           </div>
+
+          {/* Infinite scroll sentinel */}
+          {visibleCount < visible.length && (
+            <div ref={sentinelRef} style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+              <div style={{ width: 24, height: 24, border: '3px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
+            </div>
+          )}
+          {/* End of list marker */}
+          {visibleCount >= visible.length && visible.length > 24 && (
+            <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 12, color: '#D1D5DB' }}>
+              — all {visible.length} communities shown —
+            </div>
+          )}
         </>
       )}
 

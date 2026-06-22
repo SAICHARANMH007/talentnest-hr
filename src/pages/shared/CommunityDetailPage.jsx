@@ -970,6 +970,13 @@ export default function CommunityDetailPage({ user }) {
   const normalizeCollege = (name) => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
   const isAutoMember = !!community?.collegeName && normalizeCollege(community.collegeName) === normalizeCollege(user?.college);
 
+  const [postsPage,      setPostsPage]      = useState(1);
+  const [hasMorePosts,   setHasMorePosts]   = useState(true);
+  const [membersPage,    setMembersPage]    = useState(1);
+  const [hasMoreMembers, setHasMoreMembers] = useState(true);
+  const postsSentinelRef   = useRef(null);
+  const membersSentinelRef = useRef(null);
+
   useEffect(() => {
     const h = () => setMobile(window.innerWidth < 768);
     window.addEventListener('resize', h, { passive: true });
@@ -987,13 +994,16 @@ export default function CommunityDetailPage({ user }) {
     setLoading(false);
   }, [slug]);
 
-  const loadPosts = useCallback(async (silent = false) => {
-    if (!silent) setPostsLoading(true);
+  const loadPosts = useCallback(async (page = 1) => {
+    if (page === 1) { setPostsLoading(true); setPostsPage(1); }
     try {
-      const r = await api.getCommunityFeed(slug, { limit: 25 });
-      setPosts(r?.data || []);
+      const r = await api.getCommunityFeed(slug, { page, limit: 25 });
+      const newPosts = r?.data || [];
+      if (page === 1) setPosts(newPosts);
+      else setPosts(prev => [...prev, ...newPosts]);
+      setHasMorePosts(newPosts.length >= 25);
     } catch {}
-    if (!silent) setPostsLoading(false);
+    if (page === 1) setPostsLoading(false);
   }, [slug]);
 
   const loadJobs = useCallback(async () => {
@@ -1014,23 +1024,58 @@ export default function CommunityDetailPage({ user }) {
     setDrivesLoading(false);
   }, [slug]);
 
-  const loadMembers = useCallback(async () => {
-    setMembersLoading(true);
+  const loadMembers = useCallback(async (page = 1) => {
+    if (page === 1) { setMembersLoading(true); setMembersPage(1); }
     try {
-      const r = await api.getCommunityMembers(slug, { limit: 50 });
-      setMembers(r?.data || []);
-      setTotalMembers(r?.total || 0);
+      const r = await api.getCommunityMembers(slug, { page, limit: 50 });
+      const newMembers = r?.data || [];
+      if (page === 1) {
+        setMembers(newMembers);
+        setTotalMembers(r?.total || 0);
+      } else {
+        setMembers(prev => [...prev, ...newMembers]);
+      }
+      setHasMoreMembers(newMembers.length >= 50);
     } catch {}
-    setMembersLoading(false);
+    if (page === 1) setMembersLoading(false);
   }, [slug]);
 
-  useEffect(() => { loadCommunity(); loadPosts(); }, [loadCommunity, loadPosts]);
+  useEffect(() => { loadCommunity(); loadPosts(1); loadMembers(1); }, [loadCommunity, loadPosts, loadMembers]);
 
   useEffect(() => {
-    if (tab === 'jobs'    && !jobs.length)    loadJobs();
-    if (tab === 'drives'  && !drives.length)  loadDrives();
-    if (tab === 'members' && !members.length) loadMembers();
+    if (tab === 'jobs'   && !jobs.length)   loadJobs();
+    if (tab === 'drives' && !drives.length) loadDrives();
   }, [tab]);
+
+  // Infinite scroll — posts
+  useEffect(() => {
+    const el = postsSentinelRef.current;
+    if (!el || !hasMorePosts) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !postsLoading) {
+        const next = postsPage + 1;
+        setPostsPage(next);
+        loadPosts(next);
+      }
+    }, { rootMargin: '400px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMorePosts, postsLoading, postsPage, loadPosts]);
+
+  // Infinite scroll — members
+  useEffect(() => {
+    const el = membersSentinelRef.current;
+    if (!el || !hasMoreMembers) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !membersLoading) {
+        const next = membersPage + 1;
+        setMembersPage(next);
+        loadMembers(next);
+      }
+    }, { rootMargin: '400px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMoreMembers, membersLoading, membersPage, loadMembers]);
 
   const handleJoin = async () => {
     if (joining) return;
@@ -1298,7 +1343,26 @@ export default function CommunityDetailPage({ user }) {
           {/* Community name + meta — left margin to clear the icon */}
           <div style={{ marginTop: 6, paddingLeft: isMobile ? 70 : 78, minHeight: 20, position: 'relative' }}>
             <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 2 }}>{community.name}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 0 }}>{community.memberCount || 0} members · {community.category}</div>
+            <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 0 }}>
+              {community.memberCount || 0} members · {community.category}
+              {community.recentPostCount != null ? ` · ${community.recentPostCount} recent post${community.recentPostCount !== 1 ? 's' : ''}` : ''}
+            </div>
+            {/* Member avatar strip */}
+            {members.length > 0 && (
+              <div onClick={() => setTab('members')} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+                <div style={{ display: 'flex' }}>
+                  {members.slice(0, 8).map((m, i) => (
+                    <div key={String(m._id || i)} style={{ marginLeft: i > 0 ? -8 : 0, position: 'relative', zIndex: 10 - i, borderRadius: '50%', border: '2px solid #fff', lineHeight: 0 }}>
+                      <Avatar name={m.name} src={m.avatarUrl || m.photoUrl || m.avatar} size={26} role={m.role} />
+                    </div>
+                  ))}
+                </div>
+                {totalMembers > 8 && (
+                  <span style={{ fontSize: 12, color: bg, fontWeight: 700 }}>+{totalMembers - 8}</span>
+                )}
+                <span style={{ fontSize: 12, color: '#9CA3AF' }}>View all members →</span>
+              </div>
+            )}
           </div>
           {/* Description + guidelines button — full width below icon */}
           <div style={{ marginTop: 10 }}>
@@ -1332,7 +1396,7 @@ export default function CommunityDetailPage({ user }) {
                   const full = { reactions: [], comments: [], ...newPost, authorName: newPost.authorName || user?.name, authorAvatar: newPost.authorAvatar || user?.avatarUrl, authorRole: newPost.authorRole || user?.role };
                   setPosts(prev => prev.some(p => String(p._id) === String(newPost._id)) ? prev : [full, ...prev]);
                 }
-                loadPosts(true);
+                loadPosts(1);
               }} />
               : (
                 <div style={{ ...card, padding: '12px 16px', marginBottom: 14, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12, border: `1.5px dashed ${bg}55` }}>
@@ -1398,24 +1462,49 @@ export default function CommunityDetailPage({ user }) {
                   <div style={{ fontSize: 12, color: '#9CA3AF' }}>Try a different filter or search term.</div>
                 </div>
               );
-              return filteredPosts.map(post => (
-                <CommunityPostCard
-                  key={post._id}
-                  post={post}
-                  userId={uid}
-                  userRole={user?.role}
-                  onReact={handleReact}
-                  onDelete={handleDelete}
-                  onViewProfile={(authorId) => setProfileUserId(String(authorId))}
-                />
-              ));
+              return (
+                <>
+                  {filteredPosts.map(post => (
+                    <CommunityPostCard
+                      key={post._id}
+                      post={post}
+                      userId={uid}
+                      userRole={user?.role}
+                      onReact={handleReact}
+                      onDelete={handleDelete}
+                      onViewProfile={(authorId) => setProfileUserId(String(authorId))}
+                    />
+                  ))}
+                </>
+              );
             })()}
+            {/* Infinite scroll sentinel for posts */}
+            {posts.length > 0 && !postsLoading && (
+              <>
+                <div ref={postsSentinelRef} style={{ height: 1 }} />
+                {!hasMorePosts && (
+                  <div style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 13, padding: '20px 0' }}>— You've seen all posts —</div>
+                )}
+              </>
+            )}
           </>
         )}
 
         {tab === 'jobs' && <JobsTab jobs={jobs} loading={jobsLoading} />}
         {tab === 'drives' && <DrivesTab drives={drives} loading={drivesLoading} />}
-        {tab === 'members' && <MembersTab members={members} loading={membersLoading} total={totalMembers} onViewProfile={(id) => setProfileUserId(id)} />}
+        {tab === 'members' && (
+          <>
+            <MembersTab members={members} loading={membersLoading} total={totalMembers} onViewProfile={(id) => setProfileUserId(id)} />
+            {!membersLoading && members.length > 0 && (
+              <>
+                <div ref={membersSentinelRef} style={{ height: 1 }} />
+                {!hasMoreMembers && totalMembers > 50 && (
+                  <div style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 12, padding: '16px 0' }}>— All {totalMembers} members loaded —</div>
+                )}
+              </>
+            )}
+          </>
+        )}
         {tab === 'reviews' && community?.companyName && <ReviewsTab user={user} companyName={community.companyName} />}
         {tab === 'about' && <AboutTab community={community} />}
       </div>
