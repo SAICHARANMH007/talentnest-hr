@@ -61,5 +61,16 @@ const feedPostSchema = new Schema({
 }, { timestamps: true });
 
 feedPostSchema.index({ tenantId: 1, createdAt: -1 });
+// ── Performance indexes ───────────────────────────────────────────────────────
+// Main feed: filter by tenantId+isDeleted, sort by pinned then date
+feedPostSchema.index({ tenantId: 1, isDeleted: 1, isPinned: -1, createdAt: -1 });
+// Type-filtered feed (postType query param)
+feedPostSchema.index({ tenantId: 1, isDeleted: 1, postType: 1, createdAt: -1 });
+// Community feed (most common community page query)
+feedPostSchema.index({ communityId: 1, isDeleted: 1, isPinned: -1, createdAt: -1 });
+// User's own posts
+feedPostSchema.index({ tenantId: 1, authorId: 1, isDeleted: 1, createdAt: -1 });
+// Saved posts
+feedPostSchema.index({ tenantId: 1, savedBy: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('FeedPost', feedPostSchema);
