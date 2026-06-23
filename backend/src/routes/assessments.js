@@ -244,6 +244,28 @@ router.get('/job/:jobId', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/assessments/candidate/my ────────────────────────────────────────
+// Candidate: see all their submissions across all assessments
+// NOTE: must be registered BEFORE /:id to prevent param-route shadowing.
+router.get('/candidate/my', auth, allowRoles('candidate'), async (req, res) => {
+  try {
+    const resolvedCandId = await resolveCandidateId(req.user);
+    // Find by resolved Candidate._id AND by User._id (for older submissions)
+    const subs = await AssessmentSubmission.find({
+      candidateId: { $in: [resolvedCandId, String(req.user.id)] }
+    });
+    const items = Array.isArray(subs) ? subs : [];
+    const enriched = await Promise.all(items.map(async s => {
+      const sub = parseS(s);
+      const assessment = await Assessment.findById(sub.assessmentId);
+      const a = assessment ? parseQ(assessment) : null;
+      const job = a ? await Job.findById(a.jobId).lean() : null;
+      return { ...sub, assessmentTitle: a?.title || '', jobTitle: job?.title || '', jobCompany: job?.company || '' };
+    }));
+    res.json(enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/assessments/:id — Fetch single assessment (candidate or recruiter)
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -552,27 +574,6 @@ router.patch('/:id/submissions/:subId/review', auth, async (req, res) => {
     }
 
     res.json(sub);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── GET /api/assessments/candidate/my ────────────────────────────────────────
-// Candidate: see all their submissions across all assessments
-router.get('/candidate/my', auth, allowRoles('candidate'), async (req, res) => {
-  try {
-    const resolvedCandId = await resolveCandidateId(req.user);
-    // Find by resolved Candidate._id AND by User._id (for older submissions)
-    const subs = await AssessmentSubmission.find({
-      candidateId: { $in: [resolvedCandId, String(req.user.id)] }
-    });
-    const items = Array.isArray(subs) ? subs : [];
-    const enriched = await Promise.all(items.map(async s => {
-      const sub = parseS(s);
-      const assessment = await Assessment.findById(sub.assessmentId);
-      const a = assessment ? parseQ(assessment) : null;
-      const job = a ? await Job.findById(a.jobId).lean() : null;
-      return { ...sub, assessmentTitle: a?.title || '', jobTitle: job?.title || '', jobCompany: job?.company || '' };
-    }));
-    res.json(enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
