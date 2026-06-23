@@ -520,7 +520,6 @@ router.post('/:id/sign', authMiddleware, asyncHandler(async (req, res) => {
       if (!fullCandidate.title && roleTitle) candidateUpdate.title = roleTitle;
 
       await Candidate.findByIdAndUpdate(offer.candidateId, { $set: candidateUpdate });
-      console.log(`[Offer] Updated candidate ${fullCandidate.name} work history → ${roleTitle} @ ${companyName}`);
     }
   } catch (expErr) {
     console.warn('[Offer] Work history update failed (non-critical):', expErr.message);

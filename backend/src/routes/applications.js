@@ -1414,10 +1414,7 @@ router.patch('/:id/stage', ...guard,
           </div>
         </div>`;
         email.sendOrgEmail(candidateEmail, tpl.subject, html, app.tenantId)
-          .then(() => console.log(`[Email] stage-change sent → ${candidateEmail} (${stage})`))
           .catch(e => console.error(`[Email] stage-change FAILED → ${candidateEmail} (${stage}):`, e.message));
-      } else {
-        console.log(`[Email] no template for stage "${stage}" — skipping email to ${candidateEmail}`);
       }
     }
 
