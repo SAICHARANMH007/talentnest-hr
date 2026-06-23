@@ -67,10 +67,12 @@ const offerLetterSchema = new mongoose.Schema({
   approvalCompletedAt: { type: Date },
 }, { timestamps: true });
 
-offerLetterSchema.index({ tenantId: 1 });
 offerLetterSchema.index({ applicationId: 1 });
 offerLetterSchema.index({ candidateId: 1 });
 offerLetterSchema.index({ shareToken: 1 }, { sparse: true });
+// ── Performance indexes ───────────────────────────────────────────────────────
+// List offers for a tenant filtered by status, sorted newest first
+offerLetterSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
 
 offerLetterSchema.set('toJSON', { virtuals: true });
 offerLetterSchema.set('toObject', { virtuals: true });

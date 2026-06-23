@@ -38,5 +38,10 @@ const importedCandidateSchema = new mongoose.Schema({
 // Index for fast email lookups and search
 importedCandidateSchema.index({ tenantId: 1, email: 1 });
 importedCandidateSchema.index({ tenantId: 1, status: 1 });
+// ── Performance indexes ───────────────────────────────────────────────────────
+// Pagination: list imports for a tenant by newest first
+importedCandidateSchema.index({ tenantId: 1, createdAt: -1 });
+// Status-filtered list with date sort (most common dashboard query)
+importedCandidateSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('ImportedCandidate', importedCandidateSchema);

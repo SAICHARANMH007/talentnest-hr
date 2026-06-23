@@ -25,5 +25,13 @@ const communitySchema = new Schema({
 }, { timestamps: true });
 
 communitySchema.index({ tenantId: 1, slug: 1 }, { unique: true });
+// ── Performance indexes ───────────────────────────────────────────────────────
+// Global slug lookup (shareable links, cross-tenant discovery)
+communitySchema.index({ slug: 1 });
+// Auto-membership matching: find communities for a given college/company name
+communitySchema.index({ collegeName: 1 });
+communitySchema.index({ companyName: 1 });
+// Default list ordering: popular communities first
+communitySchema.index({ memberCount: -1, name: 1 });
 
 module.exports = mongoose.model('Community', communitySchema);

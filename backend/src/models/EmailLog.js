@@ -16,4 +16,12 @@ const schema = new mongoose.Schema({
   retryCount : { type: Number, default: 0 },
 }, { timestamps: true, toJSON: { virtuals: true } });
 
+// ── Performance indexes ───────────────────────────────────────────────────────
+// Most common: list logs for a tenant sorted by date
+schema.index({ tenantId: 1, createdAt: -1 });
+// Filter by delivery status within a tenant
+schema.index({ tenantId: 1, status: 1, createdAt: -1 });
+// Platform-admin queries by status across all tenants
+schema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('EmailLog', schema);
