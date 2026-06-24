@@ -431,7 +431,7 @@ router.get('/export', authenticate, allowRoles('admin', 'super_admin'), asyncHan
       joined: merged.createdAt ? new Date(merged.createdAt).toLocaleDateString('en-IN') : '',
     };
   });
-  const buf = exportToExcel('Users', columns, rows);
+  const buf = await exportToExcel('Users', columns, rows);
   const role = req.query.role || 'users';
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${role}-export-${Date.now()}.xlsx"`);

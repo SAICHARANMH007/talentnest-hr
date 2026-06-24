@@ -1162,7 +1162,7 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
     };
   });
 
-  const buf = exportToExcel('Pipeline', columns, rows);
+  const buf = await exportToExcel('Pipeline', columns, rows);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="pipeline-export-${Date.now()}.xlsx"`);
   res.send(buf);

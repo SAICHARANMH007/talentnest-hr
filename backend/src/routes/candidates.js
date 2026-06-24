@@ -3,7 +3,7 @@ const express        = require('express');
 const router         = express.Router();
 const multer         = require('multer');
 const pdfParse       = require('pdf-parse');
-const XLSX           = require('xlsx');
+const ExcelJS        = require('exceljs');
 const Candidate      = require('../models/Candidate');
 const User           = require('../models/User');
 const Application    = require('../models/Application');
@@ -495,9 +495,23 @@ router.post('/bulk-import', ...guard,
   asyncHandler(async (req, res) => {
     if (!req.file) throw new AppError('No file provided.', 400);
 
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new AppError('File is empty or has no sheets.', 400);
+
+    // Build rows as objects keyed by the header row values
+    const headers = [];
+    worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNum) => {
+      headers[colNum] = String(cell.value ?? '');
+    });
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const obj = {};
+      headers.forEach((header, colNum) => { if (header) obj[header] = row.getCell(colNum).value ?? ''; });
+      rows.push(obj);
+    });
 
     if (!rows.length) throw new AppError('File is empty or has no data rows.', 400);
 
