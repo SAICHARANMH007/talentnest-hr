@@ -234,6 +234,82 @@ const templates = {
   },
 
   /**
+   * Application Received — sent to NEW (guest) candidates after career-page apply.
+   * Includes: confirmation, no-login tracker link, one-time "create account" CTA.
+   */
+  applicationReceived: ({ name, jobTitle, orgName, trackerLink, registerLink, email: candidateEmail, orgId } = {}) => {
+    const firstName = (name || 'there').split(' ')[0];
+    return {
+      subject: `🎉 Application received for ${jobTitle} — Create your free account`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 6px;font-weight:900">Hi ${firstName} 👋 — your application is in!</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 22px">
+          Thanks for applying to <strong>${jobTitle}</strong>. We've saved your application and the team will review it shortly.
+        </p>
+
+        <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin:0 0 20px">
+          <p style="color:#166534;font-size:13px;font-weight:800;margin:0 0 12px">📊 Track your application — no login needed</p>
+          <p style="color:#374151;font-size:13px;margin:0 0 14px;line-height:1.6">
+            See live status updates as the team reviews your application.
+          </p>
+          <div style="text-align:center">
+            <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:800;font-size:14px">
+              📍 Track Application Status →
+            </a>
+          </div>
+        </div>
+
+        <div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:12px;padding:18px 20px;margin:0 0 24px">
+          <p style="color:#1E40AF;font-size:13px;font-weight:800;margin:0 0 10px">🚀 Want to manage all your applications in one place?</p>
+          <p style="color:#374151;font-size:13px;margin:0 0 14px;line-height:1.6">
+            Create a free account in <strong>under 30 seconds</strong> — your email is already pre-filled and this application links automatically.
+          </p>
+          <div style="text-align:center">
+            <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px">
+              Create My Free Account →
+            </a>
+          </div>
+          <p style="color:#94A3B8;font-size:11px;text-align:center;margin:10px 0 0">
+            Use <strong>${candidateEmail}</strong> — your application links automatically
+          </p>
+        </div>
+
+        <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0">
+          This is a one-time confirmation from TalentNest HR. If you did not apply, please ignore this email.
+        </p>
+      `, `Application Received — ${jobTitle}`, { orgName, orgId }),
+    };
+  },
+
+  /**
+   * Application Confirmed — sent to EXISTING (registered) users after career-page apply.
+   */
+  applicationConfirmed: ({ name, jobTitle, orgName, trackerLink, dashboardLink, orgId } = {}) => {
+    const firstName = (name || 'there').split(' ')[0];
+    return {
+      subject: `✅ Application confirmed — ${jobTitle}`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 6px;font-weight:900">Hi ${firstName} 👋</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 22px">
+          Your application for <strong>${jobTitle}</strong> has been received. The team will review it shortly.
+        </p>
+
+        <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin:0 0 20px">
+          <p style="color:#166534;font-size:13px;font-weight:800;margin:0 0 12px">Track your status</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px">
+              📍 Track Status →
+            </a>
+            <a href="${dashboardLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px">
+              Go to Dashboard →
+            </a>
+          </div>
+        </div>
+      `, `Application Confirmed — ${jobTitle}`, { orgName, orgId }),
+    };
+  },
+
+  /**
    * Guest Marketing Invite (Request to Create Account)
    */
   guestAccountInvite: (name, email, link, opts = {}) => {
