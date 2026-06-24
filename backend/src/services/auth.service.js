@@ -259,7 +259,7 @@ class AuthService {
     // Email — primary channel for passwordless login; fallback for 2FA when SMS unavailable
     if (!smsSent) {
       const { sendEmailWithRetry, templates } = require('../utils/email');
-      const tpl = templates.otp(otp);
+      const tpl = templates.otp(otp, { orgId: user.orgId?.toString() });
       await sendEmailWithRetry(user.email, tpl.subject, tpl.html);
     }
 

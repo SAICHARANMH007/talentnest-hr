@@ -2,7 +2,11 @@
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 const BACKEND_URL  = process.env.BACKEND_URL
   || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : null)
-  || 'https://resume-generator-production.up.railway.app';
+  || 'https://talentnesthr.com';
+
+// TalentNest platform logo embedded as base64 — works in every email client
+// regardless of whether BACKEND_URL is configured correctly.
+const PLATFORM_LOGO_B64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIyMiIgZmlsbD0iIzAxNzZEMyIvPgogIDxyZWN0IHg9IjgiIHk9IjgiIHdpZHRoPSIxMDQiIGhlaWdodD0iMTA0IiByeD0iMTYiIGZpbGw9InVybCgjZ3JhZCkiIG9wYWNpdHk9IjAuNiIvPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzA2YjZkNDtzdG9wLW9wYWNpdHk6MSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMTQ0ODY7c3RvcC1vcGFjaXR5OjEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDx0ZXh0IHg9IjYwIiB5PSI3MiIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0NiIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSItMiI+VE48L3RleHQ+CiAgPHRleHQgeD0iNjAiIHk9IjkyIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSI2MDAiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC43NSkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSIyIj5UQUxFTlRORVNUPC90ZXh0Pgo8L3N2Zz4K';
 
 /**
  * Enterprise Base Layout — High-End Glassmorphism and Modern Branding
@@ -20,17 +24,21 @@ function baseLayout(bodyHtml, title = 'TalentNest HR', opts = {}) {
   const headerSub    = opts.headerSubtitle|| 'PROFESSIONAL RECRUITMENT CLOUD';
   const customFooter = opts.footerText    || '';
 
-  // Build logo HTML — prefer passed logoUrl (base64 or URL), fallback to public image endpoint
+  // Build logo HTML — prefer passed logoUrl (base64 or URL), then org-specific endpoint,
+  // then platform default. Always include onerror fallback to the embedded platform logo
+  // so the header never shows a broken image regardless of backend URL config.
+  const logoStyle = 'max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px';
+  const logoFallback = `this.onerror=null;this.src='${PLATFORM_LOGO_B64}'`;
   let logoHtml;
   if (opts.logoUrl && opts.logoUrl.startsWith('data:')) {
-    // base64 inline — works in Gmail/Apple Mail; Outlook may block but shows alt text
-    logoHtml = `<img src="${opts.logoUrl}" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" />`;
+    // Caller supplied a base64 logo — inline, works in all clients
+    logoHtml = `<img src="${opts.logoUrl}" alt="${orgName}" style="${logoStyle}" onerror="${logoFallback}" />`;
   } else if (opts.orgId) {
-    // Serve via hosted image endpoint (best for all clients)
-    logoHtml = `<img src="${BACKEND_URL}/api/orgs/${opts.orgId}/logo/image" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" />`;
+    // Hosted org-specific logo — falls back to embedded SVG on error
+    logoHtml = `<img src="${BACKEND_URL}/api/orgs/${opts.orgId}/logo/image" alt="${orgName}" style="${logoStyle}" onerror="${logoFallback}" />`;
   } else {
-    // Platform default logo endpoint
-    logoHtml = `<img src="${BACKEND_URL}/api/orgs/logo/image" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" onerror="this.style.display='none'" />`;
+    // No org context — use embedded platform logo directly (no network request)
+    logoHtml = `<img src="${PLATFORM_LOGO_B64}" alt="${orgName}" style="${logoStyle}" />`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">

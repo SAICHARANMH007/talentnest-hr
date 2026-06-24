@@ -993,7 +993,7 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
   const emailPayloads = toSend.map(({ email, name }) => {
     const link     = `${FRONTEND_URL}/login?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&ref=guest_invite`;
     const appList  = appsByEmail[email.toLowerCase()] || [];
-    const tpl      = templates.guestAccountInvite(name, email, link, { orgName, applications: appList });
+    const tpl      = templates.guestAccountInvite(name, email, link, { orgName, orgId: req.tenant?._id?.toString(), applications: appList });
     return { to: email, subject: tpl.subject, html: tpl.html };
   });
 

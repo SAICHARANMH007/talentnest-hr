@@ -767,6 +767,7 @@ router.post('/invite', ...guard,
         type: job.jobType || '',
         link: inviteLink,
         message,
+        orgId: req.tenant?._id?.toString(),
       });
       if (tpl) {
         email.sendOrgEmail(candidate.email, tpl.subject, tpl.html, app.tenantId).catch(e => console.warn("[Email] stage-change:", e.message));
