@@ -1,6 +1,6 @@
 'use strict';
 import React, { useState, useEffect, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/browser';
 import { api } from '../../api/api.js';
 import Field from '../../components/ui/Field.jsx';
 
@@ -48,21 +48,22 @@ export default function SuperAdminCandidateImport({ user }) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    (async () => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        let data;
+        if (f.name.toLowerCase().endsWith('.csv')) {
+          const text = await f.text();
+          const lines = text.trim().split(/\r?\n/);
+          data = lines.map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+        } else {
+          data = await readXlsxFile(f);
+        }
         if (data.length > 0) {
           setHeaders(data[0]);
-          // Convert array-rows to objects using headers as keys
           const formattedRows = data.slice(1).map(row => {
             const obj = {};
             data[0].forEach((h, i) => {
-              obj[h || `Column_${i}`] = row[i];
+              obj[h || `Column_${i}`] = row[i] ?? '';
             });
             return obj;
           });
@@ -72,8 +73,7 @@ export default function SuperAdminCandidateImport({ user }) {
       } catch (err) {
         setToast('❌ Error parsing file');
       }
-    };
-    reader.readAsBinaryString(f);
+    })();
   };
 
   const startImport = async () => {

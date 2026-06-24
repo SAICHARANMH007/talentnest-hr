@@ -89,7 +89,7 @@ async function sendNpsSurvey(app, candidate, job, outcome) {
       </div>`;
 
     await sendEmailWithRetry(candidate.email, 'Quick feedback on your hiring experience (30 sec)', html);
-    console.log(`[npsScheduler] Survey sent to ${candidate.email} — app ${app._id}`);
+    logger.info('[npsScheduler] Survey sent', { appId: app._id });
   } catch (err) {
     logger.error('[npsScheduler] sendNpsSurvey error', { err: err.message, appId: app._id });
   }

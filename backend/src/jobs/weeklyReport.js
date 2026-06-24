@@ -88,7 +88,7 @@ async function sendWeeklyReportForTenant(tenant) {
       </div>`;
 
     await sendEmailWithRetry(admin.email, `Weekly Hiring Report — ${tenant.name}`, html);
-    console.log(`[weeklyReport] Sent report to ${admin.email} for tenant ${tenant.name}`);
+    console.log(`[weeklyReport] Sent report for tenant ${tenant._id}`);
   } catch (err) {
     console.error(`[weeklyReport] tenant ${tenant._id}:`, err.message);
   }

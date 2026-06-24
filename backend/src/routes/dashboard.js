@@ -805,7 +805,7 @@ router.get('/college/students/export', authenticate, allowRoles('admin', 'placem
     };
   });
 
-  const buffer = exportToExcel('Students', [
+  const buffer = await exportToExcel('Students', [
     { header: 'Name', key: 'name', width: 24 },
     { header: 'Email', key: 'email', width: 28 },
     { header: 'Phone', key: 'phone', width: 16 },
@@ -3958,7 +3958,7 @@ router.get('/applicants/export', authenticate, allowRoles('admin', 'super_admin'
     { header: 'Additional Details', key: 'additionalDetails', width: 45 },
   ];
 
-  const buf = exportToExcel('Applicants', columns, rows);
+  const buf = await exportToExcel('Applicants', columns, rows);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="applicants-${Date.now()}.xlsx"`);
   res.send(buf);
@@ -4120,7 +4120,7 @@ router.get('/candidate-records/export', authenticate, allowRoles('admin', 'super
     { header: 'Additional Details', key: 'additionalDetails', width: 45 },
   ];
 
-  const buf = exportToExcel('Candidate Records', columns, exportRows);
+  const buf = await exportToExcel('Candidate Records', columns, exportRows);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="candidate-records-${Date.now()}.xlsx"`);
   res.send(buf);
@@ -4373,7 +4373,7 @@ router.get('/funnel/export', authenticate, allowRoles('admin', 'super_admin'), a
     percentage: total > 0 ? parseFloat((r.count / total * 100).toFixed(1)) : 0,
   }));
 
-  const buf = exportToExcel('Hiring Funnel', [
+  const buf = await exportToExcel('Hiring Funnel', [
     { header: 'Stage',       key: 'stage',      width: 25 },
     { header: 'Count',       key: 'count',      width: 12 },
     { header: 'Percentage',  key: 'percentage', width: 14 },
@@ -4529,7 +4529,7 @@ router.get('/time-to-hire/export', authenticate, allowRoles('admin', 'super_admi
     hiredCount   : j.count,
   }));
 
-  const buf = exportToExcel('Time to Hire', [
+  const buf = await exportToExcel('Time to Hire', [
     { header: 'Job Title',     key: 'jobTitle',      width: 30 },
     { header: 'Recruiter',     key: 'recruiterName', width: 20 },
     { header: 'Avg Days',      key: 'avgDaysToHire', width: 14 },
@@ -4681,7 +4681,7 @@ router.get('/dropout-analysis/export', authenticate, allowRoles('admin', 'super_
     percentage: total > 0 ? parseFloat((v.count / total * 100).toFixed(1)) : 0,
   }));
 
-  const buf = exportToExcel('Dropout Analysis', [
+  const buf = await exportToExcel('Dropout Analysis', [
     { header: 'Dropout Stage', key: 'stage',      width: 25 },
     { header: 'Count',         key: 'count',      width: 12 },
     { header: 'Percentage',    key: 'percentage', width: 14 },
@@ -4784,7 +4784,7 @@ router.get('/recruiter-performance/export', authenticate, allowRoles('admin', 's
     };
   }));
 
-  const buf = exportToExcel('Recruiter Performance', [
+  const buf = await exportToExcel('Recruiter Performance', [
     { header: 'Recruiter',   key: 'recruiterName',  width: 24 },
     { header: 'Jobs',        key: 'jobsAssigned',   width: 10 },
     { header: 'Candidates',  key: 'candidatesAdded',width: 14 },

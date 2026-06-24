@@ -270,6 +270,7 @@ router.post('/verify-payment', auth, asyncHandler(async (req, res) => {
 router.get('/invoices', auth, tenantGuard, asyncHandler(async (req, res) => {
   const invoices = await PaymentRecord.find({ tenantId: req.user.tenantId })
     .sort({ createdAt: -1 })
+    .limit(100)
     .lean();
 
   res.json({

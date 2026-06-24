@@ -53,11 +53,17 @@ app.set('trust proxy', 1);
 
 // ── Health checks BEFORE everything
 const sendHealth = (req, res) => {
-  res.json({
-    status: 'ok',
-    db: process.env.MONGODB_URI ? 'mongodb' : 'json-file',
+  const mongoose = require('mongoose');
+  // 0=disconnected 1=connected 2=connecting 3=disconnecting
+  const STATES = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const dbState = STATES[mongoose.connection.readyState] || 'unknown';
+  const healthy = dbState === 'connected' || !process.env.MONGODB_URI;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    db: dbState,
     frontend: HAS_DIST ? 'bundled' : 'external',
     sentry: process.env.SENTRY_DSN ? 'enabled' : 'disabled',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
 };

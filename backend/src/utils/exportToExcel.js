@@ -1,33 +1,32 @@
 'use strict';
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 
 /**
- * Export data to an Excel (.xlsx) buffer using the xlsx package.
+ * Export data to an Excel (.xlsx) buffer using ExcelJS.
  *
  * @param {string} sheetTitle
  * @param {Array<{header: string, key: string, width?: number}>} columns
  * @param {Array<object>} rows
- * @returns {Buffer}
+ * @returns {Promise<Buffer>}
  */
-function exportToExcel(sheetTitle, columns, rows) {
-  // Build header row
-  const headerRow = columns.map(c => c.header);
+async function exportToExcel(sheetTitle, columns, rows) {
+  const workbook  = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetTitle.slice(0, 31));
 
-  // Build data rows
-  const dataRows = rows.map(row => columns.map(c => row[c.key] ?? ''));
+  worksheet.columns = columns.map(c => ({
+    header : c.header,
+    key    : c.key,
+    width  : c.width || 20,
+  }));
 
-  // Combine header + data
-  const sheetData = [headerRow, ...dataRows];
+  worksheet.addRows(rows.map(row => {
+    const obj = {};
+    columns.forEach(c => { obj[c.key] = row[c.key] ?? ''; });
+    return obj;
+  }));
 
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-  // Set column widths
-  ws['!cols'] = columns.map(c => ({ wch: c.width || 20 }));
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetTitle.slice(0, 31)); // Excel sheet name max 31 chars
-
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  const buf = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buf);
 }
 
 module.exports = { exportToExcel };

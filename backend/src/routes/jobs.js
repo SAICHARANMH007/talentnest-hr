@@ -308,8 +308,9 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
 
   res.status(201).json({ success: true, data: normalizeJob(job), requiresApproval: isRecruiter });
 
-  // IndexNow ping — fire-and-forget, never block the response
+  // IndexNow ping + feed cache bust — fire-and-forget, never block the response
   if (job.status === 'active') {
+    try { require('./feed').invalidateFeedCache(); } catch {}
     pingIndexNow(job).catch(() => {});
     require('./jobAlerts').notifyMatchingAlerts(job).catch(() => {});
   }
