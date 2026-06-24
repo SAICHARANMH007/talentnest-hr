@@ -1740,7 +1740,7 @@ export default function AuthScreen({ onAuth, initialScreen = 'entry' }) {
       setResetParams({ token, email });
       setScreen('reset');
       window.history.replaceState({}, '', window.location.pathname);
-    } else if (ref === 'career_apply' && email) {
+    } else if ((ref === 'career_apply' || ref === 'guest_invite') && email) {
       setPrefill({ email, name: pName || '', mode: 'register' });
       setScreen('candidate');
       window.history.replaceState({}, '', window.location.pathname);
