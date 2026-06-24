@@ -398,79 +398,31 @@ router.post('/public', asyncHandler(async (req, res) => {
   //  2. Only send ONCE per candidate (tracked via candidate.accountInviteSentAt)
   //  3. Registration link pre-fills email + name so they can match existing data
   const User = require('../models/User');
-  const existingUser = await User.findOne({ email: emailLower }).lean();
-  const alreadySent  = !!candidate.accountInviteSentAt;
+  const existingUser  = await User.findOne({ email: emailLower }).lean();
+  const alreadySent   = !!candidate.accountInviteSentAt;
+  const unsubscribed  = candidate.interestStatus === 'not_interested';
 
-  if (!existingUser && !alreadySent) {
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
-    // /register with email + name prefilled so account auto-links to their applications
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const trackerLink  = `${FRONTEND_URL}/track/${app.statusToken}`;
+  const orgName      = job.companyName || job.company || 'TalentNest HR';
+  const orgId        = job.tenantId?.toString();
+
+  if (!existingUser && !alreadySent && !unsubscribed) {
     const registerLink = `${FRONTEND_URL}/login?email=${encodeURIComponent(emailLower)}&name=${encodeURIComponent(name.trim())}&ref=career_apply`;
-    const trackerLink  = `${FRONTEND_URL}/track/${app.statusToken}`;
-    const orgName = job.companyName || job.company || 'TalentNest HR';
-
-    email.sendEmailWithRetry?.(emailLower,
-      `🎉 Application received for ${job.title} — Create your free account`,
-      `<div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff">
-        <div style="background:linear-gradient(135deg,#032D60,#0176D3);padding:36px 32px;border-radius:12px 12px 0 0;text-align:center">
-          <div style="font-size:48px;margin-bottom:12px">🎉</div>
-          <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">Application Received!</h1>
-          <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px">${job.title} · ${orgName}</p>
-        </div>
-        <div style="padding:32px;background:#F8FAFC;border-radius:0 0 12px 12px">
-          <p style="color:#0A1628;font-size:15px;font-weight:700;margin:0 0 8px">Hi ${name.trim()},</p>
-          <p style="color:#374151;font-size:14px;margin:0 0 20px;line-height:1.7">
-            Thanks for applying to <strong>${job.title}</strong> via the TalentNest HR career portal.
-            We've saved your application and the team will review it shortly.
-          </p>
-          <div style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:24px;border:1px solid #E2E8F0">
-            <p style="color:#0176D3;font-size:13px;font-weight:800;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px">📊 Track your application</p>
-            <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
-              You can track the live status of your application at any time — no login required.
-            </p>
-            <div style="text-align:center;margin-bottom:16px">
-              <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:800;font-size:14px;letter-spacing:0.3px">
-                📍 Track Application Status →
-              </a>
-            </div>
-            <p style="color:#374151;font-size:13px;margin:0 0 16px;line-height:1.6">
-              Or create a free account to manage all your applications in one place:
-            </p>
-            <div style="text-align:center">
-              <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;letter-spacing:0.3px">
-                🚀 Create Free Account →
-              </a>
-            </div>
-            <p style="color:#94A3B8;font-size:11px;text-align:center;margin:12px 0 0">
-              Use the email <strong>${emailLower}</strong> — your application will be linked automatically.
-            </p>
-          </div>
-          <p style="color:#94A3B8;font-size:11px;text-align:center;margin:0">
-            This is a one-time email from TalentNest HR. If you did not apply, please ignore it.
-          </p>
-        </div>
-      </div>`
-    ).then(async () => {
-      // Mark invite as sent so we never send this email again to this candidate
+    const tpl = email.templates.applicationReceived({
+      name: name.trim(), jobTitle: job.title, orgName, trackerLink,
+      registerLink, email: emailLower, orgId,
+    });
+    email.sendEmailWithRetry?.(emailLower, tpl.subject, tpl.html).then(async () => {
       await Candidate.findByIdAndUpdate(candidate._id, { $set: { accountInviteSentAt: new Date(), accountRequestSent: true } });
     }).catch(() => {});
+
   } else if (existingUser) {
-    const FRONTEND_URL2 = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
-    const trackerLink2  = `${FRONTEND_URL2}/track/${app.statusToken}`;
-    email.sendEmailWithRetry?.(emailLower,
-      `✅ Application confirmed — ${job.title}`,
-      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-        <h2 style="color:#032D60">Hi ${name.trim()},</h2>
-        <p>Your application for <strong>${job.title}</strong> has been received.</p>
-        <div style="text-align:center;margin:24px 0">
-          <a href="${trackerLink2}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin-right:12px">
-            📍 Track Status →
-          </a>
-          <a href="${FRONTEND_URL2}/login" style="display:inline-block;background:#0176D3;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">
-            Login to Dashboard →
-          </a>
-        </div>
-      </div>`
-    ).catch(() => {});
+    const tpl = email.templates.applicationConfirmed({
+      name: name.trim(), jobTitle: job.title, orgName, trackerLink,
+      dashboardLink: `${FRONTEND_URL}/app/applications`, orgId,
+    });
+    email.sendEmailWithRetry?.(emailLower, tpl.subject, tpl.html).catch(() => {});
   }
 
   // ── Notify assigned recruiters ──────────────────────────────────────────────
@@ -767,6 +719,7 @@ router.post('/invite', ...guard,
         type: job.jobType || '',
         link: inviteLink,
         message,
+        orgId: req.tenant?._id?.toString(),
       });
       if (tpl) {
         email.sendOrgEmail(candidate.email, tpl.subject, tpl.html, app.tenantId).catch(e => console.warn("[Email] stage-change:", e.message));

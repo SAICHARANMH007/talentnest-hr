@@ -966,18 +966,42 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
     return res.json({ success: true, message: 'No valid email addresses provided.', results });
   }
 
-  // Deduplicate by email
+  // Deduplicate by email within this batch
   const seen = new Set();
   toSend = toSend.filter(c => { if (seen.has(c.email)) { results.skipped++; return false; } seen.add(c.email); return true; });
 
-  // Fetch application info per candidate so the email is personalised
-  const orgName = req.tenant?.name || 'TalentNest HR';
   const allEmails = toSend.map(c => c.email);
+
+  // Skip candidates who: (a) already have a User account, (b) have unsubscribed,
+  // or (c) have already received an invite — prevents spam and respects opt-out.
+  const [existingUsers, existingCandidates] = await Promise.all([
+    require('../models/User').find({ email: { $in: allEmails } }).select('email').lean(),
+    Candidate.find({ email: { $in: allEmails }, deletedAt: null })
+              .select('email accountInviteSentAt interestStatus').lean(),
+  ]);
+  const registeredEmails  = new Set(existingUsers.map(u => u.email.toLowerCase()));
+  const candByEmail       = new Map(existingCandidates.map(c => [c.email.toLowerCase(), c]));
+
+  toSend = toSend.filter(({ email }) => {
+    const cand = candByEmail.get(email);
+    if (registeredEmails.has(email))                           { results.skipped++; return false; } // already registered
+    if (cand?.interestStatus === 'not_interested')             { results.skipped++; return false; } // unsubscribed
+    if (cand?.accountInviteSentAt && !req.body.force)         { results.skipped++; return false; } // already invited (pass force:true to re-send)
+    return true;
+  });
+
+  if (toSend.length === 0) {
+    return res.json({ success: true, message: 'All candidates skipped (already registered, unsubscribed, or previously invited). Pass force:true to re-invite.', results });
+  }
+
+  // Fetch application info per candidate so the email is personalised
+  const orgName    = req.tenant?.name || 'TalentNest HR';
+  const sendEmails = toSend.map(c => c.email);
   const appsByEmail = {};
   try {
     const Application = require('../models/Application');
     const Job         = require('../models/Job');
-    const candDocs    = await Candidate.find({ email: { $in: allEmails }, deletedAt: null }).select('_id email').lean();
+    const candDocs    = await Candidate.find({ email: { $in: sendEmails }, deletedAt: null }).select('_id email').lean();
     const candIdToEmail = new Map(candDocs.map(c => [String(c._id), c.email.toLowerCase()]));
     const apps = await Application.find({ candidateId: { $in: candDocs.map(c => c._id) }, deletedAt: null })
       .select('candidateId jobId currentStage').populate('jobId', 'title').lean();
@@ -993,7 +1017,7 @@ router.post('/invite-guests', authenticate, allowRoles('admin', 'super_admin'), 
   const emailPayloads = toSend.map(({ email, name }) => {
     const link     = `${FRONTEND_URL}/login?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&ref=guest_invite`;
     const appList  = appsByEmail[email.toLowerCase()] || [];
-    const tpl      = templates.guestAccountInvite(name, email, link, { orgName, applications: appList });
+    const tpl      = templates.guestAccountInvite(name, email, link, { orgName, orgId: req.tenant?._id?.toString(), applications: appList });
     return { to: email, subject: tpl.subject, html: tpl.html };
   });
 

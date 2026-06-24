@@ -2,7 +2,11 @@
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 const BACKEND_URL  = process.env.BACKEND_URL
   || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : null)
-  || 'https://resume-generator-production.up.railway.app';
+  || 'https://talentnesthr.com';
+
+// TalentNest platform logo embedded as base64 — works in every email client
+// regardless of whether BACKEND_URL is configured correctly.
+const PLATFORM_LOGO_B64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIyMiIgZmlsbD0iIzAxNzZEMyIvPgogIDxyZWN0IHg9IjgiIHk9IjgiIHdpZHRoPSIxMDQiIGhlaWdodD0iMTA0IiByeD0iMTYiIGZpbGw9InVybCgjZ3JhZCkiIG9wYWNpdHk9IjAuNiIvPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzA2YjZkNDtzdG9wLW9wYWNpdHk6MSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMTQ0ODY7c3RvcC1vcGFjaXR5OjEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDx0ZXh0IHg9IjYwIiB5PSI3MiIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0NiIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSItMiI+VE48L3RleHQ+CiAgPHRleHQgeD0iNjAiIHk9IjkyIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSI2MDAiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC43NSkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSIyIj5UQUxFTlRORVNUPC90ZXh0Pgo8L3N2Zz4K';
 
 /**
  * Enterprise Base Layout — High-End Glassmorphism and Modern Branding
@@ -20,17 +24,21 @@ function baseLayout(bodyHtml, title = 'TalentNest HR', opts = {}) {
   const headerSub    = opts.headerSubtitle|| 'PROFESSIONAL RECRUITMENT CLOUD';
   const customFooter = opts.footerText    || '';
 
-  // Build logo HTML — prefer passed logoUrl (base64 or URL), fallback to public image endpoint
+  // Build logo HTML — prefer passed logoUrl (base64 or URL), then org-specific endpoint,
+  // then platform default. Always include onerror fallback to the embedded platform logo
+  // so the header never shows a broken image regardless of backend URL config.
+  const logoStyle = 'max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px';
+  const logoFallback = `this.onerror=null;this.src='${PLATFORM_LOGO_B64}'`;
   let logoHtml;
   if (opts.logoUrl && opts.logoUrl.startsWith('data:')) {
-    // base64 inline — works in Gmail/Apple Mail; Outlook may block but shows alt text
-    logoHtml = `<img src="${opts.logoUrl}" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" />`;
+    // Caller supplied a base64 logo — inline, works in all clients
+    logoHtml = `<img src="${opts.logoUrl}" alt="${orgName}" style="${logoStyle}" onerror="${logoFallback}" />`;
   } else if (opts.orgId) {
-    // Serve via hosted image endpoint (best for all clients)
-    logoHtml = `<img src="${BACKEND_URL}/api/orgs/${opts.orgId}/logo/image" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" />`;
+    // Hosted org-specific logo — falls back to embedded SVG on error
+    logoHtml = `<img src="${BACKEND_URL}/api/orgs/${opts.orgId}/logo/image" alt="${orgName}" style="${logoStyle}" onerror="${logoFallback}" />`;
   } else {
-    // Platform default logo endpoint
-    logoHtml = `<img src="${BACKEND_URL}/api/orgs/logo/image" alt="${orgName}" style="max-height:56px;max-width:200px;object-fit:contain;display:block;margin:0 auto 10px" onerror="this.style.display='none'" />`;
+    // No org context — use embedded platform logo directly (no network request)
+    logoHtml = `<img src="${PLATFORM_LOGO_B64}" alt="${orgName}" style="${logoStyle}" />`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -222,6 +230,82 @@ const templates = {
           </a>
         </div>
       `, 'Password Reset Notification', { orgName, ...opts })
+    };
+  },
+
+  /**
+   * Application Received — sent to NEW (guest) candidates after career-page apply.
+   * Includes: confirmation, no-login tracker link, one-time "create account" CTA.
+   */
+  applicationReceived: ({ name, jobTitle, orgName, trackerLink, registerLink, email: candidateEmail, orgId } = {}) => {
+    const firstName = (name || 'there').split(' ')[0];
+    return {
+      subject: `🎉 Application received for ${jobTitle} — Create your free account`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 6px;font-weight:900">Hi ${firstName} 👋 — your application is in!</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 22px">
+          Thanks for applying to <strong>${jobTitle}</strong>. We've saved your application and the team will review it shortly.
+        </p>
+
+        <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin:0 0 20px">
+          <p style="color:#166534;font-size:13px;font-weight:800;margin:0 0 12px">📊 Track your application — no login needed</p>
+          <p style="color:#374151;font-size:13px;margin:0 0 14px;line-height:1.6">
+            See live status updates as the team reviews your application.
+          </p>
+          <div style="text-align:center">
+            <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:800;font-size:14px">
+              📍 Track Application Status →
+            </a>
+          </div>
+        </div>
+
+        <div style="background:#F0F7FF;border:1px solid #BFDBFE;border-radius:12px;padding:18px 20px;margin:0 0 24px">
+          <p style="color:#1E40AF;font-size:13px;font-weight:800;margin:0 0 10px">🚀 Want to manage all your applications in one place?</p>
+          <p style="color:#374151;font-size:13px;margin:0 0 14px;line-height:1.6">
+            Create a free account in <strong>under 30 seconds</strong> — your email is already pre-filled and this application links automatically.
+          </p>
+          <div style="text-align:center">
+            <a href="${registerLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px">
+              Create My Free Account →
+            </a>
+          </div>
+          <p style="color:#94A3B8;font-size:11px;text-align:center;margin:10px 0 0">
+            Use <strong>${candidateEmail}</strong> — your application links automatically
+          </p>
+        </div>
+
+        <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0">
+          This is a one-time confirmation from TalentNest HR. If you did not apply, please ignore this email.
+        </p>
+      `, `Application Received — ${jobTitle}`, { orgName, orgId }),
+    };
+  },
+
+  /**
+   * Application Confirmed — sent to EXISTING (registered) users after career-page apply.
+   */
+  applicationConfirmed: ({ name, jobTitle, orgName, trackerLink, dashboardLink, orgId } = {}) => {
+    const firstName = (name || 'there').split(' ')[0];
+    return {
+      subject: `✅ Application confirmed — ${jobTitle}`,
+      html: baseLayout(`
+        <h2 style="color:#032D60;font-size:20px;margin:0 0 6px;font-weight:900">Hi ${firstName} 👋</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 22px">
+          Your application for <strong>${jobTitle}</strong> has been received. The team will review it shortly.
+        </p>
+
+        <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin:0 0 20px">
+          <p style="color:#166534;font-size:13px;font-weight:800;margin:0 0 12px">Track your status</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <a href="${trackerLink}" style="display:inline-block;background:linear-gradient(135deg,#10B981,#059669);color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px">
+              📍 Track Status →
+            </a>
+            <a href="${dashboardLink}" style="display:inline-block;background:linear-gradient(135deg,#0176D3,#014486);color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:14px">
+              Go to Dashboard →
+            </a>
+          </div>
+        </div>
+      `, `Application Confirmed — ${jobTitle}`, { orgName, orgId }),
     };
   },
 
