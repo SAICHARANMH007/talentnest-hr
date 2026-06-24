@@ -14,3 +14,7 @@ backend-spring/target/
 .vercel
 .claude/
 .claude/worktrees/
+
+# Playwright
+playwright-report/
+test-results/
