@@ -376,6 +376,7 @@ router.get('/pending', authenticate, allowRoles('admin', 'super_admin'), asyncHa
     .select('name email role inviteStatus invitedBy invitedAt resetPasswordExpires tenantId')
     .populate('invitedBy', 'name email')
     .sort({ invitedAt: -1 })
+    .limit(500)
     .lean();
 
   const now = new Date();

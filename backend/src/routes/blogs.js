@@ -10,6 +10,7 @@ router.get('/public', async (req, res) => {
     const blogs = await Blog.find({ published: true })
       .sort({ createdAt: -1 })
       .select('-sections -__v')
+      .limit(200)
       .lean();
     res.json({ success: true, data: blogs });
   } catch (e) {

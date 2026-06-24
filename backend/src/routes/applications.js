@@ -948,6 +948,8 @@ router.get('/talent-pool', ...guard, asyncHandler(async (req, res) => {
   const apps = await Application.find(poolFilter)
     .populate('candidateId', 'name email phone title skills experience currentCompany location')
     .populate('jobId', 'title company companyName')
+    .sort({ createdAt: -1 })
+    .limit(500)
     .lean();
   const data = apps.map(a => ({ ...a, id: a._id?.toString() }));
   res.json({ success: true, data });

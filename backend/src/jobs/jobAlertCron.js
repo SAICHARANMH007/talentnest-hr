@@ -73,7 +73,7 @@ async function sendAlerts(frequency) {
         lastJobIds: [...(alert.lastJobIds || []), ...jobs.map(j => j._id)].slice(-100),
       });
     } catch (e) {
-      console.error(`Job alert error for ${alert.email}:`, e.message);
+      console.error(`Job alert error for alert ${alert._id}:`, e.message);
     }
   }
 }
