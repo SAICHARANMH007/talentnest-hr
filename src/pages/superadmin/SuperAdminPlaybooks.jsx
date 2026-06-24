@@ -2706,7 +2706,7 @@ ${heroHtml('🧠','TALENTNEST HR — COMPLETE PRODUCT INTELLIGENCE PLAYBOOK','Co
       <tr><td><code>Leaflet</code></td><td>1.9.4</td><td>Maps (candidate location)</td></tr>
       <tr><td><code>PDF.js</code></td><td>5.5.207</td><td>In-browser resume preview</td></tr>
       <tr><td><code>JSZip</code></td><td>3.10.1</td><td>Bulk export (ZIP downloads)</td></tr>
-      <tr><td><code>XLSX</code></td><td>0.18.5</td><td>Excel import/export</td></tr>
+      <tr><td><code>exceljs</code></td><td>4.x</td><td>Excel import/export (backend)</td></tr>
     </table>
     <h3>Backend</h3>
     <table>

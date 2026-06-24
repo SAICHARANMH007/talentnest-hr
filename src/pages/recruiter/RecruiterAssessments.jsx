@@ -6,7 +6,7 @@ import Toast from '../../components/ui/Toast.jsx';
 import { useNavigate } from 'react-router-dom';
 import { card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/browser';
 
 const RESULT_STYLE = {
   pass:    { color: '#34d399', label: '✅ Passed' },
@@ -40,14 +40,16 @@ const BLANK_FORM = () => ({
 const DIFFICULTY_COLOR = { easy: '#10B981', medium: '#F59E0B', hard: '#EF4444' };
 
 // ── Excel → Questions parser ─────────────────────────────────────────────────
-function parseExcelQuestions(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+async function parseExcelQuestions(file) {
+  const data = await readXlsxFile(file);
+  if (!data.length) return [];
+  const headers = (data[0] || []).map(h => String(h ?? ''));
+  const rows = data.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { if (h) obj[h] = row[i] ?? ''; });
+    return obj;
+  });
+  {
         const questions = rows
           .filter(r => String(r.question || r.Question || r.text || r.Text || '').trim())
           .map(r => {
@@ -77,12 +79,8 @@ function parseExcelQuestions(file) {
               maxChars: 2000,
             };
           });
-        resolve(questions);
-      } catch (err) { reject(err); }
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
+    return questions;
+  }
 }
 
 // ── Searchable job picker ──────────────────────────────────────────────────────

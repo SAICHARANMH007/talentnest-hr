@@ -1,7 +1,7 @@
 // Web Worker — parses Excel/CSV off the main thread so the UI never freezes
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/web-worker';
 
-self.onmessage = ({ data: { fileData, isCSV, password } }) => {
+self.onmessage = async ({ data: { fileData, isCSV } }) => {
   try {
     let headers, rows;
 
@@ -19,23 +19,10 @@ self.onmessage = ({ data: { fileData, isCSV, password } }) => {
         return cols;
       });
     } else {
-      const opts = {
-        type:        'array',
-        cellFormula: false,
-        cellHTML:    false,
-        cellNF:      false,
-        cellStyles:  false,
-        cellDates:   false,
-        sheetStubs:  false,
-      };
-      // If password provided, pass it — XLSX handles ECMA-376/AES encrypted files
-      if (password) opts.password = password;
-
-      const wb  = XLSX.read(new Uint8Array(fileData), opts);
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      headers   = raw[0]?.map(h => String(h || '')) || [];
-      rows      = raw.slice(1);
+      const blob = new Blob([fileData]);
+      const raw  = await readXlsxFile(blob);
+      headers = (raw[0] || []).map(h => String(h ?? ''));
+      rows    = raw.slice(1).map(r => r.map(c => c ?? ''));
     }
 
     const nonEmpty = rows.filter(r => r.some(c => String(c || '').trim() !== ''));

@@ -1,6 +1,6 @@
 'use strict';
 import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/browser';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import { card } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
@@ -55,12 +55,16 @@ export default function CollegeAddCandidates({ user }) {
     if (!f) return;
     setError('');
     setFileName(f.name);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    const parseFile = async () => {
       try {
-        const wb = XLSX.read(evt.target.result, { type: 'binary' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        let data;
+        if (f.name.toLowerCase().endsWith('.csv')) {
+          const text = await f.text();
+          const lines = text.trim().split(/\r?\n/);
+          data = lines.map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+        } else {
+          data = await readXlsxFile(f);
+        }
         if (!data.length) { setError('The file appears to be empty.'); return; }
 
         const fileHeaders = (data[0] || []).map(h => String(h ?? '').trim());
@@ -97,10 +101,10 @@ export default function CollegeAddCandidates({ user }) {
         setMapping(guessed);
         setStep(2);
       } catch (err) {
-        setError('Could not read this file. Please upload a valid Excel (.xlsx, .xls) or CSV file.');
+        setError('Could not read this file. Please upload a valid Excel (.xlsx) or CSV file.');
       }
     };
-    reader.readAsBinaryString(f);
+    parseFile();
   };
 
   const buildCandidates = () => {
