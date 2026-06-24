@@ -162,6 +162,10 @@ export default function CandidateDashboard({ user }) {
   const appliedCount  = apps.length;
   const shortlisted   = apps.filter(a => ["shortlisted","interview_scheduled","interview_completed","offer_extended","selected"].includes(a.stage)).length;
   const successRate   = appliedCount > 0 ? Math.round((shortlisted/appliedCount)*100) : 0;
+  // Set of job IDs the candidate has already applied to — used to filter suggestions.
+  const appliedJobIds = new Set(
+    apps.map(a => a.jobId?.id || a.jobId?._id?.toString() || String(a.jobId || '')).filter(Boolean)
+  );
 
   const handleAllowLocation = () => {
     setLocBanner(false);
@@ -422,20 +426,16 @@ export default function CandidateDashboard({ user }) {
         <button onClick={() => navigate("/app/smart-match")} style={{ ...btnG, padding:"5px 12px", fontSize:11 }}>See all →</button>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-        {jobs.slice(0,4).map(j => {
-          const jStrId = String(j._id || j.id || '');
-          const applied = apps.some(a => {
-            const aid = a.jobId?.id || a.jobId?._id?.toString() || String(a.jobId || '');
-            return aid === jStrId;
-          });
-          return (
-            <div key={String(j._id || j.id)} onClick={() => navigate("/app/smart-match")} style={{ ...card, border:"1px solid #F3F2F2", cursor:"pointer" }}>
+        {jobs
+          .filter(j => !appliedJobIds.has(String(j._id || j.id || '')))
+          .slice(0, 4)
+          .map(j => (
+            <div key={String(j._id || j.id)} onClick={() => navigate(`/app/smart-match?job=${j._id || j.id}`)} style={{ ...card, border:"1px solid #F3F2F2", cursor:"pointer" }}>
               <div className="tn-job-card-row" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:4 }}>
                     <span style={{ color:"#181818", fontWeight:600, fontSize:14 }}>{j.title}</span>
                     <Badge label={`${j.matchScore}% match`} color={j.matchScore>=80?"#2E844A":j.matchScore>=60?"#A07E00":"#BA0517"} />
-                    {applied && <Badge label="✓ Applied" color="#2E844A" />}
                   </div>
                   <div style={{ color:"#0176D3", fontSize:12 }}>{j.companyName || j.company} · {j.location}</div>
                   <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:8 }}>
@@ -449,13 +449,13 @@ export default function CandidateDashboard({ user }) {
                     <HorizBar value={j.matchScore} max={100} color={j.matchScore>=80?"#2E844A":j.matchScore>=60?"#A07E00":"#0176D3"} height={4} />
                   </div>
                 </div>
-                <button onClick={e => { e.stopPropagation(); apply(j._id || j.id); }} disabled={applied} style={{ ...btnP, opacity:applied?0.5:1, cursor:applied?"default":"pointer", flexShrink:0 }}>
-                  {applied ? "Applied" : "Apply"}
+                <button onClick={e => { e.stopPropagation(); apply(j._id || j.id); }} style={{ ...btnP, flexShrink:0 }}>
+                  Apply
                 </button>
               </div>
             </div>
-          );
-        })}
+          ))
+        }
       </div>
       {/* ── Skills Gap Analyzer ── */}
       {(() => {

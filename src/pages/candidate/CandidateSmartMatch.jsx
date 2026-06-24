@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Toast from '../../components/ui/Toast.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
@@ -11,6 +11,7 @@ import { matchJobsToCandidate } from '../../api/matching.js';
 
 export default function CandidateSmartMatch({ user }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [profile, setProfile] = useState(null);
   const [results, setResults] = useState([]);
@@ -93,6 +94,14 @@ export default function CandidateSmartMatch({ user }) {
     }, 400);
     return () => clearTimeout(timer);
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When arriving from the dashboard with ?job=<id>, auto-expand that card once results load.
+  useEffect(() => {
+    const jobParam = searchParams.get('job');
+    if (!jobParam || results.length === 0 || expanded !== null) return;
+    const match = results.find(r => String(r.jobId) === String(jobParam));
+    if (match) toggleExpand(match.jobId);
+  }, [results]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apply = async (jobId) => {
     if (!jobId) return;

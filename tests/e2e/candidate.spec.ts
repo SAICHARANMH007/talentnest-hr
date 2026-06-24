@@ -41,6 +41,61 @@ test.describe('Candidate: Dashboard', () => {
     const text = await page.locator('body').innerText();
     expect(text.trim().length).toBeGreaterThan(10);
   });
+
+  // Bug 1 regression: tapping a matched job card must navigate to smart-match with that job's id.
+  test('tapping a matched job card navigates to /app/smart-match?job=<id>', async ({ page }) => {
+    const JOB_ID = '666600000000000000000099';
+    const job = mockJob({ _id: JOB_ID, id: JOB_ID, title: 'Dashboard Nav Test Job' });
+
+    await loginAsCandidate(page, '/app/dashboard');
+    // Catch-all first (lowest priority in LIFO — specific routes registered after will win)
+    await page.route('**/api/**', (r) => jsonOk(r, { success: true, data: [], total: 0, page: 1, pages: 0 }));
+    // Specific mocks registered after catch-all so they take priority
+    await page.route('**/api/applications/mine**', (r) => jsonOk(r, { data: [] }));
+    await page.route('**/api/users/**', (r) => jsonOk(r, { ...USERS.candidate, skills: ['React'] }));
+    await page.route('**/api/jobs/public**', (r) => jsonOk(r, { data: [job], total: 1 }));
+    await page.waitForSelector('#root > *', { timeout: 50000 });
+
+    // Dismiss the onboarding welcome modal if it appears (first-login tour)
+    await page.locator('button:has-text("Skip")').click({ timeout: 5000 }).catch(() => {});
+
+    // Wait for the job card to appear, then click the job title text
+    await page.waitForSelector('text=Dashboard Nav Test Job', { timeout: 15000 });
+    await page.locator('text=Dashboard Nav Test Job').first().click();
+
+    // The URL must contain /app/smart-match and the specific job ID
+    await page.waitForURL(/\/app\/smart-match/, { timeout: 10000 });
+    expect(page.url()).toContain(JOB_ID);
+  });
+
+  // Bug 2 regression: applied jobs must not appear in the dashboard suggestions.
+  test('applied jobs are excluded from matched job suggestions', async ({ page }) => {
+    const APPLIED_JOB_ID = '666600000000000000000011';
+    const FRESH_JOB_ID   = '666600000000000000000022';
+
+    const appliedJob = mockJob({ _id: APPLIED_JOB_ID, id: APPLIED_JOB_ID, title: 'Already Applied Role' });
+    const freshJob   = mockJob({ _id: FRESH_JOB_ID,   id: FRESH_JOB_ID,   title: 'Fresh Open Role' });
+    const application = mockApplication({
+      jobId: { _id: APPLIED_JOB_ID, id: APPLIED_JOB_ID, title: 'Already Applied Role', company: 'AcmeTech' },
+    });
+
+    await loginAsCandidate(page, '/app/dashboard');
+    // Catch-all first, specific routes after so they override it (LIFO)
+    await page.route('**/api/**', (r) => jsonOk(r, { success: true, data: [], total: 0, page: 1, pages: 0 }));
+    await page.route('**/api/applications/mine**', (r) => jsonOk(r, { data: [application] }));
+    await page.route('**/api/users/**', (r) => jsonOk(r, { ...USERS.candidate, skills: ['React'] }));
+    await page.route('**/api/jobs/public**', (r) => jsonOk(r, { data: [appliedJob, freshJob], total: 2 }));
+    await page.waitForSelector('#root > *', { timeout: 50000 });
+
+    // Wait for the fresh job to render before asserting
+    await page.waitForSelector('text=Fresh Open Role', { timeout: 15000 });
+
+    const bodyText = await page.locator('body').innerText();
+    // The already-applied job must NOT appear in suggestions
+    expect(bodyText).not.toContain('Already Applied Role');
+    // The fresh job MUST appear in suggestions
+    expect(bodyText).toContain('Fresh Open Role');
+  });
 });
 
 // ── 2. Applications ───────────────────────────────────────────────────────────
