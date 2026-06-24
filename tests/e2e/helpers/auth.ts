@@ -41,6 +41,7 @@ export interface TestUser {
   title?: string;
   avatarUrl?: string;
   planTier?: string;
+  tenantType?: string;
 }
 
 // ── Role fixtures ─────────────────────────────────────────────────────────────
@@ -82,6 +83,13 @@ export const USERS: Record<string, TestUser> = {
     tenantId: TENANT_ID, orgId: ORG_ID, orgName: 'AcmeTech',
     isActive: true,
   },
+  college_admin: {
+    _id: '000000000000000000000007', id: '000000000000000000000007',
+    name: 'Dr. Lakshmi Rao', email: 'placement@greenvalley.edu', role: 'placement_officer',
+    tenantId: TENANT_ID, orgId: ORG_ID, orgName: 'Green Valley Engineering College',
+    isActive: true, title: 'Placement Officer',
+    tenantType: 'college',
+  },
 };
 
 // ── Mock route patterns ───────────────────────────────────────────────────────
@@ -106,42 +114,33 @@ export function passThrough(route: Route) {
 /**
  * loginAs — injects a test session for the given role, then navigates to `path`.
  *
- * Steps:
- * 1. Intercept /api/auth/refresh so App.jsx initAuth() returns a valid user
- * 2. Intercept /api/auth/me so any re-checks return the same user
- * 3. Intercept /api/health so the app never shows a "backend offline" banner
- * 4. Write the token + user to sessionStorage before the page loads
- * 5. Navigate to the target path
+ * Uses addInitScript to pre-seed storage before React mounts (no /login detour),
+ * which halves test time by doing a single navigation instead of two.
  */
 export async function loginAs(page: Page, role: keyof typeof USERS, path = '/app') {
   const user  = USERS[role];
   const token = fakeJwt({ userId: user._id, role: user.role, tenantId: user.tenantId, orgId: user.orgId });
 
-  // ── Intercept auth refresh (called on every App mount) ──────────────────────
+  // Pre-seed auth storage so App.jsx's sessionStorage fallback finds the user.
+  // addInitScript runs before any page script, including React's initial load.
+  await page.addInitScript(({ u, t }) => {
+    const uJson = JSON.stringify(u);
+    try { sessionStorage.setItem('tn_token', t); sessionStorage.setItem('tn_user', uJson); } catch {}
+    try { localStorage.setItem('tn_token', t); localStorage.setItem('tn_user', uJson); localStorage.setItem('tn_logged_in', 'true'); } catch {}
+  }, { u: user, t: token });
+
+  // Auth route mocks — registered before navigation so initAuth() picks them up.
   await page.route('**/api/auth/refresh', (route) =>
     jsonOk(route, { success: true, user, token }),
   );
   await page.route('**/api/auth/me', (route) =>
     jsonOk(route, { success: true, user }),
   );
-
-  // ── Health endpoint ─────────────────────────────────────────────────────────
   await page.route('**/api/health', (route) =>
     jsonOk(route, { status: 'ok', db: 'connected', sentry: 'disabled', uptime: 300, timestamp: new Date().toISOString() }),
   );
 
-  // ── Navigate with storage pre-seeded ───────────────────────────────────────
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-
-  await page.evaluate(({ user, token }) => {
-    const uJson = JSON.stringify(user);
-    sessionStorage.setItem('tn_token', token);
-    sessionStorage.setItem('tn_user', uJson);
-    localStorage.setItem('tn_token', token);
-    localStorage.setItem('tn_user', uJson);
-    localStorage.setItem('tn_logged_in', 'true');
-  }, { user, token });
-
+  // Single navigation — no /login detour needed since storage is already set.
   await page.goto(path, { waitUntil: 'domcontentloaded' });
 
   return { user, token };
@@ -155,6 +154,7 @@ export const loginAsRecruiter     = (p: Page, path?: string) => loginAs(p, 'recr
 export const loginAsHiringManager = (p: Page, path?: string) => loginAs(p, 'hiring_manager', path);
 export const loginAsCandidate     = (p: Page, path?: string) => loginAs(p, 'candidate', path);
 export const loginAsClient        = (p: Page, path?: string) => loginAs(p, 'client', path);
+export const loginAsCollegeAdmin  = (p: Page, path?: string) => loginAs(p, 'college_admin', path);
 
 // ── Common mock data factories ────────────────────────────────────────────────
 

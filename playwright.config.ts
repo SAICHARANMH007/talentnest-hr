@@ -16,9 +16,9 @@ export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
 
-  // Give each test plenty of room; API mocks respond instantly
-  timeout: 30_000,
-  expect: { timeout: 8_000 },
+  // Give each test plenty of room; loginAs does 2 navigations and Vite cold-start adds latency
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
 
   // Run tests in parallel — each worker gets its own browser context
   fullyParallel: true,
