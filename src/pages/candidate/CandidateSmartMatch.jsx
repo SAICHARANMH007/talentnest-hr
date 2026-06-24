@@ -137,12 +137,14 @@ export default function CandidateSmartMatch({ user }) {
 
   // Apply secondary filters on top of match results
   const filteredResults = useMemo(() => {
-    let out = results;
+    // Always strip jobs the candidate has already applied to — they belong in
+    // My Applications, not in job suggestions.
+    let out = results.filter(r => !applied.has(String(r.jobId)));
     if (filterCompany !== 'all') out = out.filter(r => (r.job?.companyName || r.job?.company || '') === filterCompany);
     if (filterIndustry !== 'all') out = out.filter(r => (r.job?.industry || '').toLowerCase().includes(filterIndustry.toLowerCase()));
     if (filterDepartment !== 'all') out = out.filter(r => (r.job?.department || '').toLowerCase().includes(filterDepartment.toLowerCase()));
     return out;
-  }, [results, filterCompany, filterIndustry, filterDepartment]);
+  }, [results, applied, filterCompany, filterIndustry, filterDepartment]);
 
   // Reset display limit when the filtered set changes
   useEffect(() => { setDisplayLimit(100); }, [filteredResults]);

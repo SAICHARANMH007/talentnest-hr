@@ -47,11 +47,19 @@ export const jobService = {
 
   // Smart Matching (computed via matching logic - maintained for compatibility)
   async getMatchedJobs(candidateId) {
-    const [user, res] = await Promise.all([
+    const [user, res, appsRes] = await Promise.all([
       req('GET', `/users/${candidateId}`),
       req('GET', '/jobs/public?limit=200', null, false),
+      req('GET', '/applications/mine'),
     ]);
     const jobsList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+    // Build a set of job IDs the candidate has already applied to so we never
+    // return them as suggestions. If the /applications/mine call fails we degrade
+    // gracefully (empty set) — suggestions still show, just without the filter.
+    const appsArr = Array.isArray(appsRes?.data) ? appsRes.data : (Array.isArray(appsRes) ? appsRes : []);
+    const appliedIds = new Set(
+      appsArr.map(a => a.jobId?.id || a.jobId?._id?.toString() || String(a.jobId || '')).filter(Boolean)
+    );
     const cs = Array.isArray(user.skills) ? user.skills.map(s => s.trim().toLowerCase()) : [];
     return jobsList
       .map(j => {
@@ -63,7 +71,7 @@ export const jobService = {
           matchScore: Math.min(99, 50 + ov * 14)
         };
       })
-      .filter(j => j.jobId)
+      .filter(j => j.jobId && !appliedIds.has(String(j._id || j.id || '')))
       .sort((a, b) => b.matchScore - a.matchScore);
   }
 };
