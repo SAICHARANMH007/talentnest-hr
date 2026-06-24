@@ -124,6 +124,10 @@ candidateSchema.index({ tenantId: 1, location: 1, deletedAt: 1 });       // loca
 candidateSchema.index({ tenantId: 1, availability: 1, deletedAt: 1 });   // availability filter
 candidateSchema.index({ tenantId: 1, experience: 1, deletedAt: 1 });     // exp range filter
 candidateSchema.index({ tenantId: 1, updatedAt: -1, deletedAt: 1 });     // recently active (default sort)
+// ── Additional filter indexes ─────────────────────────────────────────────────
+candidateSchema.index({ tenantId: 1, accountRequestSent: 1, deletedAt: 1 }); // invite status filter
+candidateSchema.index({ tenantId: 1, userId: 1, deletedAt: 1 });             // linked-user filter
+candidateSchema.index({ tenantId: 1, noticePeriodDays: 1, deletedAt: 1 });  // notice period range search
 
 
 candidateSchema.set('toJSON', { virtuals: true });

@@ -1,6 +1,6 @@
 {
   "type": "realistic-synthetic (production routes + in-memory data + simulated DB latency)",
-  "runAt": "2026-06-22T21:17:17.122Z",
+  "runAt": "2026-06-24T07:17:48.827Z",
   "constraint": "MongoDB binary download blocked in this environment (fastdl.mongodb.org not in network allowlist)",
   "dbLatencySimulatedMs": 20,
   "seed": {
@@ -14,59 +14,59 @@
       "concurrency": 10,
       "endpoints": {
         "GET /api/health": {
-          "reqPerSec": 4264,
-          "avgMs": 2,
-          "p95Ms": 4,
-          "p99Ms": 4,
+          "reqPerSec": 9892,
+          "avgMs": 0,
+          "p95Ms": 2,
+          "p99Ms": 2,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 42635
+          "totalRequests": 108810
         },
         "GET /api/jobs": {
-          "reqPerSec": 448,
-          "avgMs": 22,
-          "p95Ms": 24,
-          "p99Ms": 26,
+          "reqPerSec": 460,
+          "avgMs": 21,
+          "p95Ms": 23,
+          "p99Ms": 24,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 4475
+          "totalRequests": 5058
         },
         "GET /api/candidates": {
-          "reqPerSec": 456,
+          "reqPerSec": 467,
           "avgMs": 21,
-          "p95Ms": 24,
-          "p99Ms": 25,
+          "p95Ms": 23,
+          "p99Ms": 23,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 4559
+          "totalRequests": 4667
         },
         "GET /api/applications": {
-          "reqPerSec": 449,
-          "avgMs": 22,
-          "p95Ms": 24,
-          "p99Ms": 25,
+          "reqPerSec": 462,
+          "avgMs": 21,
+          "p95Ms": 23,
+          "p99Ms": 24,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 4491
+          "totalRequests": 4624
         },
         "GET /api/dashboard/stats": {
-          "reqPerSec": 1689,
-          "avgMs": 5,
-          "p95Ms": 8,
-          "p99Ms": 8,
+          "reqPerSec": 2922,
+          "avgMs": 3,
+          "p95Ms": 5,
+          "p99Ms": 5,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 16893
+          "totalRequests": 29207
         }
       }
     },
@@ -74,59 +74,59 @@
       "concurrency": 50,
       "endpoints": {
         "GET /api/health": {
-          "reqPerSec": 4048,
-          "avgMs": 12,
-          "p95Ms": 16,
-          "p99Ms": 17,
+          "reqPerSec": 9865,
+          "avgMs": 5,
+          "p95Ms": 7,
+          "p99Ms": 7,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 40475
+          "totalRequests": 98625
         },
         "GET /api/jobs": {
-          "reqPerSec": 1116,
-          "avgMs": 45,
-          "p95Ms": 62,
-          "p99Ms": 67,
-          "errors": 0,
-          "non2xx": 0,
-          "errorRate": "0.0%",
-          "non2xxRate": "0.0%",
-          "totalRequests": 11163
-        },
-        "GET /api/candidates": {
-          "reqPerSec": 1302,
-          "avgMs": 38,
-          "p95Ms": 46,
-          "p99Ms": 49,
-          "errors": 0,
-          "non2xx": 0,
-          "errorRate": "0.0%",
-          "non2xxRate": "0.0%",
-          "totalRequests": 13016
-        },
-        "GET /api/applications": {
-          "reqPerSec": 1203,
-          "avgMs": 41,
-          "p95Ms": 48,
-          "p99Ms": 57,
-          "errors": 0,
-          "non2xx": 0,
-          "errorRate": "0.0%",
-          "non2xxRate": "0.0%",
-          "totalRequests": 12034
-        },
-        "GET /api/dashboard/stats": {
-          "reqPerSec": 1666,
-          "avgMs": 30,
-          "p95Ms": 36,
+          "reqPerSec": 1773,
+          "avgMs": 28,
+          "p95Ms": 34,
           "p99Ms": 38,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 16656
+          "totalRequests": 17729
+        },
+        "GET /api/candidates": {
+          "reqPerSec": 2071,
+          "avgMs": 24,
+          "p95Ms": 28,
+          "p99Ms": 31,
+          "errors": 0,
+          "non2xx": 0,
+          "errorRate": "0.0%",
+          "non2xxRate": "0.0%",
+          "totalRequests": 20705
+        },
+        "GET /api/applications": {
+          "reqPerSec": 1934,
+          "avgMs": 25,
+          "p95Ms": 29,
+          "p99Ms": 31,
+          "errors": 0,
+          "non2xx": 0,
+          "errorRate": "0.0%",
+          "non2xxRate": "0.0%",
+          "totalRequests": 19335
+        },
+        "GET /api/dashboard/stats": {
+          "reqPerSec": 2989,
+          "avgMs": 16,
+          "p95Ms": 20,
+          "p99Ms": 23,
+          "errors": 0,
+          "non2xx": 0,
+          "errorRate": "0.0%",
+          "non2xxRate": "0.0%",
+          "totalRequests": 29884
         }
       }
     },
@@ -134,59 +134,59 @@
       "concurrency": 100,
       "endpoints": {
         "GET /api/health": {
-          "reqPerSec": 3986,
-          "avgMs": 25,
-          "p95Ms": 31,
-          "p99Ms": 34,
+          "reqPerSec": 9916,
+          "avgMs": 10,
+          "p95Ms": 13,
+          "p99Ms": 15,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 39850
+          "totalRequests": 99150
         },
         "GET /api/jobs": {
-          "reqPerSec": 1098,
-          "avgMs": 93,
-          "p95Ms": 102,
-          "p99Ms": 105,
+          "reqPerSec": 2047,
+          "avgMs": 49,
+          "p95Ms": 55,
+          "p99Ms": 60,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 10981
+          "totalRequests": 20469
         },
         "GET /api/candidates": {
-          "reqPerSec": 1288,
-          "avgMs": 79,
-          "p95Ms": 90,
-          "p99Ms": 101,
+          "reqPerSec": 2477,
+          "avgMs": 40,
+          "p95Ms": 59,
+          "p99Ms": 61,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 12881
+          "totalRequests": 24764
         },
         "GET /api/applications": {
-          "reqPerSec": 1163,
-          "avgMs": 87,
-          "p95Ms": 99,
-          "p99Ms": 107,
+          "reqPerSec": 2174,
+          "avgMs": 46,
+          "p95Ms": 54,
+          "p99Ms": 59,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 11629
+          "totalRequests": 21729
         },
         "GET /api/dashboard/stats": {
-          "reqPerSec": 1626,
-          "avgMs": 62,
-          "p95Ms": 76,
-          "p99Ms": 85,
+          "reqPerSec": 3074,
+          "avgMs": 32,
+          "p95Ms": 43,
+          "p99Ms": 48,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 16257
+          "totalRequests": 30731
         }
       }
     },
@@ -194,59 +194,59 @@
       "concurrency": 250,
       "endpoints": {
         "GET /api/health": {
-          "reqPerSec": 3763,
-          "avgMs": 67,
-          "p95Ms": 83,
-          "p99Ms": 90,
+          "reqPerSec": 9802,
+          "avgMs": 25,
+          "p95Ms": 34,
+          "p99Ms": 40,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 37625
+          "totalRequests": 98000
         },
         "GET /api/jobs": {
-          "reqPerSec": 1126,
-          "avgMs": 236,
-          "p95Ms": 326,
-          "p99Ms": 1775,
+          "reqPerSec": 2169,
+          "avgMs": 119,
+          "p95Ms": 140,
+          "p99Ms": 153,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 11258
+          "totalRequests": 21680
         },
         "GET /api/candidates": {
-          "reqPerSec": 1240,
-          "avgMs": 213,
-          "p95Ms": 273,
-          "p99Ms": 2086,
+          "reqPerSec": 2558,
+          "avgMs": 99,
+          "p95Ms": 116,
+          "p99Ms": 147,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 12404
+          "totalRequests": 25577
         },
         "GET /api/applications": {
-          "reqPerSec": 1165,
-          "avgMs": 225,
-          "p95Ms": 330,
-          "p99Ms": 2432,
-          "errors": 3,
-          "non2xx": 0,
-          "errorRate": "0.0%",
-          "non2xxRate": "0.0%",
-          "totalRequests": 11649
-        },
-        "GET /api/dashboard/stats": {
-          "reqPerSec": 1554,
-          "avgMs": 167,
-          "p95Ms": 176,
-          "p99Ms": 325,
+          "reqPerSec": 2291,
+          "avgMs": 112,
+          "p95Ms": 139,
+          "p99Ms": 180,
           "errors": 0,
           "non2xx": 0,
           "errorRate": "0.0%",
           "non2xxRate": "0.0%",
-          "totalRequests": 15543
+          "totalRequests": 22906
+        },
+        "GET /api/dashboard/stats": {
+          "reqPerSec": 2994,
+          "avgMs": 85,
+          "p95Ms": 106,
+          "p99Ms": 111,
+          "errors": 0,
+          "non2xx": 0,
+          "errorRate": "0.0%",
+          "non2xxRate": "0.0%",
+          "totalRequests": 29930
         }
       }
     }

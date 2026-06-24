@@ -147,6 +147,11 @@ jobSchema.index({ tenantId: 1, isPublic: 1, status: 1 });         // org career 
 jobSchema.index({ applicationDeadline: 1, status: 1, deletedAt: 1 }); // expiry cron
 jobSchema.index({ assignedRecruiters: 1, status: 1 });            // recruiter job lists
 jobSchema.index({ tenantId: 1, assignedRecruiters: 1, deletedAt: 1 }); // recruiter stats endpoint
+// ── Filter-specific compound indexes ─────────────────────────────────────────
+jobSchema.index({ tenantId: 1, urgency: 1, deletedAt: 1 });       // urgency filter (scalar enum)
+jobSchema.index({ tenantId: 1, branch: 1, deletedAt: 1 });        // branch filter (scalar enum)
+jobSchema.index({ tenantId: 1, jobType: 1, deletedAt: 1 });       // jobType filter (scalar enum)
+jobSchema.index({ tenantId: 1, status: 1, deletedAt: 1, createdAt: -1 }); // status + sort (paginated list)
 
 // Keep company and companyName in sync so both field names always work
 jobSchema.pre('save', function (next) {
