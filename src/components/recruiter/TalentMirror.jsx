@@ -73,7 +73,7 @@ function CandidateRow({ item, rank, onShortlist, onPark, onViewResume, idealCore
   const [expanded, setExpanded] = useState(false);
   const [acting, setActing]     = useState(false);
   const [done, setDone]         = useState(''); // 'shortlisted' | 'parked'
-  const { candidate, smartScore, breakdown, matchedSkills, missingCoreSkills, expMatch, talentMatchScore, appliedAt, noBenchmark } = item;
+  const { candidate, smartScore, breakdown, matchedSkills, missingCoreSkills, expMatch, talentMatchScore, appliedAt, noBenchmark, explanation, confidence } = item;
   const color = SCORE_COLOR(smartScore ?? talentMatchScore ?? 0);
   const score = smartScore ?? talentMatchScore ?? 0;
 
@@ -132,6 +132,12 @@ function CandidateRow({ item, rank, onShortlist, onPark, onViewResume, idealCore
             {candidate.experience ? ` · ${candidate.experience}y exp` : ''}
             {candidate.location   ? ` · 📍 ${candidate.location}` : ''}
           </div>
+          {/* Why this match — plain-English explanation */}
+          {explanation && (
+            <div style={{ fontSize: 11, color: 'var(--app-text-sec,#6B7280)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              💡 {explanation}
+            </div>
+          )}
           {/* Skill chips preview */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'nowrap', overflow: 'hidden', marginTop: 5 }}>
             {allDisplaySkills.slice(0, 5).map(s => (
@@ -245,13 +251,30 @@ function CandidateRow({ item, rank, onShortlist, onPark, onViewResume, idealCore
 }
 
 /* ── Main TalentMirror Modal ──────────────────────────────────────────────── */
+const WEIGHT_PRESETS = {
+  Balanced:   { skills: 40, exp: 25, title: 20, keywords: 15 },
+  'Skills ↑': { skills: 60, exp: 15, title: 15, keywords: 10 },
+  'Exp ↑':    { skills: 30, exp: 45, title: 15, keywords: 10 },
+  'Role ↑':   { skills: 35, exp: 20, title: 35, keywords: 10 },
+};
+
+const CONFIDENCE_CONFIG = {
+  low:    { color: '#F59E0B', bg: '#FEF3C7', label: '⚠ Low confidence', tip: 'Based on 1 benchmark. Add more shortlisted/interviewed candidates for better matching.' },
+  medium: { color: '#3B82F6', bg: '#EFF6FF', label: 'Medium confidence', tip: 'Based on 2–4 benchmark candidates. More benchmarks improve accuracy.' },
+  high:   { color: '#10B981', bg: '#F0FDF4', label: 'High confidence',   tip: 'Based on 5+ benchmark candidates. Matching is reliable.' },
+};
+
 export default function TalentMirror({ jobId, jobTitle, onClose, onRefreshPipeline }) {
-  const [data, setData]           = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState('');
-  const [threshold, setThreshold] = useState(60);
+  const [data, setData]             = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [threshold, setThreshold]   = useState(60);
   const [refreshing, setRefreshing] = useState(false);
+  const [weightPreset, setWeightPreset] = useState('Balanced');
+  const [showWeights, setShowWeights]   = useState(false);
   const mountedRef = useRef(true);
+
+  const activeWeights = WEIGHT_PRESETS[weightPreset] || WEIGHT_PRESETS.Balanced;
 
   const load = useCallback(async (silent = false) => {
     if (!jobId) return;
@@ -259,14 +282,15 @@ export default function TalentMirror({ jobId, jobTitle, onClose, onRefreshPipeli
     else setRefreshing(true);
     setError('');
     try {
-      const r = await api.getPipelineSmartMatch(jobId, { threshold });
+      const weightsParam = `skills:${activeWeights.skills},exp:${activeWeights.exp},title:${activeWeights.title},keywords:${activeWeights.keywords}`;
+      const r = await api.getPipelineSmartMatch(jobId, { threshold, weights: weightsParam });
       if (mountedRef.current) setData(r);
     } catch (e) {
       if (mountedRef.current) setError(e?.message || 'Failed to load suggestions');
     } finally {
       if (mountedRef.current) { setLoading(false); setRefreshing(false); }
     }
-  }, [jobId, threshold]);
+  }, [jobId, threshold, activeWeights]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -352,27 +376,55 @@ export default function TalentMirror({ jobId, jobTitle, onClose, onRefreshPipeli
           )}
         </div>
 
+        {/* Confidence banner — only when benchmarks exist */}
+        {data?.hasBenchmarks && data.idealProfile?.confidence && (() => {
+          const cc = CONFIDENCE_CONFIG[data.idealProfile.confidence];
+          return (
+            <div style={{ padding: '8px 24px', background: cc.bg, borderBottom: `1px solid ${cc.color}33`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: cc.color }}>{cc.label}</span>
+              <span style={{ fontSize: 11, color: cc.color + 'cc' }}>— {cc.tip}</span>
+            </div>
+          );
+        })()}
+
         {/* Controls bar */}
-        <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--app-card-border,#E5E7EB)', background: 'var(--app-input-bg,#F8FAFC)', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--app-text-sec,#706E6B)', whiteSpace: 'nowrap' }}>Min Match:</label>
-            {[50, 60, 70, 80].map(t => (
-              <button key={t} onClick={() => setThreshold(t)}
-                style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${threshold === t ? '#0176D3' : 'var(--app-card-border,#E5E7EB)'}`, background: threshold === t ? '#0176D3' : 'transparent', color: threshold === t ? '#fff' : 'var(--app-text-sec,#706E6B)', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
-                {t}%
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid var(--app-card-border,#E5E7EB)', background: 'var(--app-input-bg,#F8FAFC)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* Min match threshold */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--app-text-sec,#706E6B)', whiteSpace: 'nowrap' }}>Min:</label>
+              {[50, 60, 70, 80].map(t => (
+                <button key={t} onClick={() => setThreshold(t)}
+                  style={{ padding: '4px 10px', borderRadius: 20, border: `1.5px solid ${threshold === t ? '#0176D3' : 'var(--app-card-border,#E5E7EB)'}`, background: threshold === t ? '#0176D3' : 'transparent', color: threshold === t ? '#fff' : 'var(--app-text-sec,#706E6B)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  {t}%
+                </button>
+              ))}
+            </div>
+
+            {/* Weight tuning */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setShowWeights(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: '#0176D3', background: 'none', border: '1.5px solid #0176D333', borderRadius: 20, padding: '4px 10px', cursor: 'pointer' }}>
+                ⚙ {weightPreset}
               </button>
-            ))}
-          </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {data && (
-              <span style={{ fontSize: 12, color: 'var(--app-text-muted,#9CA3AF)', fontWeight: 600 }}>
-                {suggestions.length} match · {data.totalEvaluated || 0} evaluated
-              </span>
-            )}
-            <button onClick={() => load(true)} disabled={refreshing}
-              style={{ padding: '6px 14px', borderRadius: 10, border: '1.5px solid var(--app-card-border,#E5E7EB)', background: 'transparent', color: 'var(--app-text-sec,#706E6B)', fontSize: 12, fontWeight: 700, cursor: refreshing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {refreshing ? <Spinner /> : '↺'} Refresh
-            </button>
+              {showWeights && Object.keys(WEIGHT_PRESETS).map(p => (
+                <button key={p} onClick={() => { setWeightPreset(p); setShowWeights(false); }}
+                  style={{ padding: '4px 10px', borderRadius: 20, border: `1.5px solid ${weightPreset === p ? '#0176D3' : '#E5E7EB'}`, background: weightPreset === p ? '#EFF6FF' : 'transparent', color: weightPreset === p ? '#0176D3' : '#6B7280', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {data && (
+                <span style={{ fontSize: 11, color: 'var(--app-text-muted,#9CA3AF)', fontWeight: 600 }}>
+                  {suggestions.length} match · {data.totalEvaluated || 0} evaluated
+                </span>
+              )}
+              <button onClick={() => load(true)} disabled={refreshing}
+                style={{ padding: '5px 12px', borderRadius: 10, border: '1.5px solid var(--app-card-border,#E5E7EB)', background: 'transparent', color: 'var(--app-text-sec,#706E6B)', fontSize: 11, fontWeight: 700, cursor: refreshing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                {refreshing ? <Spinner /> : '↺'} Refresh
+              </button>
+            </div>
           </div>
         </div>
 

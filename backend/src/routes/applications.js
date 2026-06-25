@@ -939,52 +939,26 @@ router.get('/pipeline-smart-match/:jobId',
     const benchmarkApps  = apps.filter(a => BENCHMARK_STAGES.has(a.currentStage) && a.candidateId);
     const evaluateApps   = apps.filter(a => EVALUATE_STAGES.has(a.currentStage)  && a.candidateId);
 
+    // Parse optional weight overrides: ?weights=skills:50,exp:20,title:20,keywords:10
+    let weightOverrides = null;
+    if (req.query.weights) {
+      try {
+        weightOverrides = Object.fromEntries(
+          req.query.weights.split(',').map(pair => {
+            const [k, v] = pair.split(':');
+            return [k.trim(), Number(v)];
+          })
+        );
+      } catch { /* ignore malformed — use defaults */ }
+    }
+
     if (benchmarkApps.length === 0) {
-      // No benchmarks — return all applicants sorted by existing talentMatchScore
       const sorted = evaluateApps
         .sort((a, b) => (b.talentMatchScore || 0) - (a.talentMatchScore || 0))
         .slice(0, maxResults)
         .map(a => ({
-          applicationId: String(a._id),
-          candidateId:   String(a.candidateId._id),
-          candidate: {
-            name:       a.candidateId.name,
-            title:      a.candidateId.title,
-            experience: a.candidateId.experience,
-            skills:     a.candidateId.skills || [],
-            avatarUrl:  a.candidateId.avatarUrl || a.candidateId.photoUrl,
-            resumeUrl:  a.candidateId.resumeUrl,
-            location:   a.candidateId.location,
-          },
-          currentStage:    a.currentStage,
-          talentMatchScore: a.talentMatchScore || 0,
-          smartScore:      null,
-          breakdown:       null,
-          matchedSkills:   [],
-          missingCoreSkills: [],
-          appliedAt:       a.createdAt,
-          noBenchmark:     true,
-        }));
-
-      return res.json({
-        hasBenchmarks: false,
-        benchmarkCount: 0,
-        idealProfile: null,
-        suggestions: sorted,
-        totalEvaluated: evaluateApps.length,
-        message: 'No shortlisted candidates yet. Showing top applicants by initial match score.',
-      });
-    }
-
-    const benchmarkCandidates = benchmarkApps.map(a => a.candidateId);
-    const idealProfile        = buildIdealProfile(benchmarkCandidates);
-
-    const scored = evaluateApps
-      .map(a => {
-        const r = scoreCandidate(a.candidateId, idealProfile);
-        return {
-          applicationId: String(a._id),
-          candidateId:   String(a.candidateId._id),
+          applicationId:   String(a._id),
+          candidateId:     String(a.candidateId._id),
           candidate: {
             name:       a.candidateId.name,
             title:      a.candidateId.title,
@@ -996,13 +970,58 @@ router.get('/pipeline-smart-match/:jobId',
           },
           currentStage:     a.currentStage,
           talentMatchScore: a.talentMatchScore || 0,
-          smartScore:       r.score,
-          breakdown:        r.breakdown,
-          matchedSkills:    r.matchedSkills,
-          coreSkillsMatched:r.coreSkillsMatched,
-          missingCoreSkills:r.missingCoreSkills,
-          expMatch:         r.expMatch,
+          smartScore:       null,
+          breakdown:        null,
+          matchedSkills:    [],
+          missingCoreSkills:[],
+          explanation:      '',
           appliedAt:        a.createdAt,
+          noBenchmark:      true,
+        }));
+
+      return res.json({
+        hasBenchmarks:  false,
+        benchmarkCount: 0,
+        idealProfile:   null,
+        suggestions:    sorted,
+        totalEvaluated: evaluateApps.length,
+        message: 'No shortlisted candidates yet. Showing top applicants by initial match score.',
+      });
+    }
+
+    // Build benchmarks with stage info for weighted profiling
+    const benchmarks = benchmarkApps.map(a => ({
+      candidate: a.candidateId,
+      stage:     a.currentStage,
+    }));
+    const idealProfile = buildIdealProfile(benchmarks);
+
+    const scored = evaluateApps
+      .map(a => {
+        const r = scoreCandidate(a.candidateId, idealProfile, weightOverrides);
+        return {
+          applicationId:    String(a._id),
+          candidateId:      String(a.candidateId._id),
+          candidate: {
+            name:       a.candidateId.name,
+            title:      a.candidateId.title,
+            experience: a.candidateId.experience,
+            skills:     a.candidateId.skills || [],
+            avatarUrl:  a.candidateId.avatarUrl || a.candidateId.photoUrl,
+            resumeUrl:  a.candidateId.resumeUrl,
+            location:   a.candidateId.location,
+          },
+          currentStage:      a.currentStage,
+          talentMatchScore:  a.talentMatchScore || 0,
+          smartScore:        r.score,
+          breakdown:         r.breakdown,
+          matchedSkills:     r.matchedSkills,
+          coreSkillsMatched: r.coreSkillsMatched,
+          missingCoreSkills: r.missingCoreSkills,
+          expMatch:          r.expMatch,
+          explanation:       r.explanation,
+          confidence:        r.confidence,
+          appliedAt:         a.createdAt,
         };
       })
       .filter(r => r.smartScore >= threshold)
@@ -1010,23 +1029,26 @@ router.get('/pipeline-smart-match/:jobId',
       .slice(0, maxResults);
 
     const idealSummary = {
-      benchmarkCount: benchmarkApps.length,
+      benchmarkCount:  benchmarkApps.length,
       benchmarkStages: [...new Set(benchmarkApps.map(a => a.currentStage))],
-      coreSkills:     idealProfile.coreSkills.slice(0, 12),
-      importantSkills:idealProfile.importantSkills.slice(0, 20),
-      allSkills:      idealProfile.allSkills.slice(0, 30),
-      avgExp:         Math.round(idealProfile.avgExp * 10) / 10,
-      expRange:       `${Math.round(idealProfile.minExp)}–${Math.round(idealProfile.maxExp)} yrs`,
+      coreSkills:      idealProfile.coreSkills.slice(0, 12),
+      importantSkills: idealProfile.importantSkills.slice(0, 20),
+      allSkills:       idealProfile.allSkills.slice(0, 30),
+      avgExp:          Math.round(idealProfile.avgExp * 10) / 10,
+      expRange:        `${Math.round(idealProfile.minExp)}–${Math.round(idealProfile.maxExp)} yrs`,
+      confidence:      idealProfile.confidence,
+      effectiveN:      Math.round(idealProfile.effectiveN * 10) / 10,
     };
 
     res.json({
-      hasBenchmarks:  true,
-      benchmarkCount: benchmarkApps.length,
-      benchmarkStages:[...new Set(benchmarkApps.map(a => a.currentStage))],
-      idealProfile:   idealSummary,
-      suggestions:    scored,
-      totalEvaluated: evaluateApps.length,
+      hasBenchmarks:   true,
+      benchmarkCount:  benchmarkApps.length,
+      benchmarkStages: [...new Set(benchmarkApps.map(a => a.currentStage))],
+      idealProfile:    idealSummary,
+      suggestions:     scored,
+      totalEvaluated:  evaluateApps.length,
       threshold,
+      activeWeights:   weightOverrides || { skills: 40, exp: 25, title: 20, keywords: 15 },
     });
   })
 );

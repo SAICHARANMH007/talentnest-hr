@@ -69,7 +69,9 @@ export const applicationService = {
     const r = await req('GET', `/applications/scorecards?jobId=${jobId}`);
     return r?.data || [];
   },
-  async getPipelineSmartMatch(jobId, { threshold = 60, limit = 50 } = {}) {
-    return req('GET', `/applications/pipeline-smart-match/${jobId}?threshold=${threshold}&limit=${limit}`);
+  async getPipelineSmartMatch(jobId, { threshold = 60, limit = 50, weights } = {}) {
+    const qs = new URLSearchParams({ threshold, limit });
+    if (weights) qs.set('weights', weights);
+    return req('GET', `/applications/pipeline-smart-match/${jobId}?${qs.toString()}`);
   },
 };
