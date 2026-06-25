@@ -261,6 +261,8 @@ export default function MeetingRoom() {
   const [toast, setToast] = useState('');
   const [takeoverRequest, setTakeoverRequest] = useState(null);
   const [showReschedule, setShowReschedule] = useState(false);
+  const [tooEarly, setTooEarly] = useState(false);
+  const [tooEarlyMs, setTooEarlyMs] = useState(0);
 
   const socketRef = useRef(null);
   const peerConnsRef = useRef({});
@@ -270,6 +272,7 @@ export default function MeetingRoom() {
   const iceServersRef = useRef(STATIC_FALLBACK_ICE); // replaced by dynamic creds on mount
   // Stable own socket ID — set on connect, used to filter participantEntries correctly.
   const mySocketIdRef = useRef(null);
+  const roomMetaRef = useRef(null);
 
   const isRecruiter = storedUser?.role === 'recruiter' || storedUser?.role === 'admin' || storedUser?.role === 'super_admin';
   // Stable guest userId — generated once when guestIdentity is first set, never changes on re-render
@@ -281,7 +284,13 @@ export default function MeetingRoom() {
     ? { userId: storedUser.id || storedUser._id, name: storedUser.name, role: isRecruiter ? 'interviewer' : 'candidate', isHost: isRecruiter }
     : (guestIdentity ? { ...guestIdentity, userId: guestUserIdRef.current, role: 'candidate', isHost: false } : null);
 
-  useEffect(() => { api.getRoom(roomToken).then(r => setRoomMeta(r?.data || r)); }, [roomToken]);
+  useEffect(() => {
+    api.getRoom(roomToken).then(r => {
+      const m = r?.data || r;
+      setRoomMeta(m);
+      roomMetaRef.current = m;
+    });
+  }, [roomToken]);
 
   // Fetch TURN credentials from YOUR OWN backend before joining.
   // If your coturn server is configured (TURN_HOST + TURN_SECRET env vars on Render),
@@ -300,6 +309,30 @@ export default function MeetingRoom() {
         console.warn('[TURN] Could not fetch credentials, using fallback servers');
       });
   }, []);
+
+  // Keep a stable ref to identity so retry callbacks don't capture stale values
+  const identityRef = useRef(null);
+  identityRef.current = identity;
+
+  // When backend rejects join as too early, retry emitting join-room every 30s
+  // and decrement a visible countdown (when available). Clears itself on success.
+  useEffect(() => {
+    if (!tooEarly) return;
+    const checkAndRetry = () => {
+      if (!socketRef.current?.connected) return;
+      const id = identityRef.current;
+      if (id) socketRef.current.emit('join-room', { roomToken, ...id });
+    };
+    const tick = setInterval(() => {
+      setTooEarlyMs(prev => {
+        const next = Math.max(0, prev - 1000);
+        if (prev > 0 && next === 0) checkAndRetry();
+        return next;
+      });
+    }, 1000);
+    const retryTimer = setInterval(checkAndRetry, 30_000);
+    return () => { clearInterval(tick); clearInterval(retryTimer); };
+  }, [tooEarly, roomToken]);
 
   useEffect(() => { if (identity && !joined) enterRoom(); }, [identity, joined]);
 
@@ -353,6 +386,7 @@ export default function MeetingRoom() {
 
     // ── Step 3: Room events ──────────────────────────────────────────────────
     socket.on('room-state', ({ participants: pList, chatMessages: msgs }) => {
+      setTooEarly(false);
       setParticipants(pList);
       setChatMessages(msgs || []);
       // Initiate a call to every participant already in the room (not ourselves)
@@ -416,8 +450,21 @@ export default function MeetingRoom() {
     socket.on('removed-from-room', () => { setMeetingEnded(true); socket.disconnect(); });
 
     socket.on('error', ({ code, message }) => {
-      if (code === 'ROOM_ENDED') setMeetingEnded(true);
-      else showToast(`⚠️ ${message || 'Could not join room'}`);
+      if (code === 'ROOM_ENDED') {
+        setMeetingEnded(true);
+      } else if (code === 'TOO_EARLY' || (message && message.toLowerCase().includes('too early'))) {
+        const meta = roomMetaRef.current;
+        let ms = 0;
+        if (meta?.validFrom) {
+          ms = Math.max(0, new Date(meta.validFrom).getTime() - Date.now());
+        } else if (meta?.scheduledAt) {
+          ms = Math.max(0, new Date(meta.scheduledAt).getTime() - 15 * 60 * 1000 - Date.now());
+        }
+        setTooEarlyMs(ms);
+        setTooEarly(true);
+      } else {
+        showToast(`⚠️ ${message || 'Could not join room'}`);
+      }
     });
 
     socket.on('connect_error', (err) => {
@@ -643,8 +690,21 @@ export default function MeetingRoom() {
             </button>
           </div>
         )}
-        <span style={{ color: '#94A3B8', fontSize: 13 }}>{participants.length} Active</span>
+        <span style={{ color: '#94A3B8', fontSize: 13 }}>{participantEntries.length} Active</span>
       </div>
+
+      {tooEarly && (
+        <div style={{ background: '#1E3A5F', borderBottom: '1px solid #0176D3', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 16 }}>⏳</span>
+          <span style={{ color: '#94A3B8', fontSize: 14 }}>Room not open yet.</span>
+          {tooEarlyMs > 0 && (
+            <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: 14 }}>
+              Opens in {Math.floor(tooEarlyMs / 60000)}m {Math.floor((tooEarlyMs % 60000) / 1000)}s
+            </span>
+          )}
+          <span style={{ color: '#64748B', fontSize: 12 }}>· Will auto-join when ready</span>
+        </div>
+      )}
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', paddingBottom: 100 }}>
         <div style={{ flex: 1, padding: 20, display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: 16, alignContent: 'center' }}>
