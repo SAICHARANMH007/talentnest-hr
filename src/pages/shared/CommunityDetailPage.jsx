@@ -488,17 +488,51 @@ function CommunityPostCard({ post, userId, userRole, onReact, onDelete, onViewPr
 
 // ── Create Post in Community ───────────────────────────────────────────────────
 function CreateCommunityPost({ user, community, onCreate }) {
+  const [modalOpen,  setModalOpen]  = useState(false);
   const [text,       setText]       = useState('');
   const [postType,   setPostType]   = useState('update');
-  const [expanded,   setExpanded]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [images,     setImages]     = useState([]);   // uploaded URLs
+  const [images,     setImages]     = useState([]);
   const [uploading,  setUploading]  = useState(false);
+  const [uploadError,setUploadError]= useState('');
+  const [postError,  setPostError]  = useState('');
   const fileRef = useRef(null);
   const bg = community?.coverColor || '#0176D3';
+  const isMob = window.innerWidth < 640;
 
-  const [uploadError, setUploadError] = useState('');
-  const [postError,   setPostError]   = useState('');
+  const ACTION_PILLS = [
+    { value: 'photo',        icon: '🖼️', label: 'Photo',    color: '#0176D3' },
+    { value: 'update',       icon: '💬', label: 'Update',   color: '#374151' },
+    { value: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706' },
+    { value: 'hiring',       icon: '💼', label: 'Hiring',   color: '#059669' },
+    { value: 'question',     icon: '❓', label: 'Question', color: '#7C3AED' },
+    { value: 'achievement',  icon: '🏆', label: 'Win',      color: '#B45309' },
+    { value: 'resource',     icon: '📎', label: 'Resource', color: '#0891B2' },
+    { value: 'announcement', icon: '📢', label: 'News',     color: '#1D4ED8' },
+  ];
+
+  const POST_TYPE_PILLS = [
+    { value: 'update',       icon: '💬', label: 'Update',       color: '#374151', bgc: '#F3F4F6' },
+    { value: 'tip',          icon: '💡', label: 'Tip',          color: '#D97706', bgc: '#FEF3C7' },
+    { value: 'hiring',       icon: '💼', label: 'Hiring',       color: '#059669', bgc: '#DCFCE7' },
+    { value: 'question',     icon: '❓', label: 'Question',     color: '#7C3AED', bgc: '#F3E8FF' },
+    { value: 'achievement',  icon: '🏆', label: 'Win',          color: '#B45309', bgc: '#FEF3C7' },
+    { value: 'resource',     icon: '📎', label: 'Resource',     color: '#0891B2', bgc: '#E0F2FE' },
+    { value: 'announcement', icon: '📢', label: 'News',         color: '#1D4ED8', bgc: '#EFF6FF' },
+  ];
+
+  const openModal = (type) => {
+    if (type === 'photo') { if (images.length < 4) fileRef.current?.click(); return; }
+    setPostType(type || 'update');
+    setModalOpen(true);
+  };
+
+  const closeModal = () => { if (submitting) return; setModalOpen(false); reset(); };
+
+  const reset = () => {
+    setText(''); setImages([]); setPostType('update');
+    setUploadError(''); setPostError('');
+  };
 
   const handleImagePick = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -519,8 +553,8 @@ function CreateCommunityPost({ user, community, onCreate }) {
         else failed++;
       } catch (err) { failed++; lastErr = err?.message || ''; }
     }
-    if (uploaded.length) setImages(prev => [...prev, ...uploaded]);
-    if (failed > 0) setUploadError(lastErr || `${failed} photo${failed > 1 ? 's' : ''} failed to upload. Check your connection.`);
+    if (uploaded.length) { setImages(prev => [...prev, ...uploaded]); setModalOpen(true); }
+    if (failed > 0) setUploadError(lastErr || `${failed} photo${failed > 1 ? 's' : ''} failed to upload.`);
     setUploading(false);
     e.target.value = '';
   };
@@ -536,100 +570,122 @@ function CreateCommunityPost({ user, community, onCreate }) {
         communityId  : community._id,
         communitySlug: community.slug,
       });
-      setText('');
-      setImages([]);
-      setExpanded(false);
-      setPostType('update');
-      setPostError('');
+      reset();
+      setModalOpen(false);
       onCreate && onCreate(result?.data || result);
     } catch (e) { setPostError(e?.message || 'Failed to post. Please check your connection and try again.'); }
     setSubmitting(false);
   };
 
   return (
-    <div style={{ ...card, padding: '14px 16px', marginBottom: 14, borderRadius: 14, border: `1px solid ${bg}22`, overflow: 'hidden', width: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
-        <Avatar name={user?.name} src={user?.avatarUrl} size={38} role={user?.role} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onFocus={() => setExpanded(true)}
-            placeholder={`Share something with ${community?.name || 'the community'}…`}
-            rows={expanded ? 3 : 1}
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 14, resize: 'none', outline: 'none', background: '#F8FAFC', fontFamily: 'inherit', transition: 'border 0.15s', boxSizing: 'border-box' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = bg}
-            onMouseLeave={e => { if (!expanded) e.currentTarget.style.borderColor = '#E5E7EB'; }}
-          />
+    <>
+      {/* Hidden file input */}
+      <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImagePick} />
 
-          {/* Image previews */}
-          {images.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              {images.map((url, i) => (
-                <div key={url} style={{ position: 'relative', width: 80, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
-                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
-                    style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 18, height: 18, borderRadius: '50%', cursor: 'pointer', fontSize: 11, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+      {/* Trigger card — matches career community composer style */}
+      <div style={{ ...card, padding: '14px 18px', marginBottom: 14, borderRadius: 16, border: `1px solid ${bg}22`, overflow: 'hidden', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Avatar name={user?.name} src={user?.avatarUrl} size={42} role={user?.role} />
+          <button onClick={() => openModal('update')}
+            style={{ flex: 1, textAlign: 'left', padding: '11px 16px', borderRadius: 24, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Share something with {community?.name?.split(' ')[0] || 'the community'}…
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+          {ACTION_PILLS.map(a => (
+            <button key={a.value} onClick={() => openModal(a.value)} disabled={a.value === 'photo' && uploading}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 20, border: `1.5px solid ${a.color}25`, background: `${a.color}0d`, color: a.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s' }}>
+              <span style={{ fontSize: 14 }}>{a.icon}</span> {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Modal — portal to body */}
+      {modalOpen && createPortal(
+        <div
+          onClick={closeModal}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: isMob ? 'flex-end' : 'center', justifyContent: 'center', padding: isMob ? 0 : 16 }}
+        >
+          <style>{`@keyframes ccp-slide { from { transform: translateY(100%); } to { transform: translateY(0); } } @keyframes ccp-scale { from { opacity:0;transform:scale(0.95) translateY(10px);} to { opacity:1;transform:scale(1) translateY(0); } }`}</style>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', width: '100%', maxWidth: isMob ? '100%' : 580, maxHeight: isMob ? '92dvh' : '88vh', borderRadius: isMob ? '22px 22px 0 0' : 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 48px rgba(0,0,0,0.22)', animation: isMob ? 'ccp-slide 0.28s cubic-bezier(0.32,0.72,0,1)' : 'ccp-scale 0.2s ease' }}
+          >
+            {isMob && <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '10px auto 0', flexShrink: 0 }} />}
+            {/* Modal header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', borderBottom: '1px solid #F1F5F9', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar name={user?.name} src={user?.avatarUrl} size={38} role={user?.role} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0A1628' }}>{user?.name || 'You'}</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>Posting to {community?.name}</div>
                 </div>
-              ))}
-              {uploading && (
-                <div style={{ width: 80, height: 80, borderRadius: 8, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#9CA3AF' }}>
-                  <div style={{ width: 18, height: 18, border: '2px solid #E5E7EB', borderTopColor: bg, borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} />
-                </div>
-              )}
+              </div>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: 20, color: '#9CA3AF', cursor: 'pointer', padding: 4, borderRadius: 6 }}>✕</button>
             </div>
-          )}
 
-          {uploadError && (
-            <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '6px 10px' }}>⚠️ {uploadError}</div>
-          )}
+            {/* Modal body — scrollable */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', minHeight: 0 }}>
+              {/* Post type pills */}
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
+                {POST_TYPE_PILLS.map(pt => {
+                  const isActive = postType === pt.value;
+                  return (
+                    <button key={pt.value} onClick={() => setPostType(pt.value)}
+                      style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 20, border: `1px solid ${isActive ? pt.color + '55' : '#E5E7EB'}`, background: isActive ? pt.bgc : '#F9FAFB', color: isActive ? pt.color : '#374151', fontSize: 12, fontWeight: isActive ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s' }}>
+                      {pt.icon} {pt.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {postError && (
-            <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {postError}</div>
-          )}
+              {/* Textarea */}
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value)}
+                autoFocus
+                placeholder={`Share something with ${community?.name || 'the community'}…`}
+                rows={5}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: `1.5px solid ${bg}33`, fontSize: 15, resize: 'none', outline: 'none', background: '#FAFBFC', fontFamily: 'inherit', lineHeight: 1.6, boxSizing: 'border-box', transition: 'border 0.15s' }}
+                onFocus={e => e.currentTarget.style.borderColor = bg}
+                onBlur={e => e.currentTarget.style.borderColor = `${bg}33`}
+              />
 
-          {/* Post type pills — always visible, matching career community style */}
-          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImagePick} />
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
-            {[
-              { value: 'photo',        icon: '🖼️', label: 'Photo',    color: '#0176D3', bgc: '#EFF6FF' },
-              { value: 'update',       icon: '💬', label: 'Update',   color: '#374151', bgc: '#F3F4F6' },
-              { value: 'tip',          icon: '💡', label: 'Tip',      color: '#D97706', bgc: '#FEF3C7' },
-              { value: 'hiring',       icon: '💼', label: 'Hiring',   color: '#059669', bgc: '#DCFCE7' },
-              { value: 'question',     icon: '❓', label: 'Question', color: '#7C3AED', bgc: '#F3E8FF' },
-              { value: 'achievement',  icon: '🏆', label: 'Win',      color: '#B45309', bgc: '#FEF3C7' },
-              { value: 'resource',     icon: '📎', label: 'Resource', color: '#0891B2', bgc: '#E0F2FE' },
-              { value: 'announcement', icon: '📢', label: 'News',     color: '#1D4ED8', bgc: '#EFF6FF' },
-            ].map(pt => {
-              const isActive = pt.value !== 'photo' && postType === pt.value;
-              return (
-                <button key={pt.value} onClick={() => {
-                  setExpanded(true);
-                  if (pt.value === 'photo') { if (images.length < 4) fileRef.current?.click(); }
-                  else setPostType(pt.value);
-                }} disabled={pt.value === 'photo' && uploading}
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 20, border: `1px solid ${isActive ? pt.color + '55' : '#E5E7EB'}`, background: isActive ? pt.bgc : '#F9FAFB', color: isActive ? pt.color : '#374151', fontSize: 12, fontWeight: isActive ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s' }}>
-                  {pt.icon} {pt.label}
+              {/* Image upload area */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <button onClick={() => { if (images.length < 4) fileRef.current?.click(); }} disabled={uploading || images.length >= 4}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 20, border: '1.5px solid #0176D325', background: '#0176D30d', color: '#0176D3', fontSize: 12, fontWeight: 700, cursor: images.length >= 4 ? 'not-allowed' : 'pointer', opacity: images.length >= 4 ? 0.5 : 1 }}>
+                  {uploading ? <><div style={{ width: 12, height: 12, border: '2px solid #E5E7EB', borderTopColor: '#0176D3', borderRadius: '50%', animation: 'tn-spin 0.8s linear infinite' }} /> Uploading…</> : '🖼️ Add Photo'}
                 </button>
-              );
-            })}
-          </div>
+                {images.map((url, i) => (
+                  <div key={url} style={{ position: 'relative', width: 56, height: 56, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB', flexShrink: 0 }}>
+                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', width: 16, height: 16, borderRadius: '50%', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  </div>
+                ))}
+              </div>
 
-          {expanded && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-              <button onClick={() => { setExpanded(false); setText(''); setPostType('update'); setImages([]); setPostError(''); }}
-                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              {uploadError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', background: '#FEF2F2', borderRadius: 6, padding: '6px 10px' }}>⚠️ {uploadError}</div>}
+              {postError && <div style={{ marginTop: 8, fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontWeight: 600 }}>⚠️ {postError}</div>}
+            </div>
+
+            {/* Modal footer */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 }}>
+              <button onClick={closeModal} style={{ padding: '9px 18px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={handleSubmit} disabled={!text.trim() || submitting}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: text.trim() ? bg : '#E5E7EB', color: text.trim() ? '#fff' : '#9CA3AF', fontSize: 12, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
+                style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: text.trim() ? bg : '#E5E7EB', color: text.trim() ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s', boxShadow: text.trim() ? `0 2px 8px ${bg}44` : 'none' }}>
                 {submitting ? 'Posting…' : 'Post'}
               </button>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 
@@ -1031,7 +1087,10 @@ export default function CommunityDetailPage({ user }) {
       const newMembers = r?.data || [];
       if (page === 1) {
         setMembers(newMembers);
-        setTotalMembers(r?.total || 0);
+        const total = r?.total || 0;
+        setTotalMembers(total);
+        // Persist real count so the Communities list page can use it
+        try { sessionStorage.setItem(`tn_cm_count_${slug}`, String(total)); } catch {}
       } else {
         setMembers(prev => [...prev, ...newMembers]);
       }
@@ -1205,7 +1264,7 @@ export default function CommunityDetailPage({ user }) {
     ...(community?.collegeName
       ? [{ id: 'drives', label: `📣 Placement Drives` }]
       : [{ id: 'jobs', label: `💼 Jobs` }]),
-    { id: 'members', label: `👥 Members (${community?.memberCount || 0})` },
+    { id: 'members', label: `👥 Members (${totalMembers || community?.memberCount || 0})` },
     ...(community?.companyName ? [{ id: 'reviews', label: `⭐ Reviews` }] : []),
     { id: 'about',   label: `ℹ️ About` },
   ];
@@ -1344,13 +1403,13 @@ export default function CommunityDetailPage({ user }) {
           <div style={{ marginTop: 6, paddingLeft: isMobile ? 70 : 78, minHeight: 20, position: 'relative' }}>
             <div style={{ fontWeight: 900, fontSize: isMobile ? 18 : 22, color: '#0A1628', marginBottom: 2 }}>{community.name}</div>
             <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 0 }}>
-              {community.memberCount || 0} members · {community.category}
+              {(totalMembers || community.memberCount || 0)} members · {community.category}
               {community.recentPostCount != null ? ` · ${community.recentPostCount} recent post${community.recentPostCount !== 1 ? 's' : ''}` : ''}
             </div>
             {/* Member avatar strip */}
             {members.length > 0 && (
-              <div onClick={() => setTab('members')} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
-                <div style={{ display: 'flex' }}>
+              <div onClick={() => setTab('members')} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, cursor: 'pointer', flexWrap: 'nowrap', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', flexShrink: 0 }}>
                   {members.slice(0, 8).map((m, i) => (
                     <div key={String(m._id || i)} style={{ marginLeft: i > 0 ? -8 : 0, position: 'relative', zIndex: 10 - i, borderRadius: '50%', border: '2px solid #fff', lineHeight: 0 }}>
                       <Avatar name={m.name} src={m.avatarUrl || m.photoUrl || m.avatar} size={26} role={m.role} />
@@ -1358,9 +1417,9 @@ export default function CommunityDetailPage({ user }) {
                   ))}
                 </div>
                 {totalMembers > 8 && (
-                  <span style={{ fontSize: 12, color: bg, fontWeight: 700 }}>+{totalMembers - 8}</span>
+                  <span style={{ fontSize: 12, color: bg, fontWeight: 700, flexShrink: 0 }}>+{totalMembers - 8}</span>
                 )}
-                <span style={{ fontSize: 12, color: '#9CA3AF' }}>View all members →</span>
+                <span style={{ fontSize: 12, color: '#9CA3AF', whiteSpace: 'nowrap', flexShrink: 0 }}>View all members →</span>
               </div>
             )}
           </div>

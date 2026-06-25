@@ -67,7 +67,7 @@ function CommunityCard({ community, userCollege, onJoin, onLeave, loading, onNav
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500, flexShrink: 0 }}>
-            👥 {community.memberCount || 0}
+            👥 {(() => { try { const s = sessionStorage.getItem(`tn_cm_count_${community.slug}`); return (s && parseInt(s,10) > 0) ? parseInt(s,10) : (community.memberCount || 0); } catch { return community.memberCount || 0; } })()}
           </span>
           {isAutoMember ? (
             <span style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB', color: '#374151', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
