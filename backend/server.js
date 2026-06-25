@@ -244,6 +244,8 @@ app.use('/api/email-sequences', require('./src/routes/emailSequences'));
 app.use('/api/rejection-templates', require('./src/routes/rejectionTemplates'));
 // ── Headcount Plans
 app.use('/api/headcount-plans', require('./src/routes/headcountPlans'));
+// ── Skill Assessments (platform-wide question bank + attempts)
+app.use('/api/skill-assessments', require('./src/routes/skillAssessments'));
 
 function escHtml(v = '') {
   return String(v)
