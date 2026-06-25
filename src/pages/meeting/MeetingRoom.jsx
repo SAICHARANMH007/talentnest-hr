@@ -197,7 +197,7 @@ function CtrlBtn({ icon, label, active, onClick, danger, compact }) {
   );
 }
 
-function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, participantsOpen, isHost, onToggleMic, onToggleCam, onToggleScreen, onToggleChat, onToggleParticipants, onLeave, onEndMeeting, onReschedule, onCopyLink, isMobile }) {
+function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, participantsOpen, isHost, captionsOn, onToggleMic, onToggleCam, onToggleScreen, onToggleChat, onToggleParticipants, onToggleCaptions, onDownloadTranscript, onLeave, onEndMeeting, onReschedule, onCopyLink, isMobile }) {
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid #1E293B', padding: isMobile ? '8px 6px' : '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 5 : 8, zIndex: 100, flexWrap: 'nowrap', overflowX: 'auto' }}>
       <CtrlBtn icon={micOn ? '🎙️' : '🔇'} label={micOn ? 'Mute' : 'Unmute'} active={micOn} danger={!micOn} onClick={onToggleMic} compact={isMobile} />
@@ -206,7 +206,9 @@ function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, participantsOpen,
       <CtrlBtn icon={isSharingScreen ? '🛑' : '🖥️'} label="Share" active={isSharingScreen} onClick={onToggleScreen} compact={isMobile} />
       <CtrlBtn icon="💬" label="Chat" active={chatOpen} onClick={onToggleChat} compact={isMobile} />
       <CtrlBtn icon="👥" label="People" active={participantsOpen} onClick={onToggleParticipants} compact={isMobile} />
+      <CtrlBtn icon="📝" label="Captions" active={captionsOn} onClick={onToggleCaptions} compact={isMobile} />
       <CtrlBtn icon="🔗" label="Invite" onClick={onCopyLink} compact={isMobile} />
+      {!isMobile && <CtrlBtn icon="⬇️" label="Transcript" onClick={onDownloadTranscript} compact={false} />}
       {isHost && !isMobile && <CtrlBtn icon="📅" label="Reschedule" onClick={onReschedule} compact={false} />}
       <div style={{ flex: 1 }} />
       {isHost
@@ -218,18 +220,26 @@ function ControlBar({ micOn, camOn, isSharingScreen, chatOpen, participantsOpen,
 }
 
 // ── Meeting Ended ─────────────────────────────────────────────────────────────
-function MeetingEndedScreen() {
+function MeetingEndedScreen({ onDownloadTranscript }) {
   const navigate = useNavigate();
   return (
     <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', padding: 40, maxWidth: 400 }}>
+      <div style={{ textAlign: 'center', padding: 40, maxWidth: 420 }}>
         <div style={{ fontSize: 64, marginBottom: 20 }}>👋</div>
         <h2 style={{ color: '#fff', fontSize: 26, fontWeight: 800, marginBottom: 10 }}>You've left the meeting</h2>
         <p style={{ color: '#64748B', fontSize: 15, marginBottom: 32 }}>The interview session has ended.</p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => navigate(-1)} style={{ ...btnP, padding: '13px 24px', fontSize: 14, borderRadius: 12 }}>Go Back</button>
           <button onClick={() => navigate('/')} style={{ ...btnG, padding: '13px 24px', fontSize: 14, borderRadius: 12 }}>Home</button>
+          {onDownloadTranscript && (
+            <button onClick={onDownloadTranscript} style={{ ...btnG, padding: '13px 24px', fontSize: 14, borderRadius: 12, borderColor: '#0176D3', color: '#38BDF8' }}>
+              📄 Download Transcript
+            </button>
+          )}
         </div>
+        {onDownloadTranscript && (
+          <p style={{ color: '#475569', fontSize: 12, marginTop: 16 }}>Your captions from this session are available for download.</p>
+        )}
       </div>
     </div>
   );
@@ -285,6 +295,9 @@ export default function MeetingRoom() {
   const [tooEarlyMs, setTooEarlyMs]       = useState(0);
   const [noConnWarning, setNoConnWarning] = useState(false);
   const [isMobile, setIsMobile]           = useState(() => window.innerWidth < 768);
+  const [captionsOn, setCaptionsOn]       = useState(false);
+  const [captions, setCaptions]           = useState([]);     // shown in overlay
+  const [localInterim, setLocalInterim]   = useState('');     // in-progress word
 
   const socketRef        = useRef(null);
   const peerConnsRef     = useRef({});
@@ -297,6 +310,9 @@ export default function MeetingRoom() {
   const identityRef      = useRef(null);
   const lastToastRef     = useRef('');
   const connTimeoutRef   = useRef(null);
+  const recognitionRef   = useRef(null);
+  const captionsOnRef    = useRef(false);   // ref so onend closure sees latest value
+  const fullTranscript   = useRef([]);      // accumulates all lines for download
 
   // Detect mobile / desktop
   useEffect(() => {
@@ -476,6 +492,15 @@ export default function MeetingRoom() {
     });
 
     socket.on('new-message',   m  => setChatMessages(prev => [...prev, m]));
+
+    // Receive remote captions emitted by other participants' speech recognition
+    socket.on('caption', ({ name, text }) => {
+      const ts = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const entry = { name, text, ts };
+      setCaptions(prev => [...prev.slice(-60), entry]);
+      fullTranscript.current.push(entry);
+    });
+
     socket.on('meeting-ended', () => setMeetingEnded(true));
     socket.on('removed-from-room', () => { setMeetingEnded(true); socket.disconnect(); });
 
@@ -588,13 +613,113 @@ export default function MeetingRoom() {
 
   const sendMessage = text => socketRef.current?.emit('send-message', { roomToken, text });
 
+  // ── Speech-to-text (Web Speech API — Chrome/Edge only) ───────────────────
+  const stopRecognition = () => {
+    captionsOnRef.current = false;
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
+    setLocalInterim('');
+  };
+
+  const startRecognition = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      showToast('⚠️ Captions need Chrome or Edge — not supported in this browser.');
+      setCaptionsOn(false);
+      captionsOnRef.current = false;
+      return;
+    }
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = 'en-US';
+
+    r.onresult = event => {
+      let interim = '', final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) final += event.results[i][0].transcript;
+        else interim += event.results[i][0].transcript;
+      }
+      setLocalInterim(interim || '');
+      if (final.trim()) {
+        const myName = identityRef.current?.name || 'You';
+        const text   = final.trim();
+        const ts     = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        // Add to local overlay and transcript log
+        const localEntry = { name: myName + ' (You)', text, ts };
+        setCaptions(prev => [...prev.slice(-60), localEntry]);
+        fullTranscript.current.push(localEntry);
+        setLocalInterim('');
+        // Broadcast to all other participants in the room
+        socketRef.current?.emit('caption', { roomToken, name: myName, text });
+      }
+    };
+
+    r.onerror = e => {
+      if (e.error === 'no-speech') return;  // normal silence gap — ignore
+      if (e.error === 'not-allowed') {
+        showToast('⚠️ Mic permission needed for captions.');
+        setCaptionsOn(false);
+        captionsOnRef.current = false;
+        return;
+      }
+      console.warn('[ASR] error:', e.error);
+    };
+
+    // Auto-restart when recognition stops (browser cuts it after ~60s of audio)
+    r.onend = () => {
+      if (captionsOnRef.current) { try { r.start(); } catch {} }
+      else setLocalInterim('');
+    };
+
+    r.start();
+    recognitionRef.current = r;
+  };
+
+  const toggleCaptions = () => {
+    const next = !captionsOn;
+    setCaptionsOn(next);
+    captionsOnRef.current = next;
+    if (next) {
+      startRecognition();
+      showToast('📝 Captions on — speak clearly, others will see your words');
+    } else {
+      stopRecognition();
+      showToast('Captions off');
+    }
+  };
+
+  const downloadTranscript = () => {
+    if (!fullTranscript.current.length) {
+      showToast('No transcript yet. Enable captions and speak to capture text.');
+      return;
+    }
+    const meta   = roomMetaRef.current;
+    const header = [
+      'TalentNest Interview Transcript',
+      `${meta?.jobTitle || 'Interview'}${meta?.orgName ? ' — ' + meta.orgName : ''}`,
+      `Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      '─'.repeat(50),
+      '',
+    ].join('\n');
+    const body = fullTranscript.current.map(e => `[${e.ts}]  ${e.name}: ${e.text}`).join('\n');
+    const blob  = new Blob([header + '\n' + body + '\n'], { type: 'text/plain;charset=utf-8' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url;
+    a.download = `transcript-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleEndMeeting = () => {
+    stopRecognition();
     socketRef.current?.emit('end-meeting', { roomToken });
     setMeetingEnded(true);
     socketRef.current?.disconnect();
   };
 
-  const handleLeave = () => { socketRef.current?.disconnect(); setMeetingEnded(true); };
+  const handleLeave = () => { stopRecognition(); socketRef.current?.disconnect(); setMeetingEnded(true); };
 
   const handleToggleScreen = async () => {
     if (isSharingScreen) {
@@ -653,7 +778,7 @@ export default function MeetingRoom() {
     );
   }
   if (!isAuthenticated && !guestIdentity) return <GuestJoin roomToken={roomToken} onJoin={setGuestIdentity} />;
-  if (meetingEnded) return <MeetingEndedScreen />;
+  if (meetingEnded) return <MeetingEndedScreen onDownloadTranscript={fullTranscript.current.length ? downloadTranscript : null} />;
 
   // Build tile list: self first, then remote peers
   const localSocketId = mySocketIdRef.current;
@@ -761,12 +886,41 @@ export default function MeetingRoom() {
         />
       )}
 
+      {/* ── Captions Overlay ── */}
+      {captionsOn && (captions.length > 0 || localInterim) && (
+        <div style={{
+          position: 'fixed',
+          bottom: isMobile ? 86 : 106,
+          left: 0,
+          right: (!isMobile && (chatOpen || participantsOpen)) ? 320 : 0,
+          padding: '12px 24px',
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 90,
+          pointerEvents: 'none',
+        }}>
+          {captions.slice(-3).map((c, i) => (
+            <p key={i} style={{ margin: '2px 0', fontSize: isMobile ? 13 : 15, color: '#E2E8F0', lineHeight: 1.5 }}>
+              <span style={{ color: '#38BDF8', fontWeight: 700 }}>{c.name}:</span>{'  '}{c.text}
+            </p>
+          ))}
+          {localInterim && (
+            <p style={{ margin: '2px 0', fontSize: isMobile ? 13 : 15, color: '#94A3B8', fontStyle: 'italic', lineHeight: 1.5 }}>
+              <span style={{ color: '#38BDF8', fontWeight: 700 }}>{identity?.name} (You):</span>{'  '}{localInterim}
+            </p>
+          )}
+        </div>
+      )}
+
       <ControlBar
         micOn={micOn} camOn={camOn} chatOpen={chatOpen} participantsOpen={participantsOpen}
         isHost={identity?.isHost || false} isSharingScreen={isSharingScreen}
+        captionsOn={captionsOn}
         onToggleMic={toggleMic} onToggleCam={toggleCam} onToggleScreen={handleToggleScreen}
         onToggleChat={() => { setChatOpen(c => !c); setParticipantsOpen(false); }}
         onToggleParticipants={() => { setParticipantsOpen(p => !p); setChatOpen(false); }}
+        onToggleCaptions={toggleCaptions}
+        onDownloadTranscript={downloadTranscript}
         onLeave={handleLeave} onEndMeeting={handleEndMeeting}
         onReschedule={() => setShowReschedule(true)} onCopyLink={copyMeetingLink}
         isMobile={isMobile}
