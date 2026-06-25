@@ -345,6 +345,20 @@ router.post('/', ...guard,
     }
 
     res.status(201).json({ success: true, data: { ...candidate.toObject(), id: candidate._id.toString() } });
+
+    // Auto-create company community for this candidate's current company
+    const companyRaw = candidate.currentCompany || (() => {
+      try {
+        const wh = JSON.parse(candidate.workHistory || '[]');
+        const cur = wh.find(w => w.current) || wh[wh.length - 1];
+        return cur?.company || '';
+      } catch { return ''; }
+    })();
+    if (companyRaw) {
+      require('../services/companyCommunity')
+        .ensureOneCompanyCommunity(companyRaw, req.user.id, req.user.tenantId)
+        .catch(() => {});
+    }
   })
 );
 
@@ -405,6 +419,13 @@ router.patch('/:id', ...guard,
     }
 
     res.json({ success: true, data: { ...candidate.toObject(), id: candidate._id.toString() } });
+
+    // Auto-create community if company name was set or changed
+    if (updates.currentCompany) {
+      require('../services/companyCommunity')
+        .ensureOneCompanyCommunity(updates.currentCompany, req.user.id, candidate.tenantId)
+        .catch(() => {});
+    }
   })
 );
 
@@ -516,6 +537,7 @@ router.post('/bulk-import', ...guard,
     if (!rows.length) throw new AppError('File is empty or has no data rows.', 400);
 
     const results = { created: 0, skipped: 0, errors: [] };
+    const bulkCompanyNames = new Set(); // collect for community creation after loop
 
     for (const row of rows) {
       const email = (row.email || row.Email || '').toString().toLowerCase().trim();
@@ -531,6 +553,8 @@ router.post('/bulk-import', ...guard,
           ? rawSkills.split(/[,;]+/).map(s => s.toLowerCase().trim()).filter(Boolean)
           : [];
 
+        const currentCompany = (row.currentCompany || row.current_company || row.company || row.Company || '').toString().trim();
+
         await Candidate.create({
           tenantId: req.user.tenantId,
           name,
@@ -538,11 +562,13 @@ router.post('/bulk-import', ...guard,
           phone: (row.phone || row.Phone || '').toString().trim(),
           location: (row.location || row.Location || '').toString().trim(),
           source: 'bulk_import',
+          currentCompany,
           noticePeriodDays: parseInt(row.noticePeriodDays || row.notice_period_days || 0, 10) || 0,
           willingToRelocate: ['true','yes','1'].includes(String(row.willingToRelocate || row.willing_to_relocate || '').toLowerCase()),
           parsedProfile: { skills, totalExperienceYears: parseInt(row.totalExperienceYears || row.experience_years || 0, 10) || 0 },
         });
         results.created++;
+        if (currentCompany) bulkCompanyNames.add(currentCompany);
       } catch (err) {
         results.errors.push({ email, error: err.message });
       }
@@ -550,6 +576,14 @@ router.post('/bulk-import', ...guard,
 
     logger.audit('Bulk candidate import', req.user.id, req.user.tenantId, { created: results.created, skipped: results.skipped });
     res.json({ success: true, data: results });
+
+    // Auto-create communities for all distinct company names found in the import
+    if (bulkCompanyNames.size > 0) {
+      const { ensureOneCompanyCommunity } = require('../services/companyCommunity');
+      for (const company of bulkCompanyNames) {
+        ensureOneCompanyCommunity(company, req.user.id, req.user.tenantId).catch(() => {});
+      }
+    }
   })
 );
 

@@ -43,8 +43,11 @@ async function ensureOneCompanyCommunity(rawCompanyName, createdBy, tenantId) {
     isGlobal: true,
     memberIds: [],
     memberCount: 0,
-    createdBy,
+    createdBy: createdBy || null,
   }).catch(() => {}); // silently ignore unique-slug races
+
+  // Bust the GET /api/communities list cache so the new community appears immediately
+  try { require('../routes/communities').bustListCache(); } catch (_) {}
 }
 
 module.exports = { ensureOneCompanyCommunity };
