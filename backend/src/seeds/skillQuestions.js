@@ -1,267 +1,721 @@
 'use strict';
 /**
- * Seed script: 20 JavaScript questions (10 hard, 10 medium).
+ * Seed: 30 skills × ≥6 questions (3 hard + 3 medium minimum) = 194 total.
  * Run: node backend/src/seeds/skillQuestions.js
+ * Safe to re-run — skips if ≥ target count already exists per skill.
  */
-const mongoose = require('mongoose');
+const mongoose    = require('mongoose');
 const SkillQuestion = require('../models/SkillQuestion');
 
-const QUESTIONS = [
-  // ── Hard JavaScript ────────────────────────────────────────────────────────
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What does the following code output?\n\nconst obj = { a: 1 };\nObject.freeze(obj);\nobj.a = 2;\nconsole.log(obj.a);',
-    options: [
-      { id: 'a', text: '2', isCorrect: false },
-      { id: 'b', text: '1', isCorrect: true },
-      { id: 'c', text: 'undefined', isCorrect: false },
-      { id: 'd', text: 'TypeError is thrown', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'Object.freeze prevents property mutation. In non-strict mode the assignment silently fails; the value stays 1.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What is the output?\n\nfunction foo() {\n  return\n  { value: 1 };\n}\nconsole.log(foo());',
-    options: [
-      { id: 'a', text: '{ value: 1 }', isCorrect: false },
-      { id: 'b', text: 'undefined', isCorrect: true },
-      { id: 'c', text: 'null', isCorrect: false },
-      { id: 'd', text: 'SyntaxError', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'ASI (Automatic Semicolon Insertion) inserts a semicolon after return, so the object literal is never reached.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What does Promise.allSettled() return when one promise rejects?',
-    options: [
-      { id: 'a', text: 'Rejects immediately with that reason', isCorrect: false },
-      { id: 'b', text: 'Resolves with all results, each with status "fulfilled" or "rejected"', isCorrect: true },
-      { id: 'c', text: 'Resolves only with the fulfilled promises', isCorrect: false },
-      { id: 'd', text: 'Returns undefined for rejected promises', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'Promise.allSettled waits for all promises to settle (resolve or reject) and returns an array of outcome objects.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What is the output?\n\nconsole.log(typeof null);',
-    options: [
-      { id: 'a', text: '"null"', isCorrect: false },
-      { id: 'b', text: '"undefined"', isCorrect: false },
-      { id: 'c', text: '"object"', isCorrect: true },
-      { id: 'd', text: '"symbol"', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'typeof null === "object" is a well-known historical bug in JavaScript that was never fixed for backward compatibility.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'Which of the following correctly describes a WeakMap?',
-    options: [
-      { id: 'a', text: 'Keys can be any value and entries are iterable', isCorrect: false },
-      { id: 'b', text: 'Keys must be objects; entries are not iterable and keys are weakly held', isCorrect: true },
-      { id: 'c', text: 'Values are weakly held but keys can be primitives', isCorrect: false },
-      { id: 'd', text: 'It is a Map with a size limit', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'WeakMap keys must be objects. They are weakly referenced so entries can be GC\'d. WeakMaps are not iterable.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What does the following output?\n\nconst a = [1, 2, 3];\nconst b = a;\nb.push(4);\nconsole.log(a.length);',
-    options: [
-      { id: 'a', text: '3', isCorrect: false },
-      { id: 'b', text: '4', isCorrect: true },
-      { id: 'c', text: 'undefined', isCorrect: false },
-      { id: 'd', text: 'TypeError', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'Arrays are reference types. b = a makes both variables point to the same array in memory.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What is the output?\n\nlet x = 1;\nfunction test() {\n  console.log(x);\n  let x = 2;\n}\ntest();',
-    options: [
-      { id: 'a', text: '1', isCorrect: false },
-      { id: 'b', text: '2', isCorrect: false },
-      { id: 'c', text: 'undefined', isCorrect: false },
-      { id: 'd', text: 'ReferenceError', isCorrect: true },
-    ],
-    marks: 2,
-    explanation: 'let has a temporal dead zone (TDZ). The local x is hoisted but not initialized, so accessing it before the declaration throws ReferenceError.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What does structuredClone() do differently from JSON.parse(JSON.stringify())?',
-    options: [
-      { id: 'a', text: 'It is faster but less accurate', isCorrect: false },
-      { id: 'b', text: 'It correctly handles Date, Map, Set, RegExp, undefined, and circular references', isCorrect: true },
-      { id: 'c', text: 'It only clones plain objects', isCorrect: false },
-      { id: 'd', text: 'It mutates the original object', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'structuredClone uses the Structured Clone Algorithm which handles many types JSON cannot (Date, Map, Set, circular refs).',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'What is the output?\n\nconst p = new Promise(resolve => setTimeout(() => resolve(1), 0));\np.then(v => console.log(v));\nconsole.log(2);',
-    options: [
-      { id: 'a', text: '1 then 2', isCorrect: false },
-      { id: 'b', text: '2 then 1', isCorrect: true },
-      { id: 'c', text: '1 and 2 simultaneously', isCorrect: false },
-      { id: 'd', text: 'Only 2 is logged', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'The .then callback is microtask-queued (after setTimeout macrotask). console.log(2) runs first, then "1" is logged.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'hard',
-    text: 'Which statement about generators is TRUE?',
-    options: [
-      { id: 'a', text: 'Generators are always synchronous', isCorrect: false },
-      { id: 'b', text: 'generator.next() resumes execution up to the next yield and returns { value, done }', isCorrect: true },
-      { id: 'c', text: 'You can only iterate a generator once and there is no way to reset it', isCorrect: false },
-      { id: 'd', text: 'return inside a generator throws an error', isCorrect: false },
-    ],
-    marks: 2,
-    explanation: 'Calling .next() on a generator resumes it until the next yield. The result is always { value, done }.',
-  },
+// ── Helper ────────────────────────────────────────────────────────────────────
+function q(difficulty, type, text, options, marks, explanation) {
+  return { difficulty, type, text, options, marks: marks || (difficulty === 'hard' ? 2 : 1), explanation: explanation || '' };
+}
+function opt(id, text, isCorrect) { return { id, text, isCorrect: !!isCorrect }; }
+function tf(text, correctIsTrue, explanation) {
+  return q('medium', 'truefalse', text,
+    [opt('true', 'True', correctIsTrue), opt('false', 'False', !correctIsTrue)],
+    1, explanation);
+}
 
-  // ── Medium JavaScript ──────────────────────────────────────────────────────
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'Which array method returns a NEW array without mutating the original?',
-    options: [
-      { id: 'a', text: 'push()', isCorrect: false },
-      { id: 'b', text: 'splice()', isCorrect: false },
-      { id: 'c', text: 'map()', isCorrect: true },
-      { id: 'd', text: 'sort()', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'map() returns a new array. push(), splice(), and sort() all mutate the original array.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'What is the difference between == and ===?',
-    options: [
-      { id: 'a', text: '== checks value only; === checks value and type', isCorrect: true },
-      { id: 'b', text: '=== checks value only; == checks value and type', isCorrect: false },
-      { id: 'c', text: 'Both do the same comparison', isCorrect: false },
-      { id: 'd', text: '== is for objects, === is for primitives', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: '== performs type coercion before comparing; === is a strict equality check that requires both value and type to match.',
-  },
-  {
-    skill: 'JavaScript', type: 'truefalse', difficulty: 'medium',
-    text: 'Arrow functions have their own "this" binding.',
-    options: [
-      { id: 'true',  text: 'True',  isCorrect: false },
-      { id: 'false', text: 'False', isCorrect: true },
-    ],
-    marks: 1,
-    explanation: 'Arrow functions do NOT have their own "this". They capture "this" from the surrounding lexical context.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'What does Array.prototype.reduce() do?',
-    options: [
-      { id: 'a', text: 'Filters elements matching a predicate', isCorrect: false },
-      { id: 'b', text: 'Reduces the array to a single accumulated value', isCorrect: true },
-      { id: 'c', text: 'Returns the first element matching a predicate', isCorrect: false },
-      { id: 'd', text: 'Flattens nested arrays by one level', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'reduce() applies a reducer callback to each element, accumulating the result into a single output value.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'What is a closure in JavaScript?',
-    options: [
-      { id: 'a', text: 'A function that cannot access outer variables', isCorrect: false },
-      { id: 'b', text: 'An immediately invoked function expression', isCorrect: false },
-      { id: 'c', text: 'A function that retains access to variables in its outer lexical scope even after that scope has returned', isCorrect: true },
-      { id: 'd', text: 'A sealed object that cannot be modified', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'A closure is created when a function remembers variables from its enclosing scope even when executed outside of that scope.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'Which keyword prevents variable re-declaration in the same scope?',
-    options: [
-      { id: 'a', text: 'var', isCorrect: false },
-      { id: 'b', text: 'let', isCorrect: true },
-      { id: 'c', text: 'function', isCorrect: false },
-      { id: 'd', text: 'global', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'let (and const) prevent re-declaration in the same block scope. var allows re-declaration.',
-  },
-  {
-    skill: 'JavaScript', type: 'truefalse', difficulty: 'medium',
-    text: 'The "async" keyword makes a function always return a Promise.',
-    options: [
-      { id: 'true',  text: 'True',  isCorrect: true },
-      { id: 'false', text: 'False', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'An async function always returns a Promise. If you return a non-Promise value, it is automatically wrapped in a resolved Promise.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'What does the spread operator (...) do when used with an array?',
-    options: [
-      { id: 'a', text: 'Deep clones the array', isCorrect: false },
-      { id: 'b', text: 'Expands the array into individual elements', isCorrect: true },
-      { id: 'c', text: 'Flattens nested arrays to any depth', isCorrect: false },
-      { id: 'd', text: 'Converts the array to a string', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'The spread operator expands an iterable (like an array) into its individual elements in-place.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'Which method checks if ALL elements in an array pass a test?',
-    options: [
-      { id: 'a', text: 'some()', isCorrect: false },
-      { id: 'b', text: 'every()', isCorrect: true },
-      { id: 'c', text: 'find()', isCorrect: false },
-      { id: 'd', text: 'includes()', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'every() returns true if all elements satisfy the callback predicate. some() returns true if at least one does.',
-  },
-  {
-    skill: 'JavaScript', type: 'mcq_single', difficulty: 'medium',
-    text: 'What does Object.assign(target, source) do?',
-    options: [
-      { id: 'a', text: 'Creates a deep clone of source', isCorrect: false },
-      { id: 'b', text: 'Copies enumerable own properties from source into target and returns target', isCorrect: true },
-      { id: 'c', text: 'Creates a new object merging both without modifying either', isCorrect: false },
-      { id: 'd', text: 'Freezes the target object', isCorrect: false },
-    ],
-    marks: 1,
-    explanation: 'Object.assign copies own enumerable properties from one or more source objects to target, mutating target in place.',
-  },
-];
+// ── Questions per skill ───────────────────────────────────────────────────────
+const SKILL_QUESTIONS = {
 
+  // ── JavaScript (10 hard + 10 medium = 20) ──────────────────────────────────
+  JavaScript: [
+    q('hard','mcq_single','What does the following code output?\n\nconst obj = { a: 1 };\nObject.freeze(obj);\nobj.a = 2;\nconsole.log(obj.a);',
+      [opt('a','2'),opt('b','1',true),opt('c','undefined'),opt('d','TypeError is thrown')],2,
+      'Object.freeze prevents mutation. In non-strict mode the assignment silently fails.'),
+    q('hard','mcq_single','What is the output?\n\nfunction foo() {\n  return\n  { value: 1 };\n}\nconsole.log(foo());',
+      [opt('a','{ value: 1 }'),opt('b','undefined',true),opt('c','null'),opt('d','SyntaxError')],2,
+      'ASI inserts a semicolon after return; the object literal is never reached.'),
+    q('hard','mcq_single','What does Promise.allSettled() return when one promise rejects?',
+      [opt('a','Rejects immediately'),opt('b','Resolves with all results, each with status "fulfilled" or "rejected"',true),opt('c','Only fulfilled ones'),opt('d','undefined for rejected')],2,
+      'allSettled waits for all promises and returns outcome objects.'),
+    q('hard','mcq_single','What is the output?\n\nconsole.log(typeof null);',
+      [opt('a','"null"'),opt('b','"undefined"'),opt('c','"object"',true),opt('d','"symbol"')],2,
+      'typeof null === "object" is a historical bug never fixed.'),
+    q('hard','mcq_single','Which correctly describes a WeakMap?',
+      [opt('a','Keys can be any value'),opt('b','Keys must be objects; entries are not iterable and keys are weakly held',true),opt('c','Values are weakly held'),opt('d','Map with size limit')],2,
+      'WeakMap keys must be objects. They are weakly referenced and not iterable.'),
+    q('hard','mcq_single','What is the output?\n\nconst a = [1,2,3];\nconst b = a;\nb.push(4);\nconsole.log(a.length);',
+      [opt('a','3'),opt('b','4',true),opt('c','undefined'),opt('d','TypeError')],2,
+      'Arrays are reference types. b and a point to the same array.'),
+    q('hard','mcq_single','What is the output?\n\nlet x = 1;\nfunction test() {\n  console.log(x);\n  let x = 2;\n}\ntest();',
+      [opt('a','1'),opt('b','2'),opt('c','undefined'),opt('d','ReferenceError',true)],2,
+      'let has a temporal dead zone; accessing before declaration throws ReferenceError.'),
+    q('hard','mcq_single','What does structuredClone() handle that JSON.parse(JSON.stringify()) cannot?',
+      [opt('a','Faster but less accurate'),opt('b','Date, Map, Set, RegExp, undefined, circular refs',true),opt('c','Only plain objects'),opt('d','Mutates the original')],2,
+      'structuredClone uses the Structured Clone Algorithm.'),
+    q('hard','mcq_single','What is the output?\n\nconst p = new Promise(resolve => setTimeout(() => resolve(1), 0));\np.then(v => console.log(v));\nconsole.log(2);',
+      [opt('a','1 then 2'),opt('b','2 then 1',true),opt('c','simultaneously'),opt('d','Only 2')],2,
+      '.then is microtask-queued after setTimeout macrotask; 2 logs first.'),
+    q('hard','mcq_single','Which statement about generators is TRUE?',
+      [opt('a','Always synchronous'),opt('b','generator.next() resumes up to next yield and returns { value, done }',true),opt('c','Can only iterate once'),opt('d','return inside throws')],2,
+      '.next() resumes execution until the next yield.'),
+
+    q('medium','mcq_single','Which array method returns a NEW array without mutating the original?',
+      [opt('a','push()'),opt('b','splice()'),opt('c','map()',true),opt('d','sort()')],1,
+      'map() returns a new array; push, splice, sort mutate in-place.'),
+    q('medium','mcq_single','What is the difference between == and ===?',
+      [opt('a','== checks value only; === checks value and type',true),opt('b','=== checks value only'),opt('c','Both same'),opt('d','== for objects')],1,
+      '== coerces types; === requires same type and value.'),
+    tf('Arrow functions have their own "this" binding.', false,
+      'Arrow functions capture "this" from the surrounding lexical scope.'),
+    q('medium','mcq_single','What does Array.prototype.reduce() do?',
+      [opt('a','Filters elements'),opt('b','Reduces array to single accumulated value',true),opt('c','Returns first match'),opt('d','Flattens arrays')],1,
+      'reduce() applies a reducer callback, accumulating into a single value.'),
+    q('medium','mcq_single','What is a closure in JavaScript?',
+      [opt('a','Cannot access outer vars'),opt('b','IIFE'),opt('c','Function retaining access to outer lexical scope after that scope returns',true),opt('d','Sealed object')],1,
+      'A closure remembers variables from its enclosing scope.'),
+    q('medium','mcq_single','Which keyword prevents variable re-declaration in the same scope?',
+      [opt('a','var'),opt('b','let',true),opt('c','function'),opt('d','global')],1,
+      'let and const prevent re-declaration.'),
+    tf('The "async" keyword makes a function always return a Promise.', true,
+      'async functions always return a Promise, wrapping non-Promise returns automatically.'),
+    q('medium','mcq_single','What does the spread operator (...) do with an array?',
+      [opt('a','Deep clones'),opt('b','Expands into individual elements',true),opt('c','Flattens to any depth'),opt('d','Converts to string')],1,
+      'Spread expands an iterable in-place.'),
+    q('medium','mcq_single','Which method checks if ALL elements pass a test?',
+      [opt('a','some()'),opt('b','every()',true),opt('c','find()'),opt('d','includes()')],1,
+      'every() returns true if all elements satisfy the predicate.'),
+    q('medium','mcq_single','What does Object.assign(target, source) do?',
+      [opt('a','Deep clone of source'),opt('b','Copies enumerable own properties from source into target and returns target',true),opt('c','New object merging both'),opt('d','Freezes target')],1,
+      'Object.assign copies own enumerable properties, mutating target.'),
+  ],
+
+  // ── React ──────────────────────────────────────────────────────────────────
+  React: [
+    q('hard','mcq_single','What does React.useCallback() do?',
+      [opt('a','Memoizes a function reference between renders to avoid re-creating it on every render',true),opt('b','Caches a computed value'),opt('c','Creates a stable ref to any value'),opt('d','Runs a function after every render')],2,
+      'useCallback returns a memoized callback, only changing if dependencies change.'),
+    q('hard','mcq_single','What is the difference between useEffect and useLayoutEffect?',
+      [opt('a','They are identical'),opt('b','useEffect fires asynchronously after paint; useLayoutEffect fires synchronously after DOM mutations, before paint',true),opt('c','useLayoutEffect is deprecated'),opt('d','useEffect fires before paint')],2,
+      'useLayoutEffect blocks paint; useEffect does not — use useLayoutEffect for DOM measurements.'),
+    q('hard','mcq_single','What is a key limitation of React Context API that leads to external state managers?',
+      [opt('a','Context cannot hold objects'),opt('b','All consumers re-render when context value changes, even if they only use part of it',true),opt('c','Context only works in class components'),opt('d','Context is not accessible in nested components')],2,
+      'Every context consumer re-renders on any context value change; no selector-based granularity.'),
+    q('medium','mcq_single','What is the purpose of the "key" prop in React lists?',
+      [opt('a','Required for styling'),opt('b','Helps React identify which items have changed, added, or removed during reconciliation',true),opt('c','Performance hint reducing renders'),opt('d','Assigns unique DOM IDs')],1,
+      'Keys help React\'s diffing algorithm match elements across renders.'),
+    q('medium','mcq_single','Which hook reads/updates a value persisting across renders WITHOUT causing a re-render?',
+      [opt('a','useState'),opt('b','useRef',true),opt('c','useMemo'),opt('d','useContext')],1,
+      'useRef holds a mutable .current value that does not trigger re-renders.'),
+    tf('The useState setter function merges state objects like setState in class components.', false,
+      'useState replaces state entirely; merge manually with spread: setState(prev => ({ ...prev, field: val })).'),
+  ],
+
+  // ── Node.js ────────────────────────────────────────────────────────────────
+  'Node.js': [
+    q('hard','mcq_single','What is the difference between process.nextTick() and setImmediate()?',
+      [opt('a','process.nextTick fires at the end of current iteration before I/O; setImmediate fires in the check phase after I/O callbacks',true),opt('b','They are identical'),opt('c','setImmediate fires first'),opt('d','nextTick fires after all I/O')],2,
+      'nextTick callbacks drain before moving to the next event loop phase; setImmediate fires after I/O phase.'),
+    q('hard','mcq_single','What is stream backpressure in Node.js?',
+      [opt('a','Server halting under heavy load'),opt('b','Signal from a writable stream to readable streams to pause reading when the internal buffer is full',true),opt('c','A load balancing algorithm'),opt('d','Request buffering')],2,
+      'Backpressure prevents overwhelming writable streams by signaling upstream to slow down.'),
+    q('hard','mcq_single','What is the role of libuv in Node.js?',
+      [opt('a','HTTP server'),opt('b','Provides the cross-platform asynchronous I/O and event loop that Node.js is built on',true),opt('c','Package manager'),opt('d','V8 engine')],2,
+      'libuv is the C library that gives Node.js its async non-blocking I/O.'),
+    q('medium','mcq_single','What is the purpose of package-lock.json?',
+      [opt('a','Lists peer dependencies'),opt('b','Locks exact dependency versions for reproducible installs',true),opt('c','Prevents updates'),opt('d','Caches packages')],1,
+      'package-lock.json records exact versions so every install is identical.'),
+    q('medium','mcq_single','What does require() return in Node.js?',
+      [opt('a','Raw source code'),opt('b','The module.exports object of the required file',true),opt('c','A Promise'),opt('d','Module constructor')],1,
+      'require() returns whatever was assigned to module.exports.'),
+    tf('Node.js is single-threaded and therefore cannot handle concurrent operations.', false,
+      'Node uses the event loop + async I/O to handle concurrency without threads.'),
+  ],
+
+  // ── Python ────────────────────────────────────────────────────────────────
+  Python: [
+    q('hard','mcq_single','What is the GIL in Python?',
+      [opt('a','Global Input Layer'),opt('b','Global Interpreter Lock — prevents multiple threads from executing Python bytecode simultaneously in CPython',true),opt('c','A garbage collection mechanism'),opt('d','A module import system')],2,
+      'The GIL means CPython can run only one thread at a time, limiting true thread parallelism.'),
+    q('hard','mcq_single','What is the difference between __str__ and __repr__?',
+      [opt('a','They are identical'),opt('b','__str__ is for human-readable output; __repr__ is for developer/unambiguous representation, used in REPL and debugging',true),opt('c','__repr__ is for strings only'),opt('d','__str__ is deprecated')],2,
+      'repr should be unambiguous; str should be readable.'),
+    q('hard','mcq_single','What are Python generators?',
+      [opt('a','Functions returning lists'),opt('b','Functions using yield to produce values lazily one at a time, maintaining state between calls',true),opt('c','A replacement for for loops'),opt('d','Functions that run asynchronously')],2,
+      'Generators use yield to pause and resume, enabling lazy evaluation.'),
+    q('medium','mcq_single','What is a list comprehension in Python?',
+      [opt('a','[x for x in iterable] — concise way to create a list from an iterable',true),opt('b','A way to sort lists'),opt('c','A list merge operation'),opt('d','A generator expression')],1,
+      'List comprehensions provide a concise syntax for creating lists.'),
+    q('medium','mcq_single','What is the key difference between a list and a tuple?',
+      [opt('a','Lists are ordered; tuples are not'),opt('b','Tuples are immutable; lists are mutable',true),opt('c','Tuples can hold more elements'),opt('d','Lists only hold numbers')],1,
+      'Tuples cannot be modified after creation.'),
+    tf('In Python, *args in a function signature collects extra positional arguments into a tuple.', true,
+      '*args collects remaining positional arguments as a tuple.'),
+  ],
+
+  // ── Java ──────────────────────────────────────────────────────────────────
+  Java: [
+    q('hard','mcq_single','What is the difference between HashMap and ConcurrentHashMap?',
+      [opt('a','ConcurrentHashMap is faster'),opt('b','ConcurrentHashMap is thread-safe using segment-level locking; HashMap is not thread-safe',true),opt('c','HashMap allows null keys; ConcurrentHashMap does not allow any nulls',true),opt('d','They are identical')],2,
+      'ConcurrentHashMap uses striped locking for thread-safe concurrent access.'),
+    q('hard','mcq_single','What are checked vs unchecked exceptions in Java?',
+      [opt('a','Checked exceptions extend RuntimeException'),opt('b','Checked exceptions must be handled or declared with throws; unchecked (RuntimeException subclasses) do not require this',true),opt('c','Unchecked must be caught'),opt('d','They are identical')],2,
+      'Checked: IOException, SQLException. Unchecked: NullPointerException, ArrayIndexOutOfBoundsException.'),
+    q('hard','mcq_single','What happens when you call an overridden method via a superclass reference in Java?',
+      [opt('a','Superclass method is called'),opt('b','CompileError'),opt('c','The overriding method in the actual runtime object is called — this is runtime polymorphism',true),opt('d','Undefined behavior')],2,
+      'Java resolves overridden methods at runtime based on actual object type.'),
+    q('medium','mcq_single','What is the difference between == and .equals() in Java?',
+      [opt('a','No difference for Strings'),opt('b','== compares references; .equals() compares content/value',true),opt('c','.equals() compares references'),opt('d','== only works with primitives')],1,
+      'Use .equals() to compare String content; == checks if they are the same object.'),
+    q('medium','mcq_single','What is an interface in Java?',
+      [opt('a','A class with no methods'),opt('b','A contract that classes must implement, defining method signatures without implementation (pre-Java 8)',true),opt('c','An abstract class'),opt('d','A singleton')],1,
+      'Interfaces define contracts. Java 8+ allows default methods.'),
+    tf('Java supports multiple class inheritance (a class can extend more than one class).', false,
+      'Java allows multiple inheritance only through interfaces, not classes.'),
+  ],
+
+  // ── SQL ───────────────────────────────────────────────────────────────────
+  SQL: [
+    q('hard','mcq_single','What is the difference between RANK() and ROW_NUMBER() window functions?',
+      [opt('a','They are identical'),opt('b','ROW_NUMBER() assigns unique sequential numbers; RANK() assigns the same rank to ties, then skips next ranks',true),opt('c','RANK() never repeats'),opt('d','ROW_NUMBER() skips ties')],2,
+      'RANK: 1,1,3 for ties. ROW_NUMBER: 1,2,3 always unique.'),
+    q('hard','mcq_single','What is a CTE (Common Table Expression)?',
+      [opt('a','A type of index'),opt('b','A named temporary result set defined with the WITH clause, usable in the following SELECT/INSERT/UPDATE/DELETE',true),opt('c','A stored procedure'),opt('d','A table constraint')],2,
+      'CTEs improve readability for complex queries and can be recursive.'),
+    q('hard','mcq_single','What does EXPLAIN (or EXPLAIN ANALYZE) do in SQL?',
+      [opt('a','Lists all tables'),opt('b','Shows the query execution plan the optimizer chose, including cost estimates and actual execution stats',true),opt('c','Runs a query twice to compare'),opt('d','Validates query syntax')],2,
+      'EXPLAIN reveals whether indexes are used, join types, and cost estimates.'),
+    q('medium','mcq_single','What is the difference between WHERE and HAVING?',
+      [opt('a','WHERE filters after aggregation; HAVING filters before'),opt('b','WHERE filters rows before grouping; HAVING filters groups after GROUP BY',true),opt('c','They are identical'),opt('d','HAVING only works with COUNT')],1,
+      'WHERE filters individual rows; HAVING filters aggregated groups.'),
+    q('medium','mcq_single','What does a LEFT JOIN return?',
+      [opt('a','Only matching rows from both tables'),opt('b','All rows from the left table plus matching rows from the right table; NULLs where no match',true),opt('c','All rows from both tables'),opt('d','Only non-matching rows')],1,
+      'LEFT JOIN keeps all left table rows, filling right columns with NULL when no match.'),
+    tf('A PRIMARY KEY column can contain NULL values in standard SQL.', false,
+      'PRIMARY KEY implies NOT NULL and UNIQUE.'),
+  ],
+
+  // ── TypeScript ────────────────────────────────────────────────────────────
+  TypeScript: [
+    q('hard','mcq_single','What is the difference between "type" and "interface" in TypeScript?',
+      [opt('a','No difference'),opt('b','Interfaces can be extended and merged via declaration merging; types are more flexible (can use unions/intersections) but cannot be reopened',true),opt('c','Types are deprecated'),opt('d','Interfaces only work with classes')],2,
+      'Use interface for objects that will be extended; type for unions, intersections, and aliases.'),
+    q('hard','mcq_single','What does the "infer" keyword do in TypeScript conditional types?',
+      [opt('a','Forces a type assertion'),opt('b','Introduces a type variable within a conditional type that TypeScript infers at usage time',true),opt('c','Makes a type optional'),opt('d','Removes undefined from a type')],2,
+      'Example: type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never'),
+    q('hard','mcq_single','What is the "satisfies" operator in TypeScript 4.9+?',
+      [opt('a','Same as "as" assertion'),opt('b','Validates that an expression matches a type while preserving the most specific inferred type (no widening)',true),opt('c','Checks runtime types'),opt('d','Equivalent to typeof check')],2,
+      '"satisfies" validates without widening, keeping literal types and narrowed inference.'),
+    q('medium','mcq_single','What does the "?" operator mean in a TypeScript interface property?',
+      [opt('a','Nullable'),opt('b','Optional — the property may be omitted',true),opt('c','Read-only'),opt('d','Deprecated')],1,
+      'name?: string means the property can be absent or undefined.'),
+    q('medium','mcq_single','What is a TypeScript Union type?',
+      [opt('a','Combines two types, requiring both to be satisfied'),opt('b','Allows a value to be one of several types: string | number | boolean',true),opt('c','Merges two interfaces'),opt('d','A type that can only be undefined')],1,
+      'Union types (|) mean "one of these types."'),
+    tf('TypeScript is compiled to WebAssembly before running in the browser.', false,
+      'TypeScript is compiled (transpiled) to JavaScript.'),
+  ],
+
+  // ── MongoDB ───────────────────────────────────────────────────────────────
+  MongoDB: [
+    q('hard','mcq_single','What is the MongoDB aggregation pipeline?',
+      [opt('a','A way to chain CRUD operations'),opt('b','A framework for data aggregation where documents pass through a series of stages (match, group, sort, project, etc.) to transform and compute results',true),opt('c','A replication mechanism'),opt('d','An indexing strategy')],2,
+      'Each pipeline stage transforms documents; output of one stage is input to next.'),
+    q('hard','mcq_single','What is the difference between findOne() and find() in Mongoose?',
+      [opt('a','No difference'),opt('b','findOne() returns the first matching document or null; find() returns a Query that resolves to an array of all matches',true),opt('c','find() only returns one result'),opt('d','findOne() returns all matches')],2,
+      'findOne returns a single document; find returns an array.'),
+    q('hard','mcq_single','What does the $lookup stage do in a MongoDB aggregation pipeline?',
+      [opt('a','Looks up the collection schema'),opt('b','Performs a left outer join with another collection, adding matched documents as an array field',true),opt('c','Searches for text'),opt('d','Creates an index')],2,
+      '$lookup is MongoDB\'s way to do joins across collections.'),
+    q('medium','mcq_single','What is an ObjectId in MongoDB?',
+      [opt('a','A UUID generated client-side'),opt('b','A 12-byte BSON type used as the default _id, encoding timestamp, machine id, process id, and random counter',true),opt('c','A 32-bit integer'),opt('d','A string field')],1,
+      'ObjectId encodes creation time, making it sortable.'),
+    q('medium','mcq_single','What does the { upsert: true } option do in updateOne()?',
+      [opt('a','Deletes and re-inserts'),opt('b','Creates the document if no match is found, otherwise updates the matching document',true),opt('c','Updates all matches'),opt('d','Raises an error if not found')],1,
+      'Upsert = update if exists, insert if not.'),
+    tf('MongoDB is a document database that stores data as JSON-like BSON documents.', true,
+      'MongoDB stores BSON (Binary JSON) documents in collections.'),
+  ],
+
+  // ── AWS ───────────────────────────────────────────────────────────────────
+  AWS: [
+    q('hard','mcq_single','What is the difference between an AWS IAM Role and an IAM User?',
+      [opt('a','No difference'),opt('b','Users have permanent credentials tied to a person; Roles have temporary credentials assumed by AWS services, applications, or other accounts',true),opt('c','Roles can log into the console; users cannot'),opt('d','Roles have higher permissions')],2,
+      'Roles use STS to issue short-lived credentials; no permanent password or access key.'),
+    q('hard','mcq_single','What is the difference between S3 Standard, S3 Standard-IA, and S3 Glacier?',
+      [opt('a','They differ only in region availability'),opt('b','Standard: frequent access, high availability; Standard-IA: infrequent access, lower cost but retrieval fee; Glacier: archival, lowest cost, minutes-to-hours retrieval',true),opt('c','Glacier stores structured data only'),opt('d','Standard-IA is deprecated')],2,
+      'Choose storage class based on access frequency and retrieval time requirements.'),
+    q('hard','mcq_single','What is AWS VPC and what is its primary purpose?',
+      [opt('a','A virtual machine service'),opt('b','A logically isolated section of AWS Cloud where you can launch resources in a defined virtual network with control over IP ranges, subnets, route tables, and gateways',true),opt('c','A CDN service'),opt('d','A DNS service')],2,
+      'VPC gives you complete network control, isolated from other AWS customers.'),
+    q('medium','mcq_single','What is Amazon S3 used for?',
+      [opt('a','Relational database hosting'),opt('b','Object storage for files, images, backups, static websites, and data lakes',true),opt('c','Container orchestration'),opt('d','Virtual machine compute')],1,
+      'S3 is AWS\'s unlimited object storage with 99.999999999% (11 nines) durability.'),
+    q('medium','mcq_single','What does AWS Lambda do?',
+      [opt('a','Manages EC2 instances'),opt('b','Runs code in response to events without provisioning or managing servers (serverless compute)',true),opt('c','Hosts static websites'),opt('d','Provides a CDN')],1,
+      'Lambda is serverless — you pay only for the compute time consumed.'),
+    tf('An AWS Security Group is stateful — if you allow inbound traffic, the return traffic is automatically allowed.', true,
+      'Security Groups are stateful; NACLs are stateless.'),
+  ],
+
+  // ── Docker ────────────────────────────────────────────────────────────────
+  Docker: [
+    q('hard','mcq_single','What is the difference between a Docker image and a Docker container?',
+      [opt('a','They are identical'),opt('b','An image is a read-only blueprint (snapshot); a container is a running instance of an image with a writable layer on top',true),opt('c','A container is smaller than an image'),opt('d','Images only exist on Docker Hub')],2,
+      'Image : container :: class : instance.'),
+    q('hard','mcq_single','What does the COPY vs ADD Dockerfile instruction do differently?',
+      [opt('a','No difference'),opt('b','COPY copies local files/dirs; ADD also extracts tar archives and can fetch remote URLs',true),opt('c','ADD is deprecated'),opt('d','COPY can fetch URLs')],2,
+      'Best practice: use COPY unless you specifically need ADD\'s tar-extraction or URL support.'),
+    q('hard','mcq_single','What is Docker layer caching and why does it matter?',
+      [opt('a','Speeds up container startup'),opt('b','Docker caches each Dockerfile instruction as a layer; unchanged layers are reused, making subsequent builds faster',true),opt('c','Reduces image size automatically'),opt('d','Caches network calls')],2,
+      'Order Dockerfile instructions from least to most frequently changing to maximize cache hits.'),
+    q('medium','mcq_single','What does "docker run -p 8080:80" do?',
+      [opt('a','Runs container on port 80 only'),opt('b','Maps host port 8080 to container port 80 so traffic on host:8080 reaches the container',true),opt('c','Exposes port 80 to the internet'),opt('d','Creates a network bridge')],1,
+      'Format is host_port:container_port.'),
+    q('medium','mcq_single','What is the purpose of a .dockerignore file?',
+      [opt('a','Lists Docker Hub credentials'),opt('b','Specifies files and directories to exclude from the build context sent to the Docker daemon',true),opt('c','Blocks image pulls'),opt('d','Documents container environment')],1,
+      'Excluding node_modules, .git, etc. speeds up builds and prevents leaking secrets.'),
+    tf('Docker volumes persist data even after the container is removed.', true,
+      'Volumes are managed outside the container lifecycle.'),
+  ],
+
+  // ── Kubernetes ────────────────────────────────────────────────────────────
+  Kubernetes: [
+    q('hard','mcq_single','What is the difference between a Deployment and a StatefulSet in Kubernetes?',
+      [opt('a','No difference'),opt('b','Deployments are for stateless apps with interchangeable pods; StatefulSets maintain stable pod identities, ordered deployment, and stable persistent storage for stateful workloads',true),opt('c','StatefulSets are faster'),opt('d','Deployments cannot scale')],2,
+      'Use StatefulSet for databases; Deployment for stateless microservices.'),
+    q('hard','mcq_single','What is a Kubernetes Ingress?',
+      [opt('a','A type of Pod'),opt('b','An API object managing external HTTP/HTTPS access to Services, providing load balancing, SSL termination, and name-based virtual hosting',true),opt('c','A storage volume'),opt('d','A namespace')],2,
+      'Ingress is a layer 7 (HTTP) routing object, unlike Services which work at L4.'),
+    q('hard','mcq_single','What happens when a Kubernetes Pod fails its liveness probe repeatedly?',
+      [opt('a','The node is replaced'),opt('b','The container is killed and restarted by the kubelet according to the pod\'s restartPolicy',true),opt('c','The pod is evicted from the cluster'),opt('d','An alert is sent to the admin')],2,
+      'Liveness probes determine if a container should be restarted.'),
+    q('medium','mcq_single','What is a Kubernetes ConfigMap used for?',
+      [opt('a','Storing TLS certificates'),opt('b','Storing non-sensitive configuration data as key-value pairs, decoupling config from container images',true),opt('c','Container resource limits'),opt('d','Network policies')],1,
+      'ConfigMaps store config; Secrets store sensitive data.'),
+    q('medium','mcq_single','What is the role of the kube-scheduler?',
+      [opt('a','Manages cluster DNS'),opt('b','Watches for unscheduled Pods and assigns them to nodes based on resource availability and constraints',true),opt('c','Monitors node health'),opt('d','Manages container images')],1,
+      'The scheduler matches Pods to Nodes.'),
+    tf('In Kubernetes, a Service of type ClusterIP is accessible from outside the cluster by default.', false,
+      'ClusterIP is internal-only. Use NodePort, LoadBalancer, or Ingress for external access.'),
+  ],
+
+  // ── CSS ───────────────────────────────────────────────────────────────────
+  CSS: [
+    q('hard','mcq_single','What is the CSS stacking context and when is a new one created?',
+      [opt('a','Created by every element'),opt('b','A three-dimensional conceptual model created when an element has position+z-index, opacity<1, transform, filter, etc.; z-index only compares within the same context',true),opt('c','Created only by z-index'),opt('d','Only relevant in IE')],2,
+      'Stacking contexts explain why z-index sometimes seems to have no effect.'),
+    q('hard','mcq_single','What is the difference between display:none, visibility:hidden, and opacity:0?',
+      [opt('a','No difference visually'),opt('b','display:none removes from layout (no space); visibility:hidden hides but preserves space; opacity:0 invisible but still in layout and can capture events',true),opt('c','opacity:0 removes from layout'),opt('d','visibility:hidden also removes from DOM')],2,
+      'Each has different layout, accessibility, and event implications.'),
+    q('hard','mcq_single','What is the CSS specificity order from highest to lowest?',
+      [opt('a','ID > Class > Element'),opt('b','Inline styles > ID selectors > Class/pseudo-class/attribute > Element/pseudo-element; !important overrides all',true),opt('c','Class > ID > Inline'),opt('d','Element > Class > ID')],2,
+      'Specificity: inline(1,0,0,0) > ID(0,1,0,0) > class(0,0,1,0) > element(0,0,0,1).'),
+    q('medium','mcq_single','What is the CSS Box Model?',
+      [opt('a','A 3D rendering model for transforms'),opt('b','Every element is a box with content, padding, border, and margin from inside out',true),opt('c','A grid layout system'),opt('d','A flexbox concept')],1,
+      'box-sizing:border-box makes width include padding and border.'),
+    q('medium','mcq_single','What does "position: sticky" do?',
+      [opt('a','Fixed to viewport'),opt('b','Behaves like relative until it reaches a scroll threshold, then acts like fixed within its scroll container',true),opt('c','Identical to position:fixed'),opt('d','Removes element from flow')],1,
+      'Sticky combines relative and fixed behavior based on scroll position.'),
+    tf('Flexbox is designed for two-dimensional (row AND column) layout; CSS Grid is one-dimensional.', false,
+      'It\'s the opposite: Flexbox is 1D (row OR column); Grid is 2D (rows AND columns).'),
+  ],
+
+  // ── HTML ──────────────────────────────────────────────────────────────────
+  HTML: [
+    q('hard','mcq_single','What is the difference between <script>, <script defer>, and <script async>?',
+      [opt('a','No difference'),opt('b','Normal blocks HTML parsing; defer downloads in parallel and executes after HTML is parsed in order; async downloads in parallel and executes immediately when ready (unpredictable order)',true),opt('c','defer blocks parsing'),opt('d','async waits for DOMContentLoaded')],2,
+      'Use defer for scripts depending on DOM; async for independent scripts like analytics.'),
+    q('hard','mcq_single','What is the Web Accessibility Initiative (WAI-ARIA) and when should you use ARIA attributes?',
+      [opt('a','A CSS framework'),opt('b','A set of attributes (role, aria-label, aria-expanded, etc.) that expose semantic meaning to assistive technologies; use ONLY when native HTML semantics are insufficient',true),opt('c','Required on all elements'),opt('d','Only for form inputs')],2,
+      'First rule of ARIA: use native HTML5 elements when possible.'),
+    q('hard','mcq_single','What are the key differences between <section>, <article>, <div>, and <main>?',
+      [opt('a','No semantic difference'),opt('b','article: self-contained content; section: themed grouping with heading; main: page main content (one per page); div: generic non-semantic container',true),opt('c','div is deprecated in HTML5'),opt('d','section can appear multiple times but main cannot except for error')],2,
+      'Use semantic elements for accessibility and SEO; div for styling hooks.'),
+    q('medium','mcq_single','What is the difference between <strong> and <b>?',
+      [opt('a','No difference'),opt('b','<strong> indicates strong importance (semantic); <b> is stylistically bold without semantic weight',true),opt('c','<b> is deprecated'),opt('d','<strong> only works in forms')],1,
+      'Screen readers announce <strong> as important; <b> is purely visual.'),
+    q('medium','mcq_single','What does the "alt" attribute on an <img> tag do?',
+      [opt('a','Sets image title tooltip'),opt('b','Provides text alternative for screen readers, search engines, and displays when image fails to load',true),opt('c','Adds a caption below image'),opt('d','Controls image dimensions')],1,
+      'Alt text is critical for accessibility; empty alt="" for decorative images.'),
+    tf('The HTML <form> element requires an "action" attribute to function.', false,
+      'Without action, form submits to the current page URL; action is optional.'),
+  ],
+
+  // ── REST API ──────────────────────────────────────────────────────────────
+  'REST API': [
+    q('hard','mcq_single','What is the difference between PUT and PATCH HTTP methods?',
+      [opt('a','They are identical'),opt('b','PUT replaces the entire resource; PATCH partially updates only the specified fields',true),opt('c','PATCH creates resources'),opt('d','PUT is deprecated')],2,
+      'PUT is idempotent full replacement; PATCH is partial update.'),
+    q('hard','mcq_single','What does idempotency mean for HTTP methods and which are idempotent?',
+      [opt('a','Can only be called once'),opt('b','Making the same request multiple times produces the same result; GET, PUT, DELETE, HEAD, OPTIONS are idempotent; POST is not',true),opt('c','Always returns 200'),opt('d','POST is idempotent')],2,
+      'Idempotency matters for retry logic — safe to retry GET/PUT/DELETE on network failures.'),
+    q('hard','mcq_single','What is the correct HTTP status code for a resource successfully created?',
+      [opt('a','200 OK'),opt('b','201 Created — with a Location header pointing to the new resource',true),opt('c','204 No Content'),opt('d','202 Accepted')],2,
+      '201 Created is the correct response for POST that creates a resource.'),
+    q('medium','mcq_single','What does HTTP status 401 vs 403 mean?',
+      [opt('a','Both mean forbidden'),opt('b','401 Unauthorized: unauthenticated (no or invalid credentials); 403 Forbidden: authenticated but lacks permission',true),opt('c','401 is server error'),opt('d','403 means resource not found')],1,
+      '401 = "Who are you?"; 403 = "I know who you are but you can\'t do this."'),
+    q('medium','mcq_single','What does the Content-Type header specify?',
+      [opt('a','Accepted response formats'),opt('b','The media type of the request/response body (e.g., application/json, multipart/form-data)',true),opt('c','Encoding of URL parameters'),opt('d','Authentication scheme')],1,
+      'Content-Type describes the body; Accept describes what the client can receive.'),
+    tf('REST APIs must use JSON as the data format.', false,
+      'REST is format-agnostic; XML, YAML, MessagePack, or any format can be used.'),
+  ],
+
+  // ── Git ───────────────────────────────────────────────────────────────────
+  Git: [
+    q('hard','mcq_single','What is the difference between git merge and git rebase?',
+      [opt('a','No difference'),opt('b','merge creates a merge commit preserving branch history; rebase replays commits on top of another branch creating linear history (rewrites commit SHAs)',true),opt('c','rebase is safer on shared branches'),opt('d','merge rewrites history')],2,
+      'Never rebase shared/public branches — it rewrites history others may depend on.'),
+    q('hard','mcq_single','What does git reset --hard HEAD~1 do?',
+      [opt('a','Undoes the last commit, keeping changes staged'),opt('b','Moves HEAD back one commit and discards all changes in working tree and index — permanently losing uncommitted work',true),opt('c','Creates a new branch'),opt('d','Stashes changes')],2,
+      '--hard is destructive. Use --soft to undo commit but keep changes staged.'),
+    q('hard','mcq_single','What is a detached HEAD state in Git?',
+      [opt('a','A corrupted repository'),opt('b','When HEAD points directly to a commit instead of a branch ref; new commits won\'t be on any branch and may be garbage collected',true),opt('c','When HEAD is ahead of remote'),opt('d','When remote branch is deleted')],2,
+      'Detached HEAD: you can experiment but must create a branch to keep new commits.'),
+    q('medium','mcq_single','What does git stash do?',
+      [opt('a','Deletes uncommitted changes'),opt('b','Saves working directory and index changes temporarily without committing, restoring a clean working directory',true),opt('c','Creates a commit'),opt('d','Merges branches')],1,
+      'git stash pop restores the most recent stash.'),
+    q('medium','mcq_single','What is the difference between git pull and git fetch?',
+      [opt('a','No difference'),opt('b','fetch downloads remote changes but doesn\'t merge; pull = fetch + merge (or rebase) into current branch',true),opt('c','pull only downloads'),opt('d','fetch auto-merges')],1,
+      'Use fetch + review + merge for safer workflow than pull.'),
+    tf('git commit --amend can safely be used on commits that have already been pushed to a shared remote.', false,
+      'Amend rewrites history; force push required, which causes problems for others.'),
+  ],
+
+  // ── Data Structures & Algorithms ──────────────────────────────────────────
+  'Data Structures & Algorithms': [
+    q('hard','mcq_single','What is the time complexity of finding an element in a balanced binary search tree?',
+      [opt('a','O(1)'),opt('b','O(log n)',true),opt('c','O(n)'),opt('d','O(n log n)')],2,
+      'BST halves the search space at each node; balanced trees guarantee log n depth.'),
+    q('hard','mcq_single','What is the difference between DFS and BFS and when would you choose each?',
+      [opt('a','No practical difference'),opt('b','DFS uses a stack, explores deep first — good for detecting cycles, topological sort, path existence; BFS uses a queue, level-by-level — good for shortest path in unweighted graphs',true),opt('c','BFS always faster'),opt('d','DFS uses a queue')],2,
+      'BFS guarantees shortest path in unweighted graphs; DFS has lower memory for deep graphs.'),
+    q('hard','mcq_single','What is dynamic programming and how does it differ from recursion with memoization?',
+      [opt('a','Identical to memoization'),opt('b','DP solves overlapping sub-problems bottom-up, building a table; memoization (top-down) caches recursive calls. Both avoid redundant computation, but DP avoids call stack overhead.',true),opt('c','DP only works on arrays'),opt('d','Memoization is always faster')],2,
+      'Bottom-up DP avoids stack overflow; memoization is often more intuitive to write.'),
+    q('medium','mcq_single','What is the time complexity of QuickSort on average?',
+      [opt('a','O(n²)'),opt('b','O(n log n)',true),opt('c','O(log n)'),opt('d','O(n)')],1,
+      'QuickSort averages O(n log n) but degrades to O(n²) on sorted input with bad pivot.'),
+    q('medium','mcq_single','What data structure is used to implement a Queue?',
+      [opt('a','Stack'),opt('b','Linked list or array with FIFO (First In First Out) ordering',true),opt('c','Binary tree'),opt('d','Hash table')],1,
+      'Queues use FIFO; use deque for O(1) enqueue and dequeue.'),
+    tf('A hash table with a good hash function provides O(1) average time for insert, lookup, and delete.', true,
+      'Hash tables provide amortized O(1) for basic operations with low collision rate.'),
+  ],
+
+  // ── Machine Learning ──────────────────────────────────────────────────────
+  'Machine Learning': [
+    q('hard','mcq_single','What is the bias-variance tradeoff in machine learning?',
+      [opt('a','High bias means overfitting'),opt('b','High bias (underfitting) means the model is too simple; high variance (overfitting) means the model memorizes training data; the goal is to minimize both simultaneously',true),opt('c','Variance is always preferable to bias'),opt('d','Only bias matters in practice')],2,
+      'Regularization, cross-validation, and more data reduce variance.'),
+    q('hard','mcq_single','What is the difference between L1 (Lasso) and L2 (Ridge) regularization?',
+      [opt('a','They are identical'),opt('b','L1 adds absolute value of weights to loss function, producing sparse models (some weights = 0); L2 adds squared weights, shrinking all weights but keeping them non-zero',true),opt('c','L2 produces sparser models'),opt('d','L1 always performs better')],2,
+      'Use L1 for feature selection; L2 for general regularization.'),
+    q('hard','mcq_single','What does the ROC-AUC score measure and what does AUC = 0.5 mean?',
+      [opt('a','Accuracy of predictions'),opt('b','ROC plots True Positive Rate vs False Positive Rate at different thresholds; AUC = 0.5 means the model is no better than random guessing',true),opt('c','Training loss'),opt('d','Model complexity')],2,
+      'AUC=1.0 is perfect; 0.5 is random; < 0.5 means predictions are consistently wrong.'),
+    q('medium','mcq_single','What is the difference between supervised and unsupervised learning?',
+      [opt('a','Supervised uses more data'),opt('b','Supervised learning trains on labeled input-output pairs; unsupervised learning finds patterns in unlabeled data',true),opt('c','Unsupervised is more accurate'),opt('d','No difference in practice')],1,
+      'Classification/regression = supervised; clustering/dimensionality reduction = unsupervised.'),
+    q('medium','mcq_single','What is cross-validation used for?',
+      [opt('a','Cleaning data'),opt('b','Estimating model performance on unseen data by splitting training data into folds, training on some and validating on others',true),opt('c','Hyperparameter initialization'),opt('d','Reducing model size')],1,
+      'k-fold CV gives a more reliable estimate than a single train/test split.'),
+    tf('A model with 99% accuracy on a dataset where 99% of records belong to class A is always a good model.', false,
+      'A model that always predicts class A achieves 99% accuracy — this is the class imbalance problem.'),
+  ],
+
+  // ── Data Analysis ─────────────────────────────────────────────────────────
+  'Data Analysis': [
+    q('hard','mcq_single','What is the difference between correlation and causation?',
+      [opt('a','They are the same'),opt('b','Correlation means two variables move together statistically; causation means one variable directly causes the other — correlation does not imply causation',true),opt('c','Causation implies no correlation'),opt('d','Correlation is stronger than causation')],2,
+      'Classic example: ice cream sales and drowning rates are correlated (summer), but neither causes the other.'),
+    q('hard','mcq_single','What is a p-value and what does p < 0.05 indicate?',
+      [opt('a','Probability the hypothesis is true'),opt('b','Probability of observing results at least as extreme as the data IF the null hypothesis is true; p<0.05 means we reject the null at 5% significance level',true),opt('c','Confidence interval width'),opt('d','Effect size')],2,
+      'p-value is not the probability the null hypothesis is true; that\'s a common misconception.'),
+    q('hard','mcq_single','What is the difference between mean, median, and mode and when is each preferred?',
+      [opt('a','They are always equal'),opt('b','Mean: sum/count — sensitive to outliers; Median: middle value — robust to outliers, prefer for skewed data; Mode: most frequent — for categorical data',true),opt('c','Median is always largest'),opt('d','Mode works for numerical data only')],2,
+      'For income distributions (right-skewed), median is more representative than mean.'),
+    q('medium','mcq_single','What does standard deviation measure?',
+      [opt('a','The range of values'),opt('b','The average distance of data points from the mean, indicating spread/dispersion of a dataset',true),opt('c','The most common value'),opt('d','The difference between max and min')],1,
+      'Low std = values clustered near mean; high std = widely spread.'),
+    q('medium','mcq_single','What is an outlier and how might you detect one?',
+      [opt('a','Any value above 100'),opt('b','A data point significantly different from others; detected via IQR method (< Q1 - 1.5×IQR or > Q3 + 1.5×IQR), z-scores, or visualization',true),opt('c','Any negative value'),opt('d','The smallest value in the dataset')],1,
+      'Box plots visually identify outliers using the IQR method.'),
+    tf('A bar chart is the best visualization for showing distribution of a continuous variable.', false,
+      'Histogram or box plot is better for continuous distributions; bar charts suit categorical data.'),
+  ],
+
+  // ── Excel ─────────────────────────────────────────────────────────────────
+  Excel: [
+    q('hard','mcq_single','What is the difference between VLOOKUP and INDEX-MATCH?',
+      [opt('a','No difference'),opt('b','VLOOKUP only searches left-to-right in the first column; INDEX-MATCH can search any column in any direction, is faster on large datasets, and does not break when columns are inserted',true),opt('c','VLOOKUP is more flexible'),opt('d','INDEX-MATCH is deprecated in Excel 365')],2,
+      'INDEX-MATCH is the professional standard; XLOOKUP in Excel 365 is even better.'),
+    q('hard','mcq_single','What does an Excel Pivot Table do?',
+      [opt('a','Creates charts automatically'),opt('b','Summarizes, aggregates, and cross-tabulates large datasets dynamically, allowing drag-and-drop analysis by row/column/filter/value fields',true),opt('c','Formats data as a table'),opt('d','Transposes rows and columns')],2,
+      'Pivot Tables transform raw data into insight without writing formulas.'),
+    q('hard','mcq_single','What is the purpose of ARRAYFORMULA (Google Sheets) or Ctrl+Shift+Enter array formulas in Excel?',
+      [opt('a','Sorts arrays'),opt('b','Applies a formula across a range of cells, returning multiple results from a single formula — enables complex multi-cell calculations without helper columns',true),opt('c','Locks cell references'),opt('d','Merges cells')],2,
+      'Array formulas perform multiple calculations; Excel 365 uses dynamic arrays natively.'),
+    q('medium','mcq_single','What does the "$" symbol do in Excel cell references like $A$1?',
+      [opt('a','Formats as currency'),opt('b','Makes the row and/or column reference absolute so it does not change when the formula is copied to another cell',true),opt('c','Protects the cell'),opt('d','Multiplies by the dollar value')],1,
+      '$A$1 = absolute; A1 = relative; $A1 = absolute column; A$1 = absolute row.'),
+    q('medium','mcq_single','What does the COUNTIF function do?',
+      [opt('a','Counts all cells'),opt('b','Counts the number of cells in a range that meet a specified condition',true),opt('c','Sums cells meeting a condition'),opt('d','Finds duplicates')],1,
+      'COUNTIF(A1:A10, ">5") counts cells greater than 5. SUMIF sums them.'),
+    tf('Pressing Ctrl+Z in Excel undoes changes permanently and cannot be recovered after saving and closing.', false,
+      'After closing the file, Ctrl+Z history is lost, but changes saved to disk persist.'),
+  ],
+
+  // ── Vue.js ────────────────────────────────────────────────────────────────
+  'Vue.js': [
+    q('hard','mcq_single','What is the difference between Vue 2 Options API and Vue 3 Composition API?',
+      [opt('a','No difference'),opt('b','Options API organizes code by lifecycle options (data, methods, computed); Composition API organizes by feature logic using setup(), enabling better reuse via composables',true),opt('c','Composition API replaces methods'),opt('d','Options API is faster')],2,
+      'Composition API enables logic reuse; Options API is simpler for small components.'),
+    q('hard','mcq_single','What does Vue\'s v-model directive do under the hood?',
+      [opt('a','Mutates the DOM directly'),opt('b','Creates a two-way binding shorthand: :value binding + @input event listener on the element',true),opt('c','Only works on text inputs'),opt('d','Copies component state')],2,
+      'v-model="x" is sugar for :value="x" @input="x = $event.target.value".'),
+    q('hard','mcq_single','What is the purpose of Vue\'s computed properties vs. methods?',
+      [opt('a','No difference'),opt('b','Computed properties are cached based on reactive dependencies and only re-evaluate when dependencies change; methods re-run on every render',true),opt('c','Methods are cached'),opt('d','Computed properties cannot access data')],2,
+      'Use computed for derived data; methods for actions with side effects.'),
+    q('medium','mcq_single','What does the v-if vs v-show directive difference?',
+      [opt('a','No difference'),opt('b','v-if conditionally renders the element (removed/added from DOM); v-show toggles display:none (element stays in DOM)',true),opt('c','v-show removes from DOM'),opt('d','v-if only works once')],1,
+      'Use v-if for conditions that rarely change; v-show for frequent toggling.'),
+    q('medium','mcq_single','What is a Vue "watcher" used for?',
+      [opt('a','Animating components'),opt('b','Observing a data property and running a callback with new/old values when it changes — useful for async operations in response to data changes',true),opt('c','Making computed properties'),opt('d','Replacing the mounted hook')],1,
+      'Watchers enable side effects on data change; computed is for derived values.'),
+    tf('Vue.js requires a build step (webpack/vite) to be used in a browser.', false,
+      'Vue can be used via CDN <script> tag without a build step.'),
+  ],
+
+  // ── Angular ───────────────────────────────────────────────────────────────
+  Angular: [
+    q('hard','mcq_single','What is Angular\'s change detection strategy and how does OnPush differ from Default?',
+      [opt('a','They are identical'),opt('b','Default checks the entire component tree on every event; OnPush only checks when @Input references change, an Observable emits, or markForCheck() is called — significantly improving performance',true),opt('c','OnPush is deprecated'),opt('d','Default is more performant')],2,
+      'OnPush is the recommended strategy for performance-sensitive components.'),
+    q('hard','mcq_single','What is Angular Dependency Injection and how does @Injectable({ providedIn: "root" }) work?',
+      [opt('a','Manually instantiating services'),opt('b','DI is a design pattern where Angular\'s injector creates and provides service instances; providedIn:"root" registers the service as a singleton in the root injector, available app-wide without listing in providers array',true),opt('c','Requires listing in every module'),opt('d','Only works for components')],2,
+      'Tree-shaking removes root-provided services not used anywhere.'),
+    q('hard','mcq_single','What is the difference between Angular Reactive Forms and Template-Driven Forms?',
+      [opt('a','No difference'),opt('b','Reactive Forms are model-driven (FormGroup/FormControl defined in component class), synchronous, testable; Template-Driven are directive-based (ngModel), async, simpler for basic forms',true),opt('c','Template forms are more powerful'),opt('d','Reactive forms don\'t support validation')],2,
+      'Reactive Forms are preferred for complex forms and testing.'),
+    q('medium','mcq_single','What is an Angular module (NgModule) for?',
+      [opt('a','Only for routing'),opt('b','Groups related components, directives, pipes, and services, declaring and exporting what is available to templates',true),opt('c','Replaces components'),opt('d','Only required in older Angular versions')],1,
+      'NgModules define compilation context. Angular 14+ standalone components reduce NgModule dependency.'),
+    q('medium','mcq_single','What is the Angular async pipe?',
+      [opt('a','Makes an API call'),opt('b','Automatically subscribes to an Observable or Promise in a template, updates the view on new values, and unsubscribes when the component is destroyed',true),opt('c','Delays rendering'),opt('d','Batches HTTP requests')],1,
+      'async pipe eliminates manual subscribe/unsubscribe and prevents memory leaks.'),
+    tf('Angular uses a virtual DOM like React to optimize rendering.', false,
+      'Angular uses real DOM with change detection zones (Zone.js), not virtual DOM.'),
+  ],
+
+  // ── GraphQL ───────────────────────────────────────────────────────────────
+  GraphQL: [
+    q('hard','mcq_single','What is the difference between a GraphQL Query, Mutation, and Subscription?',
+      [opt('a','No functional difference'),opt('b','Query: read data; Mutation: write/modify data; Subscription: long-lived connection receiving real-time push updates from the server',true),opt('c','Subscription is for batch reads'),opt('d','Mutation is for reads')],2,
+      'Subscriptions use WebSockets for real-time event push.'),
+    q('hard','mcq_single','What is the N+1 query problem in GraphQL and how does DataLoader solve it?',
+      [opt('a','Queries returning too many fields'),opt('b','When resolving a list of N items, each item\'s sub-resolver makes 1 DB call = N+1 total queries; DataLoader batches all calls made in the same tick into a single query',true),opt('c','Mutations creating duplicate records'),opt('d','Schema size limitation')],2,
+      'DataLoader uses batching and per-request caching to solve N+1.'),
+    q('hard','mcq_single','What are GraphQL Fragments and what problem do they solve?',
+      [opt('a','Split schema files'),opt('b','Reusable units of fields that can be included in multiple queries/mutations, reducing duplication and enabling consistent field selection across components',true),opt('c','Authentication tokens'),opt('d','Server-side resolvers')],2,
+      'Fragments promote DRY principles in GraphQL queries.'),
+    q('medium','mcq_single','What does the GraphQL schema define?',
+      [opt('a','Database tables'),opt('b','The shape of the data graph — types, their fields, relationships, and which operations (queries/mutations) are available',true),opt('c','Network routing'),opt('d','Authentication rules')],1,
+      'The schema is a strongly-typed contract between client and server.'),
+    q('medium','mcq_single','What is an advantage of GraphQL over REST?',
+      [opt('a','Simpler to set up'),opt('b','Clients request exactly the fields they need, eliminating over-fetching and under-fetching',true),opt('c','Better caching'),opt('d','No schema required')],1,
+      'REST over-fetches (too much data) or under-fetches (multiple requests); GraphQL fetches exactly what\'s needed.'),
+    tf('GraphQL requires a specific database type to work.', false,
+      'GraphQL is database-agnostic — resolvers can call any data source.'),
+  ],
+
+  // ── Redis ─────────────────────────────────────────────────────────────────
+  Redis: [
+    q('hard','mcq_single','What is Redis eviction policy and when would you use allkeys-lru?',
+      [opt('a','How Redis compresses data'),opt('b','Defines what happens when Redis reaches maxmemory; allkeys-lru evicts the least recently used key from all keys — ideal when Redis is a pure cache and all keys should be evictable',true),opt('c','Controls persistence behavior'),opt('d','Network timeout policy')],2,
+      'volatile-lru evicts only keys with expiry; allkeys-lru evicts any key.'),
+    q('hard','mcq_single','What is the difference between Redis persistence options RDB and AOF?',
+      [opt('a','No difference'),opt('b','RDB takes periodic snapshots (compact, faster restart, potential data loss between snapshots); AOF logs every write operation (more durable, larger files, slower restart)',true),opt('c','AOF is faster to restore'),opt('d','RDB logs every write')],2,
+      'Use both RDB+AOF for production: fast restarts with RDB, durability with AOF.'),
+    q('hard','mcq_single','What Redis data structure would you use to implement a leaderboard?',
+      [opt('a','String'),opt('b','Sorted Set (ZSET) — stores members with a float score, automatically sorted, with O(log n) operations for ZADD, ZRANK, ZRANGE',true),opt('c','List'),opt('d','Hash')],2,
+      'ZADD adds members with scores; ZREVRANGE returns top-N in descending order.'),
+    q('medium','mcq_single','What is Redis used for beyond simple caching?',
+      [opt('a','Relational data only'),opt('b','Session storage, pub/sub messaging, rate limiting, leaderboards, distributed locks, job queues, and real-time analytics',true),opt('c','Full-text search only'),opt('d','Only key-value strings')],1,
+      'Redis supports rich data structures: strings, hashes, lists, sets, sorted sets, streams.'),
+    q('medium','mcq_single','What does the Redis EXPIRE command do?',
+      [opt('a','Removes the key immediately'),opt('b','Sets a time-to-live (TTL) on a key in seconds; Redis automatically deletes the key when it expires',true),opt('c','Returns remaining TTL'),opt('d','Renames the key')],1,
+      'Use EXPIREAT for absolute timestamps; PEXPIRE for milliseconds.'),
+    tf('Redis stores all data in memory, making it unsuitable for data that must survive server restarts.', false,
+      'Redis has optional persistence (RDB/AOF) that survives restarts.'),
+  ],
+
+  // ── PostgreSQL ────────────────────────────────────────────────────────────
+  PostgreSQL: [
+    q('hard','mcq_single','What is the MVCC (Multi-Version Concurrency Control) model in PostgreSQL?',
+      [opt('a','A backup strategy'),opt('b','Each transaction sees a consistent snapshot of data from when it started; writes create new versions rather than overwriting, eliminating read-write locks for most operations',true),opt('c','A replication protocol'),opt('d','An index type')],2,
+      'MVCC enables high concurrency without blocking reads with writes.'),
+    q('hard','mcq_single','What is the difference between a PostgreSQL B-tree index and a GIN index?',
+      [opt('a','No difference'),opt('b','B-tree: default, for equality/range queries on scalar values; GIN (Generalized Inverted Index): for composite values like arrays, jsonb, full-text search — storing pointers per element',true),opt('c','GIN is deprecated'),opt('d','B-tree is for text search')],2,
+      'GIN indexes each element; B-tree indexes the whole value.'),
+    q('hard','mcq_single','What does VACUUM do in PostgreSQL?',
+      [opt('a','Drops unused tables'),opt('b','Reclaims storage occupied by dead tuples (row versions left by MVCC), updates query planner statistics, and prevents transaction ID wraparound',true),opt('c','Compresses the database'),opt('d','Rebuilds all indexes')],2,
+      'AUTOVACUUM runs automatically; manual VACUUM ANALYZE refreshes planner stats.'),
+    q('medium','mcq_single','What is a PostgreSQL SERIAL data type?',
+      [opt('a','A 4-byte float'),opt('b','An auto-incrementing integer column (shorthand for INT with a sequence and DEFAULT nextval(seq))',true),opt('c','An array type'),opt('d','A UUID generator')],1,
+      'BIGSERIAL for larger IDs; PostgreSQL 10+ recommends GENERATED ALWAYS AS IDENTITY.'),
+    q('medium','mcq_single','What does the EXPLAIN ANALYZE command do in PostgreSQL?',
+      [opt('a','Lists table schemas'),opt('b','Executes the query and returns the actual execution plan with real timing and row counts vs. planner estimates',true),opt('c','Validates syntax only'),opt('d','Runs the query twice')],1,
+      'EXPLAIN (without ANALYZE) shows plan without executing; EXPLAIN ANALYZE actually runs it.'),
+    tf('A PostgreSQL transaction that encounters an error can continue executing subsequent statements in the same transaction.', false,
+      'PostgreSQL aborts the transaction on error; all subsequent commands fail until ROLLBACK.'),
+  ],
+
+  // ── PHP ───────────────────────────────────────────────────────────────────
+  PHP: [
+    q('hard','mcq_single','What is the difference between == and === in PHP?',
+      [opt('a','Identical'),opt('b','== performs type juggling (coercion); === is strict equality requiring same type and value',true),opt('c','=== is deprecated'),opt('d','== is strict')],2,
+      '0 == "foo" is true in PHP due to type juggling; 0 === "foo" is false.'),
+    q('hard','mcq_single','What is PDO in PHP and why use it over mysql_* functions?',
+      [opt('a','A PHP framework'),opt('b','PHP Data Objects: a database access layer providing consistent API across databases, prepared statements for SQL injection prevention; mysql_* functions are removed in PHP 7+',true),opt('c','A templating engine'),opt('d','A session handler')],2,
+      'Always use PDO or mysqli with prepared statements; never interpolate user input into SQL.'),
+    q('hard','mcq_single','What is the difference between include, require, include_once, and require_once in PHP?',
+      [opt('a','No difference'),opt('b','include/require load a file; require throws a fatal error if file missing (include emits warning); _once variants skip if file already included in the request',true),opt('c','include_once is faster'),opt('d','require_once is deprecated')],2,
+      'Use require_once for class/function files to prevent redeclaration errors.'),
+    q('medium','mcq_single','What does the PHP arrow function (fn) syntax do?',
+      [opt('a','Creates a class'),opt('b','Defines a short anonymous function that automatically captures outer variables by value: fn($x) => $x * 2',true),opt('c','Defines a method'),opt('d','Creates a generator')],1,
+      'Arrow functions implicitly capture parent scope by value (no use keyword needed).'),
+    q('medium','mcq_single','What is composer.json used for in PHP?',
+      [opt('a','Server configuration'),opt('b','Defines project dependencies, autoloading, scripts, and metadata for Composer, PHP\'s dependency manager',true),opt('c','Database migrations'),opt('d','Routing configuration')],1,
+      'Composer is PHP\'s npm equivalent.'),
+    tf('PHP is a statically typed language.', false,
+      'PHP is dynamically typed by default; PHP 7+ added type declarations but they are optional.'),
+  ],
+
+  // ── C++ ───────────────────────────────────────────────────────────────────
+  'C++': [
+    q('hard','mcq_single','What is RAII (Resource Acquisition Is Initialization) in C++?',
+      [opt('a','A memory allocator'),opt('b','A pattern where resource acquisition is tied to object initialization, and release to destruction — smart pointers use this to automatically free heap memory when out of scope',true),opt('c','A compiler optimization'),opt('d','A namespace convention')],2,
+      'std::unique_ptr and std::shared_ptr implement RAII for memory management.'),
+    q('hard','mcq_single','What is the difference between std::unique_ptr and std::shared_ptr?',
+      [opt('a','No difference'),opt('b','unique_ptr: exclusive ownership, cannot be copied, zero overhead; shared_ptr: shared ownership via reference counting, can be copied, has overhead from the control block',true),opt('c','shared_ptr is always preferred'),opt('d','unique_ptr uses garbage collection')],2,
+      'Prefer unique_ptr; use shared_ptr only when shared ownership is genuinely needed.'),
+    q('hard','mcq_single','What is a virtual destructor and why is it important?',
+      [opt('a','Only useful in templates'),opt('b','When a base class pointer is used to delete a derived class object, a virtual destructor ensures the derived destructor is called first — without it, only the base destructor runs, causing resource leaks',true),opt('c','virtual destructors are deprecated'),opt('d','It prevents object deletion')],2,
+      'Always declare destructors virtual in polymorphic base classes.'),
+    q('medium','mcq_single','What does the "const" keyword mean when applied to a member function?',
+      [opt('a','Makes the function static'),opt('b','Declares that the function does not modify the object\'s state (non-mutable members); allows calling on const objects',true),opt('c','Makes the return value const'),opt('d','Inlines the function')],1,
+      'const member functions can be called on both const and non-const objects.'),
+    q('medium','mcq_single','What is the difference between a reference and a pointer in C++?',
+      [opt('a','No difference'),opt('b','References must be initialized and cannot be null or reseated; pointers can be null, reseated, and do pointer arithmetic',true),opt('c','Pointers are safer'),opt('d','References use * syntax')],1,
+      'Prefer references when null is not a valid state.'),
+    tf('C++ automatically garbage collects heap-allocated memory when it goes out of scope.', false,
+      'C++ has no GC; you must manually delete or use smart pointers.'),
+  ],
+
+  // ── Ruby ──────────────────────────────────────────────────────────────────
+  Ruby: [
+    q('hard','mcq_single','What is the difference between a Ruby Proc and a Lambda?',
+      [opt('a','No difference'),opt('b','Lambda checks argument count and returns from the lambda itself; Proc does not check arity and return exits the enclosing method',true),opt('c','Proc checks arguments'),opt('d','Lambda is deprecated')],2,
+      'Lambda behaves more like a method; Proc behaves more like a block.'),
+    q('hard','mcq_single','What is Ruby\'s "method_missing" hook used for?',
+      [opt('a','Handles syntax errors'),opt('b','Called when a method is invoked that doesn\'t exist; used to build DSLs and metaprogramming patterns like dynamic finders in ActiveRecord',true),opt('c','Prevents all method errors'),opt('d','A debugging tool')],2,
+      'Always also define respond_to_missing? alongside method_missing.'),
+    q('hard','mcq_single','What are Ruby Modules and mixins?',
+      [opt('a','Similar to classes'),opt('b','Modules are namespaces and mixins — included with "include" or "extend" to add methods to a class without inheritance; Ruby\'s answer to multiple inheritance',true),opt('c','Deprecated in Ruby 3'),opt('d','Only for constants')],2,
+      'include adds instance methods; extend adds class methods.'),
+    q('medium','mcq_single','What does the "yield" keyword do in Ruby?',
+      [opt('a','Returns from the method'),opt('b','Calls the block passed to the method at that point, optionally passing values to the block',true),opt('c','Creates a generator'),opt('d','Raises an exception')],1,
+      'block_given? checks if a block was passed before yielding.'),
+    q('medium','mcq_single','What is symbol (:name) vs string ("name") in Ruby?',
+      [opt('a','No difference'),opt('b','Symbols are immutable, unique identifiers stored once in memory (same :foo is always the same object); strings are mutable and each literal creates a new object',true),opt('c','Strings are faster'),opt('d','Symbols can contain spaces')],1,
+      'Use symbols for hash keys and identifiers; strings for text that changes.'),
+    tf('In Ruby, everything is an object including integers, nil, and true.', true,
+      '1.class returns Integer; nil.class returns NilClass — even primitives are objects.'),
+  ],
+
+  // ── Swift ─────────────────────────────────────────────────────────────────
+  Swift: [
+    q('hard','mcq_single','What is the difference between a Swift class and struct?',
+      [opt('a','No difference'),opt('b','Structs are value types (copied on assignment); Classes are reference types (shared). Structs have no inheritance; Classes support inheritance and deinit',true),opt('c','Classes are value types'),opt('d','Structs support inheritance')],2,
+      'Prefer structs for data models; classes for shared mutable state.'),
+    q('hard','mcq_single','What is a Swift optional and what does optional chaining (?.) do?',
+      [opt('a','A weak reference'),opt('b','Optional wraps a value that may be absent (nil); optional chaining safely accesses properties/methods, returning nil instead of crashing if any link in the chain is nil',true),opt('c','A force unwrap'),opt('d','A type cast')],2,
+      'user?.address?.city returns nil safely if any intermediate value is nil.'),
+    q('hard','mcq_single','What are Swift\'s Automatic Reference Counting (ARC) retain cycles and how are they prevented?',
+      [opt('a','Compile-time errors'),opt('b','When two objects hold strong references to each other, neither can be released; prevented with weak (nullable) or unowned (non-nullable, not retained) references',true),opt('c','ARC handles cycles automatically'),opt('d','Using protocols')],2,
+      'Closures that capture self create retain cycles; use [weak self] to break them.'),
+    q('medium','mcq_single','What does guard let do in Swift?',
+      [opt('a','Locks a mutex'),opt('b','Unwraps an optional and exits the current scope early (return/throw/break) if nil, making the unwrapped value available for the rest of the function',true),opt('c','Creates a constant'),opt('d','Identical to if let')],1,
+      'guard let keeps the happy path at the top level without deep nesting.'),
+    q('medium','mcq_single','What is a Swift protocol?',
+      [opt('a','A network protocol'),opt('b','A blueprint of methods, properties, and requirements that conforming types must implement — Swift\'s interface/trait system',true),opt('c','A class with no body'),opt('d','An enum variant')],1,
+      'Protocol-Oriented Programming is a core Swift paradigm.'),
+    tf('Swift is backward compatible with Objective-C and can call Objective-C APIs directly.', true,
+      'Swift uses bridging headers to interop with Objective-C in the same project.'),
+  ],
+
+  // ── Kotlin ────────────────────────────────────────────────────────────────
+  Kotlin: [
+    q('hard','mcq_single','What are Kotlin coroutines and how do they differ from Java threads?',
+      [opt('a','Identical to threads'),opt('b','Coroutines are lightweight concurrent constructs that suspend without blocking threads; thousands can run on a few threads, using structured concurrency with scopes and cancellation',true),opt('c','Coroutines replace Kotlin entirely'),opt('d','Only for Android')],2,
+      'Coroutines are cheaper than threads and composable via structured concurrency.'),
+    q('hard','mcq_single','What is the difference between Kotlin\'s "val" and "var"?',
+      [opt('a','No difference'),opt('b','val: read-only (like Java final); var: mutable — prefer val for immutability',true),opt('c','var is immutable'),opt('d','val can be reassigned once')],2,
+      'Prefer val; only use var when mutation is necessary.'),
+    q('hard','mcq_single','What is a Kotlin sealed class and when would you use it?',
+      [opt('a','A class that cannot be inherited'),opt('b','A restricted class hierarchy where all subclasses are defined in the same file/module; when used with when, the compiler can verify exhaustiveness without an else branch',true),opt('c','A class with a private constructor'),opt('d','A data class variant')],2,
+      'Sealed classes are perfect for modeling states (Loading, Success, Error).'),
+    q('medium','mcq_single','What does Kotlin\'s "?.let { }" idiom do?',
+      [opt('a','Creates a lambda'),opt('b','Executes the lambda block only if the receiver is non-null, with the non-null value passed as "it"',true),opt('c','Converts to string'),opt('d','Loops over a collection')],1,
+      'str?.let { println(it) } — safe null check without if-null boilerplate.'),
+    q('medium','mcq_single','What is a Kotlin data class?',
+      [opt('a','A class holding a database'),opt('b','A class automatically generating equals(), hashCode(), toString(), copy(), and componentN() functions based on constructor parameters',true),opt('c','An abstract class'),opt('d','A singleton')],1,
+      'Data classes eliminate boilerplate for value objects.'),
+    tf('Kotlin is fully interoperable with Java and can use Java libraries directly.', true,
+      'Kotlin runs on the JVM and has 100% Java interop.'),
+  ],
+
+  // ── Communication ─────────────────────────────────────────────────────────
+  Communication: [
+    q('hard','mcq_single','What is active listening and how does it differ from passive listening?',
+      [opt('a','No difference'),opt('b','Active listening involves fully concentrating, understanding, and responding — paraphrasing, asking clarifying questions, maintaining eye contact; passive listening is hearing without engaging or processing',true),opt('c','Passive listening involves more questions'),opt('d','Active listening means agreeing with everything said')],2,
+      'Active listening builds trust and ensures accurate understanding.'),
+    q('hard','mcq_single','What is the STAR method for answering behavioral interview questions?',
+      [opt('a','A scoring rubric'),opt('b','Situation-Task-Action-Result: a structured framework to give concise, concrete examples — describe the context, your responsibility, specific actions you took, and measurable outcomes',true),opt('c','A conflict resolution model'),opt('d','A presentation framework')],2,
+      'STAR keeps answers focused and evidence-based rather than vague.'),
+    q('hard','mcq_single','What is the key difference between assertive and aggressive communication?',
+      [opt('a','No difference'),opt('b','Assertive: expressing needs/opinions clearly while respecting others\' rights; Aggressive: expressing needs in a way that violates others\' rights, dominates, or intimidates',true),opt('c','Aggressive communication is more effective'),opt('d','Assertive communication means never disagreeing')],2,
+      'Assert your needs with "I" statements; aggressive communication damages relationships.'),
+    q('medium','mcq_single','What does "reading the room" mean in a professional context?',
+      [opt('a','Reviewing meeting notes'),opt('b','Perceiving and adapting to the group\'s mood, energy, and non-verbal cues to adjust your tone, content, or approach accordingly',true),opt('c','Preparing presentations'),opt('d','Taking attendance')],1,
+      'Emotional intelligence enables accurate reading of group dynamics.'),
+    q('medium','mcq_single','What is the most effective way to deliver constructive feedback?',
+      [opt('a','Wait for the annual review'),opt('b','Be specific, timely, and focus on behavior/impact not personality; use "I noticed X which resulted in Y" framing; follow with how to improve',true),opt('c','Start with extensive criticism'),opt('d','Only give positive feedback')],1,
+      'The SBI model: Situation-Behavior-Impact structures feedback clearly.'),
+    tf('Non-verbal communication (body language, tone) typically carries less weight than the actual words spoken.', false,
+      'Studies suggest 55-93% of communication impact comes from non-verbal cues.'),
+  ],
+};
+
+// ── Seed runner ───────────────────────────────────────────────────────────────
 async function seed() {
   const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/talentnest';
   await mongoose.connect(uri);
+  console.log('Connected. Seeding skill questions…');
 
-  const existing = await SkillQuestion.countDocuments({ skill: 'JavaScript' });
-  if (existing >= 20) {
-    console.log(`Seed skipped: ${existing} JavaScript questions already exist.`);
-    await mongoose.disconnect();
-    return;
+  let totalInserted = 0;
+  for (const [skill, questions] of Object.entries(SKILL_QUESTIONS)) {
+    const existing = await SkillQuestion.countDocuments({ skill, tenantId: null });
+    const target   = questions.length;
+    if (existing >= target) {
+      console.log(`  SKIP  ${skill} — ${existing} already exist`);
+      continue;
+    }
+    await SkillQuestion.deleteMany({ skill, tenantId: null });
+    await SkillQuestion.insertMany(questions.map(q => ({ ...q, skill, tenantId: null })));
+    console.log(`  SEEDED ${questions.length} questions for ${skill}`);
+    totalInserted += questions.length;
   }
 
-  await SkillQuestion.deleteMany({ skill: 'JavaScript', tenantId: null });
-  await SkillQuestion.insertMany(QUESTIONS.map(q => ({ ...q, tenantId: null })));
-  console.log(`Seeded ${QUESTIONS.length} JavaScript questions.`);
+  const total = await SkillQuestion.countDocuments({ tenantId: null });
+  console.log(`\nDone. ${totalInserted} new questions inserted. Total in DB: ${total} across ${Object.keys(SKILL_QUESTIONS).length} skills.`);
   await mongoose.disconnect();
 }
 
@@ -269,4 +723,4 @@ if (require.main === module) {
   seed().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { QUESTIONS };
+module.exports = { SKILL_QUESTIONS };

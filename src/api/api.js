@@ -26,6 +26,7 @@ import { connectionService }        from './services/connection.service.js';
 import { communityService }         from './services/community.service.js';
 import { infoRequestService }       from './services/infoRequest.service.js';
 import { faceService }              from './services/face.service.js';
+import { skillAssessmentService }  from './services/skillAssessment.service.js';
 
 // Re-export the 401 handler and auth initializer for global app subscription
 export const set401Handler = _set401;
@@ -59,6 +60,7 @@ export const api = {
   ...communityService,
   ...infoRequestService,
   ...faceService,
+  ...skillAssessmentService,
 };
 
 // Default export for convenience

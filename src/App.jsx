@@ -41,6 +41,7 @@ const CandidateInterviews = lazy(() => import('./pages/candidate/CandidateInterv
 const CandidateNotificationSettings = lazy(() => import('./pages/candidate/CandidateNotificationSettings.jsx'));
 const CandidateProfile = lazy(() => import('./pages/candidate/CandidateProfile.jsx'));
 const CandidateAssessment = lazy(() => import('./pages/candidate/CandidateAssessment.jsx'));
+const SkillAssessmentPage = lazy(() => import('./pages/candidate/SkillAssessmentPage.jsx'));
 const CandidateSmartMatch = lazy(() => import('./pages/candidate/CandidateSmartMatch.jsx'));
 const CandidateReferEarn  = lazy(() => import('./pages/candidate/CandidateReferEarn.jsx'));
 const CandidateCareerJourney = lazy(() => import('./pages/candidate/CandidateCareerJourney.jsx'));
@@ -123,6 +124,7 @@ const DashboardWidgets      = lazy(() => import('./pages/admin/DashboardWidgets.
 const HeadcountPlanner      = lazy(() => import('./pages/admin/HeadcountPlanner.jsx'));
 const SlaAlerts             = lazy(() => import('./pages/admin/SlaAlerts.jsx'));
 const CustomHiringStages    = lazy(() => import('./pages/admin/CustomHiringStages.jsx'));
+const AdminSkillAssessments = lazy(() => import('./pages/admin/AdminSkillAssessments.jsx'));
 const AdminCustomFields = lazy(() => import('./pages/admin/AdminCustomFields.jsx'));
 const OrgChart          = lazy(() => import('./pages/admin/OrgChart.jsx'));
 const CandidateOnboarding = lazy(() => import('./pages/candidate/CandidateOnboarding.jsx'));
@@ -647,6 +649,7 @@ export default function App() {
             <Route path="applications" element={<CandidateApplications user={user} />} />
             <Route path="interviews" element={<Suspense fallback={<PageLoader />}><CandidateInterviews user={user} /></Suspense>} />
             <Route path="assessment/:assessmentId" element={<CandidateAssessment user={user} onBack={() => window.history.back()} />} />
+            <Route path="skill-assessment/:skill" element={<Suspense fallback={<PageLoader />}><SkillAssessmentPage user={user} /></Suspense>} />
             <Route path="job-alerts" element={<CandidateJobAlerts />} />
             <Route path="opportunities" element={<Suspense fallback={<PageLoader />}><CandidateOpportunities /></Suspense>} />
             <Route path="onboarding" element={<CandidateOnboarding user={user} />} />
@@ -703,6 +706,7 @@ export default function App() {
             <Route path="headcount-planner" element={<HeadcountPlanner />} />
             <Route path="sla-alerts" element={<SlaAlerts />} />
             <Route path="custom-stages" element={<CustomHiringStages />} />
+            <Route path="skill-assessments" element={<Suspense fallback={<PageLoader />}><AdminSkillAssessments user={user} /></Suspense>} />
             <Route path="outreach" element={<OutreachTracker />} />
             <Route path="email-logs" element={<OutreachTracker />} />
             <Route path="face-duplicates" element={<FaceAdminReview />} />
