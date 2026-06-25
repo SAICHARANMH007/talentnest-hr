@@ -1099,18 +1099,18 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
 
   const Job = require('../models/Job');
 
-  // Company communities: only show jobs posted by that specific company.
+  // Company communities: show ALL active jobs tagged with this company across
+  // every tenant — communities are global, so job visibility must be too.
   if (community.companyName) {
     const companyRx = companyNameRegex(community.companyName);
     const jobs = await Job.find({
-      tenantId,
       status: 'active',
       deletedAt: null,
       $or: [{ company: companyRx }, { companyName: companyRx }],
     })
-      .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt')
+      .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt tenantId')
       .sort({ updatedAt: -1 })
-      .limit(15)
+      .limit(30)
       .lean();
 
     return res.json({ success: true, data: jobs });

@@ -308,6 +308,13 @@ router.post('/', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), chec
 
   res.status(201).json({ success: true, data: normalizeJob(job), requiresApproval: isRecruiter });
 
+  // Auto-create company community when a job is posted with a company name
+  if (job.companyName || job.company) {
+    require('../services/companyCommunity')
+      .ensureOneCompanyCommunity(job.companyName || job.company, job.createdBy, job.tenantId)
+      .catch(() => {});
+  }
+
   // IndexNow ping + feed cache bust — fire-and-forget, never block the response
   if (job.status === 'active') {
     try { require('./feed').invalidateFeedCache(); } catch {}
@@ -422,6 +429,14 @@ router.patch('/:id', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), 
 
     logger.audit('Job updated', req.user.id, req.user.tenantId, { jobId: job._id });
     res.json({ success: true, data: normalizeJob(job) });
+
+    // Auto-create company community if company name was set/changed
+    const cn = updates.companyName || updates.company || job.companyName || job.company;
+    if (cn) {
+      require('../services/companyCommunity')
+        .ensureOneCompanyCommunity(cn, job.createdBy || req.user.id, job.tenantId)
+        .catch(() => {});
+    }
 }));
 
 // PATCH /api/jobs/:id/approve — admin approves a pending job
@@ -454,6 +469,13 @@ router.patch('/:id/approve', ...guard, allowRoles('admin', 'super_admin'), async
 
   logger.audit('Job approved', req.user.id, req.user.tenantId, { jobId: job._id });
   res.json({ success: true, data: normalizeJob(job) });
+
+  // Auto-create company community when job goes live via approval
+  if (job.companyName || job.company) {
+    require('../services/companyCommunity')
+      .ensureOneCompanyCommunity(job.companyName || job.company, job.createdBy || req.user.id, job.tenantId)
+      .catch(() => {});
+  }
 }));
 
 // PATCH /api/jobs/:id/reject — admin rejects a pending job
