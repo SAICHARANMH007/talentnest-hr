@@ -721,24 +721,51 @@ export default function MeetingRoom() {
 
   const handleLeave = () => { stopRecognition(); socketRef.current?.disconnect(); setMeetingEnded(true); };
 
+  const restoreCameraTrack = () => {
+    const camTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (!camTrack) return;
+    Object.values(peerConnsRef.current).forEach(pc => {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) sender.replaceTrack(camTrack);
+    });
+  };
+
   const handleToggleScreen = async () => {
     if (isSharingScreen) {
       screenStreamRef.current?.getTracks().forEach(t => t.stop());
       screenStreamRef.current = null;
       setIsSharingScreen(false);
       socketRef.current?.emit('screen-share-stop', { roomToken });
+      restoreCameraTrack();
     } else {
+      if (isMobile) {
+        showToast('🖥️ Screen sharing is not supported on mobile browsers.');
+        return;
+      }
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        showToast('🖥️ Screen sharing is not supported in this browser.');
+        return;
+      }
       try {
         const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screen.getVideoTracks()[0];
         screenStreamRef.current = screen;
         setIsSharingScreen(true);
         socketRef.current?.emit('screen-share-start', { roomToken });
-        screen.getVideoTracks()[0].onended = () => {
+        // Replace video track in all active peer connections
+        Object.values(peerConnsRef.current).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) sender.replaceTrack(screenTrack);
+        });
+        screenTrack.onended = () => {
           screenStreamRef.current = null;
           setIsSharingScreen(false);
           socketRef.current?.emit('screen-share-stop', { roomToken });
+          restoreCameraTrack();
         };
-      } catch { /* user cancelled */ }
+      } catch (e) {
+        if (e.name !== 'NotAllowedError') console.warn('[ScreenShare]', e.message);
+      }
     }
   };
 

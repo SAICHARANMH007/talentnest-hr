@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
 import { API_BASE_URL } from '../../api/config.js';
@@ -423,7 +423,9 @@ export default function SuperAdminSecurity() {
   const [saved, setSaved]   = useState(false);
   const [orgs, setOrgs]     = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
+  const [orgFlagsLoading, setOrgFlagsLoading] = useState(false);
   const [toast, setToast] = useState('');
+  const platformFlagsRef = useRef(null); // stores platform defaults so we can restore on org deselect
 
   useEffect(() => {
     Promise.all([
@@ -436,16 +438,37 @@ export default function SuperAdminSecurity() {
     ]).then(([u, o, config]) => {
       setUsers(Array.isArray(u) ? u : (u.data || []));
       setOrgs(Array.isArray(o) ? o : (o.data || []));
-      // If backend has security settings, use them (overrides localStorage)
       if (config?.security) {
         localStorage.setItem('tn_security_settings', JSON.stringify(config.security));
       }
       if (config?.featureFlags) {
         localStorage.setItem('tn_feature_flags', JSON.stringify(config.featureFlags));
         setFlags(prev => ({ ...prev, ...config.featureFlags }));
+        platformFlagsRef.current = { ...DEFAULT_FLAGS, ...config.featureFlags };
+      } else {
+        platformFlagsRef.current = flags;
       }
     }).finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load org-specific flags when an org is selected; restore platform defaults on deselect
+  useEffect(() => {
+    if (!selectedOrg) {
+      if (platformFlagsRef.current) setFlags(platformFlagsRef.current);
+      setSaved(false);
+      return;
+    }
+    const org = orgs.find(o => o.id === selectedOrg);
+    if (!org) return;
+    const orgFlags = org.settings?.featureFlags;
+    if (orgFlags) {
+      setFlags({ ...DEFAULT_FLAGS, ...orgFlags });
+    } else {
+      // Org has no custom flags yet — show platform defaults as a starting point
+      setFlags(platformFlagsRef.current || DEFAULT_FLAGS);
+    }
+    setSaved(false);
+  }, [selectedOrg, orgs]);
 
   const handleFlagChange = (plan, key, val) => {
     setFlags(prev => ({ ...prev, [plan]: { ...prev[plan], [key]: val } }));
@@ -507,7 +530,11 @@ export default function SuperAdminSecurity() {
                 <option value="">Platform defaults</option>
                 {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
-              {selectedOrg && <span style={{ color: '#706E6B', fontSize: 11 }}>Showing platform defaults (org overrides coming soon)</span>}
+              {selectedOrg && (
+                <span style={{ color: '#0176D3', fontSize: 11, fontWeight: 600 }}>
+                  {orgFlagsLoading ? '⏳ Loading org flags…' : `Showing flags for selected org — save to override platform defaults`}
+                </span>
+              )}
             </div>
           )}
           <div style={glass}>
