@@ -527,6 +527,20 @@ async function ensureCompanyCommunities(createdBy, fallbackTenantId) {
     names.set(key, name);
   }
 
+  // Also include company names from Job postings — so companies that have
+  // posted jobs but whose name doesn't yet appear in any Candidate profile
+  // (e.g. a new client company like "rnit") still get a community.
+  try {
+    const Job = require('../models/Job');
+    const jobCompanies = await Job.distinct('companyName', { companyName: { $exists: true, $ne: '' } });
+    for (const raw of jobCompanies) {
+      const normalized = normalizeCompanyName(raw);
+      if (!normalized) continue;
+      const key = normalized.toLowerCase();
+      if (!names.has(key)) names.set(key, normalized);
+    }
+  } catch (_) { /* Job model optional */ }
+
   // Single bulk lookup of existing company communities, instead of one
   // findOne() per candidate-derived name — turns N queries into 1.
   const existing = await Community.find({ companyName: { $exists: true, $ne: '' } }).select('companyName').lean();
