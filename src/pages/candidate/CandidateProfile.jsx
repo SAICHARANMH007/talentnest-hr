@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner.jsx';
 import ResumeCard from '../../components/shared/ResumeCard.jsx';
 import CollegeAutocomplete from '../../components/shared/CollegeAutocomplete.jsx';
 import CompanyAutocomplete from '../../components/shared/CompanyAutocomplete.jsx';
+import SkillBadges from '../../components/candidate/SkillBadges.jsx';
 import { btnP, btnG, card, inp } from '../../constants/styles.js';
 import { api } from '../../api/api.js';
 import { INDUSTRIES, DEPARTMENTS } from '../../constants/picklists.js';
@@ -835,6 +836,21 @@ export default function CandidateProfile({ user }) {
                 </div>
               )}
             </div>
+
+            {/* Skill Assessment Suggestions */}
+            {parseTags(form.skills).length > 0 && (
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 20 }}>
+                <div style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)', border: '1px solid #DBEAFE', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0176D3', marginBottom: 4 }}>
+                    🎯 Verify your skills with assessments
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.6 }}>
+                    Take short skill assessments to get a verified badge on your profile. Recruiters can see which skills you've been tested on.
+                  </div>
+                </div>
+                <SkillBadges candidateSkills={parseTags(form.skills)} />
+              </div>
+            )}
           </div>
         </Section>
       )}

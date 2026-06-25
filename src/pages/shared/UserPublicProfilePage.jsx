@@ -76,6 +76,7 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   const [infoContact, setInfoContact] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [verifiedSkills, setVerifiedSkills] = useState(new Set());
 
   useEffect(() => {
     if (!userId) return;
@@ -96,6 +97,13 @@ export default function UserPublicProfilePage({ user: currentUser }) {
         const data = r?.data || r;
         setInfoStatus(data?.status || null);
         if (data?.contact) setInfoContact(data.contact);
+      })
+      .catch(() => {});
+
+    api.getUserSkillBadges(userId)
+      .then(r => {
+        const passed = (r?.badges || []).filter(b => b.passed).map(b => b.skill.toLowerCase());
+        setVerifiedSkills(new Set(passed));
       })
       .catch(() => {});
   }, [userId]);
@@ -270,10 +278,28 @@ export default function UserPublicProfilePage({ user: currentUser }) {
           <div style={{ marginTop: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--app-text, #181818)', marginBottom: 10 }}>Skills</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {person.skills.map((s, i) => (
-                <span key={i} style={{ padding: '5px 12px', borderRadius: 20, background: `${bg}14`, color: bg, fontSize: 12, fontWeight: 600, border: `1px solid ${bg}28` }}>{s}</span>
-              ))}
+              {person.skills.map((s, i) => {
+                const isVerified = verifiedSkills.has(s.toLowerCase());
+                return (
+                  <span key={i} style={{
+                    padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                    background: isVerified ? '#D1FAE5' : `${bg}14`,
+                    color: isVerified ? '#065F46' : bg,
+                    border: `1px solid ${isVerified ? '#6EE7B7' : bg+'28'}`,
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    {isVerified && <span style={{ fontSize: 10 }}>✓</span>}
+                    {s}
+                    {isVerified && <span style={{ fontSize: 9, fontWeight: 800, background: '#059669', color: 'white', borderRadius: 10, padding: '1px 5px', marginLeft: 2 }}>VERIFIED</span>}
+                  </span>
+                );
+              })}
             </div>
+            {verifiedSkills.size > 0 && (
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>
+                ✓ Verified = passed skill assessment
+              </div>
+            )}
           </div>
         )}
 

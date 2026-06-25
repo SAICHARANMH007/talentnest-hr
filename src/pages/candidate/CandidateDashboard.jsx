@@ -33,6 +33,7 @@ export default function CandidateDashboard({ user }) {
   const [toast, setToast]   = useState("");
   const [locBanner, setLocBanner] = useState(false); // show location permission banner
   const locAsked = useRef(false);
+  const [skillsToVerify, setSkillsToVerify] = useState([]);  // skills with available assessments not yet passed
 
   // Show location permission banner once if not yet granted
   useEffect(() => {
@@ -63,6 +64,21 @@ export default function CandidateDashboard({ user }) {
   };
 
   useEffect(loadData, [user.id]);
+
+  // Load available skill assessments and cross-reference with candidate skills
+  useEffect(() => {
+    Promise.all([
+      api.getAvailableSkills().catch(() => ({ skills: [] })),
+      api.getMySkillResults().catch(() => ({ results: [] })),
+    ]).then(([avail, results]) => {
+      const available = new Set((avail?.skills || []).map(s => s.toLowerCase()));
+      const passedSkills = new Set(
+        (results?.results || []).filter(r => r.passed).map(r => r.skill.toLowerCase())
+      );
+      // We'll cross-reference against profile skills once profile loads — store both
+      setSkillsToVerify({ available, passedSkills });
+    }).catch(() => {});
+  }, [user.id]);
 
   const apply = async (jobId) => {
     try {
@@ -504,6 +520,51 @@ export default function CandidateDashboard({ user }) {
           </div>
         );
       })()}
+      {/* ── Skills to Verify Widget ── */}
+      {skillsToVerify?.available && (() => {
+        const skillsRaw = profile?.skills || user?.skills || '';
+        const mySkills = Array.isArray(skillsRaw)
+          ? skillsRaw.map(s => s.trim()).filter(Boolean)
+          : (typeof skillsRaw === 'string' ? skillsRaw : '').split(',').map(s => s.trim()).filter(Boolean);
+
+        const unverified = mySkills.filter(sk =>
+          skillsToVerify.available.has(sk.toLowerCase()) &&
+          !skillsToVerify.passedSkills.has(sk.toLowerCase())
+        );
+
+        if (!unverified.length) return null;
+        return (
+          <div style={{ ...card, marginTop:16, marginBottom:12, background:'linear-gradient(135deg,rgba(1,118,211,0.04),rgba(5,150,105,0.03))', border:'1.5px solid rgba(1,118,211,0.18)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexWrap:'wrap', gap:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:20 }}>🎯</span>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:13, color:'#0176D3' }}>Verify Your Skills</div>
+                  <div style={{ fontSize:11, color:'#706E6B', marginTop:1 }}>{unverified.length} of your skills have assessments available</div>
+                </div>
+              </div>
+              <button onClick={() => navigate('/app/profile?tab=skills')} style={{ ...btnP, padding:'6px 14px', fontSize:11, flexShrink:0 }}>
+                View All →
+              </button>
+            </div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {unverified.slice(0, 8).map(sk => (
+                <button
+                  key={sk}
+                  onClick={() => navigate(`/app/skill-assessment/${encodeURIComponent(sk)}`)}
+                  style={{ padding:'5px 12px', borderRadius:99, background:'rgba(1,118,211,0.1)', border:'1px solid rgba(1,118,211,0.25)', color:'#0176D3', fontSize:11, fontWeight:700, cursor:'pointer' }}
+                >
+                  {sk} →
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize:10, color:'#9CA3AF', marginTop:8 }}>
+              Tap a skill to take its assessment and get a verified badge on your profile
+            </div>
+          </div>
+        );
+      })()}
+
       <style>{`
         @keyframes tn-fadein {
           from { opacity: 0; transform: translateY(10px); }

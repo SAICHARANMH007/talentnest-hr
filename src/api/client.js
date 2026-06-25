@@ -234,6 +234,8 @@ async function _doReq(method, path, body, auth = true, _retry = false) {
   if (!res.ok) {
     const err = new Error(data.error || data.message || `HTTP ${res.status}`);
     err.status = res.status;
+    // Carry all extra fields from the response body (e.g. cooldownEndsAt, cooldownRemainingMs)
+    Object.assign(err, data);
     throw err;
   }
   return data;

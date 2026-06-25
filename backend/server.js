@@ -244,6 +244,8 @@ app.use('/api/email-sequences', require('./src/routes/emailSequences'));
 app.use('/api/rejection-templates', require('./src/routes/rejectionTemplates'));
 // ── Headcount Plans
 app.use('/api/headcount-plans', require('./src/routes/headcountPlans'));
+// ── Skill Assessments (platform-wide question bank + attempts)
+app.use('/api/skill-assessments', require('./src/routes/skillAssessments'));
 
 function escHtml(v = '') {
   return String(v)
@@ -1006,7 +1008,63 @@ connectDB()
     startJobAlertJobs();
     startJobExpiryCron();
     startDistributionRetryJob();
+  })
+  .then(async () => {
+    // ── Backfill company communities for ALL existing Jobs & Candidates ──────────
+    // Runs once per startup. Safe to repeat — ensureOneCompanyCommunity is idempotent.
+    // Ensures every company ever tagged on a job or candidate profile has a community,
+    // even if it was created before real-time hooks were in place.
+    try {
+      const Job         = require('./src/models/Job');
+      const Candidate   = require('./src/models/Candidate');
+      const Tenant      = require('./src/models/Tenant');
+      const Community   = require('./src/models/Community');
+      const { ensureOneCompanyCommunity } = require('./src/services/companyCommunity');
+      const { normalizeCompanyName }      = require('./src/utils/companyNames');
 
+      const anyTenant = await Tenant.findOne({}).select('_id').lean();
+      if (!anyTenant) {
+        console.warn('⚠️  Company community backfill skipped: no tenants in DB');
+        return;
+      }
+      const fallbackTenantId = anyTenant._id;
+
+      // Collect all company names from Jobs (both fields) + Candidate profiles
+      const [jcA, jcB, candidateCompanies] = await Promise.all([
+        Job.distinct('companyName', { companyName: { $exists: true, $ne: '' }, deletedAt: null }),
+        Job.distinct('company',     { company:     { $exists: true, $ne: '' }, deletedAt: null }),
+        Candidate.distinct('currentCompany', { currentCompany: { $exists: true, $ne: '' }, deletedAt: null }),
+      ]);
+
+      const allRaw = [...new Set([...jcA, ...jcB, ...candidateCompanies])];
+      const normalized = [...new Set(allRaw.map(r => normalizeCompanyName(r)).filter(Boolean))];
+
+      // Bulk-check which already have communities (1 query instead of N)
+      const existing = await Community.find({ companyName: { $exists: true, $ne: '' } })
+        .select('companyName').lean();
+      const existingKeys = new Set(
+        existing.map(c => (normalizeCompanyName(c.companyName) || '').toLowerCase())
+      );
+
+      const missing = normalized.filter(name => !existingKeys.has(name.toLowerCase()));
+      if (missing.length === 0) {
+        console.log('ℹ️   Company community backfill: all communities already exist');
+        return;
+      }
+
+      console.log(`⏳  Backfilling ${missing.length} company communities...`);
+      // Process in serial batches of 20 to avoid overwhelming DB at startup
+      for (let i = 0; i < missing.length; i += 20) {
+        await Promise.all(
+          missing.slice(i, i + 20).map(name =>
+            ensureOneCompanyCommunity(name, null, fallbackTenantId).catch(() => {})
+          )
+        );
+      }
+      console.log(`✅  Company community backfill complete (${missing.length} created/verified)`);
+    } catch (e) {
+      console.warn('⚠️  Company community backfill skipped:', e.message);
+    }
   })
   .catch(err => console.error('❌  DB connection failed:', err.message));
 

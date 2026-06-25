@@ -455,6 +455,9 @@ async function resolveFallbackTenantId(fallbackTenantId) {
   if (cachedFallbackTenantId) return cachedFallbackTenantId;
   const anyTenant = await Tenant.findOne({}).select('_id').lean();
   cachedFallbackTenantId = anyTenant?._id || null;
+  if (!cachedFallbackTenantId) {
+    console.warn('[communities] resolveFallbackTenantId: no tenants found — community auto-creation skipped');
+  }
   return cachedFallbackTenantId;
 }
 
@@ -466,7 +469,8 @@ async function resolveFallbackTenantId(fallbackTenantId) {
 async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantId) {
   const now = Date.now();
   if (now - lastCandidateCollegeSync < CANDIDATE_SYNC_INTERVAL_MS) return;
-  lastCandidateCollegeSync = now;
+  lastCandidateCollegeSync = now; // mark in-progress to prevent concurrent calls
+  try {
 
   const tenantId = await resolveFallbackTenantId(fallbackTenantId);
   if (!tenantId) return;
@@ -507,6 +511,10 @@ async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantI
       createdBy,
     }).catch(() => {}); // ignore races (unique slug index)
   }));
+  } catch (err) {
+    lastCandidateCollegeSync = 0; // allow retry on next request if this run errored
+    throw err;
+  }
 }
 
 /** Creates a community for any company name found in candidates' "Current
@@ -516,51 +524,71 @@ async function ensureCollegeCommunitiesFromCandidates(createdBy, fallbackTenantI
 async function ensureCompanyCommunities(createdBy, fallbackTenantId) {
   const now = Date.now();
   if (now - lastCandidateCompanySync < CANDIDATE_SYNC_INTERVAL_MS) return;
-  lastCandidateCompanySync = now;
+  lastCandidateCompanySync = now; // mark in-progress to prevent concurrent calls
+  try {
+    const tenantId = await resolveFallbackTenantId(fallbackTenantId);
+    if (!tenantId) return;
 
-  const tenantId = await resolveFallbackTenantId(fallbackTenantId);
-  if (!tenantId) return;
-
-  const companyCounts = await getCompanyNameCounts();
-  const names = new Map();
-  for (const [key, { name }] of companyCounts) {
-    names.set(key, name);
-  }
-
-  // Single bulk lookup of existing company communities, instead of one
-  // findOne() per candidate-derived name — turns N queries into 1.
-  const existing = await Community.find({ companyName: { $exists: true, $ne: '' } }).select('companyName').lean();
-  const existingKeys = new Set(existing.map(c => (normalizeCompanyName(c.companyName) || '').toLowerCase()));
-
-  const missing = [];
-  for (const [key, name] of names) {
-    if (!existingKeys.has(key)) missing.push(name);
-  }
-
-  await Promise.all(missing.slice(0, MAX_NEW_COMMUNITIES_PER_PASS).map(async (name) => {
-    const baseSlug = collegeSlug(name);
-    let slug = baseSlug;
-    let attempt = 0;
-    while (await Community.exists({ slug })) {
-      attempt++;
-      slug = `${baseSlug}-${attempt}`;
+    const companyCounts = await getCompanyNameCounts();
+    const names = new Map();
+    for (const [key, { name }] of companyCounts) {
+      names.set(key, name);
     }
 
-    await Community.create({
-      tenantId,
-      name: `${name} Community`,
-      slug,
-      companyName: name,
-      description: `Official community for ${name} employees and alumni — referrals, opportunities, and discussions.`,
-      icon: '🏢',
-      category: 'other',
-      coverColor: '#0176D3',
-      isGlobal: true,
-      memberIds: [],
-      memberCount: 0,
-      createdBy,
-    }).catch(() => {}); // ignore races (unique slug index)
-  }));
+    // Include company names from Job postings — both companyName and legacy company
+    // field — so companies that have posted jobs but no matching candidate profiles
+    // (e.g. a new client org) still get a community immediately.
+    try {
+      const Job = require('../models/Job');
+      const [jcA, jcB] = await Promise.all([
+        Job.distinct('companyName', { companyName: { $exists: true, $ne: '' }, deletedAt: null }),
+        Job.distinct('company',     { company:     { $exists: true, $ne: '' }, deletedAt: null }),
+      ]);
+      for (const raw of [...new Set([...jcA, ...jcB])]) {
+        const normalized = normalizeCompanyName(raw);
+        if (!normalized) continue;
+        const key = normalized.toLowerCase();
+        if (!names.has(key)) names.set(key, normalized);
+      }
+    } catch (_) { /* Job model optional */ }
+
+    // Single bulk lookup of existing company communities — turns N queries into 1.
+    const existing = await Community.find({ companyName: { $exists: true, $ne: '' } }).select('companyName').lean();
+    const existingKeys = new Set(existing.map(c => (normalizeCompanyName(c.companyName) || '').toLowerCase()));
+
+    const missing = [];
+    for (const [key, name] of names) {
+      if (!existingKeys.has(key)) missing.push(name);
+    }
+
+    await Promise.all(missing.slice(0, MAX_NEW_COMMUNITIES_PER_PASS).map(async (name) => {
+      const baseSlug = collegeSlug(name);
+      let slug = baseSlug;
+      let attempt = 0;
+      while (await Community.exists({ slug })) {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+      }
+
+      await Community.create({
+        tenantId,
+        name: `${name} Community`,
+        slug,
+        companyName: name,
+        description: `Official community for ${name} employees and alumni — referrals, opportunities, and discussions.`,
+        icon: '🏢',
+        category: 'other',
+        coverColor: '#0176D3',
+        isGlobal: true,
+        memberIds: [],
+        memberCount: 0,
+        createdBy,
+      }).catch(() => {}); // ignore races (unique slug index)
+    }));
+  } catch (err) {
+    lastCandidateCompanySync = 0; // allow retry on next request if this run errored
+    throw err;
+  }
 }
 
 // ─── Default community definitions ───────────────────────────────────────────
@@ -772,8 +800,10 @@ router.get('/', asyncHandler(async (req, res) => {
     lastCollegeTenantSync = now;
     ensureCollegeCommunities(createdBy).then(() => { baseListCache = null; }).catch(() => {});
   }
-  ensureCollegeCommunitiesFromCandidates(createdBy, req.user.tenantId).catch(() => {});
-  ensureCompanyCommunities(createdBy, req.user.tenantId).catch(() => {});
+  ensureCollegeCommunitiesFromCandidates(createdBy, req.user.tenantId)
+    .then(() => { baseListCache = null; }).catch(() => {});
+  ensureCompanyCommunities(createdBy, req.user.tenantId)
+    .then(() => { baseListCache = null; }).catch(() => {});
 
   // Serve from cache when fresh; otherwise fetch and cache the full list.
   let unique;
@@ -1085,18 +1115,18 @@ router.get('/:slug/jobs', asyncHandler(async (req, res) => {
 
   const Job = require('../models/Job');
 
-  // Company communities: only show jobs posted by that specific company.
+  // Company communities: show ALL active jobs tagged with this company across
+  // every tenant — communities are global, so job visibility must be too.
   if (community.companyName) {
     const companyRx = companyNameRegex(community.companyName);
     const jobs = await Job.find({
-      tenantId,
       status: 'active',
       deletedAt: null,
       $or: [{ company: companyRx }, { companyName: companyRx }],
     })
-      .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt')
+      .select('title companyName company location jobType department skills salaryMin salaryMax salaryCurrency experience updatedAt tenantId')
       .sort({ updatedAt: -1 })
-      .limit(15)
+      .limit(30)
       .lean();
 
     return res.json({ success: true, data: jobs });
@@ -1269,4 +1299,13 @@ router.patch('/:slug', asyncHandler(async (req, res) => {
   res.json({ success: true, data: community });
 }));
 
+/** Invalidate the GET /api/communities list cache so newly created communities
+ * appear immediately. Called by companyCommunity.js after a real-time creation. */
+function bustListCache() { baseListCache = null; }
+/** Reset the cached fallback tenantId — call after a new Tenant is created so
+ * the next community sync picks it up instead of returning null. */
+function _resetFallbackTenantCache() { cachedFallbackTenantId = null; }
+
 module.exports = router;
+module.exports.bustListCache = bustListCache;
+module.exports._resetFallbackTenantCache = _resetFallbackTenantCache;
