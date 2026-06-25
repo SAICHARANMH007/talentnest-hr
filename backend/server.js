@@ -1066,6 +1066,29 @@ connectDB()
       console.warn('⚠️  Company community backfill skipped:', e.message);
     }
   })
+  .then(async () => {
+    // ── Seed skill assessment questions if none exist ─────────────────────────
+    // Safe to run on every startup — skips any skill that already has enough questions.
+    try {
+      const SkillQuestion = require('./src/models/SkillQuestion');
+      const { SKILL_QUESTIONS } = require('./src/seeds/skillQuestions');
+      let totalInserted = 0;
+      for (const [skill, questions] of Object.entries(SKILL_QUESTIONS)) {
+        const existing = await SkillQuestion.countDocuments({ skill, tenantId: null });
+        if (existing >= questions.length) continue;
+        await SkillQuestion.deleteMany({ skill, tenantId: null });
+        await SkillQuestion.insertMany(questions.map(q => ({ ...q, skill, tenantId: null })));
+        totalInserted += questions.length;
+      }
+      if (totalInserted > 0) {
+        console.log(`✅  Skill question seed complete (${totalInserted} questions inserted across ${Object.keys(SKILL_QUESTIONS).length} skills)`);
+      } else {
+        console.log('ℹ️   Skill questions already seeded — no changes');
+      }
+    } catch (e) {
+      console.warn('⚠️  Skill question seed skipped:', e.message);
+    }
+  })
   .catch(err => console.error('❌  DB connection failed:', err.message));
 
 // ── Process-level safety net — catch anything that slips past Express ────────

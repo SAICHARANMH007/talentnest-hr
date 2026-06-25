@@ -408,6 +408,27 @@ router.post('/admin/questions/bulk', auth, allowRoles('admin', 'super_admin'), a
   }
 });
 
+// ── Admin: run built-in seed (idempotent) ─────────────────────────────────────
+router.post('/admin/seed', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
+  try {
+    const { SKILL_QUESTIONS } = require('../seeds/skillQuestions');
+    let totalInserted = 0;
+    const seeded = [];
+    const skipped = [];
+    for (const [skill, questions] of Object.entries(SKILL_QUESTIONS)) {
+      const existing = await SkillQuestion.countDocuments({ skill, tenantId: null });
+      if (existing >= questions.length) { skipped.push(skill); continue; }
+      await SkillQuestion.deleteMany({ skill, tenantId: null });
+      await SkillQuestion.insertMany(questions.map(q => ({ ...q, skill, tenantId: null })));
+      seeded.push(skill);
+      totalInserted += questions.length;
+    }
+    res.json({ totalInserted, seeded, skipped });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Admin: list attempts ──────────────────────────────────────────────────────
 
 router.get('/admin/attempts', auth, allowRoles('admin', 'super_admin'), async (req, res) => {

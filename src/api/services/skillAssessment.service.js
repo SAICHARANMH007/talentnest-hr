@@ -19,6 +19,7 @@ export const skillAssessmentService = {
   async updateSkillQuestion(id, data)           { return req('PATCH',  `/skill-assessments/admin/questions/${id}`, data); },
   async deleteSkillQuestion(id)                 { return req('DELETE', `/skill-assessments/admin/questions/${id}`); },
   async bulkImportSkillQuestions(questions)     { return req('POST',   '/skill-assessments/admin/questions/bulk', { questions }); },
+  async seedSkillQuestions()                    { return req('POST',   '/skill-assessments/admin/seed'); },
 
   // Admin — attempts
   async getSkillAttempts(params = {}) {

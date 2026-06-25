@@ -175,6 +175,7 @@ export default function AdminSkillAssessments() {
 
   const [filters, setFilters]  = useState({ skill: '', difficulty: '', page: 1 });
   const [attFilt, setAttFilt]  = useState({ skill: '', status: '', page: 1 });
+  const [seeding, setSeeding]  = useState(false);
 
   const loadQuestions = async (f = filters) => {
     setLoading(true);
@@ -204,6 +205,18 @@ export default function AdminSkillAssessments() {
   useEffect(() => {
     if (activeTab === 'attempts') loadAttempts();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runSeed = async () => {
+    if (!window.confirm('This will seed all built-in questions for 28 skills (Sales, BDM, JavaScript, etc.). Safe to run — skips skills that already have enough questions. Continue?')) return;
+    setSeeding(true);
+    try {
+      const res = await api.seedSkillQuestions();
+      setMsg(`✅ Seeded ${res.totalInserted} questions across ${res.seeded?.length || 0} skills`);
+      loadQuestions();
+      api.getAvailableSkills().then(r => setSkills(r?.skills || [])).catch(() => {});
+    } catch (e) { setMsg(e.message || 'Seed failed'); }
+    setSeeding(false);
+  };
 
   const deleteQuestion = async (id) => {
     if (!window.confirm('Delete this question? This cannot be undone.')) return;
@@ -259,6 +272,9 @@ export default function AdminSkillAssessments() {
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <div style={{ flex: 1 }} />
+            <button onClick={runSeed} disabled={seeding} style={{ ...btnG, padding: '9px 20px', marginRight: 8 }}>
+              {seeding ? '⏳ Seeding…' : '🌱 Seed Built-in Questions'}
+            </button>
             <button onClick={() => setModal({ question: null })} style={{ ...btnP, padding: '9px 20px' }}>+ Add Question</button>
           </div>
 
@@ -267,7 +283,10 @@ export default function AdminSkillAssessments() {
           ) : questions.length === 0 ? (
             <div style={{ ...card, padding: 40, textAlign: 'center' }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
-              <div style={{ color: '#6B7280', fontSize: 14 }}>No questions found. Add your first question or run the seed script.</div>
+              <div style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}>No questions found.</div>
+              <button onClick={runSeed} disabled={seeding} style={{ ...btnP, padding: '10px 24px' }}>
+                {seeding ? '⏳ Seeding…' : '🌱 Seed Built-in Questions (Sales, BDM, JavaScript + 25 more)'}
+              </button>
             </div>
           ) : (
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
