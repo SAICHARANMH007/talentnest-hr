@@ -98,10 +98,22 @@ export default function CandidateSmartMatch({ user }) {
   // When arriving from the dashboard with ?job=<id>, auto-expand that card once results load.
   useEffect(() => {
     const jobParam = searchParams.get('job');
-    if (!jobParam || results.length === 0 || expanded !== null) return;
+    if (!jobParam || results.length === 0) return;
     const match = results.find(r => String(r.jobId) === String(jobParam));
-    if (match) toggleExpand(match.jobId);
+    if (!match) return;
+    // Only auto-expand if nothing is already open (avoid clobbering a manual selection)
+    setExpanded(prev => prev !== null ? prev : match.jobId);
   }, [results]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll the expanded card into view whenever it changes
+  useEffect(() => {
+    if (!expanded) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`job-card-${expanded}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120); // slight delay to let React render the expanded content first
+    return () => clearTimeout(timer);
+  }, [expanded]);
 
   const apply = async (jobId) => {
     if (!jobId) return;
@@ -213,7 +225,7 @@ export default function CandidateSmartMatch({ user }) {
         if (!j) return null;
 
         return (
-          <div key={r.jobId} style={{ ...card, marginBottom: 12, border: `1px solid ${r.matchScore >= 80 ? 'rgba(34,197,94,0.3)' : 'rgba(1,118,211,0.25)'}` }}>
+          <div key={r.jobId} id={`job-card-${r.jobId}`} style={{ ...card, marginBottom: 12, border: `1px solid ${r.matchScore >= 80 ? 'rgba(34,197,94,0.3)' : 'rgba(1,118,211,0.25)'}` }}>
 
             {/* ── Header row ── */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>

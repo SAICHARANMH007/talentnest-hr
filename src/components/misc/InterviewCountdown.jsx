@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
 export default function InterviewCountdown({ date, time }) {
-  const target = new Date(`${date}T${time}`).getTime();
+  // If date is already a full ISO/datetime string (scheduledAt), use it directly.
+  // Only construct "dateT time" when both parts are separate string values.
+  const target = (date && time && typeof time === 'string' && time !== 'null')
+    ? new Date(`${date}T${time}`).getTime()
+    : new Date(date).getTime();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(()=>setNow(Date.now()),60000); return ()=>clearInterval(t); }, []);
   const diff = target - now;
