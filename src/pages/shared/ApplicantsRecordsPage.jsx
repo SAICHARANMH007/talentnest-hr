@@ -431,7 +431,7 @@ export default function ApplicantsRecordsPage({ user }) {
       )}
 
       <div style={{ ...card, marginBottom: 16 }}>
-        <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.4fr) repeat(4, minmax(140px, 1fr)) auto', gap: 12, alignItems: 'end' }}>
+        <div className="tn-filter-main">
           <Field label="Smart Search" value={filters.search} onChange={v => updateFilter('search', v)} placeholder="Name, email, mobile, job, skills..." />
           <Field label="Stage" value={filters.stage} onChange={v => updateFilter('stage', v)} placeholder="All stages" options={[{ value: '', label: 'All stages' }, ...DB_STAGES.map(s => ({ value: s, label: s }))]} />
           <Field label="Status" value={filters.status} onChange={v => updateFilter('status', v)} options={STATUS_OPTIONS} />
@@ -439,7 +439,7 @@ export default function ApplicantsRecordsPage({ user }) {
           <Field label="Match Score >=" type="number" min="0" max="100" value={filters.minScore} onChange={v => updateFilter('minScore', v)} placeholder="Any" />
           <button onClick={clearFilters} style={{ ...btnG, minHeight: 46 }}>Clear</button>
         </div>
-        <div className="tn-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(140px, 1fr))', gap: 12, alignItems: 'end', marginTop: 12 }}>
+        <div className="tn-filter-sub">
           {canManage && (
             <Field
               label="Recruiter"

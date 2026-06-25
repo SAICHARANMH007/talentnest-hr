@@ -93,7 +93,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
   };
 
   return (
-    <div style={{maxWidth: 720, margin: '0 auto'}}>
+    <div className="tn-page-container" style={{maxWidth: 720, margin: '0 auto'}}>
       <PageHeader title="My Profile" subtitle="Manage your personal information and account settings" />
 
       {/* Profile header — shows name, role badge and live photo */}

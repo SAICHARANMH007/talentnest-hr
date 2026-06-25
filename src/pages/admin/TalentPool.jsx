@@ -153,7 +153,7 @@ export default function TalentPool() {
         <button onClick={() => { setEditingPool(null); setShowModal(true); }} style={btnP}>+ New Pool</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '340px 1fr' : '1fr', gap: 20 }}>
+      <div className={selected ? 'tn-talent-pool-split' : 'tn-talent-pool-full'}>
         {/* Pool list */}
         <div>
           {loading ? (

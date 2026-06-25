@@ -144,7 +144,7 @@ export default function UserPublicProfilePage({ user: currentUser }) {
   const isSelf = String(currentUser?._id || currentUser?.id) === String(person._id || person.id);
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 0 40px', fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif" }}>
+    <div className="tn-page-container" style={{ maxWidth: 720, margin: '0 auto', padding: '0 0 40px', fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif" }}>
       {/* Back button */}
       <div style={{ padding: '16px 20px 0' }}>
         <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: 'var(--app-text-sec, #706E6B)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '8px 0' }}>

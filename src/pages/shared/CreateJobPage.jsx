@@ -55,7 +55,7 @@ export default function CreateJobPage({ user, onBack, onSuccess }) {
       </div>
 
       {/* Form card */}
-      <div style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 12, padding: '28px 32px' }}>
+      <div className="tn-form-card" style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 12, padding: '28px 32px' }}>
         <PostJobForm ref={formRef} onSave={save} saving={saving} onCancel={onBack} />
       </div>
 

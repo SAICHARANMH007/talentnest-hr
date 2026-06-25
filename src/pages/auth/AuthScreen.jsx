@@ -234,6 +234,12 @@ const PLAN_BG_MAP = { enterprise: 'rgba(46,132,74,0.12)', growth: 'rgba(1,118,21
 
 // ── Entry Screen: Job Seeker vs Employer ──────────────────────────────────────
 function EntryScreen({ onSelect, navigate }) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
   return (
     <div style={{ ...BG, flexDirection: 'column', position: 'relative' }}>
       {/* Premium Ambient Background */}
@@ -298,30 +304,31 @@ function EntryScreen({ onSelect, navigate }) {
         </div>
       </div>
 
-      <div style={{ 
-        display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', 
-        animation: 'fadeUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both', 
-        opacity: 0, width: '100%', maxWidth: 800, zIndex: 10 
+      <div style={{
+        display: 'flex', gap: isMobile ? 16 : 24, flexWrap: 'wrap', justifyContent: 'center',
+        animation: 'fadeUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both',
+        opacity: 0, width: '100%', maxWidth: 800, zIndex: 10, padding: isMobile ? '0 16px' : 0, boxSizing: 'border-box'
       }}>
         {/* Job Seeker Card */}
         <button
           onClick={() => onSelect('candidate')}
           className="entry-card"
-          style={{ 
-            borderRadius: 32, padding: '54px 32px', width: '320px', 
+          style={{
+            borderRadius: isMobile ? 20 : 32, padding: isMobile ? '32px 20px' : '54px 32px',
+            width: isMobile ? '100%' : '320px',
             cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box'
           }}
         >
-          <div className="icon-box" style={{ 
-            width: 88, height: 88, background: 'linear-gradient(135deg, #0176D3, #014486)', 
-            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+          <div className="icon-box" style={{
+            width: isMobile ? 64 : 88, height: isMobile ? 64 : 88, background: 'linear-gradient(135deg, #0176D3, #014486)',
+            borderRadius: isMobile ? 16 : 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: isMobile ? 32 : 44, marginBottom: isMobile ? 16 : 28, transition: 'all 0.4s',
             boxShadow: '0 12px 24px rgba(1, 118, 211, 0.3)',
             '--accent-rgb': '1, 118, 211'
           }}>👤</div>
-          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Job Seeker</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+          <h3 style={{ color: '#fff', fontSize: isMobile ? 20 : 24, fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>Job Seeker</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: isMobile ? 13 : 15, margin: isMobile ? '0 0 20px' : '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
             Upload your resume, find matching roles, and track applications in real-time.
           </p>
           <div className="action-btn" style={{ 
@@ -337,21 +344,22 @@ function EntryScreen({ onSelect, navigate }) {
         <button
           onClick={() => onSelect('employer')}
           className="entry-card"
-          style={{ 
-            borderRadius: 32, padding: '54px 32px', width: '320px', 
+          style={{
+            borderRadius: isMobile ? 20 : 32, padding: isMobile ? '32px 20px' : '54px 32px',
+            width: isMobile ? '100%' : '320px',
             cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box'
           }}
         >
-          <div className="icon-box" style={{ 
-            width: 88, height: 88, background: 'linear-gradient(135deg, #00C2CB, #0891B2)', 
-            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+          <div className="icon-box" style={{
+            width: isMobile ? 64 : 88, height: isMobile ? 64 : 88, background: 'linear-gradient(135deg, #00C2CB, #0891B2)',
+            borderRadius: isMobile ? 16 : 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: isMobile ? 32 : 44, marginBottom: isMobile ? 16 : 28, transition: 'all 0.4s',
             boxShadow: '0 12px 24px rgba(0, 194, 203, 0.3)',
             '--accent-rgb': '0, 194, 203'
           }}>🏢</div>
-          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>Employer</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+          <h3 style={{ color: '#fff', fontSize: isMobile ? 20 : 24, fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>Employer</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: isMobile ? 13 : 15, margin: isMobile ? '0 0 20px' : '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
             Post jobs, manage your talent pipeline, and build high-performance teams.
           </p>
           <div className="action-btn" style={{
@@ -368,20 +376,21 @@ function EntryScreen({ onSelect, navigate }) {
           onClick={() => onSelect('college')}
           className="entry-card"
           style={{
-            borderRadius: 32, padding: '54px 32px', width: '320px',
+            borderRadius: isMobile ? 20 : 32, padding: isMobile ? '32px 20px' : '54px 32px',
+            width: isMobile ? '100%' : '320px',
             cursor: 'pointer', textAlign: 'center', color: 'inherit', outline: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center'
+            display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box'
           }}
         >
           <div className="icon-box" style={{
-            width: 88, height: 88, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)',
-            borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 44, marginBottom: 28, transition: 'all 0.4s',
+            width: isMobile ? 64 : 88, height: isMobile ? 64 : 88, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)',
+            borderRadius: isMobile ? 16 : 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: isMobile ? 32 : 44, marginBottom: isMobile ? 16 : 28, transition: 'all 0.4s',
             boxShadow: '0 12px 24px rgba(124, 58, 237, 0.3)',
             '--accent-rgb': '124, 58, 237'
           }}>🎓</div>
-          <h3 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>College / Campus</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
+          <h3 style={{ color: '#fff', fontSize: isMobile ? 20 : 24, fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>College / Campus</h3>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: isMobile ? 13 : 15, margin: isMobile ? '0 0 20px' : '0 0 36px', lineHeight: 1.6, maxWidth: 240 }}>
             Manage placements, track recruitment drives, and connect students with employers.
           </p>
           <div className="action-btn" style={{

@@ -22,7 +22,7 @@ export default function EmailSettingsPage({ user, onBack }) {
         subtitle="Set up your email so candidates receive invitations and updates from your company's address — not a generic one."
       />
 
-      <div style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+      <div className="tn-form-card" style={{ background: '#fff', border: '1px solid #DDDBDA', borderRadius: 16, padding: '32px', marginTop: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         <EmailSettingsModal 
            user={user} 
            onClose={onBack}

@@ -271,6 +271,46 @@ body {
 /* ── Drawer responsive width ── */
 .tn-drawer { width: min(620px, 100vw); }
 
+/* ── Applicants / Records filter grid ── */
+.tn-filter-main {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(140px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+.tn-filter-sub {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+@media (max-width: 1024px) {
+  .tn-filter-main { grid-template-columns: 1fr 1fr 1fr; }
+  .tn-filter-sub  { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .tn-filter-main { grid-template-columns: 1fr; }
+  .tn-filter-sub  { grid-template-columns: 1fr; }
+}
+
+/* ── TalentPool sidebar + detail split ── */
+.tn-talent-pool-split {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+}
+.tn-talent-pool-full { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (max-width: 768px) {
+  .tn-talent-pool-split { grid-template-columns: 1fr; }
+}
+
+/* ── Page outer container mobile padding ── */
+@media (max-width: 640px) {
+  .tn-page-container { padding-left: 16px !important; padding-right: 16px !important; }
+  .tn-form-card { padding: 16px !important; }
+}
+
 /* ── pulse animation (used in CandidateApplications) ── */
 @keyframes pulse {
   0%, 100% { opacity: 1; }

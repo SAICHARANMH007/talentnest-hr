@@ -116,7 +116,7 @@ export default function CustomHiringStages() {
         {loadingJobs ? (
           <span style={{ color: '#9CA3AF', fontSize: 13 }}>Loading jobs…</span>
         ) : (
-          <select onChange={e => selectJob(e.target.value)} style={{ border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 14, minWidth: 320 }}>
+          <select onChange={e => selectJob(e.target.value)} style={{ border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 14, minWidth: 'min(320px, 100%)', width: '100%', maxWidth: 480, boxSizing: 'border-box' }}>
             <option value="">— Select a job —</option>
             {jobs.map(j => (
               <option key={j._id || j.id} value={j._id || j.id}>
