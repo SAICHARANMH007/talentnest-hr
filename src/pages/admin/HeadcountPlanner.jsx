@@ -39,7 +39,7 @@ function PlanModal({ plan, onSave, onClose }) {
         </div>
         {err && <div style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>{err}</div>}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className="tn-headcount-form-grid">
           <div style={{ gridColumn: '1 / 3' }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Plan Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. 2026 Q3 Hiring Plan" style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 14, boxSizing: 'border-box' }} />

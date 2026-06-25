@@ -271,6 +271,21 @@ body {
 /* ── Drawer responsive width ── */
 .tn-drawer { width: min(620px, 100vw); }
 
+/* ── HeadcountPlanner form grid — explicit breakpoints keep gridColumn spans safe ── */
+.tn-headcount-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .tn-headcount-form-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .tn-headcount-form-grid { grid-template-columns: 1fr; }
+  .tn-headcount-form-grid > div { grid-column: span 1 !important; }
+}
+
 /* ── Applicants / Records filter grid ── */
 .tn-filter-main {
   display: grid;
