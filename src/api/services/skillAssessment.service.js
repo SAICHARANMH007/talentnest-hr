@@ -25,4 +25,10 @@ export const skillAssessmentService = {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')).toString();
     return req('GET', `/skill-assessments/admin/attempts${qs ? `?${qs}` : ''}`);
   },
+
+  // Public — verified badges for any user
+  async getUserSkillBadges(userId) { return req('GET', `/skill-assessments/badges/${userId}`); },
+
+  // Public — leaderboard for a skill
+  async getSkillLeaderboard(skill) { return req('GET', `/skill-assessments/leaderboard/${encodeURIComponent(skill)}`); },
 };

@@ -16,6 +16,7 @@ const TIME_LIMIT_MINS       = 30;
 const PASS_MIN_CORRECT      = 4;   // out of 6
 const PASS_MIN_HARD_CORRECT = 1;   // at least 1 hard question correct
 const TIMER_GRACE_MS        = 30_000;
+const COOLDOWN_MS           = 24 * 60 * 60 * 1000;  // 24h cooldown after failing
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -38,29 +39,31 @@ function sanitizeForCandidate(questions) {
 }
 
 // Grade answers against full question docs (with isCorrect)
+// Also returns questionReview for post-submission display
 function gradeAttempt(fullQuestions, answers) {
   let score = 0;
   let maxScore = 0;
   let correctCount = 0;
   let hardCorrect = 0;
+  const questionReview = [];
 
   for (const q of fullQuestions) {
     const marks = Number(q.marks) || 1;
     maxScore += marks;
 
     const ans = answers.find(a => a.questionId === String(q._id));
-    if (!ans) continue;
-
     const correctIds = (q.options || []).filter(o => o.isCorrect).map(o => o.id);
     let isCorrect = false;
 
-    if (q.type === 'mcq_single' || q.type === 'truefalse') {
-      isCorrect = correctIds.includes(String(ans.value));
-    } else if (q.type === 'mcq_multi') {
-      const selected = Array.isArray(ans.value) ? ans.value.map(String) : [];
-      isCorrect = correctIds.length > 0 &&
-                  correctIds.length === selected.length &&
-                  correctIds.every(id => selected.includes(id));
+    if (ans) {
+      if (q.type === 'mcq_single' || q.type === 'truefalse') {
+        isCorrect = correctIds.includes(String(ans.value));
+      } else if (q.type === 'mcq_multi') {
+        const selected = Array.isArray(ans.value) ? ans.value.map(String) : [];
+        isCorrect = correctIds.length > 0 &&
+                    correctIds.length === selected.length &&
+                    correctIds.every(id => selected.includes(id));
+      }
     }
 
     if (isCorrect) {
@@ -68,11 +71,23 @@ function gradeAttempt(fullQuestions, answers) {
       correctCount++;
       if (q.difficulty === 'hard') hardCorrect++;
     }
+
+    questionReview.push({
+      questionId:  String(q._id),
+      text:        q.text,
+      type:        q.type,
+      difficulty:  q.difficulty,
+      marks,
+      options:     (q.options || []).map(o => ({ id: o.id, text: o.text, isCorrect: !!o.isCorrect })),
+      yourAnswer:  ans?.value ?? null,
+      wasCorrect:  isCorrect,
+      explanation: q.explanation || '',
+    });
   }
 
   const passed = correctCount >= PASS_MIN_CORRECT && hardCorrect >= PASS_MIN_HARD_CORRECT;
   const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-  return { score, maxScore, percentage, correctCount, hardCorrect, passed };
+  return { score, maxScore, percentage, correctCount, hardCorrect, passed, questionReview };
 }
 
 // Build tenant filter: null-tenantId questions are always visible; org-specific ones only for that org
@@ -106,6 +121,21 @@ router.post('/attempt/start', auth, allowRoles('candidate'), async (req, res) =>
     const active = await SkillAttempt.findOne({ candidateId, skill: skill.trim(), status: 'in_progress' }).lean();
     if (active) {
       return res.status(409).json({ error: 'You already have an in-progress attempt for this skill. Submit it first.' });
+    }
+
+    // 24h cooldown after a failed attempt (passed attempts allow retake freely)
+    const lastAttempt = await SkillAttempt.findOne({ candidateId, skill: skill.trim(), status: 'submitted' })
+      .sort({ submittedAt: -1 }).lean();
+    if (lastAttempt && lastAttempt.passed === false) {
+      const elapsed = Date.now() - new Date(lastAttempt.submittedAt).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        const remainMs = COOLDOWN_MS - elapsed;
+        return res.status(429).json({
+          error: 'Cooldown active. Please wait 24 hours after a failed attempt before retaking.',
+          cooldownRemainingMs: remainMs,
+          cooldownEndsAt: new Date(new Date(lastAttempt.submittedAt).getTime() + COOLDOWN_MS),
+        });
+      }
     }
 
     // Fetch question pool
@@ -182,7 +212,7 @@ router.post('/attempt/:id/submit', auth, allowRoles('candidate'), async (req, re
     const questionIds = attempt.questionsServed.map(q => q.questionId);
     const fullQuestions = await SkillQuestion.find({ _id: { $in: questionIds } }).lean();
 
-    const { score, maxScore, percentage, correctCount, hardCorrect, passed } = gradeAttempt(fullQuestions, answers);
+    const { score, maxScore, percentage, correctCount, hardCorrect, passed, questionReview } = gradeAttempt(fullQuestions, answers);
 
     attempt.answers      = answers;
     attempt.status       = 'submitted';
@@ -205,6 +235,7 @@ router.post('/attempt/:id/submit', auth, allowRoles('candidate'), async (req, re
       hardCorrect,
       passed,
       submittedAt:  attempt.submittedAt,
+      questionReview,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -397,6 +428,44 @@ router.get('/admin/attempts', auth, allowRoles('admin', 'super_admin'), async (r
       SkillAttempt.countDocuments(filter),
     ]);
     res.json({ attempts, total, page: Number(page), limit: Number(limit) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Public: verified skill badges for any user ────────────────────────────────
+
+router.get('/badges/:userId', auth, async (req, res) => {
+  try {
+    const candidateId = new mongoose.Types.ObjectId(req.params.userId);
+    // Aggregate: one doc per skill, the most recent submitted attempt
+    const rows = await SkillAttempt.aggregate([
+      { $match: { candidateId, status: 'submitted' } },
+      { $sort: { submittedAt: -1 } },
+      { $group: { _id: '$skill', passed: { $first: '$passed' }, score: { $first: '$score' }, maxScore: { $first: '$maxScore' }, percentage: { $first: '$percentage' }, submittedAt: { $first: '$submittedAt' } } },
+      { $project: { _id: 0, skill: '$_id', passed: 1, score: 1, maxScore: 1, percentage: 1, submittedAt: 1 } },
+    ]);
+    res.json({ badges: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Public: skill leaderboard ─────────────────────────────────────────────────
+
+router.get('/leaderboard/:skill', auth, async (req, res) => {
+  try {
+    const skill = decodeURIComponent(req.params.skill);
+    // Best passing attempt per candidate, sorted by score desc then date asc
+    const rows = await SkillAttempt.aggregate([
+      { $match: { skill, status: 'submitted', passed: true } },
+      { $sort: { score: -1, submittedAt: 1 } },
+      { $group: { _id: '$candidateId', score: { $first: '$score' }, maxScore: { $first: '$maxScore' }, percentage: { $first: '$percentage' }, submittedAt: { $first: '$submittedAt' } } },
+      { $sort: { score: -1, submittedAt: 1 } },
+      { $limit: 10 },
+      { $project: { _id: 0, candidateId: '$_id', score: 1, maxScore: 1, percentage: 1, submittedAt: 1 } },
+    ]);
+    res.json({ skill, leaderboard: rows });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

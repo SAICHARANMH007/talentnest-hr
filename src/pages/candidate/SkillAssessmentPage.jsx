@@ -28,17 +28,19 @@ function fmtTime(s) {
 
 // ── Result screen ─────────────────────────────────────────────────────────────
 function ResultScreen({ result, skill, onRetake, onDone }) {
-  const { passed, score, maxScore, percentage, correctCount, hardCorrect } = result;
+  const { passed, score, maxScore, percentage, correctCount, hardCorrect, questionReview = [] } = result;
+  const [expanded, setExpanded] = React.useState(null);
+
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
       <div style={{ fontSize: 72, marginBottom: 16 }}>{passed ? '🏆' : '📚'}</div>
       <h2 style={{ fontSize: 28, fontWeight: 900, color: passed ? '#059669' : '#DC2626', margin: '0 0 8px' }}>
         {passed ? 'Assessment Passed!' : 'Not Passed Yet'}
       </h2>
       <p style={{ color: '#6B7280', fontSize: 15, margin: '0 0 32px' }}>
         {passed
-          ? `Great job! You\'ve demonstrated proficiency in ${skill}.`
-          : `Keep practising — you can retake this assessment anytime.`}
+          ? `Great job! You've demonstrated proficiency in ${skill}.`
+          : `Keep practising — you can retake after 24 hours.`}
       </p>
 
       <div style={{ ...card, padding: 28, marginBottom: 24, textAlign: 'left' }}>
@@ -55,10 +57,86 @@ function ResultScreen({ result, skill, onRetake, onDone }) {
         </div>
       </div>
 
+      {/* ── Per-question review ── */}
+      {questionReview.length > 0 && (
+        <div style={{ textAlign: 'left', marginBottom: 28 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#374151', marginBottom: 12 }}>Answer Review</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {questionReview.map((q, idx) => {
+              const open = expanded === idx;
+              const yourIds = q.yourAnswer === null ? []
+                : Array.isArray(q.yourAnswer) ? q.yourAnswer.map(String) : [String(q.yourAnswer)];
+              const correctIds = q.options.filter(o => o.isCorrect).map(o => o.id);
+              return (
+                <div key={q.questionId} style={{
+                  border: `1.5px solid ${q.wasCorrect ? '#A7F3D0' : q.yourAnswer !== null ? '#FECACA' : '#E5E7EB'}`,
+                  borderRadius: 12, overflow: 'hidden',
+                  background: q.wasCorrect ? '#F0FDF4' : q.yourAnswer !== null ? '#FFF7F7' : '#FAFAFA',
+                }}>
+                  <button
+                    onClick={() => setExpanded(open ? null : idx)}
+                    style={{ width: '100%', background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>
+                        {q.wasCorrect ? '✅' : q.yourAnswer !== null ? '❌' : '⬜'}
+                      </span>
+                      <div style={{ textAlign: 'left', minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 2 }}>
+                          Q{idx + 1} · {q.difficulty}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#0A1628', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {q.text}
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 12, color: '#9CA3AF', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+                  </button>
+
+                  {open && (
+                    <div style={{ borderTop: '1px solid #E5E7EB', padding: '14px 16px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12, whiteSpace: 'pre-wrap' }}>{q.text}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                        {q.options.map(opt => {
+                          const isCorrectOpt = opt.isCorrect;
+                          const yourChose = yourIds.includes(opt.id);
+                          let bg = '#F9FAFB', border = '#E5E7EB', color = '#374151';
+                          if (isCorrectOpt) { bg = '#D1FAE5'; border = '#6EE7B7'; color = '#065F46'; }
+                          if (yourChose && !isCorrectOpt) { bg = '#FEE2E2'; border = '#FCA5A5'; color = '#991B1B'; }
+                          return (
+                            <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${border}`, background: bg, color, fontSize: 13 }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                                {isCorrectOpt ? '✓' : yourChose ? '✗' : '○'}
+                              </span>
+                              {opt.text}
+                              {yourChose && !isCorrectOpt && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#DC2626' }}>Your answer</span>}
+                              {isCorrectOpt && yourChose && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#059669' }}>Correct ✓</span>}
+                              {isCorrectOpt && !yourChose && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#059669' }}>Correct answer</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {q.explanation && (
+                        <div style={{ background: '#FEF3C7', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400E', lineHeight: 1.6 }}>
+                          <strong>Explanation:</strong> {q.explanation}
+                        </div>
+                      )}
+                      {!q.yourAnswer && (
+                        <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8, fontStyle: 'italic' }}>You did not answer this question.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button onClick={onDone} style={{ ...btnP, padding: '12px 28px' }}>← Back to Profile</button>
-        {!passed && (
-          <button onClick={onRetake} style={{ ...btnG, padding: '12px 28px' }}>Retake Assessment</button>
+        {passed && (
+          <button onClick={onRetake} style={{ ...btnG, padding: '12px 28px' }}>Retake (for fun)</button>
         )}
       </div>
     </div>
@@ -154,8 +232,11 @@ export default function SkillAssessmentPage({ user }) {
   const [result, setResult]     = useState(null);
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const [cooldownEndsAt, setCooldownEndsAt] = useState(null);
 
   const secsLeft = useCountdown(attempt?.expiresAt);
+  const cooldownSecs = useCountdown(cooldownEndsAt);
+  const inCooldown = !!cooldownEndsAt && cooldownSecs !== null && cooldownSecs > 0;
 
   // Auto-submit when timer hits 0
   const submitRef = useRef(null);
@@ -184,6 +265,7 @@ export default function SkillAssessmentPage({ user }) {
   const startAttempt = async () => {
     setLoading(true);
     setError('');
+    setCooldownEndsAt(null);
     try {
       const res = await api.startSkillAttempt(skill);
       setAttempt({ attemptId: res.attemptId, expiresAt: res.expiresAt, skill: res.skill });
@@ -192,7 +274,12 @@ export default function SkillAssessmentPage({ user }) {
       setCurrent(0);
       setPhase('active');
     } catch (e) {
-      setError(e?.message || 'Failed to start assessment');
+      if (e?.cooldownEndsAt) {
+        setCooldownEndsAt(e.cooldownEndsAt);
+        setError('');
+      } else {
+        setError(e?.message || 'Failed to start assessment');
+      }
     }
     setLoading(false);
   };
@@ -261,12 +348,22 @@ export default function SkillAssessmentPage({ user }) {
             <strong>Rules:</strong> Answer all questions. The timer starts immediately. You cannot pause. Results are available right after submission.
           </div>
 
+          {inCooldown && (
+            <div style={{ background: '#FEF3C7', border: '1.5px solid #FCD34D', borderRadius: 12, padding: '16px 20px', marginBottom: 20, textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>⏳</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#92400E', marginBottom: 4 }}>Cooldown Active</div>
+              <div style={{ fontSize: 13, color: '#92400E' }}>You can retake this assessment in</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: '#D97706', margin: '8px 0', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(cooldownSecs)}</div>
+              <div style={{ fontSize: 11, color: '#A16207' }}>24-hour cooldown applies after a failed attempt</div>
+            </div>
+          )}
+
           {error && (
             <div style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13 }}>{error}</div>
           )}
 
-          <button onClick={startAttempt} disabled={loading} style={{ ...btnP, padding: '14px 40px', fontSize: 16, width: '100%' }}>
-            {loading ? 'Starting…' : 'Start Assessment →'}
+          <button onClick={startAttempt} disabled={loading || inCooldown} style={{ ...btnP, padding: '14px 40px', fontSize: 16, width: '100%', opacity: inCooldown ? 0.5 : 1, cursor: inCooldown ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Starting…' : inCooldown ? '⏳ Cooldown Active' : 'Start Assessment →'}
           </button>
         </div>
       </div>

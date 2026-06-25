@@ -1,6 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/api.js';
+
+const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+function useCooldownRemaining(result) {
+  const [remaining, setRemaining] = useState(null);
+  useEffect(() => {
+    if (!result || result.passed) { setRemaining(null); return; }
+    const submittedAt = result.submittedAt || result.createdAt;
+    if (!submittedAt) { setRemaining(null); return; }
+    const cooldownEnd = new Date(submittedAt).getTime() + COOLDOWN_MS;
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((cooldownEnd - Date.now()) / 1000));
+      setRemaining(diff > 0 ? diff : null);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [result]);
+  return remaining;
+}
+
+function fmtCountdown(s) {
+  if (!s) return '';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s % 60}s`;
+}
 
 export default function SkillBadges({ candidateSkills = [] }) {
   const navigate = useNavigate();
@@ -74,9 +102,11 @@ export default function SkillBadges({ candidateSkills = [] }) {
 }
 
 function SkillRow({ skill, result, onStart }) {
-  const passed  = result?.passed;
-  const failed  = result && !result.passed;
-  const untaken = !result;
+  const passed     = result?.passed;
+  const failed     = result && !result.passed;
+  const untaken    = !result;
+  const cooldownLeft = useCooldownRemaining(result);
+  const inCooldown = !!cooldownLeft;
 
   return (
     <div style={{
@@ -85,9 +115,9 @@ function SkillRow({ skill, result, onStart }) {
       background: passed ? '#F0FDF4' : failed ? '#FFF7F7' : '#F8FAFF',
       border: `1px solid ${passed ? '#A7F3D0' : failed ? '#FECACA' : '#DBEAFE'}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 16 }}>{passed ? '🏆' : failed ? '📚' : '🎯'}</span>
-        <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <span style={{ fontSize: 16, flexShrink: 0 }}>{passed ? '🏆' : failed ? '📚' : '🎯'}</span>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#0A1628' }}>{skill}</div>
           {result && (
             <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>
@@ -95,10 +125,15 @@ function SkillRow({ skill, result, onStart }) {
               {passed ? ' · Passed' : ' · Not passed'}
             </div>
           )}
+          {inCooldown && (
+            <div style={{ fontSize: 11, color: '#D97706', marginTop: 2, fontWeight: 600 }}>
+              ⏳ Retake in {fmtCountdown(cooldownLeft)}
+            </div>
+          )}
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {passed && (
           <span style={{ background: '#059669', color: 'white', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>
             ✓ Verified
@@ -106,14 +141,16 @@ function SkillRow({ skill, result, onStart }) {
         )}
         <button
           onClick={onStart}
+          disabled={inCooldown && !passed}
           style={{
-            background: passed ? 'transparent' : '#0176D3',
-            color: passed ? '#0176D3' : 'white',
-            border: passed ? '1px solid #0176D3' : 'none',
-            borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            background: inCooldown && !passed ? '#F3F4F6' : passed ? 'transparent' : '#0176D3',
+            color: inCooldown && !passed ? '#9CA3AF' : passed ? '#0176D3' : 'white',
+            border: passed ? '1px solid #0176D3' : inCooldown && !passed ? '1px solid #E5E7EB' : 'none',
+            borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700,
+            cursor: inCooldown && !passed ? 'not-allowed' : 'pointer',
           }}
         >
-          {untaken ? 'Take Test' : passed ? 'Retake' : 'Try Again'}
+          {untaken ? 'Take Test' : passed ? 'Retake' : inCooldown ? '⏳ Wait' : 'Try Again'}
         </button>
       </div>
     </div>
