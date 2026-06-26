@@ -175,6 +175,7 @@ export default function AdminSkillAssessments() {
 
   const [filters, setFilters]  = useState({ skill: '', difficulty: '', page: 1 });
   const [attFilt, setAttFilt]  = useState({ skill: '', status: '', page: 1 });
+  const [seeding, setSeeding]  = useState(false);
 
   const loadQuestions = async (f = filters) => {
     setLoading(true);
@@ -259,6 +260,22 @@ export default function AdminSkillAssessments() {
               {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <div style={{ flex: 1 }} />
+            <button
+              onClick={async () => {
+                setSeeding(true); setMsg('');
+                try {
+                  const r = await api.seedBuiltInSkillQuestions();
+                  setMsg(`✅ ${r.message || `Seeded ${r.totalInserted} questions across ${r.skillsSeeded?.length || 0} skills`}`);
+                  loadQuestions();
+                  api.getAvailableSkills().then(r2 => setSkills(r2?.skills || [])).catch(() => {});
+                } catch (e) { setMsg(e?.message || 'Seed failed'); }
+                setSeeding(false);
+              }}
+              disabled={seeding}
+              style={{ ...btnG, padding: '9px 18px', fontSize: 13, opacity: seeding ? 0.6 : 1 }}
+            >
+              {seeding ? 'Seeding…' : '🌱 Seed Built-in Questions'}
+            </button>
             <button onClick={() => setModal({ question: null })} style={{ ...btnP, padding: '9px 20px' }}>+ Add Question</button>
           </div>
 
