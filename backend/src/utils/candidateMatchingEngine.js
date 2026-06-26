@@ -2,45 +2,66 @@
 
 const mongoose = require('mongoose');
 const { calculateTalentMatchScore } = require('./matchScore');
-const { expandSkills } = require('./techOntology');
+const { expandSkills, extractSeniorityRank, locationMatch } = require('./techOntology');
 
 /**
- * candidateMatchingEngine.js — World-Class Discovery Engine.
- * Combines high-speed MongoDB indexing with the UTO (Universal Tech Ontology).
+ * candidateMatchingEngine.js — Two-Way Deep Matching Engine.
+ *
+ * STEP 1 (Discovery) — fast MongoDB query using expanded UTO skill list + title/seniority hints.
+ * STEP 2 (Scoring)   — full multi-dimension match score per candidate.
+ * STEP 3 (Rank)      — filter by minScore, sort by matchScore desc.
  */
 
 /**
  * findSuggestedCandidates
- * Finds the best talent for a specific job across the entire platform.
- * 
- * @param {object} jobSnapshot - { title, description, skills[], location, tenantId }
- * @param {object} options - { limit: 50, minScore: 30 }
- * @returns {Promise<Array>} - Candidates with matchScore, sorted desc
+ * Best talent for a job across the entire platform.
+ *
+ * @param {object} jobSnapshot — { title, description, skills[], location, salaryMin, salaryMax, tenantId }
+ * @param {object} options     — { limit: 50, minScore: 30 }
+ * @returns {Promise<Array>}
  */
-async function findSuggestedCandidates(jobSnapshot, options = { limit: 50, minScore: 30 }) {
+async function findSuggestedCandidates(jobSnapshot, options = {}) {
+  const { limit = 50, minScore = 30 } = options;
   const Candidate = require('../models/Candidate');
-  const Application = require('../models/Application');
 
-  const jobSkills = Array.isArray(jobSnapshot.skills) ? jobSnapshot.skills : [];
+  const jobSkills    = Array.isArray(jobSnapshot.skills) ? jobSnapshot.skills : [];
   const expandedSkills = expandSkills(jobSkills);
-  
-  // ── STEP 1: Discovery Phase (High-Speed Filtering) ────────────────────────
-  // We look for candidates who have at least ONE overlapping skill from our expanded Ontology.
+  const titleKeyword  = (jobSnapshot.title || '').split(' ')[0];
+  const jobSeniority  = extractSeniorityRank(`${jobSnapshot.title || ''} ${jobSnapshot.description || ''}`);
+
+  // ── Discovery: broad OR query to pull candidates worth scoring ───────────────
+  const orClauses = [];
+
+  if (expandedSkills.length > 0) {
+    orClauses.push({
+      skills: { $in: expandedSkills.map(s => new RegExp(`^${escapeRe(s)}$`, 'i')) }
+    });
+    // Also match skills inside parsedProfile.skills
+    orClauses.push({
+      'parsedProfile.skills': { $in: expandedSkills.map(s => new RegExp(`^${escapeRe(s)}$`, 'i')) }
+    });
+  }
+
+  if (titleKeyword) {
+    orClauses.push({ title: { $regex: escapeRe(titleKeyword), $options: 'i' } });
+  }
+
+  // Include seniority-matched candidates if job has a seniority signal
+  if (jobSeniority !== null) {
+    orClauses.push({ title: { $regex: buildSeniorityRegex(jobSeniority), $options: 'i' } });
+  }
+
   const discoveryQuery = {
     deletedAt: null,
-    $or: [
-      { skills: { $in: expandedSkills.map(s => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } },
-      { title: { $regex: jobSnapshot.title.split(' ')[0], $options: 'i' } }
-    ]
+    ...(orClauses.length > 0 ? { $or: orClauses } : {}),
   };
 
-  // Limit discovery to 500 candidates for performance before deep-scoring
   const candidates = await Candidate.find(discoveryQuery)
-    .select('name email skills experience location noticePeriodDays parsedProfile currentCompany title')
-    .limit(500)
+    .select('name email skills experience location noticePeriodDays willingToRelocate expectedCTC parsedProfile currentCompany title')
+    .limit(600)
     .lean();
 
-  // ── STEP 2: Scoring Phase (UTO Logic) ─────────────────────────────────────
+  // ── Scoring phase ─────────────────────────────────────────────────────────────
   const scored = candidates.map(candidate => {
     const { score, breakdown } = calculateTalentMatchScore(jobSnapshot, candidate);
     return {
@@ -48,43 +69,57 @@ async function findSuggestedCandidates(jobSnapshot, options = { limit: 50, minSc
       id: candidate._id.toString(),
       matchScore: score,
       matchBreakdown: breakdown,
-      source: 'uto_engine'
+      source: 'uto_engine',
     };
   });
 
-  // ── STEP 3: Filtering & Sorting ───────────────────────────────────────────
   return scored
-    .filter(c => c.matchScore >= (options.minScore || 0))
+    .filter(c => c.matchScore >= minScore)
     .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, options.limit || 50);
+    .slice(0, limit);
 }
 
 /**
  * findSuggestedJobs
- * Finds the best jobs for a specific candidate.
- * 
- * @param {object} candidate - Candidate document
- * @param {object} options - { limit: 20 }
- * @returns {Promise<Array>} - Jobs with matchScore, sorted desc
+ * Best jobs for a specific candidate.
+ *
+ * @param {object} candidate — Candidate document
+ * @param {object} options   — { limit: 20, minScore: 0 }
+ * @returns {Promise<Array>}
  */
-async function findSuggestedJobs(candidate, options = { limit: 20 }) {
+async function findSuggestedJobs(candidate, options = {}) {
+  const { limit = 20, minScore = 0 } = options;
   const Job = require('../models/Job');
-  
-  const cSkills = Array.isArray(candidate.skills) ? candidate.skills : (candidate.parsedProfile?.skills || []);
-  const expandedSkills = expandSkills(cSkills);
 
-  // Discovery: Jobs with matching skills or title keywords
+  const cSkills   = Array.isArray(candidate.skills) ? candidate.skills : (candidate.parsedProfile?.skills || []);
+  const expandedSkills = expandSkills(cSkills);
+  const titleKeyword  = (candidate.title || candidate.parsedProfile?.title || '').split(' ')[0];
+  const candSeniority = extractSeniorityRank(`${candidate.title || ''} ${candidate.parsedProfile?.title || ''}`);
+
+  const orClauses = [];
+
+  if (expandedSkills.length > 0) {
+    orClauses.push({
+      skills: { $in: expandedSkills.map(s => new RegExp(`^${escapeRe(s)}$`, 'i')) }
+    });
+  }
+
+  if (titleKeyword) {
+    orClauses.push({ title: { $regex: escapeRe(titleKeyword), $options: 'i' } });
+  }
+
+  if (candSeniority !== null) {
+    orClauses.push({ title: { $regex: buildSeniorityRegex(candSeniority), $options: 'i' } });
+  }
+
   const discoveryQuery = {
     status: 'active',
     deletedAt: null,
-    $or: [
-      { skills: { $in: expandedSkills.map(s => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } },
-      { title: { $regex: (candidate.title || '').split(' ')[0], $options: 'i' } }
-    ]
+    ...(orClauses.length > 0 ? { $or: orClauses } : {}),
   };
 
   const jobs = await Job.find(discoveryQuery)
-    .limit(200)
+    .limit(300)
     .lean();
 
   const scored = jobs.map(job => {
@@ -93,16 +128,33 @@ async function findSuggestedJobs(candidate, options = { limit: 20 }) {
       ...job,
       id: job._id.toString(),
       matchScore: score,
-      matchBreakdown: breakdown
+      matchBreakdown: breakdown,
     };
   });
 
   return scored
+    .filter(j => j.matchScore >= minScore)
     .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, options.limit || 20);
+    .slice(0, limit);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Build a regex that matches common seniority words near the given rank (±1). */
+function buildSeniorityRegex(rank) {
+  const { SENIORITY_LEVELS } = require('./techOntology');
+  const words = [];
+  for (const tier of Object.values(SENIORITY_LEVELS)) {
+    if (Math.abs(tier.rank - rank) <= 1) words.push(...tier.words);
+  }
+  return words.map(escapeRe).join('|');
 }
 
 module.exports = {
   findSuggestedCandidates,
-  findSuggestedJobs
+  findSuggestedJobs,
 };
