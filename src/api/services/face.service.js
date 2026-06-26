@@ -17,7 +17,11 @@ export const faceService = {
   verifyFaceOtp:    (body)  => req('POST', '/face/verify-otp',     body, false),
 
   // Admin
-  getDuplicateAlerts: (status)  => req('GET',  `/face/admin/duplicates${status ? `?status=${status}` : ''}`),
-  getDuplicateCount:  ()        => req('GET',  '/face/admin/duplicates/count'),
+  getDuplicateAlerts:   (status) => req('GET',   `/face/admin/duplicates${status ? `?status=${status}` : ''}`),
+  getDuplicateCount:    ()       => req('GET',   '/face/admin/duplicates/count'),
+  getDuplicateStats:    ()       => req('GET',   '/face/admin/duplicates/stats'),
   reviewDuplicateAlert: (id, body) => req('PATCH', `/face/admin/duplicates/${id}`, body),
+
+  // Public — no auth
+  getEdgeCaseHint: (issue) => req('POST', '/face/edge-case-hint', { issue }, false),
 };
