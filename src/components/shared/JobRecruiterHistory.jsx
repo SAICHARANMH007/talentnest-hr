@@ -127,7 +127,7 @@ const TABS = [
 ];
 
 // ── Single recruiter timeline entry ─────────────────────────────────────────
-function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate, refreshKey }) {
+function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, recruiterMap, history, effectiveEndDate, refreshKey, productivity }) {
   const [open,    setOpen]    = useState(false);
   const [tab,     setTab]     = useState('applied');
   const [data,    setData]    = useState({});
@@ -345,6 +345,9 @@ function RecruiterEntry({ entry, isCurrent, isRepeat, days, isLast, ensureApps, 
               <span> · assigned by <strong style={{ color: '#706E6B' }}>{entry.assignedByName}</strong></span>
             )}
           </div>
+
+          {/* Productivity signals from /recruiter-timeline */}
+          <ProductivityBadges productivity={productivity} />
         </div>
 
         {/* Expand chevron */}
@@ -572,6 +575,32 @@ function FullPipelineSection({ ensureApps, history, refreshKey }) {
   );
 }
 
+// ── Productivity badge row (sourced from /recruiter-timeline) ────────────────
+function ProductivityBadges({ productivity }) {
+  if (!productivity) return null;
+  const { candidatesAdvanced, interviewsScheduled, offersExtended } = productivity;
+  if (!candidatesAdvanced && !interviewsScheduled && !offersExtended) return null;
+  return (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
+      {candidatesAdvanced > 0 && (
+        <span title="Candidates advanced in pipeline" style={{ fontSize: 10, fontWeight: 700, color: '#0369A1', background: 'rgba(3,105,161,0.08)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(3,105,161,0.15)' }}>
+          ⬆ {candidatesAdvanced} advanced
+        </span>
+      )}
+      {interviewsScheduled > 0 && (
+        <span title="Interviews scheduled" style={{ fontSize: 10, fontWeight: 700, color: '#D97706', background: 'rgba(217,119,6,0.08)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(217,119,6,0.15)' }}>
+          🗓 {interviewsScheduled} interview{interviewsScheduled !== 1 ? 's' : ''}
+        </span>
+      )}
+      {offersExtended > 0 && (
+        <span title="Offers extended" style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: 'rgba(5,150,105,0.08)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(5,150,105,0.15)' }}>
+          🎯 {offersExtended} offer{offersExtended !== 1 ? 's' : ''}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Root component ───────────────────────────────────────────────────────────
 export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory = [], currentRecruiterName, currentRecruiterId, isAdmin = false, onRecruiterChanged }) {
   const [history,       setHistory]       = useState([]);
@@ -579,6 +608,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   const [usingFallback, setUsingFallback] = useState(false);
   const [allApps,       setAllApps]       = useState(null);
   const [refreshKey,    setRefreshKey]    = useState(0);
+  const [timelineData,  setTimelineData]  = useState(null); // productivity signals
   const fetchedRef = useRef(false);
 
   // Clears the shared app cache and bumps refreshKey so every open panel reloads
@@ -619,34 +649,36 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
   const loadHistory = () => {
     if (!jobId) { setLoading(false); return; }
     setLoading(true);
-    api.getJobRecruiterHistory(jobId)
-      .then(r => {
-        const hist = parseHistory(r);
-        if (hist.length > 0) {
-          setHistory(hist);
-          setUsingFallback(false);
-        } else if (fallbackHistory.length > 0) {
-          setHistory(fallbackHistory);
-          setUsingFallback(true);
-        } else if (currentRecruiterName) {
-          setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
-          setUsingFallback(true);
-        } else {
-          setHistory([]);
-        }
-      })
-      .catch(() => {
-        if (fallbackHistory.length > 0) {
-          setHistory(fallbackHistory);
-          setUsingFallback(true);
-        } else if (currentRecruiterName) {
-          setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
-          setUsingFallback(true);
-        } else {
-          setHistory([]);
-        }
-      })
-      .finally(() => setLoading(false));
+
+    // Fetch both history and productivity timeline in parallel
+    Promise.allSettled([
+      api.getJobRecruiterHistory(jobId),
+      api.getJobRecruiterTimeline(jobId),
+    ]).then(([histResult, timelineResult]) => {
+      // Parse history
+      const r = histResult.status === 'fulfilled' ? histResult.value : null;
+      const hist = parseHistory(r);
+      if (hist.length > 0) {
+        setHistory(hist);
+        setUsingFallback(false);
+      } else if (fallbackHistory.length > 0) {
+        setHistory(fallbackHistory);
+        setUsingFallback(true);
+      } else if (currentRecruiterName) {
+        setHistory([{ recruiterName: currentRecruiterName, recruiterId: currentRecruiterId, assignedAt: null, removedAt: null, _synthetic: true }]);
+        setUsingFallback(true);
+      } else {
+        setHistory([]);
+      }
+
+      // Parse productivity timeline (keyed by recruiterId string)
+      if (timelineResult.status === 'fulfilled') {
+        const tl = timelineResult.value?.data?.timeline || [];
+        const map = {};
+        tl.forEach(t => { if (t.recruiterId) map[String(t.recruiterId)] = t.productivity; });
+        setTimelineData(map);
+      }
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -842,6 +874,10 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
           // has no removedAt (e.g. bulk-assigned recruiter with no recorded removal date).
           const effectiveEndDate = entry.removedAt || next?.assignedAt || null;
 
+          const productivity = timelineData && entry.recruiterId
+            ? timelineData[String(entry.recruiterId)] || null
+            : null;
+
           return (
             <div key={i}>
               <RecruiterEntry
@@ -855,6 +891,7 @@ export default function JobRecruiterHistory({ jobId, jobTitle, fallbackHistory =
                 history={sorted}
                 effectiveEndDate={effectiveEndDate}
                 refreshKey={refreshKey}
+                productivity={productivity}
               />
               {!isLast && next && (
                 <HandoffConnector from={entry.recruiterName} to={next.recruiterName} />

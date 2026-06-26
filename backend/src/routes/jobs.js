@@ -824,6 +824,124 @@ router.get('/:id/recruiter-history', ...guard, allowRoles('admin', 'super_admin'
   res.json({ success: true, data: { jobTitle: job.title, history } });
 }));
 
+// GET /api/jobs/:id/recruiter-timeline — rich timeline with duration + productivity signals
+router.get('/:id/recruiter-timeline', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const filter = { _id: req.params.id, deletedAt: null };
+  if (req.user.role !== 'super_admin') filter.tenantId = req.user.tenantId;
+
+  const job = await Job.findOne(filter).select('title status recruiterHistory assignedRecruiters createdAt').lean();
+  if (!job) throw new AppError('Job not found.', 404);
+
+  const history = [...(job.recruiterHistory || [])];
+  const now = new Date();
+
+  // Populate missing names
+  const missingIds = history.filter(h => !h.recruiterName && h.recruiterId).map(h => h.recruiterId.toString());
+  const activeIds  = (job.assignedRecruiters || []).map(id => id.toString());
+  const historyIds = new Set(history.map(h => h.recruiterId?.toString()));
+  const untracked  = activeIds.filter(id => !historyIds.has(id));
+  const lookupIds  = [...new Set([...missingIds, ...untracked])];
+
+  let userMap = {};
+  if (lookupIds.length > 0) {
+    const users = await User.find({ _id: { $in: lookupIds } }).select('_id name email').lean();
+    userMap = Object.fromEntries(users.map(u => [u._id.toString(), u]));
+  }
+
+  history.forEach(h => {
+    if (!h.recruiterName && h.recruiterId) {
+      const u = userMap[h.recruiterId.toString()];
+      if (u) { h.recruiterName = u.name || ''; h.recruiterEmail = u.email || ''; }
+    }
+  });
+
+  for (const id of untracked) {
+    const u = userMap[id];
+    if (u) {
+      history.push({
+        recruiterId: u._id, recruiterName: u.name || '', recruiterEmail: u.email || '',
+        assignedAt: job.createdAt, removedAt: null, _synthesized: true,
+      });
+    }
+  }
+
+  // Sort by assignedAt asc for timeline ordering
+  history.sort((a, b) => new Date(a.assignedAt || 0) - new Date(b.assignedAt || 0));
+
+  // Fetch all applications for this job with stageHistory
+  const applications = await Application.find({ jobId: req.params.id, deletedAt: null })
+    .select('stageHistory candidateId stage createdAt')
+    .lean();
+
+  // Build productivity snapshot for each recruiter period
+  const ADVANCEMENT_STAGES = new Set(['shortlisted', 'interview_r1', 'interview_r2', 'interview_r3', 'offered', 'hired']);
+
+  const timeline = history.map(entry => {
+    const start = entry.assignedAt ? new Date(entry.assignedAt) : null;
+    const end   = entry.removedAt  ? new Date(entry.removedAt)  : (entry.removedAt === null ? now : null);
+    const durationDays = (start && end) ? Math.round((end - start) / (1000 * 60 * 60 * 24)) : null;
+
+    let candidatesAdvanced  = 0;
+    let interviewsScheduled = 0;
+    let offersExtended      = 0;
+    let totalStageMovements = 0;
+
+    if (start && end) {
+      for (const app of applications) {
+        const moves = (app.stageHistory || []).filter(s => {
+          const t = new Date(s.movedAt);
+          return t >= start && t <= end;
+        });
+        if (moves.length > 0) totalStageMovements += moves.length;
+
+        const advanced = moves.some(s => ADVANCEMENT_STAGES.has(s.stage));
+        if (advanced) candidatesAdvanced++;
+
+        const interviewed = moves.some(s => s.stage === 'interview_r1' || s.stage === 'interview_r2' || s.stage === 'interview_r3');
+        if (interviewed) interviewsScheduled++;
+
+        const offered = moves.some(s => s.stage === 'offered' || s.stage === 'hired');
+        if (offered) offersExtended++;
+      }
+    }
+
+    return {
+      recruiterId    : entry.recruiterId,
+      recruiterName  : entry.recruiterName,
+      recruiterEmail : entry.recruiterEmail,
+      assignedAt     : entry.assignedAt,
+      removedAt      : entry.removedAt,
+      isActive       : entry.removedAt === null,
+      assignedBy     : entry.assignedByName || null,
+      durationDays,
+      productivity   : {
+        candidatesAdvanced,
+        interviewsScheduled,
+        offersExtended,
+        totalStageMovements,
+      },
+      _synthesized   : entry._synthesized || false,
+    };
+  });
+
+  // Overall job stats
+  const totalDays       = job.createdAt ? Math.round((now - new Date(job.createdAt)) / (1000 * 60 * 60 * 24)) : null;
+  const handoffCount    = timeline.filter(t => t.removedAt !== null).length;
+  const activeRecruiter = timeline.find(t => t.isActive) || null;
+
+  res.json({
+    success: true,
+    data: {
+      jobTitle      : job.title,
+      jobStatus     : job.status,
+      jobAgedays    : totalDays,
+      handoffCount,
+      activeRecruiter: activeRecruiter ? { name: activeRecruiter.recruiterName, email: activeRecruiter.recruiterEmail } : null,
+      timeline,
+    },
+  });
+}));
+
 // POST /api/jobs/bulk-classify
 // Auto-detect and fill industry + department for ALL jobs using their title and description.
 // Processes every job where either field is blank — safe to run multiple times.

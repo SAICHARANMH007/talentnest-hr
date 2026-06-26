@@ -34,6 +34,7 @@ export const jobService = {
   async redistributeJobs()                          { return req('POST',  '/jobs/redistribute',   {}); },
   async bulkClassifyJobs()                          { return req('POST',  '/jobs/bulk-classify',  {}); },
   async getJobRecruiterHistory(jobId)               { return req('GET',   `/jobs/${jobId}/recruiter-history?_t=${Date.now()}`); },
+  async getJobRecruiterTimeline(jobId)              { return req('GET',   `/jobs/${jobId}/recruiter-timeline?_t=${Date.now()}`); },
   async assignCandidatesToJob(jobId, candidateIds) { return req('POST', `/jobs/${jobId}/assign-candidates`, { candidateIds }); },
   async updateJobCustomStages(jobId, stages) { const r = await req('PATCH', `/jobs/${jobId}/custom-stages`, { stages }); return r?.data || []; },
   async getPendingJobs()              { return req('GET', '/jobs/pending'); },
