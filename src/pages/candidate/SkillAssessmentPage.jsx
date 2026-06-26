@@ -233,6 +233,7 @@ export default function SkillAssessmentPage({ user }) {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [cooldownEndsAt, setCooldownEndsAt] = useState(null);
+  const [notAvailable, setNotAvailable] = useState(false);
 
   const secsLeft = useCountdown(attempt?.expiresAt);
   const cooldownSecs = useCountdown(cooldownEndsAt);
@@ -266,6 +267,7 @@ export default function SkillAssessmentPage({ user }) {
     setLoading(true);
     setError('');
     setCooldownEndsAt(null);
+    setNotAvailable(false);
     try {
       const res = await api.startSkillAttempt(skill);
       setAttempt({ attemptId: res.attemptId, expiresAt: res.expiresAt, skill: res.skill });
@@ -276,6 +278,9 @@ export default function SkillAssessmentPage({ user }) {
     } catch (e) {
       if (e?.cooldownEndsAt) {
         setCooldownEndsAt(e.cooldownEndsAt);
+        setError('');
+      } else if (e?.message?.toLowerCase().includes('not enough questions')) {
+        setNotAvailable(true);
         setError('');
       } else {
         setError(e?.message || 'Failed to start assessment');
@@ -358,12 +363,20 @@ export default function SkillAssessmentPage({ user }) {
             </div>
           )}
 
+          {notAvailable && (
+            <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE047', borderRadius: 12, padding: '16px 20px', marginBottom: 20, textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>🚧</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#854D0E', marginBottom: 4 }}>Assessment Not Yet Available</div>
+              <div style={{ fontSize: 13, color: '#92400E' }}>Question bank for <strong>{skill}</strong> is being prepared. Check back soon or contact your administrator.</div>
+            </div>
+          )}
+
           {error && (
             <div style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13 }}>{error}</div>
           )}
 
-          <button onClick={startAttempt} disabled={loading || inCooldown} style={{ ...btnP, padding: '14px 40px', fontSize: 16, width: '100%', opacity: inCooldown ? 0.5 : 1, cursor: inCooldown ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Starting…' : inCooldown ? '⏳ Cooldown Active' : 'Start Assessment →'}
+          <button onClick={startAttempt} disabled={loading || inCooldown || notAvailable} style={{ ...btnP, padding: '14px 40px', fontSize: 16, width: '100%', opacity: (inCooldown || notAvailable) ? 0.5 : 1, cursor: (inCooldown || notAvailable) ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Starting…' : inCooldown ? '⏳ Cooldown Active' : notAvailable ? '🚧 Not Available' : 'Start Assessment →'}
           </button>
         </div>
       </div>

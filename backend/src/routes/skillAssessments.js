@@ -177,8 +177,27 @@ function tenantFilter(tenantId) {
 router.get('/skills', auth, async (req, res) => {
   try {
     const filter = { isActive: true, ...tenantFilter(req.user.tenantId) };
-    const skills = await SkillQuestion.distinct('skill', filter);
-    res.json({ skills: skills.sort() });
+
+    // Only return skills that actually have enough questions to start an assessment
+    // (need HARD_COUNT hard + MEDIUM_COUNT medium). Aggregate counts per skill+difficulty.
+    const counts = await SkillQuestion.aggregate([
+      { $match: filter },
+      { $group: { _id: { skill: '$skill', difficulty: '$difficulty' }, count: { $sum: 1 } } },
+    ]);
+
+    // Build map: skill → { hard: N, medium: N }
+    const skillMap = {};
+    for (const { _id: { skill, difficulty }, count } of counts) {
+      if (!skillMap[skill]) skillMap[skill] = {};
+      skillMap[skill][difficulty] = (skillMap[skill][difficulty] || 0) + count;
+    }
+
+    const skills = Object.entries(skillMap)
+      .filter(([, d]) => (d.hard || 0) >= HARD_COUNT && (d.medium || 0) >= MEDIUM_COUNT)
+      .map(([skill]) => skill)
+      .sort();
+
+    res.json({ skills });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
