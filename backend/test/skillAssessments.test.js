@@ -141,6 +141,7 @@ beforeEach(() => {
     subscriptionStatus: 'active', isStaffingAgency: false,
   }));
   vi.spyOn(Tenant, 'find').mockReturnValue(chainOf([]));
+  vi.spyOn(SkillAttempt, 'countDocuments').mockResolvedValue(10);
 
   vi.spyOn(User, 'findById').mockImplementation((id) => {
     const s = String(id);

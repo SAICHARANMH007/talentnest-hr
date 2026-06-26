@@ -25,17 +25,93 @@ function pickN(arr, n) {
   return shuffled.slice(0, n);
 }
 
-// Strip isCorrect from options before serving to candidate
+/** Shuffle array in-place using Fisher-Yates */
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Strip isCorrect from options before serving to candidate.
+// Options are shuffled per-question to prevent pattern-learning anti-cheat.
 function sanitizeForCandidate(questions) {
   return questions.map(q => ({
-    questionId: String(q._id),
+    questionId: String(q._id || q.questionId),
     skill:      q.skill,
     type:       q.type,
     difficulty: q.difficulty,
     text:       q.text,
     marks:      q.marks,
-    options:    (q.options || []).map(({ id, text }) => ({ id, text })),
+    options:    shuffleArray((q.options || []).map(({ id, text }) => ({ id, text }))),
   }));
+}
+
+/**
+ * Compute badge level from grading result.
+ * bronze: passed
+ * silver: passed + percentage ≥ 80%
+ * gold:   passed + percentage ≥ 90% + all hard questions correct
+ */
+function computeBadgeLevel({ passed, percentage, hardCorrect }) {
+  if (!passed) return null;
+  if (percentage >= 90 && hardCorrect >= HARD_COUNT) return 'gold';
+  if (percentage >= 80) return 'silver';
+  return 'bronze';
+}
+
+/**
+ * Compute percentile rank for this attempt's percentage among all submitted attempts for the skill.
+ * Returns 0-100 (e.g. 75 means scored better than 75% of attempts).
+ */
+async function computePercentile(skill, percentage) {
+  try {
+    const [total, below] = await Promise.all([
+      SkillAttempt.countDocuments({ skill, status: 'submitted' }),
+      SkillAttempt.countDocuments({ skill, status: 'submitted', percentage: { $lte: percentage } }),
+    ]);
+    if (total === 0) return 100;
+    return Math.round((below / total) * 100);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Anti-cheat timing analysis.
+ * Returns array of suspicious flag strings (empty = clean).
+ */
+function analyzeTimings(timingsMs = {}, questionsServed = []) {
+  const flags = [];
+  const values = Object.values(timingsMs).filter(t => typeof t === 'number' && t > 0);
+  if (values.length === 0) return flags;
+
+  const totalMs   = values.reduce((a, b) => a + b, 0);
+  const avgMs     = totalMs / values.length;
+  const n         = questionsServed.length;
+
+  // Total time too short: < 8 seconds per question on average
+  if (n > 0 && totalMs / n < 8_000) {
+    flags.push(`speed: avg ${Math.round(totalMs / n / 1000)}s/question (min 8s expected)`);
+  }
+
+  // Any single question answered in < 3 seconds
+  for (const [qId, ms] of Object.entries(timingsMs)) {
+    if (ms > 0 && ms < 3_000) {
+      flags.push(`fast_answer:${qId} (${Math.round(ms / 1000)}s)`);
+    }
+  }
+
+  // All answers submitted at once (all timings identical or near-zero variance)
+  if (values.length >= 3) {
+    const variance = values.reduce((s, t) => s + Math.pow(t - avgMs, 2), 0) / values.length;
+    if (variance < 100) { // extremely low variance → bot-like
+      flags.push('uniform_timings: possible automated submission');
+    }
+  }
+
+  return flags;
 }
 
 // Grade answers against full question docs (with isCorrect)
@@ -206,7 +282,7 @@ router.post('/attempt/:id/submit', auth, allowRoles('candidate'), async (req, re
       return res.status(410).json({ error: 'Time limit exceeded' });
     }
 
-    const { answers = [] } = req.body;
+    const { answers = [], timingsMs = {} } = req.body;
 
     // Fetch original full questions (with isCorrect) for grading
     const questionIds = attempt.questionsServed.map(q => q.questionId);
@@ -214,27 +290,38 @@ router.post('/attempt/:id/submit', auth, allowRoles('candidate'), async (req, re
 
     const { score, maxScore, percentage, correctCount, hardCorrect, passed, questionReview } = gradeAttempt(fullQuestions, answers);
 
-    attempt.answers      = answers;
-    attempt.status       = 'submitted';
-    attempt.submittedAt  = new Date();
-    attempt.score        = score;
-    attempt.maxScore     = maxScore;
-    attempt.percentage   = percentage;
-    attempt.correctCount = correctCount;
-    attempt.hardCorrect  = hardCorrect;
-    attempt.passed       = passed;
+    const badgeLevel      = computeBadgeLevel({ passed, percentage, hardCorrect });
+    const suspiciousFlags = analyzeTimings(timingsMs, attempt.questionsServed);
+    const percentile      = await computePercentile(attempt.skill, percentage);
+
+    attempt.answers         = answers;
+    attempt.status          = 'submitted';
+    attempt.submittedAt     = new Date();
+    attempt.score           = score;
+    attempt.maxScore        = maxScore;
+    attempt.percentage      = percentage;
+    attempt.correctCount    = correctCount;
+    attempt.hardCorrect     = hardCorrect;
+    attempt.passed          = passed;
+    attempt.badgeLevel      = badgeLevel;
+    attempt.percentile      = percentile;
+    attempt.timingsMs       = timingsMs;
+    attempt.suspiciousFlags = suspiciousFlags;
     await attempt.save();
 
     res.json({
-      attemptId:    String(attempt._id),
-      skill:        attempt.skill,
+      attemptId:       String(attempt._id),
+      skill:           attempt.skill,
       score,
       maxScore,
       percentage,
       correctCount,
       hardCorrect,
       passed,
-      submittedAt:  attempt.submittedAt,
+      badgeLevel,
+      percentile,
+      suspiciousFlags: suspiciousFlags.length > 0 ? ['Review flagged'] : [], // don't expose detail to candidate
+      submittedAt:     attempt.submittedAt,
       questionReview,
     });
   } catch (e) {
@@ -442,8 +529,19 @@ router.get('/badges/:userId', auth, async (req, res) => {
     const rows = await SkillAttempt.aggregate([
       { $match: { candidateId, status: 'submitted' } },
       { $sort: { submittedAt: -1 } },
-      { $group: { _id: '$skill', passed: { $first: '$passed' }, score: { $first: '$score' }, maxScore: { $first: '$maxScore' }, percentage: { $first: '$percentage' }, submittedAt: { $first: '$submittedAt' } } },
-      { $project: { _id: 0, skill: '$_id', passed: 1, score: 1, maxScore: 1, percentage: 1, submittedAt: 1 } },
+      {
+        $group: {
+          _id: '$skill',
+          passed:      { $first: '$passed' },
+          score:       { $first: '$score' },
+          maxScore:    { $first: '$maxScore' },
+          percentage:  { $first: '$percentage' },
+          badgeLevel:  { $first: '$badgeLevel' },
+          percentile:  { $first: '$percentile' },
+          submittedAt: { $first: '$submittedAt' },
+        }
+      },
+      { $project: { _id: 0, skill: '$_id', passed: 1, score: 1, maxScore: 1, percentage: 1, badgeLevel: 1, percentile: 1, submittedAt: 1 } },
     ]);
     res.json({ badges: rows });
   } catch (e) {
@@ -466,6 +564,61 @@ router.get('/leaderboard/:skill', auth, async (req, res) => {
       { $project: { _id: 0, candidateId: '$_id', score: 1, maxScore: 1, percentage: 1, submittedAt: 1 } },
     ]);
     res.json({ skill, leaderboard: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Admin: skill stats — percentile distribution + flagged attempts ────────────
+
+router.get('/admin/stats/:skill', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
+  try {
+    const skill = decodeURIComponent(req.params.skill);
+
+    const [distribution, flagged, totalAttempts, passedAttempts] = await Promise.all([
+      // Percentile buckets: 0-25, 25-50, 50-75, 75-90, 90-100
+      SkillAttempt.aggregate([
+        { $match: { skill, status: 'submitted' } },
+        {
+          $bucket: {
+            groupBy: '$percentage',
+            boundaries: [0, 25, 50, 75, 90, 101],
+            default: 'other',
+            output: { count: { $sum: 1 }, avgScore: { $avg: '$percentage' } },
+          },
+        },
+      ]),
+      // Flagged / suspicious attempts
+      SkillAttempt.find({ skill, 'suspiciousFlags.0': { $exists: true } })
+        .select('candidateId percentage submittedAt suspiciousFlags')
+        .sort({ submittedAt: -1 })
+        .limit(50)
+        .lean(),
+      SkillAttempt.countDocuments({ skill, status: 'submitted' }),
+      SkillAttempt.countDocuments({ skill, status: 'submitted', passed: true }),
+    ]);
+
+    const passRate = totalAttempts > 0 ? Math.round((passedAttempts / totalAttempts) * 100) : 0;
+
+    // Badge level breakdown
+    const badgeBreakdown = await SkillAttempt.aggregate([
+      { $match: { skill, status: 'submitted', passed: true } },
+      { $group: { _id: '$badgeLevel', count: { $sum: 1 } } },
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        skill,
+        totalAttempts,
+        passedAttempts,
+        passRate,
+        distribution,
+        badgeBreakdown: badgeBreakdown.reduce((acc, r) => { acc[r._id || 'none'] = r.count; return acc; }, {}),
+        flaggedCount: flagged.length,
+        flagged,
+      },
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
