@@ -4,13 +4,19 @@ import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 
 const DIFFICULTIES = ['hard', 'medium', 'easy'];
 const TYPES = ['mcq_single', 'mcq_multi', 'truefalse'];
-const TYPE_LABELS = { mcq_single: 'MCQ (single)', mcq_multi: 'MCQ (multi)', truefalse: 'True / False' };
+const TYPE_LABELS = { mcq_single: 'MCQ (single answer)', mcq_multi: 'MCQ (multiple answers)', truefalse: 'True / False' };
+const DIFF_META = {
+  hard:   { color: '#92400E', bg: '#FEF3C7', marks: 2, label: 'Hard' },
+  medium: { color: '#5B21B6', bg: '#EDE9FE', marks: 1, label: 'Medium' },
+  easy:   { color: '#065F46', bg: '#D1FAE5', marks: 1, label: 'Easy' },
+};
+const OPT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // ── Option editor ─────────────────────────────────────────────────────────────
-function OptionsEditor({ options, onChange, type }) {
+function OptionsEditor({ options, onChange, type, locked }) {
   const add = () => onChange([...options, { id: String(Date.now()), text: '', isCorrect: false }]);
   const remove = (id) => onChange(options.filter(o => o.id !== id));
-  const upd = (id, key, val) => onChange(options.map(o => o.id === id ? { ...o, [key]: val } : o));
+  const upd = (id, val) => onChange(options.map(o => o.id === id ? { ...o, text: val } : o));
   const setCorrect = (id) => {
     if (type === 'mcq_multi') {
       onChange(options.map(o => o.id === id ? { ...o, isCorrect: !o.isCorrect } : o));
@@ -19,29 +25,105 @@ function OptionsEditor({ options, onChange, type }) {
     }
   };
 
+  if (locked) {
+    return (
+      <div style={{ display: 'flex', gap: 8 }}>
+        {options.map(o => (
+          <div key={o.id} style={{ flex: 1, background: o.isCorrect ? '#D1FAE5' : '#F9FAFB', border: `1.5px solid ${o.isCorrect ? '#10B981' : '#E5E7EB'}`, borderRadius: 8, padding: '8px 12px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: o.isCorrect ? '#065F46' : '#374151' }}>
+            {o.text} {o.isCorrect && '✓'}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-        Options {type === 'mcq_multi' ? '(multiple correct)' : '(one correct)'}
+      {options.map((opt, i) => {
+        const letter = OPT_LETTERS[i] || String(i + 1);
+        const isCorrectOpt = !!opt.isCorrect;
+        return (
+          <div key={opt.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={() => setCorrect(opt.id)}
+              title={type === 'mcq_multi' ? 'Toggle correct' : 'Mark as correct'}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: `2px solid ${isCorrectOpt ? '#10B981' : '#D1D5DB'}`,
+                background: isCorrectOpt ? '#10B981' : '#fff', color: isCorrectOpt ? '#fff' : '#9CA3AF',
+                fontWeight: 800, fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {letter}
+            </button>
+            <input
+              value={opt.text}
+              onChange={e => upd(opt.id, e.target.value)}
+              placeholder={`Option ${letter}…`}
+              style={{ ...inp, flex: 1, padding: '7px 10px', fontSize: 13, borderColor: isCorrectOpt ? '#10B981' : undefined, background: isCorrectOpt ? '#F0FDF4' : undefined }}
+            />
+            {options.length > 2 && (
+              <button onClick={() => remove(opt.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 18, padding: '0 2px', lineHeight: 1 }}>×</button>
+            )}
+          </div>
+        );
+      })}
+      {options.length < 6 && (
+        <button onClick={add} style={{ ...btnG, fontSize: 12, padding: '5px 12px', marginTop: 4 }}>+ Add Option</button>
+      )}
+      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+        {type === 'mcq_multi' ? 'Click the circle to toggle correct answers (multiple allowed)' : 'Click the circle to mark the correct answer'}
       </div>
-      {options.map((opt, i) => (
-        <div key={opt.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-          <input
-            type={type === 'mcq_multi' ? 'checkbox' : 'radio'}
-            checked={!!opt.isCorrect}
-            onChange={() => setCorrect(opt.id)}
-            title="Mark as correct"
-          />
-          <input
-            value={opt.text}
-            onChange={e => upd(opt.id, 'text', e.target.value)}
-            placeholder={`Option ${i + 1}`}
-            style={{ ...inp, flex: 1, padding: '7px 10px', fontSize: 13 }}
-          />
-          <button onClick={() => remove(opt.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
-        </div>
-      ))}
-      <button onClick={add} style={{ ...btnG, fontSize: 12, padding: '5px 12px', marginTop: 4 }}>+ Add Option</button>
+    </div>
+  );
+}
+
+// ── Candidate preview pane ────────────────────────────────────────────────────
+function PreviewPane({ form }) {
+  const dm = DIFF_META[form.difficulty] || DIFF_META.medium;
+  const correctCount = form.options.filter(o => o.isCorrect).length;
+  return (
+    <div style={{ background: '#F8FAFF', border: '1px solid #E5E7EB', borderRadius: 12, padding: 18, height: '100%' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Candidate Preview</div>
+
+      {/* Tags row */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {form.skill && (
+          <span style={{ background: '#EFF6FF', color: '#1D4ED8', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{form.skill}</span>
+        )}
+        <span style={{ background: dm.bg, color: dm.color, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{dm.label}</span>
+        <span style={{ background: '#F1F5F9', color: '#475569', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>{form.marks} mark{form.marks !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* Question text */}
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#0A1628', lineHeight: 1.6, marginBottom: 14, minHeight: 40 }}>
+        {form.text || <span style={{ color: '#D1D5DB', fontStyle: 'italic' }}>Question text will appear here…</span>}
+      </div>
+
+      {/* Options preview */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {form.options.map((opt, i) => {
+          const letter = OPT_LETTERS[i] || String(i + 1);
+          return (
+            <div key={opt.id} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', opacity: opt.text ? 1 : 0.4 }}>
+              <span style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #D1D5DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#6B7280', flexShrink: 0 }}>{letter}</span>
+              <span style={{ fontSize: 13, color: '#374151' }}>{opt.text || `Option ${letter}`}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Validation hints */}
+      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {!form.skill && <div style={{ fontSize: 11, color: '#F59E0B' }}>⚠ No skill selected</div>}
+        {!form.text && <div style={{ fontSize: 11, color: '#F59E0B' }}>⚠ Question text is empty</div>}
+        {correctCount === 0 && <div style={{ fontSize: 11, color: '#EF4444' }}>✕ No correct answer marked</div>}
+        {correctCount > 0 && form.type === 'mcq_single' && correctCount > 1 && <div style={{ fontSize: 11, color: '#EF4444' }}>✕ MCQ single allows only one correct answer</div>}
+        {form.options.some(o => !o.text.trim()) && <div style={{ fontSize: 11, color: '#F59E0B' }}>⚠ Some options are empty</div>}
+        {correctCount > 0 && form.text && !form.options.some(o => !o.text.trim()) && (
+          <div style={{ fontSize: 11, color: '#10B981', fontWeight: 600 }}>✓ Question looks good</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -59,26 +141,46 @@ function QuestionModal({ question, skills, onSave, onClose }) {
     difficulty:  question?.difficulty || 'medium',
     text:        question?.text || '',
     options:     defaultOpts,
-    marks:       question?.marks || 1,
+    marks:       question?.marks ?? (DIFF_META[question?.difficulty || 'medium'].marks),
     explanation: question?.explanation || '',
     isActive:    question?.isActive !== false,
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [errors, setErrors] = useState({});
 
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleDifficultyChange = (d) => {
+    // Auto-update marks only if user hasn't manually changed them from the default
+    const currentDefault = DIFF_META[form.difficulty]?.marks;
+    const autoMarks = form.marks === currentDefault ? DIFF_META[d]?.marks ?? form.marks : form.marks;
+    setForm(p => ({ ...p, difficulty: d, marks: autoMarks }));
+  };
 
   const handleTypeChange = (t) => {
     if (t === 'truefalse') {
       sf('options', [{ id: 'true', text: 'True', isCorrect: true }, { id: 'false', text: 'False', isCorrect: false }]);
+    } else if (form.type === 'truefalse') {
+      sf('options', [{ id: 'a', text: '', isCorrect: true }, { id: 'b', text: '', isCorrect: false }]);
     }
     sf('type', t);
   };
 
+  const validate = () => {
+    const e = {};
+    if (!form.skill.trim()) e.skill = 'Skill is required';
+    if (!form.text.trim()) e.text = 'Question text is required';
+    if (form.options.length < 2) e.options = 'At least 2 options required';
+    if (!form.options.some(o => o.isCorrect)) e.options = 'Mark at least one correct answer';
+    if (form.type === 'mcq_single' && form.options.filter(o => o.isCorrect).length > 1) e.options = 'Single-answer MCQ can only have one correct option';
+    if (form.options.some(o => !o.text.trim())) e.options = 'All options must have text';
+    return e;
+  };
+
   const save = async () => {
-    if (!form.skill.trim() || !form.text.trim()) { setError('Skill and question text are required.'); return; }
-    if (form.options.length < 2) { setError('At least 2 options required.'); return; }
-    if (!form.options.some(o => o.isCorrect)) { setError('Mark at least one option as correct.'); return; }
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setErrors({});
     setSaving(true);
     try {
       const payload = { ...form, marks: Number(form.marks) || 1 };
@@ -88,72 +190,145 @@ function QuestionModal({ question, skills, onSave, onClose }) {
         await api.createSkillQuestion(payload);
       }
       onSave();
-    } catch (e) { setError(e.message || 'Save failed'); }
+    } catch (err) { setErrors({ save: err.message || 'Save failed' }); }
     setSaving(false);
   };
 
+  const isTrueFalse = form.type === 'truefalse';
+  const dm = DIFF_META[form.difficulty] || DIFF_META.medium;
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ ...card, width: '100%', maxWidth: 640, maxHeight: '90vh', overflow: 'auto', padding: 28 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{isEdit ? 'Edit Question' : 'Add Question'}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#6B7280' }}>×</button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ ...card, width: '100%', maxWidth: 960, maxHeight: '92vh', overflow: 'auto', padding: 0, display: 'flex', flexDirection: 'column' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #E5E7EB' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20 }}>{isEdit ? '✏️' : '➕'}</span>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0A1628' }}>{isEdit ? 'Edit Question' : 'New Question'}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>Fill in the form — preview updates live on the right</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, width: 32, height: 32, fontSize: 18, cursor: 'pointer', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Skill *</label>
-            <input value={form.skill} onChange={e => sf('skill', e.target.value)} list="skill-list"
-              style={{ ...inp, padding: '8px 10px', fontSize: 13 }} placeholder="e.g. JavaScript" />
-            <datalist id="skill-list">{skills.map(s => <option key={s} value={s} />)}</datalist>
+        {/* Body: form + preview side-by-side */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', flex: 1, overflow: 'hidden' }}>
+
+          {/* Left: form */}
+          <div style={{ padding: 24, overflow: 'auto', borderRight: '1px solid #E5E7EB' }}>
+
+            {/* Row 1: skill / type / difficulty */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Skill *</label>
+                <input value={form.skill} onChange={e => { sf('skill', e.target.value); setErrors(p => ({ ...p, skill: '' })); }}
+                  list="skill-list-modal" style={{ ...inp, padding: '8px 10px', fontSize: 13, borderColor: errors.skill ? '#EF4444' : undefined }}
+                  placeholder="e.g. JavaScript" />
+                <datalist id="skill-list-modal">{skills.map(s => <option key={s} value={s} />)}</datalist>
+                {errors.skill && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 3 }}>{errors.skill}</div>}
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Question Type *</label>
+                <select value={form.type} onChange={e => handleTypeChange(e.target.value)} style={{ ...inp, padding: '8px 10px', fontSize: 13 }}>
+                  {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Difficulty *</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {DIFFICULTIES.map(d => {
+                    const m = DIFF_META[d];
+                    const active = form.difficulty === d;
+                    return (
+                      <button key={d} type="button" onClick={() => handleDifficultyChange(d)}
+                        style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `2px solid ${active ? m.color : '#E5E7EB'}`, background: active ? m.bg : '#fff', color: active ? m.color : '#6B7280', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Question text */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Question Text *</label>
+                <span style={{ fontSize: 11, color: form.text.length > 400 ? '#EF4444' : '#9CA3AF' }}>{form.text.length}/500</span>
+              </div>
+              <textarea value={form.text} onChange={e => { sf('text', e.target.value.slice(0, 500)); setErrors(p => ({ ...p, text: '' })); }}
+                rows={3} maxLength={500}
+                style={{ ...inp, resize: 'vertical', fontSize: 13, padding: '8px 10px', borderColor: errors.text ? '#EF4444' : undefined }}
+                placeholder="Type the question here. You can include code snippets, scenarios, or direct knowledge checks." />
+              {errors.text && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 3 }}>{errors.text}</div>}
+            </div>
+
+            {/* Options */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                  Answer Options * {isTrueFalse ? <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(fixed for True/False)</span> : ''}
+                </label>
+                {!isTrueFalse && (
+                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+                    {form.type === 'mcq_multi' ? 'Highlight multiple correct answers' : 'Highlight the one correct answer'}
+                  </span>
+                )}
+              </div>
+              <OptionsEditor options={form.options} onChange={v => { sf('options', v); setErrors(p => ({ ...p, options: '' })); }} type={form.type} locked={isTrueFalse} />
+              {errors.options && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 6 }}>{errors.options}</div>}
+            </div>
+
+            {/* Marks + Explanation */}
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Marks</label>
+                <input type="number" min="1" max="10" value={form.marks} onChange={e => sf('marks', Math.max(1, Math.min(10, Number(e.target.value))))}
+                  style={{ ...inp, padding: '8px 10px', fontSize: 13, textAlign: 'center' }} />
+                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2, textAlign: 'center' }}>Default: {dm.marks}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Explanation <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(shown to candidates after submission)</span></label>
+                <textarea value={form.explanation} onChange={e => sf('explanation', e.target.value)} rows={2}
+                  style={{ ...inp, resize: 'vertical', fontSize: 13, padding: '8px 10px' }}
+                  placeholder="Explain why the correct answer is right. Helps candidates learn from the assessment." />
+              </div>
+            </div>
+
+            {/* Active toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 4 }}>
+              <div style={{ position: 'relative', width: 36, height: 20 }}>
+                <input type="checkbox" checked={form.isActive} onChange={e => sf('isActive', e.target.checked)}
+                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 10, background: form.isActive ? '#10B981' : '#D1D5DB', transition: 'background 0.2s' }} />
+                <div style={{ position: 'absolute', top: 2, left: form.isActive ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{form.isActive ? 'Active' : 'Inactive'}</div>
+                <div style={{ fontSize: 11, color: '#9CA3AF' }}>{form.isActive ? 'Included in live assessments' : 'Hidden from candidates'}</div>
+              </div>
+            </label>
           </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Type *</label>
-            <select value={form.type} onChange={e => handleTypeChange(e.target.value)} style={{ ...inp, padding: '8px 10px', fontSize: 13 }}>
-              {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Difficulty *</label>
-            <select value={form.difficulty} onChange={e => sf('difficulty', e.target.value)} style={{ ...inp, padding: '8px 10px', fontSize: 13 }}>
-              {DIFFICULTIES.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-            </select>
+
+          {/* Right: preview */}
+          <div style={{ padding: 20, overflow: 'auto', background: '#F8FAFF' }}>
+            <PreviewPane form={form} />
           </div>
         </div>
 
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Question Text *</label>
-          <textarea value={form.text} onChange={e => sf('text', e.target.value)} rows={3}
-            style={{ ...inp, resize: 'vertical', fontSize: 13, padding: '8px 10px' }} placeholder="Enter the question…" />
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <OptionsEditor options={form.options} onChange={v => sf('options', v)} type={form.type} />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 14 }}>
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 24px', borderTop: '1px solid #E5E7EB', background: '#FAFAFA' }}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Marks</label>
-            <input type="number" min="1" max="10" value={form.marks} onChange={e => sf('marks', e.target.value)}
-              style={{ ...inp, padding: '8px 10px', fontSize: 13 }} />
+            {errors.save && <div style={{ fontSize: 13, color: '#EF4444' }}>⚠ {errors.save}</div>}
           </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Explanation (shown after submission)</label>
-            <input value={form.explanation} onChange={e => sf('explanation', e.target.value)}
-              style={{ ...inp, padding: '8px 10px', fontSize: 13 }} placeholder="Why is this the correct answer?" />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{ ...btnG, padding: '9px 20px' }}>Cancel</button>
+            <button onClick={save} disabled={saving} style={{ ...btnP, padding: '9px 24px', opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Saving…' : isEdit ? '💾 Update Question' : '✅ Add Question'}
+            </button>
           </div>
-        </div>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 18, cursor: 'pointer' }}>
-          <input type="checkbox" checked={form.isActive} onChange={e => sf('isActive', e.target.checked)} />
-          Active (included in assessments)
-        </label>
-
-        {error && <div style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 8, padding: '8px 14px', fontSize: 13, marginBottom: 14 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ ...btnG }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ ...btnP }}>{saving ? 'Saving…' : 'Save Question'}</button>
         </div>
       </div>
     </div>
