@@ -106,11 +106,20 @@ export default function JobDetailPage() {
         const canonical = `${SITEURL}/careers/job/${slug}`;
         const desc = `${j.title} opening at TalentNest HR in ${j.location || 'India'}. ${j.description ? j.description.slice(0, 120).replace(/\n/g, ' ') + '…' : ''}`;
 
+        const companyName = j.companyName || j.company || 'TalentNest HR';
+        const ogImage     = j.bannerImageUrl || j.logoUrl || `${SITEURL}/og-default.png`;
+
         setMeta('description', desc);
-        setMeta('og:title',       `${j.title} — ${j.location} | TalentNest HR`, true);
+        setMeta('og:title',       `${j.title} — ${companyName}`, true);
         setMeta('og:description', desc, true);
         setMeta('og:url',         canonical, true);
         setMeta('og:type',        'website', true);
+        setMeta('og:image',       ogImage, true);
+        setMeta('og:site_name',   'TalentNest HR', true);
+        setMeta('twitter:card',   'summary_large_image');
+        setMeta('twitter:title',  `${j.title} — ${companyName}`);
+        setMeta('twitter:description', desc);
+        setMeta('twitter:image',  ogImage);
 
         // Canonical link
         let canonEl = document.head.querySelector('link[rel="canonical"]');
@@ -138,8 +147,9 @@ export default function JobDetailPage() {
           employmentType: mapType(j.jobType),
           hiringOrganization: {
             '@type': 'Organization',
-            name: 'TalentNest HR',
-            sameAs: SITEURL,
+            name: companyName,
+            sameAs: j.companyWebsite || SITEURL,
+            ...(ogImage !== `${SITEURL}/og-default.png` ? { logo: ogImage } : {}),
           },
           jobLocation: {
             '@type': 'Place',
@@ -152,7 +162,7 @@ export default function JobDetailPage() {
           },
           identifier: {
             '@type': 'PropertyValue',
-            name: 'TalentNest HR',
+            name: companyName,
             value: slug,
           },
           url: canonical,

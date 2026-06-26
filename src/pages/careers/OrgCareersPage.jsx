@@ -19,6 +19,54 @@ import PublicApplyModal from '../../components/modals/PublicApplyModal.jsx';
 import ReferEarnModal from '../../components/modals/ReferEarnModal.jsx';
 
 
+// ── Embed snippet widget ──────────────────────────────────────────────────────
+function EmbedSnippet({ orgSlug, orgName }) {
+  const [open,   setOpen]   = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.talentnesthr.com';
+  const snippet = `<iframe\n  src="${siteUrl}/careers/${orgSlug}?embed=1"\n  title="${orgName} — Open Positions"\n  width="100%"\n  height="700"\n  style="border:none;border-radius:12px;"\n  loading="lazy"\n  allowfullscreen\n></iframe>`;
+
+  const copy = () => {
+    navigator.clipboard?.writeText(snippet).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  return (
+    <div style={{ maxWidth: 860, margin: '0 auto 24px', padding: '0 20px' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+      >
+        <span>{open ? '▲' : '▼'}</span> Embed this career page on your website
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '14px 16px' }}>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#374151', fontWeight: 600 }}>
+            Copy and paste this snippet into your website's HTML:
+          </p>
+          <div style={{ position: 'relative' }}>
+            <pre style={{ background: '#1E293B', color: '#E2E8F0', borderRadius: 8, padding: '12px 14px', fontSize: 11, overflowX: 'auto', margin: 0, lineHeight: 1.6, fontFamily: 'monospace' }}>
+              {snippet}
+            </pre>
+            <button
+              onClick={copy}
+              style={{ position: 'absolute', top: 8, right: 8, background: copied ? '#059669' : '#0176D3', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}
+            >
+              {copied ? '✓ Copied!' : 'Copy'}
+            </button>
+          </div>
+          <p style={{ margin: '10px 0 0', fontSize: 11, color: '#94A3B8' }}>
+            The embedded page auto-updates whenever you publish new jobs — no maintenance needed.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main embeddable careers page ──────────────────────────────────────────────
 export default function OrgCareersPage() {
   const { orgSlug } = useParams();
@@ -94,7 +142,7 @@ export default function OrgCareersPage() {
         if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
         canon.href = pageUrl;
 
-        // Inject Organization JSON-LD for Google Knowledge Graph
+        // ── Org JSON-LD for Google Knowledge Graph ──────────────────────
         const existingLd = document.getElementById('org-career-ld');
         if (existingLd) existingLd.remove();
         const ldScript = document.createElement('script');
@@ -110,6 +158,58 @@ export default function OrgCareersPage() {
           ...(res.employerBrand?.website ? { sameAs: [res.employerBrand.website] } : {}),
         });
         document.head.appendChild(ldScript);
+
+        // ── twitter card ────────────────────────────────────────────────
+        const setMeta2 = (name, content, prop = false) => {
+          const sel = prop ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+          let el = document.head.querySelector(sel);
+          if (!el) { el = document.createElement('meta'); if (prop) el.setAttribute('property', name); else el.setAttribute('name', name); document.head.appendChild(el); }
+          el.setAttribute('content', content);
+        };
+        setMeta2('twitter:card',        'summary_large_image');
+        setMeta2('twitter:title',       `${orgName} Careers`);
+        setMeta2('twitter:description', desc);
+        setMeta2('twitter:image',       logoUrl);
+        setMeta2('og:site_name',        'TalentNest HR', true);
+
+        // ── ItemList JSON-LD: list of JobPosting for all jobs on page ──
+        const jobList = Array.isArray(res.data) ? res.data : [];
+        const existingListLd = document.getElementById('org-jobs-list-ld');
+        if (existingListLd) existingListLd.remove();
+        if (jobList.length > 0) {
+          const siteUrl2 = window.location.origin;
+          const listScript = document.createElement('script');
+          listScript.id   = 'org-jobs-list-ld';
+          listScript.type = 'application/ld+json';
+          listScript.text = JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: `${orgName} — Open Positions`,
+            description: desc,
+            numberOfItems: jobList.length,
+            itemListElement: jobList.map((j, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              item: {
+                '@type': 'JobPosting',
+                title: j.title,
+                url: `${siteUrl2}/careers/job/${j.careerPageSlug || j._id}`,
+                datePosted: j.createdAt || new Date().toISOString(),
+                validThrough: new Date(Date.now() + 60 * 86400000).toISOString(),
+                hiringOrganization: { '@type': 'Organization', name: orgName },
+                jobLocation: {
+                  '@type': 'Place',
+                  address: {
+                    '@type': 'PostalAddress',
+                    addressLocality: (j.location || '').split(',')[0].trim() || 'India',
+                    addressCountry: 'IN',
+                  },
+                },
+              },
+            })),
+          });
+          document.head.appendChild(listScript);
+        }
       })
       .catch(() => setError('Could not load jobs. Please try again later.'))
       .finally(() => setLoading(false));
@@ -572,6 +672,11 @@ export default function OrgCareersPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Embed snippet widget (non-embed mode, non-main-org) ── */}
+      {!embed && !isMainOrg && org && (
+        <EmbedSnippet orgSlug={orgSlug} orgName={org.name || org.companyName || 'Company'} />
       )}
 
       {/* Full Marketing footer — only for TalentNest HR's own career page */}
