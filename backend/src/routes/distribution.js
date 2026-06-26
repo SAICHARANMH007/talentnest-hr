@@ -17,11 +17,12 @@ const AppError         = require('../utils/AppError');
 const SITE_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
 
 // All platforms we track
-const ALL_PLATFORMS = ['google_indexing', 'indeed', 'google_for_jobs', 'jooble', 'adzuna', 'careerjet', 'naukri', 'shine', 'timesjobs'];
+const ALL_PLATFORMS = ['google_indexing', 'indexnow', 'indeed', 'google_for_jobs', 'jooble', 'adzuna', 'careerjet', 'naukri', 'shine', 'timesjobs'];
 
 // Platform metadata for the UI
 const PLATFORM_META = {
   google_indexing : { label: 'Google Indexing API', icon: '🔍', type: 'api' },
+  indexnow        : { label: 'IndexNow (Bing/Yandex)', icon: '🔎', type: 'api' },
   google_for_jobs : { label: 'Google for Jobs',     icon: '🟢', type: 'schema' },
   indeed          : { label: 'Indeed',              icon: '💼', type: 'api' },
   jooble          : { label: 'Jooble',              icon: '🌐', type: 'feed' },
@@ -31,6 +32,11 @@ const PLATFORM_META = {
   shine           : { label: 'Shine',               icon: '✨', type: 'manual' },
   timesjobs       : { label: 'TimesJobs',           icon: '⏰', type: 'manual' },
 };
+
+// Feed platforms that auto-confirm (no callback — they pull from XML feed)
+const FEED_PLATFORMS = ['jooble', 'adzuna', 'careerjet'];
+// Manual platforms that require recruiter to post and then mark as posted
+const MANUAL_PLATFORMS = ['naukri', 'shine', 'timesjobs'];
 
 function encodeQ(s) { return encodeURIComponent(String(s || '')); }
 
@@ -86,6 +92,9 @@ async function logJobPublished(job) {
       );
     }
 
+    // IndexNow (Bing/Yandex) — fast ping, no API key needed
+    await pingIndexNow(job);
+
     // Google Indexing API (fast, do immediately)
     await pingGoogleIndexing(job);
 
@@ -124,6 +133,42 @@ async function pingGoogleIndexing(job) {
   }
 }
 
+async function pingIndexNow(job) {
+  const SITE_URL = process.env.FRONTEND_URL || 'https://www.talentnesthr.com';
+  const indexNowKey = process.env.INDEXNOW_KEY;
+  const jobUrl = `${SITE_URL}/careers/job/${job.careerPageSlug || job._id}`;
+  try {
+    if (!indexNowKey) {
+      await JobDistribution.findOneAndUpdate(
+        { jobId: job._id, platform: 'indexnow' },
+        { $set: { status: 'skipped', responseMessage: 'INDEXNOW_KEY not configured', distributedAt: new Date() } }
+      );
+      return;
+    }
+    const resp = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        host: new URL(SITE_URL).hostname,
+        key: indexNowKey,
+        urlList: [jobUrl],
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    // IndexNow returns 200 (already submitted), 202 (accepted), or errors
+    const ok = resp.status === 200 || resp.status === 202;
+    await JobDistribution.findOneAndUpdate(
+      { jobId: job._id, platform: 'indexnow' },
+      { $set: { status: ok ? 'success' : 'failed', responseCode: resp.status, distributedAt: ok ? new Date() : null } }
+    );
+  } catch (e) {
+    await JobDistribution.findOneAndUpdate(
+      { jobId: job._id, platform: 'indexnow' },
+      { $set: { status: 'failed', responseMessage: e.message } }
+    ).catch(() => {});
+  }
+}
+
 async function logJobClosed(jobId) {
   try {
     await JobDistribution.updateMany(
@@ -137,8 +182,10 @@ async function logJobClosed(jobId) {
   }
 }
 
-module.exports.logJobPublished = logJobPublished;
-module.exports.logJobClosed    = logJobClosed;
+module.exports.logJobPublished  = logJobPublished;
+module.exports.logJobClosed     = logJobClosed;
+module.exports.FEED_PLATFORMS   = FEED_PLATFORMS;
+module.exports.MANUAL_PLATFORMS = MANUAL_PLATFORMS;
 
 // ── GET /api/distribution/job/:jobId — per-job distribution status ────────────
 router.get('/job/:jobId', authenticate, asyncHandler(async (req, res) => {
@@ -223,6 +270,26 @@ router.get('/employer-settings/:tenantId', authenticate, allowRoles('admin', 'su
   }
   const org = await Organization.findById(req.params.tenantId).select('distributionSettings').lean();
   res.json({ success: true, data: org?.distributionSettings || { naukri: false, shine: false, timesjobs: false } });
+}));
+
+// ── PATCH /api/distribution/mark-posted/:jobId/:platform — manual platform confirm
+// For Naukri/Shine/TimesJobs — recruiter manually posts the job then clicks "Mark as Posted"
+router.patch('/mark-posted/:jobId/:platform', authenticate, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+  const { jobId, platform } = req.params;
+  if (!MANUAL_PLATFORMS.includes(platform)) {
+    throw new AppError(`"${platform}" is not a manual platform. Use retry for API/feed platforms.`, 400);
+  }
+
+  const log = await JobDistribution.findOne({ jobId, platform });
+  if (!log) return res.status(404).json({ success: false, error: 'Distribution log not found' });
+
+  log.status         = 'success';
+  log.distributedAt  = new Date();
+  log.postedBy       = req.user.userId || req.user.id;
+  log.responseMessage = `Manually posted by ${req.user.name || req.user.email || 'recruiter'}`;
+  await log.save();
+
+  res.json({ success: true, message: `${platform} marked as posted`, distributedAt: log.distributedAt });
 }));
 
 // ── PATCH /api/distribution/employer-settings/:tenantId — save checklist ──────
