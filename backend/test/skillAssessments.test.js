@@ -141,6 +141,7 @@ beforeEach(() => {
     subscriptionStatus: 'active', isStaffingAgency: false,
   }));
   vi.spyOn(Tenant, 'find').mockReturnValue(chainOf([]));
+  vi.spyOn(SkillAttempt, 'countDocuments').mockResolvedValue(10);
 
   vi.spyOn(User, 'findById').mockImplementation((id) => {
     const s = String(id);
@@ -163,7 +164,13 @@ describe('GET /api/skill-assessments/skills (SKILL-A)', () => {
   });
 
   it('returns skills list for authenticated user', async () => {
-    vi.spyOn(SkillQuestion, 'distinct').mockResolvedValue(['JavaScript', 'Python']);
+    // /skills now uses aggregate to filter skills with enough hard+medium questions
+    vi.spyOn(SkillQuestion, 'aggregate').mockResolvedValue([
+      { _id: { skill: 'JavaScript', difficulty: 'hard' }, count: 3 },
+      { _id: { skill: 'JavaScript', difficulty: 'medium' }, count: 3 },
+      { _id: { skill: 'Python', difficulty: 'hard' }, count: 3 },
+      { _id: { skill: 'Python', difficulty: 'medium' }, count: 3 },
+    ]);
 
     const res = await request(buildApp())
       .get('/api/skill-assessments/skills')

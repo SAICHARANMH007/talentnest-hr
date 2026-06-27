@@ -18,13 +18,17 @@ const schema = new mongoose.Schema({
 
   status: {
     type   : String,
-    enum   : ['pending', 'cleared', 'confirmed_duplicate'],
+    enum   : ['pending', 'cleared', 'confirmed_duplicate', 'escalated'],
     default: 'pending',
   },
 
-  reviewedBy  : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  reviewedAt  : { type: Date, default: null },
-  reviewNote  : { type: String, default: '' },
+  reviewedBy     : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt     : { type: Date, default: null },
+  reviewNote     : { type: String, default: '' },
+  // escalated: super_admin needs to review (cross-tenant or high-severity)
+  escalatedBy    : { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  escalatedAt    : { type: Date, default: null },
+  escalationNote : { type: String, default: '' },
 }, { timestamps: true });
 
 schema.index({ tenantId: 1, status: 1 });

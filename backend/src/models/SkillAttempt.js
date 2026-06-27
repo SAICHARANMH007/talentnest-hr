@@ -39,13 +39,23 @@ const skillAttemptSchema = new mongoose.Schema({
   submittedAt:{ type: Date },
 
   // Scoring (filled on submit)
-  score:      { type: Number, default: 0 },
-  maxScore:   { type: Number, default: 0 },
-  percentage: { type: Number, default: 0 },
+  score:       { type: Number, default: 0 },
+  maxScore:    { type: Number, default: 0 },
+  percentage:  { type: Number, default: 0 },
   // Pass rule: ≥4 of 6 correct AND ≥1 hard correct
-  passed:     { type: Boolean, default: false },
-  hardCorrect:{ type: Number, default: 0 },
+  passed:      { type: Boolean, default: false },
+  hardCorrect: { type: Number, default: 0 },
   correctCount:{ type: Number, default: 0 },
+
+  // Badge level: bronze (pass), silver (≥80%), gold (≥90% + all hard correct)
+  badgeLevel:  { type: String, enum: ['bronze', 'silver', 'gold', null], default: null },
+  // Percentile rank among all submitted attempts for this skill
+  percentile:  { type: Number, default: null },
+
+  // Anti-cheat: time spent per question in milliseconds (questionId → ms)
+  timingsMs:   { type: Map, of: Number, default: {} },
+  // Anti-cheat flags (empty = clean, populated = needs review)
+  suspiciousFlags: { type: [String], default: [] },
 }, { timestamps: true });
 
 skillAttemptSchema.index({ candidateId: 1, skill: 1, status: 1 });

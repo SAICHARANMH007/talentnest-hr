@@ -110,6 +110,89 @@ function faceSimilarity(a, b) {
   return (cos * 0.5 + eucScore * 0.5);
 }
 
+/**
+ * Confidence band for a similarity score.
+ * Returns { band: string, label: string, hint?: string }
+ *   score ≥ 0.90  → 'very_high'  / 'Very High'
+ *   score ≥ 0.82  → 'high'       / 'High'
+ *   score ≥ 0.70  → 'medium'     / 'Medium'
+ *   score < 0.70  → 'low'        / 'Low'
+ */
+function confidenceBand(score) {
+  if (score >= 0.90) return { band: 'very_high', label: 'Very High' };
+  if (score >= 0.82) return { band: 'high',      label: 'High' };
+  if (score >= 0.70) return { band: 'medium',    label: 'Medium', hint: 'Move to better lighting or remove sunglasses for a cleaner match.' };
+  return { band: 'low', label: 'Low', hint: 'Face not clearly matched. Ensure good lighting, face the camera directly, and remove any obstructions.' };
+}
+
+/**
+ * Map a known detection issue to a user-friendly message and recovery tips.
+ * Used by POST /api/face/edge-case-hint and inline during enroll/verify.
+ */
+const EDGE_CASE_HINTS = {
+  no_camera: {
+    title: 'Camera not available',
+    message: 'We could not access your camera.',
+    tips: [
+      'Make sure your browser has camera permission (check the padlock icon in the address bar).',
+      'Close other apps that may be using the camera (video calls, etc.).',
+      'On mobile, allow camera access in your device settings for this browser.',
+    ],
+  },
+  poor_lighting: {
+    title: 'Poor lighting detected',
+    message: 'The lighting conditions make it difficult to verify your face accurately.',
+    tips: [
+      'Sit facing a window or lamp so light falls on your face, not behind you.',
+      'Avoid bright backgrounds (windows, bright screens) directly behind your head.',
+      'Turn on room lights if you are in a dark environment.',
+    ],
+  },
+  glasses: {
+    title: 'Glasses may affect accuracy',
+    message: 'Glasses or sunglasses can reduce face matching accuracy.',
+    tips: [
+      'Try removing your glasses for the verification step.',
+      'If you wear glasses during enrollment, wear the same glasses when verifying.',
+      'Avoid heavily tinted or reflective lenses that obscure your eyes.',
+    ],
+  },
+  face_too_small: {
+    title: 'Face too far from camera',
+    message: 'Your face appears too small or distant in the frame.',
+    tips: [
+      'Move closer to the camera until your face fills the oval guide.',
+      'Ensure your head and shoulders are fully visible.',
+    ],
+  },
+  face_obstructed: {
+    title: 'Face partially obstructed',
+    message: 'Something is blocking part of your face.',
+    tips: [
+      'Remove hats, masks, or scarves that cover your face.',
+      'Make sure no hands or objects are in front of your face.',
+      'Turn to face the camera directly.',
+    ],
+  },
+  multiple_faces: {
+    title: 'Multiple faces detected',
+    message: 'More than one face was found in the camera frame.',
+    tips: [
+      'Make sure you are alone in frame — ask others to step out of the camera view.',
+      'Adjust your camera angle so only your face is visible.',
+    ],
+  },
+  liveness_failed: {
+    title: 'Liveness check not passed',
+    message: 'We could not confirm a live face — static images are not accepted.',
+    tips: [
+      'Blink naturally during the scan.',
+      'Slightly move your head left and right between captures.',
+      'Do not hold a photo or screen in front of the camera.',
+    ],
+  },
+};
+
 /** Convert base64 data-URL to Buffer */
 function base64ToBuffer(dataUrl) {
   const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
@@ -339,7 +422,11 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
   const score = faceSimilarity(descriptor, user.faceDescriptor);
   const passed = score >= 0.80; // recalibrated: new formula, same person scores 0.83-0.93
 
-  res.json({ success: true, enrolled: true, passed, score: Math.round(score * 1000) / 1000 });
+  res.json({
+    success: true, enrolled: true, passed,
+    score: Math.round(score * 1000) / 1000,
+    confidence: confidenceBand(score),
+  });
 }));
 
 // DELETE /api/face/enroll — remove face data (GDPR delete)
@@ -424,6 +511,7 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
     success: true,
     passed,
     score: Math.round(score * 1000) / 1000,
+    confidence: confidenceBand(score),
     flagged: submission.faceVerificationSummary.flagged,
   });
 }));
@@ -449,13 +537,14 @@ router.get('/admin/duplicates', ...guard,
 );
 
 // PATCH /api/face/admin/duplicates/:id — admin reviews a duplicate alert
-// Body: { action: 'cleared' | 'confirmed_duplicate', note?: string, disableUserId?: string }
+// Body: { action: 'cleared' | 'confirmed_duplicate' | 'escalated', note?: string, disableUserId?: string }
 router.patch('/admin/duplicates/:id', ...guard,
   allowRoles('admin', 'super_admin'),
   asyncHandler(async (req, res) => {
     const { action, note, disableUserId } = req.body;
-    if (!['cleared', 'confirmed_duplicate'].includes(action))
-      throw new AppError('action must be "cleared" or "confirmed_duplicate".', 400);
+    const VALID_ACTIONS = ['cleared', 'confirmed_duplicate', 'escalated'];
+    if (!VALID_ACTIONS.includes(action))
+      throw new AppError(`action must be one of: ${VALID_ACTIONS.join(', ')}.`, 400);
 
     const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
     const alert = await FaceDuplicateAlert.findOne({ _id: req.params.id, ...tenantFilter });
@@ -465,6 +554,26 @@ router.patch('/admin/duplicates/:id', ...guard,
     alert.reviewedBy = req.user.id;
     alert.reviewedAt = new Date();
     alert.reviewNote = note || '';
+
+    if (action === 'escalated') {
+      alert.escalatedBy    = req.user.id;
+      alert.escalatedAt    = new Date();
+      alert.escalationNote = note || '';
+      // Notify super_admins about the escalation
+      const superAdmins = await User.find({ role: 'super_admin', deletedAt: null }).select('_id').lean();
+      if (superAdmins.length > 0) {
+        await Notification.insertMany(superAdmins.map(sa => ({
+          userId: sa._id,
+          tenantId: alert.tenantId,
+          type: 'alert',
+          title: '⚠️ Escalated Face Duplicate Alert',
+          message: `Admin escalated a face duplicate alert between ${alert.name1 || 'User 1'} and ${alert.name2 || 'User 2'} (${Math.round(alert.similarityScore * 100)}% similarity). Review required.`,
+          link: '/app/admin/face-duplicates',
+        })));
+      }
+      logger.audit('Face duplicate alert escalated', req.user.id, req.user.tenantId, { alertId: alert._id });
+    }
+
     await alert.save();
 
     // If admin confirms duplicate and wants to disable one account
@@ -479,6 +588,38 @@ router.patch('/admin/duplicates/:id', ...guard,
     }
 
     res.json({ success: true, data: alert });
+  })
+);
+
+// GET /api/face/admin/duplicates/stats — summary stats for duplicate alerts
+router.get('/admin/duplicates/stats', ...guard,
+  allowRoles('admin', 'super_admin'),
+  asyncHandler(async (req, res) => {
+    const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
+
+    const [pending, cleared, confirmed, escalated, totalAlerts] = await Promise.all([
+      FaceDuplicateAlert.countDocuments({ ...tenantFilter, status: 'pending' }),
+      FaceDuplicateAlert.countDocuments({ ...tenantFilter, status: 'cleared' }),
+      FaceDuplicateAlert.countDocuments({ ...tenantFilter, status: 'confirmed_duplicate' }),
+      FaceDuplicateAlert.countDocuments({ ...tenantFilter, status: 'escalated' }),
+      FaceDuplicateAlert.countDocuments(tenantFilter),
+    ]);
+
+    // Average similarity score among pending alerts
+    const pendingAlerts = await FaceDuplicateAlert.find({ ...tenantFilter, status: 'pending' })
+      .select('similarityScore').lean();
+    const avgSimilarity = pendingAlerts.length > 0
+      ? Math.round((pendingAlerts.reduce((s, a) => s + a.similarityScore, 0) / pendingAlerts.length) * 1000) / 1000
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        totalAlerts,
+        byStatus: { pending, cleared, confirmed_duplicate: confirmed, escalated },
+        pendingAvgSimilarity: avgSimilarity,
+      },
+    });
   })
 );
 
@@ -849,6 +990,32 @@ router.post('/verify-otp', faceLoginLimiter, asyncHandler(async (req, res) => {
 
   const result = await authService.issueTokens(res, user, req);
   res.json({ success: true, ...result });
+}));
+
+// ── POST /api/face/edge-case-hint — return user-friendly hints for a known detection issue
+// Body: { issue: string }  — one of: no_camera, poor_lighting, glasses, face_too_small,
+//                            face_obstructed, multiple_faces, liveness_failed
+// No auth required — called before the user is verified
+router.post('/edge-case-hint', asyncHandler(async (req, res) => {
+  const { issue } = req.body;
+  if (!issue || typeof issue !== 'string') {
+    throw new AppError('issue is required.', 400);
+  }
+  const hint = EDGE_CASE_HINTS[issue.toLowerCase().trim()];
+  if (!hint) {
+    // Return all known issues so the client can display the list
+    return res.json({
+      success: true,
+      found: false,
+      knownIssues: Object.keys(EDGE_CASE_HINTS),
+      hint: {
+        title: 'Unrecognised issue',
+        message: 'We could not find specific guidance for that issue.',
+        tips: ['Make sure your camera is working and you are in a well-lit area.'],
+      },
+    });
+  }
+  res.json({ success: true, found: true, issue, hint });
 }));
 
 module.exports = router;

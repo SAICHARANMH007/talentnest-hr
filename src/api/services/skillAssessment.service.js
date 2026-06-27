@@ -20,6 +20,7 @@ export const skillAssessmentService = {
   async deleteSkillQuestion(id)                 { return req('DELETE', `/skill-assessments/admin/questions/${id}`); },
   async bulkImportSkillQuestions(questions)     { return req('POST',   '/skill-assessments/admin/questions/bulk', { questions }); },
   async seedSkillQuestions()                    { return req('POST',   '/skill-assessments/admin/seed'); },
+  async seedBuiltInSkillQuestions()             { return req('POST',   '/skill-assessments/admin/questions/seed-built-in', {}); },
 
   // Admin — attempts
   async getSkillAttempts(params = {}) {
