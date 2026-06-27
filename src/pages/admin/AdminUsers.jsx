@@ -588,6 +588,9 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
   };
   useEffect(() => { if (activeTab === 'pending') loadPending(); }, [activeTab]);
 
+  // Eagerly load orgs for super_admin so org names are visible in user cards
+  useEffect(() => { if (isSuperAdmin) loadOrgs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load orgs list for super_admin org picker
   const loadOrgs = async () => {
     if (!isSuperAdmin || orgs.length) return;
@@ -1124,6 +1127,11 @@ export default function AdminUsers({ filterRole, isSuperAdmin, recruiterView = f
                     {/* Status badges — below name, wrap freely */}
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginTop: 3 }}>
                       <Badge label={u.role} color="#0176D3" />
+                      {isSuperAdmin && orgs.length > 0 && (() => {
+                        const tid = String(u.tenantId || '');
+                        const org = orgs.find(o => String(o._id || o.id) === tid);
+                        return org ? <span style={{ background: '#F0F4FF', color: '#3B57D4', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(59,87,212,0.2)', whiteSpace: 'nowrap' }}>{org.name}</span> : null;
+                      })()}
                       {u.isActive === false && (
                         <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.4)', whiteSpace: 'nowrap' }}>⏳ Pending</span>
                       )}
