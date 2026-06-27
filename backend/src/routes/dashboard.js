@@ -4842,7 +4842,11 @@ router.get('/recruiter-performance/export', authenticate, allowRoles('admin', 's
   const dateRange = buildDateRange(startDate, endDate);
 
   // Cap at 500 recruiters per export to prevent OOM on large tenants
-  const recruiters = await User.find({ ...tf, role: 'recruiter', isActive: true }).limit(500).lean();
+  const isSAExport = req.user.role === 'super_admin';
+  const [recruiters, orgMapExport] = await Promise.all([
+    User.find({ ...tf, role: 'recruiter', isActive: true }).select('_id name tenantId').limit(500).lean(),
+    isSAExport ? orgNameMap() : Promise.resolve({}),
+  ]);
   const rows = await Promise.all(recruiters.map(async (r) => {
     const myJobIds = (await Job.find({ assignedRecruiters: r._id, ...tf }).select('_id').lean()).map(j => j._id);
     const [candidatesAdded, shortlisted, offers, hired] = await Promise.all([
@@ -4852,20 +4856,23 @@ router.get('/recruiter-performance/export', authenticate, allowRoles('admin', 's
       Application.countDocuments({ jobId: { $in: myJobIds }, createdAt: dateRange, currentStage: 'Hired' }),
     ]);
     return {
+      orgName      : isSAExport ? (orgMapExport[r.tenantId?.toString()] || 'Unknown Org') : undefined,
       recruiterName: r.name,
       jobsAssigned : myJobIds.length,
       candidatesAdded, shortlisted, offers, hired,
     };
   }));
 
-  const buf = await exportToExcel('Recruiter Performance', [
+  const cols = [
+    ...(isSAExport ? [{ header: 'Organisation', key: 'orgName', width: 28 }] : []),
     { header: 'Recruiter',   key: 'recruiterName',  width: 24 },
     { header: 'Jobs',        key: 'jobsAssigned',   width: 10 },
     { header: 'Candidates',  key: 'candidatesAdded',width: 14 },
     { header: 'Shortlisted', key: 'shortlisted',    width: 14 },
     { header: 'Offers',      key: 'offers',         width: 10 },
     { header: 'Hired',       key: 'hired',          width: 10 },
-  ], rows);
+  ];
+  const buf = await exportToExcel('Recruiter Performance', cols, rows);
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="recruiter-performance-${Date.now()}.xlsx"`);
