@@ -189,15 +189,22 @@ async function normalizeSkillName(rawSkill) {
 router.get('/skills', auth, async (req, res) => {
   try {
     const filter = { isActive: true, ...tenantFilter(req.user.tenantId) };
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
 
-    // Only return skills that actually have enough questions to start an assessment
+    if (isAdmin) {
+      // Admins see ALL skills that have any active questions (no count threshold).
+      // This ensures the filter dropdowns and modal autocomplete show every skill in the bank.
+      const allSkills = await SkillQuestion.distinct('skill', filter);
+      return res.json({ skills: allSkills.sort() });
+    }
+
+    // Candidates: only return skills with enough questions to start an assessment
     // (need HARD_COUNT hard + MEDIUM_COUNT medium). Aggregate counts per skill+difficulty.
     const counts = await SkillQuestion.aggregate([
       { $match: filter },
       { $group: { _id: { skill: '$skill', difficulty: '$difficulty' }, count: { $sum: 1 } } },
     ]);
 
-    // Build map: skill → { hard: N, medium: N }
     const skillMap = {};
     for (const { _id: { skill, difficulty }, count } of counts) {
       if (!skillMap[skill]) skillMap[skill] = {};
@@ -417,7 +424,10 @@ router.get('/admin/questions', auth, allowRoles('admin', 'super_admin'), async (
   try {
     const { skill, difficulty, page = 1, limit = 50 } = req.query;
     const filter = {};
-    if (skill) filter.skill = skill;
+    if (skill) {
+      const escaped = skill.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.skill = { $regex: new RegExp(`^${escaped}$`, 'i') };
+    }
     if (difficulty) filter.difficulty = difficulty;
 
     // Admins see their own org questions + global
@@ -556,7 +566,10 @@ router.get('/admin/attempts', auth, allowRoles('admin', 'super_admin'), async (r
   try {
     const { skill, candidateId, status, page = 1, limit = 50 } = req.query;
     const filter = {};
-    if (skill) filter.skill = skill;
+    if (skill) {
+      const escaped = skill.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.skill = { $regex: new RegExp(`^${escaped}$`, 'i') };
+    }
     if (status) filter.status = status;
     if (candidateId) filter.candidateId = new mongoose.Types.ObjectId(candidateId);
     if (req.user.tenantId) {

@@ -4734,51 +4734,56 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
     jobStageMap[jid][r._id.stage] = (jobStageMap[jid][r._id.stage] || 0) + r.count;
   }
 
-  // Query 4: avg days to shortlist per job (from stageHistory)
-  const shortlistAgg = await Application.aggregate([
-    { $match: { ...tf, createdAt: dateRange, deletedAt: null, 'stageHistory.stage': 'Shortlisted' } },
-    { $project: {
-      jobId: 1,
-      createdAt: 1,
-      slEntry: {
-        $arrayElemAt: [
-          { $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Shortlisted'] } } },
-          0,
-        ],
-      },
-    }},
-    { $project: {
-      jobId: 1,
-      daysToSL: { $divide: [{ $subtract: ['$slEntry.movedAt', '$createdAt'] }, 86400000] },
-    }},
-    { $match: { daysToSL: { $gte: 0 } } },
-    { $group: { _id: '$jobId', avgDays: { $avg: '$daysToSL' } } },
+  // Queries 4+5 in parallel: avg days to shortlist / hire per job (from stageHistory)
+  const [shortlistAgg, hireAgg] = await Promise.all([
+    Application.aggregate([
+      { $match: { ...tf, createdAt: dateRange, deletedAt: null, 'stageHistory.stage': 'Shortlisted' } },
+      { $project: {
+        jobId: 1,
+        createdAt: 1,
+        slEntry: {
+          $arrayElemAt: [
+            { $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Shortlisted'] } } },
+            0,
+          ],
+        },
+      }},
+      { $project: {
+        jobId: 1,
+        daysToSL: { $divide: [{ $subtract: ['$slEntry.movedAt', '$createdAt'] }, 86400000] },
+      }},
+      { $match: { daysToSL: { $gte: 0 } } },
+      { $group: { _id: '$jobId', avgDays: { $avg: '$daysToSL' } } },
+    ]),
+    Application.aggregate([
+      { $match: { ...tf, createdAt: dateRange, deletedAt: null, 'stageHistory.stage': 'Hired' } },
+      { $project: {
+        jobId: 1,
+        createdAt: 1,
+        hireEntry: {
+          $arrayElemAt: [
+            { $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Hired'] } } },
+            0,
+          ],
+        },
+      }},
+      { $project: {
+        jobId: 1,
+        daysToHire: { $divide: [{ $subtract: ['$hireEntry.movedAt', '$createdAt'] }, 86400000] },
+      }},
+      { $match: { daysToHire: { $gte: 0 } } },
+      { $group: { _id: '$jobId', avgDays: { $avg: '$daysToHire' } } },
+    ]),
   ]);
-  const jobSLDays = {};
-  for (const r of shortlistAgg) jobSLDays[r._id?.toString()] = r.avgDays;
 
-  // Query 5: avg days to hire per job (from stageHistory)
-  const hireAgg = await Application.aggregate([
-    { $match: { ...tf, createdAt: dateRange, deletedAt: null, 'stageHistory.stage': 'Hired' } },
-    { $project: {
-      jobId: 1,
-      createdAt: 1,
-      hireEntry: {
-        $arrayElemAt: [
-          { $filter: { input: '$stageHistory', as: 'h', cond: { $eq: ['$$h.stage', 'Hired'] } } },
-          0,
-        ],
-      },
-    }},
-    { $project: {
-      jobId: 1,
-      daysToHire: { $divide: [{ $subtract: ['$hireEntry.movedAt', '$createdAt'] }, 86400000] },
-    }},
-    { $match: { daysToHire: { $gte: 0 } } },
-    { $group: { _id: '$jobId', avgDays: { $avg: '$daysToHire' } } },
-  ]);
+  const jobSLDays = {};
+  for (const r of shortlistAgg) {
+    if (r._id != null) jobSLDays[r._id.toString()] = r.avgDays;
+  }
   const jobHireDays = {};
-  for (const r of hireAgg) jobHireDays[r._id?.toString()] = r.avgDays;
+  for (const r of hireAgg) {
+    if (r._id != null) jobHireDays[r._id.toString()] = r.avgDays;
+  }
 
   const data = recruiters.map(r => {
     const myJobIds = [...(recruiterJobMap[r._id.toString()] || new Set())];

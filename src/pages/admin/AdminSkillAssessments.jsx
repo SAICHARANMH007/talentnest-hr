@@ -148,6 +148,10 @@ function QuestionModal({ question, skills, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Preserve truefalse options when switching type away and back, so the
+  // correct answer (True or False) is not silently reset to the default.
+  const savedTfOpts = React.useRef(null);
+
   const sf = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleDifficultyChange = (d) => {
@@ -158,12 +162,21 @@ function QuestionModal({ question, skills, onSave, onClose }) {
   };
 
   const handleTypeChange = (t) => {
-    if (t === 'truefalse') {
-      sf('options', [{ id: 'true', text: 'True', isCorrect: true }, { id: 'false', text: 'False', isCorrect: false }]);
-    } else if (form.type === 'truefalse') {
-      sf('options', [{ id: 'a', text: '', isCorrect: true }, { id: 'b', text: '', isCorrect: false }]);
-    }
-    sf('type', t);
+    setForm(prev => {
+      let newOpts = prev.options;
+      if (t === 'truefalse') {
+        // Restore saved truefalse options (preserves which answer is correct)
+        newOpts = savedTfOpts.current || [
+          { id: 'true', text: 'True', isCorrect: true },
+          { id: 'false', text: 'False', isCorrect: false },
+        ];
+        savedTfOpts.current = null;
+      } else if (prev.type === 'truefalse') {
+        savedTfOpts.current = prev.options; // save before resetting
+        newOpts = [{ id: 'a', text: '', isCorrect: true }, { id: 'b', text: '', isCorrect: false }];
+      }
+      return { ...prev, type: t, options: newOpts };
+    });
   };
 
   const validate = () => {
@@ -347,6 +360,7 @@ export default function AdminSkillAssessments() {
   const [modal, setModal]        = useState(null);  // null | { question? }
   const [deleting, setDeleting]  = useState(null);
   const [msg, setMsg]            = useState('');
+  const [msgIsErr, setMsgIsErr]  = useState(false);
 
   const [filters, setFilters]  = useState({ skill: '', difficulty: '', page: 1 });
   const [attFilt, setAttFilt]  = useState({ skill: '', status: '', page: 1 });
@@ -358,7 +372,7 @@ export default function AdminSkillAssessments() {
       const res = await api.getSkillQuestions({ ...f, limit: 20 });
       setQuestions(res?.questions || []);
       setTotal(res?.total || 0);
-    } catch { setMsg('Failed to load questions'); }
+    } catch { setMsg('Failed to load questions'); setMsgIsErr(true); }
     setLoading(false);
   };
 
@@ -383,13 +397,14 @@ export default function AdminSkillAssessments() {
 
   const runSeed = async () => {
     if (!window.confirm('This will seed built-in questions for Sales, Marketing, HR, Communication and more. Safe to run — skips questions that already exist. Continue?')) return;
-    setSeeding(true); setMsg('');
+    setSeeding(true); setMsg(''); setMsgIsErr(false);
     try {
       const res = await api.seedBuiltInSkillQuestions();
       setMsg(`✅ ${res.message || `Seeded ${res.totalInserted} questions across ${res.skillsSeeded?.length || 0} skills`}`);
+      setMsgIsErr(false);
       loadQuestions();
       api.getAvailableSkills().then(r => setSkills(r?.skills || [])).catch(() => {});
-    } catch (e) { setMsg(e?.message || 'Seed failed'); }
+    } catch (e) { setMsg(e?.message || 'Seed failed'); setMsgIsErr(true); }
     setSeeding(false);
   };
 
@@ -398,9 +413,9 @@ export default function AdminSkillAssessments() {
     setDeleting(id);
     try {
       await api.deleteSkillQuestion(id);
-      setMsg('Question deleted');
+      setMsg('✅ Question deleted'); setMsgIsErr(false);
       loadQuestions();
-    } catch (e) { setMsg(e.message || 'Delete failed'); }
+    } catch (e) { setMsg(e.message || 'Delete failed'); setMsgIsErr(true); }
     setDeleting(null);
   };
 
@@ -426,9 +441,9 @@ export default function AdminSkillAssessments() {
       </div>
 
       {msg && (
-        <div style={{ background: '#D1FAE5', color: '#065F46', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ background: msgIsErr ? '#FEE2E2' : '#D1FAE5', color: msgIsErr ? '#991B1B' : '#065F46', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
           {msg}
-          <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={() => { setMsg(''); setMsgIsErr(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
       )}
 
@@ -583,7 +598,7 @@ export default function AdminSkillAssessments() {
         <QuestionModal
           question={modal.question}
           skills={skills}
-          onSave={() => { setModal(null); loadQuestions(); setMsg(modal.question ? 'Question updated.' : 'Question added.'); }}
+          onSave={() => { setModal(null); loadQuestions(); setMsg(modal.question ? '✅ Question updated.' : '✅ Question added.'); setMsgIsErr(false); }}
           onClose={() => setModal(null)}
         />
       )}
