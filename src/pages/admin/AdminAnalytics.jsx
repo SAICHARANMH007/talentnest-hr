@@ -1347,10 +1347,10 @@ export default function AdminAnalytics({ user, onNavigate }) {
                       <td style={{ padding: '10px 14px', color: '#10b981', fontWeight: 700 }}>{r.hired}</td>
                       <td style={{ padding: '10px 14px', color: (r.conversionRate ?? 0) > 0 ? '#10b981' : '#94A3B8' }}>{r.conversionRate ?? 0}%</td>
                       <td style={{ padding: '10px 14px', color: r.avgDaysToShortlist == null ? '#94A3B8' : r.avgDaysToShortlist > 14 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
-                        {r.avgDaysToShortlist != null ? `${r.avgDaysToShortlist}d` : '—'}
+                        {r.avgDaysToShortlist != null ? (r.avgDaysToShortlist === 0 ? '<1d' : `${r.avgDaysToShortlist}d`) : '—'}
                       </td>
                       <td style={{ padding: '10px 14px', color: r.avgDaysToHire == null ? '#94A3B8' : r.avgDaysToHire > 30 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
-                        {r.avgDaysToHire != null ? `${r.avgDaysToHire}d` : '—'}
+                        {r.avgDaysToHire != null ? (r.avgDaysToHire === 0 ? '<1d' : `${r.avgDaysToHire}d`) : '—'}
                       </td>
                     </tr>
                   ))}

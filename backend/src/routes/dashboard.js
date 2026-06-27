@@ -4811,10 +4811,12 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
     const offerRate = candidatesAdded > 0 ? Math.round((offers / candidatesAdded) * 100) : 0;
     const conversionRate = candidatesAdded > 0 ? Math.round((hired / candidatesAdded) * 100) : 0;
 
+    const activeJobIds = new Set(myJobIds.filter(jid => Object.keys(jobStageMap[jid] || {}).length > 0));
+
     return {
       recruiterId    : r._id,
       recruiterName  : r.name,
-      jobsAssigned   : myJobIds.length,
+      jobsAssigned   : activeJobIds.size,
       candidatesAdded,
       shortlisted,
       shortlistRate,
